@@ -65,10 +65,10 @@ export async function rollsTable(
   who: CharacterBuild,
   sheet: Record<string, unknown>,
   faces: Record<string, number>,
-  look: { colorScheme?: 'light' | 'dark'; masterWidth?: number; playerWidth?: number } = {},
+  look: { colorScheme?: 'light' | 'dark'; masterWidth?: number; playerWidth?: number; deviceScaleFactor?: number } = {},
 ): Promise<RollsTable> {
-  const master: BrowserContext = await newSignedInContext(browser, 'Mestre Teste', { viewport: { width: look.masterWidth ?? 1280, height: 900 }, colorScheme: look.colorScheme });
-  const player: BrowserContext = await newSignedInContext(browser, 'Jogador Teste', { viewport: { width: look.playerWidth ?? 390, height: 844 }, colorScheme: look.colorScheme });
+  const master: BrowserContext = await newSignedInContext(browser, 'Mestre Teste', { viewport: { width: look.masterWidth ?? 1280, height: 900 }, colorScheme: look.colorScheme, deviceScaleFactor: look.deviceScaleFactor });
+  const player: BrowserContext = await newSignedInContext(browser, 'Jogador Teste', { viewport: { width: look.playerWidth ?? 390, height: 844 }, colorScheme: look.colorScheme, deviceScaleFactor: look.deviceScaleFactor });
   const m = await master.newPage();
   const p = await player.newPage();
   await m.goto('/');
