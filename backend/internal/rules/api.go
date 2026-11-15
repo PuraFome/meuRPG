@@ -893,6 +893,10 @@ type CharacterSpell struct {
 	// spell of a class that knows its spells, the prepared list and the
 	// subclass's always-prepared spells.
 	Prepared bool
+	// FromBook says the spell is one of the two rituals of the warlock's Book of
+	// Ancient Secrets: known, outside the numbers of the class and cast only as a
+	// ritual, unless the warlock has the spell another way.
+	FromBook bool `json:",omitempty"`
 }
 
 // NamedKey is a content key with its Portuguese name.
