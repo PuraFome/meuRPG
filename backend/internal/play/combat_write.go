@@ -504,8 +504,10 @@ func (s *Service) tellReplayed(h *hints, w combatWrite, res combatResult) {
 		return
 	}
 	h.tell(campaignID, castsChangedEvent(true))
+	ev, err := readEvent(res.payload)
+	secret := err != nil || ev.Secret // an event that cannot be read is told to the master alone
 	h.after(func(ctx context.Context, say func(string, live.Event)) {
-		s.tellCombatAgain(ctx, say, campaignID, res.session.ID, encID)
+		s.tellCombatAgain(ctx, say, campaignID, res.session.ID, encID, secret)
 	})
 }
 
@@ -521,8 +523,10 @@ func storedEncounterID(payload []byte) string {
 }
 
 // tellCombatAgain is the after-commit step of a replay: it reads the combat as it stands and tells the vitals of its players,
-// its open reaction windows and the fog of its map.
-func (s *Service) tellCombatAgain(ctx context.Context, say func(string, live.Event), campaignID, sessionID, encounterID string) {
+// its open reaction windows and the fog of its map. A replay of a change only the master reads (secret: the stored event is
+// one a hidden combatant is in) reaches the master alone, as the first call did: the vitals go to him only, and the windows and
+// the fog, which are the players', are left to the next change.
+func (s *Service) tellCombatAgain(ctx context.Context, say func(string, live.Event), campaignID, sessionID, encounterID string, secret bool) {
 	enc, err := s.queries.GetEncounterInSession(ctx, playdb.GetEncounterInSessionParams{GameSessionID: sessionID, ID: encounterID})
 	if err != nil {
 		s.logger.WarnContext(ctx, "play: cannot read the combat to tell a repeated change", "error", err)
@@ -539,6 +543,10 @@ func (s *Service) tellCombatAgain(ctx context.Context, say func(string, live.Eve
 			tellIDs = append(tellIDs, x.ID)
 		}
 	}
+	if secret {
+		s.tellMasterVitalsAgain(ctx, say, campaignID, cs, tellIDs)
+		return
+	}
 	open, err := s.queries.ListOpenReactionWindows(ctx, enc.ID)
 	if err != nil {
 		s.logger.WarnContext(ctx, "play: cannot read the reaction windows to tell a repeated change", "error", err)
@@ -549,6 +557,22 @@ func (s *Service) tellCombatAgain(ctx context.Context, say func(string, live.Eve
 	}
 	s.tellReactions(ctx, say, campaignID, enc.ID, notes, tellIDs)
 	s.maps.VisionChanged(ctx, campaignID, conv.OrZero(enc.MapID))
+}
+
+// tellMasterVitalsAgain is the vitals step of the replay of a change only the master reads: the vitals of the combat's players
+// go to him alone.
+func (s *Service) tellMasterVitalsAgain(ctx context.Context, say func(string, live.Event), campaignID string, cs []playdb.Combatant, ids []string) {
+	for _, id := range ids {
+		x, ok := combatantByID(cs, id)
+		if !ok || x.CharacterID == "" {
+			continue
+		}
+		if v, err := s.vitals.GetVitals(ctx, campaignID, x.CharacterID); err == nil && v != nil {
+			hint := vitalsHint(v)
+			hint.Audience = live.Audience{Master: true}
+			say(campaignID, hint)
+		}
+	}
 }
 
 // replayOfKey says whether the key was used for this very change already, and then
@@ -943,7 +967,11 @@ func (s *Service) finish(ctx context.Context, m authz.Membership, res combatResu
 // event was not one a hidden combatant is in. It tells the forced moves the stored event made again.
 func (s *Service) publishRetried(ctx context.Context, campaignID string, res combatResult, d *encounterData) {
 	ev, err := readEvent(res.payload)
-	s.publishEncounterChanged(ctx, campaignID, d.enc)
+	if err != nil || ev.Secret {
+		s.publishEncounterChangedToMaster(campaignID, d.enc) // the players were not told of the first call: nor of its replay
+	} else {
+		s.publishEncounterChanged(ctx, campaignID, d.enc)
+	}
 	s.publishLogChange(ctx, campaignID, d.enc.ID, err == nil && !ev.Secret, err == nil && ev.Undone != "") // a retried undo rewrote the log too
 	if err == nil {                                                                                        // the forced moves the stored event made: the first call may have died before it told them
 		moves := pushesOf(ev.Hits)
