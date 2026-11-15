@@ -52,7 +52,8 @@ A new casting brings the same row back at full hit points, with its form, name a
 Only the owner and the master read the type.
 The spell takes 10 minutes, so the steed joins a combat when the combat starts, with `mount_kind` `controlled`.
 The rider mounts it with `MountCombatant`, and the pair then shares the steed's square and initiative.
-At 0 hit points the steed goes through the rider's dismount window, then its creature is dismissed with the reason `disappeared`.
+At 0 hit points its creature is dismissed at once with the reason `disappeared` and 0 hit points, and a heal in the combat brings it back.
+Its combatant stays under the rider until the rider answers the dismount window, and then `goneSteed` takes it out.
 The bond stays, so a new casting brings the same steed back.
 A dismissal of the steed puts the rider on foot with no window (`unseatRider`).
 

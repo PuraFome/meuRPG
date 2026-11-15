@@ -668,12 +668,12 @@ WHERE campaign_id = sqlc.arg(campaign_id)::UUID AND character_id = sqlc.arg(char
 
 -- name: DismissCreatures :many
 -- Sends the live ones of these creatures away, with the reason; a creature
--- dismissed because it was defeated is at 0 hit points. Returns the ones it
+-- dismissed because it was defeated (or, a steed, disappeared) is at 0 hit points. Returns the ones it
 -- dismissed, by ID.
 WITH changed AS (
     UPDATE character_creatures
     SET dismissed_at = sqlc.arg(at)::TIMESTAMPTZ, dismissed_reason = sqlc.arg(reason)::TEXT,
-        hp_current = CASE WHEN sqlc.arg(reason)::TEXT = 'defeated' THEN 0 ELSE hp_current END
+        hp_current = CASE WHEN sqlc.arg(reason)::TEXT IN ('defeated', 'disappeared') THEN 0 ELSE hp_current END
     WHERE campaign_id = sqlc.arg(campaign_id)::UUID
       AND id = ANY(sqlc.arg(ids)::UUID[])
       AND dismissed_at IS NULL

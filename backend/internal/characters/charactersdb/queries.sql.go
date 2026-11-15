@@ -423,7 +423,7 @@ const dismissCreatures = `-- name: DismissCreatures :many
 WITH changed AS (
     UPDATE character_creatures
     SET dismissed_at = $1::TIMESTAMPTZ, dismissed_reason = $2::TEXT,
-        hp_current = CASE WHEN $2::TEXT = 'defeated' THEN 0 ELSE hp_current END
+        hp_current = CASE WHEN $2::TEXT IN ('defeated', 'disappeared') THEN 0 ELSE hp_current END
     WHERE campaign_id = $3::UUID
       AND id = ANY($4::UUID[])
       AND dismissed_at IS NULL
@@ -440,7 +440,7 @@ type DismissCreaturesParams struct {
 }
 
 // Sends the live ones of these creatures away, with the reason; a creature
-// dismissed because it was defeated is at 0 hit points. Returns the ones it
+// dismissed because it was defeated (or, a steed, disappeared) is at 0 hit points. Returns the ones it
 // dismissed, by ID.
 func (q *Queries) DismissCreatures(ctx context.Context, arg DismissCreaturesParams) ([]string, error) {
 	rows, err := q.db.Query(ctx, dismissCreatures,
