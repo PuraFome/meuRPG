@@ -203,3 +203,96 @@
   line-height: 20px;
   font-weight: 700;
 }
+
+.dmg__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 12px;
+}
+
+.dmg__title {
+  font-size: var(--mr-font-16);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: var(--mr-radius-pill);
+  font-size: var(--mr-font-13);
+  font-weight: 700;
+
+  .mat-icon {
+    width: 16px;
+    height: 16px;
+    font-size: var(--mr-font-16);
+  }
+}
+
+.badge--wait {
+  border: 1px solid var(--mr-warning-line);
+  background: var(--mr-warning-surface);
+  color: var(--mr-warning-ink);
+}
+
+.badge--ok {
+  border: 1px solid var(--mr-success-ink);
+  background: var(--mr-success-surface);
+  color: var(--mr-success-ink);
+}
+
+.dmg__why--plain {
+  margin: 0;
+  font-weight: 400;
+  color: var(--mr-ink-muted);
+}
+
+.sumrows {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--mr-rule);
+  }
+}
+
+.sumrows__name {
+  display: flex;
+  flex-direction: column;
+
+  small {
+    font-size: var(--mr-font-14);
+    color: var(--mr-ink-muted);
+  }
+}
+
+.sumrows__child {
+  padding-left: 16px !important;
+  border-left: 2px solid var(--mr-control-line);
+}
+
+.sumrows__gone small,
+.sumrows__gone s {
+  color: var(--mr-ink-muted);
+}
+
+.sumrows__num {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.sumrows__total {
+  border-bottom: 0 !important;
+}

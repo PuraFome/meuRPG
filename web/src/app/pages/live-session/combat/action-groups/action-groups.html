@@ -34,9 +34,13 @@
       <div class="mr-notice mr-notice--warning groups__pending">
         <div class="mr-notice__said">
           <mat-icon aria-hidden="true">warning</mat-icon>
-          <p><strong>Falta rolar o dano do seu ataque.</strong> Role para poder encerrar o turno.</p>
+          @if (pendingRoll()?.awaitedDamageTypeKey) {
+            <p><strong>Falta digitar de novo a soma do dano do seu ataque.</strong> O mestre tirou uma parte. Faça isso para poder encerrar o turno.</p>
+          } @else {
+            <p><strong>Falta rolar o dano do seu ataque.</strong> Role para poder encerrar o turno.</p>
+          }
         </div>
-        <button matButton="outlined" type="button" (click)="rollDamage.emit()">Rolar o dano</button>
+        <button matButton="outlined" type="button" (click)="rollDamage.emit()">{{ pendingRoll()?.awaitedDamageTypeKey ? 'Digitar a soma' : 'Rolar o dano' }}</button>
       </div>
     }
   </div>

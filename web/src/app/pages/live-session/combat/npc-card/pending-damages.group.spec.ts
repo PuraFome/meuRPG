@@ -1,0 +1,235 @@
+import { TestBed } from '@angular/core/testing';
+import { Code, ConnectError } from '@connectrpc/connect';
+import { create } from '@bufbuild/protobuf';
+
+import {
+  CombatantKind,
+  EncounterBlockedReason,
+  EncounterBlockedSchema,
+  PendingDamageStatus,
+} from '../../../../../gen/meurpg/play/v1/combat_pb';
+import { CombatClient } from '../../../../core/combat/combat-client';
+import { fakeCombatClient } from '../../../../core/combat/combat-client-testing';
+import { CombatState } from '../../../../core/combat/combat-state';
+import { combatant, encounter } from '../../../../core/combat/combat-testing';
+import { PendingDamages } from './pending-damages';
+
+const part = (over: Record<string, unknown>) => ({
+  key: 'weapon',
+  labelPt: 'Espada curta',
+  diceCount: 1,
+  diceSides: 6,
+  flat: 3,
+  damageTypeKey: 'damage-type:piercing',
+  damageTypePt: 'perfurante',
+  choosable: false,
+  selected: false,
+  available: false,
+  auto: false,
+  ...over,
+});
+const roll = (over: Record<string, unknown>) => ({
+  partKey: 'weapon',
+  labelPt: 'Espada curta',
+  diceCount: 1,
+  diceSides: 6,
+  faces: [],
+  flat: 3,
+  sum: 10,
+  counted: true,
+  damageTypeKey: 'damage-type:piercing',
+  rerolled: [],
+  hitEffect: false,
+  ...over,
+});
+const frost = part({
+  key: 'frost',
+  labelPt: 'Geada no Punho',
+  diceCount: 2,
+  diceSides: 8,
+  flat: 0,
+  auto: true,
+  damageTypeKey: 'damage-type:cold',
+  damageTypePt: 'frio',
+});
+const sneak = part({
+  key: 'sneak-attack',
+  labelPt: 'Ataque Furtivo',
+  diceCount: 3,
+  flat: 0,
+  choosable: true,
+  selected: true,
+  available: true,
+});
+const frostRoll = roll({
+  partKey: 'frost',
+  labelPt: 'Geada no Punho',
+  diceCount: 2,
+  diceSides: 8,
+  faces: [3, 3],
+  flat: 0,
+  sum: 6,
+  damageTypeKey: 'damage-type:cold',
+  hitEffect: true,
+});
+const base = { id: 'p1', attackerId: 'jab', targetId: 'zum', amount: 19, steps: [] };
+const applied = {
+  ...base,
+  status: PendingDamageStatus.APPLIED,
+  parts: [part({}), sneak, frost],
+  partRolls: [
+    roll({}),
+    roll({ partKey: 'sneak-attack', labelPt: 'Ataque Furtivo', diceCount: 3, flat: 0, sum: 0 }),
+    frostRoll,
+  ],
+} as never;
+const waiting = {
+  ...base,
+  status: PendingDamageStatus.AWAITING_GROUP_SUM,
+  awaitedDamageTypeKey: 'damage-type:piercing',
+  parts: [part({}), { ...sneak, selected: false, available: false }, frost],
+  partRolls: [frostRoll],
+} as never;
+
+const enc = encounter({
+  combatants: [
+    combatant({ id: 'jab', label: 'Jabuti', kind: CombatantKind.PLAYER }),
+    combatant({
+      id: 'zum',
+      label: 'Zumbi 1',
+      hitPointsCurrent: 3,
+      hitPointsMax: 22,
+      hitPointsTemporary: 0,
+    } as never),
+  ],
+} as never);
+
+describe('PendingDamages: taking a part out of a typed group', () => {
+  const api = { removeDamagePart: vi.fn(), rollDamage: vi.fn() };
+
+  function setup(pendings: unknown[], appliedRows: unknown[] = []) {
+    TestBed.configureTestingModule({
+      providers: [{ provide: CombatClient, useValue: fakeCombatClient(api) }],
+    });
+    const state = new CombatState();
+    const fixture = TestBed.createComponent(PendingDamages);
+    fixture.componentRef.setInput('pendings', pendings);
+    fixture.componentRef.setInput('applied', appliedRows);
+    fixture.componentRef.setInput('encounter', enc);
+    fixture.componentRef.setInput('campaignId', 'camp');
+    fixture.componentRef.setInput('state', state);
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    return {
+      fixture,
+      el,
+      state,
+      text: () => el.textContent!.replace(/\s+/g, ' '),
+      button: (name: string) =>
+        Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.includes(name))!,
+    };
+  }
+
+  it('draws the applied damage only as its breakdown with "Tirar" on the extra of the group', () => {
+    const { el, text } = setup([], [applied]);
+    expect(text()).toContain('Espada curta no Zumbi 1');
+    expect(text()).toContain('Aplicado · 19');
+    expect(text()).toContain('4d6 (10) + 3 · uma soma digitada');
+    expect(el.querySelectorAll('.take')).toHaveLength(1);
+    expect(text()).not.toContain('Aplicar 19 de dano');
+  });
+
+  it('lists what the take-out undoes and sends the reason, keeping it for the card that waits', async () => {
+    api.removeDamagePart.mockResolvedValue({ encounter: enc, pending: waiting, cast: [] });
+    const { fixture, el, state, text, button } = setup([], [applied]);
+    button('Tirar').click();
+    fixture.detectChanges();
+    expect(text()).toContain('Tirar o Ataque Furtivo do dano?');
+    expect(text()).toContain('Desfaz os 19 de dano: o Zumbi 1 volta a 22 PV.');
+    expect(text()).toContain('Pede a Jabuti só a soma de perfurante (1d6).');
+    const field = el.querySelector<HTMLInputElement>('.ask__field')!;
+    field.value = 'Sem aliado perto do alvo';
+    field.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    el.querySelector('form')!.dispatchEvent(new Event('submit'));
+    await fixture.whenStable();
+    expect(api.removeDamagePart).toHaveBeenCalledWith(
+      'camp',
+      expect.any(String),
+      'p1',
+      'sneak-attack',
+      'Sem aliado perto do alvo',
+      expect.any(String),
+    );
+    expect(state.removals()[0]).toMatchObject({
+      key: 'sneak-attack',
+      reason: 'Sem aliado perto do alvo',
+    });
+  });
+
+  it('keeps the panel and says so when the server refuses, nothing changed', async () => {
+    api.removeDamagePart.mockRejectedValue(
+      new ConnectError('x', Code.FailedPrecondition, undefined, [
+        {
+          desc: EncounterBlockedSchema,
+          value: create(EncounterBlockedSchema, { reason: EncounterBlockedReason.NOTHING_TO_UNDO }),
+        },
+      ]),
+    );
+    const { fixture, el, text, button } = setup([], [applied]);
+    button('Tirar').click();
+    fixture.detectChanges();
+    const field = el.querySelector<HTMLInputElement>('.ask__field')!;
+    field.value = 'motivo';
+    field.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    el.querySelector('form')!.dispatchEvent(new Event('submit'));
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(text()).toContain('Já aconteceu outra coisa depois deste dano');
+    expect(el.querySelector('.ask')).not.toBeNull();
+  });
+
+  it('shows the damage that awaits the sum: who is awaited, the part taken out with its reason, the sum kept', () => {
+    const { state, text, button, fixture } = setup([waiting]);
+    state.noteRemoval({
+      attackerId: 'jab',
+      targetId: 'zum',
+      key: 'sneak-attack',
+      name: 'Ataque Furtivo',
+      reason: 'Sem aliado perto do alvo',
+    });
+    fixture.detectChanges();
+    expect(text()).toContain('Esperando Jabuti');
+    expect(text()).toContain('tirado: “Sem aliado perto do alvo”');
+    expect(text()).toContain('Perfurante');
+    expect(text()).toContain('esperando a soma de Jabuti');
+    expect(text()).toContain('Geada no Punho');
+    expect(text()).toContain('Total falta');
+    expect(text()).toContain(
+      'Jabuti digita a soma de 1d6 (de 1 a 6). Até lá, o Zumbi 1 fica com 3 PV.',
+    );
+    expect(button('Rolar 1d6 no app')).toBeTruthy();
+    expect(button('Digitar por Jabuti')).toBeTruthy();
+  });
+
+  it('rolls the awaited sum in the app or types it, only of that damage type', async () => {
+    api.rollDamage.mockResolvedValue({ encounter: enc, pending: waiting, cast: [] });
+    const { fixture, el, button } = setup([waiting]);
+    button('Digitar por Jabuti').click();
+    fixture.detectChanges();
+    const field = el.querySelector<HTMLInputElement>('input')!;
+    field.value = '4';
+    field.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    el.querySelector<HTMLButtonElement>('.type button, .type__row button')!.click();
+    await fixture.whenStable();
+    expect(api.rollDamage).toHaveBeenCalledWith(
+      'camp',
+      expect.any(String),
+      'p1',
+      { sum: 4 },
+      expect.any(String),
+    );
+  });
+});

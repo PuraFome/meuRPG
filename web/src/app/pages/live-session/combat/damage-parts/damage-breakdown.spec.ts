@@ -230,3 +230,103 @@ describe('DamageBreakdown with a single part', () => {
     expect(plain()).toContain('Resistência a fogo (tiefling)');
   });
 });
+
+describe('DamageBreakdown take-out of a part of a typed group', () => {
+  const group = [
+    {
+      partKey: 'weapon',
+      labelPt: 'Espada curta',
+      diceCount: 1,
+      diceSides: 6,
+      faces: [],
+      flat: 3,
+      sum: 10,
+      counted: true,
+      damageTypeKey: 'damage-type:piercing',
+      rerolled: [],
+    },
+    {
+      partKey: 'sneak-attack',
+      labelPt: 'Ataque Furtivo',
+      diceCount: 3,
+      diceSides: 6,
+      faces: [],
+      flat: 0,
+      sum: 0,
+      counted: true,
+      damageTypeKey: 'damage-type:piercing',
+      rerolled: [],
+    },
+  ] as never[];
+  const plan = {
+    group: true,
+    title: 'Tirar o Ataque Furtivo do dano?',
+    lines: [
+      'Desfaz os 19 de dano: o Zumbi 1 volta a 22 PV.',
+      'Pede a Jabuti só a soma de perfurante (1d6).',
+    ],
+    notice: '',
+    confirm: 'Tirar e pedir a soma',
+  };
+  function open(extra: Record<string, unknown> = {}) {
+    const fixture = TestBed.createComponent(DamageBreakdown);
+    fixture.componentRef.setInput('rolls', group);
+    fixture.componentRef.setInput('master', true);
+    fixture.componentRef.setInput('amount', 13);
+    fixture.componentRef.setInput('removable', new Set(['sneak-attack']));
+    fixture.componentRef.setInput('typeNames', new Map([['damage-type:piercing', 'perfurante']]));
+    fixture.componentRef.setInput('plans', new Map([['sneak-attack', plan]]));
+    for (const [k, v] of Object.entries(extra)) {
+      fixture.componentRef.setInput(k, v);
+    }
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    (el.querySelector('.take') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    return { fixture, el, text: () => el.textContent!.replace(/\s+/g, ' ') };
+  }
+
+  it('heads the group and offers "Tirar" on the extra inside it', () => {
+    const { el, text } = open();
+    expect(text()).toContain('Perfurante');
+    expect(text()).toContain('4d6 (10) + 3 · uma soma digitada');
+    expect(el.querySelectorAll('.take')).toHaveLength(1);
+  });
+
+  it('lists what taking it out undoes and names the button for the new sum', () => {
+    const { el, text } = open();
+    expect(text()).toContain('Tirar o Ataque Furtivo do dano?');
+    expect(
+      Array.from(el.querySelectorAll('.ask__list li')).map((l) => l.textContent!.trim()),
+    ).toEqual(plan.lines);
+    expect(el.querySelector('.ask__danger')!.textContent).toContain('Tirar e pedir a soma');
+  });
+
+  it('says the reason is missing once it was left empty, with the confirm button dashed', () => {
+    const { fixture, el, text } = open();
+    const field = el.querySelector<HTMLInputElement>('.ask__field')!;
+    field.value = 'x';
+    field.dispatchEvent(new Event('input'));
+    field.value = '';
+    field.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    expect(text()).toContain('Escreva o motivo, com até 120 caracteres.');
+    expect(el.querySelector('.ask__danger')!.classList).toContain('ask__off');
+  });
+
+  it('keeps the panel open while sending, both buttons off, and shows what the server refused', () => {
+    const { fixture, el, text } = open({ sending: false });
+    fixture.componentRef.setInput('sending', true);
+    fixture.detectChanges();
+    expect(text()).toContain('Tirando…');
+    expect(el.querySelector('.ask__back')!.classList).toContain('ask__off');
+    fixture.componentRef.setInput(
+      'error',
+      'Não deu para tirar a parte agora. Nada mudou. Tente de novo.',
+    );
+    fixture.componentRef.setInput('sending', false);
+    fixture.detectChanges();
+    expect(el.querySelector('.ask__banner')!.textContent).toContain('Nada mudou');
+    expect(el.querySelector('.ask')).not.toBeNull();
+  });
+});

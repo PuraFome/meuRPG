@@ -5,11 +5,13 @@ import {
   Injector,
   afterNextRender,
   computed,
+  effect,
   inject,
   input,
   model,
   output,
   signal,
+  untracked,
   viewChild,
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
@@ -21,6 +23,9 @@ import {
   DamageStepKind,
 } from '../../../../../gen/meurpg/play/v1/combat_rolls_pb';
 import { groupHolder, partTotal, rerollText } from '../../../../core/combat/damage-parts';
+import type { TakeOutPlan } from '../../../../core/combat/group-take-out';
+import { article } from '../../../../core/format/article';
+import { damageRows } from './damage-rows';
 import { reasonValid, stepLine } from '../../../../core/combat/roll-mode';
 
 let nextId = 0;
@@ -51,6 +56,14 @@ export class DamageBreakdown {
   /** The keys of the extras the master may take out. */
   readonly removable = input<ReadonlySet<string>>(new Set());
   readonly busy = input(false);
+  /** The damage type keys with their Portuguese names, for the head of a typed group. */
+  readonly typeNames = input<ReadonlyMap<string, string>>(new Map());
+  /** What the panel of each removable part says (from `takeOutPlan`); without one, the plain question. */
+  readonly plans = input<ReadonlyMap<string, TakeOutPlan>>(new Map());
+  /** The take-out of this damage is on its way: the panel stays open with both buttons off ("Tirando…"). */
+  readonly sending = input(false);
+  /** What the server refused, said in the panel; the panel stays open. */
+  readonly error = input('');
   /** The keys of the sources the master told the app to leave out. */
   readonly ignored = model<readonly string[]>([]);
 
@@ -63,8 +76,37 @@ export class DamageBreakdown {
   protected readonly asking = signal<string | null>(null);
   protected readonly reason = signal('');
   protected readonly reasonOk = computed(() => reasonValid(this.reason()));
+  /** The reason was left: said under the field once the master has been there. */
+  protected readonly touched = signal(false);
+  protected readonly reasonMissing = computed(() => this.touched() && !this.reasonOk());
+  protected readonly rows = computed(() => damageRows(this.rolls(), this.typeNames()));
   protected readonly asked = computed(() => this.rolls().find((r) => r.partKey === this.asking()));
+  protected readonly plan = computed(() => {
+    const key = this.asking();
+    return key === null ? undefined : this.plans().get(key);
+  });
   protected readonly after = computed(() => this.amountAfterSteps());
+  private sent = false;
+
+  constructor() {
+    // The panel closes when its take-out went through; a refusal keeps it open with the banner.
+    effect(() => {
+      const busy = this.sending();
+      const refused = this.error();
+      untracked(() => {
+        if (this.sent && !busy) {
+          this.sent = false;
+          if (!refused) {
+            this.asking.set(null);
+          }
+        }
+      });
+    });
+  }
+
+  protected the(name: string): string {
+    return `${article(name)} ${name}`;
+  }
 
   protected formula(r: DamagePartRoll): string {
     const dice = r.diceCount > 0 ? `${r.diceCount}d${r.diceSides}` : '';
@@ -119,22 +161,24 @@ export class DamageBreakdown {
   protected ask(r: DamagePartRoll): void {
     this.asking.set(r.partKey);
     this.reason.set('');
+    this.touched.set(false);
     afterNextRender(() => this.reasonField()?.nativeElement.focus(), { injector: this.injector });
   }
 
   protected question(r: DamagePartRoll): string {
-    return `Tirar o ${r.labelPt}? O dano cai de ${this.amount()} para ${Math.max(0, this.amount() - partTotal(r))}.`;
+    return `Tirar ${this.the(r.labelPt)}? O dano cai de ${this.amount()} para ${Math.max(0, this.amount() - partTotal(r))}.`;
   }
 
   protected onReason(event: Event): void {
     this.reason.set((event.target as HTMLInputElement).value);
+    this.touched.set(true);
   }
 
   protected confirm(): void {
     const key = this.asking();
-    if (key && this.reasonOk() && !this.busy()) {
+    if (key && this.reasonOk() && !this.busy() && !this.sent) {
+      this.sent = true;
       this.remove.emit({ partKey: key, reason: this.reason().trim() });
-      this.asking.set(null);
     }
   }
 }
