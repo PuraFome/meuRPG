@@ -346,7 +346,7 @@ The caster's player and the master read it true, and so do the other players whe
 ## Roll modes
 
 Every d20 the app rolls for a creature (weapon, spell and creature attacks, spell saves, traps, puzzle hints, scene checks, trap searches) goes through one rule: the server works out the sources of advantage and disadvantage (`rules/combat/advantage.go`), and the mode follows SRD 5.1 "Advantage and Disadvantage": one or more of each cancel to a normal roll, and sources of the same kind never add up.
-The pure rules are `AttackMode`, `SaveMode` and `Resolve`; the facts they read (positions, conditions, states, traits) are gathered in `combat_advantage.go`.
+The pure rules are `AttackMode`, `SaveMode` and `Resolve`; the facts they read (positions, conditions, states, traits) are gathered in `combat_advantage.go`. The modes as the database and the API spell them, the source kinds of the API and the Portuguese sentence of each source are in the subpackage `play/advantage`; a viewer who may not know a source reads "Outra fonte" in its place (`advantage.SourceProto`).
 `GetTurnOptions` and every roll answer carry `mode`, `suggested_mode` and `sources[]` (`AdvantageSource`: kind, effect, Portuguese sentence).
 Death saves and initiative are untouched.
 

@@ -1120,7 +1120,7 @@ func TestRN10_FogCombatAShieldPromptNeverNamesAnUnseenAttacker(t *testing.T) {
 	e := f.fight(t)
 	f.mustMove(t, f.master, "Goblin 1", 18, 5) // dark, 13 squares away
 	f.passTo(t, e, "Goblin 1")
-	if _, err := f.attack(t, f.master, e, "Goblin 1", "basic:0", "Pensantus", advantage(15)); err != nil {
+	if _, err := f.attack(t, f.master, e, "Goblin 1", "basic:0", "Pensantus", advantageRequest(15)); err != nil {
 		t.Fatalf("RollAttack(Goblin 1 on Pensantus) error = %v", err)
 	}
 	got := f.get(t, f.ana)
