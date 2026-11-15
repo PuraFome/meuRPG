@@ -250,3 +250,34 @@ func TestTheReadiersPlayerTakesTheRollingMarkOffItsWindow(t *testing.T) {
 	}
 	wantCode(t, "clearing an answered window", a.clearRolling(t, a.ana, e, w.GetId()), connect.CodeFailedPrecondition)
 }
+
+// The master releases a held spell for its readier with CastSpell (the readier's player does too, as the tests above
+// say); another player is refused, whatever the spell and slot, and nothing is spent.
+func TestTheMasterReleasesTheHeldSpellForItsReadierAndAnotherPlayerCannot(t *testing.T) {
+	t.Parallel()
+	a := newCasters(t)
+	e := a.readyForRelease(t, magicMissileSpell, 1, "Capitão Goblin")
+	w := a.mustFire(t, e, "Pensantus")
+	slots := a.slotsOf(t, "Pensantus", 1, 2)
+	missiles := []*playv1.SpellTarget{darts(a, t, "Capitão Goblin", 3)}
+	_, err := a.cast(t, a.caio, e, "Pensantus", magicMissileSpell, nil, missiles, noCastRoll)
+	if connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Errorf("another player's release error = %v, want permission_denied", err)
+	}
+	if !a.readiedOpen(t, "Pensantus") || a.readiedStatus(t, "Pensantus") != readiedWaiting || byLabel(t, a.get(t, a.master), "Pensantus").GetReactionUsed() {
+		t.Fatalf("the refused release changed the window: open %v, row %q", a.readiedOpen(t, "Pensantus"), a.readiedStatus(t, "Pensantus"))
+	}
+	res, err := a.cast(t, a.master, e, "Pensantus", magicMissileSpell, nil, missiles, noCastRoll)
+	if err != nil || res.GetCast() == nil {
+		t.Fatalf("the master's release = %v, %v", res, err)
+	}
+	if got := a.slotsOf(t, "Pensantus", 1, 2); !slices.Equal(got, slots) {
+		t.Errorf("slots used by level = %v, want %v: the release spends no slot", got, slots)
+	}
+	if !byLabel(t, a.get(t, a.master), "Pensantus").GetReactionUsed() || a.readiedStatus(t, "Pensantus") != readiedFired || a.windowOf(t, a.master, kindReadied) != nil {
+		t.Errorf("after the master's release: row %q, window %v", a.readiedStatus(t, "Pensantus"), a.windowOf(t, a.master, kindReadied))
+	}
+	if _, err := a.answerReaction(t, a.ana, e, w.GetId(), passAnswer); err == nil {
+		t.Error("the window the master answered took another answer")
+	}
+}
