@@ -732,6 +732,16 @@ describe('EquipmentPanel, the ammunition list', () => {
   });
 });
 
+/** The text of a node as read, without the ligature names of its icons. */
+const plain = (n: Element | null | undefined) => {
+  if (!n) {
+    return undefined;
+  }
+  const copy = n.cloneNode(true) as Element;
+  copy.querySelectorAll('mat-icon').forEach((i) => i.remove());
+  return flat(copy);
+};
+
 const POTION_CATEGORY = new Map([
   ['item:potion-of-healing', 'potion'],
   ['item:potion-of-climbing', 'potion'],
@@ -771,11 +781,11 @@ describe('EquipmentPanel, the potions and the scrolls', () => {
     const { el } = render((h) => h.sheet.set(sheetWith([potion('p1')])));
     const [row] = rowsOf(el);
     expect(row.querySelector('.magic-row__icon')?.textContent).toBe('science');
-    expect(flat(row.querySelector('.magic-row__name'))).toBe('Poção de cura');
-    expect(flat(row.querySelector('.magic-row__line'))).toBe('Cura 2d4 + 2');
+    expect(plain(row.querySelector('.magic-row__name'))).toBe('Poção de cura');
+    expect(plain(row.querySelector('.magic-row__line'))).toBe('Cura 2d4 + 2');
     expect(row.querySelector('.magic-row__line mat-icon')?.textContent).toBe('favorite');
     const use = row.querySelector<HTMLButtonElement>('.magic-row__use')!;
-    expect(flat(use)).toBe('Usar');
+    expect(plain(use)).toBe('Usar');
     expect(use.getAttribute('aria-label')).toBe('Usar Poção de cura');
   });
 
@@ -798,7 +808,7 @@ describe('EquipmentPanel, the potions and the scrolls', () => {
         ]),
       ),
     );
-    expect(flat(rowsOf(el)[0].querySelector('.magic-row__line'))).toBe('Só mostra o texto');
+    expect(plain(rowsOf(el)[0].querySelector('.magic-row__line'))).toBe('Só mostra o texto');
     expect(rowsOf(el)[0].querySelector('.magic-row__line mat-icon')?.textContent).toBe('menu_book');
   });
 
@@ -806,7 +816,7 @@ describe('EquipmentPanel, the potions and the scrolls', () => {
     const { el, host } = render((h) => h.sheet.set(sheetWith([potion('p1'), potion('p2')])));
     const rows = rowsOf(el);
     expect(rows).toHaveLength(1);
-    expect(flat(rows[0].querySelector('.magic-row__times'))).toBe('×2');
+    expect(plain(rows[0].querySelector('.magic-row__times'))).toBe('×2');
     expect(rows[0].querySelector('.magic-row__times')?.getAttribute('aria-label')).toBe(
       '2 unidades',
     );
@@ -816,7 +826,7 @@ describe('EquipmentPanel, the potions and the scrolls', () => {
 
   it('counts every unit in the heading, as the sheet holds them', () => {
     const { el } = render((h) => h.sheet.set(sheetWith([potion('p1'), potion('p2')])));
-    expect(flat(el.querySelector('#magic-heading'))).toContain('Itens mágicos 2');
+    expect(plain(el.querySelector('#magic-heading'))).toContain('Itens mágicos 2');
   });
 
   it('keeps a row for each different potion, in the order of the sheet', () => {
@@ -832,7 +842,7 @@ describe('EquipmentPanel, the potions and the scrolls', () => {
         ]),
       ),
     );
-    expect(rowsOf(el).map((r) => flat(r.querySelector('.magic-row__name')))).toEqual([
+    expect(rowsOf(el).map((r) => plain(r.querySelector('.magic-row__name')))).toEqual([
       'Poção de cura',
       'Poção de resistência',
     ]);
@@ -860,14 +870,14 @@ describe('EquipmentPanel, the potions and the scrolls', () => {
         ]),
       ),
     );
-    expect(flat(el.querySelector('.gear__lock'))).toContain(
+    expect(plain(el.querySelector('.gear__lock'))).toContain(
       'Travada: usar poções e cargas continua valendo; o resto, só o mestre muda.',
     );
   });
 
   it('says on a locked sheet with potions only that using them keeps working', () => {
     const { el } = render((h) => h.sheet.set(sheetWith([potion('p1')])));
-    expect(flat(el.querySelector('.gear__lock'))).toContain(
+    expect(plain(el.querySelector('.gear__lock'))).toContain(
       'Travada: usar poções continua valendo; o resto, só o mestre muda.',
     );
   });
@@ -885,8 +895,8 @@ describe('EquipmentPanel, the potions and the scrolls', () => {
     });
     const notice = el.querySelector('.consumable__result')!;
     expect(notice.classList).toContain('consumable__result--good');
-    expect(flat(notice.querySelector('strong'))).toBe('Brisa recebeu 7 PV e acorda.');
-    expect(flat(notice)).toContain('2d4 + 2: 3 + 2 + 2 = 7. Resta 1 Poção de cura.');
+    expect(plain(notice.querySelector('strong'))).toBe('Brisa recebeu 7 PV e acorda.');
+    expect(plain(notice)).toContain('2d4 + 2: 3 + 2 + 2 = 7. Resta 1 Poção de cura.');
     expect(notice.closest('[role=status]')).not.toBeNull();
   });
 
@@ -903,7 +913,7 @@ describe('EquipmentPanel, the potions and the scrolls', () => {
     });
     const notice = el.querySelector('.consumable__result')!;
     expect(notice.classList).toContain('consumable__result--neutral');
-    expect(flat(el.querySelector('.consumable__text'))).toBe(
+    expect(plain(el.querySelector('.consumable__text'))).toBe(
       'Por 1 hora, você escala com o mesmo deslocamento.',
     );
   });

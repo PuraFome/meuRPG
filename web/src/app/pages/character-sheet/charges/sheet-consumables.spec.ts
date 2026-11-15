@@ -138,7 +138,7 @@ describe('SheetConsumables', () => {
     const data = await open();
     expect(await data.loadTargets()).toEqual({
       targets: [],
-      error: 'Essa poção já foi usada. A ficha foi atualizada.',
+      error: 'Esse item não está mais na ficha: alguém já o usou ou o tirou. Nada foi gasto.',
     });
   });
 
@@ -208,12 +208,12 @@ describe('SheetConsumables', () => {
     client.useConsumable.mockRejectedValue(gone(EncounterBlockedReason.ITEM_GONE));
     const data = await open();
     const why = await data.use({ target: null, roll: { inApp: true } }, 'k1');
-    expect(why).toBe('Essa poção já foi usada. A ficha foi atualizada.');
+    expect(why).toBe('Esse item não está mais na ficha: alguém já o usou ou o tirou. Nada foi gasto.');
     expect(reload).toHaveBeenCalled();
     expect(consumables.result()).toBeNull();
   });
 
-  it('names the receiver when they are not at the giver side any more', async () => {
+  it('says the receiver is out of reach with the sentence of the combat', async () => {
     client.useConsumable.mockRejectedValue(
       gone(EncounterBlockedReason.TARGET_NOT_ADJACENT),
     );
@@ -225,7 +225,9 @@ describe('SheetConsumables', () => {
       },
       'k1',
     );
-    expect(why).toBe('Brisa não está mais ao seu lado. Nada foi gasto.');
+    expect(why).toBe(
+      'Quem recebe o item precisa estar a até 1,5 m de quem o dá, e os dois na luta ou os dois fora dela. Nada foi gasto.',
+    );
   });
 
   it('names the character the master acts for when it is not their turn', async () => {

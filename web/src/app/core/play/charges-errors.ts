@@ -107,25 +107,21 @@ export interface ConsumableErrorContext {
   readonly actingFor?: string;
 }
 
-const KIND_WORDS: Record<ConsumableKind, { use: string; demonstrative: string }> = {
-  potion: { use: 'a poção', demonstrative: 'Essa poção já foi usada.' },
-  scroll: { use: 'o pergaminho', demonstrative: 'Esse pergaminho já foi usado.' },
+const KIND_WORDS: Record<ConsumableKind, { use: string }> = {
+  potion: { use: 'a poção' },
+  scroll: { use: 'o pergaminho' },
 };
 
 /**
  * What a refused or failed use of a consumable says in the "Usar" sheet, by the typed reason and never by the server's
- * message: the receiver that is not by any more, the item that is already used, the turn and the action of a combat, then
- * the sentences of the combat and of the character for the rest. Every refusal says that nothing was spent.
+ * message: the turn and the action of a combat, then
+ * the sentences of the combat (the receiver out of reach and the item gone among them) and of the character for the rest. Every refusal says that nothing was spent.
  */
 export function consumableErrorMessage(err: unknown, ctx: ConsumableErrorContext): string {
   const words = KIND_WORDS[ctx.kind];
   const encounter = encounterBlocked(err);
   if (encounter) {
     switch (encounter.reason) {
-      case EncounterBlockedReason.TARGET_NOT_ADJACENT:
-        return `${ctx.targetName ?? 'Quem ia receber'} não está mais ao seu lado. Nada foi gasto.`;
-      case EncounterBlockedReason.ITEM_GONE:
-        return `${words.demonstrative} A ficha foi atualizada.`;
       case EncounterBlockedReason.NOT_YOUR_TURN:
         return `Só na ${ctx.actingFor ? `vez de ${ctx.actingFor}` : 'sua vez'}: beber ou dar gasta a ação.`;
       case EncounterBlockedReason.ACTION_USED:

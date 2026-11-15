@@ -19,6 +19,7 @@ import { parseSum } from '../../../core/combat/combat-dice';
 import {
   type ConsumableKind,
   type ConsumableTargetVm,
+  costsAction,
   effectIcon,
   effectLine,
   healingDice,
@@ -140,9 +141,9 @@ function signed(modifier: number): string {
                 [disabled]="busy()"
                 (change)="chosen.set(t.id)"
               />
-              <span class="who__avatar" aria-hidden="true">{{ t.name.charAt(0) }}</span>
+              <span class="who__avatar" aria-hidden="true">{{ t.name.charAt(0) }}</span>{{ ' ' }}
               <span class="who__text">
-                <b>{{ t.name }}</b>
+                <b>{{ t.name }}</b>{{ ' ' }}
                 @if (t.line) {
                   <span class="mr-muted">{{ t.line }}</span>
                 }
@@ -440,7 +441,9 @@ export class UseConsumableSheet {
   protected readonly title = this.data.actingFor
     ? `Usar por ${this.data.actingFor}`
     : `Usar · ${this.data.itemName}`;
-  protected readonly subtitle = subtitleOf(this.data);
+  /** Only the potions the app applies cost the action; any other item is spent at no cost and the master rules on its time. */
+  private readonly costs = costsAction(this.data.kind, this.data.effectPt);
+  protected readonly subtitle = subtitleOf({ ...this.data, costsAction: this.costs });
   protected readonly effectText = effectLine(this.data.effectPt);
   protected readonly effectIconName = effectIcon(this.data.effectPt);
   /** The dice of a healing potion; `null` for every other consumable, which rolls nothing. */
@@ -512,6 +515,9 @@ export class UseConsumableSheet {
     const who = this.receiverName();
     const acts = who ? ` ${thing} age em ${who}.` : '';
     const combat = this.data.inCombat;
+    if (!this.costs && combat !== false) {
+      return `Não gasta a ação: o mestre decide o tempo que isso leva.${acts}`;
+    }
     if (this.phase() === 'give') {
       const lead =
         combat === false

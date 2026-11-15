@@ -8,7 +8,15 @@ import {
   type UseConsumableRequest,
 } from './use-consumable-sheet';
 
-const flat = (n: Element | null | undefined) => n?.textContent?.replace(/\s+/g, ' ').trim();
+/** The text of a node as read, without the ligature names of its icons. */
+const flat = (n: Element | null | undefined) => {
+  if (!n) {
+    return undefined;
+  }
+  const copy = n.cloneNode(true) as Element;
+  copy.querySelectorAll('mat-icon').forEach((i) => i.remove());
+  return copy.textContent?.replace(/\s+/g, ' ').trim();
+};
 
 const BRISA: ConsumableTargetVm = {
   id: 'c2',
@@ -202,6 +210,28 @@ describe('UseConsumableSheet', () => {
     expect(flat(el.querySelector('.none'))).toBe('Não há mais ninguém no grupo para receber a poção.');
   });
 
+  it('says an item the app applies nothing of costs no action, and leaves the cost out of the line under the title', async () => {
+    const { el, settle } = render({ effectPt: '', itemName: 'Poção de escalada', left: 1 });
+    await settle();
+    expect(flat(el.querySelector('.frame__sub'))).toBe('Resta 1');
+    expect(flat(el.querySelector('.cost'))).toBe(
+      'Não gasta a ação: o mestre decide o tempo que isso leva.',
+    );
+    Array.from(el.querySelectorAll('button')).find((b) => label(b) === 'Dar a…')!.click();
+    await settle();
+    expect(flat(el.querySelector('.cost'))).toBe(
+      'Não gasta a ação: o mestre decide o tempo que isso leva. A poção age em Brisa.',
+    );
+  });
+
+  it('uses a scroll with one "Usar" button and no "Dar a…"', async () => {
+    const { el, settle } = render({ kind: 'scroll', effectPt: '', itemName: 'Pergaminho de magia' });
+    await settle();
+    const labels = Array.from(el.querySelectorAll('button')).map(label);
+    expect(labels).toContain('Usar');
+    expect(labels).not.toContain('Dar a…');
+  });
+
   it('says out of a combat that it costs no turn, and asks for the party', async () => {
     const { el, settle } = render({ inCombat: false, actingFor: 'Tor' });
     await settle();
@@ -219,12 +249,12 @@ describe('UseConsumableSheet', () => {
   it('keeps "Beber" working and says why when the list could not be read', async () => {
     loadTargets.mockResolvedValue({
       targets: [],
-      error: 'Essa poção já foi usada. A ficha foi atualizada.',
+      error: 'Esse item não está mais na ficha: alguém já o usou ou o tirou. Nada foi gasto.',
     });
     const { el, settle } = render();
     await settle();
     expect(flat(el.querySelector('[role=alert]'))).toBe(
-      'Essa poção já foi usada. A ficha foi atualizada.',
+      'Esse item não está mais na ficha: alguém já o usou ou o tirou. Nada foi gasto.',
     );
     expect(Array.from(el.querySelectorAll('button')).find((b) => label(b) === 'Beber')).toBeTruthy();
   });
@@ -320,7 +350,7 @@ describe('UseConsumableSheet', () => {
   });
 
   it('keeps the dialog open and says why when the server refuses, and retries under the same key', async () => {
-    use.mockResolvedValueOnce('Brisa não está mais ao seu lado. Nada foi gasto.');
+    use.mockResolvedValueOnce('Quem recebe o item precisa estar a até 1,5 m de quem o dá. Nada foi gasto.');
     const { el, settle } = render();
     await settle();
     Array.from(el.querySelectorAll('button')).find((b) => label(b) === 'Dar a…')!.click();
@@ -328,7 +358,7 @@ describe('UseConsumableSheet', () => {
     Array.from(el.querySelectorAll('button')).find((b) => label(b) === 'Dar a Brisa')!.click();
     await settle();
     expect(flat(el.querySelector('[role=alert]'))).toBe(
-      'Brisa não está mais ao seu lado. Nada foi gasto.',
+      'Quem recebe o item precisa estar a até 1,5 m de quem o dá. Nada foi gasto.',
     );
     expect(close).not.toHaveBeenCalled();
     Array.from(el.querySelectorAll('button')).find((b) => label(b) === 'Dar a Brisa')!.click();

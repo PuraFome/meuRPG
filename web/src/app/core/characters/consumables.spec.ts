@@ -9,6 +9,7 @@ import { ConsumableUseOutcome } from '../../../gen/meurpg/play/v1/combat_pb';
 import type { AttunementEntryVm } from './attunement';
 import {
   consumableKind,
+  costsAction,
   effectIcon,
   effectLine,
   healingDice,
@@ -129,6 +130,15 @@ describe('healingDice', () => {
   });
 });
 
+describe('costsAction', () => {
+  it('is only for the potions the app applies, the healing and the resistance', () => {
+    expect(costsAction('potion', 'Cura 2d4 + 2')).toBe(true);
+    expect(costsAction('potion', 'Resistência a fogo por 1 hora')).toBe(true);
+    expect(costsAction('potion', '')).toBe(false);
+    expect(costsAction('scroll', '')).toBe(false);
+  });
+});
+
 describe('the words under the title', () => {
   it('says how many are left', () => {
     expect(leftWords(1)).toBe('resta 1');
@@ -136,25 +146,31 @@ describe('the words under the title', () => {
   });
 
   it('opens the owner subtitle with the count and adds what a combat costs', () => {
-    expect(subtitleOf({ itemName: 'Poção de cura', left: 2, actingFor: null, inCombat: true })).toBe(
+    expect(subtitleOf({ itemName: 'Poção de cura', left: 2, actingFor: null, inCombat: true, costsAction: true })).toBe(
       'Restam 2 · em combate, gasta a ação',
     );
   });
 
   it('names the item first for the master, whose title names the character', () => {
     expect(
-      subtitleOf({ itemName: 'Poção de resistência', left: 1, actingFor: 'Tor', inCombat: false }),
+      subtitleOf({ itemName: 'Poção de resistência', left: 1, actingFor: 'Tor', inCombat: false, costsAction: true }),
     ).toBe('Poção de resistência · resta 1');
   });
 
   it('keeps the cost out of the line when the page knows there is no combat', () => {
-    expect(subtitleOf({ itemName: 'Poção de cura', left: 1, actingFor: null, inCombat: false })).toBe(
+    expect(subtitleOf({ itemName: 'Poção de cura', left: 1, actingFor: null, inCombat: false, costsAction: true })).toBe(
       'Resta 1',
     );
   });
 
+  it('says no cost for an item that costs no action, in a combat or not', () => {
+    expect(
+      subtitleOf({ itemName: 'Poção de escalada', left: 1, actingFor: null, inCombat: true, costsAction: false }),
+    ).toBe('Resta 1');
+  });
+
   it('keeps the cost when the sheet does not know whether there is a combat', () => {
-    expect(subtitleOf({ itemName: 'Poção de cura', left: 3, actingFor: null, inCombat: null })).toBe(
+    expect(subtitleOf({ itemName: 'Poção de cura', left: 3, actingFor: null, inCombat: null, costsAction: true })).toBe(
       'Restam 3 · em combate, gasta a ação',
     );
   });
@@ -181,12 +197,15 @@ describe('targetRows', () => {
     ]);
   });
 
-  it('says nothing of a distance out of a combat, and only who is down', () => {
+  it('says nothing of a distance or of how they stand out of a combat, where the server tells neither', () => {
     const rows = targetRows([
-      target('Pensantus', 0, ConsumableTargetState.OK),
-      target('Lia', 0, ConsumableTargetState.DOWN),
+      target('Pensantus', 0, ConsumableTargetState.UNSPECIFIED),
+      target('Lia', 0, ConsumableTargetState.UNSPECIFIED),
     ]);
-    expect(rows.map((r) => r.line)).toEqual(['', 'Caída']);
+    expect(rows.map((r) => [r.line, r.down])).toEqual([
+      ['', false],
+      ['', false],
+    ]);
   });
 
   it('leaves out who may not receive it', () => {

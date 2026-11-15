@@ -121,27 +121,14 @@ describe('consumableErrorMessage', () => {
     ]);
   const potion = { kind: 'potion' as const, targetName: 'Brisa' };
 
-  it('says the receiver is not at the giver side any more, with their name, and that nothing was spent', () => {
+  it('leaves the receiver out of reach and the item gone to the sentences of the combat, the same everywhere', () => {
     expect(
       consumableErrorMessage(encounter(EncounterBlockedReason.TARGET_NOT_ADJACENT), potion),
-    ).toBe('Brisa não está mais ao seu lado. Nada foi gasto.');
-  });
-
-  it('says it for a receiver the sheet did not name', () => {
-    expect(
-      consumableErrorMessage(encounter(EncounterBlockedReason.TARGET_NOT_ADJACENT), {
-        kind: 'potion',
-      }),
-    ).toBe('Quem ia receber não está mais ao seu lado. Nada foi gasto.');
-  });
-
-  it('says the item is already used and that the sheet was updated, by the kind of item', () => {
-    const gone = encounter(EncounterBlockedReason.ITEM_GONE);
-    expect(consumableErrorMessage(gone, potion)).toBe(
-      'Essa poção já foi usada. A ficha foi atualizada.',
+    ).toBe(
+      'Quem recebe o item precisa estar a até 1,5 m de quem o dá, e os dois na luta ou os dois fora dela. Nada foi gasto.',
     );
-    expect(consumableErrorMessage(gone, { kind: 'scroll' })).toBe(
-      'Esse pergaminho já foi usado. A ficha foi atualizada.',
+    expect(consumableErrorMessage(encounter(EncounterBlockedReason.ITEM_GONE), potion)).toBe(
+      'Esse item não está mais na ficha: alguém já o usou ou o tirou. Nada foi gasto.',
     );
   });
 

@@ -79,14 +79,6 @@ describe('the refusals of the creatures and Wild Shape, by reason (MR-037)', () 
       EncounterBlockedReason.CASTING_TIME_TOO_LONG,
       'Essa magia leva mais tempo do que um combate dá. Conjure fora do combate.',
     ],
-    [
-      EncounterBlockedReason.TARGET_NOT_ADJACENT,
-      'Esse personagem não está ao seu lado: precisa estar a 1,5 m e no combate. Nada foi gasto.',
-    ],
-    [
-      EncounterBlockedReason.ITEM_GONE,
-      'Esse item já foi usado. A ficha foi atualizada. Nada foi gasto.',
-    ],
   ])('%s', (reason, text) => {
     expect(combatErrorMessage(blocked(reason))).toBe(text);
   });

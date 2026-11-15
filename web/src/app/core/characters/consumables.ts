@@ -137,6 +137,15 @@ export function healingDice(effectPt: string): HealingDice | null {
   };
 }
 
+/**
+ * Whether using the item costs the turn and the action in a combat: only the potions the app applies (a healing, a
+ * resistance: the ones with a line of effect). Any other consumable is spent with no turn and no action, and the master
+ * rules on its time.
+ */
+export function costsAction(kind: ConsumableKind, effectPt: string): boolean {
+  return kind === 'potion' && effectPt !== '';
+}
+
 /** "resta 1" / "restam 2": how many units are left, in lower case for a line that goes on. */
 export function leftWords(left: number): string {
   return left === 1 ? 'resta 1' : `restam ${left}`;
@@ -152,8 +161,12 @@ export function subtitleOf(input: {
   readonly left: number;
   readonly actingFor: string | null;
   readonly inCombat: boolean | null;
+  /** The use costs the action (`costsAction`): an item that does not says nothing of the cost. */
+  readonly costsAction: boolean;
 }): string {
-  const costs = input.inCombat === true || (input.inCombat === null && input.actingFor === null);
+  const costs =
+    input.costsAction &&
+    (input.inCombat === true || (input.inCombat === null && input.actingFor === null));
   const parts = input.actingFor
     ? [input.itemName, leftWords(input.left)]
     : [upFirst(leftWords(input.left))];
@@ -169,7 +182,7 @@ export interface ConsumableTargetVm {
   readonly name: string;
   readonly distanceFt: number;
   readonly down: boolean;
-  /** "A 1,5 m · Caída" in a combat, "Caída" out of one, empty for who is on their feet in the party. */
+  /** "A 1,5 m · Caída" in a combat, empty out of one (the server tells how a character stands only in a running combat). */
   readonly line: string;
 }
 
@@ -184,10 +197,13 @@ export function targetRows(targets: readonly ConsumableTarget[]): ConsumableTarg
     .filter((t) => t.mayReceive)
     .map((t) => {
       const down = t.state === ConsumableTargetState.DOWN;
-      const inCombat = t.distanceFt > 0;
       const parts = [
-        inCombat ? `A ${metersText(t.distanceFt)}` : '',
-        down ? downWord(t.name) : inCombat ? 'Ileso' : '',
+        t.distanceFt > 0 ? `A ${metersText(t.distanceFt)}` : '',
+        down
+          ? downWord(t.name)
+          : t.state === ConsumableTargetState.OK
+            ? 'Ileso'
+            : '',
       ].filter((p) => p !== '');
       return {
         id: t.characterId,
@@ -244,9 +260,10 @@ function rollSum(faces: readonly number[], total: number): string {
 
 /** What the server said of a use, as the sheet words it: the heal with its dice, the resistance, or the item's own text. */
 export function useNotice(res: UseConsumableResponse, input: UseNoticeInput): ConsumableNotice {
-  const an = article(input.itemName);
-  const the = `${an} ${input.itemName}`;
-  const verb = input.kind === 'scroll' ? 'usou' : 'bebeu';
+  // The catalog carries no gender: a potion ("a poção") and a scroll ("o pergaminho") are what these two kinds are.
+  const scroll = input.kind === 'scroll';
+  const the = `${scroll ? 'o' : 'a'} ${input.itemName}`;
+  const verb = scroll ? 'usou' : 'bebeu';
   switch (res.outcome) {
     case ConsumableUseOutcome.HEALED: {
       const dice = healingDice(input.effectPt)?.text ?? res.diceText;
