@@ -30,8 +30,8 @@ type consumableFight struct {
 	giver, recv *playdb.Combatant
 }
 
-func errNotAdjacentOrSeen() error {
-	return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_TARGET_NOT_ADJACENT_OR_SEEN, "the receiver is not within 5 feet of the giver, or does not fight in the combat")
+func errNotAdjacent() error {
+	return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_TARGET_NOT_ADJACENT, "the receiver is not within 5 feet of the giver, or does not fight in the combat")
 }
 
 func errItemGone() error {
@@ -68,29 +68,39 @@ func (s *Service) openFight(ctx context.Context, tx pgx.Tx, q *playdb.Queries, h
 	}
 	acts := potion && enc.Status == statusActive
 	if acts && (giver == nil || recv == nil) {
-		return nil, errNotAdjacentOrSeen()
+		return nil, errNotAdjacent()
 	}
 	c, err := s.openTx(ctx, combatTx{tx: tx, q: q, session: session, enc: enc, now: s.now(), hints: h, actorUserID: use.m.UserID, svc: s})
 	if err != nil {
 		return nil, err
 	}
 	f := &consumableFight{c: c, cs: cs, giver: giver, recv: recv}
-	if acts {
-		err = s.mustActNow(ctx, c, *giver)
-		if _, ok := giftReach(enc, *giver, *recv); err == nil && !ok {
-			err = errNotAdjacentOrSeen()
-		}
-	}
-	if err == nil && recv != nil {
-		err = s.refuseTheDead(ctx, c, []playdb.Combatant{*recv}) // a creature that failed three death saves is dead: no item reaches it
-	}
-	if err == nil && acts {
-		err = s.payConsumableAction(ctx, c, *giver)
-	}
-	if err != nil {
+	if err := s.gateConsumable(ctx, f, acts); err != nil {
 		return nil, err
 	}
 	return f, nil
+}
+
+// gateConsumable is what a use needs of the combat: for a potion in a running combat (acts) the user's turn, a receiver within reach
+// and the action; whatever the item, a receiver that is not dead.
+func (s *Service) gateConsumable(ctx context.Context, f *consumableFight, acts bool) error {
+	if acts {
+		if err := s.mustActNow(ctx, f.c, *f.giver); err != nil {
+			return err
+		}
+		if _, ok := giftReach(f.c.enc, *f.giver, *f.recv); !ok {
+			return errNotAdjacent()
+		}
+	}
+	if f.recv != nil {
+		if err := s.refuseTheDead(ctx, f.c, []playdb.Combatant{*f.recv}); err != nil { // a creature that failed three death saves is dead: no item reaches it
+			return err
+		}
+	}
+	if acts {
+		return s.payConsumableAction(ctx, f.c, *f.giver)
+	}
+	return nil
 }
 
 // payConsumableAction spends the action of the turn for a potion. Activating a potion is an action, not the object interaction

@@ -149,13 +149,18 @@ O mestre também pode corrigir à mão, a qualquer momento da sessão, PV, PV te
   Uma poção de resistência dá uma hora de resistência ao tipo de dano dela, contada em tempo de jogo como os outros efeitos fora de combate, e só o dono e o mestre a leem.
   Beber fora de combate não custa turno.
   Em combate, beber custa a ação do turno de quem usa, e dar uma poção a uma criatura a até 1,5 metro (5 pés) custa a ação de quem dá; a poção age então em quem a recebe.
+  Ativar uma poção é uma ação, não Usar um Objeto, então a ação extra de Velocidade não a paga.
+  Num combate que ainda não começou não há turno: a poção não custa nada, e a resistência vai para o combatente.
+  Curar um druida em forma de fera devolve os pontos de vida da fera, em combate e fora dele.
   Uma criatura com 0 pontos de vida está inconsciente e não age, mas outra criatura pode dar a ela uma poção, que a acorda.
   No registro a mesa lê quem usou qual poção e em quem, e só o mestre e os jogadores dos dois personagens leem os dados e os pontos de vida.
-  Uma poção pode ser dada a outro personagem: a entrada de quem dá é a gasta, quem recebe é curado ou resiste, e uma criatura morta não recebe poção.
+  Uma poção pode ser dada a outro personagem: a entrada de quem dá é a gasta, quem recebe é curado ou resiste, e uma criatura morta, ou com três falhas nos testes de morte, não recebe poção.
   O mestre pode usar ou dar uma poção por qualquer personagem.
+  Uma poção da ficha de um NPC é gasta e registrada, e o mestre conta o que ela fez, a menos que o NPC a dê a um personagem de jogador.
   Numa mesa de dados físicos o jogador digita as faces dos dados de cura, uma para cada dado.
   O app aplica sozinho as poções de cura e de resistência.
   Toda outra poção, e todo pergaminho, é gasta e registrada, e a resposta mostra o texto dela para a mesa aplicar; um pergaminho de magia não é conjurado.
+  Só a poção custa o turno e a ação: um pergaminho ou outro consumível é gasto e registrado em qualquer turno.
 - **Munição (SRD 5.1, "Weapons": a propriedade de munição).**
   Flechas, virotes, balas de funda e dardos de zarabatana são contados na ficha, um número para cada tipo.
   O dono define a quantidade enquanto a ficha está aberta para edição, e o mestre a qualquer momento.

@@ -891,19 +891,23 @@ export const ChargesService: GenService<{
    * `consumable_used` and, in a running combat, as the log line CONSUMABLE_USED, and the response says what happened. A
    * healing potion restores hit points with the dice of its text, and a resistance potion gives one hour of resistance
    * to its damage type; every other consumable only spends the unit and returns its SRD text, with no automatic effect
-   * (a spell scroll is not cast). The receiver is the user, or `target_character_id` for a potion given to another
-   * character. In a combat the use costs the user's action (an adjacent receiver, 5 feet, when it is given) and needs
-   * the user's turn; out of combat it costs no turn and needs no adjacency. A consumable event ends the undo chain.
-   * The user's player (or the master, for any character) may use it. The dice follow the table's rule (RN-18).
+   * (a spell scroll is not cast). The receiver is the user, or `target_character_id` for an item given to another
+   * character. Only a potion is an action: in a running combat it costs the user's action (the extra action of Haste
+   * does not pay for it) and needs the user's turn and, when it is given, a receiver within 5 feet; out of a combat and
+   * in one that has not begun it costs no turn and needs no adjacency, and any other consumable never does. A creature
+   * with three failed death saves is dead and receives nothing. A consumable event ends the undo chain. The user's
+   * player (or the master, for any character) may use it. The dice follow the table's rule (RN-18). A character with no
+   * hit points of its own outside a combat (an NPC) spends the unit and tells nothing automatic: the master narrates it.
    *
    * Errors: `permission_denied` for a character that is not the caller's (a player); `not_found` for a character or a
    * receiver that is not there (an NPC, a reserved character or one of another campaign is not a receiver);
    * `invalid_argument` for an entry that is not a consumable, an idempotency key that is not a UUID or one reused for
    * another request, and a roll the request does not carry; `failed_precondition` with NO_OPEN_SESSION, CharacterBlocked
    * CHARACTER_DEAD, and EncounterBlocked: ITEM_GONE for an entry that is no longer on the sheet, COMBATANT_DOWN for a
-   * user at 0 hit points (it may still receive), and in a combat NOT_YOUR_TURN, ACTION_USED and the other reasons of an
-   * action, and TARGET_NOT_ADJACENT_OR_SEEN for a receiver beyond 5 feet or out of the combat. The response carries the
-   * receiver's vitals to the master and to the receiver's own player only.
+   * user at 0 hit points (it may still receive), TARGET_DEAD for a receiver with three failed death saves, and for a
+   * potion in a running combat NOT_YOUR_TURN, ACTION_USED and the other reasons of an action, and TARGET_NOT_ADJACENT
+   * for a receiver beyond 5 feet or out of the combat. The response carries the receiver's vitals to the master and to
+   * the receiver's own player only.
    *
    * @generated from rpc meurpg.play.v1.ChargesService.UseConsumable
    */

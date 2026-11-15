@@ -14,7 +14,7 @@ import (
 // user's action on its turn, a gift reaches only a creature within 5 feet that the giver sees, and the line of the log tells the
 // table the item and the owners the numbers. These tests need the database.
 
-var blockedNotAdjacent = playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_TARGET_NOT_ADJACENT_OR_SEEN
+var blockedNotAdjacent = playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_TARGET_NOT_ADJACENT
 
 // potionFight is Toren (Caio's, first on the turn), Pensantus (Ana's, next to Toren) and Brisa (Bia's, far) in a combat
 // with a goblin far away; each of the three holds the potions.

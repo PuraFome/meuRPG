@@ -159,13 +159,18 @@ The master can also correct hit points, temporary hit points, spell slots (and p
   A potion of resistance gives one hour of resistance to its damage type, counted in game time like the other effects out of a combat, and only its owner and the master read it.
   Drinking out of a combat costs no turn.
   In a combat, drinking costs the action of the user's turn, and giving a potion to a creature within 5 feet costs the giver's action; the potion then acts on the receiver.
+  Activating a potion is an action, not Use an Object, so the extra action of Haste does not pay for it.
+  In a combat that has not begun there is no turn: a potion costs nothing, and a resistance goes on the combatant.
+  Healing a druid in a beast form restores the beast's hit points, in a combat and out of one.
   A creature at 0 hit points is unconscious and does not act, but another creature may give it a potion, which wakes it.
   In the log the table reads who used which potion and on whom, and only the master and the two characters' players read the dice and the hit points.
-  A potion may be given to another character: the giver's entry is the one spent, the receiver is healed or resists, and a creature that is dead is not given one.
+  A potion may be given to another character: the giver's entry is the one spent, the receiver is healed or resists, and a creature that is dead, or that has failed three death saves, is not given one.
   The master may use or give a potion for any character.
+  A potion of an NPC's sheet is spent and logged, and the master tells what it did, unless the NPC gives it to a player's character.
   At a table of real dice the player types the faces of the healing dice, one for each die.
   The app applies the healing and the resistance potions by itself.
   Every other potion, and every scroll, is spent and logged, and the answer shows its text for the table to apply; a spell scroll is not cast.
+  Only a potion costs the turn and the action: a scroll or another consumable is spent and logged on any turn.
 - **Ammunition (SRD 5.1, "Weapons": the ammunition property).**
   Arrows, bolts, sling bullets and blowgun needles are counted on the sheet, one number for each kind.
   The owner sets the count while the sheet is open to editing, and the master at any time.

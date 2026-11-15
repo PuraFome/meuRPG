@@ -100,19 +100,7 @@ func (s *Service) useConsumableTx(ctx context.Context, tx pgx.Tx, h *hints, sess
 	if again {
 		return s.consumableRetry(ctx, tx, h, done, use, run)
 	}
-	userPlays, err := s.canUseConsumable(ctx, tx, use)
-	if err != nil {
-		return err
-	}
-	use.bare = !userPlays && use.target == use.charText
-	item, err := s.vitals.RemoveConsumable(ctx, tx, use.m.CampaignID, use.charText, use.req.GetEntryId())
-	if connect.CodeOf(err) == connect.CodeNotFound {
-		return errItemGone()
-	}
-	if err != nil {
-		return err
-	}
-	content, err := s.roster.RulesContent(ctx, tx, use.m.CampaignID)
+	content, item, err := s.spendConsumable(ctx, tx, &use)
 	if err != nil {
 		return err
 	}
@@ -121,22 +109,54 @@ func (s *Service) useConsumableTx(ctx context.Context, tx pgx.Tx, h *hints, sess
 	if err != nil {
 		return err
 	}
+	ev := startConsumableRun(session, use, item, fight, run)
+	if err := s.applyConsumable(ctx, tx, q, session, use, fight, content, run); err != nil {
+		return err
+	}
+	return s.finishConsumable(ctx, tx, q, h, ev, use, fight, run)
+}
+
+// spendConsumable checks the user and the receiver, and takes the unit off the sheet. It says that the use is the master's for
+// an NPC (use.bare) and returns the item and the rules content.
+func (s *Service) spendConsumable(ctx context.Context, tx pgx.Tx, use *consumableCall) (*rules.Content, *charactersv1.SheetMagicItem, error) {
+	userPlays, err := s.canUseConsumable(ctx, tx, *use)
+	if err != nil {
+		return nil, nil, err
+	}
+	use.bare = !userPlays && use.target == use.charText
+	item, err := s.vitals.RemoveConsumable(ctx, tx, use.m.CampaignID, use.charText, use.req.GetEntryId())
+	if connect.CodeOf(err) == connect.CodeNotFound {
+		return nil, nil, errItemGone()
+	}
+	if err != nil {
+		return nil, nil, err
+	}
+	content, err := s.roster.RulesContent(ctx, tx, use.m.CampaignID)
+	return content, item, err
+}
+
+// startConsumableRun fills the event of the use with the item and who received it, and says which session event the use is: the
+// combat's when the user fights in it (the line of the log is the user's), else a plain one.
+func startConsumableRun(session playdb.GameSession, use consumableCall, item *charactersv1.SheetMagicItem, fight *consumableFight, run *consumableRun) keyedEvent {
 	run.target = use.target
 	run.ev = consumableUsedEvent{Entry: item.GetId(), Item: item.GetKey(), Name: item.GetNamePt()}
 	if use.target != use.charText {
 		run.ev.Target = use.target
 	}
 	ev := keyedEvent{sessionID: session.ID, kind: eventConsumableUsed, userID: use.m.UserID, characterID: &use.charText, key: use.keyText, hash: use.hash}
-	if fight != nil && fight.giver != nil { // the line of the log is the user's: a use whose user is out of the combat is a plain event
+	if fight != nil && fight.giver != nil {
 		fight.name(&run.ev)
 		ev.encounterID = &fight.c.enc.ID
 	}
-	if err := s.applyConsumable(ctx, tx, q, session, use, fight, content, run); err != nil {
-		return err
-	}
+	return ev
+}
+
+// finishConsumable writes the event of the use and tells the receiver's vitals, the effects and the combat.
+func (s *Service) finishConsumable(ctx context.Context, tx pgx.Tx, q *playdb.Queries, h *hints, ev keyedEvent, use consumableCall, fight *consumableFight, run *consumableRun) error {
 	if err := s.appendKeyedEvent(ctx, q, ev, run.ev); err != nil {
 		return err
 	}
+	var err error
 	if run.vitals, err = s.receiverVitals(ctx, tx, use); err != nil {
 		return err
 	}

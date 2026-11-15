@@ -1043,9 +1043,10 @@ const (
 	// RollAttack: the attack fires ammunition (a bow, a crossbow, a sling, a blowgun) and the character has a count for the kind
 	// (a row, even at 0) with none left. Nothing is written. A kind with no count is not counted and the shot goes. The melee line of the weapon, and a thrown weapon, spend no ammunition.
 	EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_AMMUNITION_EMPTY EncounterBlockedReason = 145
-	// UseConsumable: a consumable given in a combat to a creature that is not within 5 feet of the giver or that does not fight
-	// in the combat (a player's character is never hidden from its party, so no gift is refused for what the giver sees). The refusal names nobody. Nothing is written.
-	EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_TARGET_NOT_ADJACENT_OR_SEEN EncounterBlockedReason = 146
+	// UseConsumable: a potion used in a running combat between two characters of which one does not fight in it, or given to a
+	// creature that is not within 5 feet of the giver (a player's character is never hidden from its party, so no gift is
+	// refused for what the giver sees). The refusal names nobody. Nothing is written.
+	EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_TARGET_NOT_ADJACENT EncounterBlockedReason = 146
 	// UseConsumable and ListConsumableTargets: the entry is no longer on the sheet (used or taken off since the player read it). Nothing is written.
 	EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ITEM_GONE EncounterBlockedReason = 147
 )
@@ -1179,7 +1180,7 @@ var (
 		142: "ENCOUNTER_BLOCKED_REASON_MOUNT_ACTION_LIMITED",
 		143: "ENCOUNTER_BLOCKED_REASON_MOUNT_SAVE_PENDING",
 		145: "ENCOUNTER_BLOCKED_REASON_AMMUNITION_EMPTY",
-		146: "ENCOUNTER_BLOCKED_REASON_TARGET_NOT_ADJACENT_OR_SEEN",
+		146: "ENCOUNTER_BLOCKED_REASON_TARGET_NOT_ADJACENT",
 		147: "ENCOUNTER_BLOCKED_REASON_ITEM_GONE",
 	}
 	EncounterBlockedReason_value = map[string]int32{
@@ -1309,7 +1310,7 @@ var (
 		"ENCOUNTER_BLOCKED_REASON_MOUNT_ACTION_LIMITED":             142,
 		"ENCOUNTER_BLOCKED_REASON_MOUNT_SAVE_PENDING":               143,
 		"ENCOUNTER_BLOCKED_REASON_AMMUNITION_EMPTY":                 145,
-		"ENCOUNTER_BLOCKED_REASON_TARGET_NOT_ADJACENT_OR_SEEN":      146,
+		"ENCOUNTER_BLOCKED_REASON_TARGET_NOT_ADJACENT":              146,
 		"ENCOUNTER_BLOCKED_REASON_ITEM_GONE":                        147,
 	}
 )
@@ -32182,7 +32183,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x14COMBATANT_STATE_DOWN\x10\x05\x12\x19\n" +
 	"\x15COMBATANT_STATE_DYING\x10\x06\x12\x1a\n" +
 	"\x16COMBATANT_STATE_STABLE\x10\a\x12\x18\n" +
-	"\x14COMBATANT_STATE_DEAD\x10\b*\xc70\n" +
+	"\x14COMBATANT_STATE_DEAD\x10\b*\xbf0\n" +
 	"\x16EncounterBlockedReason\x12(\n" +
 	"$ENCOUNTER_BLOCKED_REASON_UNSPECIFIED\x10\x00\x123\n" +
 	"/ENCOUNTER_BLOCKED_REASON_ENCOUNTER_ALREADY_OPEN\x10\x01\x12+\n" +
@@ -32310,8 +32311,8 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	",ENCOUNTER_BLOCKED_REASON_NO_ROOM_TO_DISMOUNT\x10\x8d\x01\x122\n" +
 	"-ENCOUNTER_BLOCKED_REASON_MOUNT_ACTION_LIMITED\x10\x8e\x01\x120\n" +
 	"+ENCOUNTER_BLOCKED_REASON_MOUNT_SAVE_PENDING\x10\x8f\x01\x12.\n" +
-	")ENCOUNTER_BLOCKED_REASON_AMMUNITION_EMPTY\x10\x91\x01\x129\n" +
-	"4ENCOUNTER_BLOCKED_REASON_TARGET_NOT_ADJACENT_OR_SEEN\x10\x92\x01\x12'\n" +
+	")ENCOUNTER_BLOCKED_REASON_AMMUNITION_EMPTY\x10\x91\x01\x121\n" +
+	",ENCOUNTER_BLOCKED_REASON_TARGET_NOT_ADJACENT\x10\x92\x01\x12'\n" +
 	"\"ENCOUNTER_BLOCKED_REASON_ITEM_GONE\x10\x93\x01*\x91\x03\n" +
 	"\x1aFamiliarSightBlockedReason\x12-\n" +
 	")FAMILIAR_SIGHT_BLOCKED_REASON_UNSPECIFIED\x10\x00\x12-\n" +

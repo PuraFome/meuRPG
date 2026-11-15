@@ -66,7 +66,7 @@ export const LIMITED_ACTION_BLOCKED_TEXT: ReadonlyMap<EncounterBlockedReason, st
     'Sem munição. Não sobrou munição desse tipo: o tiro não sai. Nada foi gasto.',
   ],
   [
-    EncounterBlockedReason.TARGET_NOT_ADJACENT_OR_SEEN,
+    EncounterBlockedReason.TARGET_NOT_ADJACENT,
     'Quem recebe o item precisa estar na luta e a até 1,5 m de você. Nada foi gasto.',
   ],
   [

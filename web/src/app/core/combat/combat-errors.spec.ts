@@ -58,7 +58,7 @@ describe('combat errors', () => {
     expect(
       blockedMessage(
         create(EncounterBlockedSchema, {
-          reason: EncounterBlockedReason.TARGET_NOT_ADJACENT_OR_SEEN,
+          reason: EncounterBlockedReason.TARGET_NOT_ADJACENT,
         }),
       ),
     ).toBe('Quem recebe o item precisa estar na luta e a até 1,5 m de você. Nada foi gasto.');
