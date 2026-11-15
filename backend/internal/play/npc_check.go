@@ -1,0 +1,510 @@
+package play
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"slices"
+
+	"connectrpc.com/connect"
+	"github.com/jackc/pgx/v5"
+	"google.golang.org/protobuf/proto"
+
+	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	maplink "github.com/PuraFome/meuRPG/backend/internal/maps/link"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
+	"github.com/PuraFome/meuRPG/backend/internal/play/cutting"
+	"github.com/PuraFome/meuRPG/backend/internal/play/link"
+	"github.com/PuraFome/meuRPG/backend/internal/play/live"
+	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules"
+	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
+)
+
+// Cutting Words (SRD 5.1, College of Lore) on an ability check a creature of the master's side makes outside a combat. The master
+// rolls the creature's d20 (RollNpcCheck); the bards of the party that may cut it are asked one at a time through a held roll of the
+// kind npc_check (inspiration_holds, with one npc_check_asks row for each bard); the check settles when the last one answers or the
+// master goes on without them (SkipNpcCheckAsks). Only the use of Bardic Inspiration is spent: outside a combat there is no reaction.
+// The rules over plain values are in package cutting; the master's roll is secret (RN-10, RN-20): only the master reads it.
+
+const (
+	// eventNpcCheckHeld is the master's roll while a bard is asked; eventNpcCheckResolved when the check settles.
+	eventNpcCheckHeld     = "npc_check_held"
+	eventNpcCheckResolved = "npc_check_resolved"
+)
+
+// npcCheckAskLine is one bard asked, as the master's history keeps it.
+type npcCheckAskLine struct {
+	Bard  string `json:"bard"`
+	Name  string `json:"name"`
+	State string `json:"state"`
+	Sides int32  `json:"sides"`
+	Face  int32  `json:"face,omitempty"`
+}
+
+// npcCheckEvent is the payload of npc_check_held and npc_check_resolved. Total is the d20 plus the bonus while the check is held and
+// what the check came to once it settled.
+type npcCheckEvent struct {
+	CharacterID string            `json:"character_id"`
+	Name        string            `json:"name"`
+	MonsterKey  string            `json:"monster_key,omitempty"`
+	Check       string            `json:"check"`
+	D20         int32             `json:"d20"`
+	Modifier    int32             `json:"modifier"`
+	Known       bool              `json:"known"`
+	Physical    bool              `json:"physical"`
+	HoldID      string            `json:"hold_id,omitempty"`
+	Total       int32             `json:"total"`
+	Cut         int32             `json:"cut,omitempty"`
+	Asked       []npcCheckAskLine `json:"asked,omitempty"`
+	Skipped     bool              `json:"skipped,omitempty"`
+}
+
+// The states of an ask as the rows and the history spell them.
+const (
+	askAsked  = "asked"
+	askCut    = "cut"
+	askPassed = "passed"
+	askClosed = "closed"
+)
+
+var askStateProto = map[string]playv1.NpcCheckAskState{
+	askAsked: playv1.NpcCheckAskState_NPC_CHECK_ASK_STATE_WAITING, askCut: playv1.NpcCheckAskState_NPC_CHECK_ASK_STATE_CUT,
+	askPassed: playv1.NpcCheckAskState_NPC_CHECK_ASK_STATE_PASSED, askClosed: playv1.NpcCheckAskState_NPC_CHECK_ASK_STATE_CLOSED,
+}
+
+// read is the master's read of the check: the d20 and its bonus before any die comes off, the bards asked and, once settled, the total.
+func (e npcCheckEvent) read(s *Service, settled bool) *playv1.NpcCheckRead {
+	out := &playv1.NpcCheckRead{
+		HoldId: e.HoldID, CreatureLabel: e.Name, CheckKey: e.Check, CheckName: s.roster.SceneCheckName(e.Check),
+		D20:           diceRoll(1, d20Sides, []int32{e.D20}, e.Modifier, clamp32(int(e.D20)+int(e.Modifier), -heldBonusLimit, heldBonusLimit), e.Physical),
+		ModifierKnown: e.Known, Settled: settled,
+	}
+	for _, a := range e.Asked {
+		out.Asks = append(out.Asks, &playv1.NpcCheckAsk{CharacterId: a.Bard, CharacterName: a.Name, State: askStateProto[a.State], Sides: a.Sides, Face: a.Face})
+	}
+	if settled {
+		out.Total, out.Cut = e.Total, e.Cut
+	}
+	return out
+}
+
+// tellNpcCheck collects the hint that the held rolls changed for the master and for the bards whose question changed: nobody else hears
+// of a check (RN-10).
+func tellNpcCheck(h *hints, campaignID string, bards ...string) {
+	h.tell(campaignID, heldRollsChangedEvent(live.Audience{Master: true}))
+	for _, id := range slices.Compact(slices.Sorted(slices.Values(bards))) {
+		if id != "" {
+			h.tell(campaignID, heldRollsChangedEvent(live.Audience{UserID: id, NotMaster: true}))
+		}
+	}
+}
+
+// npcCheckCall is a RollNpcCheck being made.
+type npcCheckCall struct {
+	s     *Service
+	m     authz.Membership
+	req   *playv1.RollNpcCheckRequest
+	key   string
+	hash  *string
+	in    rollInput
+	mapID string
+	sight maplink.CombatSight
+	out   *npcCheckOut
+}
+
+// npcCheckOut is what the transaction made: the master's read and whether a bard is asked.
+type npcCheckOut struct {
+	read *playv1.NpcCheckRead
+	held bool
+}
+
+// RollNpcCheck implements playv1connect.PlayServiceHandler.
+func (s *Service) RollNpcCheck(ctx context.Context, req *connect.Request[playv1.RollNpcCheckRequest]) (*connect.Response[playv1.RollNpcCheckResponse], error) {
+	m, err := authz.RequireCampaignRole(ctx, req.Msg.GetCampaignId(), authz.RoleMaster)
+	if err != nil {
+		return nil, err
+	}
+	call, err := s.newNpcCheckCall(m, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	var out npcCheckOut
+	call.out = &out
+	for try := 1; ; try++ {
+		// The sight is read before the transaction opens, never inside it (the maps module reads through the pool).
+		if call.mapID, call.sight, err = s.npcCheckSight(ctx, m.CampaignID); err != nil {
+			return nil, err
+		}
+		err = s.txOpen(ctx, m.CampaignID, func(tx pgx.Tx, h *hints, session playdb.GameSession) error {
+			out = npcCheckOut{}
+			return call.run(ctx, tx, h, session)
+		})
+		if errors.Is(err, errSightStale) && try < maxSightTries {
+			continue
+		}
+		break
+	}
+	if err != nil {
+		return nil, s.dbError(ctx, "roll an NPC's check", err)
+	}
+	return connect.NewResponse(&playv1.RollNpcCheckResponse{Held: out.held, Check: out.read}), nil
+}
+
+// newNpcCheckCall reads the request: the key, the check and how the d20 comes.
+func (s *Service) newNpcCheckCall(m authz.Membership, req *playv1.RollNpcCheckRequest) (*npcCheckCall, error) {
+	key, err := parseKey(req.GetIdempotencyKey())
+	if err != nil {
+		return nil, err
+	}
+	if !cutting.ValidCheck(req.GetCheckKey()) {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("check_key must be an ability or a skill check"))
+	}
+	if req.GetNpcCharacterId() == "" && req.GetMonsterKey() == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("name an NPC or a creature"))
+	}
+	var in rollInput
+	switch r := req.GetRoll().(type) {
+	case *playv1.RollNpcCheckRequest_RollInApp:
+		if !r.RollInApp {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("roll_in_app must be true"))
+		}
+		in.inApp = true
+	case *playv1.RollNpcCheckRequest_D20Face:
+		in.typed = int(r.D20Face)
+	default:
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("set roll_in_app or d20_face"))
+	}
+	return &npcCheckCall{s: s, m: m, req: req, key: key, hash: idem.Hash(req), in: in}, nil
+}
+
+// npcCheckSight is the map of the open session and what its players see now (nil for a map with no fog or no map).
+func (s *Service) npcCheckSight(ctx context.Context, campaignID string) (string, maplink.CombatSight, error) {
+	open, err := s.queries.GetOpenGameSession(ctx, campaignID)
+	if errors.Is(err, pgx.ErrNoRows) || (err == nil && (open.CurrentMapID == nil || s.fog == nil)) {
+		return "", nil, nil
+	}
+	if err != nil {
+		return "", nil, s.dbError(ctx, "find the open session", err)
+	}
+	sight, err := s.fog.CombatSight(ctx, campaignID, *open.CurrentMapID)
+	if err != nil {
+		return "", nil, fmt.Errorf("read what the players see: %w", err)
+	}
+	return *open.CurrentMapID, sight, nil
+}
+
+// run is the transaction of RollNpcCheck.
+func (c *npcCheckCall) run(ctx context.Context, tx pgx.Tx, h *hints, session playdb.GameSession) error {
+	s, q := c.s, c.s.queries.WithTx(tx)
+	if s.fog != nil && conv.OrZero(session.CurrentMapID) != c.mapID {
+		return errSightStale
+	}
+	if again, err := c.replay(ctx, q, h, session); again || err != nil {
+		return err
+	}
+	if err := requireNoActiveCombat(ctx, q, session.ID); err != nil {
+		return err
+	}
+	npc, err := c.creature(ctx, tx)
+	if err != nil {
+		return err
+	}
+	opt, err := s.npcCheckNumbers(ctx, tx, c.m.CampaignID, npc, c.req.GetCheckKey())
+	if err != nil {
+		return err
+	}
+	face, res, err := s.dieRoll(c.in, d20Sides)
+	if err != nil {
+		return err
+	}
+	ev := npcCheckEvent{
+		CharacterID: npc.ID, Name: npc.Name, MonsterKey: npc.MonsterKey, Check: c.req.GetCheckKey(), D20: clamp32(face, 1, d20Sides),
+		Modifier: clamp32(opt.Bonus, -heldBonusLimit, heldBonusLimit), Known: opt.Known, Physical: res.Physical,
+	}
+	ev.Total = ev.D20 + ev.Modifier
+	bards, err := s.npcCheckBards(ctx, tx, q, session, npc, c.req.GetBardSees(), c.sight)
+	if err != nil {
+		return err
+	}
+	tc, err := s.openTx(ctx, combatTx{tx: tx, q: q, session: session, now: s.now(), characterID: &npc.ID, hash: c.hash})
+	if err != nil {
+		return err
+	}
+	if len(bards) == 0 { // nobody may cut it: it settles at once
+		if _, err := insertSceneEvent(ctx, tc, eventNpcCheckResolved, &c.m.UserID, &c.key, ev); err != nil {
+			return err
+		}
+		c.out.read = ev.read(s, true)
+		return nil
+	}
+	return c.hold(ctx, tc, h, ev, bards)
+}
+
+// hold keeps the master's roll for the bards: the hold, one ask for each bard and the event under the request's key.
+func (c *npcCheckCall) hold(ctx context.Context, tc *combatTx, h *hints, ev npcCheckEvent, bards []askedBard) error {
+	body, err := proto.Marshal(c.req)
+	if err != nil {
+		return fmt.Errorf("keep the request: %w", err)
+	}
+	row, err := tc.q.InsertInspirationHold(ctx, playdb.InsertInspirationHoldParams{
+		CampaignID: c.m.CampaignID, CharacterID: ev.CharacterID, UserID: c.m.UserID, Kind: string(heldNpcCheck), IdempotencyKey: c.key,
+		Request: body, Faces: []int32{ev.D20}, Modifier: ev.Modifier, Total: ev.Total, Physical: ev.Physical, CreatedAt: tc.now,
+	})
+	if err != nil {
+		return fmt.Errorf("hold the check: %w", err)
+	}
+	ev.HoldID = row.ID
+	for i, b := range bards {
+		if _, err := tc.q.InsertNpcCheckAsk(ctx, playdb.InsertNpcCheckAskParams{
+			HoldID: row.ID, BardCharacterID: b.char.ID, Position: conv.Int32(i), Sides: conv.Int32(b.sides), CreatureSeen: b.named, CreatedAt: tc.now,
+		}); err != nil {
+			return fmt.Errorf("ask a bard: %w", err)
+		}
+		ev.Asked = append(ev.Asked, npcCheckAskLine{Bard: b.char.ID, Name: b.char.Name, State: askAsked, Sides: conv.Int32(b.sides)})
+	}
+	if _, err := insertSceneEvent(ctx, tc, eventNpcCheckHeld, &c.m.UserID, &c.key, ev); err != nil {
+		return err
+	}
+	tellNpcCheck(h, c.m.CampaignID, bards[0].char.PlayerUserID)
+	c.out.read, c.out.held = ev.read(c.s, false), true
+	return nil
+}
+
+// replay answers a retry of the key with the first call's read, changing nothing. It says whether it did.
+func (c *npcCheckCall) replay(ctx context.Context, q *playdb.Queries, h *hints, session playdb.GameSession) (bool, error) {
+	done, err := q.GetSessionEventByIdempotencyKey(ctx, playdb.GetSessionEventByIdempotencyKeyParams{GameSessionID: session.ID, IdempotencyKey: &c.key})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("find the event of this idempotency key: %w", err)
+	}
+	if (done.Kind != eventNpcCheckHeld && done.Kind != eventNpcCheckResolved) || hashDiffers(done.IdempotencyHash, c.hash) ||
+		done.ActorUserID == nil || *done.ActorUserID != c.m.UserID {
+		return false, errKeyReused()
+	}
+	var ev npcCheckEvent
+	if err := json.Unmarshal(done.Payload, &ev); err != nil {
+		return false, fmt.Errorf("decode the check of event %s: %w", done.ID, err)
+	}
+	h.replay()
+	c.out.held = done.Kind == eventNpcCheckHeld
+	view, err := c.s.npcCheckLive(ctx, q, c.m.CampaignID, ev)
+	if err != nil {
+		return false, err
+	}
+	c.out.read = view
+	if c.out.held {
+		tellNpcCheck(h, c.m.CampaignID)
+	}
+	return true, nil
+}
+
+// npcCheckLive is the read of a check as it stands now: the payload of its event with the answers of the bards so far, from the
+// hold; as the event kept it when the hold is gone.
+func (s *Service) npcCheckLive(ctx context.Context, q *playdb.Queries, campaignID string, ev npcCheckEvent) (*playv1.NpcCheckRead, error) {
+	if ev.HoldID == "" {
+		return ev.read(s, true), nil
+	}
+	hold, err := q.GetInspirationHold(ctx, playdb.GetInspirationHoldParams{CampaignID: campaignID, ID: ev.HoldID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ev.read(s, true), nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("find the held check: %w", err)
+	}
+	asks, err := q.ListNpcCheckAsks(ctx, hold.ID)
+	if err != nil {
+		return nil, fmt.Errorf("list the asks of the check: %w", err)
+	}
+	settled := hold.AnswerKey != nil
+	return ev.withAsks(asks, settled).read(s, settled), nil
+}
+
+// withAsks is the event as the asks stand: each bard's state and die, and, once settled, the total with the dice taken off.
+func (e npcCheckEvent) withAsks(asks []playdb.NpcCheckAsk, settled bool) npcCheckEvent {
+	e.Asked = slices.Clone(e.Asked)
+	var dice []int
+	for _, a := range asks {
+		i := slices.IndexFunc(e.Asked, func(l npcCheckAskLine) bool { return l.Bard == a.BardCharacterID })
+		if i < 0 {
+			continue
+		}
+		e.Asked[i].State = a.State
+		if a.DieFace != nil && a.State == askCut {
+			e.Asked[i].Face = *a.DieFace
+			dice = append(dice, int(*a.DieFace))
+		}
+	}
+	e.Total = e.D20 + e.Modifier
+	if settled {
+		total, cut := cutting.Settle(int(e.Total), dice)
+		e.Total, e.Cut = clamp32(total, -heldBonusLimit, heldBonusLimit), clamp32(cut, 0, heldBonusLimit)
+	}
+	return e
+}
+
+// creature is the NPC that rolls: a living NPC of the campaign, or the hidden one the app keeps for an SRD creature.
+func (c *npcCheckCall) creature(ctx context.Context, tx pgx.Tx) (link.Character, error) {
+	s := c.s
+	if id := c.req.GetNpcCharacterId(); id != "" {
+		id, err := parseCombatID(id, "character")
+		if err != nil {
+			return link.Character{}, err
+		}
+		chars, err := s.roster.CombatCharacters(ctx, tx, c.m.CampaignID, []string{id})
+		if err != nil {
+			return link.Character{}, err
+		}
+		if len(chars) != 1 || chars[0].Player {
+			return link.Character{}, errCharacterNotFound()
+		}
+		return chars[0], nil
+	}
+	npc, ok, err := s.roster.MonsterNpc(ctx, tx, c.m.CampaignID, c.m.UserID, c.req.GetMonsterKey(), s.now())
+	if err != nil {
+		return link.Character{}, err
+	}
+	if !ok {
+		return link.Character{}, connect.NewError(connect.CodeNotFound, errors.New("creature not found"))
+	}
+	return npc, nil
+}
+
+// npcCheckNumbers is what the creature adds to the check: its stat block's number when it is an SRD creature, its sheet's otherwise;
+// an NPC typed by hand has none (Known false: it rolls +0).
+func (s *Service) npcCheckNumbers(ctx context.Context, tx pgx.Tx, campaignID string, npc link.Character, key string) (link.SceneOption, error) {
+	if npc.MonsterKey != "" {
+		return s.roster.CreatureCheck(ctx, tx, campaignID, "", npc.MonsterKey, key)
+	}
+	opts, err := s.roster.SceneOptions(ctx, tx, campaignID, npc.ID, []string{key})
+	if err != nil || len(opts) != 1 {
+		return link.SceneOption{}, err
+	}
+	return opts[0], nil
+}
+
+// askedBard is a bard that is asked about the check.
+type askedBard struct {
+	char  link.Character
+	sides int
+	named bool
+}
+
+// npcCheckBards lists the bards asked, in the order of the party: nobody when the creature is immune to being charmed.
+func (s *Service) npcCheckBards(ctx context.Context, tx pgx.Tx, q *playdb.Queries, session playdb.GameSession, npc link.Character, boxSees bool, sight maplink.CombatSight) ([]askedBard, error) {
+	campaignID := session.CampaignID
+	st, err := s.roster.ReactionStats(ctx, tx, campaignID, npc.ID)
+	if err != nil || st.CharmImmune {
+		return nil, err
+	}
+	party, err := s.roster.CombatParty(ctx, tx, campaignID)
+	if err != nil {
+		return nil, err
+	}
+	place, err := s.npcPlacement(ctx, tx, q, session, npc.ID)
+	if err != nil {
+		return nil, err
+	}
+	var out []askedBard
+	for _, c := range party {
+		if !c.Player || c.Reserved || c.PlayerUserID == "" {
+			continue
+		}
+		b, ok, err := s.bardOf(ctx, tx, campaignID, c)
+		if err != nil || !ok {
+			if err != nil {
+				return nil, err
+			}
+			continue
+		}
+		sees := place.sightOf(c, boxSees, sight)
+		if sees.Sees() {
+			out = append(out, askedBard{char: c, sides: cutting.Die(b.level), named: sees.Named()})
+		}
+	}
+	return out, nil
+}
+
+// bardWith is a bard of the party and its level.
+type bardWith struct{ level int }
+
+// bardOf reads whether the character is a bard that is asked about a check, and its bard level.
+func (s *Service) bardOf(ctx context.Context, tx pgx.Tx, campaignID string, c link.Character) (bardWith, bool, error) {
+	rs, err := s.roster.ReactionStats(ctx, tx, campaignID, c.ID)
+	if err != nil || !rs.CuttingWords {
+		return bardWith{}, false, err
+	}
+	v, err := s.vitals.GetVitalsTx(ctx, tx, campaignID, c.ID)
+	if err != nil {
+		return bardWith{}, false, err
+	}
+	uses := 0
+	if r := resourceOf(v, rules.BardicInspirationKey); r != nil {
+		uses = int(r.GetTotal() - r.GetUsed())
+	}
+	bard := cutting.Bard{Feature: true, Ask: rs.CuttingAsk, HitPoints: int(v.GetHitPointsCurrent()), UsesLeft: uses}
+	return bardWith{level: rs.BardLevel}, bard.Asks(), nil
+}
+
+// npcPlace is where the creature stands for the question of a check: its token on the session's map, the stage and who sees the scene.
+type npcPlace struct {
+	tokens  map[string]mapToken
+	npc     string
+	onStage bool
+	scene   viewers
+}
+
+// mapToken is a character's token on the session's current map.
+type mapToken struct {
+	sq     grid.Square
+	hidden bool
+}
+
+// npcPlacement reads the tokens of the session's current map (with a grid) and the stage the bards' players see.
+func (s *Service) npcPlacement(ctx context.Context, tx pgx.Tx, q *playdb.Queries, session playdb.GameSession, npcID string) (npcPlace, error) {
+	p := npcPlace{tokens: map[string]mapToken{}, npc: npcID}
+	if session.CurrentMapID != nil {
+		g, err := s.maps.MapGrid(ctx, tx, session.CampaignID, *session.CurrentMapID)
+		if err != nil && connect.CodeOf(err) != connect.CodeNotFound {
+			return p, err
+		}
+		if err == nil && g.OK() {
+			tokens, err := s.maps.MapTokens(ctx, tx, *session.CurrentMapID)
+			if err != nil {
+				return p, fmt.Errorf("read the tokens: %w", err)
+			}
+			for _, t := range tokens {
+				if t.CharacterID != "" {
+					p.tokens[t.CharacterID] = mapToken{sq: grid.Grid{Columns: int(g.Columns), Rows: int(g.Rows)}.SquareOf(int(t.XBP), int(t.YBP)), hidden: t.Hidden}
+				}
+			}
+		}
+	}
+	rows, err := q.ListShownStage(ctx, session.ID)
+	if err != nil {
+		return p, fmt.Errorf("list the stage: %w", err)
+	}
+	p.onStage = slices.ContainsFunc(rows, func(r playdb.StageNpc) bool { return r.CharacterID == npcID })
+	if p.onStage {
+		if p.scene, err = sceneViewersOf(ctx, q, session); err != nil {
+			return p, err
+		}
+	}
+	return p, nil
+}
+
+// sightOf is what the bard's question reads of the creature: the map when both tokens are on it, the master's box otherwise.
+func (p npcPlace) sightOf(bard link.Character, box bool, sight maplink.CombatSight) cutting.Sight {
+	npcTok, okN := p.tokens[p.npc]
+	bardTok, okB := p.tokens[bard.ID]
+	if okN && okB {
+		seen := sight == nil || sight.Sees(bard.PlayerUserID, npcTok.sq)
+		return cutting.Sight{Mapped: true, DistanceFt: grid.RangeFt(bardTok.sq, npcTok.sq), Seen: seen, TokenHidden: npcTok.hidden}
+	}
+	return cutting.Sight{Box: box, OnStage: p.onStage && p.scene.has(bard.PlayerUserID)}
+}

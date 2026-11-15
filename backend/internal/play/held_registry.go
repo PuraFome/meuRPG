@@ -70,6 +70,7 @@ func init() {
 		heldContest:           {rerun: rerunContest},
 		heldInitiative:        {rerun: registerRerun((*Service).SubmitInitiative)},
 		heldMountSave:         {rerun: registerRerun((*Service).RollMountSave), rerollApplies: rules.RollAppliesSave},
+		heldNpcCheck:          {rerun: rerunNpcCheck},
 	}
 }
 
@@ -216,4 +217,11 @@ func pinAttackFaces(req proto.Message, faces []int) {
 	if len(faces) > 1 || sent {
 		r.D20Faces = faces32(faces)
 	}
+}
+
+// rerunNpcCheck is the rerun of an NPC's check: it never runs the master's roll again (the d20 was rolled once and is kept), it only
+// closes the check with the dice taken off so far. The bards' answers and the master's skip settle it themselves; this is for a path
+// that finds the check still held after its session moved on.
+func rerunNpcCheck(ctx context.Context, s *Service, h heldRoll, key string) (proto.Message, error) {
+	return nil, s.dbError(ctx, "settle the held check", fmt.Errorf("the held check %s is settled by its bards' answers or by the master's skip, key %s", h.ID, key))
 }

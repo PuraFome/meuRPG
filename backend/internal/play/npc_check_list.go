@@ -1,0 +1,187 @@
+package play
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"slices"
+
+	"connectrpc.com/connect"
+	"github.com/jackc/pgx/v5"
+	"google.golang.org/protobuf/types/known/timestamppb"
+
+	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/play/cutting"
+	"github.com/PuraFome/meuRPG/backend/internal/play/link"
+	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+)
+
+// npcCheckOffer is the question of a held NPC check as the caller reads it: the master reads his roll and the bards asked; a player reads
+// only the question of the bard asked now, if it is their own, with no number of the creature's and no name the bard's player may not
+// know. Nobody else reads anything. A check whose session is over, or while a combat runs, is not listed.
+func (l *heldList) npcCheckOffer(ctx context.Context, h heldRoll) (*playv1.HeldRollOffer, error) {
+	s := l.s
+	session, err := s.queries.GetOpenGameSession(ctx, h.CampaignID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, s.dbError(ctx, "find the open session", err)
+	}
+	if h.CreatedAt.Before(session.StartedAt) {
+		return nil, nil
+	}
+	if enc, err := s.openEncounterOf(ctx, h.CampaignID); err != nil || (enc != nil && enc.Status == statusActive) {
+		return nil, err
+	}
+	asks, err := s.queries.ListNpcCheckAsks(ctx, h.ID)
+	if err != nil {
+		return nil, s.dbError(ctx, "list the asks of the check", err)
+	}
+	hold := playdb.InspirationHold{ID: h.ID, CampaignID: h.CampaignID, IdempotencyKey: h.Key}
+	ev, err := npcCheckEventOf(ctx, s.queries, session, hold)
+	if err != nil {
+		return nil, s.dbError(ctx, "find the held check", err)
+	}
+	offer := &playv1.HeldRollOffer{HoldId: h.ID, Kind: playv1.HeldRollKind_HELD_ROLL_KIND_NPC_CHECK, CreatedAt: timestamppb.New(h.CreatedAt)}
+	if l.m.Role == authz.RoleMaster {
+		offer.RollerLabel, offer.D20 = ev.Name, heldD20Of(h)
+		offer.Question = &playv1.HeldRollOffer_CuttingWords{CuttingWords: &playv1.CuttingWordsQuestion{Asks: ev.withAsks(asks, false).read(s, false).GetAsks()}}
+		return offer, nil
+	}
+	cur := cutting.Current(askStates(asks))
+	if cur < 0 {
+		return nil, nil
+	}
+	mine, err := s.isMyCharacter(ctx, l.m, asks[cur].BardCharacterID)
+	if err != nil || !mine {
+		return nil, err
+	}
+	vit, err := s.vitals.GetVitals(ctx, h.CampaignID, asks[cur].BardCharacterID)
+	if err != nil {
+		return nil, s.dbError(ctx, "read the bard's vitals", err)
+	}
+	offer.RollerLabel = cutting.Label(ev.Name, asks[cur].CreatureSeen)
+	offer.Question = &playv1.HeldRollOffer_CuttingWords{CuttingWords: &playv1.CuttingWordsQuestion{Sides: asks[cur].Sides, UsesLeft: bardUsesLeft(vit)}}
+	return offer, nil
+}
+
+// ListNpcCheckPicker implements playv1connect.PlayServiceHandler.
+func (s *Service) ListNpcCheckPicker(ctx context.Context, req *connect.Request[playv1.ListNpcCheckPickerRequest]) (*connect.Response[playv1.ListNpcCheckPickerResponse], error) {
+	m, err := authz.RequireCampaignRole(ctx, req.Msg.GetCampaignId(), authz.RoleMaster)
+	if err != nil {
+		return nil, err
+	}
+	out := &playv1.ListNpcCheckPickerResponse{}
+	seen := map[string]bool{}
+	add := func(c link.Character, source playv1.NpcCheckSource, hidden bool) error {
+		if seen[c.ID] || c.Player {
+			return nil
+		}
+		seen[c.ID] = true
+		cand, err := s.npcCandidate(ctx, m.CampaignID, c, source, hidden)
+		if err == nil {
+			out.Candidates = append(out.Candidates, cand)
+		}
+		return err
+	}
+	session, err := s.queries.GetOpenGameSession(ctx, m.CampaignID)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return nil, s.dbError(ctx, "find the open session", err)
+	}
+	if err == nil {
+		if err := s.pickStageAndTokens(ctx, m.CampaignID, session, add); err != nil {
+			return nil, s.dbError(ctx, "list the creatures", err)
+		}
+	}
+	if key := req.Msg.GetMonsterKey(); key != "" {
+		cand, ok, err := s.monsterCandidate(ctx, m.CampaignID, key)
+		if err != nil {
+			return nil, s.dbError(ctx, "read the creature", err)
+		}
+		if !ok {
+			return nil, connect.NewError(connect.CodeNotFound, errors.New("creature not found"))
+		}
+		out.Candidates = append(out.Candidates, cand)
+	}
+	return connect.NewResponse(out), nil
+}
+
+// pickStageAndTokens offers the NPCs on the stage, the hidden ones marked, and those with a token on the session's current map.
+func (s *Service) pickStageAndTokens(ctx context.Context, campaignID string, session playdb.GameSession, add func(link.Character, playv1.NpcCheckSource, bool) error) error {
+	rows, err := s.queries.ListStage(ctx, session.ID)
+	if err != nil {
+		return fmt.Errorf("list the stage: %w", err)
+	}
+	chars, err := s.stageCharacters(ctx, campaignID, rows)
+	if err != nil {
+		return err
+	}
+	for _, r := range rows {
+		if c, ok := chars[r.CharacterID]; ok && !c.CombatOnly {
+			if err := add(c, playv1.NpcCheckSource_NPC_CHECK_SOURCE_STAGE, r.Hidden); err != nil {
+				return err
+			}
+		}
+	}
+	if session.CurrentMapID == nil {
+		return nil
+	}
+	tokens, err := s.maps.MapTokens(ctx, nil, *session.CurrentMapID)
+	if err != nil {
+		return fmt.Errorf("read the tokens: %w", err)
+	}
+	var ids []string
+	hidden := map[string]bool{}
+	for _, t := range tokens {
+		if t.CharacterID != "" {
+			ids, hidden[t.CharacterID] = append(ids, t.CharacterID), t.Hidden
+		}
+	}
+	living, err := s.roster.CombatCharacters(ctx, nil, campaignID, ids)
+	if err != nil {
+		return err
+	}
+	for _, c := range living {
+		if !c.CombatOnly {
+			if err := add(c, playv1.NpcCheckSource_NPC_CHECK_SOURCE_TOKEN, hidden[c.ID]); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// npcCandidate is an NPC of the table with its checks and the bonus the master reads.
+func (s *Service) npcCandidate(ctx context.Context, campaignID string, c link.Character, source playv1.NpcCheckSource, hidden bool) (*playv1.NpcCheckCandidate, error) {
+	cand := &playv1.NpcCheckCandidate{CharacterId: c.ID, MonsterKey: c.MonsterKey, Name: c.Name, Source: source, Hidden: hidden}
+	return cand, s.fillChecks(ctx, campaignID, c, cand)
+}
+
+// monsterCandidate reads an SRD creature, which has no NPC of the table until it is rolled for.
+func (s *Service) monsterCandidate(ctx context.Context, campaignID, key string) (*playv1.NpcCheckCandidate, bool, error) {
+	content, err := s.roster.RulesContent(ctx, nil, campaignID)
+	if err != nil {
+		return nil, false, err
+	}
+	cr, ok := content.CreatureByKey(key)
+	if !ok {
+		return nil, false, nil
+	}
+	cand := &playv1.NpcCheckCandidate{MonsterKey: key, Name: cr.NamePT, Source: playv1.NpcCheckSource_NPC_CHECK_SOURCE_MONSTER}
+	return cand, true, s.fillChecks(ctx, campaignID, link.Character{MonsterKey: key}, cand)
+}
+
+// fillChecks lists the creature's checks with what it adds to each.
+func (s *Service) fillChecks(ctx context.Context, campaignID string, c link.Character, cand *playv1.NpcCheckCandidate) error {
+	for _, key := range cutting.CheckKeys() {
+		o, err := s.npcCheckNumbers(ctx, nil, campaignID, c, key)
+		if err != nil {
+			return err
+		}
+		cand.Checks = append(cand.Checks, &playv1.NpcCheckOption{Key: key, Name: s.roster.SceneCheckName(key), Bonus: clamp32(o.Bonus, -heldBonusLimit, heldBonusLimit), Known: o.Known})
+	}
+	cand.HasStatBlock = c.MonsterKey != "" || slices.ContainsFunc(cand.Checks, func(o *playv1.NpcCheckOption) bool { return o.Known })
+	return nil
+}
