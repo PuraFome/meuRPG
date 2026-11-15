@@ -162,6 +162,11 @@ func (s *Service) characterToProto(content *rules.Content, row charactersdb.Char
 		c.Derived.Gear = mapToProto(rules.DeriveGear(build, content, der), gearToProto)
 		addChangedContent(c.Derived, der.Issues, content, build, full, r)
 		fillMagicItems(content, c.Sheet.GetFull(), build, der)
+		if !master {
+			// The stored issues are the server's bookkeeping of what the sheet already had (the changed entries
+			// above are worked out from them): only the master receives them.
+			full.KnownIssues = nil
+		}
 	}
 	return c, nil
 }

@@ -10,12 +10,17 @@ import (
 // issue's sentence is built from it for each reader (SentencePT), as the character's name is not in the Build and a
 // condition the players may not read is named for the master alone (RN-23).
 type LostPrerequisite struct {
+	// Key is the feat's or the option's key: with the issue's code and field, what the issue is told apart by
+	// (Issue.ID), whatever its sentence says now.
+	Key string
 	// EntryPT is the name of the feat or the option.
 	EntryPT string
 	// Option says it is an option; otherwise it is a feat.
 	Option bool
 	// Conditions are the missing conditions, in the order the prerequisite lists them.
 	Conditions []LostCondition
+	// unmet is what the conditions were made from, to say them again over the sheet as it ends up.
+	unmet []FeatUnmet
 }
 
 // LostCondition is one missing condition: what is asked ("Guerreiro 7") and what the character has, told after the
@@ -62,58 +67,56 @@ func (l LostPrerequisite) SentencePT(name string, master bool) string {
 
 // listPT joins phrases as a list: "A", "A e B", "A, B e C".
 func listPT(parts []string) string {
-	if len(parts) < 2 {
+	last := len(parts) - 1
+	if last < 1 {
 		return strings.Join(parts, "")
 	}
-	last := len(parts) - 1
 	return strings.Join(parts[:last], ", ") + " e " + parts[last]
 }
 
 // lost is the LostPrerequisite of the entry key for the missing conditions unmet, judged on the sheet d.
 func (c *content) lost(key string, option bool, unmet []FeatUnmet, b Build, d Derived) *LostPrerequisite {
-	l := &LostPrerequisite{EntryPT: c.namePT(key), Option: option}
+	l := &LostPrerequisite{Key: key, EntryPT: c.namePT(key), Option: option, unmet: unmet}
 	for _, u := range unmet {
 		l.Conditions = append(l.Conditions, c.lostCondition(u, b, d))
 	}
 	return l
 }
 
+// lostIDPrefix marks, in an issue's identity, the key of a lost feat or option where another issue has its sentence.
+const lostIDPrefix = "lost:"
+
+// ID is what an issue is told apart by, among the issues of a sheet and over time: its code, its field and its
+// sentence; for a lost prerequisite the entry's key in the sentence's place, because the sentence says what the
+// character has now and what the reader may see, and both change while the issue is the same one. The sheet stores
+// these (known issues), so a stored lost prerequisite holds no sentence.
+func (is Issue) ID() string {
+	if is.Lost != nil {
+		return is.Code + "|" + is.Field + "|" + lostIDPrefix + is.Lost.Key
+	}
+	return is.Code + "|" + is.Field + "|" + is.Message
+}
+
+// LegacyLostID says a stored identity is this lost prerequisite as the code before Issue.ID wrote it: the code, the
+// field (without the pick's index for a feat taken through a choice) and the old sentence, which began the same for
+// every reader and named the entry.
+func (is Issue) LegacyLostID(stored string) bool {
+	if is.Lost == nil {
+		return false
+	}
+	sentence := "|O personagem não cumpre mais o pré-requisito de " + is.Lost.EntryPT + ":"
+	field, _, _ := strings.Cut(is.Field, "[")
+	return strings.HasPrefix(stored, is.Code+"|"+is.Field+sentence) || field == choiceKeysField && strings.HasPrefix(stored, is.Code+"|"+field+sentence)
+}
+
+// retold is the lost prerequisite said over the sheet d: the same conditions, with what the character has there.
+func (c *content) retold(l *LostPrerequisite, b Build, d Derived) *LostPrerequisite {
+	return c.lost(l.Key, l.Option, l.unmet, b, d)
+}
+
 // lostCondition says one missing condition and what the character has of it.
 func (c *content) lostCondition(u FeatUnmet, b Build, d Derived) LostCondition {
-	var lc LostCondition
-	switch u.Kind {
-	case FeatUnmetClassLevel:
-		class := c.namePT(u.Key)
-		lc = LostCondition{AskPT: fmt.Sprintf("%s %d", class, u.Value), LinkPT: "e", HasPT: "não tem nível de " + class}
-		if have := classLevelIn(b.Classes, u.Key); have > 0 {
-			lc.HasPT = fmt.Sprintf("está no %d", have)
-		}
-	case FeatUnmetPact:
-		lc = LostCondition{AskPT: "a Dádiva do Pacto " + optionLabel(c.namePT(u.Key)), LinkPT: "que", HasPT: "não tem mais"}
-	case FeatUnmetSpell:
-		lc = LostCondition{AskPT: "a magia " + c.namePT(u.Key), LinkPT: "que", HasPT: "não conhece mais"}
-	case FeatUnmetOption:
-		lc = LostCondition{AskPT: optionLabel(c.namePT(u.Key)), LinkPT: "que", HasPT: "não tem mais"}
-	case FeatUnmetAbilityMinimum, FeatUnmetAbilityAnyOf:
-		lc = c.lostAbilities(u, d)
-	case FeatUnmetProficiency:
-		lc = LostCondition{AskPT: "proficiência em " + c.namePT(u.Key), LinkPT: "que", HasPT: "não tem"}
-	case FeatUnmetSpellcasting:
-		lc = LostCondition{AskPT: "conjurar magias", LinkPT: "que", HasPT: "não consegue mais"}
-	case FeatUnmetRace:
-		asked := u.Keys
-		if u.Key != "" {
-			asked = []string{u.Key}
-		}
-		lc = LostCondition{AskPT: "ser " + c.racesPT(asked), LinkPT: "que", HasPT: "não é"}
-		lc.Hidden = slices.ContainsFunc(asked, func(k string) bool { return c.hiddenOn(b, k) })
-	case FeatUnmetSize:
-		lc = LostCondition{AskPT: "tamanho " + strings.ToLower(sizeNamePT[u.Key]), LinkPT: "que", HasPT: "não tem"}
-	case FeatUnmetLacksFeature:
-		lc = LostCondition{AskPT: "não ter " + c.namePT(u.Key), LinkPT: "e", HasPT: "tem"}
-	case FeatUnmetLevel:
-		lc = LostCondition{AskPT: fmt.Sprintf("nível %d", u.Value), LinkPT: "e", HasPT: fmt.Sprintf("está no %d", d.TotalLevel)}
-	}
+	lc := c.lostAsk(u, b, d)
 	switch u.Kind {
 	case FeatUnmetClassLevel, FeatUnmetPact, FeatUnmetSpell, FeatUnmetOption, FeatUnmetLacksFeature:
 		lc.Hidden = c.hiddenOn(b, u.Key)
@@ -121,6 +124,73 @@ func (c *content) lostCondition(u FeatUnmet, b Build, d Derived) LostCondition {
 	if lc.Hidden && c.player {
 		lc.AskPT = "" // a player's view holds no name of it, whoever reads the sentence
 	}
+	return lc
+}
+
+// lostAsk is the condition's wording by its kind; a race's says by itself whether it is hidden.
+func (c *content) lostAsk(u FeatUnmet, b Build, d Derived) LostCondition {
+	switch u.Kind {
+	case FeatUnmetClassLevel:
+		return c.lostClassLevel(u, b)
+	case FeatUnmetAbilityMinimum, FeatUnmetAbilityAnyOf:
+		return c.lostAbilities(u, d)
+	case FeatUnmetRace:
+		return c.lostRace(u, b)
+	case FeatUnmetLevel:
+		return LostCondition{AskPT: fmt.Sprintf("nível %d", u.Value), LinkPT: "e", HasPT: fmt.Sprintf("está no %d", d.TotalLevel)}
+	case FeatUnmetLacksFeature:
+		return LostCondition{AskPT: "não ter " + c.namePT(u.Key), LinkPT: "e", HasPT: "tem"}
+	}
+	return LostCondition{AskPT: c.lostAskPT(u), LinkPT: "que", HasPT: lostHasPT[u.Kind]}
+}
+
+// lostHasPT is what the character has of a condition that is plainly missing, told after "que <name>".
+var lostHasPT = map[string]string{
+	FeatUnmetPact:         "não tem mais",
+	FeatUnmetSpell:        "não conhece mais",
+	FeatUnmetOption:       "não tem mais",
+	FeatUnmetProficiency:  "não tem",
+	FeatUnmetSpellcasting: "não consegue mais",
+	FeatUnmetSize:         "não tem",
+}
+
+// lostAskPT names what a plainly missing condition asks.
+func (c *content) lostAskPT(u FeatUnmet) string {
+	switch u.Kind {
+	case FeatUnmetPact:
+		return "a Dádiva do Pacto " + optionLabel(c.namePT(u.Key))
+	case FeatUnmetSpell:
+		return "a magia " + c.namePT(u.Key)
+	case FeatUnmetOption:
+		return optionLabel(c.namePT(u.Key))
+	case FeatUnmetProficiency:
+		return "proficiência em " + c.namePT(u.Key)
+	case FeatUnmetSpellcasting:
+		return "conjurar magias"
+	case FeatUnmetSize:
+		return "tamanho " + strings.ToLower(sizeNamePT[u.Key])
+	}
+	return ""
+}
+
+// lostClassLevel says the class level asked and the one the character is at: "Guerreiro 7, e Tor está no 5".
+func (c *content) lostClassLevel(u FeatUnmet, b Build) LostCondition {
+	class := c.namePT(u.Key)
+	lc := LostCondition{AskPT: fmt.Sprintf("%s %d", class, u.Value), LinkPT: "e", HasPT: "não tem nível de " + class}
+	if have := classLevelIn(b.Classes, u.Key); have > 0 {
+		lc.HasPT = fmt.Sprintf("está no %d", have)
+	}
+	return lc
+}
+
+// lostRace says the races asked: "ser Anão ou Elfo, que Tor não é".
+func (c *content) lostRace(u FeatUnmet, b Build) LostCondition {
+	asked := u.Keys
+	if u.Key != "" {
+		asked = []string{u.Key}
+	}
+	lc := LostCondition{AskPT: "ser " + c.racesPT(asked), LinkPT: "que", HasPT: "não é"}
+	lc.Hidden = slices.ContainsFunc(asked, func(k string) bool { return c.hiddenOn(b, k) })
 	return lc
 }
 

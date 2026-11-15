@@ -86,7 +86,7 @@ func TestTheStoredIssuesHoldIdentitiesNotSentences(t *testing.T) {
 	found := false
 	for _, id := range stored {
 		found = found || id == want
-		if strings.Contains(id, forgottenClass) || strings.Contains(id, "pede") {
+		if strings.Contains(id, forgottenClass) || strings.Contains(id, " pede ") {
 			t.Errorf("a stored issue holds a sentence: %q", id)
 		}
 	}

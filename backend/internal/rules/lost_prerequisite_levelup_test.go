@@ -47,13 +47,16 @@ func TestALostPrerequisiteDoesNotBlockALevelUpThatStaysShortOfIt(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			before := postureBuild(3, postureBull, postureHeron, postureCrow)
+			before := postureBuild(3, postureBull, postureHeron, postureCrow, "feature:fighter-fighting-style-defense")
 			tc.edit(&before)
 			d3 := Derive(before, c)
 			if !hasIssueOn(d3, tc.code, tc.field) {
 				t.Fatalf("issues before = %+v, want %s at %s", d3.Issues, tc.code, tc.field)
 			}
 			after, err := ApplyLevelUp(before, increase, c)
+			if err == nil {
+				err = CheckLevelUp(before, after, c)
+			}
 			if err != nil {
 				t.Fatalf("the level-up of a sheet with a lost prerequisite was refused: %v", err)
 			}
@@ -86,11 +89,14 @@ func TestALostPrerequisiteDoesNotBlockALevelUpThatStaysShortOfIt(t *testing.T) {
 func TestTheLevelUpThatReachesTheLostPrerequisiteClearsTheIssue(t *testing.T) {
 	t.Parallel()
 	c := lostLevelUpContent(t)
-	l4, err := ApplyLevelUp(postureBuild(3, postureBull, postureHeron, postureCrow), LevelUpChoices{Class: "class:fighter", AbilityIncrease: map[Ability]int{STR: 2}, HitPoints: LevelUpHitPoints{Average: true}}, c)
+	l4, err := ApplyLevelUp(postureBuild(3, postureBull, postureHeron, postureCrow, "feature:fighter-fighting-style-defense"), LevelUpChoices{Class: "class:fighter", AbilityIncrease: map[Ability]int{STR: 2}, HitPoints: LevelUpHitPoints{Average: true}}, c)
 	if err != nil {
 		t.Fatal(err)
 	}
 	l5, err := ApplyLevelUp(l4, LevelUpChoices{Class: "class:fighter", HitPoints: LevelUpHitPoints{Average: true}}, c)
+	if err == nil {
+		err = CheckLevelUp(l4, l5, c)
+	}
 	if err != nil {
 		t.Fatalf("the level-up to the level the option asks was refused: %v", err)
 	}

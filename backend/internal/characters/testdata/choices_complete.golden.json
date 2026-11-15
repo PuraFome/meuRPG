@@ -681,9 +681,6 @@
             "feature:fighter-fighting-style-defense",
             "race:half-elf#abilities=ability:dex"
           ],
-          "knownIssues": [
-            "skill_count|full.skill_proficiency_keys|Faltam 4 perícias para escolher."
-          ],
           "languages": [
             "Anão",
             "Élfico",
@@ -1141,9 +1138,6 @@
             "feature:fighter-fighting-style-defense",
             "race:half-elf#abilities=ability:dex",
             "race:half-elf#abilities=ability:con"
-          ],
-          "knownIssues": [
-            "skill_count|full.skill_proficiency_keys|Faltam 4 perícias para escolher."
           ],
           "languages": [
             "Anão",

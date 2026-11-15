@@ -116,7 +116,15 @@ func derive(b Build, c *content) Derived {
 	if len(why) == 0 {
 		return d
 	}
-	return deriveWith(b, c, why)
+	out := deriveWith(b, c, why)
+	// What the character has is said over the sheet as it ends up, without the lost entries: the numbers the reader sees.
+	for i, is := range out.Issues {
+		if is.Lost != nil {
+			out.Issues[i].Lost = c.retold(is.Lost, b, out)
+			out.Issues[i].Message = out.Issues[i].Lost.SentencePT("", false)
+		}
+	}
+	return out
 }
 
 // deriveWith is derive with the feats and options in lost (by key) listed but not applied; each is told with what

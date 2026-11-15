@@ -100,7 +100,13 @@ const IssueTableContentChanged = "table_content_changed"
 // issueID is an issue by its whole identity: the code, the field and the exact
 // sentence ("Faltam 1 perícias" that becomes "Há 3 perícias; escolhe 2" is another
 // issue, and two formula issues on different features do not collide).
-func issueID(is rules.Issue) string { return is.Code + "|" + is.Field + "|" + is.Message }
+func issueID(is rules.Issue) string { return is.ID() }
+
+// knows says the stored identities known hold the issue: its identity, or the one the code before rules.Issue.ID
+// wrote for a lost prerequisite, so a row saved then is not read as having a new issue.
+func knows(known []string, is rules.Issue) bool {
+	return slices.Contains(known, issueID(is)) || is.Lost != nil && slices.ContainsFunc(known, is.LegacyLostID)
+}
 
 // issueIDs is a set of issues as the sheet stores it: sorted, no repeats.
 func issueIDs(issues []rules.Issue) []string {
@@ -139,7 +145,7 @@ func flags(content *rules.Content, full *charactersv1.FullSheet, build rules.Bui
 	for _, ch := range changed {
 		f := flag{entry: ch}
 		for _, is := range issues {
-			if slices.Contains(is.Keys, ch.Key) && !slices.Contains(known, issueID(is)) {
+			if slices.Contains(is.Keys, ch.Key) && !knows(known, is) {
 				f.issues = append(f.issues, is)
 			}
 		}
@@ -156,7 +162,7 @@ func flags(content *rules.Content, full *charactersv1.FullSheet, build rules.Bui
 func issuesTiedTo(content *rules.Content, full *charactersv1.FullSheet, key string) []rules.Issue {
 	var out []rules.Issue
 	for _, is := range rules.Derive(buildOf(full), content).Issues {
-		if slices.Contains(is.Keys, key) && !slices.Contains(full.GetKnownIssues(), issueID(is)) {
+		if slices.Contains(is.Keys, key) && !knows(full.GetKnownIssues(), is) {
 			out = append(out, is)
 		}
 	}
