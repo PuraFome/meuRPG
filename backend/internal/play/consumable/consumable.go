@@ -78,12 +78,17 @@ func ResistanceJSON(p rules.PotionEffect) ([]byte, error) {
 	return body, nil
 }
 
-// Target is a possible receiver of a gift as the list says it: the character, how far it stands, and whether it is at 0
-// hit points. A listed character may receive.
-func Target(id, name string, distanceFt int32, down bool) *playv1.ConsumableTarget {
-	state := playv1.ConsumableTargetState_CONSUMABLE_TARGET_STATE_OK
+// FightState is how a combatant of a running combat stands for the table: down (at 0 hit points) or on its feet, the one word
+// the order of the combat already gives every player.
+func FightState(down bool) playv1.ConsumableTargetState {
 	if down {
-		state = playv1.ConsumableTargetState_CONSUMABLE_TARGET_STATE_DOWN
+		return playv1.ConsumableTargetState_CONSUMABLE_TARGET_STATE_DOWN
 	}
+	return playv1.ConsumableTargetState_CONSUMABLE_TARGET_STATE_OK
+}
+
+// Target is a possible receiver of a gift as the list says it: the character, how far it stands and how it stands (unspecified
+// when the table does not read it). A listed character may receive.
+func Target(id, name string, distanceFt int32, state playv1.ConsumableTargetState) *playv1.ConsumableTarget {
 	return &playv1.ConsumableTarget{CharacterId: id, Name: name, DistanceFt: distanceFt, State: state, MayReceive: true}
 }

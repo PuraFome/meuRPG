@@ -666,19 +666,23 @@ export type ConsumableTarget = Message<"meurpg.play.v1.ConsumableTarget"> & {
   name: string;
 
   /**
-   * The distance from the user's combatant, in feet; 0 when there is no running combat.
+   * The distance from the user's combatant, in feet; 0 when the list has no distance (no running combat, or a user that
+   * does not fight in it).
    *
    * @generated from field: int32 distance_ft = 3;
    */
   distanceFt: number;
 
   /**
+   * How the character stands: set for a combatant of a running combat, UNSPECIFIED for a character outside one (the hit
+   * points of a player's character are no other player's to read there).
+   *
    * @generated from field: meurpg.play.v1.ConsumableTargetState state = 4;
    */
   state: ConsumableTargetState;
 
   /**
-   * Whether the character may receive it now (always true for a listed character today).
+   * Whether the character may receive it (true for every listed character).
    *
    * @generated from field: bool may_receive = 5;
    */
@@ -739,6 +743,8 @@ export const ChargesBlockedReasonSchema: GenEnum<ChargesBlockedReason> = /*@__PU
  */
 export enum ConsumableTargetState {
   /**
+   * Not told: the character is outside a running combat.
+   *
    * @generated from enum value: CONSUMABLE_TARGET_STATE_UNSPECIFIED = 0;
    */
   UNSPECIFIED = 0,
@@ -917,14 +923,16 @@ export const ChargesService: GenService<{
     output: typeof UseConsumableResponseSchema;
   },
   /**
-   * ListConsumableTargets lists who the character may give a consumable to: in a running combat, the player's
-   * characters that are adjacent (5 feet) to the user's combatant, with the distance (a creature that is not a player's
-   * character is never listed, so a hidden one never is); out of a combat, the other living characters of the party. The master reads it for the
-   * character it acts for, and the list is the one that character's player would get. Read only.
+   * ListConsumableTargets lists who the character may give the consumable to, which is who the use would accept: for a
+   * potion in a running combat, the player's characters of the combat that are adjacent (5 feet) to the user's combatant,
+   * with the distance (a creature that is not a player's character is never listed, so a hidden one never is), and, when the
+   * user does not fight in it, the characters that do not fight either; for any other consumable, or with no running
+   * combat, the other living characters of the party. A creature with three failed death saves is never listed. The master
+   * reads it for the character it acts for, and the list is the one that character's player would get. Read only.
    *
    * Errors: `permission_denied` for a character that is not the caller's (a player); `not_found` for a character that
-   * is not there; `failed_precondition` with EncounterBlocked ITEM_GONE for an entry that is no longer on the sheet and
-   * CharacterBlocked CHARACTER_DEAD for a dead user.
+   * is not there; `invalid_argument` for an entry that is no consumable; `failed_precondition` with EncounterBlocked
+   * ITEM_GONE for an entry that is no longer on the sheet and CharacterBlocked CHARACTER_DEAD for a dead user.
    *
    * @generated from rpc meurpg.play.v1.ChargesService.ListConsumableTargets
    */

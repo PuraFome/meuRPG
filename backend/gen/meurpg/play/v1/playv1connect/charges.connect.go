@@ -152,14 +152,16 @@ type ChargesServiceClient interface {
 	// for a receiver beyond 5 feet or out of the combat. The response carries the receiver's vitals to the master and to
 	// the receiver's own player only.
 	UseConsumable(context.Context, *connect.Request[v1.UseConsumableRequest]) (*connect.Response[v1.UseConsumableResponse], error)
-	// ListConsumableTargets lists who the character may give a consumable to: in a running combat, the player's
-	// characters that are adjacent (5 feet) to the user's combatant, with the distance (a creature that is not a player's
-	// character is never listed, so a hidden one never is); out of a combat, the other living characters of the party. The master reads it for the
-	// character it acts for, and the list is the one that character's player would get. Read only.
+	// ListConsumableTargets lists who the character may give the consumable to, which is who the use would accept: for a
+	// potion in a running combat, the player's characters of the combat that are adjacent (5 feet) to the user's combatant,
+	// with the distance (a creature that is not a player's character is never listed, so a hidden one never is), and, when the
+	// user does not fight in it, the characters that do not fight either; for any other consumable, or with no running
+	// combat, the other living characters of the party. A creature with three failed death saves is never listed. The master
+	// reads it for the character it acts for, and the list is the one that character's player would get. Read only.
 	//
 	// Errors: `permission_denied` for a character that is not the caller's (a player); `not_found` for a character that
-	// is not there; `failed_precondition` with EncounterBlocked ITEM_GONE for an entry that is no longer on the sheet and
-	// CharacterBlocked CHARACTER_DEAD for a dead user.
+	// is not there; `invalid_argument` for an entry that is no consumable; `failed_precondition` with EncounterBlocked
+	// ITEM_GONE for an entry that is no longer on the sheet and CharacterBlocked CHARACTER_DEAD for a dead user.
 	ListConsumableTargets(context.Context, *connect.Request[v1.ListConsumableTargetsRequest]) (*connect.Response[v1.ListConsumableTargetsResponse], error)
 }
 
@@ -363,14 +365,16 @@ type ChargesServiceHandler interface {
 	// for a receiver beyond 5 feet or out of the combat. The response carries the receiver's vitals to the master and to
 	// the receiver's own player only.
 	UseConsumable(context.Context, *connect.Request[v1.UseConsumableRequest]) (*connect.Response[v1.UseConsumableResponse], error)
-	// ListConsumableTargets lists who the character may give a consumable to: in a running combat, the player's
-	// characters that are adjacent (5 feet) to the user's combatant, with the distance (a creature that is not a player's
-	// character is never listed, so a hidden one never is); out of a combat, the other living characters of the party. The master reads it for the
-	// character it acts for, and the list is the one that character's player would get. Read only.
+	// ListConsumableTargets lists who the character may give the consumable to, which is who the use would accept: for a
+	// potion in a running combat, the player's characters of the combat that are adjacent (5 feet) to the user's combatant,
+	// with the distance (a creature that is not a player's character is never listed, so a hidden one never is), and, when the
+	// user does not fight in it, the characters that do not fight either; for any other consumable, or with no running
+	// combat, the other living characters of the party. A creature with three failed death saves is never listed. The master
+	// reads it for the character it acts for, and the list is the one that character's player would get. Read only.
 	//
 	// Errors: `permission_denied` for a character that is not the caller's (a player); `not_found` for a character that
-	// is not there; `failed_precondition` with EncounterBlocked ITEM_GONE for an entry that is no longer on the sheet and
-	// CharacterBlocked CHARACTER_DEAD for a dead user.
+	// is not there; `invalid_argument` for an entry that is no consumable; `failed_precondition` with EncounterBlocked
+	// ITEM_GONE for an entry that is no longer on the sheet and CharacterBlocked CHARACTER_DEAD for a dead user.
 	ListConsumableTargets(context.Context, *connect.Request[v1.ListConsumableTargetsRequest]) (*connect.Response[v1.ListConsumableTargetsResponse], error)
 }
 

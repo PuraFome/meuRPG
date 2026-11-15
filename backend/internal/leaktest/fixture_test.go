@@ -71,6 +71,8 @@ type world struct {
 	// The hidden NPC on the open scene's stage (its portrait is imgHiddenStage), and the hidden action of that scene.
 	hiddenStageNPC *charactersv1.Character
 	hiddenAction   string
+	// The entries of a potion of healing on Toren's and on Pensantus's sheets (buildConsumables).
+	torenPotion, pensPotion string
 
 	// The gallery.
 	imgSceneA, imgSceneB, imgMap, imgUnshown, imgShown, imgLeft, imgPortrait, imgStage, imgHiddenStage, imgGenerated, generation string

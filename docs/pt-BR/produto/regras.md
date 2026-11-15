@@ -155,8 +155,9 @@ O mestre também pode corrigir à mão, a qualquer momento da sessão, PV, PV te
   Uma criatura com 0 pontos de vida está inconsciente e não age, mas outra criatura pode dar a ela uma poção, que a acorda.
   No registro a mesa lê quem usou qual poção e em quem, e só o mestre e os jogadores dos dois personagens leem os dados e os pontos de vida.
   Uma poção pode ser dada a outro personagem: a entrada de quem dá é a gasta, quem recebe é curado ou resiste, e uma criatura morta, ou com três falhas nos testes de morte, não recebe poção.
-  O mestre pode usar ou dar uma poção por qualquer personagem.
-  Uma poção da ficha de um NPC é gasta e registrada, e o mestre conta o que ela fez, a menos que o NPC a dê a um personagem de jogador.
+  O mestre pode usar ou dar uma poção por qualquer personagem, e por um personagem de jogador num combate em andamento ele fica preso ao mesmo turno, à mesma ação e aos 1,5 metro (5 pés).
+  Uma poção da ficha de um NPC é gasta e registrada, e o mestre conta o que ela fez; o turno e a ação do combate não a barram, e, dada a um personagem de jogador, ela cura ou dá resistência, exceto num combate em andamento, onde é recusada por estar fora de alcance.
+  "Dar a…" lista só os personagens que o uso aceitaria: num combate em andamento, os personagens de jogadores a até 1,5 metro (5 pés) de quem dá, com a palavra de como estão (de pé ou caídos), como a ordem do combate a mostra a todos; para quem usa e não está no combate, os personagens que também não estão nele; para um pergaminho ou outro consumível, e fora de combate, os outros personagens vivos do grupo, sem dizer como estão, porque os pontos de vida do personagem de um jogador não são de outro jogador ler ali.
   Numa mesa de dados físicos o jogador digita as faces dos dados de cura, uma para cada dado.
   O app aplica sozinho as poções de cura e de resistência.
   Toda outra poção, e todo pergaminho, é gasta e registrada, e a resposta mostra o texto dela para a mesa aplicar; um pergaminho de magia não é conjurado.

@@ -16566,7 +16566,7 @@ export enum EncounterBlockedReason {
   TARGET_NOT_ADJACENT = 146,
 
   /**
-   * UseConsumable and ListConsumableTargets: the entry is no longer on the sheet (used or taken off since the player read it). Nothing is written.
+   * UseConsumable and ListConsumableTargets: the entry is not on the sheet (it was used or taken off). Nothing is written.
    *
    * @generated from enum value: ENCOUNTER_BLOCKED_REASON_ITEM_GONE = 147;
    */

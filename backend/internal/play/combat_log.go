@@ -701,7 +701,7 @@ func itemUseLine(_ *logBuilder, e playdb.ListEncounterEventsRow, entry *logEntry
 	return true
 }
 
-// consumableUsedLine is the handler of consumable_used: the table's line (the item), whose numbers fillConsumableUse leaves to the
+// consumableUsedLine is the handler of consumable_used: the table's line (the item), whose numbers consumable.Line leaves to the
 // master and the owners of the user and the receiver.
 func consumableUsedLine(_ *logBuilder, e playdb.ListEncounterEventsRow, entry *logEntry) bool {
 	var use consumableUsedEvent
@@ -1341,14 +1341,7 @@ func (e *logEntry) fillItemUse(_ *logViewing, out *playv1.CombatLogEntry) bool {
 // dice, the roll and the hit points regained are the master's and the owners' of the user and of the receiver (RN-10). A line whose
 // user or receiver is hidden never reaches another player (visibleToTable), so the receiver is never named past the fog.
 func (e *logEntry) fillConsumableUse(c *logViewing, out *playv1.CombatLogEntry) bool {
-	use := e.consumable
-	out.ConsumableUse = &playv1.ConsumableUseLogLine{
-		ItemNamePt: use.Name, Outcome: consumable.OutcomeOf(use.Outcome), DamageTypeKey: use.DamageType,
-		DamageTypeNamePt: c.names.contentName(c.ctx, use.DamageType), TargetLabel: c.target.Label,
-	}
-	if c.v.master || c.v.owns(c.actor) || c.v.owns(c.target) {
-		out.ConsumableUse.DiceText, out.ConsumableUse.Faces, out.ConsumableUse.RollTotal, out.ConsumableUse.Healed = use.Dice, use.Faces, use.Total, use.Healed
-	}
+	out.ConsumableUse = consumable.Line(e.consumable, c.names.contentName(c.ctx, e.consumable.DamageType), c.target.Label, c.v.master || c.v.owns(c.actor) || c.v.owns(c.target))
 	return true
 }
 

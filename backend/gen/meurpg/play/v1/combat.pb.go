@@ -1047,7 +1047,7 @@ const (
 	// creature that is not within 5 feet of the giver (a player's character is never hidden from its party, so no gift is
 	// refused for what the giver sees). The refusal names nobody. Nothing is written.
 	EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_TARGET_NOT_ADJACENT EncounterBlockedReason = 146
-	// UseConsumable and ListConsumableTargets: the entry is no longer on the sheet (used or taken off since the player read it). Nothing is written.
+	// UseConsumable and ListConsumableTargets: the entry is not on the sheet (it was used or taken off). Nothing is written.
 	EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ITEM_GONE EncounterBlockedReason = 147
 )
 

@@ -1276,8 +1276,9 @@ export type SheetMagicItem = Message<"meurpg.characters.v1.SheetMagicItem"> & {
   effectPt: string;
 
   /**
-   * The spell of a spell scroll (the catalog's key, "spell:fireball") and its name in Portuguese. Declared for the scrolls
-   * that cast their spell; empty for every item until then. Filled by the server on every read; a save ignores them.
+   * The spell a scroll casts (the catalog's key, "spell:fireball") and its name in Portuguese. Filled by the server on every
+   * read for a scroll that casts its spell; empty for every other item, a spell scroll that is only text included. A save
+   * ignores them.
    *
    * @generated from field: string spell_key = 15;
    */

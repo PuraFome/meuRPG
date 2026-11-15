@@ -3911,8 +3911,9 @@ type SheetMagicItem struct {
 	// catalog on every read; a save ignores it. Read by the same people as the charges: the character's player and the
 	// master.
 	EffectPt string `protobuf:"bytes,14,opt,name=effect_pt,json=effectPt,proto3" json:"effect_pt,omitempty"`
-	// The spell of a spell scroll (the catalog's key, "spell:fireball") and its name in Portuguese. Declared for the scrolls
-	// that cast their spell; empty for every item until then. Filled by the server on every read; a save ignores them.
+	// The spell a scroll casts (the catalog's key, "spell:fireball") and its name in Portuguese. Filled by the server on every
+	// read for a scroll that casts its spell; empty for every other item, a spell scroll that is only text included. A save
+	// ignores them.
 	SpellKey      string `protobuf:"bytes,15,opt,name=spell_key,json=spellKey,proto3" json:"spell_key,omitempty"`
 	SpellNamePt   string `protobuf:"bytes,16,opt,name=spell_name_pt,json=spellNamePt,proto3" json:"spell_name_pt,omitempty"`
 	unknownFields protoimpl.UnknownFields

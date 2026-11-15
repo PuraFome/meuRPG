@@ -516,6 +516,20 @@ var reads = []read{
 		},
 	},
 
+	// ===== ChargesService
+	{
+		procedure: playv1connect.ChargesServiceListConsumableTargetsProcedure, label: "Toren's potion", allow: onlyCaio, why: "the list is the one the character's player gets: a player's character next to Toren, and no other creature, the one the master hid next to him included",
+		req: func(w *world) proto.Message {
+			return &playv1.ListConsumableTargetsRequest{CampaignId: w.campaign, CharacterId: w.toren.GetId(), EntryId: w.withPotions().torenPotion}
+		},
+	},
+	{
+		procedure: playv1connect.ChargesServiceListConsumableTargetsProcedure, label: "Pensantus's potion", allow: onlyAna, why: "Ana's character is down: she may still hold the potion and read who is within reach",
+		req: func(w *world) proto.Message {
+			return &playv1.ListConsumableTargetsRequest{CampaignId: w.campaign, CharacterId: w.pens.GetId(), EntryId: w.withPotions().pensPotion}
+		},
+	},
+
 	// ===== TableScreenService
 	tvScreenRead,
 

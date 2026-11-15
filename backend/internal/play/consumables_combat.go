@@ -39,9 +39,8 @@ func errItemGone() error {
 }
 
 // giftReach is the distance to a receiver the giver may hand a potion to, and whether it may: within 5 feet (a combat with no
-// map has no distance). The receiver is a player's character, which is never hidden from the party nor in its dark (a player's
-// combatant is never hidden), so what the giver sees needs no check: the list and the gift never name a creature the giver does
-// not see, because they never name any other.
+// map has no distance). A receiver is a player's character, and a player's combatant is never hidden, so no creature hidden from
+// the giver can be one.
 func giftReach(enc playdb.Encounter, giver, recv playdb.Combatant) (int32, bool) {
 	switch {
 	case recv.ID == giver.ID, isTheatre(enc):
@@ -177,34 +176,58 @@ func (s *Service) ListConsumableTargets(ctx context.Context, req *connect.Reques
 	if _, err := s.requireItemCharacter(ctx, nil, m, charID); err != nil {
 		return nil, err
 	}
-	// The entry is there when the read finds it, with charges or without (invalid_argument: it holds none).
-	err = pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
-		_, err := s.vitals.ChargedItemRead(ctx, tx, m.CampaignID, charID, req.Msg.GetEntryId())
-		return err
-	})
-	if connect.CodeOf(err) == connect.CodeNotFound {
-		return nil, errItemGone()
-	} else if err != nil && connect.CodeOf(err) != connect.CodeInvalidArgument {
+	potion, err := s.entryIsAPotion(ctx, m.CampaignID, charID, req.Msg.GetEntryId())
+	if err != nil {
 		return nil, err
 	}
-	rows, err := s.consumableTargets(ctx, m.CampaignID, charID)
+	rows, err := s.consumableTargets(ctx, m.CampaignID, charID, potion)
 	if err != nil {
 		return nil, s.dbError(ctx, "list the consumable's targets", err)
 	}
 	return connect.NewResponse(&playv1.ListConsumableTargetsResponse{Targets: rows}), nil
 }
 
-// consumableTargets are the receivers of the character's gift: the characters it reaches in a running combat, else
-// the living characters of the party.
-func (s *Service) consumableTargets(ctx context.Context, campaignID, characterID string) ([]*playv1.ConsumableTarget, error) {
-	if open, err := s.queries.GetOpenGameSession(ctx, campaignID); err == nil {
-		enc, cs, found, err := openCombatants(ctx, s.queries, open.ID)
+// entryIsAPotion says whether the entry of the character's sheet is a potion, the one consumable that is an action. ITEM_GONE
+// for an entry that is no longer there, invalid_argument for one that is no consumable.
+func (s *Service) entryIsAPotion(ctx context.Context, campaignID, characterID, entryID string) (bool, error) {
+	var potion bool
+	err := pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
+		item, err := s.vitals.ConsumableItem(ctx, tx, campaignID, characterID, entryID)
 		if err != nil {
+			return err
+		}
+		content, err := s.roster.RulesContent(ctx, tx, campaignID)
+		if err != nil {
+			return err
+		}
+		_, potion = content.PotionEffect(item.GetKey())
+		return nil
+	})
+	if connect.CodeOf(err) == connect.CodeNotFound {
+		return false, errItemGone()
+	}
+	return potion, err
+}
+
+// consumableTargets are the receivers the use of the item would accept from the character. A potion in a running combat is an
+// action within reach: from a combatant it goes to the player's characters it reaches, and from a character that does not
+// fight it goes to no combatant. Any other case has no distance and no turn: the living characters of the party, a creature with
+// three failed death saves left out. Only a combatant of a running combat shows its state (the order of the combat says it to
+// every player); the hit points of a character outside a combat are not told.
+func (s *Service) consumableTargets(ctx context.Context, campaignID, characterID string, potion bool) ([]*playv1.ConsumableTarget, error) {
+	var (
+		enc   playdb.Encounter
+		cs    []playdb.Combatant
+		found bool
+	)
+	if open, err := s.queries.GetOpenGameSession(ctx, campaignID); err == nil {
+		if enc, cs, found, err = openCombatants(ctx, s.queries, open.ID); err != nil {
 			return nil, err
 		}
-		if giver := wearerIn(cs, characterID); found && enc.Status == statusActive && giver != nil {
-			return s.fightTargets(ctx, campaignID, enc, cs, *giver)
-		}
+	}
+	fight := potion && found && enc.Status == statusActive // the potion is an action in a running combat
+	if giver := wearerIn(cs, characterID); fight && giver != nil {
+		return s.fightTargets(ctx, campaignID, enc, cs, *giver)
 	}
 	party, err := s.roster.CombatParty(ctx, nil, campaignID)
 	if err != nil {
@@ -215,13 +238,26 @@ func (s *Service) consumableTargets(ctx context.Context, campaignID, characterID
 		if p.ID == characterID {
 			continue
 		}
-		v, err := s.vitals.GetVitals(ctx, campaignID, p.ID)
-		if err != nil {
+		if ok, err := s.partyMayReceive(ctx, campaignID, wearerIn(cs, p.ID), fight); err != nil {
 			return nil, err
+		} else if ok {
+			out = append(out, consumable.Target(p.ID, p.Name, 0, playv1.ConsumableTargetState_CONSUMABLE_TARGET_STATE_UNSPECIFIED))
 		}
-		out = append(out, consumable.Target(p.ID, p.Name, 0, v.GetHitPointsMax() > 0 && v.GetHitPointsCurrent() == 0))
 	}
 	return out, nil
+}
+
+// partyMayReceive says whether a character of the party that is not the user's combatant may be given the item: one that fights is
+// out of reach of a user outside the combat when the potion is an action there (fight), and is not offered when it is dead.
+func (s *Service) partyMayReceive(ctx context.Context, campaignID string, fights *playdb.Combatant, fight bool) (bool, error) {
+	if fights == nil {
+		return true, nil
+	}
+	if fight {
+		return false, nil
+	}
+	dead, err := s.isDead(ctx, nil, campaignID, *fights)
+	return !dead, err
 }
 
 // fightTargets are the player's characters of the combat that the giver reaches.
@@ -244,7 +280,7 @@ func (s *Service) fightTargets(ctx context.Context, campaignID string, enc playd
 		if err != nil {
 			return nil, err
 		}
-		out = append(out, consumable.Target(c.CharacterID, c.Label, d, down))
+		out = append(out, consumable.Target(c.CharacterID, c.Label, d, consumable.FightState(down)))
 	}
 	return out, nil
 }

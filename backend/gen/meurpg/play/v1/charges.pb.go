@@ -92,6 +92,7 @@ func (ChargesBlockedReason) EnumDescriptor() ([]byte, []int) {
 type ConsumableTargetState int32
 
 const (
+	// Not told: the character is outside a running combat.
 	ConsumableTargetState_CONSUMABLE_TARGET_STATE_UNSPECIFIED ConsumableTargetState = 0
 	// On its feet: above 0 hit points.
 	ConsumableTargetState_CONSUMABLE_TARGET_STATE_OK ConsumableTargetState = 1
@@ -1384,10 +1385,13 @@ type ConsumableTarget struct {
 	state       protoimpl.MessageState `protogen:"open.v1"`
 	CharacterId string                 `protobuf:"bytes,1,opt,name=character_id,json=characterId,proto3" json:"character_id,omitempty"`
 	Name        string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	// The distance from the user's combatant, in feet; 0 when there is no running combat.
-	DistanceFt int32                 `protobuf:"varint,3,opt,name=distance_ft,json=distanceFt,proto3" json:"distance_ft,omitempty"`
-	State      ConsumableTargetState `protobuf:"varint,4,opt,name=state,proto3,enum=meurpg.play.v1.ConsumableTargetState" json:"state,omitempty"`
-	// Whether the character may receive it now (always true for a listed character today).
+	// The distance from the user's combatant, in feet; 0 when the list has no distance (no running combat, or a user that
+	// does not fight in it).
+	DistanceFt int32 `protobuf:"varint,3,opt,name=distance_ft,json=distanceFt,proto3" json:"distance_ft,omitempty"`
+	// How the character stands: set for a combatant of a running combat, UNSPECIFIED for a character outside one (the hit
+	// points of a player's character are no other player's to read there).
+	State ConsumableTargetState `protobuf:"varint,4,opt,name=state,proto3,enum=meurpg.play.v1.ConsumableTargetState" json:"state,omitempty"`
+	// Whether the character may receive it (true for every listed character).
 	MayReceive    bool `protobuf:"varint,5,opt,name=may_receive,json=mayReceive,proto3" json:"may_receive,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

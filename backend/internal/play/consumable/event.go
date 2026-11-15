@@ -61,3 +61,16 @@ func OutcomeOf(outcome string) playv1.ConsumableUseOutcome {
 	}
 	return playv1.ConsumableUseOutcome_CONSUMABLE_USE_OUTCOME_TEXT_ONLY
 }
+
+// Line is the line of a use in the combat's log: the item, the outcome, the damage type (with its name) and the receiver's label are
+// the table's; the dice, the faces, the total and the hit points regained only when numbers is true (the master and the owners of
+// the user and of the receiver, RN-10).
+func Line(use Used, damageTypeName, targetLabel string, numbers bool) *playv1.ConsumableUseLogLine {
+	line := &playv1.ConsumableUseLogLine{
+		ItemNamePt: use.Name, Outcome: OutcomeOf(use.Outcome), DamageTypeKey: use.DamageType, DamageTypeNamePt: damageTypeName, TargetLabel: targetLabel,
+	}
+	if numbers {
+		line.DiceText, line.Faces, line.RollTotal, line.Healed = use.Dice, use.Faces, use.Total, use.Healed
+	}
+	return line
+}
