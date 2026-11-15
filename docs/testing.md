@@ -55,7 +55,11 @@ The tests that need CockroachDB itself are listed in `backend/cockroach-only-tes
 They run only in the CockroachDB job and are skipped by name (`go test -skip`) on PostgreSQL.
 A check runs every listed test on PostgreSQL and fails if one passes there, so a test that stops needing CockroachDB leaves the list.
 A test outside the list that needs CockroachDB fails the PostgreSQL run.
-Where PostgreSQL has an equivalent, a test runs on both (`dbtest.WaitingStatements` watches a lock wait in either).
+Where PostgreSQL has an equivalent, a test runs on both.
+A test that proves a write is stopped at a row waits until `dbtest.WaitingForTable` sees a transaction waiting for a lock on a row of the table, on a condition and never on a clock.
+It reads the server's own view of its locks (`crdb_internal.cluster_locks` on CockroachDB, `pg_stat_activity` on PostgreSQL), so it does not depend on the text of the statement that waits: on CockroachDB a plain read of a row another transaction holds `FOR UPDATE` waits too, before the statement that locks it.
+Each test has a database of its own, so what waits in it is the test's.
+`dbtest.WaitingStatements` matches the text of a statement instead, for a test that counts the statements of one kind.
 
 A test that compares a `jsonb` column read as text calls `dbtest.SortJSONKeys` on it, because the two databases print the keys in a different order.
 Without the variable they skip; with `MEURPG_REQUIRE_DB=1` (CI sets it) a missing variable fails them instead (`backend/internal/platform/testenv`).

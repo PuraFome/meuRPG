@@ -64,7 +64,7 @@ func (s *Service) SubmitInitiative(
 	}
 	out, err := s.finish(ctx, call.m, res, func(ctx context.Context, d *encounterData) {
 		s.publishEncounterChanged(ctx, call.m.CampaignID, d.enc)
-		s.publishVitals(call.m.CampaignID, regained)
+		s.publishVitals(ctx, call.m.CampaignID, regained)
 	})
 	if err != nil {
 		return nil, err
@@ -136,6 +136,9 @@ func (s *Service) initiativeWrite(ctx context.Context, c *combatTx, call initiat
 		return nil, err
 	}
 	if _, err := saveOrder(ctx, c.q, cs, orderCombatants(cs)); err != nil {
+		return nil, err
+	}
+	if _, err := syncMounts(ctx, c, cs); err != nil { // a controlled mount takes the initiative of a rider that rolls now
 		return nil, err
 	}
 	if *regained, err = s.regainOnInitiative(ctx, c, target); err != nil { // a pool that recharges on initiative

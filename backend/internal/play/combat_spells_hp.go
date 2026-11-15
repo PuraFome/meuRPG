@@ -348,7 +348,13 @@ func (s *Service) giveCondition(ctx context.Context, c *combatTx, t playdb.Comba
 		h.NoEffectWhy = whyImmune // the refusal and its reason, which only the master reads
 		return nil
 	}
-	return s.setCondition(ctx, c, t, append(slices.Clone(t.Conditions), key), h)
+	if err := s.setCondition(ctx, c, t, append(slices.Clone(t.Conditions), key), h); err != nil {
+		return err
+	}
+	if key == condProne { // a rider knocked prone owes a save (combat_mount_save.go)
+		return s.riderProne(ctx, c, t.ID)
+	}
+	return nil
 }
 
 // setCondition writes a target's conditions and notes the old ones for an undo.

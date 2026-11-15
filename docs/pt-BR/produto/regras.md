@@ -29,7 +29,7 @@ Como o código faz isso está nos [docs de arquitetura](../../architecture/READM
 | RN-18 | **Dados físicos ou do app.** O mestre escolhe se a campanha deixa os jogadores escolherem os dados. Se deixa, cada jogador escolhe entre rolar no app ou rolar o dado físico e digitar o resultado. | [Detalhes](#rn-18-dados-físicos-ou-do-app) |
 | RN-19 | **Iniciativa.** Numa batalha com vários NPCs iguais, cada um rola a própria iniciativa; o grupo não rola junto. | [Detalhes](#rn-19-iniciativa) |
 | RN-20 | **O que o jogador vê dos inimigos no combate.** Os jogadores não veem os PV dos inimigos como número. Veem uma palavra: "Ileso", "Ferido", "Muito ferido" ou "Derrotado". | [Detalhes](#rn-20-o-que-o-jogador-vê-dos-inimigos-no-combate) |
-| RN-21 | **Movimento na grade.** Na grade do mapa, cada quadrado tem 1,5 m e o movimento é um **círculo**: a distância entre dois quadrados é a linha reta entre os centros, e o que um combatente alcança é o círculo do movimento que lhe resta. | [Detalhes](#rn-21-movimento-na-grade) |
+| RN-21 | **Movimento na grade.** Na grade do mapa, cada quadrado tem 1,5 m e o movimento é um **círculo**: a distância entre dois quadrados é a linha reta entre os centros, e o que um combatente alcança é o círculo do movimento que lhe resta. Um cavaleiro monta e desmonta por metade do deslocamento, e uma montaria tirada de baixo dele pode derrubá-lo (teste de Destreza CD 10). | [Detalhes](#rn-21-movimento-na-grade) |
 | RN-22 | **Condições e concentração.** O app marca condições (derrubado, envenenado...) e concentração, e avisa: quando um personagem concentrado sofre dano, o jogo pede ao dono dele o teste de resistência de concentração (RN-31). | [Detalhes](#rn-22-condições-e-concentração) |
 | RN-23 | **Conteúdo da mesa.** O mestre cadastra classes, subclasses, raças, sub-raças, antecedentes, magias, talentos, opções, características de classe, armas e criaturas que valem só na campanha dele, ao lado do SRD 5.1. Os membros leem o conteúdo da campanha, menos as criaturas; só o mestre escreve. | [Detalhes](#rn-23-conteúdo-da-mesa) |
 | RN-24 | **Regras da mesa.** No topo da página "Regras da mesa" fica o **estilo da mesa**: "Tudo no app" (dados no app, combate com mapa, névoa ligada nos mapas novos), "Mesa física" (dados físicos, combate sem mapa por padrão, névoa desligada) ou "Teatro da mente" (cada jogador escolhe os dados, combate sem mapa, sem névoa), e "Personalizado" quando as escolhas não batem com nenhum. | [Detalhes](#rn-24-regras-da-mesa) |
@@ -596,6 +596,25 @@ Sair do alcance de um inimigo provoca um ataque de oportunidade, que o app ofere
 - Um jogador lê um aviso antes de um movimento que pode provocar ("Sair do alcance do Goblin 2 pode provocar um ataque de oportunidade"), montado só com o que ele vê, então pode errar para o lado do excesso. Um reator escondido provoca do mesmo jeito, e quem se move lê só "Esperando o mestre". Os outros jogadores não veem nada.
 - Um movimento que entra numa armadilha que o personagem conhece pergunta "Isso entra no Fosso escondido. Mover assim mesmo?".
 - "Desfazer última ação" desfaz movimentos, saltos e a marca de Desengajar. Um movimento cuja oferta foi respondida só pode ser desfeito depois de desfazer a resposta.
+
+**Combate montado** (SRD 5.1, "Mounted Combat").
+Um cavaleiro monta ou desmonta de uma montaria disposta de um tamanho acima do seu (um cavaleiro Médio precisa de uma montaria Grande; o pônei e o mastim de Encontrar Montaria são pequenos demais para ele).
+Montar exige a montaria a até 1,5 m e custa metade do deslocamento do cavaleiro na superfície onde ele está, sem contar a Disparada; desmontar custa o mesmo e pousa num quadrado vizinho livre.
+Um movimento comporta uma montada ou uma desmontada.
+O jogador monta as próprias criaturas e as montarias que o mestre marcou como "Montaria" do lado do grupo, e o mestre monta qualquer criatura.
+Uma criatura sem marca do mestre age por conta própria.
+O par ocupa um só lugar, o quadrado da montaria, e o turno da montaria continua sendo dela.
+
+- **Montaria adestrada** (a montaria de Encontrar Montaria, ou uma marcada como "adestrada") toma a iniciativa do cavaleiro e age logo depois dele, num turno conjunto que termina quando as duas partes terminam.
+  Só pode usar Disparada, Desengajar e Esquivar, e o jogador do cavaleiro a move, com o deslocamento e o movimento dela.
+  O cavaleiro não se move por conta própria enquanto monta.
+- **Montaria independente** mantém a própria iniciativa e o próprio turno, e leva o cavaleiro junto.
+- **Desmontada forçada.** Quando a montaria é movida contra a vontade (um empurrão ou uma repulsão) ou o cavaleiro é derrubado, o jogador do cavaleiro faz um teste de resistência de Destreza contra CD 10 (uma janela, como a de concentração da RN-31): se falhar, o cavaleiro cai derrubado a até 1,5 m da montaria.
+  O mestre rola pelo cavaleiro NPC.
+- **Montaria derrubada ou abatida** abre uma janela de reação para o cavaleiro (RN-31): ele gasta a reação para cair de pé ou cai derrubado a até 1,5 m.
+  Uma montaria dispensada pelo conjurador deixa o cavaleiro cair de pé, sem janela.
+- **Um ataque de oportunidade** contra o par pode mirar a montaria ou o cavaleiro.
+- O jogador lê o vínculo entre duas criaturas só quando vê as duas; uma montaria escondida deixa o cavaleiro como se estivesse sozinho, e nenhum jogador lê a marca do mestre nem a rolagem de outro.
 
 **Esculpir Magias** (SRD 5.1, Escola de Evocação).
 Um mago de evocação a partir do nível 2, ao conjurar uma magia de evocação que afeta outras criaturas que ele vê, poupa até 1 + o nível da magia delas (o nível em que é conjurada). Uma criatura poupada passa no teste de resistência sem rolar e não sofre dano quando a magia causaria metade; a linha do teste diz "Esculpir Magias".

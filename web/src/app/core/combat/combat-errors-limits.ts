@@ -58,6 +58,10 @@ export const LIMITED_ACTION_BLOCKED_TEXT: ReadonlyMap<EncounterBlockedReason, st
     'Uma montaria que leva alguém só pode usar Disparada, Desengajar ou Esquivar. Nada foi mudado.',
   ],
   [
+    EncounterBlockedReason.MOUNT_SAVE_PENDING,
+    'O cavaleiro precisa do teste de Destreza para ficar na montaria. Nada foi mudado.',
+  ],
+  [
     EncounterBlockedReason.AMMUNITION_EMPTY,
     'Sem munição: o tiro não sai. Use o ataque corpo a corpo ou reponha a munição. Nada foi gasto.',
   ],
