@@ -15378,3 +15378,63 @@ test('a ficha com o talento e a opção de pré-requisito perdido, que o mestre 
   test.setTimeout(240_000);
   await scanLostPrerequisite(browser, 'dark', 768, 'master');
 });
+
+// The level-up's "Falta escolher" chip and its stepper on a tablet (#580, board 580-04): the five steps end inside the card's right edge
+// (the viewport's edge is not enough: the page's gutter is 48 px there), the chip is the pending tag in the colour of the footer line,
+// and it sits 12 px above the "Aumentar habilidades / Um talento" control.
+async function scanLevelUpFeatChip(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport: sizeOf(width) });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport: sizeOf(width) });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  try {
+    await Promise.all([m.goto('/'), p.goto('/')]);
+    const table = await tableForLevelUp(m, p, `Acessibilidade chip ${Date.now()}`, { session: false });
+    await createPrerequisiteFeatsRPC(m, table.campaignId);
+    await open(p, `/campaigns/${table.campaignId}/characters/${table.characterId}/level-up`);
+    await passClassStep(p);
+    await pickRadio(p, 'Um talento');
+    const chip = p.locator('app-abilities-step .asi-head .mr-tag');
+    await expect(chip).toHaveText('Falta escolher');
+
+    const geometry = await p.evaluate(() => {
+      const rect = (selector: string) => document.querySelector(selector)!.getBoundingClientRect();
+      const bar = rect('app-steps-bar');
+      const card = rect('#pick-abilities');
+      return {
+        steps: [...document.querySelectorAll('app-steps-bar .step')].map((s) => s.getBoundingClientRect().right),
+        barRight: bar.right,
+        cardRight: card.right,
+        headBottom: rect('.asi-head').bottom,
+        chipBottom: rect('.asi-head .mr-tag').bottom,
+        modeTop: rect('#pick-abilities .mode').top,
+        overflow: document.documentElement.scrollWidth - window.innerWidth,
+      };
+    });
+    expect(geometry.steps.length, `o passo a passo tem os cinco passos ${where}`).toBe(5);
+    for (const [i, right] of geometry.steps.entries()) {
+      expect(right, `o passo ${i + 1} termina dentro do cartão ${where}`).toBeLessThanOrEqual(Math.min(geometry.barRight, geometry.cardRight) + 0.5);
+    }
+    expect(geometry.overflow, `a página sem rolagem lateral ${where}`).toBeLessThanOrEqual(0);
+    expect(geometry.modeTop - Math.max(geometry.headBottom, geometry.chipBottom), `o chip a 12 px do controle ${where}`).toBeCloseTo(12, 0);
+
+    const inkOf = (locator: Locator) => locator.evaluate((el) => getComputedStyle(el).color);
+    await expect(chip).toHaveClass(/mr-tag--pending/);
+    await expect(chip).not.toHaveClass(/mr-tag--danger/);
+    expect(await inkOf(chip), `o chip na cor da linha "Falta escolher o talento." ${where}`).toBe(await inkOf(p.locator('.foot__reason')));
+    await expectScreenPasses(p, `Subir de nível, o chip "Falta escolher" e o passo a passo ${where}`);
+  } finally {
+    await Promise.all([master.close(), player.close()]);
+  }
+}
+
+test('o chip "Falta escolher" do subir de nível e o passo a passo cabem no cartão no tema escuro, no tablet', { tag: ['@a11y', '@MR-025', '@MR-040'] }, async ({ browser }) => {
+  test.setTimeout(180_000);
+  await scanLevelUpFeatChip(browser, 'dark', 768);
+});
+
+test('o chip "Falta escolher" do subir de nível e o passo a passo cabem no cartão no tema claro, no tablet', { tag: ['@a11y', '@MR-025', '@MR-040'] }, async ({ browser }) => {
+  test.setTimeout(180_000);
+  await scanLevelUpFeatChip(browser, 'light', 768);
+});
