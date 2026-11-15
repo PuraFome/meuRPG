@@ -6064,7 +6064,7 @@ async function scanTheatreCritical(browser: Browser, colorScheme: 'light' | 'dar
   try {
     await m.goto('/');
     await p.goto('/');
-    const table = await tableForCombat(m, p, `Acessibilidade crítico ${Date.now()}`, true, false, { build: toren, sheet: torenSheet });
+    const table = await tableForCombat(m, p, `Acessibilidade crítico ${Date.now()}`, true, false, { build: toren, sheet: { ...torenSheet, shield: true } });
     campaignId = table.campaignId;
     await setTableRulesRPC(m, campaignId, { combatStartsWithMap: false, diceMode: 'DICE_MODE_PHYSICAL', critical: 'CRITICAL_RULE_MAX_PLUS_ROLL' });
     const { startTheatreRPC } = await import('./theatre-support');
@@ -6076,9 +6076,8 @@ async function scanTheatreCritical(browser: Browser, colorScheme: 'light' | 'dar
     await p.getByLabel(/Role 1d20 para Espada longa/).fill('20');
     await p.getByRole('button', { name: /^Confirmar/ }).click();
     await expect(p.getByText(/o máximo mais uma rolagem/).first()).toBeVisible();
-    // Toren holds the longsword in both hands (no shield): the die is the two-handed 1d10, so 5 typed + 10 (the maximum) + 3.
-    await p.getByLabel(/Role 1d10 para o dano/).fill('5');
-    await expect(p.getByText('5 + 13 = 18')).toBeVisible();
+    await p.getByLabel(/Role 1d8 para o dano/).fill('5');
+    await expect(p.getByText('5 + 11 = 16')).toBeVisible();
     await expectScreenPasses(p, `Dano do crítico, dado físico ${where}`);
   } finally {
     await master.close();
