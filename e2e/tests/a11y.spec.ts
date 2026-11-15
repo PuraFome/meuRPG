@@ -9507,12 +9507,16 @@ async function scanVersatileRail(browser: Browser, colorScheme: 'light' | 'dark'
     await p.getByRole('button', { name: 'Atacar com Espada longa' }).click();
     await viaTargetList(p, p.getByRole('dialog', { name: 'Atacar com Espada longa' }));
     await p.getByRole('radiogroup').getByText('Capitão Goblin', { exact: true }).click();
-    await p.getByRole('button', { name: 'Rolar no app' }).click();
-    await expect(p.getByText(/Acertou|Errou|Crítico/).first()).toBeVisible();
-    // The damage step asks for the two-handed dice, and the roll the server makes is those dice.
-    const sheet = p.getByRole('dialog', { name: 'Atacar com Espada longa' });
-    await sheet.getByRole('button', { name: /Rolar 1d10\s\+\s3 no app/ }).click();
-    await expect(sheet.getByText(/1d10.*\+ 3.*= \d+/).first()).toBeVisible();
+    await p.getByRole('button', { name: 'Digitar o resultado' }).click();
+    await p.getByLabel(/Role 1d20/).fill('16');
+    await p.getByRole('button', { name: 'Confirmar 16' }).click();
+    await expect(p.getByText('Acertou').first()).toBeVisible();
+    // The damage step asks for the dice of the grip: the two-handed 1d10, and the typed result is the server's roll.
+    await p.getByRole('button', { name: 'Digitar o resultado' }).click();
+    const typed = p.getByRole('dialog').locator('input:visible').last();
+    await typed.fill('9');
+    await p.getByRole('button', { name: 'Aplicar 12 de dano' }).click();
+    await expect(p.getByRole('button', { name: 'Voltar à sua vez' })).toBeVisible();
   } finally {
     if (campaignId) {
       await endOpenSessionRPC(m, campaignId).catch(() => undefined);
