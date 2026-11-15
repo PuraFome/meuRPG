@@ -349,6 +349,60 @@ func TestTheDCOfAConcentrationSaveReachesOnlyItsRollerWhenTheTableShowsIt(t *tes
 	}
 }
 
+// A retry of Caio's concentration save, with the same key, replays the first answer: with the rule off the DC
+// is out of it too, the numbers are the first answer's, and nothing is written to the log again.
+func TestARetriedConcentrationSaveKeepsTheHiddenDCHidden(t *testing.T) {
+	w := newWorld(t)
+	w.secrets.number("concentration-save-dc", saveDCConcentration, "dc")
+	dc := w.canaryOf("concentration-save-dc")
+	toren, bandit := w.banditsTurn()
+	w.hurtToren(toren, bandit)
+	enc := must(w.master.combat.GetEncounter(t.Context(), rq(&playv1.GetEncounterRequest{CampaignId: w.campaign}))).GetEncounter()
+	window := ""
+	for _, rw := range enc.GetReactionWindows() {
+		if rw.GetKind() == playv1.ReactionKind_REACTION_KIND_CONCENTRATION_SAVE {
+			window = rw.GetId()
+		}
+	}
+	if window == "" {
+		t.Fatal("Toren's concentration save is not asked")
+	}
+	req := &playv1.ResolveConcentrationSaveRequest{
+		CampaignId: w.campaign, EncounterId: enc.GetId(), WindowId: window, IdempotencyKey: newKey(), Roll: &playv1.ResolveConcentrationSaveRequest_D20Face{D20Face: 5},
+	}
+	first := w.caio.call(playv1connect.CombatServiceResolveConcentrationSaveProcedure, req)
+	if !first.ok() {
+		t.Fatalf("Caio's save: status %d %s", first.status, first.body)
+	}
+	logSeq := func() int64 {
+		return must(w.master.combat.ListCombatLog(t.Context(), rq(&playv1.ListCombatLogRequest{CampaignId: w.campaign, EncounterId: enc.GetId()}))).GetLastSeq()
+	}
+	seqAfterFirst := logSeq()
+	retry := w.caio.call(playv1connect.CombatServiceResolveConcentrationSaveProcedure, req)
+	if !retry.ok() {
+		t.Fatalf("Caio's retried save: status %d %s", retry.status, retry.body)
+	}
+	for name, r := range map[string]reply{"first": first, "retried": retry} {
+		if holdsNumber(r, dc) || strings.Contains(string(r.body), "contra CD "+strconv.Itoa(saveDCConcentration)) {
+			t.Errorf("Caio's %s answer holds the DC of Toren's save with the rule off: %s", name, r.body)
+		}
+	}
+	resultOf := func(r reply) proto.Message {
+		m := r.msg.ProtoReflect()
+		fd := m.Descriptor().Fields().ByName("result")
+		if fd == nil || !m.Has(fd) {
+			t.Fatalf("the answer has no result: %s", r.body)
+		}
+		return m.Get(fd).Message().Interface()
+	}
+	if a, b := resultOf(first), resultOf(retry); !proto.Equal(a, b) {
+		t.Errorf("the retried result = %s, want the first's %s", jsonOf(b), jsonOf(a))
+	}
+	if n := logSeq(); n != seqAfterFirst {
+		t.Errorf("the combat log is at seq %d after the retry, want the %d it was at", n, seqAfterFirst)
+	}
+}
+
 // Diabrete, an NPC tiefling, answers Toren's blow with a Hellish Rebuke, and the app rolls the Dexterity save
 // of Toren's player at once, against a DC of 18. The master reads the DC always (the positive control); Caio,
 // whose character rolls the save, only with the rule on; Ana never.

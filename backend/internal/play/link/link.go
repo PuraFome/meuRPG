@@ -476,6 +476,10 @@ type Attack struct {
 	// for a weapon of a character, from the sheet's weapon_marks or a weapon_rule.
 	Silvered   bool `json:",omitempty"`
 	Adamantine bool `json:",omitempty"`
+	// Ammunition is the key of the ammunition a character's ranged weapon fires; empty for every other line (a thrown
+	// weapon, a melee one, the improvised melee line of a bow, a spell, a creature's attack). Each attack roll made with
+	// a line that has it takes one piece.
+	Ammunition string `json:",omitempty"`
 }
 
 // Action is a standard action: its key ("standard:dash") and Portuguese name.

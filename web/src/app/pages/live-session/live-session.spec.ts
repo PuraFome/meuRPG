@@ -11,6 +11,8 @@ import { LightPresets } from '../../core/maps/light-presets';
 import { MapsClient } from '../../core/maps/maps-client';
 import { visionResponse } from '../../core/maps/vision-testing';
 import { FamiliarEyesClient } from '../../core/play/familiar-eyes';
+import { FavorClient } from '../../core/play/favor-client';
+import { FakeFavorClient } from '../../core/play/favor-testing';
 import { textOf } from '../../core/format/text-testing';
 import { CastingClient } from '../../core/casting/casting-client';
 import { FakeCastingClient } from '../../core/casting/casting-testing';
@@ -244,6 +246,7 @@ describe('LiveSession', () => {
   let scenes: FakeSceneClient;
   let conversation: QuietConversationApi;
   let puzzles: FakePuzzlesClient;
+  let favorApi: FakeFavorClient;
   /** The group check of the player's page (W7-X). */
   let contests: FakeContestClient;
   /** The query string of the page's address: `?puzzle=ID` opens a puzzle for a player. */
@@ -294,6 +297,7 @@ describe('LiveSession', () => {
     conversation = new QuietConversationApi();
     casting = new FakeCastingClient();
     puzzles = new FakePuzzlesClient();
+    favorApi = new FakeFavorClient();
     contests = new FakeContestClient();
     contests.group = null;
     query.next(convertToParamMap({}));
@@ -303,6 +307,7 @@ describe('LiveSession', () => {
         provideRouter([]),
         { provide: LiveSessionSource, useClass: FakeLiveSessionSource },
         { provide: MapsClient, useClass: FakeMapsClient },
+        { provide: FavorClient, useValue: favorApi.asClient() },
         {
           provide: LightPresets,
           useValue: {
@@ -2102,6 +2107,80 @@ describe('LiveSession', () => {
       await nextTurn();
       await nextTurn();
       expect(el.querySelector('app-revived-notice')).toBeNull();
+    });
+  });
+
+  describe("the master's Inspiração (RN-43, board 581)", () => {
+    const asMaster = () => {
+      source.campaign = {
+        name: 'Mirathel',
+        isMaster: true,
+        awaitingApproval: false,
+        diceMode: 1,
+        dicePreference: 1,
+      };
+    };
+    const settle = async () => {
+      await nextTurn();
+      await nextTurn();
+      TestBed.inject(ApplicationRef).tick();
+    };
+    const said = (el: HTMLElement) =>
+      (el.querySelector('app-favor-notice .text')?.textContent ?? '').replace(/\s+/g, ' ').trim();
+
+    it('tells a player "O mestre deu Inspiração a você." when a later read says their character has it, never on the first read', async () => {
+      favorApi.holders = [{ characterId: 'pensantus', name: 'Pensantus' }];
+      const el = await render();
+      await settle();
+      // It had it from the start: nothing is said.
+      expect(said(el)).toBe('');
+
+      favorApi.holders = [];
+      source.push({ kind: 'vitals', vitals: pensantusVitals({ revision: 3 }) });
+      await settle();
+      favorApi.holders = [{ characterId: 'pensantus', name: 'Pensantus' }];
+      source.push({ kind: 'vitals', vitals: pensantusVitals({ revision: 4 }) });
+      await settle();
+      expect(said(el)).toBe('O mestre deu Inspiração a você. Use antes de rolar um d20 seu.');
+
+      el.querySelector<HTMLButtonElement>('app-favor-notice button.close')!.click();
+      await settle();
+      expect(said(el)).toBe('');
+    });
+
+    it('says nothing to a player when the read fails', async () => {
+      favorApi.holders = () => {
+        throw new Error('down');
+      };
+      const el = await render();
+      await settle();
+      source.push({ kind: 'vitals', vitals: pensantusVitals({ revision: 3 }) });
+      await settle();
+      expect(said(el)).toBe('');
+      expect(el.querySelector('app-favor-chip')).toBeNull();
+    });
+
+    it('gives the master the count and the badge in the Grupo panel, and the notice to no one but a player', async () => {
+      asMaster();
+      favorApi.holders = [{ characterId: 'pensantus', name: 'Pensantus' }];
+      const el = await render();
+      await settle();
+      expect(
+        (el.querySelector('app-party-panel .js-favor-count')?.textContent ?? '').trim(),
+      ).toContain('1 com Inspiração');
+      expect(el.querySelector('app-party-panel .js-favor-badge')).not.toBeNull();
+      expect(el.querySelector('app-favor-notice')).toBeNull();
+    });
+
+    it('stops reading and offers nothing when the session ends', async () => {
+      asMaster();
+      favorApi.holders = [{ characterId: 'pensantus', name: 'Pensantus' }];
+      const el = await render();
+      await settle();
+      expect(el.querySelector('app-party-panel .js-favor-badge')).not.toBeNull();
+      source.push({ kind: 'ended' });
+      await settle();
+      expect(el.querySelector('.js-favor-badge')).toBeNull();
     });
   });
 

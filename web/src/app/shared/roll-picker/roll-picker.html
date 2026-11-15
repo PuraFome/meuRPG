@@ -19,7 +19,7 @@
         type="button"
         class="pick__main"
         [class.pick__main--quiet]="preferApp() && canApp()"
-        [class.pick__link]="preferApp() && canApp()"
+        [class.pick__link]="preferApp() && canApp() && !typeOutlined()"
         (click)="startTyping()"
       >
         Digitar o resultado

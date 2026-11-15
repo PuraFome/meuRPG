@@ -92,6 +92,9 @@ const BLOCKED_MESSAGES: Partial<Record<CharacterBlockedReason, string>> = {
   attunement_needs_rest:
     'Descanse antes de sintonizar: cada descanso, curto ou longo, abre uma sintonização.',
   attunement_same_item: 'Já sintonizado a outro igual.',
+  charges_not_enough: 'O item não tem tantas cargas.',
+  item_destroyed: 'O item foi destruído.',
+  item_no_charges: 'O item não tem cargas.',
 };
 
 export function characterBlockedMessage(
@@ -182,6 +185,9 @@ const BLOCKED_FROM_GEN: Partial<Record<GenCharacterBlockedReason, CharacterBlock
   [GenCharacterBlockedReason.ATTUNEMENT_RESTRICTED]: 'attunement_restricted',
   [GenCharacterBlockedReason.ATTUNEMENT_NEEDS_REST]: 'attunement_needs_rest',
   [GenCharacterBlockedReason.ATTUNEMENT_SAME_ITEM]: 'attunement_same_item',
+  [GenCharacterBlockedReason.CHARGES_NOT_ENOUGH]: 'charges_not_enough',
+  [GenCharacterBlockedReason.ITEM_DESTROYED]: 'item_destroyed',
+  [GenCharacterBlockedReason.ITEM_NO_CHARGES]: 'item_no_charges',
 };
 
 /** Maps the wire `CharacterBlockedReason` enum (characters.proto) onto the

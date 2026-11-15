@@ -31,6 +31,7 @@ export function castExtrasBody(extras: CastExtras) {
       ? { spellOptions: extras.spellOptions.map((o) => ({ ...o })) }
       : {}),
     ...(extras.grantedBy ? { grantedBy: extras.grantedBy } : {}),
+    ...(extras.spendFavor ? { spendFavor: true } : {}),
   };
 }
 

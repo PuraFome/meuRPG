@@ -53,6 +53,8 @@ export interface StartContestInput {
   /** A table maneuver (ContestAttackOption.maneuvers) that starts the grapple, and the face of its die when rolled with a physical die. */
   readonly maneuverKey?: string;
   readonly maneuverFace?: number;
+  /** The initiator spends the master's Inspiração on the d20 (`StartContestRequest.spend_favor`). */
+  readonly spendFavor?: boolean;
 }
 
 /** What the defender answers (`RespondContest`): the skill and the roll, or the roll left to the master. */
@@ -63,6 +65,8 @@ export interface RespondContestInput {
   readonly skill: ContestSkill;
   /** `null`: "Deixar o mestre rolar por mim". */
   readonly die: CheckDie | null;
+  /** The defender spends the master's Inspiração on the d20 (`RespondContestRequest.spend_favor`); never with `die: null`. */
+  readonly spendFavor?: boolean;
 }
 
 /** The Help action, as the sheet sends it (`Help`). */
@@ -147,6 +151,7 @@ export class ContestClient {
       ...(input.escapeDc ? { escapeDc: input.escapeDc } : {}),
       ...(input.maneuverKey ? { maneuverKey: input.maneuverKey } : {}),
       ...(input.maneuverFace ? { maneuverFace: input.maneuverFace } : {}),
+      ...(input.spendFavor ? { spendFavor: true } : {}),
     });
     return {
       encounter: need(res.encounter, 'StartContest'),
@@ -165,6 +170,7 @@ export class ContestClient {
       skill: input.skill,
       ...(input.die ? { roll: rollInput(input.die) } : {}),
       deferToMaster: input.die === null,
+      ...(input.spendFavor ? { spendFavor: true } : {}),
     });
     return {
       encounter: need(res.encounter, 'RespondContest'),
@@ -203,6 +209,7 @@ export class ContestClient {
     actionKey: string,
     die: CheckDie,
     key: string,
+    spendFavor = false,
   ): Promise<{
     readonly encounter: Encounter;
     readonly attempt: HideAttemptView | undefined;
@@ -215,6 +222,7 @@ export class ContestClient {
       combatantId,
       actionKey,
       roll: rollInput(die),
+      ...(spendFavor ? { spendFavor: true } : {}),
     });
     return {
       encounter: need(res.encounter, 'Hide'),
@@ -255,12 +263,14 @@ export class ContestClient {
     groupCheckId: string,
     die: CheckDie,
     key: string,
+    spendFavor = false,
   ): Promise<GroupCheckView | HeldRollOffer> {
     const res = await this.client.rollGroupCheck({
       campaignId,
       idempotencyKey: key,
       groupCheckId,
       roll: rollInput(die),
+      ...(spendFavor ? { spendFavor: true } : {}),
     });
     const asked = heldOfferOf(res);
     if (asked) {

@@ -34,3 +34,35 @@ export const FEAT_OPTION_TEXTS: readonly { shape: RegExp; reason?: string; text:
     text: LATER_TEXT,
   },
 ];
+
+/** What the server's refusals say at the class level, the pact, the spell and the options a feat or an option asks (#580, S1). */
+export const PREREQUISITE_TEXTS: readonly { shape: RegExp; reason?: string; text: string }[] = [
+  {
+    shape: /^table_(option|feat)\.prerequisite\.class_level$/,
+    text: 'A classe e o nível vão juntos: preencha os dois ou nenhum.',
+  },
+  {
+    shape: /^table_(option|feat)\.prerequisite\.class_level\.class_key$/,
+    text: 'Esta classe não existe mais. Escolha outra.',
+  },
+  {
+    shape: /^table_(option|feat)\.prerequisite\.class_level\.level$/,
+    text: 'O nível vai de 1 a 20.',
+  },
+  {
+    shape: /^table_feat\.prerequisite\.requires_option_keys(\[\])?$/,
+    text: 'Escolha opções que existem, no máximo 10.',
+  },
+  {
+    shape: /^table_option\.prerequisite\.requires_option_keys(\[\])?$/,
+    text: 'Escolha opções que existem, sem a própria opção, e no máximo 10.',
+  },
+  {
+    shape: /^table_(option|feat)\.prerequisite\.requires_pact$/,
+    text: 'Escolha uma dádiva do pacto da lista.',
+  },
+  {
+    shape: /^table_(option|feat)\.prerequisite\.requires_spell_key$/,
+    text: 'Esta magia não existe mais. Escolha outra.',
+  },
+];

@@ -51,10 +51,16 @@ func newPowerTable(t *testing.T) *powerTable {
 // newPowerTableWith is newPowerTable, and with withDie also a maneuver die of the attack that spends the trades' pool.
 func newPowerTableWith(t *testing.T, withDie bool) *powerTable {
 	t.Helper()
+	return newPowerTableRecharging(t, withDie, "short_rest")
+}
+
+// newPowerTableRecharging is newPowerTableWith with the pool coming back at the given rest ("short_rest", "long_rest").
+func newPowerTableRecharging(t *testing.T, withDie bool, recharge string) *powerTable {
+	t.Helper()
 	g := &powerTable{}
 	g.armed = newArmedWith(t, func(a *armed) {
 		pool := &rulesv1.TableFeature{NamePt: "Reserva de Golpes", DescPt: []string{"Usos."}, Effects: []*rulesv1.TableEffect{
-			{Type: "resource", Resource: powerUses, Max: "2", Recharge: "short_rest"},
+			{Type: "resource", Resource: powerUses, Max: "2", Recharge: recharge},
 		}}
 		heavy := &rulesv1.TableFeature{NamePt: powerHeavyName, DescPt: []string{"Troca precisão por dano."}, Effects: []*rulesv1.TableEffect{{
 			Type: "power_attack", AttackPenalty: heavyPenalty, DamageBonus: heavyDamage, Weapon: "melee", OnlyProficient: true,
@@ -754,4 +760,134 @@ func TestAPowerAttackGoesOnEveryWayOfAttacking(t *testing.T) {
 			t.Error("the attack was not the bonus action's")
 		}
 	})
+}
+
+// The trade that spends a resource names the pool and says how many uses it has before the trade (PowerAttackOption.
+// resource_name_pt, uses_left); a trade that spends nothing leaves both empty. The master reads the same.
+func TestThePowerAttackOptionNamesThePoolAndItsUses(t *testing.T) {
+	t.Parallel()
+	g := newPowerTable(t)
+	e := g.fight(t)
+	trades := func(u *user) map[string]*rulesv1.PowerAttackOption {
+		out := map[string]*rulesv1.PowerAttackOption{}
+		for _, o := range g.mustOptions(t, u, e, "Pipo").GetOptions().GetAttacks() {
+			if o.GetAttack().GetKey() == greatsword {
+				for _, p := range o.GetPowerAttacks() {
+					out[p.GetName()] = p
+				}
+			}
+		}
+		return out
+	}
+	check := func(when string, uses int32) {
+		t.Helper()
+		for _, viewer := range []*user{g.caio, g.master} {
+			got := trades(viewer)
+			if h := got[powerHeavyName]; h.GetResourceNamePt() != "Reserva de Golpes" || h.GetUsesLeft() != uses || h.GetDisabled() != (uses == 0) {
+				t.Errorf("%s: the heavy trade = %v, want the pool %q with %d uses left", when, h, "Reserva de Golpes", uses)
+			}
+			if f := got[powerFreeName]; f.GetResourceNamePt() != "" || f.GetUsesLeft() != 0 {
+				t.Errorf("%s: the free trade = %v, want no pool and no uses", when, f)
+			}
+		}
+	}
+	check("full pool", 2)
+	g.spendPool(t, 1)
+	check("one used", 1)
+	g.spendPool(t, 2)
+	check("spent", 0)
+}
+
+// One pool for a maneuver die and the trade: the trade's uses_left is the pool's, as the die's is, not what is left for the trade.
+func TestThePowerAttackOptionOfASharedPoolSaysTheUsesOfThePool(t *testing.T) {
+	t.Parallel()
+	g := newPowerTableWith(t, true)
+	e := g.fight(t)
+	g.spendPool(t, 1)
+	res := g.mustOptions(t, g.caio, e, "Pipo")
+	if dice := res.GetManeuverDice(); len(dice) != 1 || dice[0].GetUsesLeft() != 1 {
+		t.Fatalf("the maneuver dice = %v, want the die with 1 use left", dice)
+	}
+	for _, o := range res.GetOptions().GetAttacks() {
+		if o.GetAttack().GetKey() != greatsword {
+			continue
+		}
+		for _, p := range o.GetPowerAttacks() {
+			if p.GetName() == powerHeavyName && (p.GetResourceNamePt() != "Reserva de Golpes" || p.GetUsesLeft() != 1 || p.GetDisabled()) {
+				t.Errorf("the heavy trade = %v, want the pool's name and its 1 use left, listed enabled", p)
+			}
+		}
+	}
+}
+
+// The option reaches the roller only: GetTurnOptions of a character that is not the caller's is refused for another player
+// (combat_turn_options.go locateTurnOptions), so Ana reads neither the pool's name nor its uses on Pipo's trades.
+func TestAnotherPlayerReadsNoPowerAttackPoolOfPipo(t *testing.T) {
+	t.Parallel()
+	g := newPowerTable(t)
+	e := g.fight(t)
+	res, err := g.options(t, g.ana, e, "Pipo")
+	if connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Errorf("Ana reads Pipo's turn options = %v, %v; want permission_denied", res, err)
+	}
+	for _, o := range res.GetOptions().GetAttacks() {
+		for _, p := range o.GetPowerAttacks() {
+			t.Errorf("Ana reads the trade %v (recharge %v) on Pipo's turn options, want none", p, p.GetRecharge())
+		}
+	}
+	if len(g.mustOptions(t, g.caio, e, "Pipo").GetOptions().GetAttacks()) == 0 {
+		t.Error("Caio reads no attack of Pipo (the positive control)")
+	}
+}
+
+// The option says when the pool it spends comes back (PowerAttackOption.recharge, the pool's own Recharge): the short rest
+// for a short-rest pool, the long rest for a long-rest pool, RECHARGE_UNSPECIFIED for a trade that spends nothing.
+func TestThePowerAttackOptionSaysWhenThePoolComesBack(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		recharge string
+		want     rulesv1.Recharge
+	}{{"short_rest", rulesv1.Recharge_RECHARGE_SHORT_REST}, {"long_rest", rulesv1.Recharge_RECHARGE_LONG_REST}} {
+		t.Run(tc.recharge, func(t *testing.T) {
+			t.Parallel()
+			g := newPowerTableRecharging(t, false, tc.recharge)
+			e := g.fight(t)
+			g.spendPool(t, 2)
+			for _, viewer := range []*user{g.caio, g.master} {
+				found := false
+				for _, o := range g.mustOptions(t, viewer, e, "Pipo").GetOptions().GetAttacks() {
+					if o.GetAttack().GetKey() != greatsword {
+						continue
+					}
+					for _, p := range o.GetPowerAttacks() {
+						found = true
+						want := tc.want
+						if p.GetName() == powerFreeName {
+							want = rulesv1.Recharge_RECHARGE_UNSPECIFIED
+						}
+						if p.GetRecharge() != want {
+							t.Errorf("the trade %q recharge = %v, want %v", p.GetName(), p.GetRecharge(), want)
+						}
+					}
+				}
+				if !found {
+					t.Error("no trade listed on the greatsword")
+				}
+			}
+		})
+	}
+}
+
+// One pool for a maneuver die and the trade: the trade's recharge is the pool's.
+func TestThePowerAttackOptionOfASharedPoolSaysWhenThePoolComesBack(t *testing.T) {
+	t.Parallel()
+	g := newPowerTableRecharging(t, true, "long_rest")
+	e := g.fight(t)
+	for _, o := range g.mustOptions(t, g.caio, e, "Pipo").GetOptions().GetAttacks() {
+		for _, p := range o.GetPowerAttacks() {
+			if p.GetName() == powerHeavyName && p.GetRecharge() != rulesv1.Recharge_RECHARGE_LONG_REST {
+				t.Errorf("the heavy trade recharge = %v, want the shared pool's long rest", p.GetRecharge())
+			}
+		}
+	}
 }

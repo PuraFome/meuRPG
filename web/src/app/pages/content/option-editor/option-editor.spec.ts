@@ -354,4 +354,58 @@ describe('OptionEditor (MR-025)', () => {
       expect(document.activeElement).toBe(offerer(el));
     });
   });
+
+  describe('what the option asks, as rows (board 580-02)', () => {
+    const names = (el: HTMLElement) =>
+      Array.from(el.querySelectorAll('[role=menuitem]')).map((b) => text(b));
+
+    it('draws the rows that have a value, and offers all four kinds, "Já na lista" on those present', () => {
+      const { fixture, el } = setup();
+      expect(field(el, 'table_option.prerequisite.class_level.class_key')).toBeTruthy();
+      expect(field(el, 'table_option.prerequisite.requires_pact')).toBeTruthy();
+      expect(field(el, 'table_option.prerequisite.requires_spell_key')).toBeNull();
+      click(el, 'Adicionar pré-requisito');
+      fixture.detectChanges();
+      const items = names(el);
+      expect(items).toHaveLength(4);
+      expect(items[0]).toContain('Já na lista');
+      expect(items[1]).toContain('Já na lista');
+      expect(items[2]).not.toContain('Já na lista');
+      expect(items[3]).toContain('Até 10');
+    });
+
+    it('writes the class level as "Nível mínimo" with "de 20", and the spell as a search', async () => {
+      const { fixture, el } = setup();
+      const level = text(
+        field(el, 'table_option.prerequisite.class_level.level').closest('app-text-field')!,
+      );
+      expect(level).toContain('Nível mínimo');
+      expect(level).toContain('de 20');
+      click(el, 'Adicionar pré-requisito');
+      fixture.detectChanges();
+      click(el, 'Magia que conhece');
+      fixture.detectChanges();
+      const spell = field(el, 'table_option.prerequisite.requires_spell_key') as HTMLInputElement;
+      expect(spell.getAttribute('role')).toBe('combobox');
+      spell.value = 'Luz';
+      spell.dispatchEvent(new Event('input'));
+      fixture.detectChanges();
+      el.querySelector<HTMLButtonElement>('[role=option]')!.click();
+      fixture.detectChanges();
+      save.mockResolvedValue({ entry: stored(), affected: [] });
+      click(el, 'Salvar opção');
+      await settle(fixture, 3);
+      expect(save.mock.calls[0][2].value.prerequisite.requiresSpellKey).toBe('spell:light');
+    });
+
+    it('clears a row with its X, and has the "Só você vê" card', () => {
+      const { fixture, el } = setup();
+      el.querySelector<HTMLButtonElement>('button[aria-label="Tirar Dádiva do pacto"]')!.click();
+      fixture.detectChanges();
+      expect(field(el, 'table_option.prerequisite.requires_pact')).toBeNull();
+      const side = text(el.querySelector('.editor__side')!);
+      expect(side).toContain('Só você vê');
+      expect(side).toContain('uma condição que a mesa não mostra');
+    });
+  });
 });

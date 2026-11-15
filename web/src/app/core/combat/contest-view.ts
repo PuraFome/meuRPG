@@ -4,6 +4,7 @@ import {
   type ContestSkillOption,
   type ContestTurnState,
   type ContestView,
+  type RollNote,
   ContestKind,
   ContestPurpose,
   ContestSkill,
@@ -193,11 +194,26 @@ export function pairOf(
  * effect adds (`effect_bonus`, "Marca de Nanquim +3") says nothing of the mode: its label alone.
  */
 export function noteLines(roll: Pick<CheckRoll, 'notes'>): readonly string[] {
-  return roll.notes.map((n) =>
-    n.kind === 'effect_bonus'
-      ? n.labelPt
-      : `${n.advantage ? 'Vantagem' : 'Desvantagem'}: ${n.labelPt}`,
-  );
+  // A roll made with the Inspiração reads "Vantagem: Inspiração, Outra fonte": the notes that are only a label (the Inspiração
+  // and a source the master keeps from the players) of one side go on one line, at the place of the first.
+  const labelOnly = (n: RollNote) => n.kind === 'favor' || n.kind === 'other';
+  const merged = roll.notes.some((n) => n.kind === 'favor');
+  const out: string[] = [];
+  const done = new Set<boolean>();
+  for (const n of roll.notes) {
+    if (n.kind === 'effect_bonus') {
+      out.push(n.labelPt);
+    } else if (!merged || !labelOnly(n)) {
+      out.push(`${n.advantage ? 'Vantagem' : 'Desvantagem'}: ${n.labelPt}`);
+    } else if (!done.has(n.advantage)) {
+      done.add(n.advantage);
+      const labels = roll.notes.filter((m) => labelOnly(m) && m.advantage === n.advantage);
+      out.push(
+        `${n.advantage ? 'Vantagem' : 'Desvantagem'}: ${labels.map((m) => m.labelPt).join(', ')}`,
+      );
+    }
+  }
+  return out;
 }
 
 /** "Vantagem" or "Desvantagem", or '' for a normal roll. */

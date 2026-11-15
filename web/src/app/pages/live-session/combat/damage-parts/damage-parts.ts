@@ -9,6 +9,11 @@ import {
   partDice,
   partFormula,
 } from '../../../../core/combat/damage-parts';
+import {
+  isTradePart,
+  tradePartFormula,
+  tradePartNote,
+} from '../../../../core/combat/power-attack-trade';
 
 let nextId = 0;
 
@@ -62,7 +67,12 @@ export class DamageParts {
   }
 
   protected formula(p: DamagePart): string {
-    return partFormula(p, this.pickOf(p));
+    return isTradePart(p) ? tradePartFormula(p) : partFormula(p, this.pickOf(p));
+  }
+
+  /** The line under a part: the server's, and the power attack's own (a hit only, its +10 never doubled). */
+  protected note(p: DamagePart): string {
+    return p.notePt || (isTradePart(p) ? tradePartNote(p) : '');
   }
 
   protected doubled(p: DamagePart): boolean {

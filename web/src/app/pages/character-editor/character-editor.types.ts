@@ -345,6 +345,10 @@ export interface ArmorOptionVm {
 export interface WeaponOptionVm {
   readonly key: string;
   readonly namePt: string;
+  /** A weapon of the master's table (key `weapon:…@mesa`), not the book's. */
+  readonly fromTable: boolean;
+  readonly archived: boolean;
+  readonly off: boolean;
 }
 
 export interface SpellOptionVm {

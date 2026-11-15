@@ -93,7 +93,7 @@ export function searchSections(
   selector: 'app-search-pick',
   imports: [FieldNote, MatFormFieldModule, MatIconModule, MatInputModule],
   template: `
-    <mat-form-field appearance="outline" subscriptSizing="dynamic" [class.invalid]="invalid()">
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" [floatLabel]="placeholder() ? 'always' : 'auto'" [class.invalid]="invalid()">
       <mat-label>{{ label() }}</mat-label>
       <input
         #field
@@ -108,12 +108,15 @@ export function searchSections(
         [attr.aria-invalid]="invalid() ? 'true' : null"
         [attr.aria-describedby]="describedBy()"
         [attr.data-field]="path() || null"
-        [value]="query()"
+        [value]="shown()"
         (input)="typed($event)"
         (click)="open.set(true)"
         (blur)="close()"
         (keydown)="key($event)"
       />
+      @if (single() && !open() && chips().length > 0 && chips()[0].hint) {
+        <span matIconSuffix class="inline-hint">· {{ chips()[0].hint }}</span>
+      }
       <mat-icon matIconSuffix aria-hidden="true">search</mat-icon>
     </mat-form-field>
     @if (open()) {
@@ -137,7 +140,7 @@ export function searchSections(
         }
       </div>
     }
-    @if (chips().length > 0) {
+    @if (!single() && chips().length > 0) {
       <ul class="chips" aria-label="Escolhidas">
         @for (c of chips(); track c.value) {
           <li class="chip" [class.chip--invalid]="c.invalid" [attr.data-field]="c.path || null">
@@ -226,6 +229,12 @@ export function searchSections(
       }
     }
 
+    .inline-hint {
+      padding-right: var(--mr-space-2);
+      font-size: var(--mr-font-14);
+      color: var(--mr-ink-muted);
+    }
+
     .panel__hint,
     .chip__hint {
       font-size: var(--mr-font-14);
@@ -299,7 +308,11 @@ export class SearchPick {
   readonly path = input('');
   readonly issues = input<readonly string[]>([]);
   readonly hint = input('');
+  /** The id of another element that describes the field (a hint the parent draws beside it), read after the note under it. */
+  readonly alsoDescribedBy = input('');
   /** The line of a list with no groups and no match. */
+  /** One value only, written in the field itself with its hint after it (board 580-01's "Magia"), not as a chip below. */
+  readonly single = input(false);
   readonly emptyText = input('Nada com esse nome.');
   readonly added = output<string>();
   readonly removed = output<string>();
@@ -327,8 +340,19 @@ export class SearchPick {
     this.open() ? (this.rows()[this.active()]?.id ?? null) : null,
   );
 
+  /** What the field shows: what is typed, or the one chosen value of a single-value field. */
+  protected readonly shown = computed(() =>
+    this.single() && !this.open() && this.query() === ''
+      ? (this.chips()[0]?.label ?? '')
+      : this.query(),
+  );
+
   protected describedBy(): string | null {
-    return this.issues().length > 0 || this.hint() !== '' ? this.noteId : null;
+    const ids = [
+      this.issues().length > 0 || this.hint() !== '' ? this.noteId : '',
+      this.alsoDescribedBy(),
+    ];
+    return ids.filter((i) => i !== '').join(' ') || null;
   }
 
   protected typed(event: Event): void {

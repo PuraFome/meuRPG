@@ -13,7 +13,11 @@ export function favorBlocked(err: unknown): FavorBlocked | null {
   if (connectErr.code !== Code.FailedPrecondition) {
     return null;
   }
-  return connectErr.findDetails(FavorBlockedSchema)[0] ?? null;
+  return (
+    connectErr
+      .findDetails(FavorBlockedSchema)
+      .find((d) => d.$typeName === FavorBlockedSchema.typeName) ?? null
+  );
 }
 
 /** What each refusal says, in words the master or the player can act on. */
@@ -40,4 +44,16 @@ export function favorBlockedMessage(reason: FavorBlockedReason): string {
     default:
       return 'A Inspiração não pode ser usada agora.';
   }
+}
+
+/** What a refused spend says (the `FavorBlocked` of a roll's `failed_precondition`), or `null` when the error is another. */
+export function favorRefusalText(err: unknown): string | null {
+  const blocked = favorBlocked(err);
+  return blocked ? favorBlockedMessage(blocked.reason) : null;
+}
+
+/** The `spend_favor` a request carries: set only when the roll was made with the Inspiração, so a request without it is the
+ * one it always was (and a roll that never spends, like leaving the roll to the master, never carries it). */
+export function spendFavorOf(how: { readonly spendFavor?: boolean }): { spendFavor?: true } {
+  return how.spendFavor ? { spendFavor: true } : {};
 }

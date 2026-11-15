@@ -5,7 +5,11 @@ import type {
   PendingDamage,
   TargetInReach,
 } from '../../../../../gen/meurpg/play/v1/combat_pb';
-import type { Attack, BonusAttackRule } from '../../../../../gen/meurpg/rules/v1/rules_pb';
+import type {
+  Attack,
+  BonusAttackRule,
+  PowerAttackOption,
+} from '../../../../../gen/meurpg/rules/v1/rules_pb';
 import type { CombatState } from '../../../../core/combat/combat-state';
 
 /** What the page hands the attack sheet. */
@@ -77,6 +81,9 @@ export interface AttackSheetData {
    * for a weapon attack made by the player (never the master's roll, a spell attack or the monk's throw back); which dice
    * exist, and none for an NPC or a creature, is the server's list in `GetTurnOptions`. */
   readonly maneuverDice?: readonly ManeuverDieOption[];
+  /** The power attack trades the weapon line lists (`AttackOption.power_attacks`): the "Troca do talento" of the roll step.
+   * None for a spell, an NPC or the monk's throw back; which trades exist is the server's list. */
+  readonly powerAttacks?: readonly PowerAttackOption[];
   /** The monk's throw back after Defletir Projéteis: the reaction window that caught the missile
    * (`RollAttack.catch_window_id`). It is part of the same reaction, so it asks nothing more. */
   readonly catchWindowId?: string;

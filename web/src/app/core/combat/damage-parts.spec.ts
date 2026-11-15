@@ -145,6 +145,12 @@ describe('rollFormula', () => {
     expect(rollFormula(parts as never[], [])).toBe(text);
   });
 
+  it("adds the fixed number of a power attack: 2d6 + 13, the +10 beside the weapon's 3", () => {
+    const heavy = part(0, 0, 10, { key: 'power_attack', auto: true });
+    expect(rollFormula([part(2, 6, 3), heavy] as never[], [])).toBe('2d6 + 13');
+    expect(rollFormula([heavy] as never[], [])).toBe('10');
+  });
+
   it('counts a marked extra and leaves out one that is not marked', () => {
     const extra = part(1, 6, 0, { key: 'sneak', choosable: true, available: true });
     expect(rollFormula([part(1, 8, 3), extra], [])).toBe('1d8 + 3');

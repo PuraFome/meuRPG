@@ -44,6 +44,9 @@ import { MasterWait } from '../../../../shared/master-wait/master-wait';
               }
             </span>
             <app-d20-faces [roll]="r.d20" [mode]="r.mode" [suggested]="r.suggestedMode" [reason]="r.modeReason" [sources]="r.sources" />
+            @if (tradeLine()) {
+              <span class="part__line part__trade"><mat-icon aria-hidden="true">fitness_center</mat-icon>{{ tradeLine() }}</span>
+            }
             @if (luckyLine()) {
               <span class="part__line">{{ luckyLine() }}</span>
             }
@@ -108,6 +111,8 @@ export class AttackResult {
   readonly targetLabel = input.required<string>();
   readonly roll = input<AttackRoll | null>(null);
   readonly d20Formula = input('');
+  /** What the power attack trade did to the roll: "Golpe Pesado: −5 no ataque"; empty for an attack that made none. */
+  readonly tradeLine = input('');
   /** `natural`: "1 natural" beside "Errou" (a natural 1 always misses, SRD 5.1), empty otherwise. */
   readonly outcome = input<{ word: string; hit: boolean; natural?: string } | null>(null);
   /** A reaction holds the roll: what the combat waits for, instead of an outcome. */

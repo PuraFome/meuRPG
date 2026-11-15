@@ -138,4 +138,22 @@ describe('ActionRow', () => {
     ]);
     expect(head.querySelector('.row__tags')!.hasAttribute('data-wrap-group')).toBe(true);
   });
+
+  it('writes the power attack trade on a line of its own, with its icon, only when it is given', () => {
+    const on = setup({
+      name: 'Montante',
+      detail: '+6 para acertar · 2d6 + 3 cortante · 1,5 m',
+      power: ['Golpe Pesado: −5 no ataque, +10 no dano'],
+      button: 'Atacar',
+    });
+    const line = on.el.querySelector('.row__power')!;
+    expect(line).not.toBeNull();
+    expect(line.textContent!.replace(/\s+/g, ' ').trim()).toContain(
+      'Golpe Pesado: −5 no ataque, +10 no dano',
+    );
+    expect(line.querySelector('mat-icon')!.getAttribute('aria-hidden')).toBe('true');
+    expect(
+      setup({ name: 'Espada longa', button: 'Atacar' }).el.querySelector('.row__power'),
+    ).toBeNull();
+  });
 });
