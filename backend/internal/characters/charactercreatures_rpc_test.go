@@ -36,6 +36,8 @@ type creatureHostSpy struct {
 	inCombat  bool
 	encounter string
 	fail      error
+	// spendFail is the refusal of SpendDismissal (the owner's action in the combat).
+	spendFail error
 }
 
 func (s *creatureHostSpy) record(format string, args ...any) {
@@ -60,7 +62,7 @@ func (s *creatureHostSpy) CreaturesLeaving(_ context.Context, _ pgx.Tx, _, actor
 
 func (s *creatureHostSpy) SpendDismissal(_ context.Context, _ pgx.Tx, _, _, _, creatureID string, _ time.Time) error {
 	s.record("spend the action for %s", creatureID)
-	return s.fail
+	return s.spendFail
 }
 
 func (s *creatureHostSpy) LockSession(context.Context, pgx.Tx, string) error {
