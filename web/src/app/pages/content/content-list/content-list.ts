@@ -4,6 +4,7 @@ import {
   ElementRef,
   Injector,
   afterNextRender,
+  afterRenderEffect,
   computed,
   inject,
   signal,
@@ -68,6 +69,9 @@ type PageState =
  * by kind: the server already left out the archived ones and the counts, so nothing here hides them. Entries open in the
  * entry page (`ContentEntry`), the editor for the master and the read view for everyone else.
  */
+/** How near an edge the strip counts as at the edge, in pixels. */
+const STRIP_SLACK = 1;
+
 @Component({
   selector: 'app-content-list',
   imports: [
@@ -93,6 +97,20 @@ export class ContentList {
   private readonly watcher = inject(ContentWatcher);
   private readonly creatures = inject(CreaturesClient);
   private readonly title = viewChild<ElementRef<HTMLElement>>('title');
+  private readonly strip = viewChild<ElementRef<HTMLElement>>('strip');
+  /** The kinds strip scrolls sideways below 1100 px: it fades at an edge where more kinds lie beyond it. */
+  protected readonly fadeStart = signal(false);
+  protected readonly fadeEnd = signal(false);
+
+  /** Reads the strip's scroll position and says which edges have more kinds beyond them. */
+  protected measureStrip(): void {
+    const el = this.strip()?.nativeElement;
+    if (!el) {
+      return;
+    }
+    this.fadeStart.set(el.scrollLeft > STRIP_SLACK);
+    this.fadeEnd.set(el.scrollLeft + el.clientWidth < el.scrollWidth - STRIP_SLACK);
+  }
 
   protected readonly nav = CONTENT_NAV;
   protected readonly filters = CONTENT_FILTERS;
@@ -152,6 +170,10 @@ export class ContentList {
   }));
 
   constructor() {
+    afterRenderEffect(() => {
+      this.strip();
+      this.measureStrip();
+    });
     this.route.paramMap.pipe(takeUntilDestroyed(inject(DestroyRef))).subscribe((params) => {
       const id = params.get('id');
       if (id) {
