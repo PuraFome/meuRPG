@@ -8,12 +8,14 @@
         <p class="live-notice__text">
           <strong>A sessão {{ s.sessionNumber }} de {{ s.campaignName }} começou.</strong>
         </p>
+        <!-- The link lays its children out as flex items, and a flex item drops the space that starts its line: the label is
+             one item, with "na sessão" inside it, so the space between the two words stays. -->
         <a
           class="live-notice__action"
           [routerLink]="['/campaigns', s.campaignId, 'session']"
           [attr.aria-label]="'Entrar na sessão ' + s.sessionNumber + ' de ' + s.campaignName"
           (click)="dismiss(s.sessionId)"
-          ><span>Entrar</span><span class="live-notice__more"> na sessão</span></a
+          ><span>Entrar<span class="live-notice__more"> na sessão</span></span></a
         >
       </div>
       <button

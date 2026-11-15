@@ -15,8 +15,11 @@
 // database named after their fingerprint (meurpg_tpl_<hash>).
 // A test database is a copy of the template:
 //   - On PostgreSQL, a native CREATE DATABASE ... TEMPLATE.
-//   - On CockroachDB, which has no native copy, the template's DDL is replayed
-//     and its reference tables and goose's table are copied row by row.
+//   - On CockroachDB, which has no native copy, a RESTORE of a backup of the
+//     template, taken once into the server's nodelocal storage: one job, with
+//     the tables, the functions, the trigger, the reference rows and goose's
+//     table. The server must be started with --external-io-dir (make
+//     db-test-cockroach-start and the CI script do).
 //
 // A copy still costs much more than emptying a database, so a package makes
 // only as many databases as it runs tests at once and reuses them, emptying
@@ -89,16 +92,16 @@ type templateDB struct {
 	// tables are the template's tables, each after the ones it references;
 	// emptying a database deletes them in reverse.
 	tables []string
-	// ddl creates the template's sequences and tables, each table after the
-	// ones it references.
-	ddl []string
+	// backup is where the template's backup is kept (a nodelocal URI of the server): on CockroachDB a copy of the template is
+	// RESTORE of it. Empty on PostgreSQL.
+	backup string
 	// reference are the tables (in the order of tables) that the migrations
-	// leave with rows: data the game reads and never writes, copied with its
-	// rows, and left alone when a database is emptied. Read from the migrated
+	// leave with rows: data the game reads and never writes, which a copy has
+	// with its rows and which is left alone when a database is emptied. Read from the migrated
 	// template, so a migration that seeds another table needs no change here.
 	reference []string
 	// postgres says the server is PostgreSQL: the copy is CREATE DATABASE ...
-	// TEMPLATE and ddl is empty (postgres.go).
+	// TEMPLATE (postgres.go).
 	postgres bool
 }
 
@@ -235,40 +238,61 @@ func NewPoolConns(t testing.TB, prefix string, conns int32) *pgxpool.Pool {
 		}
 		return poolFor(t, prefix, name, dsn, conns)
 	}
-	mustExec(t, admin, "CREATE DATABASE "+name)
 	freeMu.Lock()
 	made = append(made, name)
 	freeMu.Unlock()
-	copyCockroachTemplate(t, open(t, dsn))
+	if _, err := admin.ExecContext(t.Context(), restoreSQL(template, name)); err != nil {
+		t.Fatalf("copy the template by RESTORE of %s: %v\nA backup written by another CockroachDB version, or left partial, is read from the server's external-io-dir (%s under it): delete that directory (docs/testing.md)", template.backup, err, strings.TrimPrefix(template.backup, "nodelocal://1/"))
+	}
 
 	return poolFor(t, prefix, name, dsn, conns)
 }
 
-// copyCockroachTemplate copies the template's schema and rows into the empty database conn is open on.
-func copyCockroachTemplate(t testing.TB, conn *sql.DB) {
-	t.Helper()
-	for _, stmt := range template.ddl {
-		if _, err := conn.ExecContext(t.Context(), stmt); err != nil {
-			t.Fatalf("copy the template's schema: %v\n%s", err, stmt)
+// restoreSQL is the statement that makes the database name from the template's backup.
+func restoreSQL(tpl templateDB, name string) string {
+	return fmt.Sprintf("RESTORE DATABASE %s FROM LATEST IN '%s' WITH new_db_name = '%s'", tpl.name, tpl.backup, name)
+}
+
+// backupURI is where the backup of the template called name is kept: the server's nodelocal storage, under the template's name.
+func backupURI(name string) string { return "nodelocal://1/" + name }
+
+// backUpTemplate takes the one backup of the migrated template that a copy of it RESTOREs. The process that migrates the template takes
+// it, so one BACKUP runs however many processes start together; the others wait for it (waitForBackup).
+func backUpTemplate(ctx context.Context, admin *sql.DB, name string) error {
+	uri := backupURI(name)
+	if _, err := admin.ExecContext(ctx, fmt.Sprintf("BACKUP DATABASE %s INTO '%s'", name, uri)); err != nil {
+		return fmt.Errorf("back up the template into %s: %w\nA test CockroachDB that refuses nodelocal ('local file access is disabled') was started without --external-io-dir (make db-test-cockroach-start and .github/scripts/start-cockroach.sh start it with the flag, docs/testing.md); any other error is the server's own, a full disk or a full tmpfs for one", uri, err)
+	}
+	return nil
+}
+
+// waitForBackup waits until the template's backup is finished, which is when the server answers SHOW BACKUP LATEST for it. It returns
+// errStalled when none finishes in a minute and a half after the template got its last migration (a backup of the template takes
+// seconds), so a creator that died between its migrations and its backup does not leave the next ones waiting forever.
+func waitForBackup(ctx context.Context, admin *sql.DB, name string) error {
+	start := time.Now()
+	for !backupFinished(ctx, admin, backupURI(name)) {
+		if time.Since(start) > 90*time.Second {
+			return errStalled
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(500 * time.Millisecond):
 		}
 	}
-	// The reference tables keep their rows: a migration fills them, and no test
-	// writes to them, so a copy of the schema alone would leave them empty.
-	for _, table := range template.reference {
-		if _, err := conn.ExecContext(t.Context(), fmt.Sprintf(
-			`INSERT INTO %s SELECT * FROM %s.public.%s`, table, template.name, table)); err != nil {
-			t.Fatalf("copy the reference table %s: %v", table, err)
-		}
+	return nil
+}
+
+// backupFinished reports whether the server answers SHOW BACKUP LATEST for the location, which only a finished backup does.
+func backupFinished(ctx context.Context, admin *sql.DB, uri string) bool {
+	rows, err := admin.QueryContext(ctx, fmt.Sprintf("SHOW BACKUP LATEST IN '%s'", uri))
+	if err != nil {
+		return false
 	}
-	// goose's own table too, so the database says which migrations it has.
-	if _, err := conn.ExecContext(t.Context(), fmt.Sprintf(
-		`INSERT INTO goose_db_version SELECT * FROM %s.public.goose_db_version`, template.name)); err != nil {
-		t.Fatalf("copy the migration versions: %v", err)
-	}
-	if _, err := conn.ExecContext(t.Context(),
-		`SELECT setval('goose_db_version_id_seq', (SELECT max(id) FROM goose_db_version))`); err != nil {
-		t.Fatalf("move the migration version sequence: %v", err)
-	}
+	defer func() { _ = rows.Close() }()
+	rows.Next()
+	return rows.Err() == nil
 }
 
 // Main runs a package's tests and then drops the databases this process
@@ -540,14 +564,18 @@ var errStalled = errors.New("the template stopped getting migrations")
 // buildTemplate makes sure the template for these migrations exists and is
 // complete, and reads the statements that copy it.
 func buildTemplate(rawURL string) (templateDB, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
-	defer cancel()
-
 	fingerprint, err := migrations.Fingerprint()
 	if err != nil {
 		return templateDB{}, fmt.Errorf("fingerprint the migrations: %w", err)
 	}
-	name := "meurpg_tpl_" + fingerprint
+	return buildTemplateNamed(rawURL, "meurpg_tpl_"+fingerprint)
+}
+
+// buildTemplateNamed is buildTemplate for the template called name.
+func buildTemplateNamed(rawURL, name string) (templateDB, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	defer cancel()
+
 	dsn, err := withDatabase(rawURL, name)
 	if err != nil {
 		return templateDB{}, err
@@ -577,20 +605,15 @@ func buildTemplate(rawURL string) (templateDB, error) {
 		return postgresTemplate(ctx, tpl, name)
 	}
 
-	ddl, tables, err := schemaDDL(ctx, tpl)
+	_, tables, err := schemaDDL(ctx, tpl)
 	if err != nil {
 		return templateDB{}, err
 	}
-	routines, err := routineDDL(ctx, tpl)
-	if err != nil {
-		return templateDB{}, err
-	}
-	ddl = append(ddl, routines...)
 	reference, err := seededTables(ctx, tpl, tables)
 	if err != nil {
 		return templateDB{}, err
 	}
-	return templateDB{name: name, ddl: ddl, tables: tables, reference: reference}, nil
+	return templateDB{name: name, tables: tables, reference: reference, backup: backupURI(name)}, nil
 }
 
 // ensureMigrated returns once the template name has every migration: made
@@ -620,7 +643,10 @@ func createOrAwait(ctx context.Context, admin, tpl *sql.DB, provider *goose.Prov
 		if _, err := provider.Up(ctx); err != nil {
 			return false, fmt.Errorf("migrate the template: %w", err)
 		}
-		return false, nil
+		if postgres {
+			return false, nil
+		}
+		return false, backUpTemplate(ctx, admin, name)
 	}
 	// Two processes that create the same database at the same instant: PostgreSQL answers the second with
 	// 42P04 (duplicate_database) or, from the unique index of its catalog, 23505.
@@ -629,6 +655,9 @@ func createOrAwait(ctx context.Context, admin, tpl *sql.DB, provider *goose.Prov
 	}
 	// Another process made it: wait until it is complete.
 	err = waitForVersion(ctx, tpl, latest)
+	if err == nil && !postgres {
+		err = waitForBackup(ctx, admin, name)
+	}
 	if !errors.Is(err, errStalled) {
 		return false, err
 	}
@@ -639,8 +668,8 @@ func createOrAwait(ctx context.Context, admin, tpl *sql.DB, provider *goose.Prov
 }
 
 // seededTables are the tables of the freshly migrated template that have rows:
-// nothing but the migrations has written to it. goose's own table is left out,
-// it is copied apart.
+// nothing but the migrations has written to it. goose's own table is left out:
+// a copy keeps its rows whatever they are.
 func seededTables(ctx context.Context, tpl *sql.DB, tables []string) ([]string, error) {
 	var seeded []string
 	for _, table := range tables {
@@ -695,10 +724,9 @@ var references = regexp.MustCompile(`REFERENCES public\.(\w+)`)
 
 // schemaDDL returns the statements that recreate the template's sequences
 // and tables, with their indexes, CHECKs, foreign keys and options inline,
-// as CockroachDB writes them (SHOW CREATE). A table comes after the ones it
-// references, so every foreign key finds its table: creating a table with
-// its foreign keys inline is quick, where adding them afterwards, as a
-// migration does, costs a schema change job each.
+// as CockroachDB writes them (SHOW CREATE), and the tables in the order each
+// comes after the ones it references. The template's table order, which the
+// emptying of a database follows, is what the code reads from it.
 func schemaDDL(ctx context.Context, tpl *sql.DB) ([]string, []string, error) {
 	sequences, err := names(ctx, tpl, `SELECT sequence_name FROM information_schema.sequences WHERE sequence_schema = 'public' ORDER BY 1`)
 	if err != nil {
@@ -731,75 +759,6 @@ func schemaDDL(ctx context.Context, tpl *sql.DB) ([]string, []string, error) {
 		ddl = append(ddl, create[table])
 	}
 	return ddl, order, nil
-}
-
-// routineDDL returns the statements that recreate the template's functions, in the
-// order they were made (a function may call one made before it), and then its triggers,
-// which call them. CockroachDB writes the template's own name into a trigger's table
-// (SHOW CREATE), which the copy drops, so the statements read the database they run in.
-// They run after the tables: a trigger needs its table.
-func routineDDL(ctx context.Context, tpl *sql.DB) ([]string, error) {
-	var database string
-	if err := tpl.QueryRowContext(ctx, `SELECT current_database()`).Scan(&database); err != nil {
-		return nil, fmt.Errorf("name the template: %w", err)
-	}
-	functions, err := names(ctx, tpl, `
-		SELECT p.proname FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
-		WHERE n.nspname = 'public' ORDER BY p.oid`)
-	if err != nil {
-		return nil, err
-	}
-	var ddl []string
-	for _, f := range functions {
-		stmt, err := showCreateRoutine(ctx, tpl, "FUNCTION", pgx.Identifier{"public", f}.Sanitize(), database)
-		if err != nil {
-			return nil, err
-		}
-		ddl = append(ddl, stmt)
-	}
-	triggers, err := triggerTargets(ctx, tpl)
-	if err != nil {
-		return nil, err
-	}
-	for _, target := range triggers {
-		stmt, err := showCreateRoutine(ctx, tpl, "TRIGGER", target, database)
-		if err != nil {
-			return nil, err
-		}
-		ddl = append(ddl, stmt)
-	}
-	return ddl, nil
-}
-
-// triggerTargets lists the template's triggers as SHOW CREATE TRIGGER wants them:
-// "name ON table", quoted.
-func triggerTargets(ctx context.Context, tpl *sql.DB) ([]string, error) {
-	rows, err := tpl.QueryContext(ctx, `
-		SELECT t.tgname, c.relname FROM pg_trigger t JOIN pg_class c ON c.oid = t.tgrelid
-		WHERE NOT t.tgisinternal ORDER BY t.tgname`)
-	if err != nil {
-		return nil, fmt.Errorf("list the template's triggers: %w", err)
-	}
-	defer func() { _ = rows.Close() }()
-	var out []string
-	for rows.Next() {
-		var name, table string
-		if err := rows.Scan(&name, &table); err != nil {
-			return nil, err
-		}
-		out = append(out, pgx.Identifier{name}.Sanitize()+" ON "+pgx.Identifier{"public", table}.Sanitize())
-	}
-	return out, rows.Err()
-}
-
-// showCreateRoutine asks CockroachDB how to create a function or trigger (target is
-// its quoted name, and for a trigger also the table), without the template's name.
-func showCreateRoutine(ctx context.Context, conn *sql.DB, kind, target, database string) (string, error) {
-	var object, stmt string
-	if err := conn.QueryRowContext(ctx, "SHOW CREATE "+kind+" "+target).Scan(&object, &stmt); err != nil {
-		return "", fmt.Errorf("show create %s %s: %w", kind, target, err)
-	}
-	return strings.ReplaceAll(stmt, database+".public.", "public."), nil
 }
 
 // orderByReferences orders tables so that each comes after the tables its
