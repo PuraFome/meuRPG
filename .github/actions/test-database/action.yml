@@ -10,6 +10,12 @@ inputs:
     description: "'false' to only pick, for a job that starts the database itself."
     required: false
     default: "true"
+  image:
+    description: >-
+      The local tag of the image the job loaded (output `image` of load-database-image). The database starts from it,
+      without a pull. It must be the picked database's own image. Empty: the script pulls the pinned one.
+    required: false
+    default: ""
 outputs:
   database:
     description: "'postgres' or 'cockroach'."
@@ -49,9 +55,14 @@ runs:
       shell: bash
       env:
         DATABASE: ${{ steps.pick.outputs.database }}
+        IMAGE: ${{ inputs.image }}
       run: |
+        if [ -n "$IMAGE" ] && [ "$IMAGE" != "meurpg-test-db:$DATABASE" ]; then
+          echo "::error::the loaded image is $IMAGE, not the $DATABASE test database's" >&2
+          exit 1
+        fi
         if [ "$DATABASE" = postgres ]; then
-          "$GITHUB_ACTION_PATH/../../scripts/start-postgres.sh"
+          TEST_POSTGRES_IMAGE=$IMAGE "$GITHUB_ACTION_PATH/../../scripts/start-postgres.sh"
         else
-          "$GITHUB_ACTION_PATH/../../scripts/start-cockroach.sh"
+          TEST_COCKROACH_IMAGE=$IMAGE "$GITHUB_ACTION_PATH/../../scripts/start-cockroach.sh"
         fi
