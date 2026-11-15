@@ -138,13 +138,14 @@ describe('DamageBreakdown for the player', () => {
 });
 
 describe('DamageBreakdown for the master', () => {
-  it('is a table by part with "Tirar" only on the extras that count', () => {
+  it('is a list by part with "Tirar" only on the extras that count', () => {
     const { el } = setup({
       master: true,
       amount: 21,
       removable: new Set(['sneak-attack', 'divine-smite-extra']),
     });
-    expect(el.querySelectorAll('tbody tr')).toHaveLength(3);
+    expect(el.querySelector('table')).toBeNull();
+    expect(el.querySelectorAll('ul.rows > li')).toHaveLength(3);
     const takes = Array.from(el.querySelectorAll('button')).map((b) =>
       b.getAttribute('aria-label'),
     );
@@ -293,6 +294,18 @@ describe('DamageBreakdown take-out of a part of a typed group', () => {
     expect(el.querySelectorAll('.take')).toHaveLength(1);
   });
 
+  it('says "automático" on the parts the app adds, and marks the row being asked', () => {
+    const { el, fixture } = open({ autoKeys: new Set(['sneak-attack']) });
+    const rows = Array.from(el.querySelectorAll('ul.rows > li'));
+    expect(rows.filter((r) => r.textContent!.includes('automático'))).toHaveLength(1);
+    expect(rows.filter((r) => r.classList.contains('row--asked'))).toHaveLength(1);
+    expect(rows.find((r) => r.classList.contains('row--asked'))!.textContent).toContain(
+      'Ataque Furtivo',
+    );
+    expect(el.querySelectorAll('.row--child')).toHaveLength(2);
+    expect(fixture.nativeElement.querySelector('.row--group')).not.toBeNull();
+  });
+
   it('lists what taking it out undoes and names the button for the new sum', () => {
     const { el, text } = open();
     expect(text()).toContain('Tirar o Ataque Furtivo do dano?');
@@ -302,6 +315,35 @@ describe('DamageBreakdown take-out of a part of a typed group', () => {
       ),
     ).toEqual(plan.lines);
     expect(el.querySelector('.ask__danger')!.textContent).toContain('Tirar e pedir a soma');
+  });
+
+  it('ties the missing-reason message to the field with the hint, and tells the page when the master goes back', () => {
+    const { fixture, el } = open();
+    let closed = 0;
+    fixture.componentInstance.closed.subscribe(() => closed++);
+    const field = el.querySelector<HTMLInputElement>('.ask__field')!;
+    expect(field.getAttribute('aria-describedby')!.split(' ')).toHaveLength(1);
+    field.value = 'x';
+    field.dispatchEvent(new Event('input'));
+    field.value = '';
+    field.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    const ids = field.getAttribute('aria-describedby')!.split(' ');
+    expect(ids).toHaveLength(2);
+    expect(el.querySelector('.ask__error')!.id).toBe(ids[0]);
+    expect(el.querySelector('.ask__hint')!.id).toBe(ids[1]);
+    el.querySelector<HTMLButtonElement>('.ask__back')!.click();
+    expect(closed).toBe(1);
+  });
+
+  it('gives the focus back to "Tirar" when the master goes back', async () => {
+    const { fixture, el } = open();
+    const back = el.querySelector<HTMLButtonElement>('.ask__back')!;
+    back.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(el.querySelector('.ask')).toBeNull();
+    expect(document.activeElement).toBe(el.querySelector('.take'));
   });
 
   it('says the reason is missing once it was left empty, with the confirm button dashed', () => {

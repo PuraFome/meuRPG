@@ -7,6 +7,7 @@ import {
 } from '../../../gen/meurpg/play/v1/combat_pb';
 import type { DamagePart, DamagePartRoll } from '../../../gen/meurpg/play/v1/combat_rolls_pb';
 import { article } from '../format/article';
+import { isSpellRider } from './combat-log-actions';
 import { initialPicks, inTypedGroup, isOffPart, partTotal } from './damage-parts';
 
 /**
@@ -38,6 +39,29 @@ export function removalsOf(rounds: readonly CombatLogRound[]): Removal[] {
     }));
 }
 
+/** The save a spell's hit effect made the target roll on an attack, as the log says it (the master's reading names the condition). */
+export interface SpellSave {
+  readonly attackerId: string;
+  readonly targetId: string;
+  /** The spell's key, which the master's reading shares with the damage part the effect made. */
+  readonly key: string;
+  /** The condition the failed save gave ("Impedido"), empty when it was passed or none came with it. */
+  readonly condition: string;
+}
+
+/** The saves of spell hit effects in the log, newest first. */
+export function spellSavesOf(rounds: readonly CombatLogRound[]): SpellSave[] {
+  return rounds
+    .flatMap((r) => r.entries)
+    .filter((e) => e.kind === CombatLogKind.HIT_RIDER && isSpellRider(e) && e.key !== '')
+    .map((e) => ({
+      attackerId: e.actorId,
+      targetId: e.targetId,
+      key: e.key,
+      condition: e.hitRider?.conditionNamePt ?? '',
+    }));
+}
+
 /** The removal that belongs to a damage: the same attacker and target, and a part the damage has. */
 export function removalFor(p: PendingDamage, removals: readonly Removal[]): Removal | undefined {
   return removals.find(
@@ -52,8 +76,9 @@ function the(name: string): string {
   return `${article(name)} ${name}`;
 }
 
+/** A part the damage always has counts unless it is off (the part of a choosable extra counts by what is marked). */
 function counts(part: DamagePart): boolean {
-  return part.choosable ? part.selected && part.available : !isOffPart(part);
+  return !isOffPart(part);
 }
 
 /** "2d6", or "1d8 + 1d6" when the faces differ, in the order the dice first appear. */
@@ -148,15 +173,15 @@ export function sumFormula(
   kept: readonly KeptRow[],
   typed: number,
 ): { text: string; total: number } {
-  const terms = [`${typed}`];
+  let text = `${typed}`;
   if (awaited.flat !== 0) {
-    terms.push(`${awaited.flat < 0 ? '−' : ''}${Math.abs(awaited.flat)}`);
+    text += ` ${awaited.flat < 0 ? '−' : '+'} ${Math.abs(awaited.flat)}`;
   }
   for (const k of kept) {
-    terms.push(`${k.total}${k.typePt ? ` de ${k.typePt}` : ''}`);
+    text += ` + ${k.total}${k.typePt ? ` de ${k.typePt}` : ''}`;
   }
   const total = typed + awaited.flat + kept.reduce((n, k) => n + k.total, 0);
-  return { text: `Dano: ${terms.join(' + ')} = ${total}`, total };
+  return { text: `Dano: ${text} = ${total}`, total };
 }
 
 /** What the take-out panel of one part says: the question, the list of what it undoes and the button. */
@@ -189,12 +214,24 @@ function hitPointsLine(p: PendingDamage, target: Combatant | undefined): string 
     : `Desfaz os ${n} de dano: ${who} recupera os PV que perdeu.`;
 }
 
+/** What undoing a hit effect's part says: its save and the condition it gave when the log has them, else the effect in general. */
+function effectLine(r: DamagePartRoll, p: PendingDamage, saves: readonly SpellSave[]): string {
+  const save = saves.find(
+    (x) => x.key === r.partKey && x.attackerId === p.attackerId && x.targetId === p.targetId,
+  );
+  if (!save) {
+    return `Desfaz o efeito de ${r.labelPt} no alvo; ele vale de novo com a nova soma.`;
+  }
+  return `Desfaz o teste ${article(r.labelPt) === 'a' ? 'da' : 'do'} ${r.labelPt}${save.condition ? ` (${save.condition})` : ''}.`;
+}
+
 /** The panel of "Tirar" for one part of a rolled or applied damage. */
 export function takeOutPlan(
   roll: DamagePartRoll,
   p: PendingDamage,
   attacker: Combatant | undefined,
   target: Combatant | undefined,
+  saves: readonly SpellSave[] = [],
 ): TakeOutPlan {
   const rolls = p.partRolls;
   if (!inTypedGroup(roll, rolls)) {
@@ -228,7 +265,7 @@ export function takeOutPlan(
   const lines = [hitPointsLine(p, target)];
   for (const r of rolls) {
     if (r.counted && r.hitEffect && r.partKey !== roll.partKey) {
-      lines.push(`Desfaz o efeito de ${r.labelPt} no alvo; ele vale de novo com a nova soma.`);
+      lines.push(effectLine(r, p, saves));
     }
   }
   if (ONCE_PER_TURN.has(roll.partKey)) {

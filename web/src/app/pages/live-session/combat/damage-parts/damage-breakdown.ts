@@ -13,6 +13,7 @@ import {
   signal,
   untracked,
   viewChild,
+  viewChildren,
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -35,7 +36,7 @@ let nextId = 0;
  * Great Weapon Fighting rerolls ("rolou de novo 1→4"), a part that does not
  * count (said in words), and the steps of resistance, vulnerability and
  * immunity ("Resistência a fogo (tiefling): 10 → 5"). The master's version is a
- * table by part: "Tirar" on an extra (a reason, 1 to 120 characters, and the
+ * list by part: "Tirar" on an extra (a reason, 1 to 120 characters, and the
  * damage before and after) and, on each step still on, "Ignorar a resistência".
  */
 @Component({
@@ -56,6 +57,8 @@ export class DamageBreakdown {
   /** The keys of the extras the master may take out. */
   readonly removable = input<ReadonlySet<string>>(new Set());
   readonly busy = input(false);
+  /** The keys of the parts the app adds by itself: the row says "automático". */
+  readonly autoKeys = input<ReadonlySet<string>>(new Set());
   /** The damage type keys with their Portuguese names, for the head of a typed group. */
   readonly typeNames = input<ReadonlyMap<string, string>>(new Map());
   /** What the panel of each removable part says (from `takeOutPlan`); without one, the plain question. */
@@ -68,9 +71,12 @@ export class DamageBreakdown {
   readonly ignored = model<readonly string[]>([]);
 
   readonly remove = output<{ partKey: string; reason: string }>();
+  /** The master went back from the panel: what the server refused is old news. */
+  readonly closed = output<void>();
 
   private readonly injector = inject(Injector);
   private readonly reasonField = viewChild('reasonField', { read: ElementRef<HTMLInputElement> });
+  private readonly takes = viewChildren('take', { read: ElementRef<HTMLButtonElement> });
   protected readonly id = `damage-breakdown-${nextId++}`;
   /** The part the master is about to take out. */
   protected readonly asking = signal<string | null>(null);
@@ -163,6 +169,20 @@ export class DamageBreakdown {
     this.reason.set('');
     this.touched.set(false);
     afterNextRender(() => this.reasonField()?.nativeElement.focus(), { injector: this.injector });
+  }
+
+  /** "Voltar": the panel closes and the focus goes back to the "Tirar" that opened it. */
+  protected back(): void {
+    const key = this.asking();
+    this.asking.set(null);
+    this.closed.emit();
+    afterNextRender(
+      () =>
+        this.takes()
+          .find((b) => b.nativeElement.dataset['part'] === key)
+          ?.nativeElement.focus(),
+      { injector: this.injector },
+    );
   }
 
   protected question(r: DamagePartRoll): string {

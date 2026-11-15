@@ -42,7 +42,7 @@ import { currentCombatant, isDown, isPlayer, ownCombatant } from '../../../core/
 import { acts, jointTurn, masterActor } from '../../../core/combat/joint-turn';
 import { MasterAutoPass } from '../../../core/combat/auto-pass';
 import { CombatCalls } from '../../../core/combat/combat-calls';
-import { removalsOf } from '../../../core/combat/group-take-out';
+import { removalsOf, spellSavesOf } from '../../../core/combat/group-take-out';
 import { CombatReads } from './combat-reads';
 
 /**
@@ -153,9 +153,10 @@ export abstract class CombatViewStateDirective {
   protected readonly turn = new TurnOptionsState();
   protected readonly log = new CombatLogState();
   /** The parts the master took out of a damage, read from the log: the reason of a part is not on the damage itself. */
-  protected readonly removals = effect(() =>
-    this.state().logged.set(removalsOf(this.log.rounds())),
-  );
+  protected readonly removals = effect(() => {
+    this.state().logged.set(removalsOf(this.log.rounds()));
+    this.state().saves.set(spellSavesOf(this.log.rounds()));
+  });
   protected readonly encounter = computed(() => this.state().shown());
   protected readonly image = computed(() => {
     const e = this.encounter();

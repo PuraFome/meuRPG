@@ -2,37 +2,88 @@
   display: block;
 }
 
-.table {
-  width: 100%;
-  border-collapse: collapse;
+.rows {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  column-gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--mr-rule);
   font-size: var(--mr-font-15);
 
-  th,
-  td {
-    padding: 6px 8px 6px 0;
-    text-align: left;
-    vertical-align: top;
-    border-bottom: 1px solid var(--mr-rule);
-  }
-
-  thead th {
-    font-size: var(--mr-font-13);
-    color: var(--mr-ink-muted);
-  }
-
-  tbody th {
-    font-weight: 700;
+  &:last-child {
+    border-bottom: 0;
   }
 }
 
-.num {
-  text-align: right !important;
+.row__main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.row__name {
+  font-weight: 700;
+}
+
+.row__formula {
+  font-size: var(--mr-font-14);
+  color: var(--mr-ink-muted);
+}
+
+.row__num {
+  grid-column: 2;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
+  text-align: right;
 }
 
-.act {
-  width: 1%;
-  white-space: nowrap;
+.row .take {
+  grid-column: 3;
+}
+
+.row--group {
+  border-bottom: 0;
+  padding-bottom: 2px;
+}
+
+/* A part of a typed group: indented under the head with a rule on the left and a short stub to its name. */
+.row--child {
+  position: relative;
+  margin-left: 12px;
+  padding-left: 16px;
+  border-left: 2px solid var(--mr-control-line);
+
+  &::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 22px;
+    width: 8px;
+    border-top: 2px solid var(--mr-control-line);
+  }
+
+  .row__name {
+    font-weight: 400;
+  }
+
+  .take {
+    grid-column: 3;
+  }
+}
+
+.row--asked {
+  background: var(--mr-danger-surface);
 }
 
 .take {
@@ -154,38 +205,26 @@
 
 .ask__buttons {
   display: flex;
-  flex-wrap: wrap;
   gap: 8px;
 
   button {
     min-height: 44px;
+    padding-inline: 12px;
+  }
+
+  /* Side by side as the board has them: "Voltar" as wide as its word, the confirm button takes the rest. */
+  .ask__back {
+    flex: 0 0 auto;
+  }
+
+  .ask__danger {
+    flex: 1 1 auto;
+    min-width: 0;
   }
 }
 
 .ask__danger {
   color: var(--mr-danger-ink);
-}
-
-.row--group th,
-.row--group td {
-  border-bottom: 0;
-  padding-bottom: 2px;
-}
-
-.row--group td:nth-child(2) {
-  font-size: var(--mr-font-14);
-  color: var(--mr-ink-muted);
-}
-
-.row--child th {
-  padding-left: 16px;
-  border-left: 2px solid var(--mr-control-line);
-  font-weight: 400;
-}
-
-.row--child td {
-  font-size: var(--mr-font-14);
-  color: var(--mr-ink-muted);
 }
 
 .ask__field--bad {

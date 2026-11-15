@@ -7,7 +7,7 @@ import {
   type Encounter,
   EncounterStatus,
 } from '../../../gen/meurpg/play/v1/combat_pb';
-import { type Removal } from './group-take-out';
+import { type Removal, type SpellSave } from './group-take-out';
 import { isTheatre } from './theatre';
 
 /** What `turn_changed` carries (play.proto). */
@@ -112,6 +112,8 @@ export class CombatState {
   readonly ownHit = signal<OwnHit | null>(null);
   /** The parts the master took out of a damage, from the combat log (the master's and the attacker's reading carry the reason). */
   readonly logged = signal<readonly Removal[]>([]);
+  /** The saves of spell hit effects the log names, newest first: what undoing a hit effect says. */
+  readonly saves = signal<readonly SpellSave[]>([]);
   private readonly noted = signal<readonly Removal[]>([]);
   /** Newest first: what this page's master just took out (before the log says it), then the log's. */
   readonly removals = computed(() => [...this.noted(), ...this.logged()]);

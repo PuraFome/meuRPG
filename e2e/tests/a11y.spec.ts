@@ -78,7 +78,7 @@ import { beginCrowdedCombatRPC, boxIn, callFeatBody, chamadosFeatBody, elementFe
 import { createFeatOptionsRPC, expectInViewport, featShotScale, featViewport, openSelect, shootFeat, type FeatOptionsTable } from './feat-options-support';
 import { archiveEntryRPC, checkMinimumFeatBody, costsRaceBody, createEntryRPC, creatureBody, criticalFeatureBody, damageCreatureBody, entryRoute, expectCardsHoldTheirText, giveFeatRPC, heavyBlowFeatBody, hitModifier, hitSpellBody, minimumFeatBody, raceBody, rerollFeatBody, spellBody, steadyShotFeatBody, updateEntryRPC } from './content-support';
 import { rerollTable } from './reroll-support';
-import { damageCard, expectDashed, expectFits, shootTakeOut, sneakHit, takeOutRPC, takeOutShotScale, takeOutTable } from './take-out-support';
+import { aloneFlow, damageCard, expectDashed, expectFits, rolledFlow, shootTakeOut, sneakHit, takeOutRPC, takeOutShotScale, takeOutTable, twoPartsFlow, type TakeOutOptions } from './take-out-support';
 import { generateSceneRPC, mapRoute, tableForImages } from './images-support';
 import { treasureRoute } from './treasure-support';
 import { classBody, createClassRPC, createSubclassRPC, halfCasterBody, listEntries } from './classes-support';
@@ -14222,6 +14222,48 @@ for (const [colorScheme, theme] of [
       async ({ browser }) => {
         test.setTimeout(300_000);
         await scanTakeOutScreens(browser, colorScheme, width);
+      },
+    );
+  }
+}
+
+// #835, board 835-04 states 2 to 4: a part alone in its type, the group that keeps two parts, and the damage rolled on a character and not applied.
+async function scanTakeOutStates(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const where = `(${colorScheme}, ${width}px)`;
+  const view = {
+    scan: async (page: Page, screen: string) => {
+      await expectScreenPasses(page, `${screen} ${where}`);
+      const wide = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+      expect(wide, `${screen} ${where}: a página rola de lado em ${wide}px`).toBeLessThanOrEqual(0);
+    },
+    shoot: (page: Page, screen: string, at?: Locator) => shootTakeOut(page, screen, width, colorScheme, at),
+  };
+  const states: [TakeOutOptions, (t: Awaited<ReturnType<typeof takeOutTable>>, v: typeof view) => Promise<void>][] = [
+    [{ feats: ['radiant'] }, aloneFlow],
+    [{ feats: ['pierce'] }, twoPartsFlow],
+    [{ ally: true }, rolledFlow],
+  ];
+  for (const [options, flow] of states) {
+    const t = await takeOutTable(browser, { colorScheme, masterWidth: width, playerWidth: width, ...takeOutShotScale }, options);
+    try {
+      await flow(t, view);
+    } finally {
+      await t.done().catch(() => undefined);
+    }
+  }
+}
+
+for (const [colorScheme, theme] of [
+  ['light', 'claro'],
+  ['dark', 'escuro'],
+] as const) {
+  for (const width of [390, 768, 1280]) {
+    test(
+      `tirar uma parte de um grupo digitado, os outros estados, passa no axe e nas conferências de layout no tema ${theme}, em ${width}`,
+      { tag: ['@a11y', '@MR-012'] },
+      async ({ browser }) => {
+        test.setTimeout(420_000);
+        await scanTakeOutStates(browser, colorScheme, width);
       },
     );
   }

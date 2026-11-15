@@ -1,5 +1,7 @@
 import {
   CombatLogKind,
+  HitRiderChoice,
+  HitRiderLogResult,
   CombatantKind,
   type CombatLogRound,
   PendingDamageStatus,
@@ -9,6 +11,7 @@ import {
   keptRowsOf,
   removalFor,
   removalsOf,
+  spellSavesOf,
   sumFormula,
   takeOutPlan,
 } from './group-take-out';
@@ -116,11 +119,41 @@ describe('removalsOf and removalFor', () => {
     expect(all.map((r) => r.reason)).toEqual(['segunda', 'primeira']);
     expect(removalFor(damage(), all)?.reason).toBe('segunda');
     expect(removalFor(damage({ attackerId: 'other' }), all)).toBeUndefined();
+    expect(removalFor(damage({ targetId: 'other' }), all)).toBeUndefined();
   });
 
   it('does not match a removal whose part the damage has not', () => {
     const all = removalsOf([{ round: 1, entries: [entry({ key: 'rage' })] }] as never);
     expect(removalFor(damage(), all)).toBeUndefined();
+  });
+});
+
+const saveEntry = (over: Record<string, unknown> = {}, rider: Record<string, unknown> = {}) =>
+  ({
+    kind: CombatLogKind.HIT_RIDER,
+    actorId: 'jab',
+    targetId: 'zum',
+    key: 'frost',
+    keyNamePt: 'Geada no Punho',
+    hitRider: {
+      choice: HitRiderChoice.APPLY,
+      result: HitRiderLogResult.FAILED,
+      conditionNamePt: 'Impedido',
+      ...rider,
+    },
+    ...over,
+  }) as never;
+
+describe('spellSavesOf', () => {
+  it('reads the saves of spell hit effects with the condition they gave, newest first', () => {
+    const saves = spellSavesOf([
+      { round: 2, entries: [saveEntry(), entry({})] },
+      { round: 1, entries: [saveEntry({ targetId: 'old' }, { conditionNamePt: '' })] },
+    ] as never);
+    expect(saves).toEqual([
+      { attackerId: 'jab', targetId: 'zum', key: 'frost', condition: 'Impedido' },
+      { attackerId: 'jab', targetId: 'old', key: 'frost', condition: '' },
+    ]);
   });
 });
 
@@ -202,8 +235,22 @@ describe('awaitedSumOf', () => {
     expect(a.hint).toBe('De 2 a 12.');
   });
 
-  it('is nothing for a damage that is not awaiting a group sum', () => {
+  it('is nothing for a damage that is not awaiting a group sum, even when it names a damage type', () => {
     expect(awaitedSumOf(damage())).toBeNull();
+    expect(
+      awaitedSumOf({
+        ...(waiting as object),
+        status: PendingDamageStatus.ROLLED,
+      } as never),
+    ).toBeNull();
+  });
+
+  it('says "Deve ser N." when the dice can only make one sum', () => {
+    const fixed = {
+      ...(waiting as object),
+      parts: [part({ diceCount: 2, diceSides: 1, flat: 0 })],
+    } as never;
+    expect(awaitedSumOf(fixed)!.hint).toBe('Deve ser 2.');
   });
 
   it('lists the sums kept and writes the live total with them', () => {
@@ -214,6 +261,10 @@ describe('awaitedSumOf', () => {
       text: 'Dano: 4 + 3 + 6 de frio = 13',
       total: 13,
     });
+    // A negative fixed number is said with the true minus sign, never "+ −1".
+    expect(sumFormula({ ...awaitedSumOf(waiting)!, flat: -1 }, keptRowsOf(waiting), 4).text).toBe(
+      'Dano: 4 − 1 + 6 de frio = 9',
+    );
   });
 });
 
@@ -244,8 +295,54 @@ describe('takeOutPlan', () => {
     expect(plan.notice).toBe('');
   });
 
+  it('says the save of the hit effect and its condition when the log has them, the effect in general when not', () => {
+    const p = damage();
+    const rolls = (p as never as { partRolls: never[] }).partRolls;
+    const save = { attackerId: 'jab', targetId: 'zum', key: 'frost', condition: 'Impedido' };
+    expect(takeOutPlan(rolls[1], p, jab, zum(), [save]).lines[1]).toBe(
+      'Desfaz o teste da Geada no Punho (Impedido).',
+    );
+    expect(takeOutPlan(rolls[1], p, jab, zum(), [{ ...save, condition: '' }]).lines[1]).toBe(
+      'Desfaz o teste da Geada no Punho.',
+    );
+    // A save of another target or another spell is not this damage's.
+    expect(takeOutPlan(rolls[1], p, jab, zum(), [{ ...save, targetId: 'other' }]).lines[1]).toBe(
+      'Desfaz o efeito de Geada no Punho no alvo; ele vale de novo com a nova soma.',
+    );
+  });
+
+  it('never says the target comes back above its maximum, and leaves out an extra that no longer counts from the sum asked', () => {
+    const p = damage();
+    const parts = (p as never as { parts: unknown[] }).parts;
+    const withDead = {
+      ...(p as object),
+      parts: [
+        ...parts,
+        part({
+          key: 'other',
+          labelPt: 'Outro',
+          diceCount: 4,
+          choosable: true,
+          selected: true,
+          available: false,
+        }),
+      ],
+    } as never;
+    const rolls = (p as never as { partRolls: never[] }).partRolls;
+    const plan = takeOutPlan(rolls[1], withDead, jab, zum({ hitPointsCurrent: 10 }));
+    expect(plan.lines[0]).toBe('Desfaz os 19 de dano: o Zumbi 1 volta a 22 PV.');
+    expect(plan.lines.at(-1)).toBe('Pede a Jabuti só a soma de perfurante (1d6).');
+  });
+
   it('does not name the hit points it cannot know when the target is down or has temporary points', () => {
     const p = damage();
+    const temp = takeOutPlan(
+      (p as never as { partRolls: never[] }).partRolls[1],
+      p,
+      jab,
+      zum({ hitPointsTemporary: 5 }),
+    );
+    expect(temp.lines[0]).toBe('Desfaz os 19 de dano: o Zumbi 1 recupera os PV que perdeu.');
     const down = takeOutPlan(
       (p as never as { partRolls: never[] }).partRolls[1],
       p,

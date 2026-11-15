@@ -16,6 +16,7 @@ import { isPlayer } from '../../../../core/combat/combat-view';
 import { criticalHint, criticalTypedHint, fixedParts } from '../../../../core/combat/critical';
 import {
   type Removal,
+  type SpellSave,
   awaitedSumOf,
   keptRowsOf,
   removalFor,
@@ -146,12 +147,17 @@ function typeNames(p: PendingDamage): Map<string, string> {
 }
 
 /** What each removable part's panel says. */
-function plansOf(p: PendingDamage, attacker: Combatant | undefined, target: Combatant | undefined) {
+function plansOf(
+  p: PendingDamage,
+  attacker: Combatant | undefined,
+  target: Combatant | undefined,
+  saves: readonly SpellSave[],
+) {
   const keys = removableKeys(p);
   return new Map(
     (p.partRolls ?? [])
       .filter((r) => keys.has(r.partKey))
-      .map((r) => [r.partKey, takeOutPlan(r, p, attacker, target)]),
+      .map((r) => [r.partKey, takeOutPlan(r, p, attacker, target, saves)]),
   );
 }
 
@@ -211,6 +217,7 @@ export function pendingCard(
   e: Encounter,
   all: readonly PendingDamage[],
   removals: readonly Removal[] = [],
+  saves: readonly SpellSave[] = [],
 ) {
   const attacker = e.combatants.find((c) => c.id === p.attackerId);
   const target = e.combatants.find((c) => c.id === p.targetId);
@@ -223,8 +230,9 @@ export function pendingCard(
     total,
     /** The extras the master may take out: the ones the player could choose, while they count, and no damage-type sum covers. */
     removable: removableKeys(p),
-    plans: plansOf(p, attacker, target),
+    plans: plansOf(p, attacker, target, saves),
     typeNames: typeNames(p),
+    autoKeys: new Set((p.parts ?? []).filter((x) => x.auto).map((x) => x.key)),
     /** The damage was applied (the master's options list the latest one a take-out can still undo): only its breakdown and "Tirar". */
     applied,
     /** A part of a typed group was taken out: the damage waits for the sum of that type alone. */

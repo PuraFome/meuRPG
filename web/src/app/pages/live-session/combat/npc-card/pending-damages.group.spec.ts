@@ -167,6 +167,28 @@ describe('PendingDamages: taking a part out of a typed group', () => {
     });
   });
 
+  it('puts the focus on the head of the card that waits for the sum once the take-out went through', async () => {
+    const h = setup([], [applied]);
+    api.removeDamagePart.mockImplementation(async () => {
+      // The master's options come back with the damage waiting for the sum: the card changes under the panel.
+      h.fixture.componentRef.setInput('applied', []);
+      h.fixture.componentRef.setInput('pendings', [waiting]);
+      h.fixture.detectChanges();
+      return { encounter: enc, pending: waiting, cast: [] };
+    });
+    h.button('Tirar').click();
+    h.fixture.detectChanges();
+    const field = h.el.querySelector<HTMLInputElement>('.ask__field')!;
+    field.value = 'motivo';
+    field.dispatchEvent(new Event('input'));
+    h.fixture.detectChanges();
+    h.el.querySelector('form')!.dispatchEvent(new Event('submit'));
+    await h.fixture.whenStable();
+    h.fixture.detectChanges();
+    await h.fixture.whenStable();
+    expect(document.activeElement).toBe(h.el.querySelector('.dmg__head'));
+  });
+
   it('keeps the panel and says so when the server refuses, nothing changed', async () => {
     api.removeDamagePart.mockRejectedValue(
       new ConnectError('x', Code.FailedPrecondition, undefined, [
@@ -188,6 +210,12 @@ describe('PendingDamages: taking a part out of a typed group', () => {
     fixture.detectChanges();
     expect(text()).toContain('Já aconteceu outra coisa depois deste dano');
     expect(el.querySelector('.ask')).not.toBeNull();
+    // Going back and opening the panel again: the old refusal is not shown as if it were new.
+    el.querySelector<HTMLButtonElement>('.ask__back')!.click();
+    fixture.detectChanges();
+    button('Tirar').click();
+    fixture.detectChanges();
+    expect(text()).not.toContain('Já aconteceu outra coisa depois deste dano');
   });
 
   it('shows the damage that awaits the sum: who is awaited, the part taken out with its reason, the sum kept', () => {

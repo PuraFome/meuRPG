@@ -107,6 +107,7 @@ export class PendingDamages {
       });
     });
   }
+  private readonly sumHead = viewChild('sumHead', { read: ElementRef<HTMLElement> });
   private readonly safe = viewChild('safe', { read: ElementRef<HTMLButtonElement> });
   private readonly otherInput = viewChild('otherInput', { read: ElementRef<HTMLInputElement> });
   private readonly otherLinks = viewChildren('otherLink', { read: ElementRef<HTMLButtonElement> });
@@ -121,7 +122,15 @@ export class PendingDamages {
           p.status === PendingDamageStatus.AWAITING_GROUP_SUM,
       ),
       ...this.applied().filter((p) => p.status === PendingDamageStatus.APPLIED),
-    ].map((p) => pendingCard(p, this.encounter(), this.pendings(), this.state().removals())),
+    ].map((p) =>
+      pendingCard(
+        p,
+        this.encounter(),
+        this.pendings(),
+        this.state().removals(),
+        this.state().saves(),
+      ),
+    ),
   );
   /** The take-out on its way (the damage's id), and what the server refused. */
   protected readonly taking = signal<string | null>(null);
@@ -304,6 +313,8 @@ export class PendingDamages {
           reason: part.reason,
         });
         this.state().apply(res.encounter);
+        // The panel and its button are gone with the card that waits for the sum: the focus goes to that card's head.
+        afterNextRender(() => this.sumHead()?.nativeElement.focus(), { injector: this.injector });
       } catch (err) {
         this.takeError.set({ id: p.id, text: takeOutErrorMessage(err, labelOf) });
       } finally {

@@ -3,7 +3,7 @@ import { test } from './diagnostics';
 
 import { endOpenSessionRPC, openSessionPage } from './live-session-support';
 import { callRPC } from './support';
-import { damageCard, pendingIdOf, sneakHit, takeOutTable } from './take-out-support';
+import { aloneFlow, damageCard, pendingIdOf, rolledFlow, sneakHit, takeOutTable, twoPartsFlow } from './take-out-support';
 
 // #835: the master takes an extra out of a typed group. The damage was applied to an NPC: the app undoes it, the roller
 // types the sum of that damage type again, and the damage is applied anew. The table comes through the API; what is under test
@@ -106,6 +106,49 @@ test(
       await expect(damageCard(m).getByRole('button', { name: /^Tirar o / })).toHaveCount(0);
     } finally {
       await endOpenSessionRPC(m, campaignId).catch(() => undefined);
+    }
+  },
+);
+
+// The three other states of the board 835-04 (2, 3 and 4), each on its own table: the flows say what the master and the roller read.
+test(
+  'tirar uma parte sozinha no seu tipo: sai como antes, sem pedir uma nova soma',
+  { tag: ['@MR-012'] },
+  async ({ browser }) => {
+    test.setTimeout(180_000);
+    const t = await takeOutTable(browser, {}, { feats: ['radiant'] });
+    try {
+      await aloneFlow(t);
+    } finally {
+      await t.done().catch(() => undefined);
+    }
+  },
+);
+
+test(
+  'tirar um extra de um grupo que continua com duas partes: o cartão pede uma soma das duas',
+  { tag: ['@MR-012', '@RN-10'] },
+  async ({ browser }) => {
+    test.setTimeout(180_000);
+    const t = await takeOutTable(browser, {}, { feats: ['pierce'] });
+    try {
+      await twoPartsFlow(t);
+    } finally {
+      await t.done().catch(() => undefined);
+    }
+  },
+);
+
+test(
+  'tirar um extra de um dano rolado e ainda não aplicado a um personagem: nada é desfeito',
+  { tag: ['@MR-012'] },
+  async ({ browser }) => {
+    test.setTimeout(180_000);
+    const t = await takeOutTable(browser, {}, { ally: true });
+    try {
+      await rolledFlow(t);
+    } finally {
+      await t.done().catch(() => undefined);
     }
   },
 );
