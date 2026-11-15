@@ -1,6 +1,7 @@
 import { type TableEntry, TableContentKind } from '../../../gen/meurpg/rules/v1/table_content_pb';
 import type { SelectOption } from '../../shared/form-fields/select-field';
 import type { EffectMenuVm } from './effect-draft';
+import type { FeatureDraft } from './feature-draft';
 import { OFFERERS } from './option-draft';
 
 /**
@@ -31,7 +32,9 @@ export function requirableOptions(
   menu: EffectMenuVm,
   entries: readonly TableEntry[],
   own = '',
+  siblings: readonly SelectOption[] = [],
 ): SelectOption[] {
+  void siblings;
   const srd = srdOptionsOf(menu, Object.values(OFFERERS).flat());
   const table = tableOptionsOf(entries).filter((o) => o.key !== own);
   return [
@@ -49,4 +52,9 @@ export function pactChoices(menu: EffectMenuVm, entries: readonly TableEntry[]):
       .filter((o) => o.body.case === 'tableOption' && o.body.value.set === 'pact_boon')
       .map((o) => ({ value: o.key, label: `${o.namePt} (da mesa)` })),
   ];
+}
+
+/** The saved options of the same feature an option may ask for. */
+export function siblingOptions(_list: readonly FeatureDraft[], _own: string): SelectOption[] {
+  return [];
 }

@@ -42,6 +42,7 @@ describe('FeatureEditor (a trait, a feature)', () => {
       menu?: ReturnType<typeof menu>;
       oneOf?: boolean;
       allowAsks?: boolean;
+      allowOptions?: boolean;
     } = {},
   ) {
     emitted.length = 0;
@@ -69,7 +70,7 @@ describe('FeatureEditor (a trait, a feature)', () => {
     fixture.componentRef.setInput('isOption', over.isOption ?? false);
     fixture.componentRef.setInput('allowSummon', over.allowSummon ?? false);
     fixture.componentRef.setInput('campaignId', 'camp-1');
-    fixture.componentRef.setInput('allowOptions', over.oneOf ?? false);
+    fixture.componentRef.setInput('allowOptions', over.allowOptions ?? over.oneOf ?? false);
     fixture.componentRef.setInput('oneOf', over.oneOf ?? false);
     fixture.componentRef.setInput('allowAsks', over.allowAsks ?? false);
     fixture.componentInstance.featureChange.subscribe((f) => emitted.push(f));
@@ -410,6 +411,76 @@ describe('FeatureEditor (a trait, a feature)', () => {
       expect(text(el)).toContain('Nível de classe');
       el.querySelector<HTMLButtonElement>('button[aria-label="Tirar Nível de classe"]')!.click();
       expect(emitted.at(-1)?.prerequisite).toBeUndefined();
+    });
+  });
+
+  describe('the siblings of an option in "Outras opções" (#580, board 580-03)', () => {
+    const sibling = (key: string, name: string): FeatureDraft => ({ ...emptyFeature(), key, name });
+    const parent = (): FeatureDraft => ({
+      ...emptyFeature(),
+      name: 'Truques de lâmina',
+      options: [
+        sibling('feature:a@mesa', 'Golpe do Corvo'),
+        withAsks(sibling('feature:b@mesa', 'Asa Partida'), {
+          classKey: 'class:fighter',
+          classLevel: '7',
+        }),
+        sibling('', 'Bico de Ferro'),
+      ],
+    });
+    const open = (n: number) => {
+      const row = el.querySelector<HTMLElement>(`[role="group"][aria-label="Opção ${n}"]`)!;
+      const toggle = row.querySelector<HTMLButtonElement>('button[aria-expanded="false"]');
+      toggle?.click();
+      fixture.detectChanges();
+      return row;
+    };
+    const addAsk = (row: HTMLElement) => {
+      Array.from(row.querySelectorAll<HTMLButtonElement>('.asks-add__menu button'))
+        .find((b) => text(b).includes('Adicionar pré-requisito'))!
+        .click();
+      fixture.detectChanges();
+      Array.from(row.querySelectorAll<HTMLButtonElement>('[role="menuitem"]'))
+        .find((b) => text(b).includes('Outras opções'))!
+        .click();
+      fixture.detectChanges();
+    };
+    const choices = (row: HTMLElement) =>
+      Array.from(row.querySelectorAll('app-pick-list select option')).map((o) => text(o).trim());
+
+    it('offers the saved siblings with their "Opção N", never the option itself or one not saved', () => {
+      setup(parent(), { allowOptions: true });
+      const row = open(2);
+      addAsk(row);
+      const all = choices(row);
+      expect(all).toContain('Golpe do Corvo · Opção 1');
+      expect(all.some((o) => o.startsWith('Asa Partida'))).toBe(false);
+      expect(all.some((o) => o.startsWith('Bico de Ferro'))).toBe(false);
+    });
+
+    it('shows a picked sibling as a chip with the badge of its place', () => {
+      const f = parent();
+      f.options[1] = withAsks(f.options[1], { requiresOptions: ['feature:a@mesa'] });
+      setup(f, { allowOptions: true });
+      const chip = open(2).querySelector('app-pick-list .chip')!;
+      expect(text(chip)).toContain('Golpe do Corvo');
+      expect(chip.querySelector('.mr-tag')?.textContent?.trim()).toBe('Opção 1');
+    });
+
+    it('says in the hint that an option not saved yet can be asked for after the feature is saved, and keeps "Nunca a própria opção."', () => {
+      setup(parent(), { allowOptions: true });
+      const row = open(2);
+      expect(text(row)).toContain(
+        'Uma opção nova só pode ser pedida depois de salvar a característica.',
+      );
+      expect(text(row)).toContain('Nunca a própria opção.');
+    });
+
+    it('leaves the sentence out when every option is saved', () => {
+      const f = parent();
+      f.options[2] = { ...f.options[2], key: 'feature:c@mesa' };
+      setup(f, { allowOptions: true });
+      expect(text(open(2))).not.toContain('depois de salvar a característica');
     });
   });
 });
