@@ -3238,6 +3238,8 @@ message ReadiedAction {
   // The round it was readied in.
   int32 round = 8;
   ReadiedStatus status = 9;
+  // A spell: the slot level it was held with; 0 for a cantrip or another kind.
+  int32 slot_level = 10;
 }
 
 // The trait of a stat block that makes the sun count against a creature's rolls (SRD 5.1, Monsters).
