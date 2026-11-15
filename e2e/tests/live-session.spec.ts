@@ -51,6 +51,9 @@ test(
 
       // The player's open tab shows the notice, without a reload…
       const enter = await waitForNotice(playerPage, name);
+      // The link reads as drawn, a space between the words (the text as the page lays it out, not its source).
+      // A pattern, not a string: a string is matched with its whitespace collapsed, which hid the lost space.
+      await expect(enter).toHaveText(/^Entrar na sessão$/, { useInnerText: true });
       // …and "Entrar na sessão" opens the session page.
       await enter.click();
       await expect(playerPage).toHaveURL(`/campaigns/${campaignId}/session`);

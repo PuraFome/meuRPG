@@ -105,7 +105,8 @@ func tallyHighlights(events []playdb.ListEncounterCombatEventsRow, combatants []
 	h, out := newHighlightTally(combatants)
 	undone := map[string]bool{}
 	for _, e := range events {
-		if e.Kind == eventActionUndone {
+		// The take-out of a part of a group takes the damage's roll back as an undo does (combat_group_sum.go).
+		if e.Kind == eventActionUndone || e.Kind == eventDamagePartRemoved {
 			markUndone(undone, e.Payload)
 		}
 	}

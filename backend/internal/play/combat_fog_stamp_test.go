@@ -302,3 +302,25 @@ func TestStamp_ADoorIsSeenByTheOnesWhoKnowItAndTheMover(t *testing.T) {
 		t.Errorf("stamp with a failing terrain read: error = %v, want it wrapped", err)
 	}
 }
+
+// The take-out of a group part takes the damage back as an undo does, so its line keeps the audience of the line it takes back
+// (whoever saw the roll), whatever the NPC's square is seen by now; an undo does the same, and any other event is stamped.
+func TestStampLine_ALineThatTakesAnActionBackKeepsItsAudience(t *testing.T) {
+	t.Parallel()
+	st := newStampTable(t)
+	toren, brisa := st.sees.users[0], st.sees.users[2]
+	skel := st.cid(t, "Esqueleto")
+	st.sees.sees[brisa] = []grid.Square{st.sq["Esqueleto"]} // seen by Brisa now; Toren saw the roll
+	stamped := func(kind string, awaits string) actionEvent {
+		t.Helper()
+		out, err := st.c.stampLine(t.Context(), kind, actionEvent{Actor: st.cid(t, "Toren"), Target: skel, Fogged: true, SeenBy: []string{toren}, AwaitsSum: awaits})
+		if err != nil {
+			t.Fatalf("stampLine(%s) error = %v", kind, err)
+		}
+		return out
+	}
+	wantStamp(t, "the take-out of a group part", stamped(eventDamagePartRemoved, "damage-type:piercing"), true, toren)
+	wantStamp(t, "an undo", stamped(eventActionUndone, ""), true, toren)
+	wantStamp(t, "the removal of an extra from an ordinary damage", stamped(eventDamagePartRemoved, ""), true, brisa)
+	wantStamp(t, "another event", stamped(eventAttackRolled, ""), true, brisa)
+}

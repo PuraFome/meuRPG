@@ -151,10 +151,16 @@ func (e *logEntry) dressSteps(d *playv1.CombatLogDamage, master bool) {
 	d.Steps = stepsProto(e.dmg.Steps, ignored, names, dtPT, master)
 }
 
-// removalView is the master's removal of an extra, as a line for him and the attacker's player.
+// removalView is the master's removal of an extra, as a line for every reader: the master and the attacker's player read
+// the part's key and name and the reason; another player reads the name the roll line gave the part ("Outra fonte" for one
+// hidden from them), no key and no reason (RN-10).
 func (e *logEntry) removalView(v combatViewer, owner bool, out *playv1.CombatLogEntry) bool {
 	if !v.master && !owner {
-		return false
+		out.Key, out.Reason, out.KeyNamePt = "", "", e.partLabel
+		if e.partHidden {
+			out.KeyNamePt = otherSourceTx
+		}
+		return true
 	}
 	out.Reason = e.rolls.reasonOf(e.ev)
 	out.KeyNamePt = e.partLabel

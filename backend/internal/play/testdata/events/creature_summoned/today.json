@@ -899,6 +899,9 @@
       "group_hidden": true
     }
   ],
+  "awaits_sum": "x",
+  "part_label": "x",
+  "part_hidden": true,
   "parts_before": {},
   "maneuver_spent": [
     "x"
