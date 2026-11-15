@@ -6,4 +6,3 @@ export interface Asks {
   requiresSpell: string;
   requiresOptions: string[];
 }
-

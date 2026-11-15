@@ -5,8 +5,17 @@ import { MatIconModule } from '@angular/material/icon';
 import type { TableEntry } from '../../../gen/meurpg/rules/v1/table_content_pb';
 import type { EffectDraft, EffectMenuVm, FeatChoice } from '../../core/content/effect-draft';
 import { emptyEffect } from '../../core/content/effect-draft';
-import { emptyFeature, type FeatureDraft, NAME_MAX } from '../../core/content/feature-draft';
+import {
+  emptyFeature,
+  type FeatureDraft,
+  featureAsks,
+  NAME_MAX,
+  withAsks,
+} from '../../core/content/feature-draft';
 import { followResource, resourcesOf, type SummonDraft } from '../../core/content/summon-draft';
+import type { Asks } from '../../core/content/asks';
+import { pactChoices, requirableOptions } from '../../core/content/requirable-options';
+import { AskRows } from '../ask-rows/ask-rows';
 import { latestInput } from '../latest-input';
 import { EffectPicker } from '../effect-picker/effect-picker';
 import { FieldNote } from '../form-fields/field-note';
@@ -24,6 +33,7 @@ import { SummonBlock } from '../summon-block/summon-block';
 @Component({
   selector: 'app-feature-editor',
   imports: [
+    AskRows,
     EffectPicker,
     FieldNote,
     FeatureEditor,
@@ -88,6 +98,26 @@ export class FeatureEditor {
   readonly oneOf = input(false);
   /** The feature is one of a list of options: an option with no name is not sent. */
   readonly isOption = input(false);
+  /** An option of a class or subclass feature may ask something of who picks it (a level, a pact, a spell, other options; board 580-03). */
+  readonly allowAsks = input(false);
+  protected readonly asks = computed(() => featureAsks(this.feature()));
+  protected readonly classOptions = computed<SelectOption[]>(() => [
+    { value: '', label: 'Nenhuma' },
+    ...(this.catalog()?.classes ?? []),
+  ]);
+  protected readonly pactOptions = computed<SelectOption[]>(() =>
+    pactChoices(this.menu(), this.entries()),
+  );
+  protected readonly requirable = computed<SelectOption[]>(() =>
+    requirableOptions(this.menu(), this.entries(), this.feature().key),
+  );
+  protected readonly spellSearch = computed(() => this.catalog()?.spellSearch ?? []);
+
+  protected setAsks(change: Partial<Asks>): void {
+    const next = withAsks(this.latest.current(), change);
+    this.latest.sent(next);
+    this.featureChange.emit(next);
+  }
   /** An option that has content but no name: the save leaves it out, and the screen says so. */
   protected readonly nameMax = NAME_MAX;
   protected readonly unsaved = computed(() => {
