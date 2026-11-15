@@ -15353,6 +15353,10 @@ async function scanLostPrerequisite(browser: Browser, colorScheme: 'light' | 'da
       await expect(page.getByText(`${table.entryName} pede ${asked}:`)).toBeVisible();
       await expect(page.getByText('Pré-requisito perdido.').first()).toBeVisible();
       await expect(page.getByText('Não vale agora')).toBeVisible();
+      // The story sits beside the features on a tablet, never over them: the heading of the features stays in sight.
+      const features = await page.locator('app-features-panel').boundingBox();
+      const story = await page.locator('app-story-panel').boundingBox();
+      expect(features && story && features.x < story.x + story.width && story.x < features.x + features.width && features.y < story.y + story.height && story.y < features.y + features.height, `a história cobre as características ${where}`).toBe(false);
       await expectScreenPasses(page, `Ficha com ${kind === 'feat' ? 'o talento' : 'a opção'} de pré-requisito perdido ${where}`);
     }
   } finally {
