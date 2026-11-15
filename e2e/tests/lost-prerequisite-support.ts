@@ -13,7 +13,7 @@ import { callRPC, characterRpcBody, createCharacterRPC } from './support';
 // a normal SRD class (Guerreiro 7) or a class the master switched off, which a player reads as "uma condição que a mesa não
 // mostra" (RN-23) and the master reads named. The master saves the sheet with the feat, as the guided pick would refuse it.
 
-export type LostKind = 'feat' | 'option';
+export type LostKind = 'feat' | 'option' | 'both';
 
 export interface LostTable {
   campaignId: string;
@@ -22,6 +22,8 @@ export interface LostTable {
   featName: string;
   /** The name of the feat or option the sentence is about. */
   entryName: string;
+  /** With 'both', the lost feat that stands beside the lost option (`entryName` is then the option). */
+  alsoName?: string;
 }
 
 const HIDDEN_CLASS = 'Ordem Esquecida';
@@ -72,17 +74,20 @@ export async function lostPrerequisiteTable(master: Page, player: Page, name: st
   const { campaignId } = await emptyTable(master, player, name);
   await setTableRulesRPC(master, campaignId, { featsAllowed: true });
   const asked = await askedClass(master, campaignId, hidden);
+  const given: Record<string, string[]> = { featKeys: [] };
   let featName = 'Postura Firme';
   let entryName = featName;
-  let given: Record<string, string[]>;
-  if (kind === 'feat') {
+  let alsoName: string | undefined;
+  if (kind === 'feat' || kind === 'both') {
     const feat = await createEntryRPC(master, campaignId, 'tableFeat', {
-      namePt: featName,
+      namePt: 'Postura Firme',
       descPt: ['Você firma os pés e não cede um passo.'],
       prerequisite: { classLevel: asked },
     });
-    given = { featKeys: [feat] };
-  } else {
+    given.featKeys.push(feat);
+  }
+  if (kind === 'option' || kind === 'both') {
+    alsoName = kind === 'both' ? featName : undefined;
     featName = 'Truques de lâmina';
     entryName = 'Asa Partida';
     const feat = await createEntryRPC(master, campaignId, 'tableFeat', {
@@ -93,14 +98,15 @@ export async function lostPrerequisiteTable(master: Page, player: Page, name: st
     });
     const entry = (await listEntriesJSON(master, campaignId)).entries!.find((e) => e.key === feat)!;
     const optionKey = entry.tableFeat.options[0].key as string;
-    given = { featKeys: [feat], featureChoiceKeys: [optionKey] };
+    given.featKeys.push(feat);
+    given.featureChoiceKeys = [optionKey];
   }
   const characterId = await torenAfterTheTable(player, campaignId);
   await saveSheetWith(master, campaignId, characterId, given);
   if (hidden) {
     await setSwitchesRPC(master, campaignId, [{ key: asked.classKey, off: true }]);
   }
-  return { campaignId, characterId, featName, entryName };
+  return { campaignId, characterId, featName, entryName, alsoName };
 }
 
 /**
