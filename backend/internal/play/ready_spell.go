@@ -159,15 +159,20 @@ func heldByWindow(ctx context.Context, q *playdb.Queries, encID, casterID, spell
 	return w, row, false, nil
 }
 
-// chosenSlot is the slot of the cast: the request's, or the one a readied spell spent at Ready.
+// chosenSlot is the slot of the cast: the request's, or the one a readied spell spent at Ready. A release names no slot or
+// the one it was held with: another level is refused.
 func (f *castFlow) chosenSlot() (*slotRef, error) {
 	if f.readied == nil {
 		return slotOf(f.req.GetSlot(), f.cast)
 	}
-	if f.readied.row.SlotLevel == 0 {
+	held := f.readied.row.SlotLevel
+	if in := f.req.GetSlot(); in != nil && in.GetLevel() != held {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("a readied spell is released with the slot it was held with (level %d): name no slot or that level", held))
+	}
+	if held == 0 {
 		return nil, nil
 	}
-	return &slotRef{Level: f.readied.row.SlotLevel}, nil
+	return &slotRef{Level: held}, nil
 }
 
 // castID is the id of the cast: a readied spell's is the one it got at Ready.

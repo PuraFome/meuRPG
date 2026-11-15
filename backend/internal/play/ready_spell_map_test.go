@@ -1,11 +1,13 @@
 package play
 
 import (
+	"slices"
 	"testing"
 
 	"connectrpc.com/connect"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
 // A readied spell that needs the map (a point, a direction, a wall) is released with CastSpell by the readier's player
@@ -78,5 +80,125 @@ func TestTheReadiedRowCarriesTheSlotLevelOfTheHeldSpell(t *testing.T) {
 	a.mustReady(t, a.bia, a.readySpell(t, e, "Brisa", sacredFlame, 0, "Goblin"))
 	if row := byLabel(t, a.get(t, a.bia), "Brisa").GetReadied(); row.GetKind() != playv1.ReadiedKind_READIED_KIND_SPELL || row.GetSlotLevel() != 0 {
 		t.Errorf("a held cantrip's row = %v, want a spell with slot_level 0", row)
+	}
+}
+
+// slotsOf is the readier's used slots of the levels, as a line to compare before and after a release.
+func (a *armed) slotsOf(t *testing.T, label string, levels ...int32) []int32 {
+	t.Helper()
+	out := make([]int32, len(levels))
+	for i, l := range levels {
+		out[i] = a.slotsUsed(t, label, l)
+	}
+	return out
+}
+
+// CastSpell for the held spell while the caster's READIED window is open is its release: it takes the slot of Ready
+// (the request names none, or the same level), spends no slot, spends the reaction, answers the window and fires the row.
+func TestCastSpellReleasesTheHeldSpellAtTheHeldSlot(t *testing.T) {
+	t.Parallel()
+	for _, tt := range []struct {
+		name string
+		slot *playv1.SpellSlot
+	}{{"no slot", nil}, {"the held level", slotOfLevel(2)}} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			a := newCasters(t)
+			e := a.readyForRelease(t, magicMissileSpell, 2, "Capitão Goblin")
+			w := a.mustFire(t, e, "Pensantus")
+			slots := a.slotsOf(t, "Pensantus", 1, 2)
+			res, err := a.cast(t, a.ana, e, "Pensantus", magicMissileSpell, tt.slot, []*playv1.SpellTarget{darts(a, t, "Capitão Goblin", 4)}, noCastRoll)
+			if err != nil || res.GetCast() == nil {
+				t.Fatalf("CastSpell() = %v, %v; want the release", res, err)
+			}
+			if got := a.slotsOf(t, "Pensantus", 1, 2); !slices.Equal(got, slots) {
+				t.Errorf("slots used by level = %v, want %v: the release spends no slot", got, slots)
+			}
+			if cast := a.castLine(t, e, magicMissileSpell); cast == nil || cast.GetSpell().GetSlot().GetLevel() != 2 {
+				t.Errorf("the release's line = %v, want Magic Missile at 2nd level", cast)
+			}
+			if !byLabel(t, a.get(t, a.ana), "Pensantus").GetReactionUsed() || a.readiedStatus(t, "Pensantus") != readiedFired {
+				t.Errorf("after the release: reaction used %v, row %q", byLabel(t, a.get(t, a.ana), "Pensantus").GetReactionUsed(), a.readiedStatus(t, "Pensantus"))
+			}
+			if got := a.windowOf(t, a.master, kindReadied); got != nil {
+				t.Errorf("the READIED window %v is still open", got)
+			}
+			if _, err := a.answerReaction(t, a.ana, e, w.GetId(), passAnswer); err == nil {
+				t.Error("the answered window took another answer")
+			}
+		})
+	}
+}
+
+// What CastSpell refuses while the READIED window is open, each time writing nothing: another spell, a slot of another
+// level than the held one (lower or an upcast) and Metamagic. The release then still works.
+func TestCastSpellRefusesWhatIsNotTheHeldReleaseWhileTheWindowIsOpen(t *testing.T) {
+	t.Parallel()
+	a := newCasters(t)
+	e := a.readyForRelease(t, magicMissileSpell, 2, "Capitão Goblin")
+	a.mustFire(t, e, "Pensantus")
+	slots := a.slotsOf(t, "Pensantus", 1, 2)
+	missiles := []*playv1.SpellTarget{darts(a, t, "Capitão Goblin", 4)}
+	quickened := func(r *playv1.CastSpellRequest) {
+		r.Metamagic = []*playv1.MetamagicChoice{{Key: rules.MetamagicQuickened}}
+	}
+	for _, tt := range []struct {
+		name    string
+		spell   string
+		slot    *playv1.SpellSlot
+		targets []*playv1.SpellTarget
+		roll    func(*playv1.CastSpellRequest)
+		code    connect.Code
+		msg     string
+	}{
+		{"another spell", burningHands, slotOfLevel(1), a.at(t, "Capitão Goblin"), noCastRoll, connect.CodeFailedPrecondition, "it is not this combatant's turn"},
+		{"a lower slot", magicMissileSpell, slotOfLevel(1), missiles, noCastRoll, connect.CodeInvalidArgument, "a readied spell is released with the slot it was held with (level 2): name no slot or that level"},
+		{"an upcast", magicMissileSpell, slotOfLevel(3), missiles, noCastRoll, connect.CodeInvalidArgument, "a readied spell is released with the slot it was held with (level 2): name no slot or that level"},
+		{"Metamagic", magicMissileSpell, nil, missiles, quickened, connect.CodeInvalidArgument, "a readied spell was cast at Ready: its release takes no Metamagic"},
+	} {
+		_, err := a.cast(t, a.ana, e, "Pensantus", tt.spell, tt.slot, tt.targets, tt.roll)
+		wantRefusal(t, tt.name, err, tt.code, tt.msg)
+	}
+	if got := a.slotsOf(t, "Pensantus", 1, 2); !slices.Equal(got, slots) {
+		t.Errorf("slots used by level = %v, want %v: a refusal spends nothing", got, slots)
+	}
+	if byLabel(t, a.get(t, a.ana), "Pensantus").GetReactionUsed() || a.readiedStatus(t, "Pensantus") != readiedWaiting || !a.readiedOpen(t, "Pensantus") {
+		t.Errorf("after the refusals: reaction used, row %q, window open %v; want the window as it was", a.readiedStatus(t, "Pensantus"), a.readiedOpen(t, "Pensantus"))
+	}
+	if res, err := a.cast(t, a.ana, e, "Pensantus", magicMissileSpell, nil, missiles, noCastRoll); err != nil || res.GetCast() == nil {
+		t.Errorf("the release after the refusals = %v, %v", res, err)
+	}
+}
+
+// Wall of Fire held with Ready is released with CastSpell: the point and the wall of the request lay the zone at the held
+// slot, the ogre in it saves, and no other slot is spent.
+func TestAReadiedWallOfFireIsReleasedWithCastSpell(t *testing.T) {
+	t.Parallel()
+	c := wallCave(t)
+	e := c.zoneFight(t)
+	e = c.passTo(t, e, "Pensantus")
+	c.mustReady(t, c.ana, c.readySpell(t, e, "Pensantus", wallOfFireKey, 4, ""))
+	if zs := c.get(t, c.master).GetZones(); len(zs) != 0 {
+		t.Fatalf("Ready laid the zones %v", zs)
+	}
+	e = c.mustEndTurn(t, c.master, e)
+	c.mustFire(t, e, "Pensantus")
+	slots := c.slotsOf(t, "Pensantus", 4, 5)
+	c.h.roller.queue(5, 5, 5, 5, 5, 5) // the ogre's Dexterity save, then 5d8 = 25
+	if _, err := c.castArea(t, c.ana, "Pensantus", wallOfFireKey, nil, at(7, 8), nil, northWall(playv1.WallSide_WALL_SIDE_LEFT)); err != nil {
+		t.Fatalf("CastSpell() error = %v", err)
+	}
+	z := c.oneZone(t, c.master, wallOfFireKey)
+	if len(z.GetSquares()) != 2 || !zoneHas(z, 7, 8) || !zoneHas(z, 7, 7) || !z.GetConcentration() {
+		t.Errorf("zone = %v, want the wall of (7,8) and (7,7), held with concentration", z)
+	}
+	if cur, _, _ := c.hp(t, "Ogro"); cur != 59-25 {
+		t.Errorf("the ogre has %d hit points, want %d: the failed save takes 5d8 = 25", cur, 59-25)
+	}
+	if got := c.slotsOf(t, "Pensantus", 4, 5); !slices.Equal(got, slots) || c.readiedStatus(t, "Pensantus") != readiedFired {
+		t.Errorf("slots used by level = %v (want %v), row %q (want fired)", got, slots, c.readiedStatus(t, "Pensantus"))
+	}
+	if got := c.concentrationAs(t, c.caio, "Pensantus"); got != wallOfFireKey {
+		t.Errorf("the table reads Pensantus concentrating on %q, want the spell's own key", got)
 	}
 }
