@@ -21,7 +21,6 @@ import {
   type SpellOption,
   type TurnOptions,
 } from '../../../../../gen/meurpg/rules/v1/rules_pb';
-import { article } from '../../../../core/combat/combat-log';
 import { AMMUNITION } from '../../../../core/combat/ammunition-line';
 import {
   attackDetail,
@@ -72,6 +71,7 @@ import { AttackLegend } from './attack-legend';
 import { Fold } from '../../../../shared/fold/fold';
 import { EconomyShapes } from '../../../../shared/economy-shapes/economy-shapes';
 import { movementOf, turnLineOf } from './turn-line';
+import { leaveDetailOf, SURPRISE_ROWS } from './surprise-and-form-text';
 import { holdsReadied, isReadyOption, withoutReady } from '../../../../core/combat/ready';
 import { ReadiedCard } from '../readied-card/readied-card';
 import { TabList, tabId, tabPanelId } from '../../../../shared/tab-list/tab-list';
@@ -239,13 +239,7 @@ export class ActionGroups {
   readonly familiarEyes = output<void>();
   /** The "?" of a spell: the key and the Portuguese name. */
   readonly describe = output<{ key: string; name: string }>();
-  /** "Você volta a ser a Sálvia, com os seus PV. Os PV que sobraram do Lobo se perdem.": the character and the beast, by name. */
-  protected readonly leaveDetail = computed(() => {
-    const name = this.own().label;
-    const beast = this.beast();
-    const a = (n: string) => (article(n) === 'a' ? 'a' : 'o');
-    return `Você volta a ser ${a(name)} ${name}, com os seus PV. Os PV que sobraram d${a(beast)} ${beast} se perdem.`;
-  });
+  protected readonly leaveDetail = computed(() => leaveDetailOf(this.own().label, this.beast()));
 
   /** "Transformar": the page opens the list of beasts. */
   readonly transform = output<void>();
@@ -267,13 +261,7 @@ export class ActionGroups {
   protected readonly specialNote = computed(() =>
     this.beast() ? SHOVE_ATTACK_NOTE : SPECIAL_ATTACKS_NOTE,
   );
-  /** The four groups of a surprised character's turn, each unavailable for the same reason (SRD 5.1, Surprise). */
-  protected readonly surpriseRows: readonly { readonly name: string; readonly why: string }[] = [
-    { name: 'Atacar', why: 'Surpresa.' },
-    { name: 'Movimento', why: 'Surpresa.' },
-    { name: 'Ação bônus', why: 'Surpresa.' },
-    { name: 'Reação', why: 'Surpresa até o fim do turno.' },
-  ];
+  protected readonly surpriseRows = SURPRISE_ROWS;
   protected readonly escapeDetail = ESCAPE_DETAIL;
   protected readonly escapeWhy = computed(() => reasonText(this.contest()?.escapeReason));
   /** The word of the attack list for Agarrar and Empurrar. */
