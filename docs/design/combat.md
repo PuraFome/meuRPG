@@ -60,7 +60,7 @@ On a player character's turn the master's "Turno" leads with that character's ca
 
 ### A versatile weapon on the attack row
 
-The server sends the grip of a versatile weapon (`Attack.grip`: one hand because of a shield, one hand because of another weapon, or both hands) from the equipped gear, and the attack rolls the dice of that grip; the web only writes it. The stats line shows the dice of the grip (`damageText`), and a quieter second line (`versatileLine`, `data-testid="versatile-line"`, the row's detail style) says the other grip: "Com duas mãos, sem o escudo: 1d8 + 3" (or "sem a outra arma") while the weapon is in one hand, "Com duas mãos; com uma: 1d6 + 3" while it is in both, where the stats line then reads the two-handed dice. The line wraps inside the row and never widens it (board 580-14).
+The server sends the grip of a versatile weapon (`Attack.grip`: one hand because of a shield, one hand because of another weapon, or both hands) from the equipped gear, and the attack rolls the dice of that grip; the web only writes it. The stats line shows the dice of the grip (`damageText`), and a quieter second line (`versatileLine`, `data-testid="versatile-line"`, the row's detail style) says the other grip: "Com duas mãos, sem o escudo: 1d8 + 3" (or "sem a outra arma") while the weapon is in one hand, "Com duas mãos; com uma: 1d6 + 3" while it is in both, where the stats line then reads the two-handed dice. The line wraps inside the row and never widens it (board 580-14). The character sheet's attack list shows the same dice (`gripDice`) and the same line under them, from the same field (board 580-13).
 
 ### Sacar ou guardar
 

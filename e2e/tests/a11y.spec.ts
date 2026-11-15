@@ -9533,6 +9533,69 @@ for (const [width, colorScheme] of [[390, 'light'], [768, 'dark'], [1280, 'light
   });
 }
 
+/**
+ * A versatile weapon on the character sheet (#849, board 580-13): the attack row shows the dice of the grip in use and the
+ * other grip in the rail's words, with the shield equipped and with it stowed. Pictures are saved when `E2E_SHOTS_DIR` names a folder.
+ */
+async function scanVersatileSheet(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: 900 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, deviceScaleFactor: 2 });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport, deviceScaleFactor: 2 });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  const shotsDir = process.env.E2E_SHOTS_DIR;
+  const campaigns: string[] = [];
+  const open = async (name: string, gear: Record<string, unknown>) => {
+    const table = await tableForCombat(m, p, `Acessibilidade ficha empunhadura ${name} ${Date.now()}`, true, true, { build: toren, sheet: gear });
+    campaigns.push(table.campaignId);
+    await openLive(p, `/campaigns/${table.campaignId}/characters/${table.characterId}`);
+    const attacks = p.getByRole('region', { name: 'Ataques' });
+    const row = attacks.getByRole('row').filter({ hasText: 'Espada longa' });
+    return { row, damage: row.locator('.attacks__damage'), line: row.getByTestId('versatile-line') };
+  };
+  const check = async (row: Locator, line: Locator, screen: string, shot: string) => {
+    // The line wraps inside its cell, under the dice, and the page never scrolls sideways.
+    const rowBox = await boxOf(row);
+    const lineBox = await boxOf(line);
+    expect(lineBox.x + lineBox.width).toBeLessThanOrEqual(rowBox.x + rowBox.width + 1);
+    expect(rowBox.x + rowBox.width).toBeLessThanOrEqual(width);
+    expect(await p.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await expectScreenPasses(p, `${screen} ${where}`);
+    if (shotsDir) {
+      await row.scrollIntoViewIfNeeded();
+      await row.screenshot({ path: `${shotsDir}/849-${shot}-${width}-${colorScheme === 'light' ? 'claro' : 'escuro'}.png` });
+    }
+  };
+  try {
+    await m.goto('/');
+    await p.goto('/');
+
+    const withShield = await open('com escudo', { weaponKeys: ['equipment:longsword'], armorKey: 'equipment:chain-mail', shield: true });
+    await expect(withShield.damage).toContainText('1d8 + 3 cortante');
+    await expect(withShield.line).toHaveText('Com duas mãos, sem o escudo: 1d10 + 3');
+    await check(withShield.row, withShield.line, 'Ficha, espada longa com o escudo', 'ficha-com-escudo');
+
+    const bothHands = await open('duas mãos', { weaponKeys: ['equipment:longsword'], armorKey: 'equipment:chain-mail', shield: true, carriedKeys: ['equipment:shield'] });
+    await expect(bothHands.damage).toContainText('1d10 + 3 cortante');
+    await expect(bothHands.line).toHaveText('Com duas mãos; com uma: 1d8 + 3');
+    await check(bothHands.row, bothHands.line, 'Ficha, espada longa com as duas mãos', 'ficha-duas-maos');
+  } finally {
+    for (const id of campaigns) {
+      await endOpenSessionRPC(m, id).catch(() => undefined);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+for (const [width, colorScheme] of [[390, 'light'], [768, 'dark'], [1280, 'light'], [390, 'dark'], [768, 'light'], [1280, 'dark']] as const) {
+  test(`a linha de duas mãos da arma versátil na ficha cabe e passa no axe, ${width}px, tema ${colorScheme === 'light' ? 'claro' : 'escuro'}`, { tag: ['@a11y', '@849'] }, async ({ browser }) => {
+    test.setTimeout(240_000);
+    await scanVersatileSheet(browser, colorScheme, width);
+  });
+}
+
 /** The attunement (#561): the sheet's "Itens mágicos" and "Sintonização" for the owner (window closed) and the master (open), the picker and "Remover item". */
 async function scanAttunementScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = { width, height: 900 };
