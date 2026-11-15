@@ -279,4 +279,27 @@ describe('WeaponEditor (#580 S2, board 580-10)', () => {
     }
     expect(text(el)).toContain('Leve e Pesada não vão juntas. Tire uma.');
   });
+
+  it('counts the Leve and Pesada clash with the server refusals, and shows "—" in the empty two-handed damage', async () => {
+    const { fixture, el } = setup();
+    for (const n of ['Leve', 'Pesada']) {
+      Array.from(el.querySelectorAll<HTMLButtonElement>('button.tchip'))
+        .find((b) => text(b).includes(n))!
+        .click();
+      await settle(fixture, 2);
+    }
+    save.mockRejectedValue(
+      refusal(
+        ['table_weapon.damage', 'bad_value'],
+        ['table_weapon.two_handed_damage', 'bad_value'],
+        ['table_weapon.long_range_ft', 'bad_range'],
+      ),
+    );
+    click(el, 'Salvar arma');
+    await settle(fixture, 3);
+    expect(text(el)).toContain('4 campos precisam de ajuste');
+    expect(
+      (field(el, 'table_weapon.two_handed_damage') as HTMLInputElement).getAttribute('placeholder'),
+    ).toBe('—');
+  });
 });
