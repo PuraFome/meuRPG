@@ -148,28 +148,19 @@ func TestBuildTemplateFindsTheMigratedTemplate(t *testing.T) {
 	if again.name != "meurpg_tpl_"+fingerprint || again.name != first.name {
 		t.Errorf("template name = %q, want meurpg_tpl_%s", again.name, fingerprint)
 	}
-	if !slices.Equal(again.ddl, first.ddl) || !slices.Equal(again.tables, first.tables) || !slices.Equal(again.reference, first.reference) {
+	if again.backup != first.backup || !slices.Equal(again.tables, first.tables) || !slices.Equal(again.reference, first.reference) {
 		t.Error("the second build read another template")
 	}
 	if !slices.Contains(again.tables, "goose_db_version") || !slices.Contains(again.reference, "session_event_kinds") || slices.Contains(again.reference, "goose_db_version") {
 		t.Errorf("tables %v, reference %v", again.tables, again.reference)
 	}
-	if again.postgres {
-		if len(again.ddl) != 0 {
-			t.Errorf("a PostgreSQL template keeps no DDL (it is copied natively), got %d statements", len(again.ddl))
-		}
-	} else if len(again.ddl) == 0 || !strings.HasPrefix(again.ddl[0], "CREATE SEQUENCE public.goose_db_version_id_seq ") {
-		t.Errorf("ddl = %q, want goose's sequence first", again.ddl)
+	if again.postgres != (again.backup == "") {
+		t.Errorf("backup = %q on a template with postgres = %v: only a CockroachDB template is backed up", again.backup, again.postgres)
 	}
 }
 
-// TestGooseIDsOfACopiedDatabase documents a known defect, not fixed: the template's
-// DDL creates goose's identity sequence (goose_db_version_id_seq) as a
-// sequence of its own, before goose_db_version, whose identity column then
-// makes another one. NewPool's setval moves the copy, not the sequence the
-// table uses, so the next row goose inserts in a test database (after a
-// down, say) collides with a copied id. No test runs goose on a test
-// database today.
+// TestGooseIDsOfACopiedDatabase checks that goose_db_version of a test database uses the identity sequence the migrations made, whichever
+// the server: a copy of the template keeps what the template has.
 func TestGooseIDsOfACopiedDatabase(t *testing.T) {
 	t.Parallel()
 	pool := NewPool(t, "meurpg_dbtest_goose")
@@ -179,14 +170,8 @@ func TestGooseIDsOfACopiedDatabase(t *testing.T) {
 	if err := pool.QueryRow(ctx, `SELECT pg_get_serial_sequence('goose_db_version', 'id')`).Scan(&used); err != nil {
 		t.Fatal(err)
 	}
-	var version string
-	if err := pool.QueryRow(ctx, `SELECT version()`).Scan(&version); err != nil {
-		t.Fatal(err)
-	}
-	// A PostgreSQL copy is native, so the table keeps the sequence it was made with; the DDL of
-	// CockroachDB's copy is where the defect is.
-	if postgres := !strings.Contains(version, "CockroachDB"); postgres != (used == "public.goose_db_version_id_seq") {
-		t.Errorf("goose_db_version uses %q on %q: the finding changed, update this test", used, version)
+	if used != "public.goose_db_version_id_seq" {
+		t.Errorf("goose_db_version uses the sequence %q, want public.goose_db_version_id_seq", used)
 	}
 }
 
@@ -228,11 +213,9 @@ func rowsDigest(t *testing.T, conn *sql.DB, table string) string {
 	return digest.String
 }
 
-// TestARestoredTemplateEqualsTheReplayedOne compares a database made by RESTORE of the template's backup with the template itself
-// (the tables with their indexes, constraints and sequences, the functions, the triggers, the reference rows and goose's table), and
-// with one made by replaying the template's DDL and copying its reference rows: the rows must be the same in the three, and the
-// schema of the replayed one is logged where it differs.
-func TestARestoredTemplateEqualsTheReplayedOne(t *testing.T) {
+// TestARestoredTemplateEqualsTheTemplate compares a database made by RESTORE of the template's backup with the template itself: the
+// tables with their indexes, constraints and sequences, the functions, the triggers, the reference rows and goose's table.
+func TestARestoredTemplateEqualsTheTemplate(t *testing.T) {
 	rawURL := testenv.DatabaseURL(t)
 	templateOnce.Do(func() { template, errTemplate = buildTemplate(rawURL) })
 	if errTemplate != nil {
@@ -242,26 +225,20 @@ func TestARestoredTemplateEqualsTheReplayedOne(t *testing.T) {
 		t.Skip("PostgreSQL copies the template natively")
 	}
 	restored := open(t, mustDSN(t, rawURL, NewPool(t, "meurpg_dbtest_restored").Config().ConnConfig.Database))
-	replayed := scratchDatabase(t, "replayed")
-	copyCockroachTemplate(t, replayed)
 	tpl := open(t, mustDSN(t, rawURL, template.name))
 
 	for _, what := range []string{"TABLES", "ROUTINES", "TRIGGERS"} {
-		got, want, replay := showAll(t, restored, what), showAll(t, tpl, what), showAll(t, replayed, what)
+		got, want := showAll(t, restored, what), showAll(t, tpl, what)
 		if len(want) == 0 && what != "TRIGGERS" {
 			t.Fatalf("the template has no %s: the comparison proves nothing", what)
 		}
 		if !slices.Equal(got, want) {
 			t.Errorf("SHOW CREATE ALL %s differs between the restored database and the template:\nonly restored: %q\nonly template: %q", what, only(got, want), only(want, got))
 		}
-		// What the replay makes that the template does not have, or lacks.
-		if extra, lacks := only(replay, want), only(want, replay); len(extra)+len(lacks) > 0 {
-			t.Logf("SHOW CREATE ALL %s: the replayed database has %q and lacks %q", what, extra, lacks)
-		}
 	}
 	for _, table := range append(slices.Clone(template.reference), "goose_db_version") {
-		if got, want, replay := rowsDigest(t, restored, table), rowsDigest(t, tpl, table), rowsDigest(t, replayed, table); got != want || replay != want {
-			t.Errorf("the rows of %s differ: restored %s, template %s, replayed %s", table, got, want, replay)
+		if got, want := rowsDigest(t, restored, table), rowsDigest(t, tpl, table); got != want {
+			t.Errorf("the rows of %s differ: restored %s, template %s", table, got, want)
 		}
 	}
 	// Nothing but the reference rows: every other table is empty.
