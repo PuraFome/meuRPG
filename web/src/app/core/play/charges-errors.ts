@@ -5,6 +5,13 @@ import {
   CharacterBlockedSchema,
   type ItemRecharge,
 } from '../../../gen/meurpg/characters/v1/characters_pb';
+import type { ConsumableKind } from '../characters/consumables';
+import {
+  blockedMessage,
+  encounterBlocked,
+  sessionClosed,
+} from '../combat/combat-errors';
+import { EncounterBlockedReason } from '../../../gen/meurpg/play/v1/combat_pb';
 import { noChargesWithRecharge } from '../characters/recharge-text';
 import { articleOf } from '../characters/charges';
 import { describeCharacterError } from '../characters/character-errors';
@@ -87,6 +94,65 @@ export function chargesErrorMessage(
   }
   if (chargesDidNotGetThrough(err)) {
     return `Não foi possível ${doing}. Nada mudou. Tente de novo.`;
+  }
+  return describeCharacterError(err);
+}
+
+/** Who and what a refused use of a consumable is about, for the words of its refusals. */
+export interface ConsumableErrorContext {
+  readonly kind: ConsumableKind;
+  /** The receiver the call named, when it was a gift: the refusals that are about them say their name. */
+  readonly targetName?: string;
+  /** The character the master acts for: "Só na vez de Tor". Absent for the player's own use. */
+  readonly actingFor?: string;
+}
+
+const KIND_WORDS: Record<ConsumableKind, { use: string; demonstrative: string }> = {
+  potion: { use: 'a poção', demonstrative: 'Essa poção já foi usada.' },
+  scroll: { use: 'o pergaminho', demonstrative: 'Esse pergaminho já foi usado.' },
+};
+
+/**
+ * What a refused or failed use of a consumable says in the "Usar" sheet, by the typed reason and never by the server's
+ * message: the receiver that is not by any more, the item that is already used, the turn and the action of a combat, then
+ * the sentences of the combat and of the character for the rest. Every refusal says that nothing was spent.
+ */
+export function consumableErrorMessage(err: unknown, ctx: ConsumableErrorContext): string {
+  const words = KIND_WORDS[ctx.kind];
+  const encounter = encounterBlocked(err);
+  if (encounter) {
+    switch (encounter.reason) {
+      case EncounterBlockedReason.TARGET_NOT_ADJACENT_OR_SEEN:
+        return `${ctx.targetName ?? 'Quem ia receber'} não está mais ao seu lado. Nada foi gasto.`;
+      case EncounterBlockedReason.ITEM_GONE:
+        return `${words.demonstrative} A ficha foi atualizada.`;
+      case EncounterBlockedReason.NOT_YOUR_TURN:
+        return `Só na ${ctx.actingFor ? `vez de ${ctx.actingFor}` : 'sua vez'}: beber ou dar gasta a ação.`;
+      case EncounterBlockedReason.ACTION_USED:
+        return `${ctx.actingFor ?? 'Você'} já usou a ação desta vez.`;
+      case EncounterBlockedReason.COMBATANT_DOWN:
+        return 'Quem está caído não age, mas ainda pode receber uma poção.';
+    }
+    return blockedMessage(encounter);
+  }
+  if (sessionClosed(err)) {
+    return 'Sem sessão aberta: só dá para usar durante a sessão. Nada foi gasto.';
+  }
+  const connectErr = ConnectError.from(err, Code.Unavailable);
+  if (connectErr.code === Code.FailedPrecondition) {
+    const reason = connectErr.findDetails(CharacterBlockedSchema)[0]?.reason;
+    if (reason === CharacterBlockedReason.CHARACTER_DEAD) {
+      return 'Esse personagem está morto: não usa nem recebe itens. Nada foi gasto.';
+    }
+  }
+  switch (connectErr.code) {
+    case Code.InvalidArgument:
+      return 'Os dados digitados não valem: cada um vai de 1 até o número de faces dele. Nada foi gasto.';
+    case Code.NotFound:
+      return `${ctx.targetName ?? 'Esse personagem'} não está mais na mesa. Nada foi gasto.`;
+  }
+  if (chargesDidNotGetThrough(err)) {
+    return `Não deu para usar ${words.use}. Nada foi gasto. Tente de novo.`;
   }
   return describeCharacterError(err);
 }

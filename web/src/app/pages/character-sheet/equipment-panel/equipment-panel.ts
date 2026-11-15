@@ -12,6 +12,7 @@ import {
   chargesLine,
   recoverOf,
 } from '../../../core/characters/charges';
+import { type ConsumableNotice, magicRows } from '../../../core/characters/consumables';
 import type { GearVm } from '../../../core/characters/gear';
 
 import { reasonOf } from '../../../shared/attunement-section/attunement-rows';
@@ -88,6 +89,10 @@ export class EquipmentPanel {
   readonly chargesUsed = output<AttunementEntryVm>();
   /** "Rolar": the page opens the d20 of the item's last charge. */
   readonly lastChargeRolled = output<AttunementEntryVm>();
+  /** What the last use of a potion said, in the live region under the list. */
+  readonly consumableResult = input<ConsumableNotice | null>(null);
+  /** "Usar" on a potion or a scroll: the page opens the use sheet with one unit of the group. Works on a locked sheet. */
+  readonly consumableUsed = output<AttunementEntryVm>();
 
   /** "Adicionar munição" (the owner while the sheet is open to editing, the master always). */
   readonly canAddAmmunition = input(false);
@@ -143,8 +148,16 @@ export class EquipmentPanel {
   protected readonly magicItems = computed(() =>
     this.sheet().attunement.entries.filter((e) => e.kind === 'magic'),
   );
+  /** The rows of the magic items: identical potions and scrolls are one row ("×2"), the rest as they were. */
+  protected readonly rows = computed(() =>
+    magicRows(this.magicItems(), (key) => this.categories.categoryOf(key)),
+  );
   /** Some magic item holds charges: the lock line then names what still works on a locked sheet. */
   protected readonly hasCharges = computed(() => this.magicItems().some((e) => e.charges));
+  /** Some row is a potion or a scroll, which "Usar" works for on a locked sheet too. */
+  protected readonly hasConsumables = computed(() =>
+    this.rows().some((r) => r.type === 'consumable'),
+  );
   /** The header "Sintonizados: N de 3" shows when anything on the sheet asks for attunement or is attuned. */
   protected readonly hasAttunement = computed(() =>
     this.sheet().attunement.entries.some((e) => e.asks || e.attuned),

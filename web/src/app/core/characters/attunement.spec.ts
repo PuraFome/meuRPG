@@ -91,6 +91,25 @@ describe('attunementOf, the charges', () => {
   });
 });
 
+describe('attunementOf, the consumables', () => {
+  it('carries the line of what "Usar" does for a magic item, and the spell of a scroll', () => {
+    const a = attunementOf(
+      create(FullSheetSchema, {
+        magicItems: [
+          create(SheetMagicItemSchema, { id: 'p', effectPt: 'Cura 2d4 + 2' }),
+          create(SheetMagicItemSchema, { id: 's', spellKey: 'spell:fireball', spellNamePt: 'Bola de Fogo' }),
+          create(SheetMagicItemSchema, { id: 'r' }),
+        ],
+      }),
+    );
+    expect(a.entries.map((e) => [e.effectPt, e.spellNamePt])).toEqual([
+      ['Cura 2d4 + 2', ''],
+      ['', 'Bola de Fogo'],
+      ['', ''],
+    ]);
+  });
+});
+
 describe('MagicCategories', () => {
   const page = (items: MagicItemsPage['items'], nextPageToken = ''): MagicItemsPage => ({
     items,
@@ -143,6 +162,26 @@ describe('MagicCategories', () => {
     expect(cats.iconOf('item:ring')).toBe('shield');
     expect(cats.iconOf('item:armor-1')).toBe('shield');
     expect(cats.iconOf('item:nope')).toBe('diamond');
+  });
+
+  it("says the category of an item, a variant's being its family's, and nothing for what it does not know", async () => {
+    TestBed.configureTestingModule({
+      providers: [
+        {
+          provide: AttunementClient,
+          useValue: {
+            listMagicItems: async () =>
+              page([option('item:potion-healing', 'potion', ['item:potion-healing-greater'])]),
+          },
+        },
+      ],
+    });
+    const cats = TestBed.inject(MagicCategories);
+    expect(cats.categoryOf('item:potion-healing')).toBe('');
+    await cats.load('c1');
+    expect(cats.categoryOf('item:potion-healing')).toBe('potion');
+    expect(cats.categoryOf('item:potion-healing-greater')).toBe('potion');
+    expect(cats.categoryOf('item:nope')).toBe('');
   });
 
   it('keeps the gem on every row when the read fails, and tries again next time', async () => {

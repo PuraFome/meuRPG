@@ -23,6 +23,10 @@ function clientWith(calls: Record<string, unknown[]>): ChargesClient {
       ammunition: [{ key: 'equipment:arrow', quantity: 18 }],
     }),
     dawn: record('dawn', { restored: [] }),
+    useConsumable: record('use', { entryId: 'e1', outcome: 1, healed: 7 }),
+    listConsumableTargets: record('targets', {
+      targets: [{ characterId: 'c2', name: 'Brisa', distanceFt: 5 }],
+    }),
   };
   (client as unknown as { characters: unknown }).characters = {
     getCharacter: record('character', {
@@ -146,5 +150,56 @@ describe('ChargesClient', () => {
     const dice = await clientWith(calls).diceOf('camp');
     expect(calls['campaign']).toEqual([{ campaignId: 'camp' }]);
     expect(dice).toEqual({ mode: DiceMode.PHYSICAL, preference: DicePreference.PHYSICAL });
+  });
+
+  it('uses one unit of a consumable on the user, the app rolling the dice, under the given key', async () => {
+    const res = await clientWith(calls).useConsumable(
+      'camp',
+      'c1',
+      'e1',
+      '',
+      { inApp: true },
+      'k1',
+    );
+    expect(calls['use']).toEqual([
+      {
+        campaignId: 'camp',
+        characterId: 'c1',
+        entryId: 'e1',
+        targetCharacterId: '',
+        idempotencyKey: 'k1',
+        rollInApp: true,
+        typedFaces: [],
+      },
+    ]);
+    expect(res.healed).toBe(7);
+  });
+
+  it('gives the consumable to another character with the faces of real dice (RN-18)', async () => {
+    await clientWith(calls).useConsumable(
+      'camp',
+      'c1',
+      'e1',
+      'c2',
+      { faces: [3, 2] },
+      'k2',
+    );
+    expect(calls['use']).toEqual([
+      {
+        campaignId: 'camp',
+        characterId: 'c1',
+        entryId: 'e1',
+        targetCharacterId: 'c2',
+        idempotencyKey: 'k2',
+        rollInApp: false,
+        typedFaces: [3, 2],
+      },
+    ]);
+  });
+
+  it('lists who a consumable may be given to', async () => {
+    const targets = await clientWith(calls).listConsumableTargets('camp', 'c1', 'e1');
+    expect(calls['targets']).toEqual([{ campaignId: 'camp', characterId: 'c1', entryId: 'e1' }]);
+    expect(targets.map((t) => t.name)).toEqual(['Brisa']);
   });
 });

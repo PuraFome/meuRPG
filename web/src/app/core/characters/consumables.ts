@@ -1,0 +1,283 @@
+import {
+  type ConsumableTarget,
+  ConsumableTargetState,
+  type UseConsumableResponse,
+} from '../../../gen/meurpg/play/v1/charges_pb';
+import { ConsumableUseOutcome } from '../../../gen/meurpg/play/v1/combat_pb';
+import { article } from '../format/article';
+import { upFirst } from '../format/text';
+import { metersText } from '../units';
+import type { AttunementEntryVm } from './attunement';
+
+/**
+ * The consumables of a sheet (potions and scrolls, #565): which magic items are one, the rows that group identical ones,
+ * the words of the effect line, the receivers of a gift and the notice of a use. The server words the effect of each item
+ * (`SheetMagicItem.effect_pt`) and the use of one (`UseConsumableResponse`); the app only arranges what was sent. Pure,
+ * tested without a DOM.
+ */
+
+/** What a consumable is: a potion (a flask) or a scroll (a page). */
+export type ConsumableKind = 'potion' | 'scroll';
+
+/** The kind of a catalog category, or `null` for an item that is no potion or scroll. */
+export function consumableKind(category: string): ConsumableKind | null {
+  return category === 'potion' || category === 'scroll' ? category : null;
+}
+
+/** A row of the magic items that holds the identical units of one consumable. */
+export interface ConsumableRowVm {
+  /** Stable for the row while any unit is on the sheet: `consumable:<catalog key>`. */
+  readonly id: string;
+  readonly key: string;
+  readonly namePt: string;
+  readonly kind: ConsumableKind;
+  readonly icon: string;
+  readonly effectPt: string;
+  /** The line under the name: the server's, or "Só mostra o texto". */
+  readonly effectLine: string;
+  readonly effectIcon: string;
+  /** How many units the sheet holds: "×2" from 2. */
+  readonly count: number;
+  /** The unit "Usar" sends: the first of the group (the server keeps one entry for each unit). */
+  readonly first: AttunementEntryVm;
+}
+
+/** A row of the magic items: an item as it was, or a group of identical consumables. */
+export type MagicRowVm =
+  | { readonly type: 'item'; readonly id: string; readonly entry: AttunementEntryVm }
+  | { readonly type: 'consumable'; readonly id: string; readonly row: ConsumableRowVm };
+
+/** What an item that is no consumable has to say with no effect of its own. */
+const TEXT_ONLY_LINE = 'Só mostra o texto';
+
+/** The line of what "Usar" does, "Cura 2d4 + 2", or that the item only shows its text. */
+export function effectLine(effectPt: string): string {
+  return effectPt === '' ? TEXT_ONLY_LINE : effectPt;
+}
+
+/** The icon of an effect: a heart for a healing, a shield for a resistance, a book for the text alone. */
+export function effectIcon(effectPt: string): string {
+  if (effectPt === '') {
+    return 'menu_book';
+  }
+  return effectPt.startsWith('Resist') ? 'shield' : 'favorite';
+}
+
+/**
+ * The magic items as the sheet draws them: every consumable of the same key is one row, at the place of the first, and
+ * anything else stays a row of its own. `categoryOf` is the catalog category of a key ('' while it is not read).
+ */
+export function magicRows(
+  entries: readonly AttunementEntryVm[],
+  categoryOf: (key: string) => string,
+): MagicRowVm[] {
+  const groups = new Map<string, AttunementEntryVm[]>();
+  const kindOf = (e: AttunementEntryVm) => (e.charges ? null : consumableKind(categoryOf(e.key)));
+  for (const e of entries) {
+    if (kindOf(e)) {
+      groups.set(e.key, [...(groups.get(e.key) ?? []), e]);
+    }
+  }
+  const rows: MagicRowVm[] = [];
+  const placed = new Set<string>();
+  for (const e of entries) {
+    const kind = kindOf(e);
+    if (!kind) {
+      rows.push({ type: 'item', id: e.id, entry: e });
+    } else if (!placed.has(e.key)) {
+      placed.add(e.key);
+      const units = groups.get(e.key) ?? [e];
+      const effectPt = e.effectPt ?? '';
+      rows.push({
+        type: 'consumable',
+        id: `consumable:${e.key}`,
+        row: {
+          id: `consumable:${e.key}`,
+          key: e.key,
+          namePt: e.namePt,
+          kind,
+          icon: kind === 'potion' ? 'science' : 'description',
+          effectPt,
+          effectLine: effectLine(effectPt),
+          effectIcon: effectIcon(effectPt),
+          count: units.length,
+          first: units[0],
+        },
+      });
+    }
+  }
+  return rows;
+}
+
+/** The dice of a healing line: how many, their faces and the number added; `text` is the formula as the line writes it. */
+export interface HealingDice {
+  readonly count: number;
+  readonly sides: number;
+  readonly modifier: number;
+  readonly text: string;
+}
+
+const HEALING_DICE = /(\d+)d(\d+)(?:\s*([+−-])\s*(\d+))?/;
+
+/** The dice of "Cura 2d4 + 2", or `null` for a line that is no healing. */
+export function healingDice(effectPt: string): HealingDice | null {
+  if (!effectPt.startsWith('Cura')) {
+    return null;
+  }
+  const m = HEALING_DICE.exec(effectPt);
+  if (!m) {
+    return null;
+  }
+  const added = m[4] ? Number(m[4]) : 0;
+  return {
+    count: Number(m[1]),
+    sides: Number(m[2]),
+    modifier: m[3] && m[3] !== '+' ? -added : added,
+    text: m[0],
+  };
+}
+
+/** "resta 1" / "restam 2": how many units are left, in lower case for a line that goes on. */
+export function leftWords(left: number): string {
+  return left === 1 ? 'resta 1' : `restam ${left}`;
+}
+
+/**
+ * The line under the title of the "Usar" sheet: the count and, in a combat, what the use costs. The master's title names
+ * the character, so his line names the item first. `inCombat` is `null` where the page does not know whether there is a
+ * combat (the sheet): the cost is then said for the player and left out for the master, whose sheet says it below.
+ */
+export function subtitleOf(input: {
+  readonly itemName: string;
+  readonly left: number;
+  readonly actingFor: string | null;
+  readonly inCombat: boolean | null;
+}): string {
+  const costs = input.inCombat === true || (input.inCombat === null && input.actingFor === null);
+  const parts = input.actingFor
+    ? [input.itemName, leftWords(input.left)]
+    : [upFirst(leftWords(input.left))];
+  if (costs) {
+    parts.push('em combate, gasta a ação');
+  }
+  return parts.join(' · ');
+}
+
+/** A character the consumable may be given to, as the radio list reads. */
+export interface ConsumableTargetVm {
+  readonly id: string;
+  readonly name: string;
+  readonly distanceFt: number;
+  readonly down: boolean;
+  /** "A 1,5 m · Caída" in a combat, "Caída" out of one, empty for who is on their feet in the party. */
+  readonly line: string;
+}
+
+/** The word for who is at 0 hit points, in the gender of the name ("Brisa" is "Caída"). */
+function downWord(name: string): string {
+  return article(name) === 'a' ? 'Caída' : 'Caído';
+}
+
+/** The receivers the server sent that may receive it now, with the words of their line. */
+export function targetRows(targets: readonly ConsumableTarget[]): ConsumableTargetVm[] {
+  return targets
+    .filter((t) => t.mayReceive)
+    .map((t) => {
+      const down = t.state === ConsumableTargetState.DOWN;
+      const inCombat = t.distanceFt > 0;
+      const parts = [
+        inCombat ? `A ${metersText(t.distanceFt)}` : '',
+        down ? downWord(t.name) : inCombat ? 'Ileso' : '',
+      ].filter((p) => p !== '');
+      return {
+        id: t.characterId,
+        name: t.name,
+        distanceFt: t.distanceFt,
+        down,
+        line: parts.join(' · '),
+      };
+    });
+}
+
+/** What a use says on the sheet, in the live region under the magic items. */
+export interface ConsumableNotice {
+  readonly tone: 'good' | 'neutral';
+  readonly icon: string;
+  readonly headline: string;
+  readonly detail: string;
+  /** The item's text, for a consumable the app carries out no effect for. */
+  readonly text: readonly string[];
+}
+
+export interface UseNoticeInput {
+  readonly itemName: string;
+  readonly effectPt: string;
+  readonly userName: string;
+  readonly receiverName: string;
+  /** The potion went to another character. */
+  readonly gift: boolean;
+  /** The receiver was down: a heal gets them up. */
+  readonly woke: boolean;
+  /** The units of the item that are left on the sheet after this use. */
+  readonly left: number;
+  readonly kind?: ConsumableKind;
+}
+
+function lowerFirst(text: string): string {
+  return `${text.charAt(0).toLowerCase()}${text.slice(1)}`;
+}
+
+/** "Resta 1 Poção de cura.", "Restam 3 unidades de Poção de cura." or "Era a última unidade.". */
+function leftSentence(itemName: string, left: number): string {
+  if (left <= 0) {
+    return 'Era a última unidade.';
+  }
+  return left === 1 ? `Resta 1 ${itemName}.` : `Restam ${left} unidades de ${itemName}.`;
+}
+
+/** The roll written out: "3 + 2 + 2" for the faces and the number added (the total less the faces). */
+function rollSum(faces: readonly number[], total: number): string {
+  const modifier = total - faces.reduce((a, n) => a + n, 0);
+  const sum = faces.join(' + ');
+  return modifier === 0 ? sum : `${sum} ${modifier < 0 ? '−' : '+'} ${Math.abs(modifier)}`;
+}
+
+/** What the server said of a use, as the sheet words it: the heal with its dice, the resistance, or the item's own text. */
+export function useNotice(res: UseConsumableResponse, input: UseNoticeInput): ConsumableNotice {
+  const an = article(input.itemName);
+  const the = `${an} ${input.itemName}`;
+  const verb = input.kind === 'scroll' ? 'usou' : 'bebeu';
+  switch (res.outcome) {
+    case ConsumableUseOutcome.HEALED: {
+      const dice = healingDice(input.effectPt)?.text ?? res.diceText;
+      return {
+        tone: 'good',
+        icon: 'favorite',
+        headline:
+          res.healed > 0
+            ? `${input.receiverName} recebeu ${res.healed} PV${input.woke ? ' e acorda' : ''}.`
+            : `${input.receiverName} já estava com os PV cheios: a poção não curou nada.`,
+        detail: `${dice}: ${rollSum(res.faces, res.rollTotal)} = ${res.rollTotal}. ${leftSentence(input.itemName, input.left)}`,
+        text: [],
+      };
+    }
+    case ConsumableUseOutcome.RESISTANCE:
+      return {
+        tone: 'good',
+        icon: 'check_circle',
+        headline: `${input.receiverName} ${input.gift ? 'recebeu' : verb} ${the}: ${lowerFirst(effectLine(input.effectPt))}.`,
+        detail: '',
+        text: [],
+      };
+    default:
+      return {
+        tone: 'neutral',
+        icon: 'menu_book',
+        headline: input.gift
+          ? `${input.userName} deu ${the} a ${input.receiverName}.`
+          : `${input.userName} ${verb} ${the}.`,
+        detail: 'O app não aplica este efeito: o mestre e você seguem o texto.',
+        text: res.text,
+      };
+  }
+}

@@ -45,6 +45,10 @@ export interface AttunementEntryVm {
   readonly sameItemAttuned: boolean;
   /** The charges of a magic item that holds some; absent for the others, whose row stays as it is. */
   readonly charges?: ItemChargesVm;
+  /** What "Usar" does for a consumable, as the server words it ("Cura 2d4 + 2"); empty for an item with no automatic effect. */
+  readonly effectPt?: string;
+  /** The spell of a spell scroll, in Portuguese; empty for every other item. */
+  readonly spellNamePt?: string;
 }
 
 /** The attunement of a sheet: the entries in the order the sheet lists them (pieces, then magic items). */
@@ -89,6 +93,8 @@ export function attunementOf(
       restriction: STATES[m.restriction] ?? 'none',
       sameItemAttuned: m.sameItemAttuned,
       charges: chargesOf(m),
+      effectPt: m.effectPt,
+      spellNamePt: m.spellNamePt,
     });
   }
   return { entries, attuned: entries.filter((e) => e.asks && e.attuned).length };
@@ -235,6 +241,11 @@ export class MagicCategories {
   /** The icon for the item with this key. */
   iconOf(key: string): string {
     return magicCategoryIcon(this.byKey().get(key));
+  }
+
+  /** The catalog category of the item with this key ("potion", "scroll"), or '' before it is read or for an item it does not list. */
+  categoryOf(key: string): string {
+    return this.byKey().get(key) ?? '';
   }
 
   async load(campaignId: string): Promise<void> {
