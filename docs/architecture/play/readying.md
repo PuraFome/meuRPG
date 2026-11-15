@@ -188,6 +188,7 @@ The cast waits for the windows any cast opens (Counterspell), with the READIED w
 A spell attack's d20 held for a die waits the same way, and the master's window reads `answer_now` false.
 A countered release is the use: the row is `fired`, the reaction spent, the concentration ended and the slot lost.
 A refused release spends nothing and the window stays open.
+"Usar" on a window that was answered or closed is `NOT_YOUR_TURN_TO_ANSWER`, even on the readier's own turn: only an open window releases the spell (`CastSpellRequest` from an answer names its window).
 A held release whose spell breaks before the Counterspell windows are answered is lost: the row is `broken` and its window closes, the replay is refused as any cast off the readier's turn, and the master reads `held_dropped` in the log (`settleReplay`).
 Nothing is cast, and no write fails.
 "Deixar passar" loses the spell: the row is `ignored`, a `READIED_LOST` line names the spell, and the concentration ends.

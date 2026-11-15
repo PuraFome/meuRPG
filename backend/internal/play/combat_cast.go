@@ -49,6 +49,8 @@ type castCall struct {
 	// grantedBy is the source of the granted_spell effect that casts the spell; "" for the character's classes.
 	grantedBy string
 	targets   []castAim
+	// release is the READIED window an answer casts the spell for; "" for a cast that is no answer. The window must be open.
+	release string
 	// in is how the dice come; rolled says the request sets them at all.
 	in     rollInput
 	rolled bool
@@ -150,11 +152,12 @@ type castOut struct {
 
 // castSpell is CastSpell for a member already authorized: the replay of a held action calls it
 // with the member who made the request (combat_reaction_hold.go).
-func (s *Service) castSpell(ctx context.Context, m authz.Membership, req *connect.Request[playv1.CastSpellRequest]) (*connect.Response[playv1.CastSpellResponse], error) {
+func (s *Service) castSpell(ctx context.Context, m authz.Membership, req *connect.Request[playv1.CastSpellRequest], release string) (*connect.Response[playv1.CastSpellResponse], error) {
 	call, err := readCastIDs(req.Msg)
 	if err != nil {
 		return nil, err
 	}
+	call.release = release
 	if call.spellKey == revivifyKey { // brings the dead back: its own target, its own checks (revivify.go)
 		return s.castRevivify(ctx, req)
 	}

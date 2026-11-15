@@ -232,7 +232,7 @@ func (s *Service) replayHeld(ctx context.Context, m authz.Membership, h playdb.R
 		if err := proto.Unmarshal(h.Request, &req); err != nil {
 			return fmt.Errorf("read a held cast: %w", err)
 		}
-		_, err := s.castSpell(ctx, m, connect.NewRequest(&req))
+		_, err := s.castSpell(ctx, m, connect.NewRequest(&req), "")
 		return err
 	case "attack":
 		var req playv1.RollAttackRequest

@@ -147,6 +147,9 @@ func (f *castFlow) findReadied(ctx context.Context) error {
 		f.readied, err = readiedUseOf(ctx, f.c, w.ID, f.caster, readiedSpell)
 		return err
 	}
+	if f.call.release != "" { // the answer's window is closed: the spell is not cast for it
+		return errNotYourTurnToAnswer()
+	}
 	return nil
 }
 
@@ -234,7 +237,7 @@ func (s *Service) useReadiedSpell(ctx context.Context, m authz.Membership, in an
 	if typed, ok := msg.GetRoll().(*playv1.AnswerReactionRequest_Typed); ok {
 		req.Roll = &playv1.CastSpellRequest_D20Face{D20Face: typed.Typed}
 	}
-	res, err := s.castSpell(ctx, m, connect.NewRequest(req))
+	res, err := s.castSpell(ctx, m, connect.NewRequest(req), in.winID)
 	if err != nil {
 		return nil, err
 	}
