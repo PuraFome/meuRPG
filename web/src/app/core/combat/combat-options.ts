@@ -98,13 +98,15 @@ function spacedDice(dice: string): string {
   return dice.replace(/\s*([+-])\s*/g, (_, sign: string) => ` ${sign === '-' ? '−' : '+'} `);
 }
 
+/** The damage dice the attack rolls: the server says how a versatile weapon is held, and the attack rolls the dice of that grip. */
+export function gripDamage(attack: Attack): string {
+  return attack.grip === VersatileGrip.TWO_HANDS ? attack.versatileDamage : attack.damage;
+}
+
 /** "1d4 + 2 perfurante" for a weapon, "1d10 de fogo" for a cantrip: the dice
  * as the sheet writes them, spaced, and the damage type. */
 export function damageText(attack: Attack): string {
-  // The server says how a versatile weapon is held, and the attack rolls the dice of that grip.
-  const dice = spacedDice(
-    attack.grip === VersatileGrip.TWO_HANDS ? attack.versatileDamage : attack.damage,
-  );
+  const dice = spacedDice(gripDamage(attack));
   const type = attack.damageTypePt;
   const adjective = /^(cortante|perfurante|contundente)$/.test(type);
   if (!type) {

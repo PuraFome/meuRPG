@@ -122,10 +122,11 @@ func (x *deriver) versatileGrip(i int) Grip {
 	return GripTwoHands
 }
 
-// otherWeaponOn says a weapon other than the i-th is equipped.
+// otherWeaponOn says a weapon other than the i-th is equipped: a key that is no weapon of the content (it raises
+// its own issue) takes no hand.
 func (x *deriver) otherWeaponOn(i int) bool {
 	for j, key := range x.b.Weapons {
-		if j != i && !x.b.IsCarried(key) {
+		if eq, ok := x.c.equipment[key]; j != i && !x.b.IsCarried(key) && ok && eq.Weapon != nil {
 			return true
 		}
 	}

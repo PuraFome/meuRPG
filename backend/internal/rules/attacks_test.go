@@ -581,6 +581,8 @@ func TestVersatileGripFollowsTheGear(t *testing.T) {
 		{"with the shield carried", []string{"equipment:longsword"}, true, []string{ShieldKey}, GripTwoHands},
 		{"with a second weapon", []string{"equipment:longsword", "equipment:dagger"}, false, nil, GripOneHandWeapon},
 		{"with the second weapon carried", []string{"equipment:longsword", "equipment:dagger"}, false, []string{"equipment:dagger"}, GripTwoHands},
+		{"with a key that is no weapon", []string{"equipment:longsword", "equipment:nonexistent"}, false, nil, GripTwoHands},
+		{"with a greatsword and a shield", []string{"equipment:longsword", "equipment:greatsword"}, true, nil, GripOneHandWeapon},
 		{"with a shield and a second weapon", []string{"equipment:longsword", "equipment:dagger"}, true, nil, GripOneHandShield},
 	}
 	for _, tc := range cases {
