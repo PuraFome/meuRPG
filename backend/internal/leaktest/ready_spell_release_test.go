@@ -3,8 +3,10 @@ package leaktest
 import (
 	"testing"
 
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
+
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
-	"github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1/playv1connect"
 )
 
 // The targets of a held spell (#857) are listed in its readier's options, which only the readier's player and the master
@@ -49,8 +51,9 @@ func TestTheTargetsOfAHeldSpellAreTheOwnersAndTheMasters(t *testing.T) {
 
 // The READIED window of a held spell, marked as being rolled while its player is on the map (#857): the held spell, its
 // level and the mark are the readier's player's and the master's. Ana and the TV read the wait ("Esperando a reação de
-// Toren") and nothing of the spell; Ana's wait line is the same after the mark as before it, and no read of hers or of
-// the TV's holds `rolling`; her own mark is refused as the mark of a window that does not exist. The master's and Caio's
+// Toren") and nothing of the spell; Ana's wait line is the same after the mark, the clear and the second mark as before it, and no read of hers or of
+// the TV's holds `rolling` or `waitBeganAt` (the wait began at the first mark and the master and Caio read the same moment
+// after a clear and a second mark); her own mark is refused as the mark of a window that does not exist. The master's and Caio's
 // reads are the positive controls.
 func TestTheMarkedWindowOfAHeldSpellIsTheOwnersAndTheMasters(t *testing.T) {
 	w := newWorld(t)
@@ -71,12 +74,8 @@ func TestTheMarkedWindowOfAHeldSpellIsTheOwnersAndTheMasters(t *testing.T) {
 	}
 	id := windows[0].GetId()
 	w.secrets.add(&canary{needle: id, kind: "readied-spell-marked-window-id", readers: names([]*person{w.caio})})
-	mark := func(p *person, windowID string) reply {
-		return p.call(playv1connect.CombatServiceMarkReactionRollingProcedure, &playv1.MarkReactionRollingRequest{
-			CampaignId: w.campaign, EncounterId: w.encounter.GetId(), WindowId: windowID,
-		})
-	}
 	anaBefore := w.waitReadOf(w.ana)
+	var began *timestamppb.Timestamp // when the wait began: the first mark's, whatever the marks and clears after it
 	readsOf := func(when string, rolling bool) {
 		t.Helper()
 		for _, p := range []*person{w.master, w.caio} {
@@ -84,24 +83,41 @@ func TestTheMarkedWindowOfAHeldSpellIsTheOwnersAndTheMasters(t *testing.T) {
 			if got := windowOfKind(p, w, playv1.ReactionKind_REACTION_KIND_READIED).GetRolling(); got != rolling {
 				t.Errorf("%s: %s reads rolling %v, want %v", when, p.name, got, rolling)
 			}
+			if got := w.waitBeganOf(p); !proto.Equal(got, began) {
+				t.Errorf("%s: %s reads the wait began at %v, want %v", when, p.name, got, began)
+			}
 		}
 		w.inspectPlayers(t, w.ana, w.pending)
 		tv := w.readScreen(t, when, w.tvReader(), nil)
 		w.sameWaitAs(t, when, w.ana, anaBefore, "Esperando a reação de Toren", tv)
 	}
 	readsOf("before the mark", false)
-	if r := mark(w.caio, id); !r.ok() {
+	if r := w.markRolling(w.caio, id, false); !r.ok() {
 		t.Fatalf("Caio's mark = %d %s", r.status, r.body)
 	}
+	if began = w.waitBeganOf(w.master); began == nil {
+		t.Fatal("the master reads no beginning of the wait after the first mark")
+	}
 	readsOf("while Toren's player is marked as rolling", true)
-	got, unknown := mark(w.ana, id), mark(w.ana, newKey())
+	for _, p := range []*person{w.master, w.caio} { // the positive controls: both fields are in their reads
+		w.readsHoldAll(t, p, "while Toren's player is marked as rolling", `"rolling"`, `"waitBeganAt"`)
+	}
+	got, unknown := w.markRolling(w.ana, id, false), w.markRolling(w.ana, newKey(), false)
 	if got.ok() || got.status != unknown.status || normalizeRead(string(got.body)) != normalizeRead(string(unknown.body)) {
 		t.Errorf("Ana's mark of Toren's window = %d %s, of no window = %d %s", got.status, got.body, unknown.status, unknown.body)
 	}
 	for _, f := range w.inspect(w.ana, got, nil) {
 		t.Errorf("Ana's refused mark: %s", f)
 	}
-	if r := mark(w.caio, id); !r.ok() {
+	if r := w.markRolling(w.ana, id, true); r.ok() {
+		t.Errorf("Ana's clear of Toren's window = %d %s, want it refused", r.status, r.body)
+	}
+	readsOf("after Ana's refused clear", true)
+	if r := w.markRolling(w.caio, id, true); !r.ok() {
+		t.Fatalf("Caio's clear = %d %s", r.status, r.body)
+	}
+	readsOf("after the mark is taken off", false)
+	if r := w.markRolling(w.caio, id, false); !r.ok() {
 		t.Fatalf("Caio's second mark = %d %s", r.status, r.body)
 	}
 	readsOf("after the mark is set again", true)

@@ -5,9 +5,11 @@ import (
 
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	"github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1/playv1connect"
 )
 
 // A readied spell (RN-10): the spell held, its level, that it is a spell, and the concentration that holds it are the
@@ -46,9 +48,22 @@ func (w *world) waitReadOf(p *person) waitRead {
 	return waitRead{windows: e.GetReactionWindows(), wait: e.GetReactionWait()}
 }
 
+// markRolling calls MarkReactionRolling as p, with clear when it takes the mark off.
+func (w *world) markRolling(p *person, windowID string, clear bool) reply {
+	return p.call(playv1connect.CombatServiceMarkReactionRollingProcedure, &playv1.MarkReactionRollingRequest{
+		CampaignId: w.campaign, EncounterId: w.encounter.GetId(), WindowId: windowID, Clear: clear,
+	})
+}
+
+// waitBeganOf is when the wait began, as the master reads it on the READIED window (nil before the first mark).
+func (w *world) waitBeganOf(p *person) *timestamppb.Timestamp {
+	return windowOfKind(p, w, playv1.ReactionKind_REACTION_KIND_READIED).GetWaitBeganAt()
+}
+
 // sameWaitAs fails unless p, who does not answer the READIED window, reads of it the same as before: no window, and the
-// wait line equal to the one read before the reactor's player marked the window. It also fails when any of p's reads,
-// or the TV's answer, holds a `rolling` field: the mark is the master's and the reactor's player's alone.
+// wait line equal to the one read before the reactor's player marked the window, whatever the marks since (set, cleared,
+// set again). It also fails when any of p's reads, or the TV's answer, holds a `rolling` or a `waitBeganAt` field: the
+// mark and the beginning of the wait are the master's and the reactor's player's alone.
 func (w *world) sameWaitAs(t *testing.T, when string, p *person, before waitRead, title string, tv *playv1.GetTableScreenResponse) {
 	t.Helper()
 	now := w.waitReadOf(p)
@@ -58,11 +73,13 @@ func (w *world) sameWaitAs(t *testing.T, when string, p *person, before waitRead
 	if !proto.Equal(now.wait, before.wait) {
 		t.Errorf("%s: %s reads the wait %v, want the one read before the mark, %v", when, p.name, now.wait, before.wait)
 	}
-	if w.readsHold(p, `"rolling"`) {
-		t.Errorf("%s: %s reads a `rolling` field of the window", when, p.name)
-	}
-	if body, err := protojson.Marshal(tv); err != nil || contains(body, `"rolling"`) {
-		t.Errorf("%s: the TV's answer holds a `rolling` field (marshal error %v)", when, err)
+	for _, field := range []string{`"rolling"`, `"waitBeganAt"`} {
+		if w.readsHold(p, field) {
+			t.Errorf("%s: %s reads a %s field of the window", when, p.name, field)
+		}
+		if body, err := protojson.Marshal(tv); err != nil || contains(body, field) {
+			t.Errorf("%s: the TV's answer holds a %s field (marshal error %v)", when, field, err)
+		}
 	}
 }
 

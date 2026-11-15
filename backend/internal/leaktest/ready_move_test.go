@@ -3,13 +3,16 @@ package leaktest
 import (
 	"testing"
 
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
+
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1/playv1connect"
 )
 
 // A readied move and its release (RN-10, #856): while the READIED window of the move is open and its player is on the map
 // (marked as rolling), the trigger, the held move and the window are the readier's player's and the master's; Ana and the TV
-// read the wait and nothing of it: the wait is the same before the mark and after it, and no read of theirs holds `rolling`.
+// read the wait and nothing of it: the wait is the same before the mark, after it, after the clear and after the second mark, and no read of theirs holds `rolling` or `waitBeganAt`.
 // The move itself is a move like any other: once made, the window is gone, the token is
 // where it went, and Ana reads the fired line with the actor alone. The master's and Caio's reads are the positive controls.
 
@@ -46,19 +49,40 @@ func TestAReadiedMovesWindowAndReleaseAreTheOwnersAndTheMasters(t *testing.T) {
 	id := windows[0].GetId()
 	w.secrets.add(&canary{needle: id, kind: "readied-move-window-id", readers: names([]*person{w.caio})})
 	anaBefore := w.waitReadOf(w.ana)
-	if r := w.caio.call(playv1connect.CombatServiceMarkReactionRollingProcedure, &playv1.MarkReactionRollingRequest{CampaignId: w.campaign, EncounterId: w.encounter.GetId(), WindowId: id}); !r.ok() {
+	var began *timestamppb.Timestamp // when the wait began: the first mark's, whatever the marks and clears after it
+	readsOf := func(when string, rolling bool) {
+		t.Helper()
+		for _, p := range []*person{w.master, w.caio} { // the positive controls
+			w.readsHoldAll(t, p, when, append([]string{id, trigger}, words[:3]...)...)
+			if got := windowOfKind(p, w, playv1.ReactionKind_REACTION_KIND_READIED); got == nil || got.GetRolling() != rolling {
+				t.Errorf("%s: %s reads the window %v, want rolling %v", when, p.name, got, rolling)
+			}
+			if got := w.waitBeganOf(p); !proto.Equal(got, began) {
+				t.Errorf("%s: %s reads the wait began at %v, want %v", when, p.name, got, began)
+			}
+		}
+		w.inspectPlayers(t, w.ana, w.pending)
+		tv := w.readScreen(t, when, w.tvReader(), nil)
+		w.sameWaitAs(t, when, w.ana, anaBefore, "Esperando a reação de Toren", tv)
+	}
+	if r := w.markRolling(w.caio, id, false); !r.ok() {
 		t.Fatalf("Caio's mark = %d %s", r.status, r.body)
 	}
-
-	for _, p := range []*person{w.master, w.caio} { // the positive controls
-		w.readsHoldAll(t, p, "while Toren's player is on the map", append([]string{id, trigger}, words[:3]...)...)
-		if got := windowOfKind(p, w, playv1.ReactionKind_REACTION_KIND_READIED); got == nil || !got.GetRolling() {
-			t.Errorf("%s reads the window %v, want it marked as rolling", p.name, got)
-		}
+	if began = w.waitBeganOf(w.master); began == nil {
+		t.Fatal("the master reads no beginning of the wait after the first mark")
 	}
-	w.inspectPlayers(t, w.ana, w.pending)
-	tv := w.readScreen(t, "while Toren's READIED move window is marked", w.tvReader(), nil)
-	w.sameWaitAs(t, "while Toren's READIED move window is marked", w.ana, anaBefore, "Esperando a reação de Toren", tv)
+	readsOf("while Toren's player is on the map", true)
+	for _, p := range []*person{w.master, w.caio} { // the positive controls: both fields are in their reads
+		w.readsHoldAll(t, p, "while Toren's player is on the map", `"rolling"`, `"waitBeganAt"`)
+	}
+	if r := w.markRolling(w.caio, id, true); !r.ok() {
+		t.Fatalf("Caio's clear = %d %s", r.status, r.body)
+	}
+	readsOf("after Toren's player went back", false)
+	if r := w.markRolling(w.caio, id, false); !r.ok() {
+		t.Fatalf("Caio's second mark = %d %s", r.status, r.body)
+	}
+	readsOf("after Toren's player went to the map again", true)
 
 	from := w.combatant(w.toren)
 	moved := w.caio.call(playv1connect.CombatServiceMoveCombatantProcedure, &playv1.MoveCombatantRequest{
