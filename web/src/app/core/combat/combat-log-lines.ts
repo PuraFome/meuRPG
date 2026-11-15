@@ -33,6 +33,7 @@ import { effectEndedText, effectLine, exhaustionLogText } from './combat-log-eff
 import { LogContext, LogLine, NO_CONTEXT } from './combat-log-types';
 import { the } from './combat-log-words';
 import { MOUNT_LINES } from './combat-log-mount';
+import { readiedFiredText, readiedLostLine, readiedText } from './combat-log-readied';
 
 /** What a line builder is given: the entry, the fields every line shares, the combat's name and who is reading. */
 interface LineArgs {
@@ -291,6 +292,19 @@ const LINE_BUILDERS: ReadonlyMap<CombatLogKind, (args: LineArgs) => LogLine | nu
   [
     CombatLogKind.FEATURE_USED,
     ({ e, base, ctx }) => ({ ...base, icon: 'auto_awesome', text: featureUsedText(e, ctx) }),
+  ],
+  // A readied action (#582): what each audience reads is in the entry as the server filled it (RN-10).
+  [
+    CombatLogKind.ACTION_READIED,
+    ({ e, base }) => ({ ...base, icon: 'alarm', text: readiedText(e) }),
+  ],
+  [
+    CombatLogKind.READIED_FIRED,
+    ({ e, base }) => ({ ...base, icon: 'alarm', text: readiedFiredText(e) }),
+  ],
+  [
+    CombatLogKind.READIED_LOST,
+    ({ e, base, ctx }) => ({ ...base, icon: 'alarm', ...readiedLostLine(e, ctx) }),
   ],
   // A swap of gear in the combat: the master's and the character's owner's line. The cost is what it spent.
   [
