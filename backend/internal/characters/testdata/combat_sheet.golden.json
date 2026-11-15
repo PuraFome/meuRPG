@@ -23,7 +23,7 @@
         "AbilityMod": 1,
         "Ability": "str",
         "Finesse": false,
-        "TwoHanded": true,
+        "TwoHanded": false,
         "Weapon": true,
         "Properties": [
           "weapon-property:versatile",

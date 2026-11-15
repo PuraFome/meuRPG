@@ -304,7 +304,7 @@ func combatAttack(a rules.Attack) link.Attack {
 		DiceCount: dice.Count, DiceSides: dice.Sides, DiceBonus: dice.Bonus,
 		DamageType: a.DamageType, RangeFt: a.RangeFt, LongRangeFt: a.LongRangeFt, Melee: a.Melee, ReachFt: a.ReachFt,
 		Beams: a.Beams, Light: a.Light, Unarmed: a.Key == rules.UnarmedStrikeKey, MartialArts: a.MartialArts, AbilityMod: a.AbilityMod,
-		Ability: string(a.Ability), Finesse: a.Finesse, TwoHanded: a.TwoHanded || a.Grip == rules.GripTwoHands, Weapon: a.Kind == "weapon",
+		Ability: string(a.Ability), Finesse: a.Finesse, TwoHanded: a.TwoHanded, Weapon: a.Kind == "weapon",
 		Magical: a.Magical, Silvered: a.Silvered, Adamantine: a.Adamantine, Properties: slices.Clone(a.Properties), Proficient: a.Proficient,
 		Ammunition: a.AmmunitionKey,
 	}
