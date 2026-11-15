@@ -21,7 +21,7 @@ ALTER TABLE character_creatures
 CREATE UNIQUE INDEX IF NOT EXISTS character_creatures_one_bonded_idx ON character_creatures (character_id) WHERE bonded;
 
 -- +goose Down
-DROP INDEX IF EXISTS character_creatures_one_bonded_idx;
+DROP INDEX IF EXISTS character_creatures_one_bonded_idx CASCADE;
 DELETE FROM character_creatures WHERE source = 'find_steed' OR dismissed_reason IN ('disappeared', 'dismissed');
 ALTER TABLE character_creatures
     DROP CONSTRAINT IF EXISTS character_creatures_dismissed_valid,
