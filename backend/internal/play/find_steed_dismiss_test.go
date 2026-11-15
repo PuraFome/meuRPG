@@ -1,0 +1,126 @@
+package play
+
+import (
+	"testing"
+
+	"connectrpc.com/connect"
+
+	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
+)
+
+// Dismiss and Release of a steed (#588 slice 3): a dismissal keeps the bond, a release ends it; in a combat the owner's player spends the
+// action of its turn, out of a combat it is free.
+
+func (a *armed) dismissSteedAs(t *testing.T, u *user, id string, how charactersv1.CreatureDismissal) error {
+	t.Helper()
+	_, err := u.characters.DismissCreature(t.Context(), connect.NewRequest(&charactersv1.DismissCreatureRequest{CampaignId: a.campaignID, CreatureId: id, Dismissal: how}))
+	return err
+}
+
+func (a *armed) steedCreatureID(t *testing.T) string {
+	t.Helper()
+	var id string
+	if err := a.h.pool.QueryRow(t.Context(), `SELECT id::text FROM character_creatures WHERE source = 'find_steed' ORDER BY created_at DESC LIMIT 1`).Scan(&id); err != nil {
+		t.Fatalf("read the steed's creature: %v", err)
+	}
+	return id
+}
+
+func (a *armed) steedBondOf(t *testing.T, id string) (bonded bool, reason string) {
+	t.Helper()
+	var r *string
+	if err := a.h.pool.QueryRow(t.Context(), `SELECT bonded, dismissed_reason FROM character_creatures WHERE id = $1`, id).Scan(&bonded, &r); err != nil {
+		t.Fatalf("read the steed's bond: %v", err)
+	}
+	return bonded, ptrOr(r, "")
+}
+
+// TestFindSteedDismissKeepsTheBondAndReleaseEndsIt: out of a combat both are free; a dismissed steed comes back with the next cast, and a
+// released one is gone with its bond, so the next cast may make another form.
+func TestFindSteedDismissKeepsTheBondAndReleaseEndsIt(t *testing.T) {
+	t.Parallel()
+	a := newRiders(t)
+	first := a.mustCastSteed(t, warhorse, "celestial", "Trovão")
+	if err := a.dismissSteedAs(t, a.ana, first.GetId(), charactersv1.CreatureDismissal_CREATURE_DISMISSAL_DISMISS); err != nil {
+		t.Fatalf("dismiss error = %v", err)
+	}
+	if bonded, reason := a.steedBondOf(t, first.GetId()); !bonded || reason != "dismissed" {
+		t.Errorf("a dismissed steed: bonded = %v, reason = %q, want the bond kept and the reason dismissed", bonded, reason)
+	}
+	if again := a.mustCastSteed(t, warhorse, "celestial", "Trovão"); again.GetId() != first.GetId() {
+		t.Errorf("the cast after a dismissal made %s, want the same steed %s", again.GetId(), first.GetId())
+	}
+	if err := a.dismissSteedAs(t, a.ana, first.GetId(), charactersv1.CreatureDismissal_CREATURE_DISMISSAL_RELEASE); err != nil {
+		t.Fatalf("release error = %v", err)
+	}
+	if bonded, reason := a.steedBondOf(t, first.GetId()); bonded || reason != "owner" {
+		t.Errorf("a released steed: bonded = %v, reason = %q, want the bond ended and the reason owner", bonded, reason)
+	}
+	if other := a.mustCastSteed(t, elk, "fey", "Galho"); other.GetId() == first.GetId() || other.GetMonsterKey() != elk || !other.GetBonded() {
+		t.Errorf("the cast after a release = %v, want a new bonded elk", other)
+	}
+}
+
+// TestFindSteedReleaseIsTheOwnersAndTheMastersOnly: another player does not find the steed, and releasing a released steed again changes nothing.
+func TestFindSteedReleaseIsTheOwnersAndTheMastersOnly(t *testing.T) {
+	t.Parallel()
+	a := newRiders(t)
+	steed := a.mustCastSteed(t, warhorse, "celestial", "Trovão")
+	release := charactersv1.CreatureDismissal_CREATURE_DISMISSAL_RELEASE
+	if err := a.dismissSteedAs(t, a.caio, steed.GetId(), release); connect.CodeOf(err) != connect.CodeNotFound {
+		t.Errorf("a release by another player = %v, want not_found", err)
+	}
+	if err := a.dismissSteedAs(t, a.master, steed.GetId(), release); err != nil {
+		t.Fatalf("the master's release error = %v", err)
+	}
+	if err := a.dismissSteedAs(t, a.ana, steed.GetId(), release); err != nil {
+		t.Errorf("a second release of the same steed = %v, want nothing changed", err)
+	}
+	if bonded, reason := a.steedBondOf(t, steed.GetId()); bonded || reason != "master" {
+		t.Errorf("the released steed: bonded = %v, reason = %q, want the bond ended by the master", bonded, reason)
+	}
+}
+
+// TestFindSteedDismissInACombatSpendsTheOwnersAction: on the owner's turn the dismissal costs the action and puts the rider on foot; off turn
+// or with the action spent it is refused with nothing changed; the master does it free.
+func TestFindSteedDismissInACombatSpendsTheOwnersAction(t *testing.T) {
+	t.Parallel()
+	a, e := riderInFight(t)
+	id := a.steedCreatureID(t)
+	dismiss := charactersv1.CreatureDismissal_CREATURE_DISMISSAL_DISMISS
+	if byLabel(t, e, "Aurélio").GetActionUsed() {
+		t.Fatal("Aurélio starts with his action spent")
+	}
+	if err := a.dismissSteedAs(t, a.ana, id, dismiss); err != nil {
+		t.Fatalf("dismiss on the turn error = %v", err)
+	}
+	cur := a.get(t, a.master)
+	if !byLabel(t, cur, "Aurélio").GetActionUsed() {
+		t.Error("the dismissal did not spend Aurélio's action")
+	}
+	if got := a.steedRowOf(t, "Aurélio"); got.MountedOn != "" {
+		t.Errorf("Aurélio rides %q after the dismissal, want on foot", got.MountedOn)
+	}
+	if bonded, _ := a.steedBondOf(t, id); !bonded {
+		t.Error("the dismissal ended the bond")
+	}
+}
+
+func TestFindSteedDismissOffTurnOrWithTheActionSpentIsRefused(t *testing.T) {
+	t.Parallel()
+	a, e := riderInFight(t)
+	id := a.steedCreatureID(t)
+	dismiss := charactersv1.CreatureDismissal_CREATURE_DISMISSAL_DISMISS
+	a.passTo(t, e, "Toren")
+	events := a.events(t)
+	wantBlockedBy(t, "the dismissal off turn", a.dismissSteedAs(t, a.ana, id, dismiss), blockedNotYourTurn)
+	if bonded, reason := a.steedBondOf(t, id); !bonded || reason != "" || a.events(t) != events {
+		t.Errorf("the refusal changed something: reason %q, events %d (was %d)", reason, a.events(t), events)
+	}
+	if err := a.dismissSteedAs(t, a.master, id, dismiss); err != nil {
+		t.Errorf("the master's dismissal off turn = %v, want free", err)
+	}
+	if byLabel(t, a.get(t, a.master), "Aurélio").GetActionUsed() {
+		t.Error("the master's dismissal spent Aurélio's action")
+	}
+}
