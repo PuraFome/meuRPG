@@ -204,10 +204,6 @@ func TestOpenSessionLockStopsTheFunnelsLock(t *testing.T) {
 		t.Fatalf("Begin() error = %v", err)
 	}
 	t.Cleanup(func() { _ = second.Rollback(context.Background()) })
-	secondID, err := dbtest.BackendID(ctx, second)
-	if err != nil {
-		t.Fatalf("BackendID() error = %v", err)
-	}
 	locked := make(chan error, 1)
 	go func() {
 		_, err := a.h.svc.queries.WithTx(second).LockSessionForHints(ctx, sessionID)
@@ -216,9 +212,9 @@ func TestOpenSessionLockStopsTheFunnelsLock(t *testing.T) {
 	probe := dbtest.SideConnection(t, a.h.pool)
 	deadline := time.Now().Add(20 * time.Second) // the test's ceiling, not a delay
 	for {
-		n, err := dbtest.WaitingStatements(ctx, probe, `%FROM game_sessions%FOR UPDATE%`, secondID)
+		n, err := dbtest.WaitingForTable(ctx, probe, "game_sessions")
 		if err != nil {
-			t.Fatalf("WaitingStatements() error = %v", err)
+			t.Fatalf("WaitingForTable() error = %v", err)
 		}
 		if n > 0 {
 			break

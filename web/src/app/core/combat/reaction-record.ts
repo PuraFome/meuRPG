@@ -40,6 +40,8 @@ export function reactionKindName(kind: ReactionKind): string {
       return 'Teste de concentração';
     case ReactionKind.OPPORTUNITY:
       return 'Ataque de oportunidade';
+    case ReactionKind.DISMOUNT:
+      return 'Desmontar';
     default:
       return 'Reação';
   }
