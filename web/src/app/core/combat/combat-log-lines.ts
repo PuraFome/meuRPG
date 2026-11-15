@@ -31,7 +31,7 @@ import { attackText, damageNotes, modeNote, pairOf } from './combat-log-attack';
 import { contestText } from './combat-log-contest';
 import { effectEndedText, effectLine, exhaustionLogText } from './combat-log-effects';
 import { LogContext, LogLine, NO_CONTEXT } from './combat-log-types';
-import { the } from './combat-log-words';
+import { removedName } from './combat-log-words';
 import { MOUNT_LINES } from './combat-log-mount';
 
 /** What a line builder is given: the entry, the fields every line shares, the combat's name and who is reading. */
@@ -330,7 +330,8 @@ const LINE_BUILDERS: ReadonlyMap<CombatLogKind, (args: LineArgs) => LogLine | nu
       };
     },
   ],
-  // The master took an extra out of a damage; the reason is only for him and the attacker's player.
+  // The master took an extra out of a damage; the reason is only for him and the attacker's player. The others read the
+  // part's name as the roll line shows it, "Outra fonte" for a part hidden from them.
   [
     CombatLogKind.DAMAGE_PART_REMOVED,
     ({ e, base }) => {
@@ -338,7 +339,7 @@ const LINE_BUILDERS: ReadonlyMap<CombatLogKind, (args: LineArgs) => LogLine | nu
         ...base,
         icon: 'remove_circle_outline',
         actor: '',
-        text: `O mestre tirou ${e.keyNamePt ? the(e.keyNamePt) : 'um extra'}${e.reason ? `: “${e.reason}”` : ''}`,
+        text: `O mestre tirou ${removedName(e.keyNamePt)}${e.reason ? `: “${e.reason}”` : ''}`,
       };
     },
   ],

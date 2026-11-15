@@ -71,6 +71,8 @@ function baseDamageText(d: CombatLogDamage): string {
   switch (d.status) {
     case PendingDamageStatus.AWAITING_ROLL:
       return ', falta rolar o dano';
+    case PendingDamageStatus.AWAITING_GROUP_SUM:
+      return ', falta a soma do dano';
     case PendingDamageStatus.ROLLED:
       return `, ${d.amount} de dano, esperando o mestre aplicar`;
     case PendingDamageStatus.DISCARDED:

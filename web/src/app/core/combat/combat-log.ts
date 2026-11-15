@@ -102,7 +102,9 @@ function attackUndoDamage(e: CombatLogEntry): string {
   if (e.outcome === AttackOutcome.MISS) {
     return ' (errou)';
   }
-  return e.damage && e.damage.status !== PendingDamageStatus.AWAITING_ROLL
+  return e.damage &&
+    e.damage.status !== PendingDamageStatus.AWAITING_ROLL &&
+    e.damage.status !== PendingDamageStatus.AWAITING_GROUP_SUM
     ? ` (${e.damage.amount} de dano)`
     : '';
 }
