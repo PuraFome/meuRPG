@@ -2,9 +2,11 @@ package characters
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"slices"
 	"strconv"
+	"strings"
 	"time"
 	"uuid"
 
@@ -234,7 +236,7 @@ func (s *Service) insertSummoned(ctx context.Context, q *charactersdb.Queries, c
 	at := s.now()
 	owner := &lazyOwner{s: s, q: q, content: content, campaignID: sm.CampaignID, characterID: sm.CharacterID}
 	for i, spec := range sm.Creatures {
-		stat, hp, err := owner.numbersOf(ctx, content, spec.MonsterKey, sm.Slot, spec.MinInt)
+		stat, hp, err := owner.numbersOf(ctx, content, spec.MonsterKey, sm.Slot, spec.MinInt, spec.CreatureType)
 		if err != nil {
 			return out, err
 		}
@@ -606,7 +608,20 @@ func creatureDerivedFrom(content *rules.Content, key, attack string, statBlock [
 		d.Attacks = nil
 	}
 	d.Features = withCreatureType(content, key, d.Features)
+	if kind := storedTypeOf(key, statBlock); kind != "" { // a steed: the type the player picked is the one the combat reads
+		d.Features = append(slices.DeleteFunc(slices.Clone(d.Features), func(f rules.Feature) bool { return strings.HasPrefix(f.Key, creatureTypePrefix) }),
+			rules.Feature{Key: creatureTypePrefix + kind, Name: kind, Source: key})
+	}
 	return d, true
+}
+
+// storedTypeOf is the type the snapshot of a creature says it was given, "" for none.
+func storedTypeOf(key string, statBlock []byte) string {
+	var r rules.ResolvedCreature
+	if len(statBlock) == 0 || json.Unmarshal(statBlock, &r) != nil || r.Key != key {
+		return ""
+	}
+	return r.CreatureType
 }
 
 // CreatureSheet implements play.CombatRoster: what an attack needs from a

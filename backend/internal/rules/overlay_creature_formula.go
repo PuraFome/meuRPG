@@ -87,6 +87,9 @@ type ResolvedCreature struct {
 	Failed               []string
 	// MinInt is the Intelligence the creature has at least (a steed): the snapshot of an SRD creature that has no formula.
 	MinInt int
+	// CreatureType is the type the player picked for a steed ("celestial", "fey" or "fiend"): the combat reads it in place of the stat block's own
+	// type, which the creature's sheet keeps.
+	CreatureType string
 }
 
 // cloneDamageMods copies the entries and their damage types, as the traits are copied: no resolved value shares

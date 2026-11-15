@@ -59,7 +59,7 @@ type lazyOwner struct {
 
 // numbersOf is the snapshot and the hit points of a new creature of the content's key made with a slot of the
 // circle (0 for none): the snapshot is nil for a creature with no formula, whose numbers are the content's.
-func (l *lazyOwner) numbersOf(ctx context.Context, content *rules.Content, key string, slot, minInt int) (stat []byte, hp int32, err error) {
+func (l *lazyOwner) numbersOf(ctx context.Context, content *rules.Content, key string, slot, minInt int, creatureType string) (stat []byte, hp int32, err error) {
 	d, ok := content.MonsterDerived(key)
 	if !ok {
 		return nil, 0, fmt.Errorf("%q is not a creature", key) // CheckSummon said it was
@@ -71,8 +71,8 @@ func (l *lazyOwner) numbersOf(ctx context.Context, content *rules.Content, key s
 		}
 	}
 	if minInt > 0 && stat == nil {
-		// A creature with an Intelligence floor (a steed) keeps it in its snapshot: the stat block is the content's, raised.
-		if stat, err = json.Marshal(rules.ResolvedCreature{Key: key, MinInt: minInt}); err != nil {
+		// A creature with an Intelligence floor (a steed) keeps it in its snapshot, and the type it was given: the stat block is the content's, raised.
+		if stat, err = json.Marshal(rules.ResolvedCreature{Key: key, MinInt: minInt, CreatureType: creatureType}); err != nil {
 			return nil, 0, wrap("keep a creature's numbers", err)
 		}
 	}
