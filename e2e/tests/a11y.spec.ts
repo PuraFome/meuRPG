@@ -73,7 +73,7 @@ import { armorClassOf, bonusCombatSheet, bonusSheet, cropBonus, masterSetsBonuse
 import { combatWithTwoDown, reviveRPC, tableWithDead } from './revivify-support';
 import { brisa, brisaAidSheet, brisaSheet, dalila, dalilaSheet, ragna, ragnaSheet } from './combat-support';
 import { createPrerequisiteFeatsRPC } from './feat-prerequisites-support';
-import { lostPrerequisiteTable } from './lost-prerequisite-support';
+import { lostPrerequisiteTable, type LostKind, type LostTable } from './lost-prerequisite-support';
 import { createFeatsRPC, createNightRaceRPC, createSnowSubraceRPC, tor } from './editor-races-support';
 import { beginCrowdedCombatRPC, boxIn, callFeatBody, chamadosFeatBody, elementFeatBody, endSessionOf, haloFeatBody, haloSquares, markFeatBody, volleyFeatBody } from './feature-use-support';
 import { createFeatOptionsRPC, expectInViewport, featShotScale, featViewport, openSelect, shootFeat, type FeatOptionsTable } from './feat-options-support';
@@ -15337,6 +15337,79 @@ for (const [colorScheme, theme] of [
  * 580-05, RN-23): the owner reads "uma condição que a mesa não mostra" and the row says "Não vale agora"; the master reads the
  * class by its name.
  */
+/**
+ * The rows and the banner of a sheet that keeps a lost feat or option (#580, board 580-05): the option row has no label on the right
+ * and says "Opção de <feature>" under its name, 16 px in; the lost name is muted; the tag is the dashed pending tag, 22 px high with
+ * 12 px text; "Pré-requisito perdido." has 16 px above and below it (the empty banners and the live region add nothing).
+ */
+async function expectLostRows(page: Page, table: LostTable, kind: LostKind, where: string): Promise<void> {
+  const row = page.locator('details.feature', { has: page.locator('.feature__lost') });
+  await expect(row, `uma linha perdida ${where}`).toHaveCount(1);
+  await expect(row.locator('.feature__name')).toHaveText(table.entryName);
+  const look = await row.evaluate((el) => {
+    const css = (node: Element) => getComputedStyle(node);
+    const tag = el.querySelector('.feature__lost')!;
+    const name = el.querySelector('.feature__name')!;
+    const list = el.closest('ul')!.getBoundingClientRect();
+    const muted = document.querySelector('details.feature:not(.feature--option) .feature__source');
+    const optionRows = [...document.querySelectorAll('details.feature--option')];
+    return {
+      tagHeight: tag.getBoundingClientRect().height,
+      tagFont: css(tag).fontSize,
+      tagBorder: css(tag).borderTopStyle,
+      tagInk: css(tag).color,
+      tagLine: css(tag).borderTopColor,
+      nameInk: css(name).color,
+      mutedInk: muted ? css(muted).color : '',
+      option: el.classList.contains('feature--option'),
+      source: !!el.querySelector('.feature__source'),
+      sub: el.querySelector('.feature__sub')?.textContent?.trim() ?? '',
+      indent: name.getBoundingClientRect().left - list.left,
+      optionRows: optionRows.map((r) => ({
+        source: !!r.querySelector('.feature__source'),
+        sub: r.querySelector('.feature__sub')?.textContent?.trim() ?? '',
+        indent: r.querySelector('.feature__name')!.getBoundingClientRect().left - r.closest('ul')!.getBoundingClientRect().left,
+      })),
+    };
+  });
+  expect(look.tagHeight, `a etiqueta "Não vale agora" tem 22 px de altura ${where}`).toBe(22);
+  expect(look.tagFont, `a etiqueta tem texto de 12 px ${where}`).toBe('12px');
+  expect(look.tagBorder, `a etiqueta tem borda tracejada ${where}`).toBe('dashed');
+  expect(look.tagInk, `a etiqueta na cor de aviso ${where}`).toBe(look.tagLine);
+  expect(look.nameInk, `o nome da linha perdida em tinta suave ${where}`).toBe(look.mutedInk);
+  if (kind === 'option') {
+    expect(look.option && !look.source, `a linha da opção não tem rótulo à direita ${where}`).toBe(true);
+    expect(look.sub, `a linha da opção diz de quem ela é ${where}`).toBe('Opção de ' + table.featName);
+  } else {
+    expect(look.option, `o talento não é uma linha de opção ${where}`).toBe(false);
+    expect(look.sub).toBe('');
+  }
+  // Every option row, lost or not (the fighting style the sheet picked too): no label on the right, "Opção de ...", 16 px in.
+  for (const [i, option] of look.optionRows.entries()) {
+    expect(option.source, `a opção ${i + 1} sem rótulo à direita ${where}`).toBe(false);
+    expect(option.sub.startsWith('Opção de '), `a opção ${i + 1} diz "Opção de ..." ${where}`).toBe(true);
+    expect(option.indent, `a opção ${i + 1} entra 16 px ${where}`).toBe(16);
+  }
+  const banner = await page.getByRole('note', { name: 'Pendências de regra' }).evaluate((el) => {
+    const box = el.getBoundingClientRect();
+    const seen = (node: Element) => {
+      const r = node.getBoundingClientRect();
+      return r.height > 1 && getComputedStyle(node).position !== 'absolute';
+    };
+    let before = el.previousElementSibling;
+    while (before && !seen(before)) {
+      before = before.previousElementSibling;
+    }
+    let after = el.nextElementSibling;
+    while (after && !seen(after)) {
+      after = after.nextElementSibling;
+    }
+    return { above: before ? box.top - before.getBoundingClientRect().bottom : -1, below: after ? after.getBoundingClientRect().top - box.bottom : -1 };
+  });
+  expect(banner.above, `16 px acima de "Pré-requisito perdido." ${where}`).toBe(16);
+  expect(banner.below, `16 px abaixo de "Pré-requisito perdido." ${where}`).toBe(16);
+}
+
 async function scanLostPrerequisite(browser: Browser, colorScheme: 'light' | 'dark', width: number, reader: 'owner' | 'master'): Promise<void> {
   const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport: sizeOf(width) });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport: sizeOf(width) });
@@ -15353,6 +15426,7 @@ async function scanLostPrerequisite(browser: Browser, colorScheme: 'light' | 'da
       await expect(page.getByText(`${table.entryName} pede ${asked}:`)).toBeVisible();
       await expect(page.getByText('Pré-requisito perdido.').first()).toBeVisible();
       await expect(page.getByText('Não vale agora')).toBeVisible();
+      await expectLostRows(page, table, kind, where);
       // The story sits beside the features on a tablet, never over them: the heading of the features stays in sight.
       const features = await page.locator('app-features-panel').boundingBox();
       const story = await page.locator('app-story-panel').boundingBox();
