@@ -144,6 +144,11 @@ message TableWeapon {
   // Weight in ounces (0 to 160000) and price in copper pieces (0 to 100000000). Notes only.
   int32 weight_oz = 11;
   int32 price_cp = 12;
+  // The table revision at which the weapon last became two-handed (the property "weapon-property:two-handed" went on, or the
+  // weapon was made with it): the server's, set on every write and never read from a request. 0 when the weapon is not
+  // two-handed, or was before the server kept it. The sheet that carries the weapon is told "agora pede as duas mãos" only
+  // when this is newer than the revision the sheet fits (an edit of the damage tells nothing).
+  int32 two_handed_since_revision = 13;
 }
 
 // TableEffect is one effect of a feature, from the closed menu: what the engine

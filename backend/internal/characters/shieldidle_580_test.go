@@ -262,3 +262,140 @@ func TestTheShieldIdleNoticeNamesAnArchivedWeaponToItsOwner(t *testing.T) {
 		t.Errorf("the owner reads %q, want %q", got, want)
 	}
 }
+
+// stripIdleIdentity makes the stored sheet one saved before the notice existed: its known issues hold no shield_idle.
+func (tb *idleTable) stripIdleIdentity(t *testing.T) {
+	t.Helper()
+	if _, err := tb.h.pool.Exec(t.Context(), `UPDATE characters SET sheet = jsonb_set(sheet, '{full,known_issues}', COALESCE((SELECT jsonb_agg(e) FROM jsonb_array_elements(sheet->'full'->'known_issues') e WHERE e::text NOT LIKE '%shield_idle%'), '[]'::jsonb)) WHERE id = $1`, tb.pc.GetId()); err != nil {
+		t.Fatal(err)
+	}
+	if slices.ContainsFunc(storedIssues(t, tb.h, tb.pc.GetId()), func(id string) bool { return strings.HasPrefix(id, "shield_idle|") }) {
+		t.Fatal("the stored identity is still there: the case tests nothing")
+	}
+}
+
+func bannerOf(c *charactersv1.Character, key string) []string {
+	for _, ch := range c.GetDerived().GetChangedContent() {
+		if ch.GetKey() == key {
+			return ch.GetMessages()
+		}
+	}
+	return nil
+}
+
+// weaponSince is the revision the table says the weapon last became two-handed at, as the master reads the entry.
+func (tb *idleTable) weaponSince(t *testing.T, key string) int32 {
+	t.Helper()
+	return bodyMessage(tb.master.entries(t, tb.campaign)[key]).(*rulesv1.TableWeapon).GetTwoHandedSinceRevision()
+}
+
+// A sheet that already had a two-handed table weapon and a shield, saved before the notice existed (no stored identity),
+// is told nothing when that weapon is edited for anything but "Duas mãos"; the edit that puts "Duas mãos" on another weapon
+// it has still tells that one.
+func TestASheetSavedBeforeTheNoticeIsToldOnlyTheEditThatTurnsTwoHandedOn(t *testing.T) {
+	t.Parallel()
+	tb := newIdleTable(t, twoHanded)
+	second := tb.master.addEntry(t, tb.campaign, testWeapon("Martelo de Ferreiro"))
+	current := tb.master.get(t, tb.campaign, tb.pc.GetId())
+	current, err := tb.master.update(t, current, current.GetName(), current.GetSheet()) // fits the table with the second weapon
+	if err != nil {
+		t.Fatal(err)
+	}
+	sheet := proto.CloneOf(current.GetSheet())
+	sheet.GetFull().WeaponKeys = append(sheet.GetFull().WeaponKeys, second.GetKey())
+	if _, err := tb.master.update(t, current, current.GetName(), sheet); err != nil {
+		t.Fatal(err)
+	}
+	tb.stripIdleIdentity(t)
+
+	tb.edit(t, func(w *rulesv1.TableWeapon) { w.Damage = "1d12" })
+	for who, u := range map[string]*user{"the owner": tb.owner, "the master": tb.master} {
+		if got := tb.banner(u.get(t, tb.campaign, tb.pc.GetId())); got != nil {
+			t.Errorf("%s reads %q after a damage edit of a weapon that was already two-handed, want none", who, got)
+		}
+	}
+
+	entry := tb.master.entries(t, tb.campaign)[second.GetKey()]
+	edited := proto.CloneOf(bodyMessage(entry).(*rulesv1.TableWeapon))
+	edited.Properties, edited.TwoHandedDamage = []string{twoHandedProp}, ""
+	if _, err := tb.master.table.UpdateTableEntry(t.Context(), connect.NewRequest(updateReq(tb.campaign, second.GetKey(), entry.GetRevision(), edited))); err != nil {
+		t.Fatalf("UpdateTableEntry() error = %v", err)
+	}
+	for who, u := range map[string]*user{"the owner": tb.owner, "the master": tb.master} {
+		got := u.get(t, tb.campaign, tb.pc.GetId())
+		if msgs := bannerOf(got, second.GetKey()); len(msgs) != 1 || !strings.HasPrefix(msgs[0], "O Martelo de Ferreiro agora pede as duas mãos: com ele equipado, o escudo de Pensantus fica parado (CA ") {
+			t.Errorf("%s reads %q for the second weapon, want the notice", who, msgs)
+		}
+		if msgs := tb.banner(got); msgs != nil {
+			t.Errorf("%s reads %q for the first weapon, which was already two-handed, want none", who, msgs)
+		}
+	}
+}
+
+// The server keeps, on a weapon, the revision it last became two-handed at: set when it is made so or edited so, kept by any
+// other edit, cleared when the property goes, and never taken from the request.
+func TestAWeaponKeepsTheRevisionItBecameTwoHandedAt(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t)
+	master := h.newUser("Samuel")
+	campaign := h.newCampaign(master, "Mirathel")
+	tb := &idleTable{levelUpTable: &levelUpTable{h: h, master: master, campaign: campaign}}
+	w := testWeapon("Machado de Lenhador")
+	twoHanded(w)
+	w.TwoHandedSinceRevision = 99 // a client's value is ignored
+	tb.weapon = master.addEntry(t, campaign, w)
+	key := tb.weapon.GetKey()
+	made := tb.weaponSince(t, key)
+	if made != tb.weapon.GetRevision() || made == 99 {
+		t.Fatalf("made two-handed at revision %d, since %d; want the entry's own revision", tb.weapon.GetRevision(), made)
+	}
+	tb.edit(t, func(w *rulesv1.TableWeapon) { w.Damage = "1d12"; w.TwoHandedSinceRevision = 99 })
+	if got := tb.weaponSince(t, key); got != made {
+		t.Errorf("after a damage edit since = %d, want %d kept", got, made)
+	}
+	tb.edit(t, func(w *rulesv1.TableWeapon) { w.Properties, w.TwoHandedDamage = nil, "" })
+	if got := tb.weaponSince(t, key); got != 0 {
+		t.Errorf("after the property went since = %d, want 0", got)
+	}
+	tb.edit(t, twoHanded)
+	if got, rev := tb.weaponSince(t, key), master.entries(t, campaign)[key].GetRevision(); got != rev || got <= made {
+		t.Errorf("after the property came back since = %d, want the new revision %d", got, rev)
+	}
+}
+
+// A pack carries no revision of another table: what it holds in the field is ignored and the server's own is set.
+func TestAnImportedTwoHandedWeaponTakesTheRevisionOfTheImport(t *testing.T) {
+	t.Parallel()
+	pt := newPackTable(t)
+	w := testWeapon("Machado de Lenhador")
+	twoHanded(w)
+	made := pt.master.addEntry(t, pt.from, w)
+	pack := pt.export(t, pt.from)
+	for _, e := range pack.GetEntries() {
+		if e.GetTableWeapon() != nil {
+			e.GetTableWeapon().TwoHandedSinceRevision = 99
+		}
+	}
+	res := pt.apply(t, pt.to, pack, "weapon-import")
+	rev := pt.revisionOf(t, pt.to)
+	got := bodyMessage(pt.entries(t, pt.to)[made.GetKey()]).(*rulesv1.TableWeapon).GetTwoHandedSinceRevision()
+	if got != rev {
+		t.Errorf("imported weapon since = %d (response %v), want the import's revision %d", got, res.GetTotals(), rev)
+	}
+}
+
+// A character without shield training has no pending issue for the shield while it stands idle: the issue is raised only for
+// a shield in use. This is the behaviour today, written down.
+func TestTheShieldTrainingIssueGoesWhileTheShieldIsIdle(t *testing.T) {
+	t.Parallel()
+	tb := newIdleTable(t, versatile)
+	before := tb.owner.get(t, tb.campaign, tb.pc.GetId())
+	if !slices.Contains(issueCodes(before), "armor_proficiency") {
+		t.Fatalf("pending issues before = %v, want the shield training issue (a wizard has none)", issueCodes(before))
+	}
+	tb.edit(t, twoHanded)
+	after := tb.owner.get(t, tb.campaign, tb.pc.GetId())
+	if slices.Contains(issueCodes(after), "armor_proficiency") {
+		t.Errorf("pending issues after = %v, want no shield training issue while the shield is idle", issueCodes(after))
+	}
+}

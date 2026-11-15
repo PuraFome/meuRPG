@@ -1572,10 +1572,15 @@ type TableWeapon struct {
 	NormalRangeFt int32 `protobuf:"varint,9,opt,name=normal_range_ft,json=normalRangeFt,proto3" json:"normal_range_ft,omitempty"`
 	LongRangeFt   int32 `protobuf:"varint,10,opt,name=long_range_ft,json=longRangeFt,proto3" json:"long_range_ft,omitempty"`
 	// Weight in ounces (0 to 160000) and price in copper pieces (0 to 100000000). Notes only.
-	WeightOz      int32 `protobuf:"varint,11,opt,name=weight_oz,json=weightOz,proto3" json:"weight_oz,omitempty"`
-	PriceCp       int32 `protobuf:"varint,12,opt,name=price_cp,json=priceCp,proto3" json:"price_cp,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	WeightOz int32 `protobuf:"varint,11,opt,name=weight_oz,json=weightOz,proto3" json:"weight_oz,omitempty"`
+	PriceCp  int32 `protobuf:"varint,12,opt,name=price_cp,json=priceCp,proto3" json:"price_cp,omitempty"`
+	// The table revision at which the weapon last became two-handed (the property "weapon-property:two-handed" went on, or the
+	// weapon was made with it): the server's, set on every write and never read from a request. 0 when the weapon is not
+	// two-handed, or was before the server kept it. The sheet that carries the weapon is told "agora pede as duas mãos" only
+	// when this is newer than the revision the sheet fits (an edit of the damage tells nothing).
+	TwoHandedSinceRevision int32 `protobuf:"varint,13,opt,name=two_handed_since_revision,json=twoHandedSinceRevision,proto3" json:"two_handed_since_revision,omitempty"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *TableWeapon) Reset() {
@@ -1688,6 +1693,13 @@ func (x *TableWeapon) GetWeightOz() int32 {
 func (x *TableWeapon) GetPriceCp() int32 {
 	if x != nil {
 		return x.PriceCp
+	}
+	return 0
+}
+
+func (x *TableWeapon) GetTwoHandedSinceRevision() int32 {
+	if x != nil {
+		return x.TwoHandedSinceRevision
 	}
 	return 0
 }
@@ -9403,7 +9415,7 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"\x13table_class_feature\x18\x13 \x01(\v2\".meurpg.rules.v1.TableClassFeatureH\x00R\x11tableClassFeature\x12G\n" +
 	"\x0etable_creature\x18\x14 \x01(\v2\x1e.meurpg.rules.v1.TableCreatureH\x00R\rtableCreature\x12A\n" +
 	"\ftable_weapon\x18\x15 \x01(\v2\x1c.meurpg.rules.v1.TableWeaponH\x00R\vtableWeaponB\x06\n" +
-	"\x04body\"\xa5\x03\n" +
+	"\x04body\"\xe0\x03\n" +
 	"\vTableWeapon\x12\x17\n" +
 	"\aname_pt\x18\x01 \x01(\tR\x06namePt\x12\x1f\n" +
 	"\adesc_pt\x18\x02 \x03(\tB\x06\x90\xb5\x18\x80\x80\x01R\x06descPt\x12;\n" +
@@ -9420,7 +9432,8 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"\rlong_range_ft\x18\n" +
 	" \x01(\x05R\vlongRangeFt\x12\x1b\n" +
 	"\tweight_oz\x18\v \x01(\x05R\bweightOz\x12\x19\n" +
-	"\bprice_cp\x18\f \x01(\x05R\apriceCp\"\x83\x16\n" +
+	"\bprice_cp\x18\f \x01(\x05R\apriceCp\x129\n" +
+	"\x19two_handed_since_revision\x18\r \x01(\x05R\x16twoHandedSinceRevision\"\x83\x16\n" +
 	"\vTableEffect\x12\x12\n" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x12\x16\n" +
 	"\x06target\x18\x02 \x01(\tR\x06target\x12\x12\n" +
