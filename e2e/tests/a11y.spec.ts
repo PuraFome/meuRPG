@@ -15669,12 +15669,13 @@ test('a opção de uma característica que pede nível e opção passa no axe e 
 
 // The weapons list of the sheet editor (#580, board 580-16, state 4): the table's group first with its book icon, a rule between the
 // two groups, "Do SRD" second, and the helper line under the field stays in sight above the open list.
-async function scanWeaponsList(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport: sizeOf(width) });
-  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport: sizeOf(width) });
+async function scanWeaponsList(browser: Browser, colorScheme: 'light' | 'dark', width: number, height?: number): Promise<void> {
+  const viewport = height === undefined ? sizeOf(width) : { width, height };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
-  const where = `(${colorScheme}, ${width}px)`;
+  const where = `(${colorScheme}, ${width}px${height === undefined ? '' : `, ${height}px de altura`})`;
   try {
     await Promise.all([m.goto('/'), p.goto('/')]);
     const table = await tableForLevelUp(m, p, `Acessibilidade armas ${Date.now()}`, { build: levelUpToren, session: false, milestone: false });
@@ -15727,3 +15728,12 @@ test('a lista de armas do editor, com o grupo da mesa, a linha entre os grupos e
   test.setTimeout(240_000);
   await scanWeaponsList(browser, 'dark', 768);
 });
+
+// The list opens under the helper line whatever the height of the window and wherever the field stands in it: with little room
+// below the field the list is shorter and the field is brought to the middle, and the list never covers "Escolha quantas quiser.".
+for (const [scheme, width, label] of [['light', 390, 'no tema claro, no celular'], ['dark', 768, 'no tema escuro, no tablet'], ['light', 1280, 'no tema claro, no desktop']] as const) {
+  test(`a lista de armas do editor abre abaixo da linha de ajuda, também com a janela baixa, ${label}`, { tag: ['@a11y', '@MR-025', '@MR-040'] }, async ({ browser }) => {
+    test.setTimeout(240_000);
+    await scanWeaponsList(browser, scheme, width, 600);
+  });
+}
