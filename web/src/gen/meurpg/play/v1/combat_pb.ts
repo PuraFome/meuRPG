@@ -16531,8 +16531,8 @@ export enum EncounterBlockedReason {
   AMMUNITION_EMPTY = 145,
 
   /**
-   * UseConsumable: a consumable given in a combat to a creature that is not within 5 feet of the giver, that the giver does
-   * not see (hidden, or in the dark of a fog map), or that does not fight in the combat. The refusal names nobody. Nothing is written.
+   * UseConsumable: a consumable given in a combat to a creature that is not within 5 feet of the giver or that does not fight
+   * in the combat (a player's character is never hidden from its party, so no gift is refused for what the giver sees). The refusal names nobody. Nothing is written.
    *
    * @generated from enum value: ENCOUNTER_BLOCKED_REASON_TARGET_NOT_ADJACENT_OR_SEEN = 146;
    */

@@ -30,18 +30,9 @@ func newPotionFight(t *testing.T, keys ...string) *potionFight {
 		npcRolls: []int{3},
 		players:  map[string]int32{"Toren": 18, "Pensantus": 10, "Brisa": 1},
 		reveal:   []string{"Goblin"},
-		at:       map[string][2]int32{"Toren": {3, 3}, "Pensantus": {4, 4}, "Brisa": {9, 9}, "Goblin": {15, 15}},
+		at:       map[string][2]int32{"Toren": {3, 3}, "Pensantus": {4, 4}, "Brisa": {9, 8}, "Goblin": {12, 8}},
 	})
 	return &potionFight{stocked: s, e: e}
-}
-
-func (f *potionFight) hide(t *testing.T, label string, hidden bool) {
-	t.Helper()
-	if _, err := f.master.combat.SetCombatantHidden(t.Context(), connect.NewRequest(&playv1.SetCombatantHiddenRequest{
-		CampaignId: f.campaignID, EncounterId: f.e.GetId(), CombatantId: f.id(t, label), IdempotencyKey: newKey(), Hidden: hidden,
-	})); err != nil {
-		t.Fatalf("SetCombatantHidden(%s) error = %v", label, err)
-	}
 }
 
 // line is the consumable line a user reads in the log, nil when it reads none.
@@ -89,18 +80,14 @@ func TestGivingAPotionNextToTheGiverHealsTheReceiverAndSpendsTheGiversAction(t *
 	wantBlockedBy(t, "a drink after the gift", err, blockedActionUsed)
 }
 
-func TestAPotionIsNotGivenOutOfReachOrToACreatureThatIsHidden(t *testing.T) {
+func TestAPotionIsNotGivenOutOfReach(t *testing.T) {
 	t.Parallel()
 	f := newPotionFight(t, potionCommon)
 	_, err := f.use(t, f.caio, f.toren, potionCommon, giveTo(f.bri))
 	wantBlockedBy(t, "a gift out of reach", err, blockedNotAdjacent)
-	f.hide(t, "Pensantus", true)
-	_, err = f.use(t, f.caio, f.toren, potionCommon, giveTo(f.pens))
-	wantBlockedBy(t, "a gift to a hidden creature", err, blockedNotAdjacent)
 	if !f.holds(t, f.toren, potionCommon) {
 		t.Error("a refused gift spent the potion")
 	}
-	f.hide(t, "Pensantus", false)
 	f.mustUse(t, f.caio, f.toren, potionCommon, giveTo(f.pens)) // the refusals spent no action
 }
 
@@ -134,10 +121,10 @@ func TestAReceiverAtZeroHitPointsWakesAndAnUnconsciousUserCannotAct(t *testing.T
 func TestASupremePotionIsCutAtTheMaximumInACombat(t *testing.T) {
 	t.Parallel()
 	f := newPotionFight(t, potionSupreme)
-	max := f.maxHP(t, f.toren)
-	f.hurt(t, f.toren, max-3)
-	if res := f.mustUse(t, f.caio, f.toren, potionSupreme); res.GetHealed() != 3 || f.vitals(t, f.toren).GetHitPointsCurrent() != max {
-		t.Errorf("the supreme potion healed %d, want 3 up to %d", res.GetHealed(), max)
+	full := f.maxHP(t, f.toren)
+	f.hurt(t, f.toren, full-3)
+	if res := f.mustUse(t, f.caio, f.toren, potionSupreme); res.GetHealed() != 3 || f.vitals(t, f.toren).GetHitPointsCurrent() != full {
+		t.Errorf("the supreme potion healed %d, want 3 up to %d", res.GetHealed(), full)
 	}
 }
 
@@ -195,16 +182,9 @@ func TestTheLineOfAGiftTellsTheTableTheItemAndTheOwnersTheNumbers(t *testing.T) 
 	if l.GetHealed() != 0 || l.GetDiceText() != "" || len(l.GetFaces()) != 0 || l.GetRollTotal() != 0 {
 		t.Errorf("another player reads numbers: %v", l)
 	}
-	f.hide(t, "Pensantus", true)
-	if f.line(t, f.bia) != nil {
-		t.Error("another player reads the line of a gift to a creature that is hidden now")
-	}
-	if f.line(t, f.ana) == nil {
-		t.Error("the receiver's owner lost the line")
-	}
 }
 
-func TestTheTargetsOfAGiftAreTheAdjacentCreaturesTheGiverSees(t *testing.T) {
+func TestTheTargetsOfAGiftAreTheAdjacentCharacters(t *testing.T) {
 	t.Parallel()
 	f := newPotionFight(t, potionCommon)
 	f.hurt(t, f.pens, 0)
@@ -223,10 +203,6 @@ func TestTheTargetsOfAGiftAreTheAdjacentCreaturesTheGiverSees(t *testing.T) {
 			got[0].GetState() != playv1.ConsumableTargetState_CONSUMABLE_TARGET_STATE_DOWN || !got[0].GetMayReceive() {
 			t.Errorf("targets = %v, %v; want Pensantus, 5 ft, down", got, err)
 		}
-	}
-	f.hide(t, "Pensantus", true)
-	if got, err := list(f.caio, f.toren.GetId()); err != nil || len(got) != 0 {
-		t.Errorf("targets = %v, %v; want none: the only creature near is hidden", got, err)
 	}
 	if _, err := list(f.bia, f.toren.GetId()); connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Errorf("another player's list = %v, want permission_denied", err)

@@ -18,7 +18,7 @@ import (
 
 // A consumable used in a running combat (SRD 5.1, "Potions" and "Other Activity on Your Turn"): drinking or giving a potion is
 // the user's action, taken on its turn like any action (the master takes it for the character, bound by the same turn and
-// action). The receiver of a gift is within 5 feet of the giver and seen by it (a hidden creature is never one). A heal goes
+// action). The receiver of a gift is within 5 feet of the giver (a player's character is never hidden from the party). A heal goes
 // through the combat's own heal, and a resistance is a lasting effect of the receiver's combatant that lasts the hour in rounds.
 
 // consumableFight is the combat a use happens in: its transaction, the combatants, the user's and the receiver's.
@@ -29,32 +29,20 @@ type consumableFight struct {
 }
 
 func errNotAdjacentOrSeen() error {
-	return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_TARGET_NOT_ADJACENT_OR_SEEN, "the receiver is not within 5 feet of the giver, or the giver does not see it")
+	return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_TARGET_NOT_ADJACENT_OR_SEEN, "the receiver is not within 5 feet of the giver, or does not fight in the combat")
 }
 
 func errItemGone() error {
 	return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ITEM_GONE, "the item is no longer on the sheet")
 }
 
-// giverView is who sees for the giver: its player, also when the master acts for it (a creature the master hid, or the
-// dark of a fog map, hides it from the giver as it does from the player).
-func (s *Service) giverView(ctx context.Context, campaignID string, enc playdb.Encounter, cs []playdb.Combatant, giver playdb.Combatant) (combatViewer, error) {
-	if giver.UserID == nil {
-		return viewerOf(authz.Membership{CampaignID: campaignID, Role: authz.RoleMaster}), nil
-	}
-	v, _, err := s.viewerWith(ctx, authz.Membership{CampaignID: campaignID, UserID: *giver.UserID, Role: authz.RolePlayer}, enc, cs)
-	return v, err
-}
-
-// giftReach is the distance to a receiver the giver may hand a potion to, and whether it may: the receiver is seen by the
-// giver and within 5 feet (a combat with no map has no distance). The giver itself is always within reach.
-func giftReach(enc playdb.Encounter, v combatViewer, giver, recv playdb.Combatant) (int32, bool) {
+// giftReach is the distance to a receiver the giver may hand a potion to, and whether it may: within 5 feet (a combat with no
+// map has no distance). The receiver is a player's character, which is never hidden from the party nor in its dark (a player's
+// combatant is never hidden), so what the giver sees needs no check: the list and the gift never name a creature the giver does
+// not see, because they never name any other.
+func giftReach(enc playdb.Encounter, giver, recv playdb.Combatant) (int32, bool) {
 	switch {
-	case recv.ID == giver.ID:
-		return 0, true
-	case !v.sees(recv):
-		return 0, false
-	case isTheatre(enc):
+	case recv.ID == giver.ID, isTheatre(enc):
 		return 0, true
 	}
 	d, both := distanceFt(giver, recv)
@@ -84,11 +72,7 @@ func (s *Service) openFight(ctx context.Context, tx pgx.Tx, q *playdb.Queries, h
 	if err := s.mustActNow(ctx, c, f.giver); err != nil {
 		return nil, err
 	}
-	v, err := s.giverView(ctx, session.CampaignID, enc, cs, f.giver)
-	if err != nil {
-		return nil, err
-	}
-	if _, ok := giftReach(enc, v, f.giver, f.recv); !ok {
+	if _, ok := giftReach(enc, f.giver, f.recv); !ok {
 		return nil, errNotAdjacentOrSeen()
 	}
 	if _, err := s.payEquipWithAction(ctx, c, f.giver); err != nil {
@@ -152,9 +136,14 @@ func (s *Service) ListConsumableTargets(ctx context.Context, req *connect.Reques
 	if _, err := s.requireItemCharacter(ctx, nil, m, charID); err != nil {
 		return nil, err
 	}
-	if _, err := s.vitals.ChargedItemRead(ctx, nil, m.CampaignID, charID, req.Msg.GetEntryId()); connect.CodeOf(err) == connect.CodeNotFound {
+	// The entry is there when the read finds it, with charges or without (invalid_argument: it holds none).
+	err = pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
+		_, err := s.vitals.ChargedItemRead(ctx, tx, m.CampaignID, charID, req.Msg.GetEntryId())
+		return err
+	})
+	if connect.CodeOf(err) == connect.CodeNotFound {
 		return nil, errItemGone()
-	} else if err != nil {
+	} else if err != nil && connect.CodeOf(err) != connect.CodeInvalidArgument {
 		return nil, err
 	}
 	rows, err := s.consumableTargets(ctx, m.CampaignID, charID)
@@ -164,7 +153,7 @@ func (s *Service) ListConsumableTargets(ctx context.Context, req *connect.Reques
 	return connect.NewResponse(&playv1.ListConsumableTargetsResponse{Targets: rows}), nil
 }
 
-// consumableTargets are the receivers of the character's gift: the creatures it reaches and sees in a running combat, else
+// consumableTargets are the receivers of the character's gift: the characters it reaches in a running combat, else
 // the living characters of the party.
 func (s *Service) consumableTargets(ctx context.Context, campaignID, characterID string) ([]*playv1.ConsumableTarget, error) {
 	if open, err := s.queries.GetOpenGameSession(ctx, campaignID); err == nil {
@@ -194,18 +183,14 @@ func (s *Service) consumableTargets(ctx context.Context, campaignID, characterID
 	return out, nil
 }
 
-// fightTargets are the player's characters of the combat that the giver reaches and sees.
+// fightTargets are the player's characters of the combat that the giver reaches.
 func (s *Service) fightTargets(ctx context.Context, campaignID string, enc playdb.Encounter, cs []playdb.Combatant, giver playdb.Combatant) ([]*playv1.ConsumableTarget, error) {
-	v, err := s.giverView(ctx, campaignID, enc, cs, giver)
-	if err != nil {
-		return nil, err
-	}
 	var out []*playv1.ConsumableTarget
 	for _, c := range cs {
 		if c.ID == giver.ID || c.Kind != kindPlayer || c.Dismissed {
 			continue
 		}
-		d, ok := giftReach(enc, v, giver, c)
+		d, ok := giftReach(enc, giver, c)
 		if !ok {
 			continue
 		}

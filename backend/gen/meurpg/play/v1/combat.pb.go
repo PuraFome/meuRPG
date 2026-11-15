@@ -1043,8 +1043,8 @@ const (
 	// RollAttack: the attack fires ammunition (a bow, a crossbow, a sling, a blowgun) and the character has a count for the kind
 	// (a row, even at 0) with none left. Nothing is written. A kind with no count is not counted and the shot goes. The melee line of the weapon, and a thrown weapon, spend no ammunition.
 	EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_AMMUNITION_EMPTY EncounterBlockedReason = 145
-	// UseConsumable: a consumable given in a combat to a creature that is not within 5 feet of the giver, that the giver does
-	// not see (hidden, or in the dark of a fog map), or that does not fight in the combat. The refusal names nobody. Nothing is written.
+	// UseConsumable: a consumable given in a combat to a creature that is not within 5 feet of the giver or that does not fight
+	// in the combat (a player's character is never hidden from its party, so no gift is refused for what the giver sees). The refusal names nobody. Nothing is written.
 	EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_TARGET_NOT_ADJACENT_OR_SEEN EncounterBlockedReason = 146
 	// UseConsumable and ListConsumableTargets: the entry is no longer on the sheet (used or taken off since the player read it). Nothing is written.
 	EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ITEM_GONE EncounterBlockedReason = 147

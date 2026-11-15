@@ -139,14 +139,18 @@ type ChargesServiceClient interface {
 	// the user's turn; out of combat it costs no turn and needs no adjacency. A consumable event ends the undo chain.
 	// The user's player (or the master, for any character) may use it. The dice follow the table's rule (RN-18).
 	//
-	// Errors: `permission_denied` for a character that is not the caller's (a player); `not_found` for a character or
-	// an entry that is not there; `invalid_argument` for an entry that is not a consumable, an idempotency key that is not
-	// a UUID or one reused for another request, and a roll the request does not carry; `failed_precondition` with
-	// NO_OPEN_SESSION, CharacterBlocked CHARACTER_DEAD and the EncounterBlocked reasons of an action in a combat.
+	// Errors: `permission_denied` for a character that is not the caller's (a player); `not_found` for a character or a
+	// receiver that is not there (an NPC, a reserved character or one of another campaign is not a receiver);
+	// `invalid_argument` for an entry that is not a consumable, an idempotency key that is not a UUID or one reused for
+	// another request, and a roll the request does not carry; `failed_precondition` with NO_OPEN_SESSION, CharacterBlocked
+	// CHARACTER_DEAD, and EncounterBlocked: ITEM_GONE for an entry that is no longer on the sheet, COMBATANT_DOWN for a
+	// user at 0 hit points (it may still receive), and in a combat NOT_YOUR_TURN, ACTION_USED and the other reasons of an
+	// action, and TARGET_NOT_ADJACENT_OR_SEEN for a receiver beyond 5 feet or out of the combat. The response carries the
+	// receiver's vitals to the master and to the receiver's own player only.
 	UseConsumable(context.Context, *connect.Request[v1.UseConsumableRequest]) (*connect.Response[v1.UseConsumableResponse], error)
 	// ListConsumableTargets lists who the character may give a consumable to: in a running combat, the player's
-	// characters that are adjacent (5 feet) to the user's combatant and that the user sees (a hidden creature is never
-	// listed), with the distance; out of a combat, the other living characters of the party. The master reads it for the
+	// characters that are adjacent (5 feet) to the user's combatant, with the distance (a creature that is not a player's
+	// character is never listed, so a hidden one never is); out of a combat, the other living characters of the party. The master reads it for the
 	// character it acts for, and the list is the one that character's player would get. Read only.
 	//
 	// Errors: `permission_denied` for a character that is not the caller's (a player); `not_found` for a character that
@@ -342,14 +346,18 @@ type ChargesServiceHandler interface {
 	// the user's turn; out of combat it costs no turn and needs no adjacency. A consumable event ends the undo chain.
 	// The user's player (or the master, for any character) may use it. The dice follow the table's rule (RN-18).
 	//
-	// Errors: `permission_denied` for a character that is not the caller's (a player); `not_found` for a character or
-	// an entry that is not there; `invalid_argument` for an entry that is not a consumable, an idempotency key that is not
-	// a UUID or one reused for another request, and a roll the request does not carry; `failed_precondition` with
-	// NO_OPEN_SESSION, CharacterBlocked CHARACTER_DEAD and the EncounterBlocked reasons of an action in a combat.
+	// Errors: `permission_denied` for a character that is not the caller's (a player); `not_found` for a character or a
+	// receiver that is not there (an NPC, a reserved character or one of another campaign is not a receiver);
+	// `invalid_argument` for an entry that is not a consumable, an idempotency key that is not a UUID or one reused for
+	// another request, and a roll the request does not carry; `failed_precondition` with NO_OPEN_SESSION, CharacterBlocked
+	// CHARACTER_DEAD, and EncounterBlocked: ITEM_GONE for an entry that is no longer on the sheet, COMBATANT_DOWN for a
+	// user at 0 hit points (it may still receive), and in a combat NOT_YOUR_TURN, ACTION_USED and the other reasons of an
+	// action, and TARGET_NOT_ADJACENT_OR_SEEN for a receiver beyond 5 feet or out of the combat. The response carries the
+	// receiver's vitals to the master and to the receiver's own player only.
 	UseConsumable(context.Context, *connect.Request[v1.UseConsumableRequest]) (*connect.Response[v1.UseConsumableResponse], error)
 	// ListConsumableTargets lists who the character may give a consumable to: in a running combat, the player's
-	// characters that are adjacent (5 feet) to the user's combatant and that the user sees (a hidden creature is never
-	// listed), with the distance; out of a combat, the other living characters of the party. The master reads it for the
+	// characters that are adjacent (5 feet) to the user's combatant, with the distance (a creature that is not a player's
+	// character is never listed, so a hidden one never is); out of a combat, the other living characters of the party. The master reads it for the
 	// character it acts for, and the list is the one that character's player would get. Read only.
 	//
 	// Errors: `permission_denied` for a character that is not the caller's (a player); `not_found` for a character that

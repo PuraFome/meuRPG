@@ -468,7 +468,9 @@ func TestAGiverThatDoesNotPlayTheReceiverIsToldNoVitals(t *testing.T) {
 	s := newStocked(t, potionCommon, potionCommon)
 	s.hurt(t, s.toren, 1)
 	key, entry := newKey(), s.entryOf(t, s.pens, potionCommon)
-	same := func(r *playv1.UseConsumableRequest) { r.IdempotencyKey, r.EntryId, r.TargetCharacterId = key, entry, s.toren.GetId() }
+	same := func(r *playv1.UseConsumableRequest) {
+		r.IdempotencyKey, r.EntryId, r.TargetCharacterId = key, entry, s.toren.GetId()
+	}
 	first := s.mustUse(t, s.ana, s.pens, potionCommon, same)
 	again := s.mustUse(t, s.ana, s.pens, potionCommon, same)
 	for name, res := range map[string]*playv1.UseConsumableResponse{"the first answer": first, "the retry": again} {
