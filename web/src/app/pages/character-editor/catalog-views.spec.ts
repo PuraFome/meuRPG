@@ -19,10 +19,17 @@ import {
   skillNoteOf,
   subclassHintOf,
   subclassWaits,
+  weaponDetail,
   weaponGroups,
 } from './catalog-views';
 
-const SRD = { fromTable: false, archived: false, off: false };
+const SRD = {
+  fromTable: false,
+  archived: false,
+  off: false,
+  category: 'simple' as const,
+  damage: '1d4',
+};
 
 const klass = (over: Partial<ClassOptionVm> = {}): ClassOptionVm => ({
   key: 'class:wizard',
@@ -326,5 +333,13 @@ describe('weaponGroups (#580 board 580-16)', () => {
     expect(weaponGroups(weapons, ['weapon:velha@mesa'], false).table.map((x) => x.key)).toContain(
       'weapon:velha@mesa',
     );
+  });
+
+  it('says the category and the damage dice of a row, and the category alone for a weapon with no damage', () => {
+    expect(weaponDetail(w('equipment:dagger'))).toBe('Simples · 1d4');
+    expect(weaponDetail(w('equipment:halberd', { category: 'martial', damage: '1d10' }))).toBe(
+      'Marcial · 1d10',
+    );
+    expect(weaponDetail(w('equipment:net', { category: 'martial', damage: '' }))).toBe('Marcial');
   });
 });
