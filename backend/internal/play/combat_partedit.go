@@ -58,7 +58,9 @@ const maxPartKeyLen = 100
 // without an ally near the target in a combat with no map is the usual case: the
 // app cannot know, and the master can. The total drops by that part; an NPC that took
 // the damage at once gets the difference back, up to its maximum. It cannot be undone:
-// the damage would have to be rolled again.
+// the damage would have to be rolled again. An extra inside a group of parts that share a damage
+// type goes another way (combat_group_sum.go): the damage is taken back as an undo takes it
+// back, and waits for the sum of that damage type.
 func (s *Service) RemoveDamagePart(
 	ctx context.Context,
 	req *connect.Request[playv1.RemoveDamagePartRequest],
@@ -68,8 +70,10 @@ func (s *Service) RemoveDamagePart(
 		return nil, err
 	}
 	var made actionEvent
+	var run undoRun // what the take-out of a group part put back, for what is told after the commit
 	res, err := s.write(ctx, combatWrite{m: r.m, key: r.key, hash: idem.Hash(req.Msg), kind: eventDamagePartRemoved, encounterID: r.encID}, func(c *combatTx) (any, error) {
-		ev, err := s.removePartWrite(ctx, c, r)
+		run = undoRun{}
+		ev, err := s.removePartWrite(ctx, c, &run, r)
 		if err != nil {
 			return nil, err
 		}
@@ -84,6 +88,10 @@ func (s *Service) RemoveDamagePart(
 		return nil, s.dbError(ctx, "read the removal", err)
 	}
 	out, err := s.finish(ctx, r.m, res, func(ctx context.Context, d *encounterData) {
+		if ev.AwaitsSum != "" { // the damage was taken back: told as an undo is
+			s.publishUndoRun(ctx, r.m.CampaignID, d, ev, &run)
+			return
+		}
 		s.publishEncounterChanged(ctx, r.m.CampaignID, d.enc)
 		s.publishLogChanged(ctx, r.m.CampaignID, d.enc.ID, !ev.Secret)
 	})
@@ -99,7 +107,7 @@ func (s *Service) RemoveDamagePart(
 
 // removePartWrite is the removal inside its transaction: the part comes out of the rolled
 // damage, the damage is worked out again and kept, and the removal's event is returned.
-func (s *Service) removePartWrite(ctx context.Context, c *combatTx, r partRemoval) (actionEvent, error) {
+func (s *Service) removePartWrite(ctx context.Context, c *combatTx, run *undoRun, r partRemoval) (actionEvent, error) {
 	if err := notEnded(c.enc); err != nil {
 		return actionEvent{}, err
 	}
@@ -120,7 +128,11 @@ func (s *Service) removePartWrite(ctx context.Context, c *combatTx, r partRemova
 	}
 	parts, rolls := readParts(p.Parts), readPartRolls(p.PartRolls)
 	if inTypedGroup(rolls, r.partKey) {
-		return actionEvent{}, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_DAMAGE_PART_NOT_REMOVABLE, "that part is covered by a damage-type sum and cannot be taken out")
+		made, err := s.takeOutOfGroup(ctx, c, run, r, p, attacker, target, parts, rolls)
+		if err != nil {
+			return actionEvent{}, err
+		}
+		return s.keepGroupRemoval(ctx, c, made, r, attacker)
 	}
 	if !takeOut(parts, rolls, r.partKey) {
 		return actionEvent{}, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_DAMAGE_PART_NOT_REMOVABLE, "that part cannot be taken out")
@@ -163,6 +175,7 @@ func workOutRemoval(ctx context.Context, c *combatTx, p playdb.PendingDamage, at
 	rem.ev = actionEvent{
 		Round: c.enc.Round, Secret: secretOf(attacker, target), Actor: attacker.ID, Target: target.ID, Pending: p.ID, Key: partKey,
 		DamageType: p.DamageType, Rolled: conv.OrZero(p.Amount), Total: amount,
+		PartHidden: slices.ContainsFunc(rolls, func(x partRoll) bool { return x.Key == partKey && x.Hide }),
 	}
 	landed := amount
 	if land.changed {
@@ -229,6 +242,20 @@ func giveBackHitPoints(ctx context.Context, c *combatTx, p playdb.PendingDamage,
 		return hpState{}, fmt.Errorf("give the hit points back: %w", err)
 	}
 	return now, nil
+}
+
+// keepGroupRemoval stores the master's reason for the take-out of a group part and finishes the removal's transaction.
+func (s *Service) keepGroupRemoval(ctx context.Context, c *combatTx, made actionEvent, r partRemoval, attacker playdb.Combatant) (actionEvent, error) {
+	row, err := c.q.InsertCombatReason(ctx, playdb.InsertCombatReasonParams{EncounterID: c.enc.ID, Kind: "part_removed", Reason: r.reason, CreatedAt: c.now})
+	if err != nil {
+		return actionEvent{}, fmt.Errorf("keep the reason: %w", err)
+	}
+	made.ReasonID = row.ID
+	if err := touch(ctx, c); err != nil {
+		return actionEvent{}, err
+	}
+	c.characterID = &attacker.CharacterID
+	return made, nil
 }
 
 // inTypedGroup says the roll was entered with a damage-type sum that covers the part: the sum sits on one part of the

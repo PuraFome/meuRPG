@@ -55,6 +55,8 @@ const (
 const (
 	kindRequestReason = "roll-mode-request-reason"
 	kindRemovalReason = "part-removal-reason"
+	kindHiddenPart    = "hidden-part-name"
+	kindHiddenPartKey = "hidden-part-key"
 	kindModeReason    = "mode-change-reason"
 	kindNPCModeReason = "npc-mode-reason"
 )
@@ -371,7 +373,8 @@ func TestAttackRollsReachOnlyWhoMayReadThem(t *testing.T) {
 		chosen := []*playv1.SelectedExtra{{Key: "divine-smite", SlotLevel: 1}}
 		for _, key := range extras {
 			chosen = append(chosen, &playv1.SelectedExtra{Key: key})
-			parts = append(parts, &playv1.TypedPart{PartKey: key, Sum: 4})
+			// the weapon and the extra share the piercing type: one sum covers both, and taking the extra out asks for a new one
+			parts = append(parts[1:], &playv1.TypedPart{DamageType: "damage-type:piercing", Sum: 6})
 		}
 		return rt.damage(caio, pending, func(r *playv1.RollDamageRequest) {
 			r.ExtrasChosen, r.SelectedExtras, r.TypedParts = true, chosen, parts
@@ -414,11 +417,38 @@ func TestAttackRollsReachOnlyWhoMayReadThem(t *testing.T) {
 		t.Fatalf("the attack on the bandit = %v, want a hit that lists the source", strike.GetRoll())
 	}
 	onHuman := rollSmite(strike.GetPendingDamage().GetId(), "sneak-attack")
+	// The damage the smite rolled is applied to the bandit and is the last action: the master's turn options list it so his screen
+	// offers "Tirar", and the attacker's player reads the open damage alone (RN-10).
+	appliedListed := func(p *person) bool {
+		return slices.ContainsFunc(rt.optionsOf(p, labelToren).GetPendingDamages(), func(d *playv1.PendingDamage) bool {
+			return d.GetId() == strike.GetPendingDamage().GetId() && d.GetStatus() == playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_APPLIED
+		})
+	}
+	if !appliedListed(m) {
+		t.Fatal("the master's turn options do not list the applied damage a take-out could undo (the positive control)")
+	}
+	if appliedListed(caio) {
+		t.Error("the attacker's player's turn options list an applied damage: only the master gets it")
+	}
+	rt.ask(t, "the master lists the damage a take-out could undo")
 	removal := w.secrets.marker(kindRemovalReason, caio)
+	// The extra is one the roll line hides from the other players (#835): its name and key are the master's and Caio's, and the
+	// removal line reads "Outra fonte" to Ana, with no key and no reason.
+	hiddenName, hiddenKey := w.secrets.marker(kindHiddenPart, caio), w.secrets.marker(kindHiddenPartKey, caio)
+	hide := `jsonb_agg(CASE WHEN p->>'key' = 'sneak-attack' THEN p || jsonb_build_object('hide', true, 'label', $2::text, 'key', $3::text) ELSE p END)`
+	if _, err := rt.pool.Exec(ctx, `UPDATE pending_damages SET
+		parts = (SELECT `+hide+` FROM jsonb_array_elements(parts) p),
+		part_rolls = (SELECT `+hide+` FROM jsonb_array_elements(part_rolls) p) WHERE id = $1`, strike.GetPendingDamage().GetId(), hiddenName, hiddenKey); err != nil {
+		t.Fatalf("hide the extra from the other players: %v", err)
+	}
 	must(m.combat.RemoveDamagePart(ctx, rq(&playv1.RemoveDamagePartRequest{
-		CampaignId: w.campaign, EncounterId: rt.encounter.GetId(), PendingDamageId: strike.GetPendingDamage().GetId(), PartKey: "sneak-attack", Reason: removal, IdempotencyKey: newKey(),
+		CampaignId: w.campaign, EncounterId: rt.encounter.GetId(), PendingDamageId: strike.GetPendingDamage().GetId(), PartKey: hiddenKey, Reason: removal, IdempotencyKey: newKey(),
 	})))
-	rt.ask(t, "an extra is taken out")
+	rt.ask(t, "an extra of a group is taken out and the damage waits for the sum of its type")
+	rt.damage(caio, strike.GetPendingDamage().GetId(), func(r *playv1.RollDamageRequest) {
+		r.Roll = &playv1.RollDamageRequest_TypedSum{TypedSum: 3}
+	})
+	rt.ask(t, "the sum of the group is rolled again")
 	rt.checkSmite(t, onUndead, onHuman)
 	rt.endTurn(caio)
 

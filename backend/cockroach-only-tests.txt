@@ -15,5 +15,5 @@ internal/identity TestRowLevelTTL row-level TTL of auth_sessions and oidc_login_
 internal/play TestRosterReadInsideTxIsRetriedOn40001 a 40001 injected into a read (inject_retry_errors_enabled)
 internal/play TestRosterReadInsideTxIsRetriedOnRealConflict a conflict made by a HIGH priority transaction (SET TRANSACTION PRIORITY), and UPSERT
 internal/play TestHintSeqContentionOnCockroachDB measures the 40001 retries of five writers on one row (SHOW CLUSTER SETTING version)
-internal/platform/dbtest TestSchemaDDLOrdersTablesAfterTheirReferences the schema copy replays SHOW CREATE (CockroachDB's way of making a test database)
-internal/platform/dbtest TestSchemaDDLRefusesACycle the schema copy replays SHOW CREATE (CockroachDB's way of making a test database)
+internal/platform/dbtest TestSchemaDDLOrdersTablesAfterTheirReferences the template's table order is read with SHOW CREATE (CockroachDB)
+internal/platform/dbtest TestSchemaDDLRefusesACycle the template's table order is read with SHOW CREATE (CockroachDB)
