@@ -360,22 +360,13 @@ func (s *Service) triggerGone(ctx context.Context, c *combatTx, w playdb.Reactio
 // (and the cases of a kind) that have nothing of their own to say, which go on to the checks every
 // window shares.
 func (s *Service) kindTriggerGone(ctx context.Context, c *combatTx, w playdb.ReactionWindow, t windowTrigger, byID map[string]playdb.Combatant) (gone, decided bool, err error) {
+	if gone, decided := combatantKindGone(w, t, byID); decided {
+		return gone, true, nil
+	}
 	switch reaction.Kind(w.Kind) {
-	case reaction.Concentration:
-		return concentrationGone(w, t, byID), true, nil
-	case reaction.MountSave:
-		return mountSaveGone(w, t, byID), true, nil
-	case reaction.Dismount:
-		return dismountGone(w, t, byID), true, nil
 	case reaction.FeatherFall, reaction.SlowFall:
 		gone, err = fallGone(ctx, c, t)
 		return gone, true, err
-	case reaction.EffectSave:
-		// A defeated creature or NPC owes no saving throw (RN-22): the window closes with it.
-		r, ok := byID[conv.OrZero(w.ReactorID)]
-		if ok && r.Defeated && r.Kind != kindPlayer {
-			return true, true, nil
-		}
 	case reaction.Contest:
 		waits, err := contestStillWaits(ctx, c, w)
 		return !waits, true, err
@@ -385,10 +376,6 @@ func (s *Service) kindTriggerGone(ctx context.Context, c *combatTx, w playdb.Rea
 	case reaction.Feature:
 		gone, err = s.featureGone(ctx, c, w, t, byID)
 		return gone, true, err
-	case reaction.LegendaryResistance:
-		if resistGone(t, byID) {
-			return true, true, nil
-		}
 	case reaction.Shield, reaction.ParryKind, reaction.MasterCheck:
 		if w.PendingDamageID != nil {
 			gone, err = pendingGone(ctx, c, *w.PendingDamageID)
@@ -396,6 +383,30 @@ func (s *Service) kindTriggerGone(ctx context.Context, c *combatTx, w playdb.Rea
 		}
 	}
 	return false, false, nil
+}
+
+// combatantKindGone is the part of kindTriggerGone that only reads the combatants of the encounter: the kinds whose window
+// closes with the creature it is about. decided is false for the kinds and the cases with nothing of their own to say.
+func combatantKindGone(w playdb.ReactionWindow, t windowTrigger, byID map[string]playdb.Combatant) (gone, decided bool) {
+	switch reaction.Kind(w.Kind) {
+	case reaction.Concentration:
+		return concentrationGone(w, t, byID), true
+	case reaction.MountSave:
+		return mountSaveGone(w, t, byID), true
+	case reaction.Dismount:
+		return dismountGone(w, t, byID), true
+	case reaction.EffectSave:
+		// A defeated creature or NPC owes no saving throw (RN-22): the window closes with it.
+		r, ok := byID[conv.OrZero(w.ReactorID)]
+		if ok && r.Defeated && r.Kind != kindPlayer {
+			return true, true
+		}
+	case reaction.LegendaryResistance:
+		if resistGone(t, byID) {
+			return true, true
+		}
+	}
+	return false, false
 }
 
 // concentrationGone says the reactor no longer concentrates on the spell the window asked a save for.
