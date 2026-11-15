@@ -27,3 +27,14 @@ func TestAttackToProtoRangeIsAtLeastTheMeleeReach(t *testing.T) {
 		}
 	}
 }
+
+// The thrown flag of the rules reaches the proto as it is (boards 580-16 cards 9 and 10 read it).
+func TestAttackToProtoCarriesThrown(t *testing.T) {
+	t.Parallel()
+	if !attackToProto(rules.Attack{RangeFt: 20, LongRangeFt: 60, Thrown: true}).GetThrown() {
+		t.Error("a thrown attack is not thrown in the proto")
+	}
+	if attackToProto(rules.Attack{RangeFt: 150, LongRangeFt: 600}).GetThrown() {
+		t.Error("a bow is thrown in the proto")
+	}
+}

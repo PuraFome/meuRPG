@@ -226,6 +226,7 @@ func TestParry_NoWindowWhenTheReactionCannotBeUsed(t *testing.T) {
 func TestParry_OnlyAMeleeWeaponAttackIsParried(t *testing.T) {
 	t.Parallel()
 	a, e := parryFight(t, knightKey, knight)
+	a.stockArrows(t, a.toren)
 	hit := a.mustAttack(t, a.caio, e, "Toren", shortbowKey, knight, disadvantage(knightHit+1)) // a ranged weapon attack at 5 ft
 	if w := a.windowOf(t, a.master, parryKind); w != nil || hit.GetPendingDamage().GetStatus() != playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_AWAITING_ROLL {
 		t.Errorf("a shortbow hit = window %v, damage %v; want no window", w, hit.GetPendingDamage().GetStatus())

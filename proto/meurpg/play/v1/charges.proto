@@ -1,0 +1,180 @@
+syntax = "proto3";
+
+// The charges of magic items and the ammunition of a character at the table (SRD 5.1, "Magic Items" and
+// "Weapons"). What a sheet holds is read with the character (SheetMagicItem and SheetAmmunition, in
+// characters.proto); this file is what the table does with it: spend the charges of a wand, roll the d20 the
+// last charge asks for, let the master correct a count, set the pieces of ammunition a character carries and
+// take back half of what a combat fired.
+//
+// Charges and ammunition are the master's and the owning player's alone (RN-10): no other player reads them,
+// and no other player's log or stream carries a word of the lines they leave.
+package meurpg.play.v1;
+
+import "meurpg/characters/v1/characters.proto";
+
+// ChargesService runs the charges of the magic items and the ammunition of a campaign's characters.
+//
+// Every method needs a valid session cookie and fails with `unauthenticated` without one. For a campaign
+// the caller is not a member of, and for a character that is not in the campaign, methods answer `not_found`.
+// A rule's refusal is `failed_precondition` with a CharacterBlocked detail (characters.proto) or a
+// ChargesBlocked detail. Every method that writes an event carries an idempotency key; the same key with
+// another request is `invalid_argument`.
+service ChargesService {
+  // SpendCharges spends charges of a magic item of a character's sheet, as the wand's, staff's or ring's text
+  // says it is used. The character's player or the master; it works on a locked sheet, with the game session
+  // open, in a combat and out of one, and it is never an action of the turn (the cast or the attack that uses
+  // the item spends the turn). In a running combat that has the character in it, the call also writes a line of
+  // the combat log (ITEM_CHARGE_SPENT) that only the master and the owner read.
+  //
+  // Spending the last charge of an item that is lost at once destroys it (the response's `item.lost`). An item
+  // that rolls a d20 for its last charge waits for RollLastCharge (`item.last_roll_pending`).
+  //
+  // Errors: `permission_denied` for another player's character, `not_found` for a character that is not in the
+  // campaign; `invalid_argument` for an amount below 1 or an entry that holds no charges; `failed_precondition`
+  // with NO_OPEN_SESSION, with CharacterBlocked CHARACTER_DEAD, ITEM_DESTROYED, ITEM_NO_CHARGES (none left, or
+  // the master has not set the count of an item whose start the SRD rolls) and CHARGES_NOT_ENOUGH.
+  rpc SpendCharges(SpendChargesRequest) returns (SpendChargesResponse);
+
+  // RollLastCharge rolls the d20 an item asks for when its last charge went (SRD 5.1: a 1 destroys the wand,
+  // and a 20 on some items gives charges back). It works only while `item.last_roll_pending` is true. The
+  // character's player or the master. The d20 follows the table's rule for dice (RN-18): the app rolls it, or
+  // the player types the face of a real die; a 20 on an item that regains charges needs its die rolled the
+  // same way (`typed_regain_face` for a typed roll). In a running combat that has the character in it the call
+  // also writes a line (ITEM_LAST_CHARGE_ROLLED) that only the master and the owner read.
+  //
+  // Errors: as SpendCharges; `invalid_argument` for no roll, a d20 outside 1 to 20 or an item that waits for no
+  // roll; `failed_precondition` with ChargesBlocked REGAIN_FACE_NEEDED for a typed 20 without the regain die's
+  // face; EncounterBlocked WRONG_DICE_MODE for a way of rolling the campaign does not allow the player.
+  rpc RollLastCharge(RollLastChargeRequest) returns (RollLastChargeResponse);
+
+  // SetCharges is the master's correction of an item's charges: the charges left (0 to the item's maximum, which
+  // is also how a rolled start gets its count) and whether and how the item was lost. It ends a roll the item
+  // waited for. It writes no combat log line. Master only.
+  //
+  // Errors: `permission_denied` for a player; `not_found` for a character or an entry that is not there;
+  // `invalid_argument` for a count out of range, an unknown loss or an entry that holds no charges.
+  rpc SetCharges(SetChargesRequest) returns (SetChargesResponse);
+
+  // SetAmmunition sets the pieces a character holds of one kind of ammunition (the catalog's arrows, bolts,
+  // sling bullets and blowgun needles). The owner may while the sheet is open to editing (a draft, or waiting for
+  // the master's approval), the master at any time; a player after the sheet locked is refused. It needs no open
+  // game session, as the sheet's own edits need none, and writes no event.
+  //
+  // Errors: `permission_denied` for a player who may not (another player's character, or the owner after the
+  // lock); `not_found` for a character that is not in the campaign; `invalid_argument` for a key that
+  // is not a kind of ammunition or a quantity outside 0 to 9999.
+  rpc SetAmmunition(SetAmmunitionRequest) returns (SetAmmunitionResponse);
+
+  // RecoverAmmunition takes back half, rounded down, of the pieces each kind of ammunition fired in the
+  // character's last combat, once the combat is over (SRD 5.1, "Weapons": a minute spent searching the
+  // battlefield). It works once for each combat. The character's player or the master. It writes the session
+  // event `ammunition_recovered`.
+  //
+  // Errors: `permission_denied` as SpendCharges; `invalid_argument` when the character fired nothing in its last
+  // combat (or fought none); `failed_precondition` with ChargesBlocked COMBAT_RUNNING while the character's
+  // latest combat is not ended, and ALREADY_RECOVERED once the pieces were taken back.
+  rpc RecoverAmmunition(RecoverAmmunitionRequest) returns (RecoverAmmunitionResponse);
+}
+
+// ChargesBlockedReason is why a charges or ammunition call was refused with `failed_precondition`.
+enum ChargesBlockedReason {
+  CHARGES_BLOCKED_REASON_UNSPECIFIED = 0;
+  // A 20 on the item's last-charge d20 regains charges and the roll was typed without the face of the die that
+  // counts them (`needed` is the die's size).
+  CHARGES_BLOCKED_REASON_REGAIN_FACE_NEEDED = 1;
+  // The character's latest combat is not over: the pieces are taken back after it ends.
+  CHARGES_BLOCKED_REASON_COMBAT_RUNNING = 2;
+  // The pieces fired in the character's last combat were already taken back.
+  CHARGES_BLOCKED_REASON_ALREADY_RECOVERED = 3;
+}
+
+// ChargesBlocked is the detail of ChargesService's `failed_precondition` for a rule of its own.
+message ChargesBlocked {
+  ChargesBlockedReason reason = 1;
+  // REGAIN_FACE_NEEDED: the size of the die to type.
+  int32 needed = 2;
+}
+
+message SpendChargesRequest {
+  string campaign_id = 1;
+  string character_id = 2;
+  // The id of the item on the sheet (SheetMagicItem.id).
+  string entry_id = 3;
+  // The charges to spend, at least 1.
+  int32 amount = 4;
+  string idempotency_key = 5;
+}
+
+message SpendChargesResponse {
+  // The item as it stands now: its charges left, whether it was lost and whether it waits for its d20.
+  meurpg.characters.v1.SheetMagicItem item = 1;
+}
+
+message RollLastChargeRequest {
+  string campaign_id = 1;
+  string character_id = 2;
+  string entry_id = 3;
+  string idempotency_key = 4;
+  // How the d20 comes (RN-18): the app rolls it, or the player typed the face of a real die. Required: one of
+  // them.
+  oneof roll {
+    bool roll_in_app = 5;
+    int32 d20_face = 6;
+  }
+  // The face of the die that counts the charges a 20 gives back, for a typed roll only (an app roll rolls it on
+  // the server). It is needed only when the d20 is a 20 on an item that regains charges: the call is refused with
+  // ChargesBlocked REGAIN_FACE_NEEDED when it is missing, and `invalid_argument` when it is outside the die.
+  int32 typed_regain_face = 7;
+}
+
+message RollLastChargeResponse {
+  // The item after the roll.
+  meurpg.characters.v1.SheetMagicItem item = 1;
+  // The d20 rolled or typed.
+  int32 d20 = 2;
+  // The charges a 20 gave back (0 for any other face), already counted in `item.charges_left`.
+  int32 regained = 3;
+  // How the roll lost the item (ITEM_LOSS_UNSPECIFIED when it did not).
+  meurpg.characters.v1.ItemLoss lost = 4;
+  // The face of the regain die rolled or typed, 0 when none was needed.
+  int32 regain_face = 5;
+}
+
+message SetChargesRequest {
+  string campaign_id = 1;
+  string character_id = 2;
+  string entry_id = 3;
+  // The charges left, 0 to the item's maximum.
+  int32 charges_left = 4;
+  // How the item was lost; ITEM_LOSS_UNSPECIFIED when it is not (this also brings a lost item back).
+  meurpg.characters.v1.ItemLoss lost = 5;
+  string idempotency_key = 6;
+}
+
+message SetChargesResponse {
+  meurpg.characters.v1.SheetMagicItem item = 1;
+}
+
+message SetAmmunitionRequest {
+  string campaign_id = 1;
+  string character_id = 2;
+  // The catalog key of the ammunition, such as "equipment:arrow".
+  string ammo_key = 3;
+  // The pieces the character holds, 0 to 9999.
+  int32 quantity = 4;
+}
+
+message SetAmmunitionResponse {
+  meurpg.characters.v1.SheetAmmunition ammunition = 1;
+}
+
+message RecoverAmmunitionRequest {
+  string campaign_id = 1;
+  string character_id = 2;
+  string idempotency_key = 3;
+}
+
+message RecoverAmmunitionResponse {
+  // The kinds the recovery changed, with the pieces the character holds now.
+  repeated meurpg.characters.v1.SheetAmmunition ammunition = 1;
+}

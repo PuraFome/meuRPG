@@ -64,4 +64,7 @@ export type CharacterBlockedReason =
   | 'attunement_limit'
   | 'attunement_restricted'
   | 'attunement_needs_rest'
-  | 'attunement_same_item';
+  | 'attunement_same_item'
+  | 'charges_not_enough'
+  | 'item_destroyed'
+  | 'item_no_charges';

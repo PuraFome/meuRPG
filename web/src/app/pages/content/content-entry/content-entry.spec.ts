@@ -157,6 +157,30 @@ describe('ContentEntry', () => {
       .find((b) => text(b).includes(label))!
       .click();
 
+  it('does not say "Em uso por" in the header of a weapon: the card in the editor says it (board 580-10)', async () => {
+    const axe = entry(TableContentKind.WEAPON, 'Machado', {
+      charactersUsing: 1,
+      key: 'weapon:m@mesa',
+    });
+    const { el } = await setup(Role.MASTER, 'weapon:m@mesa', [axe]);
+    expect(text(el.querySelector('.tags')!)).not.toContain('Em uso por');
+  });
+
+  it('shows an archived weapon as board 580-16 card 3: one line, and "Desarquivar" in the header', async () => {
+    const lance = entry(TableContentKind.WEAPON, 'Lança-arpão', {
+      archived: true,
+      key: 'weapon:lanca-arpao@mesa',
+    });
+    const { el } = await setup(Role.MASTER, 'weapon:lanca-arpao@mesa', [lance]);
+    expect(text(el.querySelector('.archived')!)).toContain(
+      'Continua nas fichas que já a têm. Não entra numa ficha nova.',
+    );
+    expect(text(el.querySelector('.archived')!)).not.toContain('está arquivada');
+    expect(el.querySelector('.archived button')).toBeNull();
+    expect(text(el.querySelector('.head')!)).toContain('Desarquivar');
+    expect(el.querySelector('app-players-switch')).toBeNull();
+  });
+
   it('opens the race in the editor for the master, with the state in words and "Arquivar"', async () => {
     const { el } = await setup(Role.MASTER, 'race:corujeiro@mesa');
     expect(text(el.querySelector('h1')!)).toBe('Corujeiro');
@@ -682,7 +706,7 @@ describe('ContentEntry', () => {
     const feat = entry(TableContentKind.FEAT, 'Lutador de Corda');
     const { el } = await setup(Role.PLAYER, feat.key, [...mirathel(), feat]);
     expect(el.querySelector('app-feat-editor')).toBeNull();
-    expect(text(el)).toContain('Pré-requisito');
+    expect(text(el)).toContain('Pede');
     expect(text(el)).toContain('Força 13');
   });
 

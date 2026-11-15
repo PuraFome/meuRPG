@@ -13,6 +13,7 @@ import {
   sectionHeadingOf,
   skillNoteOf,
   subclassHintOf,
+  weaponGroups,
 } from './catalog-views';
 import {
   type CasterSection,
@@ -67,6 +68,7 @@ export class EditorCatalog {
   /** Any change of the form's fields; the signals the draft is made of are read where it is built. */
   readonly formChanges;
   readonly selectedRaceKey;
+  readonly selectedWeaponKeys;
   readonly selectedClassKey;
   readonly selectedBackground;
   readonly selectedLevel;
@@ -135,6 +137,10 @@ export class EditorCatalog {
   /** What each list offers as a NEW choice: never a retired entry, unless it is the value the form already has. */
   readonly raceOptions = computed(() =>
     offered(this.catalog()?.races ?? [], [this.selectedRaceKey()], this.master()),
+  );
+  /** The weapons to pick from, the book's and the table's apart. */
+  readonly weaponGroups = computed(() =>
+    weaponGroups(this.catalog()?.weapons ?? [], this.selectedWeaponKeys(), this.master()),
   );
   readonly subraceOptions = computed(() =>
     offered(this.availableSubraces(), [this.selectedSubraceKey()], this.master()),
@@ -335,6 +341,9 @@ export class EditorCatalog {
       if (controls.raceSize.value !== '' && !sizes.includes(controls.raceSize.value)) {
         controls.raceSize.setValue('');
       }
+    });
+    this.selectedWeaponKeys = toSignal(controls.weaponKeys.valueChanges, {
+      initialValue: [] as string[],
     });
     this.selectedClassKey = toSignal(controls.className.valueChanges, { initialValue: '' });
     this.selectedBackground = toSignal(controls.background.valueChanges, { initialValue: '' });

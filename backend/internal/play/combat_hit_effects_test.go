@@ -284,6 +284,7 @@ func TestAHitSpellNextMeleeHitWaitsForAMeleeHit(t *testing.T) {
 	a := newHitCasters(t, nil, hitMod(trigMelee))
 	e := a.hitFight(t)
 	a.castMark(t, e, 1)
+	a.stockArrows(t, a.pens)
 	ranged := a.strike(t, e, shortbowKey, "Capitão Goblin", d20(19))
 	wantOffHitPart(t, "the ranged hit", ranged)
 	a.rollDamage(t, ranged, 3)

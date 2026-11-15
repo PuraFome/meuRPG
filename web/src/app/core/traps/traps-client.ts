@@ -44,6 +44,7 @@ export class TrapsClient {
     idempotencyKey: string,
     otherSkillKey = '',
     extraDieFaces: readonly number[] = [],
+    spendFavor = false,
   ): Promise<SearchForTrapsResponse> {
     return this.client.searchForTraps({
       campaignId,
@@ -59,6 +60,7 @@ export class TrapsClient {
           : { case: 'd20Face', value: die.face },
       d20Faces: 'inApp' in die || die.face2 === undefined ? [] : [die.face, die.face2],
       extraDieFaces: [...extraDieFaces],
+      ...(spendFavor ? { spendFavor: true } : {}),
     });
   }
 

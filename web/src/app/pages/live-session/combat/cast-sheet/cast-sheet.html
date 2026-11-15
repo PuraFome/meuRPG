@@ -256,12 +256,14 @@
       }
       @if (ch.kind() === 'attack') {
         @if (s.chosen().length) {
+          <app-favor-spend [control]="fav" [busy]="s.busy()" />
           <app-roll-mode-picker
             [suggested]="md.suggested()"
             [sources]="md.sources()"
             [approval]="md.approval"
             [mixed]="md.mixed() && s.picked() === null"
             [mode]="md.chosen()"
+            [lock]="fav.lock()"
             (modeChange)="md.set($event)"
             [(reason)]="s.reason"
             [busy]="s.busy()"

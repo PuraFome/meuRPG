@@ -35,6 +35,11 @@ func (c *content) loadAmmunition(fsys fs.FS) error {
 		}
 	}
 	c.ammunition = f
+	for _, k := range sortedKeys(c.equipment) {
+		if c.equipment[k].Kind == "ammunition" {
+			c.ammunitionKinds = append(c.ammunitionKinds, k)
+		}
+	}
 	return nil
 }
 
@@ -44,15 +49,9 @@ func (c *Content) AmmunitionOf(weaponKey string) (string, bool) {
 	return a, ok
 }
 
-// AmmunitionKinds lists the keys of the ammunition the SRD has, sorted.
+// AmmunitionKinds lists the keys of the ammunition the SRD has, sorted. The list is shared: callers do not change it.
 func (c *Content) AmmunitionKinds() []string {
-	var out []string
-	for _, k := range sortedKeys(c.c.equipment) {
-		if c.c.equipment[k].Kind == "ammunition" {
-			out = append(out, k)
-		}
-	}
-	return out
+	return c.c.ammunitionKinds
 }
 
 // AmmunitionNamePT is the Portuguese name of a kind of ammunition, or "" for a key that is not one.

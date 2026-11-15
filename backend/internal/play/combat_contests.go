@@ -403,6 +403,11 @@ func (s *Service) resolveAttackContest(ctx context.Context, r *contestRun) error
 		r.row.Kind, r.row.EscapeDc = contestKindEscapeDC, &escapeDC
 		return nil
 	}
+	if r.st.purpose == playv1.ContestPurpose_CONTEST_PURPOSE_GRAPPLE {
+		if err := s.mustHaveFreeHand(ctx, r.c, r.initiator); err != nil {
+			return err
+		}
+	}
 	if err := s.mustBeInReach(r.c, r.v, r.initiator, defender); err != nil {
 		return err
 	}

@@ -14,6 +14,7 @@ import { ConversationClient } from '../../core/conversation/conversation-client'
 import { MapsClient } from '../../core/maps/maps-client';
 import { NotesClient } from '../../core/notes/notes-client';
 import { FamiliarEyesClient } from '../../core/play/familiar-eyes';
+import { FavorState } from '../../core/play/favor-state';
 import { LiveSessionSource } from '../../core/play/live-session.types';
 import { OpenSessions } from '../../core/play/open-sessions';
 import { SceneClient } from '../../core/play/scene-client';
@@ -72,6 +73,8 @@ export interface LiveSessionServices {
   readonly injector: Injector;
   readonly turnAlert: TurnAlert;
   readonly familiarEyes: FamiliarEyesClient;
+  /** Who has the master's Inspiração (RN-43): the page's own copy, read again on the stream's hints. */
+  readonly favor: FavorState;
 }
 
 /** Reads every service of the page; call it in an injection context (a field initializer of the component). */
@@ -104,6 +107,7 @@ export function injectLiveSessionServices(): LiveSessionServices {
     injector: inject(Injector),
     turnAlert: inject(TurnAlert),
     familiarEyes: inject(FamiliarEyesClient),
+    favor: inject(FavorState),
   };
 }
 
