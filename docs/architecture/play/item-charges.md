@@ -154,7 +154,7 @@ No other player reads the line or the event (secret), and the stream tells `vita
 The use of a consumable is read more widely:
 - The master, the user's owner and the receiver's owner read the numbers: the dice, the faces, the total, the hit points regained and the resistance a potion left.
 - In a combat the line says to the whole table who used which item and on whom ("Tor bebeu uma Poção de cura", "Tor deu uma Poção de cura a Brisa"), without a number (`consumable.Line`).
-- The stream tells the master and the owners `vitals_changed`, and tells the table `encounter_changed` and `combat_log_changed` in a combat, and an empty `spell_casts_changed` for a resistance outside one: hints with no content, as every lasting effect sends.
+- The stream tells the master and the owners `vitals_changed`, and tells the table `encounter_changed` and `combat_log_changed` in a combat, and an empty `spell_casts_changed` for any resistance, in a combat or out of one: hints with no content, as every lasting effect sends.
 The leak tests are `internal/leaktest/itemuse_test.go` and `internal/leaktest/consumables_test.go`, which also hold the rows of `ListConsumableTargets` (a creature the master hid next to the user) and the streams a third player hears.
 
 ## Refusals

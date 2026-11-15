@@ -269,3 +269,41 @@ func TestAResistancePotionOutsideACombatTellsAThirdPlayerNothingOfIt(t *testing.
 		hears(t, p.name, got[p.name], []string{"spell_casts_changed", "vitals_changed"}, []string{"spell_casts_changed", "vitals_changed"})
 	}
 }
+
+// The streams after a resistance potion drunk in a combat: the effects of the character changed, so every player hears the empty
+// hint of any lasting effect, besides the hints that the encounter and its log changed; none of them carries content, and the hit
+// points reach the master and the owner only.
+func TestAResistancePotionInACombatTellsAThirdPlayerOnlyContentlessHints(t *testing.T) {
+	w := newWorld(t)
+	w.onTorenTurn()
+	entry := w.holds(w.toren, "item:potion-of-resistance-fire")
+	got := w.hiddenOnlyEvents(func() {
+		must(w.caio.charges.UseConsumable(t.Context(), rq(&playv1.UseConsumableRequest{
+			CampaignId: w.campaign, CharacterId: w.toren.GetId(), EntryId: entry, IdempotencyKey: newKey(), RollInApp: true,
+		})))
+	})
+	hears(t, "Ana", got[w.ana.name], []string{"encounter_changed", "combat_log_changed", "spell_casts_changed"}, []string{"combat_log_changed", "spell_casts_changed"})
+	for _, line := range got[w.ana.name] {
+		var ev playv1.WatchGameSessionResponse
+		if err := protojson.Unmarshal([]byte(strings.SplitN(line, " ", 2)[1]), &ev); err != nil {
+			t.Fatalf("Ana hears %q: %v", line, err)
+		}
+		switch strings.SplitN(line, " ", 2)[0] {
+		case "spell_casts_changed":
+			if !proto.Equal(ev.GetSpellCastsChanged(), &playv1.WatchGameSessionResponse_SpellCastsChanged{}) {
+				t.Errorf("Ana hears more than the empty hint: %s", line)
+			}
+		case "encounter_changed":
+			if !proto.Equal(ev.GetEncounterChanged(), &playv1.WatchGameSessionResponse_EncounterChanged{EncounterId: w.encounter.GetId(), Mode: ev.GetEncounterChanged().GetMode()}) {
+				t.Errorf("Ana hears more than the encounter and its mode: %s", line)
+			}
+		case "combat_log_changed":
+			if !proto.Equal(ev.GetCombatLogChanged(), &playv1.WatchGameSessionResponse_CombatLogChanged{EncounterId: w.encounter.GetId()}) {
+				t.Errorf("Ana hears more than the encounter's id: %s", line)
+			}
+		}
+	}
+	for _, p := range []*person{w.master, w.caio} {
+		hears(t, p.name, got[p.name], []string{"spell_casts_changed", "vitals_changed", "encounter_changed", "combat_log_changed"}, []string{"spell_casts_changed", "vitals_changed", "combat_log_changed"})
+	}
+}

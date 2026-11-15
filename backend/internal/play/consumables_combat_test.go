@@ -1,6 +1,7 @@
 package play
 
 import (
+	"slices"
 	"strings"
 	"testing"
 
@@ -68,6 +69,9 @@ func TestDrinkingInACombatCostsTheActionOnYourTurn(t *testing.T) {
 	f.hurt(t, f.toren, 1)
 	_, err := f.use(t, f.ana, f.pens, potionCommon)
 	wantBlockedBy(t, "a drink off turn", err, blockedNotYourTurn)
+	if !f.holds(t, f.pens, potionCommon) {
+		t.Error("the refused drink off turn spent the potion")
+	}
 	res := f.mustUse(t, f.caio, f.toren, potionCommon)
 	if res.GetHealed() == 0 || f.holds(t, f.toren, potionCommon) {
 		t.Errorf("the drink = %v, want the unit spent and a heal", res)
@@ -233,8 +237,8 @@ func TestTheTargetsOutOfACombatAreTheOtherCharactersOfTheParty(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListConsumableTargets() error = %v", err)
 	}
-	if len(res.Msg.GetTargets()) != 2 {
-		t.Fatalf("targets = %v; want Pensantus and Brisa", res.Msg.GetTargets())
+	if got := targetIDs(res.Msg.GetTargets()); !sameIDs(got, s.pens.GetId(), s.bri.GetId()) {
+		t.Fatalf("targets = %v; want Pensantus %s and Brisa %s", got, s.pens.GetId(), s.bri.GetId())
 	}
 	for _, g := range res.Msg.GetTargets() {
 		if g.GetCharacterId() == s.toren.GetId() || g.GetDistanceFt() != 0 || !g.GetMayReceive() {
@@ -367,12 +371,17 @@ func TestAResistancePotionInACombatInSetupIsAnEffectOfTheCombatantWithNoTurnAndN
 	}
 }
 
-// Only a potion costs the turn and the action: another consumable is spent and logged on any turn, with the action used or not.
-func TestAConsumableThatIsNoPotionNeedsNeitherTheTurnNorTheAction(t *testing.T) {
+// Only the potions the app applies (the items of effects/potions.json) cost the turn and the action: any other consumable is spent
+// and logged on any turn, with the action used or not. potionClimb is a potion that is only text, which the app does not apply,
+// and scrollFirst is a scroll: both are such consumables.
+func TestAConsumableTheAppDoesNotApplyNeedsNeitherTheTurnNorTheAction(t *testing.T) {
 	t.Parallel()
 	f := newPotionFight(t, potionCommon, potionClimb, scrollFirst)
-	f.mustUse(t, f.caio, f.toren, potionCommon)                      // the action of Toren's turn
-	f.mustUse(t, f.caio, f.toren, potionClimb)                       // the action used
+	f.mustUse(t, f.caio, f.toren, potionCommon) // the action of Toren's turn
+	// the action of the turn is used now, and a text-only potion is still spent and logged
+	if text := f.mustUse(t, f.caio, f.toren, potionClimb); text.GetOutcome() != playv1.ConsumableUseOutcome_CONSUMABLE_USE_OUTCOME_TEXT_ONLY || len(text.GetText()) == 0 {
+		t.Errorf("the text-only potion with the action used = %v, want its text", text)
+	}
 	res := f.mustUse(t, f.ana, f.pens, scrollFirst, giveTo(f.toren)) // not Pensantus's turn, and Toren is another's
 	if res.GetOutcome() != playv1.ConsumableUseOutcome_CONSUMABLE_USE_OUTCOME_TEXT_ONLY || len(res.GetText()) == 0 {
 		t.Errorf("the scroll = %v, want its text", res)
@@ -436,6 +445,11 @@ func fightWithout(t *testing.T, keys []string, out ...string) *potionFight {
 	return &potionFight{stocked: s, e: e}
 }
 
+// sameIDs says whether got holds exactly the wanted ids, in any order.
+func sameIDs(got []string, want ...string) bool {
+	return slices.Equal(slices.Sorted(slices.Values(got)), slices.Sorted(slices.Values(want)))
+}
+
 func targetIDs(ts []*playv1.ConsumableTarget) []string {
 	var out []string
 	for _, g := range ts {
@@ -456,8 +470,8 @@ func TestTheTargetsOfAUserOutsideTheRunningCombatAreTheCharactersOutsideIt(t *te
 	}
 	_, err := f.use(t, f.bia, f.bri, potionCommon, giveTo(f.pens))
 	wantBlockedBy(t, "a potion to a fighter", err, blockedNotAdjacent)
-	if got := targetIDs(f.targets(t, f.bia, f.bri, scrollFirst)); len(got) != 2 {
-		t.Errorf("targets of a scroll = %v, want Toren and Pensantus: no gate for a text-only consumable", got)
+	if got := targetIDs(f.targets(t, f.bia, f.bri, scrollFirst)); !sameIDs(got, f.toren.GetId(), f.pens.GetId()) {
+		t.Errorf("targets of a scroll = %v, want Toren %s and Pensantus %s: no gate for a text-only consumable", got, f.toren.GetId(), f.pens.GetId())
 	}
 	f.mustUse(t, f.bia, f.bri, scrollFirst, giveTo(f.pens))
 }

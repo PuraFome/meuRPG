@@ -67,7 +67,7 @@ export const LIMITED_ACTION_BLOCKED_TEXT: ReadonlyMap<EncounterBlockedReason, st
   ],
   [
     EncounterBlockedReason.TARGET_NOT_ADJACENT,
-    'Quem recebe o item precisa estar na luta e a até 1,5 m de você. Nada foi gasto.',
+    'Quem recebe o item precisa estar a até 1,5 m de quem o dá, e os dois na luta ou os dois fora dela. Nada foi gasto.',
   ],
   [
     EncounterBlockedReason.ITEM_GONE,

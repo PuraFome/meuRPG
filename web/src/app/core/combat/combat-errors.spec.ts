@@ -61,7 +61,9 @@ describe('combat errors', () => {
           reason: EncounterBlockedReason.TARGET_NOT_ADJACENT,
         }),
       ),
-    ).toBe('Quem recebe o item precisa estar na luta e a até 1,5 m de você. Nada foi gasto.');
+    ).toBe(
+      'Quem recebe o item precisa estar a até 1,5 m de quem o dá, e os dois na luta ou os dois fora dela. Nada foi gasto.',
+    );
     expect(
       blockedMessage(create(EncounterBlockedSchema, { reason: EncounterBlockedReason.ITEM_GONE })),
     ).toBe('Esse item não está mais na ficha: alguém já o usou ou o tirou. Nada foi gasto.');
