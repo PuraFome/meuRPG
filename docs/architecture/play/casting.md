@@ -171,7 +171,7 @@ The slot, targets and dice are checked by the server alone: `invalid_argument` c
   Casting a second concentration spell ends the first and the creatures it summoned (`ended_cast_ids`, `dismissed_creature_ids`).
 - **Rituals follow the class.** `rules/casting.go` allows a ritual to a bard (spells known), a cleric or druid (prepared) and a wizard (the spellbook).
   The warlock's Pact of the Chain casts Find Familiar that way without knowing it.
-  The Book of Ancient Secrets adds the two spells picked in its choice (`CharacterSpell.FromBook`: known, not prepared, outside the class's numbers) and the warlock spells known with the ritual tag.
+  The Book of Ancient Secrets adds the two spells picked in its choice (`CharacterSpell.FromBook`: known, not prepared, outside the class's numbers) and the warlock spells known with the ritual tag (`CharacterSpell.WarlockList`: on the character's warlock list, the patron's expanded list included).
   `Derived.SpellStanding` is the one place that answers it: the cast menu, the cast plan and `GetSummonOptions` read it, so a slot cast of a book spell is refused as not the caster's.
 - **A combat that starts does not cancel a long cast.** The combatant carries the concentration (`spell_casts.carried_encounter_id`, given back when the combat ends), the caster spends the action each turn, and the cast can be confirmed only outside combat (`IN_COMBAT`).
   `combatants.mage_armor_ac` copies Mage Armor's armor class when a combat starts or the character joins.

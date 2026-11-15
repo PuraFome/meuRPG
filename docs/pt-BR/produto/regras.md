@@ -1214,9 +1214,10 @@ Num combate as magias são conjuradas lá.
   O Pacto da Corrente conjura Convocar Familiar como ritual sem conhecê-la.
   A invocação Livro de Segredos Antigos guarda duas magias rituais de 1º nível de qualquer classe no Livro das Sombras do bruxo.
   Elas são conhecidas e não preparadas, não contam nas magias conhecidas e só se conjuram como ritual, nunca com espaço de magia.
-  A invocação também deixa o bruxo conjurar como ritual uma magia que ele conheça, esteja na lista de bruxo e tenha a etiqueta de ritual.
+  A invocação também deixa o bruxo conjurar como ritual uma magia que ele conheça, tenha a etiqueta de ritual e esteja na lista de bruxo do personagem, a lista expandida do patrono incluída.
   O livro "em mãos" é um lembrete no texto: o app não controla nenhum item.
-  Um ritual que o mestre desligou não é oferecido a um jogador no livro; uma ficha que já o tem o mantém.
+  As chaves da mesa valem para toda escolha de magia, a do livro incluída: uma magia que o mestre desligou não é oferecida a um jogador, e uma ficha que já a tem a mantém.
+  Lacuna conhecida: a ficha não diz qual classe conhece uma magia, então numa ficha com outra classe uma magia da lista de bruxo é conjurada como ritual por quem quer que a conheça.
 - **Uma conjuração que leva tempo tem dois passos.** Começá-la não gasta nada, e quem conjura se concentra na conjuração desde o início. Quando o mestre a conclui, o espaço é gasto e a magia tem efeito. Se a concentração se quebra, a conjuração falha. Um combate que começa não a cancela: quem conjura gasta a ação a cada turno, e a conjuração só pode ser concluída fora do combate. O app não guarda relógio.
 - **Duração** é tempo de jogo, nunca o relógio da parede. Uma magia duradoura termina quando o mestre a encerra, quando quem conjura deixa de se concentrar ou conjura outra magia de concentração, ou quando um descanso cobre a duração inteira (um descanso curto é 1 hora, um longo 8). Depois de dano fora de um combate, a correção de pontos de vida do mestre devolve a CD de concentração (RN-22), e 0 pontos de vida encerra a concentração.
 - **O que o app aplica:** a cura com uma só rolagem para a conjuração inteira (dados do app ou a soma digitada, RN-18), mais as características do Domínio da Vida; os pontos de vida temporários de Vitalidade Falsa, que não se acumulam; Armadura Arcana; e invocações, como num combate. Todo outro efeito é registrado e o mestre o narra. Lacuna conhecida: o máximo de pontos de vida de Ajuda não é aumentado fora de um combate.
@@ -1241,6 +1242,11 @@ As escolhas cobrem as seções do SRD 5.1 Fighting Style, Draconic Ancestry e Br
 - **Opções que ainda não podem ser tomadas** (uma invocação que pede nível 5, ou uma magia que a ficha não tem) são listadas, pontilhadas, com o motivo. Duas opções que dão a mesma coisa (a mesma resistência duas vezes) são recusadas.
 - **Uma ficha travada** cuja classe ganhou uma escolha continua jogável. O dono e o mestre leem "N escolhas pendentes", e o jogador completa só as escolhas que faltam, sem mudar mais nada na ficha (RN-01). O mestre também lê "N escolhas em aberto" na página da campanha; um jogador nunca vê as de outro.
 - **A subida de nível** também pede as escolhas deixadas para trás ("Escolhas que ficaram para trás") e as novas do nível, e recusa uma invocação cujo pré-requisito não foi cumprido.
+- **Quando uma escolha abre outra.** Uma Dádiva do Pacto ou uma invocação pode abrir uma escolha própria: os três truques do Pacto do Tomo e os dois rituais do Livro de Segredos Antigos.
+  O nível que a toma pode deixar a escolha aberta.
+  O nível seguinte a pede primeiro, em "Escolhas que ficaram para trás", e recusa o nível sem ela.
+  Uma ficha nova não é criada com ela aberta.
+  Abrir mão da escolha, por troca de invocação ou pela troca da Dádiva do Pacto da mesa, leva junto as escolhas dela.
 - **Um escudo e uma arma de duas mãos.** Um escudo soma +2 à classe de armadura só enquanto há uma mão livre para ele. A ficha lista as armas carregadas e não tem mãos, então uma arma de duas mãos equipada tira o bônus do escudo, na ficha e no combate, e uma carregada não tira; a ficha diz por quê ("O escudo não conta na CA: há uma arma de duas mãos equipada. Guarde a arma de duas mãos.") e o jogador recupera o bônus guardando uma das duas. Uma arma versátil conta como de uma mão, porque a ficha não diz como ela é empunhada. O estilo de luta Proteção (RN-31) precisa que o escudo conte.
 - **O que uma escolha dá** (sopro, resistência, magias do Corruptor, os +1) aparece na ficha.
 

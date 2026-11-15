@@ -448,3 +448,36 @@ func TestAWarlockSpellTheCharacterKnowsIsOneOnTheirWarlockList(t *testing.T) {
 		}
 	})
 }
+
+// TestSwappingThePactOfTheTomeAwayTakesItsCantripsWithIt: the Tome's three cantrips belong to the Pact Boon, so the
+// table's swap of the Pact Boon at an Ability Score Improvement gives them up with it, and the swap is still one change.
+func TestSwappingThePactOfTheTomeAwayTakesItsCantripsWithIt(t *testing.T) {
+	t.Parallel()
+	c := loadForTest(t)
+	const tome, chain, tomeCantrips = "feature:pact-of-the-tome", "feature:pact-of-the-chain", "feature:pact-of-the-tome#cantrips"
+	b := bookTaker(t, c, 3)
+	o, err := LevelUpOptions(b, "class:warlock", c)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.ContainsFunc(o.PickSwaps, func(g SwapGroup) bool { return g.Group == SwapGroupPactBoon }) {
+		t.Fatalf("level 4 offers swaps %v, want the Pact Boon", o.PickSwaps)
+	}
+	ch := satisfy(t, c, b, "class:warlock", "")
+	ch.Swap = PickSwap{Group: SwapGroupPactBoon, From: tome, To: chain}
+	after := mustApply(t, c, b, ch)
+	if err := CheckLevelUp(b, after, c); err != nil {
+		t.Fatalf("CheckLevelUp: %v", err)
+	}
+	for _, k := range after.FeatureChoices {
+		if k == tome || strings.HasPrefix(k, tomeCantrips+"=") {
+			t.Errorf("the sheet keeps %q after the Pact of the Tome was swapped away", k)
+		}
+	}
+	if !slices.Contains(after.FeatureChoices, chain) {
+		t.Errorf("the Pact Boon swapped in is missing: %v", after.FeatureChoices)
+	}
+	if offersChoice(c.Choices(after).Groups, tomeCantrips) {
+		t.Error("the sheet still asks the Tome's cantrips")
+	}
+}

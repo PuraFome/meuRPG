@@ -1214,9 +1214,10 @@ In a combat the spells are cast there.
   The Pact of the Chain casts Find Familiar as a ritual without knowing it.
   The Book of Ancient Secrets invocation (Livro de Segredos Antigos) keeps two 1st-level rituals of any class in the warlock's Book of Shadows.
   They are known and not prepared, do not count against the spells known, and are cast only as rituals, never with a slot.
-  The invocation also lets the warlock cast as a ritual a spell it knows that is on the warlock list and has the ritual tag.
+  The invocation also lets the warlock cast as a ritual a spell it knows that has the ritual tag and is on the character's warlock list, the patron's expanded list included.
   The book "em mãos" is a reminder in the text: the app tracks no item.
-  A ritual the master switched off is not offered to a player in the book; a sheet that already has it keeps it.
+  The table's switches apply to every spell choice, the book's included: a spell the master switched off is not offered to a player, and a sheet that already has it keeps it.
+  Known gap: the sheet does not say which class knows a spell, so on a sheet with another class a spell on the warlock list casts as a ritual whoever knows it.
 - **A cast that takes time has two steps.** Starting it spends nothing, and the caster concentrates on the casting from the start. When the master concludes it, the slot is spent and the spell takes effect. If the concentration breaks, the cast fails. A combat that starts does not cancel it: the caster spends the action each turn, and the cast can be concluded only outside the combat. The app keeps no clock.
 - **Duration** is game time, never the wall clock. A lasting spell ends when the master ends it, when the caster stops concentrating or casts another concentration spell, or when a rest covers the whole duration (a short rest is 1 hour, a long rest 8). After damage outside a combat, the master's hit point correction returns the concentration DC (RN-22), and 0 hit points ends the concentration.
 - **What the app applies:** healing with one roll for the whole cast (app dice or the typed sum, RN-18), plus the Life Domain features; the temporary hit points of False Life, which do not stack; Mage Armor; and summons, as in a combat. Every other effect is recorded and the master narrates it. Known gap: the maximum hit points of Aid are not raised outside a combat.
@@ -1241,6 +1242,11 @@ The choices cover the SRD 5.1 sections Fighting Style, Draconic Ancestry and Bre
 - **Options that cannot be taken yet** (an invocation that asks level 5, or a spell the sheet lacks) are listed, dotted, with the reason. Two options that give the same thing (the same resistance twice) are refused.
 - **A locked sheet** whose class gained a choice stays playable. The owner and the master read "N escolhas pendentes", and the player completes only the missing picks, changing nothing else on the sheet (RN-01). The master also reads "N escolhas em aberto" on the campaign page; a player never sees another's.
 - **Level up** also asks the choices left behind ("Escolhas que ficaram para trás") and the new ones of the level, and refuses an invocation whose prerequisite is unmet.
+- **When a pick opens a choice.** A Pact Boon or an invocation can open a choice of its own: the Pact of the Tome's three cantrips and the Book of Ancient Secrets' two rituals.
+  The level that takes it may leave the choice open.
+  The next level asks it first, under "Escolhas que ficaram para trás", and refuses the level without it.
+  A new sheet is not created with it open.
+  Giving up the pick, by an invocation swap or by the table's swap of the Pact Boon, takes its own picks with it.
 - **What a pick gives** (breath weapon, resistance, Fiend spells, the +1s) appears on the sheet.
 - **A shield and a two-handed weapon.** A shield adds +2 to the armor class only while a hand is free for it. The sheet lists the weapons carried and has no hands, so an equipped two-handed weapon takes the shield's bonus away, in the sheet and in the combat; a carried one does not; the sheet says why ("O escudo não conta na CA: há uma arma de duas mãos equipada. Guarde a arma de duas mãos.") and the player gets the bonus back by stowing one of the two. A versatile weapon counts as one-handed, since the sheet does not say how it is gripped. The Protection fighting style (RN-31) needs the shield to count.
 
