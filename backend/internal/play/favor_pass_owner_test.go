@@ -4,6 +4,8 @@ import (
 	"testing"
 
 	"connectrpc.com/connect"
+
+	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 )
 
 // The ask follows the character: when Toren changes hands while his ask waits, the new owner reads it and cancels it, and the old owner
@@ -33,5 +35,29 @@ func TestCancelOfAnAskFollowsTheCharacterToItsNewOwner(t *testing.T) {
 	}
 	if status := f.passStatus(t, pass.GetId()); status != "canceled" {
 		t.Errorf("the ask is %q, want canceled", status)
+	}
+}
+
+// A closing key used in an earlier session of the campaign is refused as reused, not as an internal error: the retry check reads the open
+// session's events, so the table's unique key on closed_key is what catches it.
+func TestAnswerKeyUsedInAnotherSessionIsRefusedAsReused(t *testing.T) {
+	t.Parallel()
+	f := newFavorParty(t)
+	if err := f.grant(f.toren.GetId()); err != nil {
+		t.Fatalf("GrantFavor() error = %v", err)
+	}
+	key := newKey()
+	first := f.mustAsk(t, f.toren.GetId(), f.pens.GetId())
+	if _, err := f.answerAs(f.master, first.GetId(), false, key); err != nil {
+		t.Fatalf("AnswerFavorPass(Recusar) error = %v", err)
+	}
+	f.master.end(t, &playv1.GameSession{CampaignId: f.campaignID, Id: f.sessionID})
+	open := f.master.start(t, f.campaignID).GetGameSession()
+	f.sessionID = open.GetId()
+	second := f.mustAsk(t, f.toren.GetId(), f.pens.GetId())
+	_, err := f.answerAs(f.master, second.GetId(), false, key)
+	wantCode(t, "a key used by an answer of an earlier session", err, connect.CodeInvalidArgument)
+	if status := f.passStatus(t, second.GetId()); status != "pending" {
+		t.Errorf("the second ask is %q, want pending", status)
 	}
 }

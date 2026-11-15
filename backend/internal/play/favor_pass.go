@@ -506,6 +506,15 @@ func (s *Service) cancelPassIn(ctx context.Context, tx pgx.Tx, h *hints, c favor
 	return s.closeWith(ctx, tx, h, c, pass, passCanceled, eventFavorPassCanceled)
 }
 
+// closeKeyError is the error of closing an ask: a closing key that another session of the campaign already used (the retry check reads the
+// open session's events only) hits the unique index on closed_key, and is the key refused as reused.
+func closeKeyError(err error) error {
+	if isUniqueViolation(err) {
+		return errKeyReused()
+	}
+	return fmt.Errorf("close the ask: %w", err)
+}
+
 // closeWith closes a pending pass with the status, writes its event under the key and tells the giver's screens (the master's and the
 // giver's owner's). Nothing moves.
 func (s *Service) closeWith(ctx context.Context, tx pgx.Tx, h *hints, c favorPassCall, pass playdb.FavorPass, status, kind string) (playdb.FavorPass, error) {
@@ -515,7 +524,7 @@ func (s *Service) closeWith(ctx context.Context, tx pgx.Tx, h *hints, c favorPas
 		return playdb.FavorPass{}, errFavorPassClosed()
 	}
 	if err != nil {
-		return playdb.FavorPass{}, fmt.Errorf("close the ask: %w", err)
+		return playdb.FavorPass{}, closeKeyError(err)
 	}
 	return closed, s.writeAndTellPass(ctx, tx, h, c, closed, kind, false)
 }
@@ -567,7 +576,7 @@ func (s *Service) acceptPass(ctx context.Context, tx pgx.Tx, h *hints, c favorPa
 		return playdb.FavorPass{}, errFavorPassClosed()
 	}
 	if err != nil {
-		return playdb.FavorPass{}, fmt.Errorf("close the ask: %w", err)
+		return playdb.FavorPass{}, closeKeyError(err)
 	}
 	if err := s.mayHold(ctx, tx, closed.CampaignID, closed.ToCharacterID, errCannotReceive()); err != nil { // it may have left the table
 		return playdb.FavorPass{}, err
