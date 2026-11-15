@@ -234,13 +234,39 @@ describe('HitEffectBlock (#577)', () => {
     );
   });
 
-  it('shows the ranges under the damage fields, and the cap is 1 to 20 with no "sem limite"', () => {
+  it('with the targets block on, sums the hit up in a chip and says that one concentration ends both', () => {
+    const el = setup({
+      hit: on({ damageType: 'damage-type:radiant', die: 6, dice: '1' }),
+      alsoEffect: true,
+    });
+    const head = el.querySelector('.head')!;
+    expect(text(head)).toContain('em quem conjura');
+    expect(text(head.querySelector('.mr-tag')!)).toBe('+1d6 radiante no próximo golpe');
+    expect(text(head)).not.toContain('1 minuto');
+    const together = el.querySelector('.together')!;
+    expect(text(together)).toContain(
+      'Uma concentração: quando acaba, os dois efeitos acabam juntos.',
+    );
+    expect(text(together.querySelector('strong')!)).toBe('os dois efeitos acabam juntos');
+    const timed = setup({ hit: on(), alsoEffect: true, concentration: false });
+    expect(text(timed.querySelector('.together')!)).toContain('Uma duração: quando acaba');
+    expect(text(timed.querySelector('.head .mr-tag')!)).toBe(
+      '+2d6 do tipo da arma no próximo golpe',
+    );
+    const alone = setup();
+    expect(alone.querySelector('.together')).toBeNull();
+    expect(alone.querySelector('.head .mr-tag')).toBeNull();
+    expect(text(alone.querySelector('.head')!)).toContain('1 minuto');
+  });
+
+  it('shows the ranges under the damage fields, and says an empty cap is no limit', () => {
     const el = setup();
     const t = text(el);
     expect(t).toContain('1 a 10');
     expect(t).toContain('0 a 5 por nível acima');
-    expect(t).toContain('1 a 20 dados.');
-    expect(t).not.toContain('sem limite');
+    expect(t).toContain('1 a 20; vazio: sem limite');
+    const cap = field(el, 'max_dice') as HTMLInputElement;
+    expect(cap.placeholder).toBe('Sem limite');
   });
 
   it('asks for a test before the condition and the duration', () => {

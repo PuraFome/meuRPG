@@ -1,7 +1,7 @@
 import { Component, computed, input } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
-import { HIT_VISIBILITY_LABEL } from '../../../core/content/hit-effect-read';
+import { HIT_VISIBILITY_LABEL, VISIBILITY_PUBLIC_PT } from '../../../core/content/hit-effect-read';
 import type { EntryRead as Read } from '../../../core/content/content-read-parts';
 
 /**
@@ -95,7 +95,7 @@ import type { EntryRead as Read } from '../../../core/content/content-read-parts
                 </p>
               }
               <dl class="hit__who">
-                <dt><mat-icon aria-hidden="true">visibility_off</mat-icon>{{ visibilityLabel }}</dt>
+                <dt><mat-icon aria-hidden="true">{{ visibilityIcon(hit.visibility) }}</mat-icon>{{ visibilityLabel }}</dt>
                 <dd>{{ hit.visibility }}</dd>
               </dl>
             </section>
@@ -276,15 +276,19 @@ import type { EntryRead as Read } from '../../../core/content/content-read-parts
 
     .hit__who {
       display: flex;
+      align-items: center;
       justify-content: space-between;
       gap: var(--mr-space-4);
       margin: var(--mr-space-3) 0 0;
       padding: var(--mr-space-3);
       border-radius: 8px;
       background: var(--mr-ground);
+      font-size: var(--mr-font-14);
 
       dt {
         display: flex;
+        flex: none;
+        white-space: nowrap;
         align-items: center;
         gap: var(--mr-space-2);
         color: var(--mr-ink-muted);
@@ -318,4 +322,8 @@ export class EntryRead {
   /** No panels: the rows and parts one under another (an editor's preview). */
   readonly plain = input(false);
   protected readonly visibilityLabel = HIT_VISIBILITY_LABEL;
+  /** An open eye when the whole table sees the effect, a crossed one when only the caster and the master do. */
+  protected visibilityIcon(visibility: string): string {
+    return visibility === VISIBILITY_PUBLIC_PT ? 'visibility' : 'visibility_off';
+  }
 }

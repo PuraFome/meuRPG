@@ -638,10 +638,12 @@ type actionEvent struct {
 	// ReturnedFrom is where the mover stood when an opportunity attack's damage
 	// dropped it to 0 hit points and it went back to the square it left the reach
 	// at: the undo puts it there again.
-	MoveID       string     `json:"move_id,omitempty"`
-	OfferID      string     `json:"offer_id,omitempty"`
-	Skipped      bool       `json:"skipped,omitempty"`
-	ReturnedFrom *moveState `json:"returned_from,omitempty"`
+	MoveID string `json:"move_id,omitempty"`
+	// FeatureWindows are the FEATURE windows a move opened (feature_window.go): the undo of the move takes the ones nobody answered away.
+	FeatureWindows []string   `json:"feature_windows,omitempty"`
+	OfferID        string     `json:"offer_id,omitempty"`
+	Skipped        bool       `json:"skipped,omitempty"`
+	ReturnedFrom   *moveState `json:"returned_from,omitempty"`
 	// ReturnBlocked says the square to go back to was taken, so the mover stayed.
 	ReturnBlocked bool `json:"return_blocked,omitempty"`
 	// ByHand says the master made the offer (OfferOpportunity, a combat without a

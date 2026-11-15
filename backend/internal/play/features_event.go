@@ -5,11 +5,12 @@ import (
 	"fmt"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
 
-// featureUseEvent is what a feature_used event keeps of the use: IDs, keys and numbers only (the choice's text and the
-// feature's name are read from the sheet when the log is shown). The event's own fields hold the rest: Actor, Target (the
+// featureUseEvent is what a feature_used event keeps of the use: IDs, keys and numbers, and the words of the economy and of the
+// resource it spent (the choice's text and the feature's name are read from the sheet when the log is shown). The event's own fields hold the rest: Actor, Target (the
 // only target, when it is not the user), Key (the feature), the economy before, FeatureBefore (the feature state before),
 // Hits (what each target's hit points were before, for the undo), Lasting (the effect rows made), Resource and PointsSpent.
 type featureUseEvent struct {
@@ -26,6 +27,52 @@ type featureUseEvent struct {
 	// Faces and Total are the dice the server rolled for the heal (one roll, given to every target).
 	Faces []int32 `json:"faces,omitempty"`
 	Total int32   `json:"total,omitempty"`
+	// Economy is what the use cost of the turn (an economyWord*), ResourceName the resource it spent and ResourceLeft the uses of
+	// it left after this one, ResourceMax of them ("" and 0 for a use that spent none).
+	Economy      string `json:"economy,omitempty"`
+	ResourceName string `json:"resource_name,omitempty"`
+	ResourceLeft int32  `json:"resource_left,omitempty"`
+	// ResourceMax is the most uses there were: the resource's total, or the uses the scope allows when the use has no resource
+	// of its own (then ResourceName is empty and ResourceLeft counts the scope).
+	ResourceMax int32 `json:"resource_max,omitempty"`
+	// Overridden says the master used the feature although the turn's economy was spent ("Usar mesmo assim").
+	Overridden bool `json:"overridden,omitempty"`
+}
+
+// The words of featureUseEvent.Economy.
+const (
+	economyWordAction = "action"
+	economyWordBonus  = "bonus_action"
+	economyWordReact  = "reaction"
+	economyWordNone   = "none"
+)
+
+// economyWordOf is the word the event keeps for the economy a feature spends: the free and the movement cost none.
+func economyWordOf(e rulesv1.ActionEconomy) string {
+	switch e {
+	case rulesv1.ActionEconomy_ACTION_ECONOMY_BONUS_ACTION:
+		return economyWordBonus
+	case rulesv1.ActionEconomy_ACTION_ECONOMY_REACTION:
+		return economyWordReact
+	case rulesv1.ActionEconomy_ACTION_ECONOMY_FREE, rulesv1.ActionEconomy_ACTION_ECONOMY_MOVEMENT:
+		return economyWordNone
+	}
+	return economyWordAction
+}
+
+// economyOfWord is the line's economy of the word the event keeps, UNSPECIFIED for an event that kept none.
+func economyOfWord(w string) playv1.FeatureEconomy {
+	switch w {
+	case economyWordAction:
+		return playv1.FeatureEconomy_FEATURE_ECONOMY_ACTION
+	case economyWordBonus:
+		return playv1.FeatureEconomy_FEATURE_ECONOMY_BONUS_ACTION
+	case economyWordReact:
+		return playv1.FeatureEconomy_FEATURE_ECONOMY_REACTION
+	case economyWordNone:
+		return playv1.FeatureEconomy_FEATURE_ECONOMY_NONE
+	}
+	return playv1.FeatureEconomy_FEATURE_ECONOMY_UNSPECIFIED
 }
 
 // featureTargetUse is what one target got.
@@ -65,6 +112,9 @@ func (u *undoer) featureUsed(ctx context.Context, ev actionEvent) error {
 	if err := u.featureEffectsBack(ctx, ev); err != nil {
 		return err
 	}
+	if err := u.s.reopenWindowOf(ctx, u.c, ev); err != nil { // a use that answered a FEATURE window: it waits again
+		return err
+	}
 	for _, h := range ev.Hits {
 		if err := u.castHitTargetBack(ctx, h); err != nil {
 			return err
@@ -85,8 +135,8 @@ func featureUsedLine(_ *logBuilder, _ playdb.ListEncounterEventsRow, entry *logE
 	return true
 }
 
-// fillFeatureUsed is the line's body: the feature, the choice and what the use did. The hit points are the master's and the
-// user's player's, as in the other lines that heal; that a lasting effect was put on is the table's.
+// fillFeatureUsed is the line's body: the feature, the choice and what the use did. The hit points, the economy and the resource
+// are the master's and the user's player's, as in the other lines that heal; that a lasting effect was put on is the table's.
 func (e *logEntry) fillFeatureUsed(c *logViewing, out *playv1.CombatLogEntry) bool {
 	f := e.ev.Feature
 	if f == nil {
@@ -98,6 +148,8 @@ func (e *logEntry) fillFeatureUsed(c *logViewing, out *playv1.CombatLogEntry) bo
 	}
 	if c.v.master || c.v.owns(c.actor) {
 		used.Healed, used.TempHp = f.Healed, f.TempHP
+		used.Economy, used.ResourceNamePt, used.ResourceLeft, used.ResourceMax = economyOfWord(f.Economy), f.ResourceName, f.ResourceLeft, f.ResourceMax
+		used.Overridden = f.Overridden
 	}
 	out.FeatureUsed = used
 	return true

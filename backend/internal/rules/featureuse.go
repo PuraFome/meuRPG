@@ -31,11 +31,14 @@ const (
 	maxChoiceKeyLen        = 40
 	maxChoiceTextRunes     = 80
 	maxFeatureEffectRounds = 14400
+	maxTriggerKinds        = 2
 )
 
 var (
 	useScopes   = []string{UseScopeTurn, UseScopeRound, UseScopeCombat}
 	featureWhos = []string{FeatureWhoSelf, FeatureWhoAlly, FeatureWhoEnemy, FeatureWhoAny}
+	// triggerKinds are the moments a trigger may wait for.
+	triggerKinds = []string{FeatureTriggerStartsTurn, FeatureTriggerMoves}
 )
 
 // FeatureUse is what a table feature's grant_action declares to be used through the UseFeature call, not
@@ -48,6 +51,24 @@ type FeatureUse struct {
 	Targets    *FeatureTargets `json:"targets,omitempty"`
 	Choices    []FeatureChoice `json:"choices,omitempty"`
 	Applies    *FeatureApplies `json:"applies,omitempty"`
+	Trigger    *FeatureTrigger `json:"trigger,omitempty"`
+	// ChoiceLabel is the question over the choices ("Qual forma"); empty: the app asks "Qual opção".
+	ChoiceLabel string `json:"choice_label,omitempty"`
+}
+
+// The moments a reaction feature's trigger waits for (FeatureTrigger.Kinds).
+const (
+	// FeatureTriggerStartsTurn is an enemy of the owner starting its turn within the trigger's reach.
+	FeatureTriggerStartsTurn = "enemy_starts_turn_within"
+	// FeatureTriggerMoves is an enemy of the owner moving to a square within the reach, from one outside it.
+	FeatureTriggerMoves = "enemy_moves_within"
+)
+
+// FeatureTrigger is what makes the app ask the player to use a reaction feature: one to two Kinds (the moments) and the
+// reach in feet from the owner.
+type FeatureTrigger struct {
+	Kinds   []string `json:"kinds"`
+	RangeFt int      `json:"range_ft"`
 }
 
 // FeatureTargets are the creatures a use is aimed at: Min to Max of Who, within RangeFt feet (0: no limit).
@@ -84,7 +105,7 @@ func (a *FeatureApplies) empty() bool {
 
 // declaresNothing says the use is an empty message.
 func (u *FeatureUse) declaresNothing() bool {
-	return u.LimitScope == "" && u.LimitUses == "" && u.Targets.empty() && len(u.Choices) == 0 && u.Applies.empty()
+	return u.LimitScope == "" && u.LimitUses == "" && u.Targets.empty() && len(u.Choices) == 0 && u.Applies.empty() && u.Trigger == nil && u.ChoiceLabel == ""
 }
 
 // ActionUse is what Derive works out of the use a grant_action declares, with the character's formulas:
@@ -104,6 +125,10 @@ type ActionUse struct {
 	// Content.FeatureUseEffect(action key).
 	HasEffect    bool `json:",omitempty"`
 	EffectRounds int  `json:",omitempty"`
+	// Trigger is what makes the app ask the player to use the feature (nil: the player uses it from the sheet only).
+	Trigger *FeatureTrigger `json:",omitempty"`
+	// ChoiceLabel is the question over the choices, "" for the app's own.
+	ChoiceLabel string `json:",omitempty"`
 }
 
 // Limited says the use counts against a limit in a scope.
@@ -147,7 +172,10 @@ func (x *deriver) useOf(act *Action, a activeEffect) bool {
 	if t := u.Targets; t != nil {
 		out.Targets = *t
 	}
-	out.Choices = slices.Clone(u.Choices)
+	out.Choices, out.ChoiceLabel = slices.Clone(u.Choices), u.ChoiceLabel
+	if t := u.Trigger; t != nil {
+		out.Trigger = &FeatureTrigger{Kinds: slices.Clone(t.Kinds), RangeFt: t.RangeFt}
+	}
 	if ap := u.Applies; ap != nil {
 		if d, ok := parseHealDice(ap.Heal); ok {
 			out.Result.Heal = &d
@@ -223,6 +251,8 @@ func (b *overlayBuilder) checkUse(site effectSite, e *Effect) error {
 	checkUseLimit(u, at)
 	checkUseTargets(u.Targets, at)
 	checkUseChoices(u.Choices, at)
+	checkUseChoiceLabel(u, at)
+	checkUseTrigger(e.Economy, u, at)
 	b.checkUseApplies(&c, site, u.Applies)
 	if err := c.err(); err != nil {
 		return err
@@ -287,6 +317,51 @@ func checkUseTargetRange(t *FeatureTargets, at useRefuse) {
 		at(".targets.range_ft", ReasonValue, "a use aimed at self has no range")
 	case t.RangeFt > 0 && t.Max == 0:
 		at(".targets.range_ft", ReasonValue, "a range needs targets")
+	}
+}
+
+// checkUseTrigger checks what a reaction feature waits for: it is a reaction (the window spends the reaction) with no choice
+// to pick (the window only asks to use it or not), it names one or two moments of the closed list, once each, and a reach in
+// feet.
+func checkUseTrigger(economy string, u *FeatureUse, at useRefuse) {
+	t := u.Trigger
+	if t == nil {
+		return
+	}
+	switch {
+	case economy != EconomyReaction:
+		at(".trigger", ReasonValue, "a trigger asks the player to use the reaction: the action's economy is reaction")
+	case len(u.Choices) > 0:
+		at(".trigger", ReasonValue, "a feature with a trigger offers no choice: the window only asks to use it or not")
+	}
+	switch {
+	case len(t.Kinds) == 0:
+		at(".trigger.kinds", ReasonValue, "kinds is one or two moments: enemy_starts_turn_within, enemy_moves_within")
+	case len(t.Kinds) > maxTriggerKinds:
+		at(".trigger.kinds", ReasonLimit, "a trigger waits for at most %d moments", maxTriggerKinds)
+	}
+	for i, k := range t.Kinds {
+		idx := ".trigger.kinds[" + strconv.Itoa(i) + "]"
+		switch {
+		case !slices.Contains(triggerKinds, k):
+			at(idx, ReasonValue, "the moment is enemy_starts_turn_within or enemy_moves_within")
+		case slices.Contains(t.Kinds[:i], k):
+			at(idx, ReasonValue, "a moment is named once")
+		}
+	}
+	if t.RangeFt < 1 || t.RangeFt > maxFeatureRangeFt {
+		at(".trigger.range_ft", ReasonValue, "range_ft is 1 to %d: how close the creature comes", maxFeatureRangeFt)
+	}
+}
+
+// checkUseChoiceLabel checks the question over the choices: it needs choices to ask about, and is 1 to 80 characters.
+func checkUseChoiceLabel(u *FeatureUse, at useRefuse) {
+	switch n := utf8.RuneCountInString(u.ChoiceLabel); {
+	case n == 0:
+	case len(u.Choices) == 0:
+		at(".choice_label", ReasonValue, "choice_label asks about the choices: the use offers none")
+	case n > maxChoiceTextRunes:
+		at(".choice_label", ReasonValue, "the question is at most %d characters", maxChoiceTextRunes)
 	}
 }
 

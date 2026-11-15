@@ -74,6 +74,18 @@ service ChargesService {
   // combat (or fought none); `failed_precondition` with ChargesBlocked COMBAT_RUNNING while the character's
   // latest combat is not ended, and ALREADY_RECOVERED once the pieces were taken back.
   rpc RecoverAmmunition(RecoverAmmunitionRequest) returns (RecoverAmmunitionResponse);
+
+  // Dawn is the master's "Amanhecer": a new day dawns for the table and the magic items of every character of the
+  // campaign recharge as their text says (SRD 5.1). Items that regain charges at dawn regain them (all, or the dice
+  // the item rolls, up to the maximum; the app rolls the dice, also on a table of real dice), and an item that
+  // waits for a number of dawns after its last charge counts this one and regains them all on the last. An item
+  // that is lost or waits for its last d20 is left as it is. One `item_charges_restored` event is written for each
+  // item that regained charges, and an item at its maximum writes nothing. A long rest with
+  // TakeRestRequest.restore_dawn does the same in the rest's transaction. Master only; needs an open game session.
+  //
+  // Errors: `permission_denied` for a player; `failed_precondition` with NO_OPEN_SESSION; `invalid_argument` for an
+  // idempotency key that is not a UUID or one reused for another request.
+  rpc Dawn(DawnRequest) returns (DawnResponse);
 }
 
 // ChargesBlockedReason is why a charges or ammunition call was refused with `failed_precondition`.
@@ -177,4 +189,24 @@ message RecoverAmmunitionRequest {
 message RecoverAmmunitionResponse {
   // The kinds the recovery changed, with the pieces the character holds now.
   repeated meurpg.characters.v1.SheetAmmunition ammunition = 1;
+}
+
+message DawnRequest {
+  string campaign_id = 1;
+  string idempotency_key = 2;
+}
+
+message DawnResponse {
+  // The items that regained charges, in the order of the characters and of their sheets. A retry with the same
+  // key answers with the items as they stand now.
+  repeated DawnRestored restored = 1;
+}
+
+// DawnRestored is one item a dawn gave charges back to.
+message DawnRestored {
+  string character_id = 1;
+  // The item after the dawn.
+  meurpg.characters.v1.SheetMagicItem item = 2;
+  // The charges it regained.
+  int32 regained = 3;
 }

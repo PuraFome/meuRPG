@@ -384,7 +384,7 @@ The card's text is `auraItem` in `content-read-rolls.ts`.
 | `trigger` | 11 | `TableHitTrigger`: `NEXT_HIT` (1), `NEXT_MELEE_HIT` (2), `EACH_HIT` (3), `MARKED_TARGET` (4) |
 | `dice` | 12 | `int32`, 1 to 10 |
 | `per_slot_dice` | 13 | `int32`, 0 to 5 |
-| `max_dice` | 14 | `int32`, required, `dice` to 20 |
+| `max_dice` | 14 | `int32`, `dice` to 20, 0 is no limit |
 | `damage_type` | 15 | SRD damage type key, at most 64 characters |
 | `save` | 16 | ability key, at most 16 characters |
 | `on_fail_conditions` | 17 | SRD condition keys, each at most 64 characters |

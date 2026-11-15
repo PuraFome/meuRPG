@@ -110,6 +110,7 @@ var reactionNames = map[reaction.Kind]string{
 	reaction.LegendaryResistance: "Resistência Lendária",
 	reaction.ParryKind:           "Aparar",
 	reaction.Readied:             "Ação preparada",
+	reaction.Feature:             "Característica",
 }
 
 // reactionNameKeys are the content keys of the reaction names.
@@ -171,7 +172,7 @@ func tellNote(say func(string, live.Event), campaignID, encounterID string, n re
 	w := n.window
 	reactor, hasReactor := byID[conv.OrZero(w.ReactorID)]
 	audience := []live.Audience{{Master: true}}
-	if hasReactor && reactor.UserID != nil {
+	if hasReactor && reactor.UserID != nil && !windowTriggerOf(w).Hidden { // a hidden creature's window is the master's alone (RN-10)
 		audience = append(audience, live.Audience{UserID: *reactor.UserID})
 	}
 	for i, a := range audience {

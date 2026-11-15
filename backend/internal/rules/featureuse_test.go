@@ -47,6 +47,8 @@ func TestFeatureUseShapes(t *testing.T) {
 			u.Applies = &FeatureApplies{Heal: "1d6"}
 		}), "", ""},
 		{"choices", with(func(u *FeatureUse) { u.Choices = repeat(8) }), "", ""},
+		{"choices with a question", with(func(u *FeatureUse) { u.Choices, u.ChoiceLabel = repeat(2), "Qual forma" }), "", ""},
+		{"a question of 80 characters", with(func(u *FeatureUse) { u.Choices, u.ChoiceLabel = repeat(2), strings.Repeat("ã", 80) }), "", ""},
 		{"a heal and temporary hit points", with(func(u *FeatureUse) { u.Applies = &FeatureApplies{Heal: "2d4+2", TempHP: "level()"} }), "", ""},
 		{"an effect", with(func(u *FeatureUse) { u.Applies = &FeatureApplies{Effect: goodEffect(), EffectRounds: 10} }), "", ""},
 		{"an effect that applies to all", with(func(u *FeatureUse) {
@@ -87,6 +89,11 @@ func TestFeatureUseShapes(t *testing.T) {
 		{"a repeated key", with(func(u *FeatureUse) { u.Choices = []FeatureChoice{{Key: "a", TextPT: "A"}, {Key: "a", TextPT: "B"}} }), ".use.choices[1].key", ReasonValue},
 		{"an empty text", with(func(u *FeatureUse) { u.Choices = []FeatureChoice{{Key: "a"}} }), ".use.choices[0].text_pt", ReasonValue},
 		{"a long text", with(func(u *FeatureUse) { u.Choices = []FeatureChoice{{Key: "a", TextPT: strings.Repeat("ã", 81)}} }), ".use.choices[0].text_pt", ReasonValue},
+		{"a question with no choices", with(func(u *FeatureUse) { u.ChoiceLabel = "Qual forma" }), ".use.choice_label", ReasonValue},
+		{"a question beside a limit and no choices", with(func(u *FeatureUse) {
+			u.LimitScope, u.LimitUses, u.ChoiceLabel = UseScopeTurn, "1", "Qual forma"
+		}), ".use.choice_label", ReasonValue},
+		{"a question of 81 characters", with(func(u *FeatureUse) { u.Choices, u.ChoiceLabel = repeat(2), strings.Repeat("ã", 81) }), ".use.choice_label", ReasonValue},
 		// What it applies.
 		{"a heal with no dice", with(func(u *FeatureUse) { u.Applies = &FeatureApplies{Heal: "5"} }), ".use.applies.heal", ReasonValue},
 		{"a heal with MOD", with(func(u *FeatureUse) { u.Applies = &FeatureApplies{Heal: "1d6 + MOD"} }), ".use.applies.heal", ReasonValue},
@@ -124,6 +131,36 @@ func TestFeatureUseShapes(t *testing.T) {
 		{"a use beside the action's own temporary hit points", plain(func(e *Effect) { e.TempHP = "2" }), ".use", ReasonValue},
 		{"a use whose text names a standard action", plain(func(e *Effect) { e.TextPT = "Desengajar como ação bônus." }), ".use", ReasonValue},
 	}...)
+	// A trigger asks the owner's player to use a reaction feature when an enemy starts its turn near, or comes near.
+	react := func(mut func(e *Effect)) []Effect {
+		e := Effect{Type: "grant_action", Economy: EconomyReaction, Use: &FeatureUse{
+			Targets: &FeatureTargets{Min: 1, Max: 1, Who: FeatureWhoEnemy, RangeFt: 10},
+			Trigger: &FeatureTrigger{Kinds: []string{FeatureTriggerStartsTurn, FeatureTriggerMoves}, RangeFt: 10},
+		}}
+		mut(&e)
+		return []Effect{e}
+	}
+	cases = append(cases, []struct {
+		name       string
+		effects    []Effect
+		field, why string
+	}{
+		{"a trigger on a reaction", react(func(*Effect) {}), "", ""},
+		{"a trigger of one kind", react(func(e *Effect) { e.Use.Trigger.Kinds = []string{FeatureTriggerMoves} }), "", ""},
+		{"a trigger alone", react(func(e *Effect) { e.Use.Targets = nil }), "", ""},
+		{"an unknown trigger kind", react(func(e *Effect) { e.Use.Trigger.Kinds = []string{FeatureTriggerMoves, "unknown"} }), ".use.trigger.kinds[1]", ReasonValue},
+		{"a made-up trigger kind", react(func(e *Effect) { e.Use.Trigger.Kinds = []string{"enemy_attacks"} }), ".use.trigger.kinds[0]", ReasonValue},
+		{"a trigger with no kind", react(func(e *Effect) { e.Use.Trigger.Kinds = nil }), ".use.trigger.kinds", ReasonValue},
+		{"a trigger kind twice", react(func(e *Effect) { e.Use.Trigger.Kinds = []string{FeatureTriggerMoves, FeatureTriggerMoves} }), ".use.trigger.kinds[1]", ReasonValue},
+		{"a trigger of three kinds", react(func(e *Effect) {
+			e.Use.Trigger.Kinds = []string{FeatureTriggerMoves, FeatureTriggerStartsTurn, FeatureTriggerMoves}
+		}), ".use.trigger.kinds", ReasonLimit},
+		{"a trigger with no reach", react(func(e *Effect) { e.Use.Trigger.RangeFt = 0 }), ".use.trigger.range_ft", ReasonValue},
+		{"a trigger of a reach above 300", react(func(e *Effect) { e.Use.Trigger.RangeFt = 301 }), ".use.trigger.range_ft", ReasonValue},
+		{"a trigger with choices", react(func(e *Effect) { e.Use.Choices = []FeatureChoice{{Key: "fogo", TextPT: "Fogo"}} }), ".use.trigger", ReasonValue},
+		{"a trigger on a bonus action", react(func(e *Effect) { e.Economy = EconomyBonusAction }), ".use.trigger", ReasonValue},
+		{"a trigger on an action", react(func(e *Effect) { e.Economy = EconomyAction }), ".use.trigger", ReasonValue},
+	}...)
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
@@ -136,6 +173,27 @@ func TestFeatureUseShapes(t *testing.T) {
 			}
 			violationAt(t, err, "feats[0].effects[0]"+tc.field, tc.why)
 		})
+	}
+}
+
+// TestAFeatureTriggerDerivesForTheCharacter: the trigger the table declares is on the action the character gets.
+func TestAFeatureTriggerDerivesForTheCharacter(t *testing.T) {
+	t.Parallel()
+	srd := loadForTest(t)
+	c, err := srd.With(featWith(useFeat, Effect{Type: "grant_action", Economy: EconomyReaction, Use: &FeatureUse{
+		LimitScope: UseScopeCombat, LimitUses: "2",
+		Targets: &FeatureTargets{Min: 1, Max: 1, Who: FeatureWhoEnemy, RangeFt: 10},
+		Trigger: &FeatureTrigger{Kinds: []string{FeatureTriggerStartsTurn, FeatureTriggerMoves}, RangeFt: 10},
+	}}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	b := pensantus()
+	b.Feats = append(b.Feats, useFeat)
+	u := grantedActionOf(t, Derive(b, c), useFeat).Use
+	want := FeatureTrigger{Kinds: []string{FeatureTriggerStartsTurn, FeatureTriggerMoves}, RangeFt: 10}
+	if u == nil || u.Trigger == nil || u.Trigger.RangeFt != want.RangeFt || len(u.Trigger.Kinds) != 2 || u.Trigger.Kinds[0] != want.Kinds[0] || u.Trigger.Kinds[1] != want.Kinds[1] {
+		t.Errorf("Use.Trigger = %+v, want %+v", u, want)
 	}
 }
 
@@ -192,5 +250,24 @@ func TestAnActionWithoutAUseStaysOnTakeAction(t *testing.T) {
 	var none *ActionUse
 	if none.Limited() || none.Left(3) != -1 {
 		t.Error("a nil use has no limit")
+	}
+}
+
+// TestAChoiceQuestionDerivesForTheCharacter: the question over the choices is on the action the character gets, empty when
+// the table gave none.
+func TestAChoiceQuestionDerivesForTheCharacter(t *testing.T) {
+	t.Parallel()
+	srd := loadForTest(t)
+	choices := []FeatureChoice{{Key: "fogo", TextPT: "Fogo"}, {Key: "gelo", TextPT: "Gelo"}}
+	for _, label := range []string{"Qual forma", ""} {
+		c, err := srd.With(featWith(useFeat, useAction(&FeatureUse{Choices: choices, ChoiceLabel: label})))
+		if err != nil {
+			t.Fatal(err)
+		}
+		b := pensantus()
+		b.Feats = append(b.Feats, useFeat)
+		if u := grantedActionOf(t, Derive(b, c), useFeat).Use; u == nil || u.ChoiceLabel != label {
+			t.Errorf("label %q: Use = %+v, want ChoiceLabel %q", label, u, label)
+		}
 	}
 }

@@ -21,6 +21,9 @@ func (p *packagePart) applyPlayers(ctx context.Context, tx pgx.Tx, in *campaignp
 		}); err != nil {
 			return fmt.Errorf("insert an imported reserved character: %w", err)
 		}
+		if err := applyItemState(ctx, q, c); err != nil {
+			return err
+		}
 		if c.notes != "" {
 			if _, err := q.UpsertMasterNotes(ctx, charactersdb.UpsertMasterNotesParams{CampaignID: in.CampaignID, CharacterID: c.id, Notes: c.notes, UpdatedAt: c.createdAt}); err != nil {
 				return fmt.Errorf("save the master's notes: %w", err)

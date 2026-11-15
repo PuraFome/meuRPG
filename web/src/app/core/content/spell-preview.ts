@@ -157,6 +157,13 @@ function healRows(d: SpellDraft): PreviewRow[] {
   ];
 }
 
+/** "1º círculo, evocação": the level and the school, the first row of the read view and of the preview (`readSpell`). */
+export function levelRow(d: SpellDraft, nameOf: NameOf): PreviewRow {
+  const level = d.level === 0 ? 'Truque' : `${d.level}º círculo`;
+  const school = d.schoolKey ? nameOf(d.schoolKey).toLowerCase() : '';
+  return { label: 'Nível', value: school ? `${level}, ${school}` : level };
+}
+
 /** What a player reads of the spell, written as the app writes an SRD spell (the shared formatters of the "?"). */
 export function previewRows(d: SpellDraft, nameOf: NameOf = keyName): PreviewRow[] {
   const rows = castRows(d);
