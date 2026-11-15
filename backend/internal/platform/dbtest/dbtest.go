@@ -260,14 +260,24 @@ func restoreSQL(tpl templateDB, name string) string {
 // RESTORE reads.
 func ensureBackup(ctx context.Context, admin *sql.DB, name string) (string, error) {
 	uri := "nodelocal://1/" + name
-	if rows, err := admin.QueryContext(ctx, fmt.Sprintf("SHOW BACKUP LATEST IN '%s'", uri)); err == nil {
-		_ = rows.Close()
+	if backupFinished(ctx, admin, uri) {
 		return uri, nil
 	}
 	if _, err := admin.ExecContext(ctx, fmt.Sprintf("BACKUP DATABASE %s INTO '%s'", name, uri)); err != nil {
 		return "", fmt.Errorf("back up the template into %s: %w\nA test CockroachDB that refuses nodelocal ('local file access is disabled') was started without --external-io-dir (make db-test-cockroach-start and .github/scripts/start-cockroach.sh start it with the flag, docs/testing.md); any other error is the server's own, a full disk or a full tmpfs for one", uri, err)
 	}
 	return uri, nil
+}
+
+// backupFinished reports whether the server answers SHOW BACKUP LATEST for the location, which only a finished backup does.
+func backupFinished(ctx context.Context, admin *sql.DB, uri string) bool {
+	rows, err := admin.QueryContext(ctx, fmt.Sprintf("SHOW BACKUP LATEST IN '%s'", uri))
+	if err != nil {
+		return false
+	}
+	defer func() { _ = rows.Close() }()
+	rows.Next()
+	return rows.Err() == nil
 }
 
 // Main runs a package's tests and then drops the databases this process

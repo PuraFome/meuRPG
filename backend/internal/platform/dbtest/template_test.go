@@ -183,7 +183,15 @@ func showAll(t *testing.T, conn *sql.DB, what string) []string {
 	if err := conn.QueryRowContext(t.Context(), `SELECT current_database()`).Scan(&database); err != nil {
 		t.Fatalf("name the database: %v", err)
 	}
-	rows, err := conn.QueryContext(t.Context(), `SELECT create_statement FROM [SHOW CREATE ALL `+what+`]`)
+	query := map[string]string{
+		"ROUTINES": `SELECT create_statement FROM [SHOW CREATE ALL ROUTINES]`,
+		"TRIGGERS": `SELECT create_statement FROM [SHOW CREATE ALL TRIGGERS]`,
+		"TABLES":   `SELECT create_statement FROM [SHOW CREATE ALL TABLES]`,
+	}[what]
+	if query == "" {
+		t.Fatalf("showAll does not read %q", what)
+	}
+	rows, err := conn.QueryContext(t.Context(), query)
 	if err != nil {
 		t.Fatalf("SHOW CREATE ALL %s: %v", what, err)
 	}
