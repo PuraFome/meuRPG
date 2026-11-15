@@ -1,0 +1,160 @@
+<section class="mr-panel pc" aria-labelledby="pc-heading">
+  <div class="pc__head">
+    <h2 class="mr-panel__title" id="pc-heading"><mat-icon aria-hidden="true">bolt</mat-icon>Cargas e munição</h2>
+    <button
+      matButton="outlined"
+      type="button"
+      class="pc__dawn-button"
+      disabledInteractive
+      [disabled]="store.waiting().length === 0"
+      [attr.aria-describedby]="store.waiting().length === 0 ? 'pc-nodawn' : null"
+      [attr.aria-busy]="dawning()"
+      (click)="amanhecer()"
+    >
+      <mat-icon aria-hidden="true">wb_twilight</mat-icon>Amanhecer
+    </button>
+  </div>
+  <p class="pc__lead">
+    Corrija quando a mesa contou diferente. “Amanhecer” devolve as cargas de quem volta ao amanhecer, para a mesa toda,
+    quando vocês não descansam.
+  </p>
+
+  @if (store.waiting().length === 0 && store.status() === 'ready') {
+    <p class="pc__nodawn" id="pc-nodawn">
+      <mat-icon aria-hidden="true">block</mat-icon><span>Nenhum item espera o amanhecer.</span>
+    </p>
+  }
+
+  @if (dawnError()) {
+    <div class="mr-notice mr-notice--danger" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <p>{{ dawnError() }}</p>
+    </div>
+  }
+
+  <div class="pc__dawn-region" role="status">
+    @if (dawn(); as d) {
+      <div class="pc__dawn">
+        <mat-icon aria-hidden="true">wb_twilight</mat-icon>
+        <div>
+          <p class="pc__dawn-head">{{ d.head }}</p>
+          @if (d.lines.length > 0) {
+            <ul class="pc__dawn-lines">
+              @for (line of d.lines; track $index) {
+                <li>{{ line }}</li>
+              }
+            </ul>
+          }
+        </div>
+      </div>
+    }
+  </div>
+
+  @if (store.status() === 'error') {
+    <div class="mr-notice mr-notice--danger" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <p>Não foi possível ler as cargas do grupo.</p>
+    </div>
+  }
+
+  @if (nothing()) {
+    <p class="pc__empty">Nenhum personagem do grupo tem itens com cargas nem munição.</p>
+  }
+
+  @for (c of store.view().characters; track c.characterId) {
+    <section class="pc__character" [attr.aria-labelledby]="'pc-who-' + c.characterId">
+      <h3 class="pc__who" [id]="'pc-who-' + c.characterId">
+        <span class="pc__avatar" aria-hidden="true">{{ initial(c.name) }}</span><span class="pc__who-name">{{ c.name }}</span>
+      </h3>
+      <ul class="pc__rows">
+        @for (item of c.items; track item.entryId) {
+          @if (editing()?.id === item.entryId && editing()?.characterId === c.characterId) {
+            <ng-container *ngTemplateOutlet="editor" />
+          } @else {
+            <li class="pc__row" [class.pc__row--lost]="item.destroyed">
+              <mat-icon class="pc__icon" aria-hidden="true">auto_fix_high</mat-icon>
+              <span class="pc__name">
+                {{ item.name }}
+                @if (item.attuned) {
+                  <span class="pc__attuned" role="img" aria-label="Sintonizado"><mat-icon aria-hidden="true">link</mat-icon></span>
+                }
+              </span>
+              @if (item.destroyed) {
+                <span class="pc__tag">Destruída</span>
+              } @else if (item.unset) {
+                <span class="pc__tag">Início não definido</span>
+              } @else {
+                <strong class="pc__value" [class.pc__value--zero]="item.empty">{{ item.value }}</strong>
+              }
+              <span class="pc__volta">
+                @if (item.volta) {
+                  <mat-icon aria-hidden="true">wb_twilight</mat-icon>{{ item.volta }}
+                }
+              </span>
+              <button type="button" class="pc__fix" [attr.data-corrigir]="c.characterId + ':' + item.entryId" (click)="editItem(c.characterId, item)">
+                <mat-icon aria-hidden="true">edit</mat-icon>Corrigir<span class="mr-visually-hidden"> {{ item.name }}</span>
+              </button>
+            </li>
+          }
+        }
+        @for (a of c.ammunition; track a.key) {
+          @if (editing()?.id === a.key && editing()?.characterId === c.characterId) {
+            <ng-container *ngTemplateOutlet="editor" />
+          } @else {
+            <li class="pc__row">
+              <mat-icon class="pc__icon" aria-hidden="true">north_east</mat-icon>
+              <span class="pc__name">{{ a.name }}</span>
+              <strong class="pc__value" [class.pc__value--zero]="a.quantity === 0">{{ a.quantity }}</strong>
+              <span class="pc__volta"></span>
+              <button type="button" class="pc__fix" [attr.data-corrigir]="c.characterId + ':' + a.key" (click)="editAmmunition(c.characterId, a)">
+                <mat-icon aria-hidden="true">edit</mat-icon>Corrigir<span class="mr-visually-hidden"> {{ a.name }}</span>
+              </button>
+            </li>
+          }
+        }
+      </ul>
+    </section>
+  }
+
+  @if (quiet()) {
+    <p class="pc__quiet">{{ quiet() }}</p>
+  }
+</section>
+
+<ng-template #editor>
+  @if (editing(); as e) {
+    <li class="pc__edit">
+      <div class="pc__edit-body" role="group" [attr.aria-label]="'Corrigir ' + e.name" (keydown.escape)="cancel()">
+        <span class="pc__edit-name">{{ e.name }}</span>
+        @if (e.kind === 'item') {
+          <app-hidden-switch
+            class="pc__edit-switch"
+            label="Destruída"
+            [hint]="'Desligar devolve o item à ficha; as cargas vão de 0 a ' + e.max + '.'"
+            [checked]="e.destroyed"
+            (toggle)="setDestroyed($event)"
+          />
+        }
+        <app-count-stepper
+          [value]="e.count"
+          [min]="0"
+          [max]="e.max"
+          [noun]="e.kind === 'item' ? 'carga' : 'peça'"
+          [minusLabel]="(e.kind === 'item' ? 'Menos uma carga de ' : 'Menos uma peça de ') + e.name"
+          [plusLabel]="(e.kind === 'item' ? 'Mais uma carga de ' : 'Mais uma peça de ') + e.name"
+          [valueLabel]="'{n} ' + (e.kind === 'item' ? 'cargas' : 'peças') + ' de ' + e.name"
+          (valueChange)="setCount($event)"
+        />
+        <span class="pc__was">eram {{ e.was }}</span>
+        <button matButton="outlined" type="button" class="pc__save" [attr.aria-busy]="saving()" (click)="save()">Salvar</button>
+        <button matButton type="button" (click)="cancel()">Cancelar</button>
+        @if (editError()) {
+          <div class="mr-notice mr-notice--danger pc__edit-error" role="alert">
+            <mat-icon aria-hidden="true">error</mat-icon>
+            <p>{{ editError() }}</p>
+          </div>
+        }
+      </div>
+    </li>
+  }
+</ng-template>

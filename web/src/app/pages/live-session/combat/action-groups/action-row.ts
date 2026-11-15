@@ -4,6 +4,7 @@ import { MatIconModule } from '@angular/material/icon';
 
 import { MASTER_WAIT_NOTE_ID, isMasterWait } from '../../../../core/combat/reactions';
 import type { MarksVm } from '../../../../core/characters/gear';
+import type { AmmunitionTag } from '../../../../core/combat/ammunition-line';
 import { BonusChip } from '../../../../shared/bonus-chip/bonus-chip';
 import { WeaponTags } from '../../../../shared/weapon-tags/weapon-tags';
 import { EconomyMark } from '../../../../shared/economy-shapes/economy-shapes';
@@ -43,6 +44,14 @@ let nextId = 0;
       @if (name()) {
         <span class="row__head" [class.row__head--one]="oneLine()" data-chip-row [attr.data-one-line]="oneLine() ? '' : null">
           <span class="row__name" data-chip-ref>{{ name() }}</span>
+          @if (ammo(); as a) {
+            <span class="row__ammo" [class.row__ammo--warning]="a.level === 'warning'" [class.row__ammo--empty]="a.level === 'empty'" data-testid="ammo-tag" data-wrap-group>
+              @if (a.level === 'warning') {
+                <mat-icon aria-hidden="true">warning</mat-icon>
+              }
+              {{ a.text }}
+            </span>
+          }
           <span class="row__marks-group" data-wrap-group>
             <app-weapon-tags class="row__marks" [marks]="marks()" [compact]="oneLine()" />
             @if (bonus() > 0) {
@@ -123,6 +132,8 @@ export class ActionRow {
   readonly bonus = input(0);
   /** The name line is one line while the name keeps 96px: the name ellipsizes first, then the marks, the chip and the economy tag drop under it together. */
   readonly oneLine = input(false);
+  /** The count of a weapon's ammunition beside the name ("3 flechas"): warning at 3 or fewer, dashed red at 0; `null` for a row with no count. */
+  readonly ammo = input<AmmunitionTag | null>(null);
   /** The economy the row spends (a mark and its word beside the name's tags); `null` for a row that spends none, or says it elsewhere. */
   readonly economy = input<RowEconomy | null>(null);
   readonly detail = input('');

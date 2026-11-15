@@ -109,6 +109,7 @@ A thrown weapon, a melee weapon, the creatures and the master's NPCs spend nothi
 A weapon that fires ammunition has a second attack line, keyed `<weapon key>:melee` and named "<weapon>, corpo a corpo" (`improvised` is true).
 It is a melee attack of 1d4 plus Strength, bludgeoning, without proficiency or the weapon's bonuses, and it spends no ammunition.
 `GetTurnOptions` fills `ammunition_left` on the ammunition line of a counted kind (0 when none is left, absent when the kind is not counted) for the character's player and the master, and leaves it absent on every other line.
+`GetTurnOptions` also fills `ammunition_key` with the catalog key of the kind on every line of a weapon that fires ammunition, counted or not, and leaves it empty on every other line, the improvised melee line included.
 A sheet's derived attacks never carry it.
 The line is a weapon attack and a melee one (`Kind` weapon), so what reads those two facts treats it as a Strength melee weapon attack: Rage, Divine Smite, Improved Divine Smite, the hit extras, the maneuvers and Hunter's Mark.
 It is not a weapon of its kind: it has no finesse, two-handed or light property, no proficiency and no magic of the bow, so Dueling, Great Weapon Fighting, Two-Weapon Fighting and Sneak Attack (which needs a finesse or ranged weapon) never apply to it.
