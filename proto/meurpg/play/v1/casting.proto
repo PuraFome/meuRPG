@@ -392,6 +392,9 @@ message CastingGrant {
   // The uses a cast spends of `resource` (1 or more; 0 for an at-will grant). A cast works
   // only while `uses_left` covers it.
   int32 uses_cost = 13;
+  // The level the grant casts the spell at, with no slot: the effect's `cast_level`, or the spell's own
+  // level when it sets none; 0 for a cantrip. A cast with a slot (`also_with_slot`) uses the slot's level.
+  int32 cast_level = 14;
 }
 
 // CastingEffectKind is what a spell does that the server applies, from the spell alone.

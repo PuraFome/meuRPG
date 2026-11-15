@@ -1858,7 +1858,8 @@ type TableEffect struct {
 	// lets the character cast it with a spell slot too, `ritual_only` limits it to the
 	// ritual way (a spell with the ritual tag; not with also_with_slot) and
 	// `counts_as_known` lists it among the known spells without using any of the
-	// class's picks. A leveled spell cast through the grant is cast at its own level.
+	// class's picks. A leveled spell cast through the grant is cast at its own level, or at
+	// `cast_level` when that is set (see there).
 	// The material components are waived only when `no_material_components` is set, and
 	// only on the sheet and the cast sheet (the server never enforces components).
 	// `uses_cost` is how many uses of the resource each cast spends (0 and 1 are one);
@@ -2044,7 +2045,12 @@ type TableEffect struct {
 	Duration string `protobuf:"bytes,93,opt,name=duration,proto3" json:"duration,omitempty"`
 	// choice of a skill or a tool only: the player picks again after each rest of `duration`, apart from the sheet (a
 	// locked sheet takes the pick), and what is picked lasts until that rest. Required with `duration`.
-	DailyChoice   bool `protobuf:"varint,94,opt,name=daily_choice,json=dailyChoice,proto3" json:"daily_choice,omitempty"`
+	DailyChoice bool `protobuf:"varint,94,opt,name=daily_choice,json=dailyChoice,proto3" json:"daily_choice,omitempty"`
+	// granted_spell only: the level the grant casts the spell at, from the spell's own level to 9 (0 and
+	// empty: the spell's own level). The spell scales with that level (damage, healing, targets), and
+	// the cast spends no slot. A cast of the same spell with a slot (`also_with_slot`) uses the slot's
+	// level. Refused on a cantrip, with `ritual_only` and on any other effect type.
+	CastLevel     int32 `protobuf:"varint,95,opt,name=cast_level,json=castLevel,proto3" json:"cast_level,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2728,6 +2734,13 @@ func (x *TableEffect) GetDailyChoice() bool {
 		return x.DailyChoice
 	}
 	return false
+}
+
+func (x *TableEffect) GetCastLevel() int32 {
+	if x != nil {
+		return x.CastLevel
+	}
+	return 0
 }
 
 // TableFeature is a class or subclass feature, a race or subrace trait, or a
@@ -9420,7 +9433,7 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"\rlong_range_ft\x18\n" +
 	" \x01(\x05R\vlongRangeFt\x12\x1b\n" +
 	"\tweight_oz\x18\v \x01(\x05R\bweightOz\x12\x19\n" +
-	"\bprice_cp\x18\f \x01(\x05R\apriceCp\"\x83\x16\n" +
+	"\bprice_cp\x18\f \x01(\x05R\apriceCp\"\xa2\x16\n" +
 	"\vTableEffect\x12\x12\n" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x12\x16\n" +
 	"\x06target\x18\x02 \x01(\tR\x06target\x12\x12\n" +
@@ -9530,7 +9543,9 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"\x0eattack_penalty\x18Y \x01(\x05R\rattackPenalty\x12+\n" +
 	"\x11weapon_properties\x18[ \x03(\tR\x10weaponProperties\x12\x1a\n" +
 	"\bduration\x18] \x01(\tR\bduration\x12!\n" +
-	"\fdaily_choice\x18^ \x01(\bR\vdailyChoiceJ\x04\bZ\x10[\"\xca\x02\n" +
+	"\fdaily_choice\x18^ \x01(\bR\vdailyChoice\x12\x1d\n" +
+	"\n" +
+	"cast_level\x18_ \x01(\x05R\tcastLevelJ\x04\bZ\x10[\"\xca\x02\n" +
 	"\fTableFeature\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x17\n" +
 	"\aname_pt\x18\x02 \x01(\tR\x06namePt\x12\x1f\n" +
