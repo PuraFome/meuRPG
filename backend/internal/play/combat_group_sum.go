@@ -2,11 +2,13 @@ package play
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"maps"
 	"slices"
 
 	"connectrpc.com/connect"
+	"github.com/jackc/pgx/v5"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
@@ -126,7 +128,7 @@ func (s *Service) rollToTakeBack(ctx context.Context, c *combatTx, recent []play
 		return row, ev, nothing
 	}
 	if p.Status == pendingApplied {
-		if last, ok := lastAction(recent, c.enc.ID); !ok || last.ID != row.ID {
+		if !isLastAction(recent, c.enc.ID, row) {
 			return row, ev, nothing
 		}
 		return row, ev, nil
@@ -139,6 +141,50 @@ func (s *Service) rollToTakeBack(ctx context.Context, c *combatTx, recent []play
 		return row, ev, nothing
 	}
 	return row, ev, nil
+}
+
+// isLastAction says the event is the last action the master could undo in the session: the limit of the take-out of a damage applied
+// to an NPC or a creature (rollToTakeBack), and the condition of the listing that offers it (takeOutListing).
+func isLastAction(recent []playdb.ListRecentSessionEventsRow, encounterID string, row playdb.ListRecentSessionEventsRow) bool {
+	last, ok := lastAction(recent, encounterID)
+	return ok && last.ID == row.ID
+}
+
+// takeOutListing is the damage the attacker's last action applied to an NPC or a creature that a take-out could still undo: the
+// master's turn options list it beside the damage that waits, with the status APPLIED, so his screen offers "Tirar" on it. It
+// holds what takeOutOfGroup and removePartWrite check before anything is written, from the same functions: the damage is the
+// attacker's, applied, not a cast's, on a target that holds hit points, its roll is the last action (rollToTakeBack) and a part
+// of it can come out (mayComeOut). The checks that need the transaction (the target's hit points as the roll left them) stay
+// with the take-out, which refuses with UNDO_TARGET_CHANGED.
+func (s *Service) takeOutListing(ctx context.Context, d *encounterData, attacker playdb.Combatant) (playdb.PendingDamage, bool, error) {
+	recent, err := s.queries.ListRecentSessionEvents(ctx, playdb.ListRecentSessionEventsParams{GameSessionID: d.enc.GameSessionID, Limit: recentEvents})
+	if err != nil {
+		return playdb.PendingDamage{}, false, fmt.Errorf("read the latest events: %w", err)
+	}
+	row, ok := lastAction(recent, d.enc.ID)
+	if !ok || row.Kind != eventDamageRolled {
+		return playdb.PendingDamage{}, false, nil
+	}
+	ev, err := readEvent(row.Payload)
+	if err != nil || ev.Pending == "" || ev.Actor != attacker.ID {
+		return playdb.PendingDamage{}, false, nil
+	}
+	p, err := s.queries.GetPendingDamage(ctx, playdb.GetPendingDamageParams{EncounterID: d.enc.ID, ID: ev.Pending})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return p, false, nil
+	}
+	if err != nil {
+		return p, false, fmt.Errorf("find the pending damage: %w", err)
+	}
+	target, err := findCombatant(d.cs, p.TargetID, combatViewer{master: true})
+	if err != nil || p.Status != pendingApplied || p.CastID != nil || conv.OrZero(p.AttackerID) != attacker.ID || !holdsHP(target) {
+		return p, false, nil
+	}
+	if rolled, _, ok := rollEventOf(recent, p.ID); !ok || rolled.ID != row.ID {
+		return p, false, nil
+	}
+	parts, rolls := readParts(p.Parts), readPartRolls(p.PartRolls)
+	return p, slices.ContainsFunc(parts, func(x partRecord) bool { return mayComeOut(parts, rolls, x.Key) }), nil
 }
 
 // rollEventOf finds the event of a pending damage's roll that no undo took back, newest first.

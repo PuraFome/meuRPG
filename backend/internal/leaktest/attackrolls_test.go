@@ -417,6 +417,20 @@ func TestAttackRollsReachOnlyWhoMayReadThem(t *testing.T) {
 		t.Fatalf("the attack on the bandit = %v, want a hit that lists the source", strike.GetRoll())
 	}
 	onHuman := rollSmite(strike.GetPendingDamage().GetId(), "sneak-attack")
+	// The damage the smite rolled is applied to the bandit and is the last action: the master's turn options list it so his screen
+	// offers "Tirar", and the attacker's player reads the open damage alone (RN-10).
+	appliedListed := func(p *person) bool {
+		return slices.ContainsFunc(rt.optionsOf(p, labelToren).GetPendingDamages(), func(d *playv1.PendingDamage) bool {
+			return d.GetId() == strike.GetPendingDamage().GetId() && d.GetStatus() == playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_APPLIED
+		})
+	}
+	if !appliedListed(m) {
+		t.Fatal("the master's turn options do not list the applied damage a take-out could undo (the positive control)")
+	}
+	if appliedListed(caio) {
+		t.Error("the attacker's player's turn options list an applied damage: only the master gets it")
+	}
+	rt.ask(t, "the master lists the damage a take-out could undo")
 	removal := w.secrets.marker(kindRemovalReason, caio)
 	// The extra is one the roll line hides from the other players (#835): its name and key are the master's and Caio's, and the
 	// removal line reads "Outra fonte" to Ana, with no key and no reason.

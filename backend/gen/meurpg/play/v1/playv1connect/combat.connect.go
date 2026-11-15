@@ -946,8 +946,10 @@ type CombatServiceClient interface {
 	// typed_sum is the sum of those parts alone (between their dice and their dice times their
 	// faces, without any modifier), and typed_parts may name that damage type or its parts.
 	// What the other damage types rolled stays as it was; selected_extras and extras_chosen
-	// are ignored (the choice was made on the first roll). The damage is then worked out,
-	// applied and its riders asked as for a first roll.
+	// are ignored (the choice was made on the first roll). The roll spends nothing: the
+	// first roll paid what the parts cost (a Divine Smite's slot, a maneuver's use), so it
+	// goes through with no slot left. The damage is then worked out, applied and its riders
+	// asked as for a first roll.
 	//
 	// Errors:
 	//   - `not_found`: the pending damage is not in this combat, or the caller
@@ -1593,8 +1595,11 @@ type CombatServiceClient interface {
 	// An extra inside a group of two or more parts that share a damage type (the sum of the
 	// group was typed or rolled as one) comes out another way: the app undoes what the damage
 	// did (the hit points of an NPC or a creature, the temporary hit points, the rider offers
-	// and the effects the roll put on the target, the spent extras and uses, the windows and
-	// holds the damage opened), marks the part taken out with the reason, and the damage goes
+	// and the effects the roll put on the target, the windows and holds the damage opened),
+	// gives back the once-per-turn use of the part taken out (Sneak Attack) and nothing else
+	// the roll spent (a Divine Smite's slot and a maneuver's use stay spent: the roll of the new
+	// sum spends nothing, and nothing gives the slot back but the master's correction of the
+	// vitals), marks the part taken out with the reason, and the damage goes
 	// to AWAITING_GROUP_SUM, awaiting the sum of that damage type alone
 	// (PendingDamage.awaited_damage_type_key). RollDamage takes it, keeps what the other
 	// damage types rolled, works the damage out again, applies it (an NPC at once; a player's
@@ -3185,8 +3190,10 @@ type CombatServiceHandler interface {
 	// typed_sum is the sum of those parts alone (between their dice and their dice times their
 	// faces, without any modifier), and typed_parts may name that damage type or its parts.
 	// What the other damage types rolled stays as it was; selected_extras and extras_chosen
-	// are ignored (the choice was made on the first roll). The damage is then worked out,
-	// applied and its riders asked as for a first roll.
+	// are ignored (the choice was made on the first roll). The roll spends nothing: the
+	// first roll paid what the parts cost (a Divine Smite's slot, a maneuver's use), so it
+	// goes through with no slot left. The damage is then worked out, applied and its riders
+	// asked as for a first roll.
 	//
 	// Errors:
 	//   - `not_found`: the pending damage is not in this combat, or the caller
@@ -3832,8 +3839,11 @@ type CombatServiceHandler interface {
 	// An extra inside a group of two or more parts that share a damage type (the sum of the
 	// group was typed or rolled as one) comes out another way: the app undoes what the damage
 	// did (the hit points of an NPC or a creature, the temporary hit points, the rider offers
-	// and the effects the roll put on the target, the spent extras and uses, the windows and
-	// holds the damage opened), marks the part taken out with the reason, and the damage goes
+	// and the effects the roll put on the target, the windows and holds the damage opened),
+	// gives back the once-per-turn use of the part taken out (Sneak Attack) and nothing else
+	// the roll spent (a Divine Smite's slot and a maneuver's use stay spent: the roll of the new
+	// sum spends nothing, and nothing gives the slot back but the master's correction of the
+	// vitals), marks the part taken out with the reason, and the damage goes
 	// to AWAITING_GROUP_SUM, awaiting the sum of that damage type alone
 	// (PendingDamage.awaited_damage_type_key). RollDamage takes it, keeps what the other
 	// damage types rolled, works the damage out again, applies it (an NPC at once; a player's

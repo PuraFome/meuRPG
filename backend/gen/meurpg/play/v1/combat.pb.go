@@ -3055,7 +3055,9 @@ const (
 	// The master took an extra out of a damage with a reason ("o mestre tirou o
 	// Ataque Furtivo"): the actor is the attacker, the target the target, `key` the
 	// part's key and `key_name_pt` its name; the reason is `reason`, for the master
-	// and the attacker's player.
+	// and the attacker's player. Another player reads the line with `key_name_pt`
+	// only (the name the roll line gave the part, "Outra fonte" for one hidden from
+	// them), no `key` and no `reason`.
 	CombatLogKind_COMBAT_LOG_KIND_DAMAGE_PART_REMOVED CombatLogKind = 31
 	// A state began or ended (a rage, a dodge): `state`.
 	CombatLogKind_COMBAT_LOG_KIND_STATE_CHANGED CombatLogKind = 32
@@ -12976,6 +12978,12 @@ type GetTurnOptionsResponse struct {
 	AttackTargets []*AttackTargets `protobuf:"bytes,3,rep,name=attack_targets,json=attackTargets,proto3" json:"attack_targets,omitempty"`
 	// The damage this combatant still has to roll, or that waits for the
 	// master to apply. Only the master and the combatant's player get it.
+	// The master also gets, with the status APPLIED, the damage a
+	// RemoveDamagePart could still undo: the combatant's last action applied it
+	// to an NPC or a creature and nothing was done after it (the limit of the
+	// take-out; the target's hit points are checked when it is taken out). It
+	// is not waiting for anything: only the master's "Tirar" works on it. The
+	// combatant's player never gets it.
 	PendingDamages []*PendingDamage `protobuf:"bytes,4,rep,name=pending_damages,json=pendingDamages,proto3" json:"pending_damages,omitempty"`
 	// For each spell of options.spells, and each save cantrip of options.attacks,
 	// who it can target, as the caller sees them: the caster itself and the other
