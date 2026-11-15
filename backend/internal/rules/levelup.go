@@ -1318,7 +1318,20 @@ func checkLevelUpChoices(before, after Build, classKey string, swap PickSwap, sw
 			return refuse("full.feature_choice_text", LevelUpReasonLocked, "a text already written does not change")
 		}
 	}
-	return checkChoiceProblems(c.choiceSet(before), c.choiceSet(after))
+	return checkChoiceProblems(c.choiceSet(before), c.choiceSet(after), openedByPick(before, after))
+}
+
+// openedByPick are the plain options the new sheet picked that the sheet before did not have:
+// the choices they open (the Pact of the Tome's cantrips, the Book of Ancient Secrets' rituals)
+// may stay open at this level, and the next level asks them as late choices.
+func openedByPick(before, after Build) map[string]bool {
+	opened := map[string]bool{}
+	for _, k := range after.FeatureChoices {
+		if _, _, scoped := SplitScopedChoice(k); !scoped && !slices.Contains(before.FeatureChoices, k) {
+			opened[k] = true
+		}
+	}
+	return opened
 }
 
 // levelUpChoicesField is the sheet field of the choice engine's picks.
@@ -1343,7 +1356,9 @@ func checkRemovedChoices(before, after Build, classKey string, swap PickSwap, sw
 // checkChoiceProblems refuses the first problem of the sheet after's choices that
 // the sheet before did not have: a choice left open (a late one, which an earlier
 // level left open, or a new one), an unmet prerequisite or an option not offered.
-func checkChoiceProblems(setBefore, setAfter ChoiceSet) *LevelUpError {
+// A choice that a plain option picked at this level opens (opened) may stay open:
+// the next level asks it as a late choice.
+func checkChoiceProblems(setBefore, setAfter ChoiceSet, opened map[string]bool) *LevelUpError {
 	had := map[string]bool{}
 	for _, p := range setBefore.ChoiceProblems(false) {
 		had[p.Code+"|"+p.ChoiceKey+"|"+p.OptionKey] = true
@@ -1352,7 +1367,22 @@ func checkChoiceProblems(setBefore, setAfter ChoiceSet) *LevelUpError {
 	for _, p := range setBefore.Pending() {
 		late[p.ChoiceKey] = true
 	}
+	asked := map[string]bool{}
+	for _, g := range setBefore.Groups {
+		for _, ch := range g.Choices {
+			asked[ch.Key] = true
+		}
+	}
+	feature := map[string]string{}
+	for _, g := range setAfter.Groups {
+		for _, ch := range g.Choices {
+			feature[ch.Key] = ch.FeatureKey
+		}
+	}
 	for _, p := range setAfter.ChoiceProblems(true) {
+		if p.Code == ChoiceProblemMissing && !asked[p.ChoiceKey] && opened[feature[p.ChoiceKey]] {
+			continue
+		}
 		if lerr := choiceProblemRefusal(p, late[p.ChoiceKey], had[p.Code+"|"+p.ChoiceKey+"|"+p.OptionKey]); lerr != nil {
 			return lerr
 		}
