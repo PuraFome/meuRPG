@@ -4,6 +4,7 @@ import type {
   RaceOptionVm,
   RulesCatalogVm,
   SubraceOptionVm,
+  WeaponOptionVm,
 } from './character-editor.types';
 import type { CasterSection } from './class-blocks';
 import {
@@ -23,13 +24,7 @@ import {
   weaponGroups,
 } from './catalog-views';
 
-const SRD = {
-  fromTable: false,
-  archived: false,
-  off: false,
-  category: 'simple' as const,
-  damage: '1d4',
-};
+const SRD = { fromTable: false, archived: false, off: false };
 
 const klass = (over: Partial<ClassOptionVm> = {}): ClassOptionVm => ({
   key: 'class:wizard',
@@ -303,9 +298,11 @@ describe('sectionHeadingOf', () => {
 });
 
 describe('weaponGroups (#580 board 580-16)', () => {
-  const w = (key: string, over: Partial<typeof SRD & { namePt: string }> = {}) => ({
+  const w = (key: string, over: Partial<WeaponOptionVm> = {}): WeaponOptionVm => ({
     key,
     namePt: key,
+    category: 'simple',
+    damage: '1d4',
     ...SRD,
     ...over,
   });

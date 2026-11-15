@@ -46,7 +46,7 @@ import {
 import { ClassBlockFields } from './class-block/class-block';
 import { GrantedSpells } from './granted-spells/granted-spells';
 import type { ClassBlock } from './class-blocks';
-import { subclassWaits } from './catalog-views';
+import { subclassWaits, weaponDetail } from './catalog-views';
 import { CUTTING_WORDS_OPTIONS } from './editor-options';
 import { EditorLoader } from './editor-loader';
 import { type PageState, startingXp } from './editor-state';
@@ -246,6 +246,7 @@ export class CharacterEditor {
 
   protected readonly cuttingWordsOptions = CUTTING_WORDS_OPTIONS;
   protected readonly isFullSheetKind = isFullSheetKind;
+  protected readonly weaponDetail = weaponDetail;
   protected readonly stepLabels = EDITOR_STEP_LABELS;
   protected readonly alignmentKeys = Object.keys(ALIGNMENT_LABELS) as AlignmentKey[];
   protected readonly alignmentLabel = (key: AlignmentKey) => ALIGNMENT_LABELS[key];

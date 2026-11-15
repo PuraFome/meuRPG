@@ -340,6 +340,7 @@ describe('a table class, race and background in the editor (E10-02 state 5)', ()
 
   it("lists the weapons of the table first, then the SRD's, each with its category and damage (board 580-16, state 4)", async () => {
     const { fixture, el } = await render();
+    await openStep(fixture, 'Equipamento');
     Array.from(el.querySelectorAll<HTMLElement>('mat-form-field'))
       .find((f) => f.querySelector('mat-label')?.textContent?.trim() === 'Armas')!
       .querySelector<HTMLElement>('.mat-mdc-select-trigger')!

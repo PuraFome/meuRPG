@@ -1833,6 +1833,8 @@ message Weapon {
   bool archived = 6;
   // Switched off for the players (see Race.off); the weapon stays on a sheet that carries it, marked.
   bool off = 7;
+  // The damage dice, such as "1d6", for the row of a list of weapons; empty for a weapon that deals none (a net).
+  string damage = 8;
 }
 
 // Spell is a spell from the rules content.
