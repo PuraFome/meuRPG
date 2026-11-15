@@ -14,6 +14,7 @@ export function featuresVm(full: GenFullSheet, derived: GenDerivedSheet) {
     descriptionPtMissing: f.descriptionPtMissing,
     descriptionPtOnly: f.descriptionPtOnly,
     summaryPt: f.summaryPt,
+    optionOf: f.optionOfPt,
     lost: lost.has(f.key),
   }));
 }

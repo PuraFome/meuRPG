@@ -392,6 +392,7 @@ describe('the sheet maps armor_class_description, features and hints (integrator
           descriptionPtMissing: false,
           descriptionPtOnly: false,
           summaryPt: '',
+          optionOfPt: '',
         },
       ],
       hints: [
@@ -648,6 +649,7 @@ describe('the sheet maps the breath weapon, the resistances and the one-line rul
           descriptionPtMissing: true,
           descriptionPtOnly: false,
           summaryPt: '+1 na CA com armadura.',
+          optionOfPt: '',
         },
       ],
     };
@@ -687,6 +689,7 @@ describe('the sheet lists the feats a character took with the features (MR-025)'
           descriptionPtMissing: false,
           descriptionPtOnly: true,
           summaryPt: '',
+          optionOfPt: '',
         },
       ],
     };

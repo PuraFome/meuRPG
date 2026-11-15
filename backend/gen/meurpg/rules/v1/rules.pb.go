@@ -7405,8 +7405,11 @@ type Feature struct {
 	// True when the text exists only in Portuguese (a table feature): `description` already
 	// is the Portuguese, and there is no English to offer.
 	DescriptionPtOnly bool `protobuf:"varint,9,opt,name=description_pt_only,json=descriptionPtOnly,proto3" json:"description_pt_only,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// For an option the character picked (a fighting style, an invocation, a feat's option), the Portuguese name
+	// of the feature, trait or feat that offers it; empty for every other feature. The sheet reads "Opção de <it>".
+	OptionOfPt    string `protobuf:"bytes,10,opt,name=option_of_pt,json=optionOfPt,proto3" json:"option_of_pt,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Feature) Reset() {
@@ -7500,6 +7503,13 @@ func (x *Feature) GetDescriptionPtOnly() bool {
 		return x.DescriptionPtOnly
 	}
 	return false
+}
+
+func (x *Feature) GetOptionOfPt() string {
+	if x != nil {
+		return x.OptionOfPt
+	}
+	return ""
 }
 
 // Proficiencies lists armor, weapon and tool proficiencies, as Portuguese
@@ -15079,7 +15089,7 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"improvised\x12\x16\n" +
 	"\x06thrown\x18\x1c \x01(\bR\x06thrown\x12%\n" +
 	"\x0eammunition_key\x18\x1d \x01(\tR\rammunitionKeyB\x12\n" +
-	"\x10_ammunition_left\"\xb3\x02\n" +
+	"\x10_ammunition_left\"\xd5\x02\n" +
 	"\aFeature\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x17\n" +
@@ -15090,7 +15100,10 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"summary_pt\x18\x06 \x01(\tR\tsummaryPt\x12%\n" +
 	"\x0edescription_pt\x18\a \x01(\tR\rdescriptionPt\x124\n" +
 	"\x16description_pt_missing\x18\b \x01(\bR\x14descriptionPtMissing\x12.\n" +
-	"\x13description_pt_only\x18\t \x01(\bR\x11descriptionPtOnly\"U\n" +
+	"\x13description_pt_only\x18\t \x01(\bR\x11descriptionPtOnly\x12 \n" +
+	"\foption_of_pt\x18\n" +
+	" \x01(\tR\n" +
+	"optionOfPt\"U\n" +
 	"\rProficiencies\x12\x14\n" +
 	"\x05armor\x18\x01 \x03(\tR\x05armor\x12\x18\n" +
 	"\aweapons\x18\x02 \x03(\tR\aweapons\x12\x14\n" +

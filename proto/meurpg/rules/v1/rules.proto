@@ -1464,6 +1464,9 @@ message Feature {
   // True when the text exists only in Portuguese (a table feature): `description` already
   // is the Portuguese, and there is no English to offer.
   bool description_pt_only = 9;
+  // For an option the character picked (a fighting style, an invocation, a feat's option), the Portuguese name
+  // of the feature, trait or feat that offers it; empty for every other feature. The sheet reads "Opção de <it>".
+  string option_of_pt = 10;
 }
 
 // Proficiencies lists armor, weapon and tool proficiencies, as Portuguese

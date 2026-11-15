@@ -1183,6 +1183,9 @@ type Feature struct {
 	// SummaryPT is the rule in one line, in Portuguese, for an option the player
 	// picked (a fighting style, an invocation); empty for the others.
 	SummaryPT string `json:",omitempty"`
+	// OptionOfPT is, for an option the character picked, the Portuguese name of the feature, trait or feat that
+	// offers it ("Truques de lâmina"); empty for the other features.
+	OptionOfPT string `json:"-"`
 }
 
 // Proficiency is an armor, weapon or tool proficiency.

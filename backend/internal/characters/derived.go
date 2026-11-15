@@ -220,6 +220,7 @@ func featureToProto(f rules.Feature) *rulesv1.Feature {
 		DescriptionPt:        strings.Join(f.DescriptionPT, "\n\n"),
 		DescriptionPtMissing: f.DescriptionPTMissing,
 		DescriptionPtOnly:    f.DescriptionPTOnly,
+		OptionOfPt:           f.OptionOfPT,
 	}
 }
 
