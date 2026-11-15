@@ -1,6 +1,11 @@
 import { create } from '@bufbuild/protobuf';
 
-import { GetTurnOptionsResponseSchema, ReadiedKind } from '../../../gen/meurpg/play/v1/combat_pb';
+import {
+  AreaPlacement,
+  GetTurnOptionsResponseSchema,
+  ReadiedKind,
+  SpellTargetsSchema,
+} from '../../../gen/meurpg/play/v1/combat_pb';
 import {
   ActionEconomy,
   ActionOptionSchema,
@@ -79,6 +84,30 @@ const scorching = {
   reason: { code: DisabledReasonCode.NO_SLOT },
   slots: [],
 };
+const spellOf = (key: string, name: string, level = 1) => ({
+  spell: { key, name, namePt: name, level },
+  economy: ActionEconomy.ACTION,
+  enabled: true,
+  slots: [{ level, free: 2, total: 2 }],
+});
+const charm = spellOf('spell:charm-person', 'Enfeitiçar Pessoa');
+const burning = spellOf('spell:burning-hands', 'Mãos Flamejantes');
+const sleep = spellOf('spell:sleep', 'Sono');
+const bless = spellOf('spell:bless', 'Bênção');
+const saveCantrip = (key: string, name: string) => ({
+  attack: {
+    key,
+    name,
+    namePt: name,
+    saveDc: 13,
+    damage: '1d8',
+    kind: AttackKind.SPELL,
+    rangeFt: 60,
+  },
+  enabled: true,
+});
+const sacredFlame = saveCantrip('spell:sacred-flame', 'Chama Sagrada');
+const thunderclap = saveCantrip('spell:thunderclap', 'Trovão');
 const std = (key: string, namePt: string, over: Record<string, unknown> = {}) => ({
   action: { key, namePt, economy: ActionEconomy.ACTION },
   enabled: true,
@@ -108,30 +137,23 @@ function options(over: Record<string, unknown[]> = {}): TurnOptions {
 
 describe('Ready (#582): the kinds', () => {
   it('lists Ataque, Mover and Outra for a fighter, with no Magia', () => {
-    const kinds = readyKinds(options(), { theatre: false, noSpeed: false });
+    const kinds = readyKinds(options());
     expect(kinds.map((k) => k.label)).toEqual(['Ataque', 'Mover', 'Outra']);
-    expect(kinds.every((k) => k.blocked === '')).toBe(true);
+    expect(kinds.filter((k) => k.key !== 'move').every((k) => k.blocked === '')).toBe(true);
   });
 
   it('puts Magia second for a caster, whether it has a spell of the list or only a cantrip that attacks', () => {
-    const list = readyKinds(options({ spells: [missiles] }), { theatre: false, noSpeed: false });
+    const list = readyKinds(options({ spells: [missiles] }));
     expect(list.map((k) => k.label)).toEqual(['Ataque', 'Magia', 'Mover', 'Outra']);
-    const cantrip = readyKinds(options({ attacks: [fireBolt] }), {
-      theatre: false,
-      noSpeed: false,
-    });
+    const cantrip = readyKinds(options({ attacks: [fireBolt] }));
     expect(cantrip.map((k) => k.label)).toEqual(['Ataque', 'Magia', 'Mover', 'Outra']);
     expect(cantrip[0].blocked).toBe('Você não tem um ataque para preparar.');
   });
 
-  it('turns Mover off with its reason: no map, or no speed', () => {
-    const theatre = readyKinds(options(), { theatre: true, noSpeed: false });
-    expect(theatre.find((k) => k.key === 'move')?.blocked).toBe(
-      'Sem mapa neste combate: não há para onde andar.',
-    );
-    const grappled = readyKinds(options(), { theatre: false, noSpeed: true });
-    expect(grappled.find((k) => k.key === 'move')?.blocked).toBe(
-      'Você está sem deslocamento agora.',
+  it('turns Mover off with its reason, whatever the map and the speed: the window does not move the token yet (#856)', () => {
+    const move = readyKinds(options()).find((k) => k.key === 'move');
+    expect(move?.blocked).toBe(
+      'Mover pela janela ainda não dá: por enquanto o mestre move a ficha.',
     );
   });
 
@@ -181,6 +203,47 @@ describe('Ready (#582): the lists', () => {
       'É uma reação: só uma magia de 1 ação pode ser preparada.',
       'É uma ação bônus: só uma magia de 1 ação pode ser preparada.',
       'Sem espaços de 2º círculo.',
+    ]);
+  });
+
+  it('turns off, with a reason, the spell the window cannot release: darts, a point or an area, several targets', () => {
+    const targets = (spellKey: string, over: Record<string, unknown> = {}) =>
+      create(SpellTargetsSchema, { spellKey, maxTargets: 1, ...over } as never);
+    const rows = readySpellRows(
+      options({ spells: [missiles, shield, charm, burning, sleep, bless] }),
+      [
+        targets('spell:magic-missile', { maxTargets: 3, darts: [{ slotLevel: 1, darts: 3 }] }),
+        targets('spell:charm-person'),
+        targets('spell:burning-hands', { maxTargets: 0, placement: AreaPlacement.DIRECTION }),
+        targets('spell:sleep', { maxTargets: 0, placement: AreaPlacement.POINT }),
+        targets('spell:bless', { maxTargets: 3 }),
+      ],
+    );
+    const why =
+      'Soltar pela janela ainda não dá para esta magia: ela pede dardos, alvos ou um ponto no mapa.';
+    expect(rows.map((r) => [r.id, r.blocked])).toEqual([
+      ['spell:magic-missile', why],
+      ['spell:shield', 'É uma reação: só uma magia de 1 ação pode ser preparada.'],
+      ['spell:charm-person', ''],
+      ['spell:burning-hands', why],
+      ['spell:sleep', why],
+      ['spell:bless', why],
+    ]);
+  });
+
+  it('turns off a save cantrip that asks for an area, and keeps the cantrip that attacks', () => {
+    const rows = readySpellRows(options({ attacks: [fireBolt, sacredFlame, thunderclap] }), [
+      create(SpellTargetsSchema, { spellKey: 'spell:sacred-flame', maxTargets: 1 }),
+      create(SpellTargetsSchema, {
+        spellKey: 'spell:thunderclap',
+        maxTargets: 0,
+        placement: AreaPlacement.CASTER,
+      }),
+    ]);
+    expect(rows.map((r) => [r.id, r.blocked === ''])).toEqual([
+      ['spell:fire-bolt', true],
+      ['spell:sacred-flame', true],
+      ['spell:thunderclap', false],
     ]);
   });
 

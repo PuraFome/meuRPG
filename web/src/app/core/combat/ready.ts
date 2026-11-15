@@ -1,4 +1,9 @@
-import { type GetTurnOptionsResponse, ReadiedKind } from '../../../gen/meurpg/play/v1/combat_pb';
+import {
+  AreaPlacement,
+  type GetTurnOptionsResponse,
+  ReadiedKind,
+  type SpellTargets,
+} from '../../../gen/meurpg/play/v1/combat_pb';
 import {
   ActionEconomy,
   AttackKind,
@@ -62,8 +67,12 @@ export interface ReadyRow {
   readonly spell: boolean;
 }
 
-export const NO_MAP_TEXT = 'Sem mapa neste combate: não há para onde andar.';
-export const NO_SPEED_TEXT = 'Você está sem deslocamento agora.';
+/** The window has no way yet to move the token of a readied move: the master does it (#856). */
+export const MOVE_PENDING_TEXT =
+  'Mover pela janela ainda não dá: por enquanto o mestre move a ficha.';
+/** A spell whose cast needs darts, several targets or a point: `AnswerReaction` carries a creature only (#857). */
+export const SPELL_PENDING_TEXT =
+  'Soltar pela janela ainda não dá para esta magia: ela pede dardos, alvos ou um ponto no mapa.';
 export const NO_ATTACK_TEXT = 'Você não tem um ataque para preparar.';
 export const NO_OTHER_TEXT = 'Nenhuma outra ação pode ser preparada agora.';
 export const EMPTY_TRIGGER_TEXT = 'Escreva quando a ação dispara.';
@@ -110,14 +119,6 @@ function heldOthers(options: TurnOptions): readonly ActionOption[] {
   return options.standardActions.filter((a) => a.action && !NOT_HELD.test(a.action.key));
 }
 
-/** Where the combatant stands, for the kinds that depend on it. */
-export interface ReadyContext {
-  /** A combat with no map: there is no square to walk to. */
-  readonly theatre: boolean;
-  /** The combatant has no speed now (grappled, for one). */
-  readonly noSpeed: boolean;
-}
-
 /**
  * Whether Mover is off for lack of speed, and how far the sheet says it goes. The walking speed is not the readier's speed: the
  * server holds the most of the speeds on any surface (`readyMoveFt`), so a swimmer or a flier with 0 to walk can ready a move. Only
@@ -133,21 +134,21 @@ export function readySpeed(
   return { noSpeed, speedFt: best === undefined || best === walkFt ? walkFt : 0 };
 }
 
-/** The kind buttons, in the board's order: "Magia" only for a combatant with spells, "Mover" off with its reason when it cannot walk. */
-export function readyKinds(options: TurnOptions, ctx: ReadyContext): readonly ReadyKindChoice[] {
+/** The kind buttons, in the board's order: "Magia" only for a combatant with spells; "Mover" is off, with its reason, until the window moves the token (#856). */
+export function readyKinds(options: TurnOptions): readonly ReadyKindChoice[] {
   const hasSpells = readySpellRows(options).length > 0;
   return KINDS.filter((k) => k.key !== 'spell' || hasSpells).map((k) => ({
     ...k,
-    blocked: kindBlocked(k.key, options, ctx),
+    blocked: kindBlocked(k.key, options),
   }));
 }
 
-function kindBlocked(kind: ReadyKind, options: TurnOptions, ctx: ReadyContext): string {
+function kindBlocked(kind: ReadyKind, options: TurnOptions): string {
   switch (kind) {
     case 'attack':
       return heldAttacks(options).length === 0 ? NO_ATTACK_TEXT : '';
     case 'move':
-      return ctx.theatre ? NO_MAP_TEXT : ctx.noSpeed ? NO_SPEED_TEXT : '';
+      return MOVE_PENDING_TEXT;
     case 'other':
       return heldOthers(options).length === 0 ? NO_OTHER_TEXT : '';
     default:
@@ -208,11 +209,35 @@ function spellBlocked(o: SpellOption): string {
 }
 
 /**
+ * Whether the window can release a spell today: it casts on the one creature the readier named (or the one it picks), so a spell that
+ * wants darts, a placed area (a point or a direction), or any number or several targets cannot. Read from what `GetTurnOptions` says of
+ * the spell (`spell_targets`); with no entry (an attack cantrip, which is released as an attack) nothing is known against it. A spell
+ * that targets only the caster has `max_targets` 0 like an area in a combat with no map, so it is off too.
+ */
+function releaseBlocked(all: readonly SpellTargets[], key: string): string {
+  const t = all.find((x) => x.spellKey === key);
+  if (!t) {
+    return '';
+  }
+  const single =
+    t.maxTargets === 1 && t.darts.length === 0 && t.placement === AreaPlacement.UNSPECIFIED;
+  return single ? '' : SPELL_PENDING_TEXT;
+}
+
+/** "1º círculo · 1 ação · Evocação ...": the line under a spell's name. */
+function spellSub(o: SpellOption, level: number, summaries: ReadonlyMap<string, string>): string {
+  const line = spellLine(o, summaries.get(o.spell?.key ?? '') ?? '');
+  const action = o.economy === ActionEconomy.ACTION ? '1 ação' : '';
+  return tight(joinDots([circleLabel(level), action, line].filter(Boolean)));
+}
+
+/**
  * The spells: the cantrips that attack, then the spells of the list the server sends. A spell a feature grants is not offered (the
  * server holds the class spells only). A spell that is not of 1 action, or has no slot, is listed with its reason.
  */
 export function readySpellRows(
   options: TurnOptions,
+  spellTargets: readonly SpellTargets[] = [],
   summaries: ReadonlyMap<string, string> = new Map(),
 ): readonly ReadyRow[] {
   const cantrips: ReadyRow[] = cantripAttacks(options).map((o) => ({
@@ -226,7 +251,7 @@ export function readySpellRows(
         rangeText(o.attack!),
       ]),
     ),
-    blocked: '',
+    blocked: releaseBlocked(spellTargets, o.attack?.key ?? ''),
     level: 0,
     slots: [],
     spell: true,
@@ -238,16 +263,8 @@ export function readySpellRows(
       return {
         id: o.spell?.key ?? '',
         title: o.spell?.namePt || o.spell?.name || '',
-        sub: tight(
-          joinDots(
-            [
-              circleLabel(level),
-              o.economy === ActionEconomy.ACTION ? '1 ação' : '',
-              spellLine(o, summaries.get(o.spell?.key ?? '') ?? ''),
-            ].filter(Boolean),
-          ),
-        ),
-        blocked: spellBlocked(o),
+        sub: spellSub(o, level, summaries),
+        blocked: spellBlocked(o) || releaseBlocked(spellTargets, o.spell?.key ?? ''),
         level,
         slots: level > 0 ? slotsOf(o) : [],
         spell: true,

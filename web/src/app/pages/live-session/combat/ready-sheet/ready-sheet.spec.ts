@@ -9,6 +9,7 @@ import {
   EncounterBlockedSchema,
   EncounterSchema,
   ReadiedKind,
+  SpellTargetsSchema,
 } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import {
   ActionEconomy,
@@ -65,6 +66,12 @@ const missiles = {
     { level: 2, free: 1, total: 2 },
   ],
 };
+const charm = {
+  spell: { key: 'spell:charm-person', name: 'Charm Person', namePt: 'Enfeitiçar Pessoa', level: 1 },
+  economy: ActionEconomy.ACTION,
+  enabled: true,
+  slots: [{ level: 1, free: 2, total: 4 }],
+};
 const shield = {
   spell: { key: 'spell:shield', name: 'Shield', namePt: 'Escudo Arcano', level: 1 },
   economy: ActionEconomy.REACTION,
@@ -105,6 +112,7 @@ describe('ReadySheet (#582)', () => {
       ownerLabel: 'Tor',
       options: options(),
       summaries: new Map(),
+      spellTargets: [],
       theatre: false,
       noSpeed: false,
       speedFt: 25,
@@ -232,37 +240,37 @@ describe('ReadySheet (#582)', () => {
     expect(close).toHaveBeenCalledWith(true);
   });
 
-  it('turns Mover off with its reason when the combat has no map, and says the limit when it has one', () => {
-    const none = render({ theatre: true });
-    const move = Array.from(none.el.querySelectorAll('.kind')).find((b) =>
-      flat(b).includes('Mover'),
-    )!;
-    expect(move.classList).toContain('kind--off');
-    none.click(move as HTMLElement);
-    expect(flat(none.el.querySelector('#ready-kind-why'))).toContain(
-      'Sem mapa neste combate: não há para onde andar.',
-    );
-    const ok = render();
-    ok.click(ok.button('Mover'));
-    expect(flat(ok.el.querySelector('#ready-move'))).toContain(
-      'Você anda até 7,5 m quando o mestre disparar.',
-    );
-    expect(ok.el.querySelector('.pick__legend')).toBeNull();
+  it('turns Mover off with its reason, on a map or not, and "Preparar" cannot send it (#856)', () => {
+    const why = 'Mover pela janela ainda não dá: por enquanto o mestre move a ficha.';
+    for (const theatre of [true, false]) {
+      const r = render({ theatre });
+      const move = Array.from(r.el.querySelectorAll('.kind')).find((b) =>
+        flat(b).includes('Mover'),
+      )!;
+      expect(move.classList).toContain('kind--off');
+      r.click(move as HTMLElement);
+      expect(flat(r.el.querySelector('#ready-kind-why'))).toContain(why);
+      r.type('Quando Tor recuar, corro até a porta');
+      expect(r.button('Preparar').getAttribute('aria-disabled')).toBe('true');
+      r.click(r.button('Preparar'));
+      expect(readyAction).not.toHaveBeenCalled();
+    }
   });
 
-  it('readies a move with no key and no spell', async () => {
-    readyAction.mockResolvedValue(create(EncounterSchema, { id: 'enc' }));
-    const { button, click, type, settle } = render();
-    click(button('Mover'));
-    type('Quando Tor recuar, corro até a porta');
-    click(button('Preparar'));
-    await settle();
-    expect(readyAction.mock.calls[0][0]).toMatchObject({
-      kind: ReadiedKind.MOVE,
-      actionKey: '',
-      spellKey: '',
-      slotLevel: 0,
+  it('writes the reason in the card of a spell the window cannot release, and lets the others be held', () => {
+    const { el, button, click } = render({
+      options: options({ spells: [missiles, charm] }),
+      spellTargets: [
+        create(SpellTargetsSchema, { spellKey: 'spell:magic-missile', maxTargets: 3 }),
+        create(SpellTargetsSchema, { spellKey: 'spell:charm-person', maxTargets: 1 }),
+      ],
     });
+    click(button('Magia'));
+    const cards = Array.from(el.querySelectorAll('label.opt'));
+    expect(cards[0].classList).toContain('opt--off');
+    expect(flat(cards[0])).toContain('Soltar pela janela ainda não dá para esta magia');
+    expect(cards[1].classList).not.toContain('opt--off');
+    expect(flat(cards[1])).toContain('Enfeitiçar Pessoa');
   });
 
   it('lists "Outra" as Esquivar and Procurar and sends the one chosen', async () => {
