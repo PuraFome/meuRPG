@@ -240,15 +240,15 @@ test(
       await p.getByRole('button', { name: /^Confirmar/ }).click();
       // This table is called "Crítico" too, and the session bar's back link says so (not on a phone): the first one shown is the roll's.
       await expect(p.getByText('Crítico').filter({ visible: true }).first()).toBeVisible();
-      // The hint says what to roll under the table's rule, with the maximum as the fixed part (1d8: 8), and the browser does no dice math.
-      await expect(p.getByText(/Acerto crítico: o máximo mais uma rolagem\. O máximo dos dados \(8\) já vale sem rolar; role 1d8 uma vez\./)).toBeVisible();
-      await expect(p.getByText('Role 1d8 e digite só o que saiu, de 1 a 8. O app soma o resto.')).toBeVisible();
-      await p.getByLabel(/Role 1d8 para o dano/).fill('5');
-      // The total shown before it is sent is the one the server records: 5 typed + 8 (the critical's maximum) + 3 (the modifier) = 16.
-      await expect(p.getByText('+ 8 do crítico + 3 de modificador')).toBeVisible();
-      await expect(p.getByText('5 + 11 = 16')).toBeVisible();
+      // The hint says what to roll under the table's rule, with the maximum as the fixed part (Toren holds the longsword in both hands, 1d10: 10), and the browser does no dice math.
+      await expect(p.getByText(/Acerto crítico: o máximo mais uma rolagem\. O máximo dos dados \(10\) já vale sem rolar; role 1d10 uma vez\./)).toBeVisible();
+      await expect(p.getByText('Role 1d10 e digite só o que saiu, de 1 a 10. O app soma o resto.')).toBeVisible();
+      await p.getByLabel(/Role 1d10 para o dano/).fill('5');
+      // The total shown before it is sent is the one the server records: 5 typed + 10 (the critical's maximum) + 3 (the modifier) = 18.
+      await expect(p.getByText('+ 10 do crítico + 3 de modificador')).toBeVisible();
+      await expect(p.getByText('5 + 13 = 18')).toBeVisible();
       await p.getByRole('button', { name: /^Confirmar/ }).click();
-      await expect(p.getByText('5 + 11 = 16 de dano cortante · dado físico')).toBeVisible();
+      await expect(p.getByText('5 + 13 = 18 de dano cortante · dado físico')).toBeVisible();
     } finally {
       await t.done();
     }

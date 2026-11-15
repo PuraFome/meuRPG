@@ -6076,8 +6076,9 @@ async function scanTheatreCritical(browser: Browser, colorScheme: 'light' | 'dar
     await p.getByLabel(/Role 1d20 para Espada longa/).fill('20');
     await p.getByRole('button', { name: /^Confirmar/ }).click();
     await expect(p.getByText(/o máximo mais uma rolagem/).first()).toBeVisible();
-    await p.getByLabel(/Role 1d8 para o dano/).fill('5');
-    await expect(p.getByText('5 + 11 = 16')).toBeVisible();
+    // Toren holds the longsword in both hands (no shield): the die is the two-handed 1d10, so 5 typed + 10 (the maximum) + 3.
+    await p.getByLabel(/Role 1d10 para o dano/).fill('5');
+    await expect(p.getByText('5 + 13 = 18')).toBeVisible();
     await expectScreenPasses(p, `Dano do crítico, dado físico ${where}`);
   } finally {
     await master.close();
