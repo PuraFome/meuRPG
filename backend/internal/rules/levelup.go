@@ -1060,7 +1060,7 @@ func applyPicks(after *Build, ch LevelUpChoices, c *content) {
 	after.SpellsPrepared = append(after.SpellsPrepared, ch.Prepared...)
 	applySwap(after, ch.Swap)
 	if ch.SwapInvocation != "" {
-		after.FeatureChoices = slices.DeleteFunc(after.FeatureChoices, func(k string) bool { return k == ch.SwapInvocation })
+		after.FeatureChoices = slices.DeleteFunc(after.FeatureChoices, func(k string) bool { return k == ch.SwapInvocation || ownPick(ch.SwapInvocation, k) })
 	}
 	after.FeatureChoices = append(after.FeatureChoices, ch.LateChoices...)
 	after.FeatureChoices = append(after.FeatureChoices, ch.FeatureChoices...)
@@ -1329,10 +1329,11 @@ const levelUpChoicesField = "full.feature_choice_keys"
 func checkRemovedChoices(before, after Build, classKey string, swap PickSwap, swapped bool, c *content) *LevelUpError {
 	var gone []string
 	for _, k := range before.FeatureChoices {
-		if !slices.Contains(after.FeatureChoices, k) && (!swapped || swap.Group == SwapGroupCantrip || swap.From != k) {
+		if !slices.Contains(after.FeatureChoices, k) && (!swapped || swap.Group == SwapGroupCantrip || (swap.From != k && !ownPick(swap.From, k))) {
 			gone = append(gone, k)
 		}
 	}
+	gone = slices.DeleteFunc(slices.Clone(gone), func(k string) bool { return ownedByAnyOf(gone, k) })
 	if len(gone) > 1 || (len(gone) == 1 && (classKey != classWarlock || !c.isInvocation(gone[0]))) {
 		return refuse(levelUpChoicesField, LevelUpReasonFeatureChoice, "an option was removed")
 	}

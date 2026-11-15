@@ -16,6 +16,7 @@ import (
 const (
 	halfElfBonusCount = 2
 	tomeCantrips      = 3
+	bookRitualPicks   = 2
 	signatureSpells   = 2
 )
 
@@ -183,6 +184,9 @@ func (cb *choiceBuilder) invocations(oc ownedClass, idx int) {
 	}
 	g := cb.group(ChoiceOriginClass, oc.key, last, idx)
 	cb.optionChoice(g, invocationsFeature, known, inv.Options)
+	if slices.Contains(cb.plain, bookOfAncientSecrets) {
+		cb.bookRituals(g)
+	}
 }
 
 // enemyTitles and terrainTitles are the titles of the 2nd and 3rd pick of a
@@ -361,6 +365,23 @@ func (cb *choiceBuilder) tomeCantrips(g *groupBuild) {
 	var keys []string
 	for _, e := range c.spellEntries {
 		if e.Level == 0 && !e.Archived {
+			keys = append(keys, e.Key)
+		}
+	}
+	cb.spellOptions(ch, keys)
+	cb.takeScoped(ch)
+}
+
+// bookRituals are the two rituals of the Book of Ancient Secrets: 1st-level spells with
+// the ritual tag, from any class (SRD 5.1, Warlock, Eldritch Invocations).
+func (cb *choiceBuilder) bookRituals(g *groupBuild) {
+	ch := cb.addChoice(g, &Choice{
+		Key: bookRitualsKey, FeatureKey: bookOfAncientSecrets, Kind: ChoiceKindSpells, TitlePT: "Rituais do Livro", Picks: bookRitualPicks,
+		HintPT: "Livro das Sombras: 2 magias de 1º nível com a etiqueta de ritual, de qualquer classe. Só se conjuram como ritual, com o Livro das Sombras em mãos, e não contam nas magias conhecidas.",
+	})
+	var keys []string
+	for _, e := range cb.c.spellEntries {
+		if e.Level == 1 && e.Ritual && !e.Archived {
 			keys = append(keys, e.Key)
 		}
 	}
