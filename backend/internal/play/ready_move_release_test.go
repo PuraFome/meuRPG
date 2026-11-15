@@ -281,7 +281,7 @@ func TestAReadiedMoveToTheSameSquareIsRefusedAndKeepsTheWindow(t *testing.T) {
 func forced(r *playv1.MoveCombatantRequest) { r.Forced = true }
 
 // The master's drag of a token while a readied move's window is open is the release only when it is a walk of the readier:
-// his forced move, his placing of a token and his walk or forced move of any other token are as they always are, spend no
+// his forced move or jump of the readier, his placing of a token and his walk or forced move of any other token are as they always are, spend no
 // reaction and leave the row waiting with its window open.
 func TestTheMastersOtherDragsDoNotReleaseAReadiedMove(t *testing.T) {
 	t.Parallel()
@@ -295,6 +295,10 @@ func TestTheMastersOtherDragsDoNotReleaseAReadiedMove(t *testing.T) {
 		t.Errorf("Toren after the forced move is at %v, want (5,5)", got)
 	}
 	a.untouched(t, e, "the forced move of the readier")
+	if _, err := a.frozenMove(t, a.master, "Toren", 5, 6, func(r *playv1.MoveCombatantRequest) { r.Jump = playv1.JumpKind_JUMP_KIND_LONG }); err != nil {
+		t.Fatalf("the master's long jump of the readier: %v", err)
+	}
+	a.untouched(t, e, "the master's jump of the readier")
 	_, err := a.frozenMove(t, a.master, "Toren", 6, 6, func(r *playv1.MoveCombatantRequest) { r.Place = true })
 	wantRefusal(t, "the master's placing of a token that has a square", err, connect.CodeInvalidArgument, "the combatant is already on the map")
 	a.untouched(t, e, "the refused placing of the readier")
@@ -311,7 +315,7 @@ func TestTheMastersOtherDragsDoNotReleaseAReadiedMove(t *testing.T) {
 	}
 	a.untouched(t, e, "the master's drags of other tokens")
 
-	if _, err := a.frozenMove(t, a.caio, "Toren", 5, 9); err != nil { // from where the master left him: 20 ft
+	if _, err := a.frozenMove(t, a.caio, "Toren", 5, 9); err != nil { // from where the master left him, (5,6): 15 ft
 		t.Fatalf("the readied move after the master's drags: %v", err)
 	}
 	if a.readiedStatus(t, "Toren") != readiedFired || !byLabel(t, a.get(t, a.master), "Toren").GetReactionUsed() {
