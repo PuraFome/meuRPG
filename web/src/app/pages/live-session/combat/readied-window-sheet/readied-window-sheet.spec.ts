@@ -178,6 +178,55 @@ describe('ReadiedWindowSheet (#582, boards 582-06 to 582-08)', () => {
     expect(close).toHaveBeenCalled();
   });
 
+  it('keeps the prompt open while the roll is held for other reactions, and closes by itself once the window is answered', async () => {
+    const heldWindow = reactionWindow({ ...window, answerNow: false } as never);
+    answerReaction.mockResolvedValue({
+      encounter: encounter({
+        revision: 5,
+        combatants: [
+          combatant({ id: 'tor', label: 'Tor', mine: true }),
+          combatant({ id: 'z1', label: 'Zumbi 1' }),
+        ],
+        reactionWindows: [heldWindow],
+      } as never),
+      result: { used: false },
+    });
+    const { el, settle, button, state } = setup();
+    await settle();
+    button('Atacar o Zumbi 1').click();
+    await settle();
+    expect(close).not.toHaveBeenCalled();
+    expect(flat(el.querySelector('.what'))).toContain('A sua jogada espera as reações de outros');
+    expect(
+      Array.from(el.querySelectorAll('.pair button')).every(
+        (b) => (b as HTMLButtonElement).disabled || b.getAttribute('aria-disabled') === 'true',
+      ),
+    ).toBe(true);
+    // The held roll was dropped: the window takes an answer again, and the prompt is back.
+    state.apply(
+      encounter({
+        revision: 6,
+        combatants: [
+          combatant({ id: 'tor', label: 'Tor', mine: true }),
+          combatant({ id: 'z1', label: 'Zumbi 1' }),
+        ],
+        reactionWindows: [window],
+      } as never),
+    );
+    await settle();
+    expect(flat(el.querySelector('.what'))).toContain('Atacar com a Espada longa agora?');
+    // The use happens: the window leaves the combat and the sheet closes, with no "passou sozinho".
+    state.apply(
+      encounter({
+        revision: 7,
+        combatants: [combatant({ id: 'tor', label: 'Tor', mine: true })],
+        reactionWindows: [],
+      } as never),
+    );
+    await settle();
+    expect(close).toHaveBeenCalled();
+  });
+
   it('lets it pass with nothing chosen', async () => {
     answerReaction.mockResolvedValue({ encounter: encounter({ revision: 6 } as never) });
     const { settle, button } = setup();

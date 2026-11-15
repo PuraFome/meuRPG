@@ -9,6 +9,7 @@ import {
   inject,
   Injector,
   signal,
+  untracked,
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -72,6 +73,10 @@ export interface ReadiedWindowSheetData {
         }
         @if (gone()) {
           <p class="what" role="status">{{ goneText() }}</p>
+        } @else if (held()) {
+          <p class="what" role="status">
+            A sua jogada espera as reações de outros. Assim que responderem, ela acontece.
+          </p>
         } @else {
           <p class="what">
             <b>{{ view.lead }}</b> {{ view.quote }}. {{ view.question }}
@@ -108,7 +113,7 @@ export interface ReadiedWindowSheetData {
               type="button"
               class="pair__btn"
               data-initial-focus
-              [disabled]="busy()"
+              [disabled]="busy() || held()"
               (click)="answer(false)"
             >
               {{ view.declineLabel }}
@@ -118,7 +123,7 @@ export interface ReadiedWindowSheetData {
                 matButton="filled"
                 type="button"
                 class="pair__btn"
-                [disabled]="!ready() || busy()"
+                [disabled]="!ready() || busy() || held()"
                 disabledInteractive
                 (click)="answer(true)"
               >
@@ -202,6 +207,20 @@ export class ReadiedWindowSheet {
         (w) => w.id === this.data.window.id,
       ),
   );
+  /** The window is still open but takes no answer: the roll of its attack or spell waits for the other windows (`answer_now` false). */
+  protected readonly held = computed(() =>
+    (this.data.state.encounter()?.reactionWindows ?? []).some(
+      (w) => w.id === this.data.window.id && !w.answerNow,
+    ),
+  );
+  /** The use was sent and its roll was held: the window leaving the combat is then the use, not a time out. */
+  private readonly useHeld = signal(false);
+  /** Closes by itself when a held use went through. */
+  protected readonly closeWhenDone = effect(() => {
+    if (this.useHeld() && this.gone()) {
+      untracked(() => this.sheet.close());
+    }
+  });
   protected readonly goneText = computed(() => {
     const e = this.data.state.encounter();
     const own = e ? ownCombatant(e) : null;
@@ -247,6 +266,11 @@ export class ReadiedWindowSheet {
       this.key.renew();
       this.data.state.apply(res.encounter);
       this.busy.set(false);
+      if (use && res.result?.used === false) {
+        // The roll waits for other reactions: the window stays open, and so does this prompt.
+        this.useHeld.set(true);
+        return;
+      }
       this.sheet.close();
     } catch (err) {
       this.error.set(combatErrorMessage(err, 'responder à reação'));
