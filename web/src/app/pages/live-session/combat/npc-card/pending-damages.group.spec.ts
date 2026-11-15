@@ -189,6 +189,20 @@ describe('PendingDamages: taking a part out of a typed group', () => {
     expect(document.activeElement).toBe(h.el.querySelector('.dmg__head'));
   });
 
+  it('does not show "Tirando…" for a take-out that never started because the card was busy', async () => {
+    const h = setup([], [applied]);
+    api.removeDamagePart.mockClear();
+    const c = h.fixture.componentInstance as unknown as {
+      busy: { set(v: boolean): void };
+      taking(): string | null;
+      takeOut(p: unknown, part: { partKey: string; reason: string }): Promise<void>;
+    };
+    c.busy.set(true);
+    await c.takeOut(applied, { partKey: 'sneak-attack', reason: 'x' });
+    expect(api.removeDamagePart).not.toHaveBeenCalled();
+    expect(c.taking()).toBeNull();
+  });
+
   it('keeps the panel and says so when the server refuses, nothing changed', async () => {
     api.removeDamagePart.mockRejectedValue(
       new ConnectError('x', Code.FailedPrecondition, undefined, [
@@ -219,7 +233,7 @@ describe('PendingDamages: taking a part out of a typed group', () => {
   });
 
   it('shows the damage that awaits the sum: who is awaited, the part taken out with its reason, the sum kept', () => {
-    const { state, text, button, fixture } = setup([waiting]);
+    const { el, state, text, button, fixture } = setup([waiting]);
     state.noteRemoval({
       attackerId: 'jab',
       targetId: 'zum',
@@ -228,6 +242,11 @@ describe('PendingDamages: taking a part out of a typed group', () => {
       reason: 'Sem aliado perto do alvo',
     });
     fixture.detectChanges();
+    // The same rows as the take-out card: the group head, the parts under it, the taken one struck, the kept sum tagged.
+    expect(el.querySelectorAll('ul.rows > li.row--child')).toHaveLength(2);
+    expect(el.querySelector('.sumrows')).toBeNull();
+    expect(el.querySelector('s')!.textContent).toContain('Ataque Furtivo');
+    expect(text()).toMatch(/Geada no Punho\s*automático/);
     expect(text()).toContain('Esperando Jabuti');
     expect(text()).toContain('tirado: “Sem aliado perto do alvo”');
     expect(text()).toContain('Perfurante');

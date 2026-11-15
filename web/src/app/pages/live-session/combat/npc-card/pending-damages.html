@@ -12,27 +12,43 @@
         <b class="dmg__title">{{ it.weapon }} no {{ it.target }}</b>
         <span class="badge badge--wait"><mat-icon aria-hidden="true">hourglass_empty</mat-icon>Esperando {{ it.attacker }}</span>
       </div>
-      <ul class="sumrows" aria-label="Dano por tipo">
-        <li class="sumrows__group">
-          <span class="sumrows__name"><b>{{ it.typeTitle }}</b>
-            <small>{{ sum.dice }}{{ sum.flat ? ' + ' + sum.flat : '' }} · esperando a soma de {{ it.attacker }}</small></span>
-          <span class="sumrows__num" aria-label="falta">—</span>
+      <ul class="rows" aria-label="Dano por tipo">
+        <li class="row row--group">
+          <span class="row__main">
+            <b class="row__name">{{ it.typeTitle }}</b>
+            <small class="row__formula">{{ sum.dice }}{{ sum.flat ? ' + ' + sum.flat : '' }} · esperando a soma de {{ it.attacker }}</small>
+          </span>
+          <span class="row__num" aria-label="falta">—</span>
         </li>
         @for (x of sum.parts; track x.key) {
-          <li class="sumrows__child"><span class="sumrows__name"><b>{{ x.labelPt }}</b><small>{{ x.diceCount }}d{{ x.diceSides }}{{ x.flat ? ' + ' + x.flat : '' }}</small></span></li>
+          <li class="row row--child">
+            <span class="row__main">
+              <b class="row__name">{{ x.labelPt }}</b>
+              <small class="row__formula">{{ x.diceCount }}d{{ x.diceSides }}{{ x.flat ? ' + ' + x.flat : '' }}</small>
+            </span>
+          </li>
         }
         @for (t of it.takenOut; track t.name) {
-          <li class="sumrows__child sumrows__gone">
-            <span class="sumrows__name"><b><s>{{ t.name }}</s></b><small>tirado{{ t.reason ? ': “' + t.reason + '”' : '' }}</small></span>
+          <li class="row row--child row--off">
+            <span class="row__main">
+              <b class="row__name"><s>{{ t.name }}</s></b>
+              <small class="row__formula">tirado{{ t.reason ? ': “' + t.reason + '”' : '' }}</small>
+            </span>
           </li>
         }
         @for (k of it.kept; track k.label) {
-          <li class="sumrows__group">
-            <span class="sumrows__name"><b>{{ k.label }}</b><small>{{ k.formula }} ({{ k.total }}) · {{ k.typePt }} · fica</small></span>
-            <span class="sumrows__num">{{ k.total }}</span>
+          <li class="row row--group">
+            <span class="row__main">
+              <b class="row__name">{{ k.label }}@if (k.auto) { <span class="off">automático</span> }</b>
+              <small class="row__formula">{{ k.formula }} ({{ k.total }}) · {{ k.typePt }} · fica</small>
+            </span>
+            <span class="row__num">{{ k.total }}</span>
           </li>
         }
-        <li class="sumrows__total"><b>Total</b><b class="sumrows__num">falta</b></li>
+        <li class="row row--group">
+          <span class="row__main"><b class="row__name">Total</b></span>
+          <b class="row__num">falta</b>
+        </li>
       </ul>
       <p class="dmg__why dmg__why--plain">
         {{ it.attacker }} digita a soma de {{ sum.dice }} ({{ it.awaitedRange }}).{{ it.hpNote }}

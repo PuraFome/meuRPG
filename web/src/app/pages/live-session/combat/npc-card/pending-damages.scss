@@ -1,3 +1,5 @@
+@use '../damage-parts/rows';
+
 :host {
   display: flex;
   flex-direction: column;
@@ -249,50 +251,4 @@
   margin: 0;
   font-weight: 400;
   color: var(--mr-ink-muted);
-}
-
-.sumrows {
-  display: flex;
-  flex-direction: column;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-
-  li {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 8px 0;
-    border-bottom: 1px solid var(--mr-rule);
-  }
-}
-
-.sumrows__name {
-  display: flex;
-  flex-direction: column;
-
-  small {
-    font-size: var(--mr-font-14);
-    color: var(--mr-ink-muted);
-  }
-}
-
-.sumrows__child {
-  padding-left: 16px !important;
-  border-left: 2px solid var(--mr-control-line);
-}
-
-.sumrows__gone small,
-.sumrows__gone s {
-  color: var(--mr-ink-muted);
-}
-
-.sumrows__num {
-  font-variant-numeric: tabular-nums;
-  font-weight: 700;
-}
-
-.sumrows__total {
-  border-bottom: 0 !important;
 }

@@ -290,11 +290,11 @@ export class PendingDamages {
   /** "Tirar": the extra leaves the damage, with the reason the master gave. A part of a typed group undoes what the damage
    * did and asks a new sum: the panel stays open while the call is out, and a refusal is said in it. */
   protected takeOut(p: PendingDamage, part: { partKey: string; reason: string }): Promise<void> {
-    this.takeError.set(null);
-    this.taking.set(p.id);
     const name = p.parts.find((x) => x.key === part.partKey)?.labelPt ?? '';
     const labelOf = (id: string) => this.encounter().combatants.find((c) => c.id === id)?.label;
     return this.run(async () => {
+      this.takeError.set(null);
+      this.taking.set(p.id);
       try {
         const res = await this.api.attacks.removeDamagePart(
           this.campaignId(),

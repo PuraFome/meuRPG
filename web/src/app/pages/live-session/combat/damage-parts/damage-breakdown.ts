@@ -16,7 +16,9 @@ import {
   viewChildren,
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
+import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
 
 import {
   type DamagePartRoll,
@@ -42,7 +44,7 @@ let nextId = 0;
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-damage-breakdown',
-  imports: [MatButtonModule, MatIconModule],
+  imports: [MatButtonModule, MatFormFieldModule, MatIconModule, MatInputModule],
   templateUrl: './damage-breakdown.html',
   styleUrl: './damage-breakdown.scss',
 })

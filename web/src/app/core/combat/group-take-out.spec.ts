@@ -122,6 +122,25 @@ describe('removalsOf and removalFor', () => {
     expect(removalFor(damage({ targetId: 'other' }), all)).toBeUndefined();
   });
 
+  it('drops a removal that an attack by the same one on the same target came after: it is of an earlier attack', () => {
+    const attack = (over: Record<string, unknown> = {}) =>
+      ({ kind: CombatLogKind.ATTACK, actorId: 'jab', targetId: 'zum', ...over }) as never;
+    const all = removalsOf([
+      {
+        round: 2,
+        entries: [attack(), entry({ reason: 'nova' }), attack({ targetId: 'other' })],
+      },
+      { round: 1, entries: [entry({ reason: 'velha' })] },
+    ] as unknown as CombatLogRound[]);
+    // The newest attack (round 2) stands before 'nova' in the list, so 'nova' and 'velha' are both of an earlier attack.
+    expect(all).toEqual([]);
+    const kept = removalsOf([
+      { round: 2, entries: [entry({ reason: 'nova' }), attack()] },
+      { round: 1, entries: [entry({ reason: 'velha' }), attack()] },
+    ] as unknown as CombatLogRound[]);
+    expect(kept.map((r) => r.reason)).toEqual(['nova']);
+  });
+
   it('does not match a removal whose part the damage has not', () => {
     const all = removalsOf([{ round: 1, entries: [entry({ key: 'rage' })] }] as never);
     expect(removalFor(damage(), all)).toBeUndefined();
@@ -255,7 +274,7 @@ describe('awaitedSumOf', () => {
 
   it('lists the sums kept and writes the live total with them', () => {
     expect(keptRowsOf(waiting)).toEqual([
-      { label: 'Geada no Punho', formula: '2d8', typePt: 'frio', total: 6 },
+      { label: 'Geada no Punho', formula: '2d8', typePt: 'frio', total: 6, auto: true },
     ]);
     expect(sumFormula(awaitedSumOf(waiting)!, keptRowsOf(waiting), 4)).toEqual({
       text: 'Dano: 4 + 3 + 6 de frio = 13',
@@ -305,7 +324,10 @@ describe('takeOutPlan', () => {
     expect(takeOutPlan(rolls[1], p, jab, zum(), [{ ...save, condition: '' }]).lines[1]).toBe(
       'Desfaz o teste da Geada no Punho.',
     );
-    // A save of another target or another spell is not this damage's.
+    // A save of another attacker, another target or another spell is not this damage's.
+    expect(takeOutPlan(rolls[1], p, jab, zum(), [{ ...save, attackerId: 'other' }]).lines[1]).toBe(
+      'Desfaz o efeito de Geada no Punho no alvo; ele vale de novo com a nova soma.',
+    );
     expect(takeOutPlan(rolls[1], p, jab, zum(), [{ ...save, targetId: 'other' }]).lines[1]).toBe(
       'Desfaz o efeito de Geada no Punho no alvo; ele vale de novo com a nova soma.',
     );

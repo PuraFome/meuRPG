@@ -58,26 +58,34 @@
     @if (asked(); as r) {
       <form class="ask" role="alertdialog" [attr.aria-labelledby]="id + '-q'" (submit)="$event.preventDefault(); confirm()">
         <p class="ask__q" [id]="id + '-q'">{{ plan()?.title ?? question(r) }}</p>
-        <label class="ask__label" [for]="id + '-r'">Motivo (aparece no registro)</label>
-        <input
-          #reasonField
-          [id]="id + '-r'"
-          class="ask__field"
-          [class.ask__field--bad]="reasonMissing()"
-          type="text"
-          maxlength="120"
-          autocomplete="off"
-          [value]="reason()"
-          [attr.aria-invalid]="reasonMissing()"
-          [attr.aria-describedby]="reasonMissing() ? id + '-e ' + id + '-h' : id + '-h'"
-          [readOnly]="sending()"
-          (input)="onReason($event)"
-          (blur)="touched.set(true)"
-        />
-        <span class="ask__hint" [id]="id + '-h'">{{ reason().trim().length }}/120 · É ficção; não escreva dados reais de pessoas.</span>
-        @if (reasonMissing()) {
-          <span class="ask__error" [id]="id + '-e'"><mat-icon aria-hidden="true">error</mat-icon>Escreva o motivo, com até 120 caracteres.</span>
-        }
+        <mat-form-field appearance="outline" class="ask__form" [class.ask__form--bad]="reasonMissing()" subscriptSizing="dynamic">
+          <mat-label>Motivo (aparece no registro)</mat-label>
+          <input
+            #reasonField
+            matInput
+            [id]="id + '-r'"
+            class="ask__field"
+            type="text"
+            maxlength="120"
+            autocomplete="off"
+            [value]="reason()"
+            [attr.aria-invalid]="reasonMissing()"
+            [attr.aria-describedby]="reasonMissing() ? id + '-e ' + id + '-h' : id + '-h'"
+            [readOnly]="sending()"
+            (input)="onReason($event)"
+            (blur)="touched.set(true)"
+          />
+        </mat-form-field>
+        <div class="ask__sub">
+          <span class="ask__hint" [id]="id + '-h'">
+            @if (reasonMissing()) {
+              <span class="ask__error" [id]="id + '-e'"><mat-icon aria-hidden="true">error</mat-icon>Escreva o motivo, com até 120 caracteres.</span>
+            } @else {
+              É ficção; não escreva dados reais de pessoas.
+            }
+          </span>
+          <span class="ask__count">{{ reason().trim().length }}/120</span>
+        </div>
         @if (plan(); as p) {
           @if (p.notice) {
             <p class="ask__notice"><mat-icon aria-hidden="true">casino</mat-icon>{{ p.notice }}</p>

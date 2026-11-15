@@ -25,18 +25,30 @@ export interface Removal {
   readonly reason: string;
 }
 
-/** The removal lines of the log that carry the part's key, newest first (the log lists the latest round and entry first). */
+/**
+ * The removal lines of the log that carry the part's key, newest first (the log lists the latest round and entry first). A
+ * removal belongs to the latest attack of that attacker on that target: when a newer attack by the same one on the same
+ * target is listed before it, the removal is of an earlier attack, and a damage that waits for its sum now must not read
+ * that old reason.
+ */
 export function removalsOf(rounds: readonly CombatLogRound[]): Removal[] {
-  return rounds
-    .flatMap((r) => r.entries)
-    .filter((e) => e.kind === CombatLogKind.DAMAGE_PART_REMOVED && e.key !== '')
-    .map((e) => ({
-      attackerId: e.actorId,
-      targetId: e.targetId,
-      key: e.key,
-      name: e.keyNamePt,
-      reason: e.reason,
-    }));
+  const newer = new Set<string>();
+  const out: Removal[] = [];
+  for (const e of rounds.flatMap((r) => r.entries)) {
+    const pair = `${e.actorId}>${e.targetId}`;
+    if (e.kind === CombatLogKind.ATTACK) {
+      newer.add(pair);
+    } else if (e.kind === CombatLogKind.DAMAGE_PART_REMOVED && e.key !== '' && !newer.has(pair)) {
+      out.push({
+        attackerId: e.actorId,
+        targetId: e.targetId,
+        key: e.key,
+        name: e.keyNamePt,
+        reason: e.reason,
+      });
+    }
+  }
+  return out;
 }
 
 /** The save a spell's hit effect made the target roll on an attack, as the log says it (the master's reading names the condition). */
@@ -153,6 +165,8 @@ export interface KeptRow {
   readonly formula: string;
   readonly typePt: string;
   readonly total: number;
+  /** The app adds this part by itself (a hit effect, Golpe Pesado): the row says "automático". */
+  readonly auto: boolean;
 }
 
 /** What the damage keeps of the other damage types: each counted line of `part_rolls`, with its fixed number. */
@@ -164,6 +178,7 @@ export function keptRowsOf(p: PendingDamage): KeptRow[] {
       formula: r.diceCount > 0 ? `${r.diceCount}d${r.diceSides}` : '',
       typePt: p.parts.find((x) => x.key === r.partKey)?.damageTypePt ?? '',
       total: partTotal(r),
+      auto: p.parts.find((x) => x.key === r.partKey)?.auto ?? false,
     }));
 }
 
