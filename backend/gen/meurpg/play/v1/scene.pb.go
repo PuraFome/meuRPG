@@ -1976,7 +1976,7 @@ func (x *RollSceneCheckResponse) GetHeldRollOffer() *HeldRollOffer {
 	return nil
 }
 
-// RollNpcCheckRequest is the master's ability check for a creature of his side outside a combat: an NPC's Enganação,
+// RollNpcCheckRequest is the master's ability check for a creature of the master's side outside a combat: an NPC's Enganação,
 // Persuasão or Intimidação against the party in a scene with no map, say. The creature is a character of the campaign that
 // is an NPC, or an SRD creature by its key.
 type RollNpcCheckRequest struct {
@@ -1998,9 +1998,11 @@ type RollNpcCheckRequest struct {
 	//	*RollNpcCheckRequest_RollInApp
 	//	*RollNpcCheckRequest_D20Face
 	Roll isRollNpcCheckRequest_Roll `protobuf_oneof:"roll"`
-	// Whether the bards of the table see and hear the creature. Read only when the session's map has no placement of both the
-	// creature's token and a bard's (no usable map): then it decides for every bard. With both tokens on the map the server
-	// measures the 60 feet and, on a fog map, what the bard's player sees (a hidden token is not seen), and ignores this.
+	// Whether the bards of the table see the creature and the creature hears them (the master's box "Os bardos veem a criatura
+	// e ela os ouve"): Cutting Words needs both. Read only when the session's map has no placement of both the creature's token
+	// and a bard's (no usable map): then it decides for every bard. With both tokens on the map the server measures the 60 feet
+	// and, on a fog map, what the bard's player sees (a hidden token is not seen), and ignores this. `NpcCheckCandidate.map_measures`
+	// says which creatures the map measures.
 	BardSees bool `protobuf:"varint,7,opt,name=bard_sees,json=bardSees,proto3" json:"bard_sees,omitempty"`
 	// A UUID the app makes for each roll. Repeating it answers with the first roll's read and changes nothing.
 	IdempotencyKey string `protobuf:"bytes,8,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
@@ -2330,7 +2332,7 @@ func (x *NpcCheckRead) GetCut() int32 {
 	return 0
 }
 
-// SkipNpcCheckAsksRequest is the master's "continuar sem o bardo": it closes the questions that wait for the bards and settles
+// SkipNpcCheckAsksRequest is the master's "Continuar sem esperar": it closes the questions that wait for the bards and settles
 // the check with the dice already taken off.
 type SkipNpcCheckAsksRequest struct {
 	state      protoimpl.MessageState `protogen:"open.v1"`
@@ -2551,9 +2553,16 @@ type NpcCheckCandidate struct {
 	HasStatBlock bool `protobuf:"varint,4,opt,name=has_stat_block,json=hasStatBlock,proto3" json:"has_stat_block,omitempty"`
 	// Where it was found, and whether the players do not see it (the stage or the token hides it).
 	Source NpcCheckSource `protobuf:"varint,5,opt,name=source,proto3,enum=meurpg.play.v1.NpcCheckSource" json:"source,omitempty"`
-	Hidden bool           `protobuf:"varint,6,opt,name=hidden,proto3" json:"hidden,omitempty"`
+	// True for an NPC the master marked hidden from the players on the stage ("Escondido dos jogadores"), or whose token is hidden
+	// on the map: the app starts the checkbox unticked for it.
+	Hidden bool `protobuf:"varint,6,opt,name=hidden,proto3" json:"hidden,omitempty"`
 	// The checks, with the bonus the master sees: six abilities and the skills, in the sheet's order.
-	Checks        []*NpcCheckOption `protobuf:"bytes,7,rep,name=checks,proto3" json:"checks,omitempty"`
+	Checks []*NpcCheckOption `protobuf:"bytes,7,rep,name=checks,proto3" json:"checks,omitempty"`
+	// True when the session's current map can measure this creature against a bard: the creature has a token on it, and so has at
+	// least one bard that would be asked (a bard of the party with Cutting Words in "todos", awake, with a use left). Then the
+	// server measures the 60 feet and the sight itself and ignores `RollNpcCheckRequest.bard_sees`, so the app has no
+	// checkbox to show; when false the checkbox "Os bardos veem a criatura e ela os ouve" decides for every bard.
+	MapMeasures   bool `protobuf:"varint,8,opt,name=map_measures,json=mapMeasures,proto3" json:"map_measures,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2635,6 +2644,13 @@ func (x *NpcCheckCandidate) GetChecks() []*NpcCheckOption {
 		return x.Checks
 	}
 	return nil
+}
+
+func (x *NpcCheckCandidate) GetMapMeasures() bool {
+	if x != nil {
+		return x.MapMeasures
+	}
+	return false
 }
 
 // NpcCheckOption is one check of a creature.
@@ -3295,7 +3311,7 @@ const file_meurpg_play_v1_scene_proto_rawDesc = "" +
 	"\x1aListNpcCheckPickerResponse\x12A\n" +
 	"\n" +
 	"candidates\x18\x01 \x03(\v2!.meurpg.play.v1.NpcCheckCandidateR\n" +
-	"candidates\"\x99\x02\n" +
+	"candidates\"\xbc\x02\n" +
 	"\x11NpcCheckCandidate\x12!\n" +
 	"\fcharacter_id\x18\x01 \x01(\tR\vcharacterId\x12\x1f\n" +
 	"\vmonster_key\x18\x02 \x01(\tR\n" +
@@ -3304,7 +3320,8 @@ const file_meurpg_play_v1_scene_proto_rawDesc = "" +
 	"\x0ehas_stat_block\x18\x04 \x01(\bR\fhasStatBlock\x126\n" +
 	"\x06source\x18\x05 \x01(\x0e2\x1e.meurpg.play.v1.NpcCheckSourceR\x06source\x12\x16\n" +
 	"\x06hidden\x18\x06 \x01(\bR\x06hidden\x126\n" +
-	"\x06checks\x18\a \x03(\v2\x1e.meurpg.play.v1.NpcCheckOptionR\x06checks\"b\n" +
+	"\x06checks\x18\a \x03(\v2\x1e.meurpg.play.v1.NpcCheckOptionR\x06checks\x12!\n" +
+	"\fmap_measures\x18\b \x01(\bR\vmapMeasures\"b\n" +
 	"\x0eNpcCheckOption\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x14\n" +

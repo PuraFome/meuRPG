@@ -12,6 +12,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/play/cutting"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
@@ -75,6 +76,7 @@ func (s *Service) ListNpcCheckPicker(ctx context.Context, req *connect.Request[p
 	}
 	out := &playv1.ListNpcCheckPickerResponse{}
 	seen := map[string]bool{}
+	measures := func(string) bool { return false }
 	add := func(c link.Character, source playv1.NpcCheckSource, hidden bool) error {
 		if seen[c.ID] || c.Player {
 			return nil
@@ -82,6 +84,7 @@ func (s *Service) ListNpcCheckPicker(ctx context.Context, req *connect.Request[p
 		seen[c.ID] = true
 		cand, err := s.npcCandidate(ctx, m.CampaignID, c, source, hidden)
 		if err == nil {
+			cand.MapMeasures = measures(c.ID)
 			out.Candidates = append(out.Candidates, cand)
 		}
 		return err
@@ -91,6 +94,9 @@ func (s *Service) ListNpcCheckPicker(ctx context.Context, req *connect.Request[p
 		return nil, s.dbError(ctx, "find the open session", err)
 	}
 	if err == nil {
+		if measures, err = s.mapMeasures(ctx, session); err != nil {
+			return nil, s.dbError(ctx, "read the placement of the bards", err)
+		}
 		if err := s.pickStageAndTokens(ctx, m.CampaignID, session, add); err != nil {
 			return nil, s.dbError(ctx, "list the creatures", err)
 		}
@@ -99,6 +105,38 @@ func (s *Service) ListNpcCheckPicker(ctx context.Context, req *connect.Request[p
 		return nil, err
 	}
 	return connect.NewResponse(out), nil
+}
+
+// mapMeasures says which creatures the session's current map measures against a bard: the creature has a token on it, and so has a
+// bard that would be asked (see askedBardOf, without the sight). Then the server measures the 60 feet and the sight and the master's
+// box is not read.
+func (s *Service) mapMeasures(ctx context.Context, session playdb.GameSession) (func(string) bool, error) {
+	var tokens map[string]cutting.Token
+	var bards []string
+	err := db.ReadTx(ctx, s.pool, func(tx pgx.Tx) error {
+		var err error
+		if tokens, err = s.mapTokensOf(ctx, tx, session); err != nil || len(tokens) == 0 {
+			return err
+		}
+		party, err := s.roster.CombatParty(ctx, tx, session.CampaignID)
+		if err != nil {
+			return err
+		}
+		for _, c := range party {
+			if _, on := tokens[c.ID]; !on || !c.Player || c.Reserved || c.PlayerUserID == "" {
+				continue
+			}
+			if _, asked, err := s.bardOf(ctx, tx, session.CampaignID, c); err != nil {
+				return err
+			} else if asked {
+				bards = append(bards, c.ID)
+			}
+		}
+		return nil
+	})
+	return func(npc string) bool {
+		return slices.ContainsFunc(bards, cutting.Place{Tokens: tokens, NPC: npc}.Measures)
+	}, err
 }
 
 // pickMonster adds the SRD creature the master asked for, when the master asked for one.

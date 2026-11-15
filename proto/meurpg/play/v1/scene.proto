@@ -523,9 +523,16 @@ message NpcCheckCandidate {
   bool has_stat_block = 4;
   // Where it was found, and whether the players do not see it (the stage or the token hides it).
   NpcCheckSource source = 5;
+  // True for an NPC the master marked hidden from the players on the stage ("Escondido dos jogadores"), or whose token is hidden
+  // on the map: the app starts the checkbox unticked for it.
   bool hidden = 6;
   // The checks, with the bonus the master sees: six abilities and the skills, in the sheet's order.
   repeated NpcCheckOption checks = 7;
+  // True when the session's current map can measure this creature against a bard: the creature has a token on it, and so has at
+  // least one bard that would be asked (a bard of the party with Cutting Words in "todos", awake, with a use left). Then the
+  // server measures the 60 feet and the sight itself and ignores `RollNpcCheckRequest.bard_sees`, so the app has no
+  // checkbox to show; when false the checkbox "Os bardos veem a criatura e ela os ouve" decides for every bard.
+  bool map_measures = 8;
 }
 
 // NpcCheckSource is where the picker found a creature.

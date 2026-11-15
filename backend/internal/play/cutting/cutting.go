@@ -162,12 +162,18 @@ type Place struct {
 	NPC    string
 }
 
+// Measures says the map places both the creature and the bard: the map decides what the bard sees, and the master's box is not read.
+func (p Place) Measures(bard string) bool {
+	_, okN := p.Tokens[p.NPC]
+	_, okB := p.Tokens[bard]
+	return okN && okB
+}
+
 // SightOf is what a bard's question reads of the creature: the map when both tokens are on it (seen says the bard's player sees the
 // creature's square), the master's box otherwise, and whether the creature is on the stage the bard's player sees (onStage).
 func (p Place) SightOf(bard string, box bool, seen func(grid.Square) bool, onStage bool) Sight {
-	npcTok, okN := p.Tokens[p.NPC]
-	bardTok, okB := p.Tokens[bard]
-	if okN && okB {
+	npcTok, bardTok := p.Tokens[p.NPC], p.Tokens[bard]
+	if p.Measures(bard) {
 		return Sight{Mapped: true, DistanceFt: grid.RangeFt(bardTok.Sq, npcTok.Sq), Seen: seen(npcTok.Sq), TokenHidden: npcTok.Hidden}
 	}
 	return Sight{Box: box, OnStage: onStage}

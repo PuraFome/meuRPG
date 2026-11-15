@@ -65,6 +65,23 @@ func TestMayCut(t *testing.T) {
 	}
 }
 
+// TestPlaceMeasures: the map measures a bard against the creature only when it places both of them.
+func TestPlaceMeasures(t *testing.T) {
+	t.Parallel()
+	place := cutting.Place{NPC: "npc", Tokens: map[string]cutting.Token{"npc": {}, "bard": {}, "other": {}}}
+	for bard, want := range map[string]bool{"bard": true, "other": true, "elsewhere": false} {
+		if got := place.Measures(bard); got != want {
+			t.Errorf("Measures(%s) = %v, want %v", bard, got, want)
+		}
+	}
+	if (cutting.Place{NPC: "npc", Tokens: map[string]cutting.Token{"bard": {}}}).Measures("bard") {
+		t.Error("Measures() = true with no token of the creature, want false")
+	}
+	if (cutting.Place{NPC: "npc"}).Measures("bard") {
+		t.Error("Measures() = true on a map with no tokens, want false")
+	}
+}
+
 func TestDie(t *testing.T) {
 	t.Parallel()
 	for level, want := range map[int]int{1: 6, 4: 6, 5: 8, 9: 8, 10: 10, 14: 10, 15: 12, 20: 12} {
