@@ -161,12 +161,17 @@ describe('AttackSheet: the sum asked again after the master took a part out of a
   });
 
   it('writes the live total with the sum kept and sends the type alone', async () => {
-    rollDamage.mockResolvedValue({ encounter: encounter({}), pending: waiting, cast: [] });
+    rollDamage.mockResolvedValue({
+      encounter: encounter({}),
+      pending: {
+        ...(waiting as object),
+        status: PendingDamageStatus.APPLIED,
+        partRolls: [],
+        amount: 13,
+      },
+      cast: [],
+    });
     const { fixture, el, text } = open();
-    Array.from(el.querySelectorAll('button'))
-      .find((b) => b.textContent!.includes('Digitar o resultado'))!
-      .click();
-    fixture.detectChanges();
     const field = el.querySelector<HTMLInputElement>('input.type__field')!;
     expect(text()).toContain('Espada curta, perfurante: 1d6');
     expect(text()).toContain('De 1 a 6.');

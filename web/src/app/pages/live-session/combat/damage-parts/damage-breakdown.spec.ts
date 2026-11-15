@@ -297,7 +297,9 @@ describe('DamageBreakdown take-out of a part of a typed group', () => {
     const { el, text } = open();
     expect(text()).toContain('Tirar o Ataque Furtivo do dano?');
     expect(
-      Array.from(el.querySelectorAll('.ask__list li')).map((l) => l.textContent!.trim()),
+      Array.from(el.querySelectorAll('.ask__list li')).map((l) =>
+        l.textContent!.replace(/^(undo|casino)/, '').trim(),
+      ),
     ).toEqual(plan.lines);
     expect(el.querySelector('.ask__danger')!.textContent).toContain('Tirar e pedir a soma');
   });

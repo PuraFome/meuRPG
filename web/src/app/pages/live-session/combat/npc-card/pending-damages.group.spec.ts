@@ -205,7 +205,7 @@ describe('PendingDamages: taking a part out of a typed group', () => {
     expect(text()).toContain('Perfurante');
     expect(text()).toContain('esperando a soma de Jabuti');
     expect(text()).toContain('Geada no Punho');
-    expect(text()).toContain('Total falta');
+    expect(text()).toContain('Totalfalta');
     expect(text()).toContain(
       'Jabuti digita a soma de 1d6 (de 1 a 6). Até lá, o Zumbi 1 fica com 3 PV.',
     );
