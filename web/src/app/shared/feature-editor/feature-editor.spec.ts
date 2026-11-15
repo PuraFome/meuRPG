@@ -2,12 +2,14 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { emptyEffect } from '../../core/content/effect-draft';
 import { emptyFeature, type FeatureDraft, withAsks } from '../../core/content/feature-draft';
+import { catalog } from '../../core/content/content-testing';
 import { menu } from '../../core/content/content-testing-menu';
 import { costsMenu } from '../../core/content/content-testing-menu-costs';
 import { TableSummonSchema } from '../../../gen/meurpg/rules/v1/table_content_pb';
 import { CreaturesClient } from '../../core/creatures/creatures-client';
 import { summonToDraft } from '../../core/content/summon-draft';
 import { create } from '@bufbuild/protobuf';
+import type { CatalogVm } from '../../core/content/catalog';
 import { rollsMenu } from '../../core/content/content-testing-menu-rolls';
 import { FeatureEditor } from './feature-editor';
 
@@ -43,6 +45,7 @@ describe('FeatureEditor (a trait, a feature)', () => {
       oneOf?: boolean;
       allowAsks?: boolean;
       allowOptions?: boolean;
+      catalog?: CatalogVm | null;
     } = {},
   ) {
     emitted.length = 0;
@@ -73,6 +76,7 @@ describe('FeatureEditor (a trait, a feature)', () => {
     fixture.componentRef.setInput('allowOptions', over.allowOptions ?? over.oneOf ?? false);
     fixture.componentRef.setInput('oneOf', over.oneOf ?? false);
     fixture.componentRef.setInput('allowAsks', over.allowAsks ?? false);
+    fixture.componentRef.setInput('catalog', over.catalog ?? null);
     fixture.componentInstance.featureChange.subscribe((f) => emitted.push(f));
     fixture.componentInstance.removed.subscribe(removed);
     fixture.detectChanges();
@@ -546,6 +550,152 @@ describe('FeatureEditor (a trait, a feature)', () => {
       fixture.detectChanges();
       await fixture.whenStable();
       expect(document.activeElement).toBe(arrow('Subir', 'Golpe do Corvo'));
+    });
+  });
+
+  describe('the option rows are collapsed, one open at a time (#580, board 580-03)', () => {
+    const opt = (key: string, name: string, text = ''): FeatureDraft => ({
+      ...emptyFeature(),
+      key,
+      name,
+      text,
+    });
+    const list = (): FeatureDraft => ({
+      ...emptyFeature(),
+      name: 'Truques de lâmina',
+      options: [
+        opt('k1', 'Golpe do Corvo', 'Soma o dado.'),
+        withAsks(opt('k2', 'Asa Partida', 'Soma o dado ao ataque.'), {
+          classKey: 'class:paladin',
+          classLevel: '7',
+          requiresOptions: ['k1'],
+        }),
+        withAsks(opt('k3', 'Bico de Ferro'), { classKey: 'class:paladin', classLevel: '10' }),
+      ],
+    });
+    const rows = () =>
+      Array.from(el.querySelectorAll<HTMLElement>('section.options [role="group"]'));
+    const toggle = (n: number) =>
+      rows()[n - 1].querySelector<HTMLButtonElement>('button[aria-expanded]')!;
+    const render = async () => {
+      fixture.detectChanges();
+      await fixture.whenStable();
+    };
+
+    it('draws each option as a closed row: a button with its place and name, and a summary line of what it asks', () => {
+      setup(list(), {
+        allowOptions: true,
+        allowAsks: true,
+        index: -1,
+        count: 0,
+        catalog: catalog(),
+      });
+      // The feature's own flag: only an option of a list that may ask says "não pede nada".
+      expect(rows().length).toBe(3);
+      expect(toggle(1).getAttribute('aria-expanded')).toBe('false');
+      expect(text(toggle(1))).toContain('Opção 1 · Golpe do Corvo');
+      expect(
+        el.querySelector('input[aria-label="Nome da opção"], [data-field$="options[0].name_pt"]'),
+      ).toBeNull();
+      expect(text(toggle(1))).toContain('Soma o dado. · não pede nada');
+      expect(text(toggle(2))).toContain(
+        'Soma o dado ao ataque. · pede Paladino 7 e Golpe do Corvo',
+      );
+      expect(text(toggle(3))).toContain('pede Paladino 10');
+    });
+
+    it('says nothing of what it asks for an option of a feature that cannot ask', () => {
+      setup(list(), { allowOptions: true, allowAsks: false, oneOf: true, index: -1, count: 0 });
+      expect(text(toggle(1))).not.toContain('pede');
+    });
+
+    it('opens one row at a time, keeps the focus on its button and links it to its body', async () => {
+      setup(list(), { allowOptions: true, allowAsks: true, index: -1, count: 0 });
+      toggle(2).focus();
+      toggle(2).click();
+      await render();
+      expect(toggle(2).getAttribute('aria-expanded')).toBe('true');
+      expect(rows()[1].classList).toContain('opt--open');
+      const body = el.querySelector<HTMLElement>(`#${toggle(2).getAttribute('aria-controls')}`);
+      expect(body).not.toBeNull();
+      expect(rows()[1].contains(body)).toBe(true);
+      expect(rows()[1].querySelector('input')).not.toBeNull();
+      expect(document.activeElement).toBe(toggle(2));
+      toggle(3).click();
+      await render();
+      expect(toggle(2).getAttribute('aria-expanded')).toBe('false');
+      expect(toggle(3).getAttribute('aria-expanded')).toBe('true');
+      expect(rows()[1].querySelector('input')).toBeNull();
+      toggle(3).click();
+      await render();
+      expect(toggle(3).getAttribute('aria-expanded')).toBe('false');
+      expect(document.activeElement).toBe(toggle(3));
+    });
+
+    it('names a group "Opção N" once: the open body is not a second group', async () => {
+      setup(list(), { allowOptions: true, allowAsks: true, index: -1, count: 0 });
+      toggle(1).click();
+      await render();
+      expect(el.querySelectorAll('[role="group"][aria-label="Opção 1"]').length).toBe(1);
+      expect(rows()[0].querySelector('[role="group"][aria-label="Característica"]')).toBeNull();
+    });
+
+    it('keeps the open option open when it moves, and "Adicionar uma opção" opens the new one with its name focused', async () => {
+      setup(list(), { allowOptions: true, allowAsks: true, index: -1, count: 0 });
+      toggle(2).click();
+      await render();
+      el.querySelector<HTMLButtonElement>('button[aria-label="Subir Asa Partida"]')!.click();
+      fixture.componentRef.setInput('feature', emitted.at(-1));
+      await render();
+      expect(toggle(1).getAttribute('aria-expanded')).toBe('true');
+      expect(text(toggle(1))).toContain('Opção 1 · Asa Partida');
+      button('Adicionar uma opção').click();
+      fixture.componentRef.setInput('feature', emitted.at(-1));
+      await render();
+      expect(rows().length).toBe(4);
+      expect(toggle(4).getAttribute('aria-expanded')).toBe('true');
+      expect(toggle(1).getAttribute('aria-expanded')).toBe('false');
+      expect(rows()[3].contains(document.activeElement)).toBe(true);
+    });
+
+    it('opens the row that has a refusal and marks it in its summary', async () => {
+      setup(list(), {
+        allowOptions: true,
+        allowAsks: true,
+        index: -1,
+        count: 0,
+        issues: {
+          'table_race.traits[1].options[2].prerequisite.class_level.level': [
+            'O nível é de 1 a 20.',
+          ],
+        },
+      });
+      await render();
+      expect(toggle(3).getAttribute('aria-expanded')).toBe('true');
+      expect(text(toggle(1))).not.toContain('Precisa de ajuste');
+      expect(text(toggle(3))).toContain('Precisa de ajuste');
+    });
+
+    it('takes an option away from the "⋮" menu of its row and puts the focus on the next row', async () => {
+      setup(list(), { allowOptions: true, allowAsks: true, index: -1, count: 0 });
+      rows()[0]
+        .querySelector<HTMLButtonElement>('button[aria-label="Mais ações de Golpe do Corvo"]')!
+        .click();
+      await render();
+      document.querySelector<HTMLButtonElement>('.mat-mdc-menu-panel [role="menuitem"]')!.click();
+      expect(emitted.at(-1)?.options.map((o) => o.key)).toEqual(['k2', 'k3']);
+      fixture.componentRef.setInput('feature', emitted.at(-1));
+      await render();
+      expect(document.activeElement).toBe(toggle(1));
+    });
+
+    it('has no "Remover opção" button in the open body: the menu of the row holds it', async () => {
+      setup(list(), { allowOptions: true, allowAsks: true, index: -1, count: 0 });
+      toggle(2).click();
+      await render();
+      expect(
+        Array.from(el.querySelectorAll('button')).some((b) => text(b).includes('Remover opção')),
+      ).toBe(false);
     });
   });
 });
