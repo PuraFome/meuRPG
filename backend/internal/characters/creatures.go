@@ -222,6 +222,12 @@ func (s *Service) resolvedCreatureOf(ctx context.Context, content *rules.Content
 		switch {
 		case json.Unmarshal(v.StatBlock, &r) != nil || r.Key != v.MonsterKey:
 			reason = "unreadable"
+		case r.MinInt > 0 && !content.IsTableCreature(v.MonsterKey):
+			// A steed: the entry as it is, with the Intelligence its snapshot says it has at least.
+			if floored, ok := content.CreatureWithMinInt(v.MonsterKey, r.MinInt); ok {
+				return &floored
+			}
+			reason = "not_in_content"
 		default:
 			if resolved, ok := content.CreatureOfResolved(r); ok {
 				return &resolved

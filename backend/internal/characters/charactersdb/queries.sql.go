@@ -423,7 +423,7 @@ const dismissCreatures = `-- name: DismissCreatures :many
 WITH changed AS (
     UPDATE character_creatures
     SET dismissed_at = $1::TIMESTAMPTZ, dismissed_reason = $2::TEXT,
-        hp_current = CASE WHEN $2::TEXT = 'defeated' THEN 0 ELSE hp_current END
+        hp_current = CASE WHEN $2::TEXT IN ('defeated', 'disappeared') THEN 0 ELSE hp_current END
     WHERE campaign_id = $3::UUID
       AND id = ANY($4::UUID[])
       AND dismissed_at IS NULL
@@ -440,7 +440,7 @@ type DismissCreaturesParams struct {
 }
 
 // Sends the live ones of these creatures away, with the reason; a creature
-// dismissed because it was defeated is at 0 hit points. Returns the ones it
+// dismissed because it was defeated (or, a steed, disappeared) is at 0 hit points. Returns the ones it
 // dismissed, by ID.
 func (q *Queries) DismissCreatures(ctx context.Context, arg DismissCreaturesParams) ([]string, error) {
 	rows, err := q.db.Query(ctx, dismissCreatures,
@@ -465,6 +465,26 @@ func (q *Queries) DismissCreatures(ctx context.Context, arg DismissCreaturesPara
 		return nil, err
 	}
 	return items, nil
+}
+
+const endBond = `-- name: EndBond :execrows
+UPDATE character_creatures
+SET bonded = false
+WHERE campaign_id = $1::UUID AND id = $2::UUID AND bonded
+`
+
+type EndBondParams struct {
+	CampaignID string
+	ID         string
+}
+
+// A release ends the bond of a steed: the row stays as the history of the dismissal, and the character may bond another.
+func (q *Queries) EndBond(ctx context.Context, arg EndBondParams) (int64, error) {
+	result, err := q.db.Exec(ctx, endBond, arg.CampaignID, arg.ID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const endStoryEditing = `-- name: EndStoryEditing :execrows
@@ -566,6 +586,106 @@ func (q *Queries) GetAttunementOpen(ctx context.Context, characterID string) (bo
 	var open bool
 	err := row.Scan(&open)
 	return open, err
+}
+
+const getBondedCreature = `-- name: GetBondedCreature :one
+SELECT cc.id, cc.campaign_id, cc.character_id, cc.monster_key, cc.name, cc.source, cc.attack, cc.summon_group_id, cc.concentration_cast_id, cc.hp_current, cc.hp_max, cc.created_at, cc.dismissed_at, cc.dismissed_reason, cc.create_key, cc.create_hash, cc.stat_block, cc.summon_key, cc.creature_type, cc.bonded, c.player_user_id
+FROM character_creatures cc
+JOIN characters c ON c.id = cc.character_id
+WHERE cc.campaign_id = $1::UUID
+  AND cc.character_id = $2::UUID
+  AND cc.bonded
+`
+
+type GetBondedCreatureParams struct {
+	CampaignID  string
+	CharacterID string
+}
+
+type GetBondedCreatureRow struct {
+	CharacterCreature CharacterCreature
+	PlayerUserID      *string
+}
+
+// The character's bonded steed (Find Steed), live or dismissed. A casting that brings it back locks its row
+// (GetCharacterCreatureForUpdate) before it writes.
+func (q *Queries) GetBondedCreature(ctx context.Context, arg GetBondedCreatureParams) (GetBondedCreatureRow, error) {
+	row := q.db.QueryRow(ctx, getBondedCreature, arg.CampaignID, arg.CharacterID)
+	var i GetBondedCreatureRow
+	err := row.Scan(
+		&i.CharacterCreature.ID,
+		&i.CharacterCreature.CampaignID,
+		&i.CharacterCreature.CharacterID,
+		&i.CharacterCreature.MonsterKey,
+		&i.CharacterCreature.Name,
+		&i.CharacterCreature.Source,
+		&i.CharacterCreature.Attack,
+		&i.CharacterCreature.SummonGroupID,
+		&i.CharacterCreature.ConcentrationCastID,
+		&i.CharacterCreature.HpCurrent,
+		&i.CharacterCreature.HpMax,
+		&i.CharacterCreature.CreatedAt,
+		&i.CharacterCreature.DismissedAt,
+		&i.CharacterCreature.DismissedReason,
+		&i.CharacterCreature.CreateKey,
+		&i.CharacterCreature.CreateHash,
+		&i.CharacterCreature.StatBlock,
+		&i.CharacterCreature.SummonKey,
+		&i.CharacterCreature.CreatureType,
+		&i.CharacterCreature.Bonded,
+		&i.PlayerUserID,
+	)
+	return i, err
+}
+
+const getBondedCreatureForUpdate = `-- name: GetBondedCreatureForUpdate :one
+SELECT cc.id, cc.campaign_id, cc.character_id, cc.monster_key, cc.name, cc.source, cc.attack, cc.summon_group_id, cc.concentration_cast_id, cc.hp_current, cc.hp_max, cc.created_at, cc.dismissed_at, cc.dismissed_reason, cc.create_key, cc.create_hash, cc.stat_block, cc.summon_key, cc.creature_type, cc.bonded, c.player_user_id
+FROM character_creatures cc
+JOIN characters c ON c.id = cc.character_id
+WHERE cc.campaign_id = $1::UUID
+  AND cc.character_id = $2::UUID
+  AND cc.bonded
+FOR UPDATE OF cc
+`
+
+type GetBondedCreatureForUpdateParams struct {
+	CampaignID  string
+	CharacterID string
+}
+
+type GetBondedCreatureForUpdateRow struct {
+	CharacterCreature CharacterCreature
+	PlayerUserID      *string
+}
+
+// The same, locking the row until the transaction ends: the casting that brings the steed back reads it this way.
+func (q *Queries) GetBondedCreatureForUpdate(ctx context.Context, arg GetBondedCreatureForUpdateParams) (GetBondedCreatureForUpdateRow, error) {
+	row := q.db.QueryRow(ctx, getBondedCreatureForUpdate, arg.CampaignID, arg.CharacterID)
+	var i GetBondedCreatureForUpdateRow
+	err := row.Scan(
+		&i.CharacterCreature.ID,
+		&i.CharacterCreature.CampaignID,
+		&i.CharacterCreature.CharacterID,
+		&i.CharacterCreature.MonsterKey,
+		&i.CharacterCreature.Name,
+		&i.CharacterCreature.Source,
+		&i.CharacterCreature.Attack,
+		&i.CharacterCreature.SummonGroupID,
+		&i.CharacterCreature.ConcentrationCastID,
+		&i.CharacterCreature.HpCurrent,
+		&i.CharacterCreature.HpMax,
+		&i.CharacterCreature.CreatedAt,
+		&i.CharacterCreature.DismissedAt,
+		&i.CharacterCreature.DismissedReason,
+		&i.CharacterCreature.CreateKey,
+		&i.CharacterCreature.CreateHash,
+		&i.CharacterCreature.StatBlock,
+		&i.CharacterCreature.SummonKey,
+		&i.CharacterCreature.CreatureType,
+		&i.CharacterCreature.Bonded,
+		&i.PlayerUserID,
+	)
+	return i, err
 }
 
 const getCampaignContent = `-- name: GetCampaignContent :one
@@ -736,7 +856,7 @@ func (q *Queries) GetCharacterByCreateKey(ctx context.Context, arg GetCharacterB
 }
 
 const getCharacterCreature = `-- name: GetCharacterCreature :one
-SELECT cc.id, cc.campaign_id, cc.character_id, cc.monster_key, cc.name, cc.source, cc.attack, cc.summon_group_id, cc.concentration_cast_id, cc.hp_current, cc.hp_max, cc.created_at, cc.dismissed_at, cc.dismissed_reason, cc.create_key, cc.create_hash, cc.stat_block, cc.summon_key, c.player_user_id
+SELECT cc.id, cc.campaign_id, cc.character_id, cc.monster_key, cc.name, cc.source, cc.attack, cc.summon_group_id, cc.concentration_cast_id, cc.hp_current, cc.hp_max, cc.created_at, cc.dismissed_at, cc.dismissed_reason, cc.create_key, cc.create_hash, cc.stat_block, cc.summon_key, cc.creature_type, cc.bonded, c.player_user_id
 FROM character_creatures cc
 JOIN characters c ON c.id = cc.character_id
 WHERE cc.campaign_id = $1::UUID AND cc.id = $2::UUID
@@ -775,13 +895,15 @@ func (q *Queries) GetCharacterCreature(ctx context.Context, arg GetCharacterCrea
 		&i.CharacterCreature.CreateHash,
 		&i.CharacterCreature.StatBlock,
 		&i.CharacterCreature.SummonKey,
+		&i.CharacterCreature.CreatureType,
+		&i.CharacterCreature.Bonded,
 		&i.PlayerUserID,
 	)
 	return i, err
 }
 
 const getCharacterCreatureByCreateKey = `-- name: GetCharacterCreatureByCreateKey :one
-SELECT id, campaign_id, character_id, monster_key, name, source, attack, summon_group_id, concentration_cast_id, hp_current, hp_max, created_at, dismissed_at, dismissed_reason, create_key, create_hash, stat_block, summon_key FROM character_creatures WHERE create_key = $1
+SELECT id, campaign_id, character_id, monster_key, name, source, attack, summon_group_id, concentration_cast_id, hp_current, hp_max, created_at, dismissed_at, dismissed_reason, create_key, create_hash, stat_block, summon_key, creature_type, bonded FROM character_creatures WHERE create_key = $1
 `
 
 // The creature a GiveCreature with this idempotency key made, if any (the key carries the campaign's ID).
@@ -807,12 +929,14 @@ func (q *Queries) GetCharacterCreatureByCreateKey(ctx context.Context, createKey
 		&i.CreateHash,
 		&i.StatBlock,
 		&i.SummonKey,
+		&i.CreatureType,
+		&i.Bonded,
 	)
 	return i, err
 }
 
 const getCharacterCreatureForUpdate = `-- name: GetCharacterCreatureForUpdate :one
-SELECT cc.id, cc.campaign_id, cc.character_id, cc.monster_key, cc.name, cc.source, cc.attack, cc.summon_group_id, cc.concentration_cast_id, cc.hp_current, cc.hp_max, cc.created_at, cc.dismissed_at, cc.dismissed_reason, cc.create_key, cc.create_hash, cc.stat_block, cc.summon_key, c.player_user_id
+SELECT cc.id, cc.campaign_id, cc.character_id, cc.monster_key, cc.name, cc.source, cc.attack, cc.summon_group_id, cc.concentration_cast_id, cc.hp_current, cc.hp_max, cc.created_at, cc.dismissed_at, cc.dismissed_reason, cc.create_key, cc.create_hash, cc.stat_block, cc.summon_key, cc.creature_type, cc.bonded, c.player_user_id
 FROM character_creatures cc
 JOIN characters c ON c.id = cc.character_id
 WHERE cc.campaign_id = $1::UUID AND cc.id = $2::UUID
@@ -852,6 +976,8 @@ func (q *Queries) GetCharacterCreatureForUpdate(ctx context.Context, arg GetChar
 		&i.CharacterCreature.CreateHash,
 		&i.CharacterCreature.StatBlock,
 		&i.CharacterCreature.SummonKey,
+		&i.CharacterCreature.CreatureType,
+		&i.CharacterCreature.Bonded,
 		&i.PlayerUserID,
 	)
 	return i, err
@@ -1421,13 +1547,14 @@ func (q *Queries) InsertCharacter(ctx context.Context, arg InsertCharacterParams
 const insertCharacterCreature = `-- name: InsertCharacterCreature :one
 
 INSERT INTO character_creatures
-    (campaign_id, character_id, monster_key, name, source, attack, summon_group_id, concentration_cast_id, hp_current, hp_max, created_at, create_key, create_hash, stat_block, summon_key)
+    (campaign_id, character_id, monster_key, name, source, attack, summon_group_id, concentration_cast_id, hp_current, hp_max, created_at, create_key, create_hash, stat_block, summon_key, creature_type, bonded)
 VALUES (
     $1::UUID, $2::UUID, $3, $4, $5,
     $6, $7::UUID, $8::UUID, $9, $10,
-    $11, $12, $13, $14::JSONB, $15
+    $11, $12, $13, $14::JSONB, $15,
+    $16::TEXT, $17::BOOLEAN
 )
-RETURNING id, campaign_id, character_id, monster_key, name, source, attack, summon_group_id, concentration_cast_id, hp_current, hp_max, created_at, dismissed_at, dismissed_reason, create_key, create_hash, stat_block, summon_key
+RETURNING id, campaign_id, character_id, monster_key, name, source, attack, summon_group_id, concentration_cast_id, hp_current, hp_max, created_at, dismissed_at, dismissed_reason, create_key, create_hash, stat_block, summon_key, creature_type, bonded
 `
 
 type InsertCharacterCreatureParams struct {
@@ -1446,6 +1573,8 @@ type InsertCharacterCreatureParams struct {
 	CreateHash          *string
 	StatBlock           []byte
 	SummonKey           *string
+	CreatureType        string
+	Bonded              bool
 }
 
 // A character's creatures (MR-037). A creature is "live" until it is
@@ -1468,6 +1597,8 @@ func (q *Queries) InsertCharacterCreature(ctx context.Context, arg InsertCharact
 		arg.CreateHash,
 		arg.StatBlock,
 		arg.SummonKey,
+		arg.CreatureType,
+		arg.Bonded,
 	)
 	var i CharacterCreature
 	err := row.Scan(
@@ -1489,6 +1620,8 @@ func (q *Queries) InsertCharacterCreature(ctx context.Context, arg InsertCharact
 		&i.CreateHash,
 		&i.StatBlock,
 		&i.SummonKey,
+		&i.CreatureType,
+		&i.Bonded,
 	)
 	return i, err
 }
@@ -2414,7 +2547,7 @@ func (q *Queries) ListContentOff(ctx context.Context, campaignID string) ([]stri
 }
 
 const listCreaturesByIDs = `-- name: ListCreaturesByIDs :many
-SELECT cc.id, cc.campaign_id, cc.character_id, cc.monster_key, cc.name, cc.source, cc.attack, cc.summon_group_id, cc.concentration_cast_id, cc.hp_current, cc.hp_max, cc.created_at, cc.dismissed_at, cc.dismissed_reason, cc.create_key, cc.create_hash, cc.stat_block, cc.summon_key, c.player_user_id
+SELECT cc.id, cc.campaign_id, cc.character_id, cc.monster_key, cc.name, cc.source, cc.attack, cc.summon_group_id, cc.concentration_cast_id, cc.hp_current, cc.hp_max, cc.created_at, cc.dismissed_at, cc.dismissed_reason, cc.create_key, cc.create_hash, cc.stat_block, cc.summon_key, cc.creature_type, cc.bonded, c.player_user_id
 FROM character_creatures cc
 JOIN characters c ON c.id = cc.character_id
 WHERE cc.campaign_id = $1::UUID AND cc.id = ANY($2::UUID[])
@@ -2460,6 +2593,8 @@ func (q *Queries) ListCreaturesByIDs(ctx context.Context, arg ListCreaturesByIDs
 			&i.CharacterCreature.CreateHash,
 			&i.CharacterCreature.StatBlock,
 			&i.CharacterCreature.SummonKey,
+			&i.CharacterCreature.CreatureType,
+			&i.CharacterCreature.Bonded,
 			&i.PlayerUserID,
 		); err != nil {
 			return nil, err
@@ -2630,7 +2765,7 @@ func (q *Queries) ListLevelUps(ctx context.Context, arg ListLevelUpsParams) ([]L
 }
 
 const listLiveCreaturesOfCharacters = `-- name: ListLiveCreaturesOfCharacters :many
-SELECT cc.id, cc.campaign_id, cc.character_id, cc.monster_key, cc.name, cc.source, cc.attack, cc.summon_group_id, cc.concentration_cast_id, cc.hp_current, cc.hp_max, cc.created_at, cc.dismissed_at, cc.dismissed_reason, cc.create_key, cc.create_hash, cc.stat_block, cc.summon_key, c.player_user_id
+SELECT cc.id, cc.campaign_id, cc.character_id, cc.monster_key, cc.name, cc.source, cc.attack, cc.summon_group_id, cc.concentration_cast_id, cc.hp_current, cc.hp_max, cc.created_at, cc.dismissed_at, cc.dismissed_reason, cc.create_key, cc.create_hash, cc.stat_block, cc.summon_key, cc.creature_type, cc.bonded, c.player_user_id
 FROM character_creatures cc
 JOIN characters c ON c.id = cc.character_id
 WHERE cc.campaign_id = $1::UUID
@@ -2678,6 +2813,8 @@ func (q *Queries) ListLiveCreaturesOfCharacters(ctx context.Context, arg ListLiv
 			&i.CharacterCreature.CreateHash,
 			&i.CharacterCreature.StatBlock,
 			&i.CharacterCreature.SummonKey,
+			&i.CharacterCreature.CreatureType,
+			&i.CharacterCreature.Bonded,
 			&i.PlayerUserID,
 		); err != nil {
 			return nil, err
@@ -2691,7 +2828,7 @@ func (q *Queries) ListLiveCreaturesOfCharacters(ctx context.Context, arg ListLiv
 }
 
 const listLiveCreaturesOfSummon = `-- name: ListLiveCreaturesOfSummon :many
-SELECT cc.id, cc.campaign_id, cc.character_id, cc.monster_key, cc.name, cc.source, cc.attack, cc.summon_group_id, cc.concentration_cast_id, cc.hp_current, cc.hp_max, cc.created_at, cc.dismissed_at, cc.dismissed_reason, cc.create_key, cc.create_hash, cc.stat_block, cc.summon_key, c.player_user_id
+SELECT cc.id, cc.campaign_id, cc.character_id, cc.monster_key, cc.name, cc.source, cc.attack, cc.summon_group_id, cc.concentration_cast_id, cc.hp_current, cc.hp_max, cc.created_at, cc.dismissed_at, cc.dismissed_reason, cc.create_key, cc.create_hash, cc.stat_block, cc.summon_key, cc.creature_type, cc.bonded, c.player_user_id
 FROM character_creatures cc
 JOIN characters c ON c.id = cc.character_id
 WHERE cc.campaign_id = $1::UUID
@@ -2743,6 +2880,8 @@ func (q *Queries) ListLiveCreaturesOfSummon(ctx context.Context, arg ListLiveCre
 			&i.CharacterCreature.CreateHash,
 			&i.CharacterCreature.StatBlock,
 			&i.CharacterCreature.SummonKey,
+			&i.CharacterCreature.CreatureType,
+			&i.CharacterCreature.Bonded,
 			&i.PlayerUserID,
 		); err != nil {
 			return nil, err
@@ -2756,7 +2895,7 @@ func (q *Queries) ListLiveCreaturesOfSummon(ctx context.Context, arg ListLiveCre
 }
 
 const listLiveCreaturesOnConcentration = `-- name: ListLiveCreaturesOnConcentration :many
-SELECT cc.id, cc.campaign_id, cc.character_id, cc.monster_key, cc.name, cc.source, cc.attack, cc.summon_group_id, cc.concentration_cast_id, cc.hp_current, cc.hp_max, cc.created_at, cc.dismissed_at, cc.dismissed_reason, cc.create_key, cc.create_hash, cc.stat_block, cc.summon_key, c.player_user_id
+SELECT cc.id, cc.campaign_id, cc.character_id, cc.monster_key, cc.name, cc.source, cc.attack, cc.summon_group_id, cc.concentration_cast_id, cc.hp_current, cc.hp_max, cc.created_at, cc.dismissed_at, cc.dismissed_reason, cc.create_key, cc.create_hash, cc.stat_block, cc.summon_key, cc.creature_type, cc.bonded, c.player_user_id
 FROM character_creatures cc
 JOIN characters c ON c.id = cc.character_id
 WHERE cc.campaign_id = $1::UUID
@@ -2805,6 +2944,8 @@ func (q *Queries) ListLiveCreaturesOnConcentration(ctx context.Context, arg List
 			&i.CharacterCreature.CreateHash,
 			&i.CharacterCreature.StatBlock,
 			&i.CharacterCreature.SummonKey,
+			&i.CharacterCreature.CreatureType,
+			&i.CharacterCreature.Bonded,
 			&i.PlayerUserID,
 		); err != nil {
 			return nil, err
@@ -2818,7 +2959,7 @@ func (q *Queries) ListLiveCreaturesOnConcentration(ctx context.Context, arg List
 }
 
 const listLiveFamiliars = `-- name: ListLiveFamiliars :many
-SELECT cc.id, cc.campaign_id, cc.character_id, cc.monster_key, cc.name, cc.source, cc.attack, cc.summon_group_id, cc.concentration_cast_id, cc.hp_current, cc.hp_max, cc.created_at, cc.dismissed_at, cc.dismissed_reason, cc.create_key, cc.create_hash, cc.stat_block, cc.summon_key, c.player_user_id
+SELECT cc.id, cc.campaign_id, cc.character_id, cc.monster_key, cc.name, cc.source, cc.attack, cc.summon_group_id, cc.concentration_cast_id, cc.hp_current, cc.hp_max, cc.created_at, cc.dismissed_at, cc.dismissed_reason, cc.create_key, cc.create_hash, cc.stat_block, cc.summon_key, cc.creature_type, cc.bonded, c.player_user_id
 FROM character_creatures cc
 JOIN characters c ON c.id = cc.character_id
 WHERE cc.campaign_id = $1::UUID
@@ -2868,6 +3009,8 @@ func (q *Queries) ListLiveFamiliars(ctx context.Context, arg ListLiveFamiliarsPa
 			&i.CharacterCreature.CreateHash,
 			&i.CharacterCreature.StatBlock,
 			&i.CharacterCreature.SummonKey,
+			&i.CharacterCreature.CreatureType,
+			&i.CharacterCreature.Bonded,
 			&i.PlayerUserID,
 		); err != nil {
 			return nil, err
@@ -3408,6 +3551,27 @@ func (q *Queries) PortraitInUse(ctx context.Context, arg PortraitInUseParams) (b
 	var exists bool
 	err := row.Scan(&exists)
 	return exists, err
+}
+
+const reviveBondedCreature = `-- name: ReviveBondedCreature :one
+UPDATE character_creatures
+SET dismissed_at = NULL, dismissed_reason = NULL, hp_current = hp_max
+WHERE campaign_id = $1::UUID AND id = $2::UUID AND bonded
+RETURNING id
+`
+
+type ReviveBondedCreatureParams struct {
+	CampaignID string
+	ID         string
+}
+
+// A new casting brings the bonded steed back at full hit points: the row is the same, live again. It returns the
+// row, so a revive that touches none is an error (no rows) and not a silent success.
+func (q *Queries) ReviveBondedCreature(ctx context.Context, arg ReviveBondedCreatureParams) (string, error) {
+	row := q.db.QueryRow(ctx, reviveBondedCreature, arg.CampaignID, arg.ID)
+	var id string
+	err := row.Scan(&id)
+	return id, err
 }
 
 const reviveCharacter = `-- name: ReviveCharacter :one

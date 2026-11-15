@@ -3371,6 +3371,8 @@ enum CreatureSource {
   CREATURE_SOURCE_MASTER = 4;
   // A spell of the table's (`summon` of a TableSpell).
   CREATURE_SOURCE_TABLE = 5;
+  // Convocar Montaria: the character's steed, one at a time.
+  CREATURE_SOURCE_FIND_STEED = 6;
 }
 
 // CharacterCreature is a creature that belongs to a character (MR-037).
@@ -3408,6 +3410,12 @@ message CharacterCreature {
   // (so a table creature's adjusted armor class shows). Like its hit points, only the master and
   // its owner's player get it here; 0 when the creature is not in the content.
   int32 armor_class = 13;
+  // The type the player picked for a steed ("celestial", "fey" or "fiend"); empty for every other creature. The
+  // creature's stat block keeps its own type for everyone else.
+  string creature_type = 14;
+  // Whether the creature is the character's bonded steed: dismissing it keeps the bond, and a new casting of
+  // Convocar Montaria brings the same steed back at full hit points.
+  bool bonded = 15;
 }
 
 // ListCharacterCreaturesRequest names a character.
@@ -3463,12 +3471,28 @@ message RenameCreatureResponse {
   CharacterCreature creature = 1;
 }
 
+// CreatureDismissal says how a steed of Find Steed is sent away. Any other creature is dismissed for good, whatever the value.
+enum CreatureDismissal {
+  CREATURE_DISMISSAL_UNSPECIFIED = 0;
+  // The steed goes and the bond stays: a new casting of Find Steed brings the same steed back, at full hit points.
+  CREATURE_DISMISSAL_DISMISS = 1;
+  // The bond ends: a new casting makes a new steed, of any form and type. Only a bonded steed can be released.
+  CREATURE_DISMISSAL_RELEASE = 2;
+}
+
 // DismissCreatureRequest sends a creature away.
 message DismissCreatureRequest {
   // The campaign (a UUID).
   string campaign_id = 1;
   // The creature (a UUID).
   string creature_id = 2;
+  // How a steed of Find Steed goes.
+  // Unspecified is a dismissal that keeps the bond.
+  // RELEASE of a creature that is not a bonded steed is `invalid_argument`.
+  // In a combat the owner's player spends the action of its turn for either.
+  // It is `failed_precondition` with an EncounterBlocked reason (NOT_YOUR_TURN or ACTION_USED) when the player cannot.
+  // The master dismisses at no cost, and out of a combat it costs nothing.
+  CreatureDismissal dismissal = 3;
 }
 
 // DismissCreatureResponse is empty: the creature is gone from the list.
@@ -3573,6 +3597,17 @@ message SummonSpellOptions {
   // Where a class feature's summon comes from, in words: the class and the level of the feature ("Druida 3"). Empty for a spell the
   // character has and for a feature that is not an entry of the table's class features (a race trait).
   string granted_by_label_pt = 14;
+  // The creature types a casting picks one from ("celestial", "fey", "fiend" for Convocar Montaria); empty for a spell
+  // that picks none. CastSummon names the pick in SummonChoice.creature_type.
+  repeated string type_choices = 15;
+  // The Intelligence the creature has at least; 0 when the spell sets none.
+  int32 min_int = 16;
+  // The character's bonded steed, when there is one: a casting brings this creature back, with its form, name and type,
+  // and offers no other form. Unset for every other spell and when no steed is bonded.
+  CharacterCreature bonded_steed = 17;
+  // What the spell says besides its choices, in Portuguese, one sentence each (Find Steed: the telepathic bond, where the steed appears, its language).
+  // Empty for a spell with none.
+  repeated string notes = 18;
 }
 
 // SummonCircle is what a spell may bring at one circle.
@@ -3604,6 +3639,11 @@ message SummonOption {
   // (meurpg.play.v1.CreatureAttack, as its number: 1 none, 2 reaction, 3 full).
   // For an option with forms, each form says its own.
   int32 attack = 5;
+  // Whether the creatures are mounts the caster steers (Convocar Montaria).
+  bool mount = 6;
+  // The forms of a mount that are too small for this caster to ride, by key: the casting is allowed, and the app says
+  // "pequeno demais para você montar".
+  repeated string too_small_for_you = 7;
 }
 
 // SummonForm is a creature a casting may choose.

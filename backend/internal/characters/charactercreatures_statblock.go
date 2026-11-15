@@ -59,7 +59,7 @@ type lazyOwner struct {
 
 // numbersOf is the snapshot and the hit points of a new creature of the content's key made with a slot of the
 // circle (0 for none): the snapshot is nil for a creature with no formula, whose numbers are the content's.
-func (l *lazyOwner) numbersOf(ctx context.Context, content *rules.Content, key string, slot int) (stat []byte, hp int32, err error) {
+func (l *lazyOwner) numbersOf(ctx context.Context, content *rules.Content, key string, slot, minInt int, creatureType string) (stat []byte, hp int32, err error) {
 	d, ok := content.MonsterDerived(key)
 	if !ok {
 		return nil, 0, fmt.Errorf("%q is not a creature", key) // CheckSummon said it was
@@ -68,6 +68,12 @@ func (l *lazyOwner) numbersOf(ctx context.Context, content *rules.Content, key s
 	if content.CreatureHasFormulas(key) {
 		if stat, hpMax, err = l.resolve(ctx, key, slot); err != nil {
 			return nil, 0, err
+		}
+	}
+	if minInt > 0 && stat == nil {
+		// A creature with an Intelligence floor (a steed) keeps it in its snapshot, and the type it was given: the stat block is the content's, raised.
+		if stat, err = json.Marshal(rules.ResolvedCreature{Key: key, MinInt: minInt, CreatureType: creatureType}); err != nil {
+			return nil, 0, wrap("keep a creature's numbers", err)
 		}
 	}
 	return stat, conv.Int32(max(hpMax, 1)), nil
@@ -108,6 +114,11 @@ func monsterDerivedOf(content *rules.Content, key string, statBlock []byte) (rul
 	if len(statBlock) > 0 {
 		var r rules.ResolvedCreature
 		if json.Unmarshal(statBlock, &r) == nil && r.Key == key {
+			if r.MinInt > 0 && !content.IsTableCreature(key) {
+				if d, ok := content.MonsterDerivedMinInt(key, r.MinInt); ok {
+					return d, true
+				}
+			}
 			if d, _, ok := content.ResolvedDerived(r); ok {
 				return d, true
 			}
@@ -122,7 +133,7 @@ func monsterDerivedOf(content *rules.Content, key string, statBlock []byte) (rul
 // drop the formulas of a creature that has a snapshot); a row that is not there (a creature deleted under its
 // combatant) is no error: the entry's static numbers stand.
 func (s *Service) statBlockOf(ctx context.Context, tx pgx.Tx, content *rules.Content, campaignID, creatureID, monsterKey string) ([]byte, error) {
-	if creatureID == "" || !content.IsTableCreature(monsterKey) {
+	if creatureID == "" || !content.IsTableCreature(monsterKey) && !content.HasIntelligenceFloor(monsterKey) {
 		return nil, nil
 	}
 	row, err := s.queriesIn(tx).GetCharacterCreature(ctx, charactersdb.GetCharacterCreatureParams{CampaignID: campaignID, ID: creatureID})

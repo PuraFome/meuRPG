@@ -17216,7 +17216,13 @@ type CastSpellRequest struct {
 	// Only the roller (the owner of the player character) may set it, and the master cannot spend it for an absent player.
 	// It is refused with NOT_THE_HOLDER, HAS_NONE, ADDS_NOTHING, NOTHING_TO_ROLL, or AFTER_THE_ROLL (a retry that adds the spend after the d20 was rolled).
 	// A refusal spends nothing: the Inspiration is spent only when the roll is made, in the same transaction as its write.
-	SpendFavor    bool `protobuf:"varint,36,opt,name=spend_favor,json=spendFavor,proto3" json:"spend_favor,omitempty"`
+	SpendFavor bool `protobuf:"varint,36,opt,name=spend_favor,json=spendFavor,proto3" json:"spend_favor,omitempty"`
+	// Find Steed (SRD 5.1): a spell that targets only the caster also targets the bonded steed the caster rides.
+	// The spell must reach only the caster (`SpellOption.also_steed`), else `invalid_argument`, and the caster must ride its bonded steed in this combat,
+	// else `failed_precondition`.
+	// A spell with a lasting effect puts it on the steed's combatant as it does on the caster's.
+	// Any other spell leaves the steed to the table, and the cast says so in `SpellCast.steed_note`.
+	AlsoSteed     bool `protobuf:"varint,37,opt,name=also_steed,json=alsoSteed,proto3" json:"also_steed,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -17460,6 +17466,13 @@ func (x *CastSpellRequest) GetWall() *SpellWall {
 func (x *CastSpellRequest) GetSpendFavor() bool {
 	if x != nil {
 		return x.SpendFavor
+	}
+	return false
+}
+
+func (x *CastSpellRequest) GetAlsoSteed() bool {
+	if x != nil {
+		return x.AlsoSteed
 	}
 	return false
 }
@@ -18646,7 +18659,10 @@ type SummonChoice struct {
 	// (free text by a player: "Nanquim"). Empty, or one for each creature; a
 	// blank name takes the creature's Portuguese name, numbered when several
 	// share it.
-	Names         []string `protobuf:"bytes,3,rep,name=names,proto3" json:"names,omitempty"`
+	Names []string `protobuf:"bytes,3,rep,name=names,proto3" json:"names,omitempty"`
+	// The creature type the spell lets the player pick ("celestial", "fey" or "fiend" for Convocar Montaria): one of
+	// SummonSpellOptions.type_choices. Empty for a spell that picks none.
+	CreatureType  string `protobuf:"bytes,4,opt,name=creature_type,json=creatureType,proto3" json:"creature_type,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -18700,6 +18716,13 @@ func (x *SummonChoice) GetNames() []string {
 		return x.Names
 	}
 	return nil
+}
+
+func (x *SummonChoice) GetCreatureType() string {
+	if x != nil {
+		return x.CreatureType
+	}
+	return ""
 }
 
 // SaveResult is a target's saving throw against a spell.
@@ -19341,8 +19364,10 @@ type SpellCast struct {
 	// secret).
 	MetamagicKeys      []string `protobuf:"bytes,30,rep,name=metamagic_keys,json=metamagicKeys,proto3" json:"metamagic_keys,omitempty"`
 	SorceryPointsSpent int32    `protobuf:"varint,31,opt,name=sorcery_points_spent,json=sorceryPointsSpent,proto3" json:"sorcery_points_spent,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	// The line a cast with `also_steed` says about the steed: it is a target too, or the table applies the spell to it. Empty for any other cast.
+	SteedNote     string `protobuf:"bytes,32,opt,name=steed_note,json=steedNote,proto3" json:"steed_note,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *SpellCast) Reset() {
@@ -19464,6 +19489,13 @@ func (x *SpellCast) GetSorceryPointsSpent() int32 {
 		return x.SorceryPointsSpent
 	}
 	return 0
+}
+
+func (x *SpellCast) GetSteedNote() string {
+	if x != nil {
+		return x.SteedNote
+	}
+	return ""
 }
 
 // UseReactionRequest casts Escudo against a hit.
@@ -30954,7 +30986,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\vSpellTarget\x12!\n" +
 	"\fcombatant_id\x18\x01 \x01(\tR\vcombatantId\x12\x14\n" +
 	"\x05darts\x18\x02 \x01(\x05R\x05darts\x12$\n" +
-	"\x0edead_target_id\x18\x03 \x01(\tR\fdeadTargetId\"\xb9\t\n" +
+	"\x0edead_target_id\x18\x03 \x01(\tR\fdeadTargetId\"\xd8\t\n" +
 	"\x10CastSpellRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12!\n" +
@@ -30988,7 +31020,9 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\rspell_options\x18\" \x03(\v2!.meurpg.play.v1.SpellOptionChoiceR\fspellOptions\x12-\n" +
 	"\x04wall\x18# \x01(\v2\x19.meurpg.play.v1.SpellWallR\x04wall\x12\x1f\n" +
 	"\vspend_favor\x18$ \x01(\bR\n" +
-	"spendFavorB\x06\n" +
+	"spendFavor\x12\x1d\n" +
+	"\n" +
+	"also_steed\x18% \x01(\bR\talsoSteedB\x06\n" +
 	"\x04rollB\x06\n" +
 	"\x04areaB\x10\n" +
 	"\x0e_reveal_hidden\"M\n" +
@@ -31075,11 +31109,12 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x06reveal\x18\x04 \x01(\bR\x06reveal\x12'\n" +
 	"\x0fidempotency_key\x18\x05 \x01(\tR\x0eidempotencyKey\"V\n" +
 	"\x1bResolveHiddenRevealResponse\x127\n" +
-	"\tencounter\x18\x01 \x01(\v2\x19.meurpg.play.v1.EncounterR\tencounter\"a\n" +
+	"\tencounter\x18\x01 \x01(\v2\x19.meurpg.play.v1.EncounterR\tencounter\"\x86\x01\n" +
 	"\fSummonChoice\x12\x16\n" +
 	"\x06option\x18\x01 \x01(\x05R\x06option\x12#\n" +
 	"\rcreature_keys\x18\x02 \x03(\tR\fcreatureKeys\x12\x14\n" +
-	"\x05names\x18\x03 \x03(\tR\x05names\"\xa6\x03\n" +
+	"\x05names\x18\x03 \x03(\tR\x05names\x12#\n" +
+	"\rcreature_type\x18\x04 \x01(\tR\fcreatureType\"\xa6\x03\n" +
 	"\n" +
 	"SaveResult\x125\n" +
 	"\aoutcome\x18\x01 \x01(\x0e2\x1b.meurpg.play.v1.SaveOutcomeR\aoutcome\x12,\n" +
@@ -31146,7 +31181,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x11inspiration_offer\x18\a \x01(\v2'.meurpg.play.v1.OutsideInspirationOfferB\x02\x18\x01R\x10inspirationOffer\x12?\n" +
 	"\vlucky_offer\x18\b \x01(\v2\x1a.meurpg.play.v1.LuckyOfferB\x02\x18\x01R\n" +
 	"luckyOffer\x12E\n" +
-	"\x0fheld_roll_offer\x18\t \x01(\v2\x1d.meurpg.play.v1.HeldRollOfferR\rheldRollOffer\"\xa7\x05\n" +
+	"\x0fheld_roll_offer\x18\t \x01(\v2\x1d.meurpg.play.v1.HeldRollOfferR\rheldRollOffer\"\xc6\x05\n" +
 	"\tSpellCast\x12\x17\n" +
 	"\acast_id\x18\x01 \x01(\tR\x06castId\x12\x1b\n" +
 	"\tspell_key\x18\x02 \x01(\tR\bspellKey\x12-\n" +
@@ -31162,7 +31197,9 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	" \x01(\tR\x12effectConditionKey\x12.\n" +
 	"\x10effect_threshold\x18\v \x01(\x05H\x00R\x0feffectThreshold\x88\x01\x01\x12%\n" +
 	"\x0emetamagic_keys\x18\x1e \x03(\tR\rmetamagicKeys\x120\n" +
-	"\x14sorcery_points_spent\x18\x1f \x01(\x05R\x12sorceryPointsSpentB\x13\n" +
+	"\x14sorcery_points_spent\x18\x1f \x01(\x05R\x12sorceryPointsSpent\x12\x1d\n" +
+	"\n" +
+	"steed_note\x18  \x01(\tR\tsteedNoteB\x13\n" +
 	"\x11_effect_threshold\"\xdc\x01\n" +
 	"\x12UseReactionRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
