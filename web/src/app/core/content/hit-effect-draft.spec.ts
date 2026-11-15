@@ -304,17 +304,23 @@ describe('the hit effect draft (#577)', () => {
         text: 'Escolha a condição de quem falhar, ou tire o teste.',
       },
     ]);
-    expect(hitRefusals(undefined, { ...on, dice: '11', condition: 'condition:blinded' }, true)[0]).toEqual({
+    expect(
+      hitRefusals(undefined, { ...on, dice: '11', condition: 'condition:blinded' }, true)[0],
+    ).toEqual({
       path: 'table_spell.effect.modifiers[0].dice',
       text: 'De 1 a 10 dados.',
     });
-    expect(hitRefusals(undefined, { ...on, dice: '3', cap: '2', condition: 'condition:blinded' }, true)).toEqual([
+    expect(
+      hitRefusals(undefined, { ...on, dice: '3', cap: '2', condition: 'condition:blinded' }, true),
+    ).toEqual([
       {
         path: 'table_spell.effect.modifiers[0].max_dice',
         text: 'De 1 a 20 dados, e nunca abaixo dos dados da magia.',
       },
     ]);
-    expect(hitRefusals(undefined, { ...on, dice: '', condition: 'condition:blinded' }, true)).toHaveLength(1);
+    expect(
+      hitRefusals(undefined, { ...on, dice: '', condition: 'condition:blinded' }, true),
+    ).toHaveLength(1);
   });
 
   it('names the ability keys of the wire', () => {

@@ -158,6 +158,9 @@ The screens of MR-025 and RN-23 use only the server of [Table content](character
   The marked target is locked unless the target is "Uma criatura" with no extra targets per level (a cantrip has none, so a stale count there does not lock).
   When a change locks it, the trigger moves to "Próximo golpe com arma" and the block says so in a polite live region.
   "Cada golpe enquanto durar" and the marked target need concentration; the block says so while it is off.
+  The audience and the label of the other players ("Quem vê o efeito", `pages/content/spell-editor/hit-audience`) are a card of the side column while the hit is the spell's only effect; with "Deixa um efeito nos alvos" on, the same question is asked inside that block.
+  A new effect starts at "Só quem conjura e você", the server's own default (`hitShell` writes the audience when the effect is new or the person changed it, and leaves a stored unset audience unset).
+  A server refusal of the audience lands on the card, and a save the form stops (`EntrySaver.blockOn` with its count) says "N campos precisam de ajuste" for every field it names.
   A refusal of the server lands at the field, and the read view and the editor's preview share `readHit`.
   "Salvar magia" stops and lands on the first of them.
   A refusal at `table_spell.summon.*` sits under its own field (`SPELL_SUMMON_TEXTS`).

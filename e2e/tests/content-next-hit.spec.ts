@@ -154,3 +154,42 @@ test('a recusa do efeito no próximo golpe volta no campo, e a magia só salva d
     await Promise.all([master.close(), player.close()]);
   }
 });
+
+test('o mestre escolhe quem vê o efeito do próximo golpe e o que os outros leem, e a magia volta como ele a salvou @MR-025', { tag: ['@MR-025', '@RN-23'] }, async ({ browser }) => {
+  const master = await newSignedInContext(browser, 'Mestre Teste');
+  const player = await newSignedInContext(browser, 'Jogador Teste');
+  try {
+    const m = await master.newPage();
+    const p = await player.newPage();
+    await Promise.all([m.goto('/'), p.goto('/')]);
+    const campaignId = await campaignWithEmptyPlayer(m, p, `Próximo golpe quem vê ${Date.now()}`);
+    const key = await createEntryRPC(
+      m,
+      campaignId,
+      'tableSpell',
+      hitSpellBody('Sinal da Presa', { trigger: 'TABLE_HIT_TRIGGER_MARKED_TARGET', die: 6, dice: 1, perSlotDice: 0, maxDice: 0, damageType: '', save: '', onFailConditions: [], conditionDuration: '' }, { target: { kind: 'TABLE_SPELL_TARGET_KIND_CREATURE' }, range: { kind: 'SPELL_RANGE_KIND_RANGED', distanceFt: 90 } }),
+    );
+
+    await m.goto(entryRoute(campaignId, key));
+    const card = m.locator('app-hit-audience');
+    await expect(card.getByRole('heading', { name: 'Quem vê o efeito' })).toBeVisible();
+    // Stored with the audience unset: the caster alone.
+    await expect(card.getByRole('radio', { name: /^Só quem conjura e você/ })).toBeChecked();
+    await pickRadio(card, 'Todos na mesa');
+    await expect(card.getByText('Os outros leem só o nome da marca no alvo.')).toBeVisible();
+    await card.getByLabel('O que os outros jogadores leem').fill('Sinal da Presa');
+    await expect(card.getByText('No alvo marcado, na ordem. Nunca os dados. 14 de 30')).toBeVisible();
+    await m.getByRole('button', { name: 'Salvar magia' }).click();
+    await expect(m.getByText('A magia Sinal da Presa foi salva.')).toBeVisible();
+
+    const stored = (await listEntriesJSON(m, campaignId)).entries!.find((e) => e.namePt === 'Sinal da Presa')!;
+    expect(stored.tableSpell.effect.visibility).toBe('TABLE_EFFECT_AUDIENCE_PUBLIC');
+    expect(stored.tableSpell.effect.playerLabelPt).toBe('Sinal da Presa');
+
+    await m.reload();
+    await expect(card.getByRole('radio', { name: /^Todos na mesa/ })).toBeChecked();
+    await expect(card.getByLabel('O que os outros jogadores leem')).toHaveValue('Sinal da Presa');
+  } finally {
+    await Promise.all([master.close(), player.close()]);
+  }
+});

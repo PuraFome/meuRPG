@@ -6469,6 +6469,7 @@ async function scanNextHit(browser: Browser, colorScheme: 'light' | 'dark', widt
       await expect(m.getByLabel('Nome', { exact: true })).toHaveValue('Geada no Punho');
       const block = m.locator('app-hit-effect-block');
       await expect(block.getByRole('switch', { name: 'Efeito no próximo golpe' })).toHaveAttribute('aria-checked', 'true');
+      await expect(m.locator('app-hit-audience').getByRole('heading', { name: 'Quem vê o efeito' })).toBeVisible();
       await expectScreenPasses(m, `Editor de magia, o efeito no próximo golpe ligado, o alvo marcado travado ${where}`);
       await expectHeadNotStranded(block, where);
       for (const card of ['Próximo golpe com arma', 'Cada golpe enquanto durar', 'Próximo golpe corpo a corpo']) {

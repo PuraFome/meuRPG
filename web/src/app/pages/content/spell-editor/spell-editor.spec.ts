@@ -9,10 +9,12 @@ import {
   TableContentKind,
   TableContentRefusalSchema,
   TableContentViolationSchema,
+  TableEffectAudience,
   TableEffectModifierKind,
   TableHitConditionDuration,
   TableHitTrigger,
   TableSpellSchema,
+  TableSpellTargetKind,
 } from '../../../../gen/meurpg/rules/v1/table_content_pb';
 import { rememberCreatureName } from '../../../core/content/summon-names';
 import { CreaturesClient } from '../../../core/creatures/creatures-client';
@@ -656,6 +658,101 @@ describe('SpellEditor', () => {
         maxDice: 0,
         save: '',
       });
+    });
+
+    it('asks who sees the effect beside the preview while the hit is the only effect, and sends the audience and the label', async () => {
+      const { fixture, el } = setup(true, { duration: { kind: 2, amount: 1, unit: 2 } });
+      expect(el.querySelector('app-hit-audience')).toBeNull();
+      el.querySelector<HTMLButtonElement>('app-hit-effect-block [role="switch"]')!.click();
+      await settle(fixture, 3);
+      const card = el.querySelector('.editor__side app-hit-audience') as HTMLElement;
+      expect(card).not.toBeNull();
+      expect(text(card)).toContain('Quem vê o efeito');
+      const radios = Array.from(card.querySelectorAll<HTMLInputElement>('input[type="radio"]'));
+      expect(radios.map((r) => r.checked)).toEqual([false, true]);
+      expect(text(card)).toContain('Os outros não leem nada.');
+      expect(card.querySelector('input[type="text"], textarea')).toBeNull();
+      radios[0].click();
+      await settle(fixture, 3);
+      expect(text(card)).toContain('Os outros leem só o rótulo em quem conjura.');
+      const label = card.querySelector(
+        'input[data-field="table_spell.effect.player_label_pt"]',
+      ) as HTMLInputElement;
+      label.value = 'Clarão';
+      label.dispatchEvent(new Event('input'));
+      await settle(fixture, 3);
+      expect(text(card)).toContain('Em quem conjura. Nunca os dados. 6 de 30');
+      save.mockResolvedValue({
+        entry: entry(TableContentKind.SPELL, 'Lâmina de Nanquim'),
+        affected: [],
+      });
+      click(el, 'Salvar magia');
+      await settle(fixture, 3);
+      const effect = save.mock.calls[0][2].value.effect;
+      expect(effect.visibility).toBe(TableEffectAudience.PUBLIC);
+      expect(effect.playerLabelPt).toBe('Clarão');
+      expect(effect.modifiers).toHaveLength(1);
+    });
+
+    it('starts the audience at the caster alone for a new effect, says the mark for the marked target, and gives the public start back when the hit goes off', async () => {
+      const { fixture, el } = setup(true, {
+        duration: { kind: 2, amount: 1, unit: 2 },
+        concentration: true,
+        target: { kind: TableSpellTargetKind.CREATURE },
+      });
+      const sw = () => el.querySelector<HTMLButtonElement>('app-hit-effect-block [role="switch"]')!;
+      sw().click();
+      await settle(fixture, 3);
+      (el.querySelectorAll('app-hit-effect-block .card input')[3] as HTMLInputElement).click();
+      await settle(fixture, 3);
+      const card = el.querySelector('app-hit-audience') as HTMLElement;
+      expect(text(card)).toContain('Os outros leem só o nome da marca no alvo.');
+      sw().click();
+      await settle(fixture, 3);
+      expect(el.querySelector('app-hit-audience')).toBeNull();
+      save.mockResolvedValue({
+        entry: entry(TableContentKind.SPELL, 'Lâmina de Nanquim'),
+        affected: [],
+      });
+      click(el, 'Salvar magia');
+      await settle(fixture, 3);
+      expect(save.mock.calls[0][2].value.effect).toBeUndefined();
+    });
+
+    it('opens a stored audience and label, and leaves the card to the targets block while it is on', async () => {
+      const only = setup(true, {
+        duration: { kind: 2, amount: 1, unit: 2 },
+        concentration: true,
+        effect: {
+          visibility: TableEffectAudience.PUBLIC,
+          playerLabelPt: 'Marca',
+          modifiers: [
+            {
+              kind: TableEffectModifierKind.WEAPON_HIT_DAMAGE,
+              trigger: TableHitTrigger.NEXT_HIT,
+              die: 6,
+              dice: 1,
+              maxDice: 0,
+            },
+          ],
+        },
+      });
+      const card = only.el.querySelector('app-hit-audience') as HTMLElement;
+      expect(
+        Array.from(card.querySelectorAll<HTMLInputElement>('input[type="radio"]')).map(
+          (r) => r.checked,
+        ),
+      ).toEqual([true, false]);
+      expect(
+        (
+          card.querySelector(
+            'input[data-field="table_spell.effect.player_label_pt"]',
+          ) as HTMLInputElement
+        ).value,
+      ).toBe('Marca');
+      only.fixture.destroy();
+      const both = setup(true, hitSpell());
+      expect(both.el.querySelector('app-hit-audience')).toBeNull();
     });
 
     it('sends the effect without the modifier once the block is turned off', async () => {
