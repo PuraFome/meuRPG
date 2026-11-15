@@ -113,7 +113,7 @@ func TestAnIssuesIdentity(t *testing.T) {
 		t.Errorf("plain ID = %q", plain.ID())
 	}
 	lost := Issue{Code: IssueFeatPrerequisite, Field: "full.feat_keys[0]", Message: "X pede…", Lost: &LostPrerequisite{Key: "feat:x@mesa", EntryPT: "X"}}
-	if got, want := lost.ID(), IssueFeatPrerequisite+"|full.feat_keys[0]|lost:feat:x@mesa"; got != want {
+	if got, want := lost.ID(), IssueFeatPrerequisite+"|full.feat_keys|lost:feat:x@mesa"; got != want {
 		t.Errorf("lost ID = %q, want %q", got, want)
 	}
 }

@@ -20,7 +20,7 @@ func TestALostFeatTakenThroughAChoiceIsNamedAtItsPick(t *testing.T) {
 	if want := "full.feature_choice_keys[1]"; is.Field != want {
 		t.Errorf("field = %q, want %q", is.Field, want)
 	}
-	if want := IssueFeatPrerequisite + "|full.feature_choice_keys[1]|lost:" + punhoFeat; is.ID() != want {
+	if want := IssueFeatPrerequisite + "|full.feature_choice_keys|lost:" + punhoFeat; is.ID() != want {
 		t.Errorf("ID = %q, want %q", is.ID(), want)
 	}
 	if !is.LegacyLostID(IssueFeatPrerequisite + "|full.feature_choice_keys|O personagem não cumpre mais o pré-requisito de Punho: Força 15.") {

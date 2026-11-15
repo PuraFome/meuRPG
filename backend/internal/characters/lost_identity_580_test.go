@@ -2,6 +2,7 @@ package characters
 
 import (
 	"encoding/json"
+	"slices"
 	"strings"
 	"testing"
 
@@ -82,7 +83,7 @@ func TestTheStoredIssuesHoldIdentitiesNotSentences(t *testing.T) {
 	t.Parallel()
 	lt := newLostFeatTable(t)
 	stored := storedIssues(t, lt.h, lt.pc.GetId())
-	want := "feat_prerequisite|full.feat_keys[0]|lost:" + lt.feat
+	want := "feat_prerequisite|full.feat_keys|lost:" + lt.feat
 	found := false
 	for _, id := range stored {
 		found = found || id == want
@@ -198,29 +199,46 @@ func issueMessage(c *charactersv1.Character, code string) string {
 	return ""
 }
 
+// setStoredIssues writes the character's stored known_issues straight into the row, as a sheet saved by an earlier
+// version of the code holds them.
+func setStoredIssues(t *testing.T, h *harness, id string, issues []string) {
+	t.Helper()
+	raw, err := json.Marshal(issues)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := h.pool.Exec(t.Context(), "UPDATE characters SET sheet = jsonb_set(sheet, '{full,known_issues}', $2::jsonb) WHERE id = $1", id, string(raw)); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// withoutCode is the stored issues without the ones of a code, and with the rows after them.
+func withoutCode(stored []string, code string, rows ...string) []string {
+	out := slices.Clone(rows)
+	for _, id := range stored {
+		if !strings.HasPrefix(id, code+"|") {
+			out = append(out, id)
+		}
+	}
+	return out
+}
+
 // A row saved by the code before this one holds the lost issue in its old wording: it is the same issue, so a change
 // of the entry afterwards makes no notice and the master's "Fichas com aviso" does not count it.
 func TestAStoredIssueInTheOldWordingIsTheSameIssue(t *testing.T) {
 	t.Parallel()
 	lt := newLostFeatTable(t)
-	old := []string{
-		"feat_prerequisite|full.feat_keys[0]|O personagem não cumpre mais o pré-requisito de Pede a ordem: o talento só vale de novo quando cumprir.",
-	}
-	for _, id := range storedIssues(t, lt.h, lt.pc.GetId()) {
-		if !strings.HasPrefix(id, "feat_prerequisite|") {
-			old = append(old, id)
-		}
-	}
-	raw, err := json.Marshal(old)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := lt.h.pool.Exec(t.Context(), "UPDATE characters SET sheet = jsonb_set(sheet, '{full,known_issues}', $2::jsonb) WHERE id = $1", lt.pc.GetId(), string(raw)); err != nil {
-		t.Fatal(err)
-	}
+	setStoredIssues(t, lt.h, lt.pc.GetId(), withoutCode(storedIssues(t, lt.h, lt.pc.GetId()), "feat_prerequisite",
+		"feat_prerequisite|full.feat_keys[0]|O personagem não cumpre mais o pré-requisito de Pede a ordem: o talento só vale de novo quando cumprir."))
+	lt.wantNoNotice(t, func(f *rulesv1.TableFeat) { f.DescPt = []string{"Texto novo."} })
+}
+
+// wantNoNotice applies the master's edit to the feat and checks nothing is flagged for the issue the sheet already had.
+func (lt *lostFeatTable) wantNoNotice(t *testing.T, edit func(*rulesv1.TableFeat)) {
+	t.Helper()
 	entry := lt.master.entries(t, lt.campaign)[lt.feat]
 	edited := proto.CloneOf(bodyMessage(entry).(*rulesv1.TableFeat))
-	edited.DescPt = []string{"Texto novo."}
+	edit(edited)
 	res, err := lt.master.table.UpdateTableEntry(t.Context(), connect.NewRequest(updateReq(lt.campaign, lt.feat, entry.GetRevision(), edited)))
 	if err != nil {
 		t.Fatalf("UpdateTableEntry() error = %v", err)
@@ -230,5 +248,40 @@ func TestAStoredIssueInTheOldWordingIsTheSameIssue(t *testing.T) {
 	}
 	if keys := changedKeys(lt.owner.get(t, lt.campaign, lt.pc.GetId())); len(keys) != 0 {
 		t.Errorf("the owner reads a changed entry %v for an issue the sheet already had", keys)
+	}
+}
+
+// The old wording names the entry, and the master may rename it before the next save: the row is still the same issue.
+func TestAStoredIssueInTheOldWordingSurvivesTheRenameOfItsEntry(t *testing.T) {
+	t.Parallel()
+	t.Run("a feat", func(t *testing.T) {
+		t.Parallel()
+		lt := newLostFeatTable(t)
+		setStoredIssues(t, lt.h, lt.pc.GetId(), withoutCode(storedIssues(t, lt.h, lt.pc.GetId()), "feat_prerequisite",
+			"feat_prerequisite|full.feat_keys[0]|O personagem não cumpre mais o pré-requisito de Pede a ordem: o talento só vale de novo quando cumprir."))
+		lt.wantNoNotice(t, func(f *rulesv1.TableFeat) { f.NamePt = "Pede a hierarquia" })
+	})
+	t.Run("a feat taken through a choice, stored without the pick's index", func(t *testing.T) {
+		t.Parallel()
+		lt := newLostFeatTable(t)
+		lt.giveThroughAChoice(t)
+		setStoredIssues(t, lt.h, lt.pc.GetId(), withoutCode(storedIssues(t, lt.h, lt.pc.GetId()), "feat_prerequisite",
+			"feat_prerequisite|full.feature_choice_keys|O personagem não cumpre mais o pré-requisito de Pede a ordem: o talento só vale de novo quando cumprir."))
+		lt.wantNoNotice(t, func(f *rulesv1.TableFeat) { f.NamePt = "Pede a hierarquia" })
+	})
+}
+
+// giveThroughAChoice has the character take the feat through the background's choice, in place of the sheet's own
+// list, and returns the stored issues of the character after the save.
+func (lt *lostFeatTable) giveThroughAChoice(t *testing.T) {
+	t.Helper()
+	feature := lt.master.entries(t, lt.campaign)[lt.background].GetTableBackground().GetFeature().GetKey()
+	current := lt.master.get(t, lt.campaign, lt.pc.GetId())
+	sheet := proto.CloneOf(current.GetSheet())
+	sheet.GetFull().Background = &charactersv1.FullSheet_BackgroundKey{BackgroundKey: lt.background}
+	sheet.GetFull().FeatKeys = nil
+	sheet.GetFull().FeatureChoiceKeys = append(sheet.GetFull().FeatureChoiceKeys, feature+"#feat="+lt.feat)
+	if _, err := lt.master.update(t, current, current.GetName(), sheet); err != nil {
+		t.Fatalf("the master's save of the pick: %v", err)
 	}
 }
