@@ -79,6 +79,7 @@ let nextId = 0;
 
     .suffix {
       padding-right: 12px;
+      white-space: nowrap;
       color: var(--mr-ink-muted);
     }
   `,
