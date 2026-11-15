@@ -374,6 +374,7 @@
             "key": "feature:fighter-fighting-style-defense",
             "name": "Fighting Style: Defense",
             "namePt": "Estilo de Luta: Defesa",
+            "optionOfPt": "Estilo de Luta",
             "sourcePt": "Guerreiro 1",
             "summaryPt": "+1 de CA enquanto usa armadura."
           }
@@ -835,6 +836,7 @@
             "key": "feature:fighter-fighting-style-defense",
             "name": "Fighting Style: Defense",
             "namePt": "Estilo de Luta: Defesa",
+            "optionOfPt": "Estilo de Luta",
             "sourcePt": "Guerreiro 1",
             "summaryPt": "+1 de CA enquanto usa armadura."
           }
@@ -1284,6 +1286,7 @@
             "key": "feature:fighter-fighting-style-archery",
             "name": "Fighting Style: Archery",
             "namePt": "Estilo de Luta: Arquearia",
+            "optionOfPt": "Estilo de Luta",
             "sourcePt": "Guerreiro 1",
             "summaryPt": "+2 nas jogadas de ataque com armas à distância."
           }
@@ -1753,6 +1756,7 @@
             "key": "feature:fighter-fighting-style-archery",
             "name": "Fighting Style: Archery",
             "namePt": "Estilo de Luta: Arquearia",
+            "optionOfPt": "Estilo de Luta",
             "sourcePt": "Guerreiro 1",
             "summaryPt": "+2 nas jogadas de ataque com armas à distância."
           }

@@ -758,6 +758,13 @@ func (col *collector) featureOption(field, key string, pickedNames map[string]bo
 		col.add(key)
 	}
 	col.feature(key, f.Name, parent, x.featureLevel(parent), f.Desc)
+	col.offeredBy(parent)
+}
+
+// offeredBy marks the feature just listed as an option of parent: its row reads "Opção de <parent>" (board 580-05).
+func (col *collector) offeredBy(parent string) {
+	last := &col.x.d.Features[len(col.x.d.Features)-1]
+	last.OptionOfPT = col.x.c.namePT(parent)
 }
 
 // optionNotOffered is the issue of a pick that nothing on the sheet offers, tied
@@ -784,6 +791,7 @@ func (col *collector) traitOption(field, key string) {
 	}
 	col.add(key)
 	col.feature(key, t.Name, t.Parent, 0, t.Desc)
+	col.offeredBy(t.Parent)
 }
 
 // optionSummary is the one-line rule of a chosen option, or "".

@@ -426,6 +426,7 @@ describe('the sheet maps armor_class_description, features and hints (integrator
         descriptionPtMissing: false,
         descriptionPtOnly: false,
         summaryPt: '',
+        optionOf: '',
         lost: false,
       },
     ]);
@@ -704,6 +705,7 @@ describe('the sheet lists the feats a character took with the features (MR-025)'
         descriptionPtMissing: false,
         descriptionPtOnly: true,
         summaryPt: '',
+        optionOf: '',
         lost: false,
       },
     ]);
