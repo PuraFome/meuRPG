@@ -603,7 +603,9 @@ func fillPayload(v reflect.Value, seen map[reflect.Type]int) {
 		seen[t]++
 		defer func() { seen[t]-- }()
 		for i := range t.NumField() {
-			if f := t.Field(i); f.IsExported() && f.Tag.Get("json") != "-" {
+			// The payloads of the favor events written in a combat embed their ids and the combat's fields as unexported types, whose exported
+			// fields json writes: they are filled too (the other embedded types keep the shapes their fixtures have).
+			if f := t.Field(i); (f.IsExported() || (f.Anonymous && strings.HasPrefix(f.Type.Name(), "favor"))) && f.Tag.Get("json") != "-" {
 				fillPayload(v.Field(i), seen)
 			}
 		}

@@ -4,6 +4,8 @@ import (
 	"slices"
 	"testing"
 
+	"connectrpc.com/connect"
+
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 )
 
@@ -23,8 +25,23 @@ func (f *favorFight) favorTexts(t *testing.T, u *user) []string {
 	return out
 }
 
-// wantTexts checks what each reader reads: nothing for a name missing from want.
+// setupGrantLine is the master's line of the grant that gives Toren the Inspiration these fights start from (f.give): wantTexts leaves it out,
+// as it is not what the tests judge; the tests of the grant itself read the lines whole (wantAllTexts).
+const setupGrantLine = "O mestre deu a Inspiração a Toren."
+
+// wantTexts checks what each reader reads, apart from the setup grant's line: nothing for a name missing from want.
 func (f *favorFight) wantTexts(t *testing.T, what string, want map[*user][]string) {
+	t.Helper()
+	for _, u := range []*user{f.master, f.caio, f.ana, f.bia} {
+		got := slices.DeleteFunc(f.favorTexts(t, u), func(text string) bool { return text == setupGrantLine })
+		if !slices.Equal(got, want[u]) {
+			t.Errorf("%s: a reader reads %q, want %q", what, got, want[u])
+		}
+	}
+}
+
+// wantAllTexts is wantTexts with every line, the setup grant's included.
+func (f *favorFight) wantAllTexts(t *testing.T, what string, want map[*user][]string) {
 	t.Helper()
 	for _, u := range []*user{f.master, f.caio, f.ana, f.bia} {
 		got := f.favorTexts(t, u)
@@ -144,8 +161,31 @@ func TestPassOutsideACombatWritesNoLineAndNoCombat(t *testing.T) {
 	}
 }
 
-// A pass answered with a hidden combatant in it is the master's line alone, whoever the hidden one is and even after the master shows it
-// (RN-10): the same audience rule as the rest of the log.
+// hideBySQL sets the hidden flag of a player's combatant straight in the table. The calls refuse to (a player's combatant is never hidden,
+// see TestAPlayersCombatantCannotBeHidden), so this is the only way to reach the defensive stamp that makes a favor line the master's alone.
+func (f *favorFight) hideBySQL(t *testing.T, characterID string, hidden bool) {
+	t.Helper()
+	f.execSQL(t, `UPDATE combatants SET hidden = $1 WHERE encounter_id = $2 AND character_id = $3`, hidden, f.e.GetId(), characterID)
+}
+
+// No call can hide a player's combatant, so a giver or receiver of the Inspiration is never hidden: the precondition of the stamp below.
+func TestAPlayersCombatantCannotBeHidden(t *testing.T) {
+	t.Parallel()
+	f := newFavorFight(t)
+	for _, name := range []string{"Toren", "Pensantus"} {
+		_, err := f.master.combat.SetCombatantHidden(t.Context(), connect.NewRequest(&playv1.SetCombatantHiddenRequest{
+			CampaignId: f.campaignID, EncounterId: f.e.GetId(), CombatantId: f.id(t, name), IdempotencyKey: newKey(), Hidden: true,
+		}))
+		if connect.CodeOf(err) != connect.CodeInvalidArgument {
+			t.Errorf("hiding %s = %v, want invalid_argument", name, err)
+		}
+	}
+}
+
+// Grants and passes involve player characters only, and a player's combatant cannot be hidden by any call, so no call reaches a hidden giver
+// or receiver, and no combatant the player does not see is in a pass (the audience is the owners of the characters named). The stamp that
+// a hidden combatant makes a line the master's alone (favorInCombat.Secret) is defensive: this test reaches it by setting the flag in the
+// table, and proves the line stays the master's alone, whoever the hidden one is and after the flag is cleared (RN-10).
 func TestPassLineOfAHiddenCombatantIsTheMastersAlone(t *testing.T) {
 	t.Parallel()
 	for _, hidden := range []string{"Toren", "Pensantus"} {
@@ -154,13 +194,17 @@ func TestPassLineOfAHiddenCombatantIsTheMastersAlone(t *testing.T) {
 			f := newFavorFight(t)
 			f.give(t, f.toren)
 			p := f.mustAsk(t, f.toren.GetId(), f.pens.GetId())
-			hideAgain(t, f.armed, f.e, hidden)
+			id := f.toren.GetId()
+			if hidden == "Pensantus" {
+				id = f.pens.GetId()
+			}
+			f.hideBySQL(t, id, true)
 			if _, err := f.answer(p.GetId(), true); err != nil {
 				t.Fatalf("accept: %v", err)
 			}
 			want := map[*user][]string{f.master: {"Toren passou a Inspiração para Pensantus."}}
 			f.wantTexts(t, "the line with "+hidden+" hidden", want)
-			showNPC(t, f.armed, f.e, hidden)
+			f.hideBySQL(t, id, false)
 			f.wantTexts(t, "the line after "+hidden+" is shown", want)
 		})
 	}
@@ -302,11 +346,11 @@ func TestGrantInACombatIsTheMastersLineAlone(t *testing.T) {
 			t.Parallel()
 			f := newFavorFight(t)
 			if hidden {
-				hideAgain(t, f.armed, f.e, "Toren")
+				f.hideBySQL(t, f.toren.GetId(), true)
 			}
 			ws := f.passWatchers(t)
 			f.give(t, f.toren)
-			f.wantTexts(t, "the grant", map[*user][]string{f.master: {"O mestre deu a Inspiração a Toren."}})
+			f.wantAllTexts(t, "the grant", map[*user][]string{f.master: {setupGrantLine}})
 			heard := logHints(f.heardBy(t, ws))
 			if heard["master"] != 1 || heard["caio"] != 0 || heard["ana"] != 0 || heard["bia"] != 0 {
 				t.Errorf("log hints of the grant = %v, want the master's alone", heard)

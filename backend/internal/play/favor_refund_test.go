@@ -236,15 +236,15 @@ func TestRefundHintsReachTheMasterAndTheRollerAlone(t *testing.T) {
 	if _, err := f.answerRefund(f.master, p.GetId(), true, newKey()); err != nil {
 		t.Fatal(err)
 	}
+	if now := f.seq(t); now != before+1 { // read before heardBy: its marker is a write of its own
+		t.Errorf("hint_seq = %d, want %d (one step)", now, before+1)
+	}
 	heard := f.heardBy(t, ws)
 	if v := vitalsHints(heard, f.toren.GetId()); v["master"] != 1 || v["caio"] != 1 || v["ana"] != 0 || v["bia"] != 0 {
 		t.Errorf("vitals hints of Toren = %v, want the master 1 and Caio 1", v)
 	}
 	if l := logHints(heard); l["master"] != 1 || l["caio"] != 1 || l["ana"] != 0 || l["bia"] != 0 {
 		t.Errorf("log hints = %v, want the master 1 and Caio 1", l)
-	}
-	if now := f.seq(t); now != before+1 {
-		t.Errorf("hint_seq = %d, want %d (one step)", now, before+1)
 	}
 }
 
@@ -258,18 +258,18 @@ func TestAnswerFavorRefundKeepMovesTheNumberAndTellsTheMaster(t *testing.T) {
 	if _, err := f.answerRefund(f.master, p.GetId(), false, key); err != nil {
 		t.Fatal(err)
 	}
-	if now := f.seq(t); now != before+1 {
+	if now := f.seq(t); now != before+1 { // read before heardBy: its marker is a write of its own
 		t.Errorf("hint_seq = %d, want %d (one step)", now, before+1)
 	}
 	if v := vitalsHints(f.heardBy(t, ws), f.toren.GetId()); v["master"] != 1 || v["caio"] != 0 || v["ana"] != 0 || v["bia"] != 0 {
 		t.Errorf("vitals hints of Toren = %v, want the master's alone", v)
 	}
-	ws = f.passWatchers(t)
+	ws, marked := f.passWatchers(t), f.seq(t)
 	if _, err := f.answerRefund(f.master, p.GetId(), false, key); err != nil {
 		t.Fatalf("the retry of the keep error = %v", err)
 	}
-	if now := f.seq(t); now != before+1 {
-		t.Errorf("hint_seq after the retry = %d, want %d (no new step)", now, before+1)
+	if now := f.seq(t); now != marked {
+		t.Errorf("hint_seq after the retry = %d, want %d (no new step)", now, marked)
 	}
 	if v := vitalsHints(f.heardBy(t, ws), f.toren.GetId()); v["master"] != 1 || v["caio"] != 0 || v["ana"] != 0 || v["bia"] != 0 {
 		t.Errorf("vitals hints of the retry = %v, want the master's again", v)
@@ -353,16 +353,17 @@ func TestAnswerFavorRefundRace(t *testing.T) {
 	}
 }
 
-// A refund answered with the roller hidden is the master's line alone, even after the master shows the roller (RN-10).
+// A refund answered with the roller hidden is the master's line alone, even after the flag is cleared (RN-10). A player's combatant cannot
+// be hidden by any call (TestAPlayersCombatantCannotBeHidden), so the flag is set in the table to reach the defensive stamp.
 func TestRefundLineOfAHiddenRollerIsTheMastersAlone(t *testing.T) {
 	t.Parallel()
 	f, p := refundFight(t)
-	hideAgain(t, f.armed, f.e, "Toren")
+	f.hideBySQL(t, f.toren.GetId(), true)
 	if _, err := f.answerRefund(f.master, p.GetId(), true, newKey()); err != nil {
 		t.Fatal(err)
 	}
 	want := map[*user][]string{f.master: {"O mestre devolveu a Inspiração de Toren."}}
 	f.wantTexts(t, "the refund with Toren hidden", want)
-	showNPC(t, f.armed, f.e, "Toren")
-	f.wantTexts(t, "the refund after Toren is shown", want)
+	f.hideBySQL(t, f.toren.GetId(), false)
+	f.wantTexts(t, "the refund after the flag is cleared", want)
 }

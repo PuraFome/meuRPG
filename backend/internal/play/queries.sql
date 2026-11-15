@@ -2298,7 +2298,7 @@ RETURNING *;
 -- The roll a prompt belongs to is gone (undone, or its held roll forgotten): the Inspiration it spent went back, so the prompt closes as kept.
 WITH changed AS (
     UPDATE favor_refund_prompts SET status = 'kept', answered_at = now()
-    WHERE campaign_id = $1 AND character_id = $2 AND roll_key = $3 AND status = 'open'
+    WHERE campaign_id = $1 AND roll_key = $2 AND status = 'open'
     RETURNING *
 )
 SELECT * FROM changed ORDER BY created_at, id;

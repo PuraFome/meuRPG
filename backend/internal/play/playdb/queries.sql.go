@@ -839,16 +839,15 @@ func (q *Queries) CloseFavorPassesOfSession(ctx context.Context, gameSessionID s
 const closeFavorRefundPromptsOfRoll = `-- name: CloseFavorRefundPromptsOfRoll :many
 WITH changed AS (
     UPDATE favor_refund_prompts SET status = 'kept', answered_at = now()
-    WHERE campaign_id = $1 AND character_id = $2 AND roll_key = $3 AND status = 'open'
+    WHERE campaign_id = $1 AND roll_key = $2 AND status = 'open'
     RETURNING id, campaign_id, game_session_id, character_id, roll_label_pt, hidden_sources, status, answer_key, created_at, answered_at, roll_key
 )
 SELECT id, campaign_id, game_session_id, character_id, roll_label_pt, hidden_sources, status, answer_key, created_at, answered_at, roll_key FROM changed ORDER BY created_at, id
 `
 
 type CloseFavorRefundPromptsOfRollParams struct {
-	CampaignID  string
-	CharacterID string
-	RollKey     string
+	CampaignID string
+	RollKey    string
 }
 
 type CloseFavorRefundPromptsOfRollRow struct {
@@ -867,7 +866,7 @@ type CloseFavorRefundPromptsOfRollRow struct {
 
 // The roll a prompt belongs to is gone (undone, or its held roll forgotten): the Inspiration it spent went back, so the prompt closes as kept.
 func (q *Queries) CloseFavorRefundPromptsOfRoll(ctx context.Context, arg CloseFavorRefundPromptsOfRollParams) ([]CloseFavorRefundPromptsOfRollRow, error) {
-	rows, err := q.db.Query(ctx, closeFavorRefundPromptsOfRoll, arg.CampaignID, arg.CharacterID, arg.RollKey)
+	rows, err := q.db.Query(ctx, closeFavorRefundPromptsOfRoll, arg.CampaignID, arg.RollKey)
 	if err != nil {
 		return nil, err
 	}
