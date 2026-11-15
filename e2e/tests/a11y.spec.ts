@@ -13358,6 +13358,20 @@ async function scanFavorSpend(browser: Browser, colorScheme: 'light' | 'dark'): 
     await page.keyboard.press('Escape');
     await expect(page.getByRole('dialog')).toHaveCount(0);
   };
+  // The sheet reads the target's circumstances from the combat options, which the page fetches again after a condition changes: a sheet
+  // opened right then can still hold the old ones (seen on the real stack: the "Envenenado" disadvantage missing from the sources). So
+  // the sheet is opened until it lists the source the state must show, and every assertion after it is as strict as before.
+  const openAttackShowing = async (page: Page, source: string): Promise<Locator> => {
+    let sheet = page.getByRole('dialog');
+    await expect(async () => {
+      if (await page.getByRole('dialog').count()) {
+        await closeSheet(page);
+      }
+      sheet = await openAttack(page);
+      await expect(sheet.getByText(source)).toBeVisible({ timeout: 1_500 });
+    }).toPass({ timeout: 30_000, intervals: [500, 1_000, 2_000] });
+    return sheet;
+  };
   try {
     await Promise.all([m.goto('/'), p.goto('/')]);
     const table = await tableForCombat(
@@ -13406,7 +13420,7 @@ async function scanFavorSpend(browser: Browser, colorScheme: 'light' | 'dark'): 
     enc = await setConditionsRPC(m, campaignId, enc, 'Pensantus', ['condition:poisoned']);
     await waitForEncounterRevision([m, p], enc);
     await expect(p.getByText('Envenenado').first()).toBeVisible();
-    sheet = await openAttack(p);
+    sheet = await openAttackShowing(p, 'Você está Envenenado: desvantagem');
     await tickFavor(sheet);
     await expect(
       sheet.getByText(
@@ -13427,7 +13441,7 @@ async function scanFavorSpend(browser: Browser, colorScheme: 'light' | 'dark'): 
     // Dashed with the reason when the target already gives advantage (Contido), still reachable and not ticked by a click.
     enc = await setConditionsRPC(m, campaignId, enc, 'Goblin 1', ['condition:restrained']);
     await waitForEncounterRevision([m, p], enc);
-    sheet = await openAttack(p);
+    sheet = await openAttackShowing(p, 'Alvo Impedido: vantagem');
     await expect(favorCheck(sheet)).toHaveAttribute('aria-disabled', 'true');
     await expect(favorBox(sheet)).toContainText(
       'A Inspiração não mudaria esta rolagem: ela já tem vantagem',
