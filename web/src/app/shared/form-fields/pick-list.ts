@@ -32,6 +32,9 @@ export interface ChipName {
           @if (isTable(key)) {
             <span class="mr-tag">Da mesa</span>
           }
+          @if (badgeOf(key); as badge) {
+            <span class="mr-tag mr-tag--compact">{{ badge }}</span>
+          }
           <button type="button" class="chip__x" [attr.aria-label]="removeLabel(key)" [disabled]="disabled()" (click)="removed.emit(key)">
             <mat-icon aria-hidden="true">close</mat-icon>
           </button>
@@ -58,7 +61,7 @@ export interface ChipName {
         </mat-form-field>
         <ng-template #items let-items>
           @for (o of items; track o.value) {
-            <option [value]="o.value">{{ o.side ? o.label + ' · ' + o.side : o.label }}</option>
+            <option [value]="o.value">{{ o.side || o.badge ? o.label + ' · ' + (o.side || o.badge) : o.label }}</option>
           }
         </ng-template>
       }
@@ -178,6 +181,10 @@ export class PickList {
   protected chipName(key: string): string {
     const name = this.nameOf(key);
     return name.endsWith(TABLE_WORDS) ? name.slice(0, -TABLE_WORDS.length) : name;
+  }
+
+  protected badgeOf(key: string): string {
+    return this.options().find((o) => o.value === key)?.badge ?? '';
   }
 
   protected nameOf(key: string): string {

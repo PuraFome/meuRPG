@@ -15,7 +15,11 @@ import {
 } from '../../core/content/feature-draft';
 import { followResource, resourcesOf, type SummonDraft } from '../../core/content/summon-draft';
 import type { Asks } from '../../core/content/asks';
-import { pactChoices, requirableOptions } from '../../core/content/requirable-options';
+import {
+  pactChoices,
+  requirableOptions,
+  siblingOptions,
+} from '../../core/content/requirable-options';
 import { AskRows } from '../ask-rows/ask-rows';
 import { latestInput } from '../latest-input';
 import { EffectPicker } from '../effect-picker/effect-picker';
@@ -105,6 +109,8 @@ export class FeatureEditor {
   /** An option of a class or subclass feature may ask something of who picks it (a level, a pact, a spell, other options; board 580-03). */
   readonly allowAsks = input(false);
   protected readonly asks = computed(() => featureAsks(this.feature()));
+  /** The options of the feature this one belongs to, itself among them: "Outras opções" offers the saved ones. */
+  readonly peers = input<readonly FeatureDraft[]>([]);
   /** An option row of a feature takes its removal into the "⋮" menu of its head (board 580-03); a trait keeps the button at the foot. */
   protected readonly rowMenu = computed(() => this.isOption() && this.removeLabel() !== '');
   protected readonly classOptions = computed<SelectOption[]>(() => [
@@ -115,7 +121,16 @@ export class FeatureEditor {
     pactChoices(this.menu(), this.entries()),
   );
   protected readonly requirable = computed<SelectOption[]>(() =>
-    requirableOptions(this.menu(), this.entries(), this.feature().key),
+    requirableOptions(
+      this.menu(),
+      this.entries(),
+      this.feature().key,
+      siblingOptions(this.peers(), this.feature().key),
+    ),
+  );
+  /** How many of the other options of the list have no key yet (the hint says they can be asked for after the save). */
+  protected readonly unsavedPeers = computed(
+    () => this.peers().filter((o) => o.key === '' && o.id !== this.feature().id).length,
   );
   protected readonly spellSearch = computed(() => this.catalog()?.spellSearch ?? []);
 

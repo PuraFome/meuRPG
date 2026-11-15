@@ -113,7 +113,7 @@ function filled(kind: AskKind, d: Asks): boolean {
               <app-search-pick label="Magia" placeholder="Procurar magia" emptyText="Nenhuma magia com esse nome." [single]="true" [options]="spellSearch()" [chips]="spellChips()" [path]="at('requires_spell_key')" [issues]="issues(at('requires_spell_key'))" (added)="asksChange.emit({ requiresSpell: $event })" (removed)="asksChange.emit({ requiresSpell: '' })" />
             }
             @default {
-              <app-pick-list label="Outras opções" addLabel="Adicionar opção" [options]="requirable()" [values]="value().requiresOptions" [max]="optionsMax" [path]="at('requires_option_keys')" [issues]="issues(at('requires_option_keys'))" hint="{{ value().requiresOptions.length }} de 10. Opções que o personagem já escolheu, do SRD ou da mesa. Nunca a própria opção." (added)="asksChange.emit({ requiresOptions: [...value().requiresOptions, $event] })" (removed)="asksChange.emit({ requiresOptions: value().requiresOptions.filter((k) => k !== $event) })" />
+              <app-pick-list label="Outras opções" addLabel="Adicionar opção" [options]="requirable()" [values]="value().requiresOptions" [max]="optionsMax" [path]="at('requires_option_keys')" [issues]="issues(at('requires_option_keys'))" [hint]="optionsHint()" (added)="asksChange.emit({ requiresOptions: [...value().requiresOptions, $event] })" (removed)="asksChange.emit({ requiresOptions: value().requiresOptions.filter((k) => k !== $event) })" />
             }
           }
         </div>
@@ -156,6 +156,10 @@ export class AskRows {
   readonly pactOptions = input.required<readonly SelectOption[]>();
   readonly requirable = input.required<readonly SelectOption[]>();
   readonly spellSearch = input.required<readonly SearchOption[]>();
+  /** The asking option is one of a feature's list: "Outras opções" offers its saved siblings, and the hint says so. */
+  readonly inList = input(false);
+  /** How many options of the list have no key yet: they cannot be asked for until the feature is saved. */
+  readonly unsavedPeers = input(0);
   /** The title line of the feat's block; the option's has none. */
   readonly head = input(false);
   /** Changes with the entry open, so the rows the master added and left empty go. */
@@ -180,6 +184,17 @@ export class AskRows {
   protected readonly missing = computed(() =>
     ASKS.filter((a) => !this.rows().some((r) => r.kind === a.kind)),
   );
+  protected readonly optionsHint = computed(() => {
+    const n = `${this.value().requiresOptions.length} de 10.`;
+    if (!this.inList()) {
+      return `${n} Opções que o personagem já escolheu, do SRD ou da mesa. Nunca a própria opção.`;
+    }
+    const saved =
+      this.unsavedPeers() > 0
+        ? ' Uma opção nova só pode ser pedida depois de salvar a característica.'
+        : '';
+    return `${n} Uma opção desta lista, de um conjunto do SRD ou da mesa. Nunca a própria opção.${saved}`;
+  });
   protected readonly spellChips = computed<SearchChip[]>(() => {
     const found = this.spellSearch().find((o) => o.value === this.value().requiresSpell);
     return found ? [{ value: found.value, label: found.label, hint: found.hint, tag: '' }] : [];

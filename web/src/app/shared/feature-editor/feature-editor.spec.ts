@@ -470,6 +470,7 @@ describe('FeatureEditor (a trait, a feature)', () => {
     it('says in the hint that an option not saved yet can be asked for after the feature is saved, and keeps "Nunca a própria opção."', () => {
       setup(parent(), { allowOptions: true });
       const row = open(2);
+      addAsk(row);
       expect(text(row)).toContain(
         'Uma opção nova só pode ser pedida depois de salvar a característica.',
       );
@@ -480,7 +481,10 @@ describe('FeatureEditor (a trait, a feature)', () => {
       const f = parent();
       f.options[2] = { ...f.options[2], key: 'feature:c@mesa' };
       setup(f, { allowOptions: true });
-      expect(text(open(2))).not.toContain('depois de salvar a característica');
+      const row = open(2);
+      addAsk(row);
+      expect(text(row)).toContain('Nunca a própria opção.');
+      expect(text(row)).not.toContain('depois de salvar a característica');
     });
   });
 });

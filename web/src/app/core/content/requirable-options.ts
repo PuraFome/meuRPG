@@ -34,13 +34,15 @@ export function requirableOptions(
   own = '',
   siblings: readonly SelectOption[] = [],
 ): SelectOption[] {
-  void siblings;
   const srd = srdOptionsOf(menu, Object.values(OFFERERS).flat());
   const table = tableOptionsOf(entries).filter((o) => o.key !== own);
   return [
-    ...srd.map((o) => ({ value: o.key, label: o.namePt })),
-    ...table.map((o) => ({ value: o.key, label: `${o.namePt} (da mesa)` })),
-  ].sort(byName);
+    ...siblings.filter((o) => o.value !== own),
+    ...[
+      ...srd.map((o) => ({ value: o.key, label: o.namePt })),
+      ...table.map((o) => ({ value: o.key, label: `${o.namePt} (da mesa)` })),
+    ].sort(byName),
+  ];
 }
 
 /** "Nenhuma", then the Pact Boons: the SRD's and the table's. */
@@ -54,7 +56,14 @@ export function pactChoices(menu: EffectMenuVm, entries: readonly TableEntry[]):
   ];
 }
 
-/** The saved options of the same feature an option may ask for. */
-export function siblingOptions(_list: readonly FeatureDraft[], _own: string): SelectOption[] {
-  return [];
+/**
+ * The options of the same feature an option may ask for (#580, board 580-03): the saved ones (those with a key), each named
+ * as the list names it ("Opção 2"), never the option itself. One not saved has no key yet and cannot be asked for.
+ */
+export function siblingOptions(list: readonly FeatureDraft[], own: string): SelectOption[] {
+  return list.flatMap((o, i) =>
+    o.key === '' || o.key === own
+      ? []
+      : [{ value: o.key, label: o.name.trim() || `Opção ${i + 1}`, badge: `Opção ${i + 1}` }],
+  );
 }
