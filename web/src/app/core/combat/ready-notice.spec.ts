@@ -5,6 +5,7 @@ import {
   CombatLogKind,
   CombatLogReadiedSchema,
   ReadiedKind,
+  ReadiedStatus,
 } from '../../../gen/meurpg/play/v1/combat_pb';
 import { ReadiedNotices, readiedLostNoticeText } from './ready-notice';
 
@@ -58,6 +59,26 @@ describe("the readier's notice when the action is lost (board 582-08, case 3)", 
     n.read('e1', 'tor', true, []);
     expect(n.read('e2', 'tor', true, []).reset).toBe(true);
     expect(n.read('e2', 'tor', true, [lost('f', { kind: ReadiedKind.SPELL })]).notice).toEqual({
+      held: 'Espada longa',
+      spell: true,
+    });
+  });
+
+  it("says nothing for a spell lost by the readier's own pass, but tells one the master or the clock passed", () => {
+    const fired = (id: string, byMaster: boolean) =>
+      create(CombatLogEntrySchema, {
+        id,
+        kind: CombatLogKind.READIED_FIRED,
+        actorId: 'tor',
+        byMaster,
+        readied: create(CombatLogReadiedSchema, { readiedId: 'r1', status: ReadiedStatus.IGNORED }),
+      });
+    const spell = { kind: ReadiedKind.SPELL };
+    const n = new ReadiedNotices();
+    n.read('e1', 'tor', true, []);
+    // The server writes both lines in the pass: the loss has no reason of its own, but its row has an own pass of the same id.
+    expect(n.read('e1', 'tor', true, [lost('g', spell), fired('f', false)]).notice).toBeNull();
+    expect(n.read('e1', 'tor', true, [lost('h', spell), fired('i', true)]).notice).toEqual({
       held: 'Espada longa',
       spell: true,
     });

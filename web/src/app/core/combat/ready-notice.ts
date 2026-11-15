@@ -2,12 +2,15 @@ import {
   type CombatLogEntry,
   CombatLogKind,
   ReadiedKind,
+  ReadiedStatus,
 } from '../../../gen/meurpg/play/v1/combat_pb';
 
 /**
  * What the readier is told when the action they held was lost without them asking (#582, board 582-08, case 3): from the
  * `READIED_LOST` line of their own row (the server writes its payload only for them and the master, RN-10). The line has no
- * reason, only whether the owner gave it up (`canceled`), so the notice does not say why. Words and bookkeeping only.
+ * reason, only whether the owner gave it up (`canceled`), so the notice does not say why. A spell the readier lets pass is lost with
+ * its own line (the server writes the fired line of the pass, then the loss, in one change): the readier just chose that, so the
+ * notice is not told for it. Words and bookkeeping only.
  */
 
 /** A lost row to tell. */
@@ -65,13 +68,25 @@ export class ReadiedNotices {
       this.seen = new Set(lines.map((l) => l.id));
       return { reset, notice: null };
     }
+    // The rows the readier's own pass let go: the loss that follows is theirs, not news.
+    const ownPass = new Set(
+      entries
+        .filter(
+          (en) =>
+            en.kind === CombatLogKind.READIED_FIRED &&
+            en.actorId === ownId &&
+            !en.byMaster &&
+            en.readied?.status === ReadiedStatus.IGNORED,
+        )
+        .map((en) => en.readied?.readiedId),
+    );
     let notice: ReadiedLost | null = null;
     for (const line of lines) {
       if (this.seen.has(line.id) || !line.readiedLost) {
         continue;
       }
       this.seen.add(line.id);
-      if (!line.readiedLost.canceled) {
+      if (!line.readiedLost.canceled && !ownPass.has(line.readiedLost.readiedId)) {
         notice = {
           held: line.readiedLost.actionNamePt,
           spell: line.readiedLost.kind === ReadiedKind.SPELL,
