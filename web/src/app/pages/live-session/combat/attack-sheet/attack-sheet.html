@@ -129,14 +129,15 @@
             [pickedKey]="trade.pickedKey()"
             [box]="trade.box(mode.rollMode())"
             (chosen)="pickTrade($event)"
-          />
-          @if (s.poolNotice(); as note) {
-            <!-- Two checks on one pool with one use: said right under them. -->
-            <div class="mr-notice mr-notice--danger" role="alert">
-              <mat-icon aria-hidden="true">error</mat-icon>
-              <p>{{ note }}</p>
-            </div>
-          }
+          >
+            @if (s.poolNotice(); as note) {
+              <!-- Two checks on one pool with one use: said right under them, above the before-and-after box. -->
+              <div class="mr-notice mr-notice--danger" role="alert">
+                <mat-icon aria-hidden="true">error</mat-icon>
+                <p>{{ note }}</p>
+              </div>
+            }
+          </app-power-trade-offer>
         }
         <!-- The d4 an effect adds (Bênção, Perdição) with physical dice: typed before the d20 is confirmed. -->
         @if (typedFields().length > 0 && (s.typing() || !canApp)) {

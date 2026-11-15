@@ -16,7 +16,7 @@ export interface TradeBox {
  * "Troca do talento" on the roll step of a weapon attack (a `power_attack` effect of the character's features): one
  * check for each trade, "Usar Golpe Pesado", off at the start of every attack. A trade with no use left stays on the list,
  * dashed, with the reason (the pool's name when the trade spends one, else the server's text). With a trade ticked a box shows the attack and the damage as they were
- * (struck) and as they are, in a live region so the new numbers are read when the check changes.
+ * (struck) and as they are, in a live region so the new numbers are read when the check changes. What the sheet projects (the refusal of a pool the two checks share) sits between the checks and the box.
  */
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -35,6 +35,7 @@ export interface TradeBox {
         />
       }
     </fieldset>
+    <ng-content />
     <div aria-live="polite">
       @if (box(); as b) {
         <dl class="box">
