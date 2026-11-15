@@ -111,7 +111,12 @@ describe('the lines of a readied action (#582, board 582-08)', () => {
     const fired = entry({
       id: 'f1',
       kind: CombatLogKind.READIED_FIRED,
-      readied: held({ status: ReadiedStatus.FIRED }),
+      readiedFired: held({ status: ReadiedStatus.FIRED }),
+    });
+    const passed = entry({
+      id: 'f2',
+      kind: CombatLogKind.READIED_FIRED,
+      readiedFired: held({ status: ReadiedStatus.IGNORED }),
     });
     const texts = (entries: CombatLogEntry[]) =>
       logGroups([create(CombatLogRoundSchema, { round: 1, entries })], 1, '', {
@@ -122,6 +127,8 @@ describe('the lines of a readied action (#582, board 582-08)', () => {
     expect(texts([attack('a1', true), fired])[0]).toBe(' ataca o Zumbi 1 com a Adaga: acertou');
     // An opportunity attack, or one of another actor right after the fired line, keeps its words.
     expect(texts([attack('a2', true)])[0]).toContain('(ataque de oportunidade)');
+    // A pass is not a use: an opportunity attack right after it keeps its words.
+    expect(texts([attack('a4', true), passed])[0]).toContain('(ataque de oportunidade)');
     expect(
       texts([{ ...attack('a3', true), actorLabel: 'Brisa' } as CombatLogEntry, fired])[0],
     ).toContain('(ataque de oportunidade)');

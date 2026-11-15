@@ -71,7 +71,10 @@ describe("the readier's notice when the action is lost (board 582-08, case 3)", 
         kind: CombatLogKind.READIED_FIRED,
         actorId: 'tor',
         byMaster,
-        readied: create(CombatLogReadiedSchema, { readiedId: 'r1', status: ReadiedStatus.IGNORED }),
+        readiedFired: create(CombatLogReadiedSchema, {
+          readiedId: 'r1',
+          status: ReadiedStatus.IGNORED,
+        }),
       });
     const spell = { kind: ReadiedKind.SPELL };
     const n = new ReadiedNotices();

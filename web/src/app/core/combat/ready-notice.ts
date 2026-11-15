@@ -76,9 +76,9 @@ export class ReadiedNotices {
             en.kind === CombatLogKind.READIED_FIRED &&
             en.actorId === ownId &&
             !en.byMaster &&
-            en.readied?.status === ReadiedStatus.IGNORED,
+            en.readiedFired?.status === ReadiedStatus.IGNORED,
         )
-        .map((en) => en.readied?.readiedId),
+        .map((en) => en.readiedFired?.readiedId),
     );
     let notice: ReadiedLost | null = null;
     for (const line of lines) {

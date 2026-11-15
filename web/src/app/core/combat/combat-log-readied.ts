@@ -73,6 +73,6 @@ export function followsReadiedFire(e: CombatLogEntry, older: CombatLogEntry | un
   return (
     older?.kind === CombatLogKind.READIED_FIRED &&
     older.actorLabel === e.actorLabel &&
-    older.readied?.status !== ReadiedStatus.IGNORED
+    older.readiedFired?.status !== ReadiedStatus.IGNORED
   );
 }
