@@ -113,6 +113,13 @@ func TestFindSteedAtZeroHitPointsGoesThroughTheDismountWindow(t *testing.T) {
 	if w == nil {
 		t.Fatal("the rider's player reads no dismount window")
 	}
+	if got := a.steedRowOf(t, "Aurélio"); got.MountedOn != a.id(t, "Trovão") {
+		t.Errorf("before the answer Aurélio rides %q, want the steed still under him", got.MountedOn)
+	}
+	var present int
+	if err := a.h.pool.QueryRow(t.Context(), `SELECT count(*) FROM combatants WHERE label = 'Trovão' AND NOT dismissed`).Scan(&present); err != nil || present != 1 {
+		t.Errorf("before the answer the steed's combatants = %d (%v), want 1", present, err)
+	}
 	a.mustAnswer(t, a.ana, e, w.GetId(), useAnswer(0))
 	if got := a.steedRowOf(t, "Aurélio"); got.MountedOn != "" || strings.Contains(got.Conditions, "prone") {
 		t.Errorf("Aurélio after the landing = %+v, want on foot and on his feet", got)
@@ -126,8 +133,12 @@ func TestFindSteedAtZeroHitPointsGoesThroughTheDismountWindow(t *testing.T) {
 	}
 	var reason *string
 	var bonded bool
-	if err := a.h.pool.QueryRow(t.Context(), `SELECT dismissed_reason, bonded FROM character_creatures WHERE source = 'find_steed'`).Scan(&reason, &bonded); err != nil {
+	var hp int32
+	if err := a.h.pool.QueryRow(t.Context(), `SELECT dismissed_reason, bonded, hp_current FROM character_creatures WHERE source = 'find_steed'`).Scan(&reason, &bonded, &hp); err != nil {
 		t.Fatalf("read the steed's creature: %v", err)
+	}
+	if hp != 0 {
+		t.Errorf("the steed that fell has %d hit points stored, want 0", hp)
 	}
 	if got := ptrOr(reason, "(none)"); got != "disappeared" || !bonded {
 		t.Errorf("the steed's creature: reason = %q, bonded = %v, want disappeared and bonded", got, bonded)
@@ -161,5 +172,29 @@ func TestFindSteedDismissedUnderItsRiderLandsTheRiderOnItsFeet(t *testing.T) {
 	var bonded bool
 	if err := a.h.pool.QueryRow(t.Context(), `SELECT bonded FROM character_creatures WHERE id = $1`, id).Scan(&bonded); err != nil || !bonded {
 		t.Errorf("the dismissed steed: bonded = %v, err = %v, want the bond kept", bonded, err)
+	}
+}
+
+// TestFindSteedHealedBeforeTheAnswerIsBackWithItsHitPoints: the steed at 0 is dismissed as 'disappeared' at once, and a heal in the combat
+// brings the same creature back with the hit points of its combatant, still mounted.
+func TestFindSteedHealedBeforeTheAnswerIsBackWithItsHitPoints(t *testing.T) {
+	t.Parallel()
+	a, e := riderInFight(t)
+	if _, err := a.adjustHP(t, e, "Trovão", damageHP(500)); err != nil {
+		t.Fatalf("AdjustCombatantHitPoints(damage) error = %v", err)
+	}
+	if _, err := a.adjustHP(t, e, "Trovão", healHP(7)); err != nil {
+		t.Fatalf("AdjustCombatantHitPoints(heal) error = %v", err)
+	}
+	var reason *string
+	var hp int32
+	if err := a.h.pool.QueryRow(t.Context(), `SELECT dismissed_reason, hp_current FROM character_creatures WHERE source = 'find_steed'`).Scan(&reason, &hp); err != nil {
+		t.Fatalf("read the steed's creature: %v", err)
+	}
+	if reason != nil || hp != 7 {
+		t.Errorf("the healed steed: reason = %q, hit points = %d, want live with 7", ptrOr(reason, "(none)"), hp)
+	}
+	if got := a.steedRowOf(t, "Aurélio"); got.MountedOn != a.id(t, "Trovão") {
+		t.Errorf("after the heal Aurélio rides %q, want the steed", got.MountedOn)
 	}
 }
