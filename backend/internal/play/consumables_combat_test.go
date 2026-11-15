@@ -231,3 +231,59 @@ func TestTheTargetsOutOfACombatAreTheOtherCharactersOfTheParty(t *testing.T) {
 	}))
 	wantBlockedBy(t, "an entry that is gone", err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ITEM_GONE)
 }
+
+// Haste's extra action pays for a potion when the action of the turn is used, once; the action stays as it was.
+func TestAPotionUnderHasteIsPaidByTheExtraActionOnceWhenTheActionIsUsed(t *testing.T) {
+	t.Parallel()
+	f := newPotionFight(t, potionCommon, potionGreater, potionSuperior)
+	f.mustAddEffect(t, f.e, "spell:haste", []string{"Toren"}, f.rounds(t, 3, "Toren"))
+	f.mustUse(t, f.caio, f.toren, potionCommon) // the action
+	spent := func() (action, extra bool) {
+		if err := f.h.pool.QueryRow(t.Context(), `SELECT action_used, extra_action_used FROM combatants WHERE id = $1`, f.id(t, "Toren")).Scan(&action, &extra); err != nil {
+			t.Fatalf("read the economy of Toren: %v", err)
+		}
+		return action, extra
+	}
+	if action, extra := spent(); !action || extra {
+		t.Fatalf("after the first drink action used = %v, extra = %v; want the action spent and the extra one free", action, extra)
+	}
+	f.mustUse(t, f.caio, f.toren, potionGreater, giveTo(f.pens)) // the extra action
+	if action, extra := spent(); !action || !extra {
+		t.Fatalf("after the second potion action used = %v, extra = %v; want both spent", action, extra)
+	}
+	_, err := f.use(t, f.caio, f.toren, potionSuperior)
+	wantBlockedBy(t, "a third potion with both spent", err, blockedActionUsed)
+	if !f.holds(t, f.toren, potionSuperior) {
+		t.Error("the refused potion was spent")
+	}
+}
+
+// A receiver of the campaign that does not fight in the active combat is out of the giver's reach: nothing is spent, no action either.
+func TestAPotionIsNotGivenToACharacterThatDoesNotFightInTheCombat(t *testing.T) {
+	t.Parallel()
+	s := newStocked(t, potionCommon)
+	e := s.start(t, plan{
+		npcs:     []*playv1.Participant{{CharacterId: s.goblin.GetId()}},
+		npcRolls: []int{3},
+		players:  map[string]int32{"Toren": 18, "Pensantus": 10, "Brisa": 1},
+		reveal:   []string{"Goblin"},
+		at:       map[string][2]int32{"Toren": {3, 3}, "Pensantus": {4, 4}, "Brisa": {9, 8}, "Goblin": {12, 8}},
+		setup:    true,
+	})
+	// Brisa leaves the combat before it begins: she is still a character of the campaign, but no combatant of the fight.
+	if _, err := s.master.combat.RemoveCombatant(t.Context(), connect.NewRequest(&playv1.RemoveCombatantRequest{
+		CampaignId: s.campaignID, EncounterId: e.GetId(), CombatantId: s.id(t, "Brisa"), IdempotencyKey: newKey(),
+	})); err != nil {
+		t.Fatalf("RemoveCombatant(Brisa) error = %v", err)
+	}
+	if _, err := s.master.combat.BeginCombat(t.Context(), connect.NewRequest(&playv1.BeginCombatRequest{CampaignId: s.campaignID, EncounterId: e.GetId(), IdempotencyKey: newKey()})); err != nil {
+		t.Fatalf("BeginCombat() error = %v", err)
+	}
+	f := &potionFight{stocked: s, e: e}
+	_, err := f.use(t, f.caio, f.toren, potionCommon, giveTo(f.bri))
+	wantBlockedBy(t, "a gift to a character outside the combat", err, blockedNotAdjacent)
+	if !f.holds(t, f.toren, potionCommon) {
+		t.Error("the refused gift spent the potion")
+	}
+	f.mustUse(t, f.caio, f.toren, potionCommon, giveTo(f.pens)) // the refusal spent no action
+}
