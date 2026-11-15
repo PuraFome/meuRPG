@@ -67,10 +67,40 @@ describe('ReadiedWindowSheet (#582, boards 582-06 to 582-08)', () => {
     const state = new State();
     state.apply(
       encounter({
-        combatants: [combatant({ id: 'tor', label: 'Tor', mine: true, reactionUsed: !!opts.used })],
+        combatants: [
+          combatant({ id: 'tor', label: 'Tor', mine: true, reactionUsed: !!opts.used }),
+          combatant({ id: 'z1', label: 'Zumbi 1' }),
+        ],
         reactionWindows: opts.gone ? [] : [window],
       } as never),
     );
+    const loadOptions = async () => {
+      if (opts.fail) {
+        throw new Error('down');
+      }
+      return create(GetTurnOptionsResponseSchema, {
+        options: create(TurnOptionsSchema, {
+          attacks: [
+            create(AttackOptionSchema, {
+              enabled: true,
+              attack: {
+                key: 'equipment:longsword',
+                namePt: 'Espada longa',
+                kind: AttackKind.WEAPON,
+                melee: true,
+                rangeFt: 5,
+              },
+            } as never),
+          ],
+        }),
+        attackTargets: [
+          create(AttackTargetsSchema, {
+            attackKey: 'equipment:longsword',
+            targets: [reach('z1', 'Zumbi 1', 5), reach('z2', 'Zumbi 2', 15, true)],
+          }),
+        ],
+      });
+    };
     const data: ReadiedWindowSheetData = {
       campaignId: 'c',
       encounterId: 'enc',
@@ -78,33 +108,6 @@ describe('ReadiedWindowSheet (#582, boards 582-06 to 582-08)', () => {
       round: 2,
       readied: held(opts.row),
       reactorLabel: 'Tor',
-      load: async () => {
-        if (opts.fail) {
-          throw new Error('down');
-        }
-        return create(GetTurnOptionsResponseSchema, {
-          options: create(TurnOptionsSchema, {
-            attacks: [
-              create(AttackOptionSchema, {
-                enabled: true,
-                attack: {
-                  key: 'equipment:longsword',
-                  namePt: 'Espada longa',
-                  kind: AttackKind.WEAPON,
-                  melee: true,
-                  rangeFt: 5,
-                },
-              } as never),
-            ],
-          }),
-          attackTargets: [
-            create(AttackTargetsSchema, {
-              attackKey: 'equipment:longsword',
-              targets: [reach('z1', 'Zumbi 1', 5), reach('z2', 'Zumbi 2', 15, true)],
-            }),
-          ],
-        });
-      },
       state,
     };
     TestBed.resetTestingModule();
@@ -112,7 +115,10 @@ describe('ReadiedWindowSheet (#582, boards 582-06 to 582-08)', () => {
       providers: [
         { provide: MAT_DIALOG_DATA, useValue: data },
         { provide: MatDialogRef, useValue: { close, disableClose: false } },
-        { provide: CombatClient, useValue: fakeCombatClient({ answerReaction }) },
+        {
+          provide: CombatClient,
+          useValue: fakeCombatClient({ answerReaction, turnOptions: loadOptions }),
+        },
       ],
     });
     const fixture = TestBed.createComponent(ReadiedWindowSheet);
@@ -217,24 +223,68 @@ describe('ReadiedWindowSheet (#582, boards 582-06 to 582-08)', () => {
     ]);
   });
 
-  it('lets a spell or a move only pass, and says so', async () => {
-    const spell = setup({
-      row: { kind: ReadiedKind.SPELL, actionNamePt: 'Mísseis Mágicos', targetCombatantId: '' },
+  it('releases a readied spell with "Soltar", naming the creature it chose, and closes', async () => {
+    answerReaction.mockResolvedValue({ encounter: encounter({ revision: 7 } as never) });
+    const { el, settle, button } = setup({
+      row: {
+        kind: ReadiedKind.SPELL,
+        actionKey: 'spell:magic-missile',
+        actionNamePt: 'Mísseis Mágicos',
+        targetCombatantId: 'z1',
+      },
     });
-    await spell.settle();
-    expect(flat(spell.el.querySelector('h2'))).toBe('Soltar Mísseis Mágicos');
-    expect(Array.from(spell.el.querySelectorAll('.pair button')).map((b) => flat(b))).toEqual([
+    await settle();
+    expect(flat(el.querySelector('h2'))).toBe('Soltar Mísseis Mágicos');
+    expect(flat(el.querySelector('legend'))).toBe('Em quem (opcional)');
+    expect(Array.from(el.querySelectorAll('.pair button')).map((b) => flat(b))).toEqual([
       'Deixar passar',
+      'Soltar no Zumbi 1',
     ]);
-    expect(flat(spell.el.querySelector('#readied-limit'))).toContain(
-      'Por aqui só dá para deixar passar.',
+    expect(el.querySelector('#readied-limit')).toBeNull();
+    button('Soltar').click();
+    await settle();
+    expect(answerReaction).toHaveBeenCalledWith(
+      'c',
+      'enc',
+      'w1',
+      { use: true, creatureIds: ['z1'], die: { inApp: true } },
+      expect.any(String),
     );
+    expect(close).toHaveBeenCalled();
+  });
+
+  it('releases a readied spell with no creature chosen: the server uses the one named at Ready', async () => {
+    answerReaction.mockResolvedValue({ encounter: encounter({ revision: 8 } as never) });
+    const { settle, button } = setup({
+      row: {
+        kind: ReadiedKind.SPELL,
+        actionKey: 'spell:sleep',
+        actionNamePt: 'Sono',
+        targetCombatantId: '',
+      },
+    });
+    await settle();
+    button('Soltar agora').click();
+    await settle();
+    expect(answerReaction).toHaveBeenCalledWith(
+      'c',
+      'enc',
+      'w1',
+      { use: true, die: { inApp: true } },
+      expect.any(String),
+    );
+  });
+
+  it('lets a move only pass, and says so', async () => {
     const move = setup({
       row: { kind: ReadiedKind.MOVE, moveFt: 25, actionNamePt: '', targetCombatantId: '' },
     });
     await move.settle();
     expect(flat(move.el.querySelector('.what'))).toContain('Mover agora, até 7,5 m?');
     expect(move.el.querySelectorAll('.pair button').length).toBe(1);
+    expect(flat(move.el.querySelector('#readied-limit'))).toContain(
+      'Por aqui só dá para deixar passar.',
+    );
   });
 
   it("writes the server's refusal in a red band and stays open", async () => {

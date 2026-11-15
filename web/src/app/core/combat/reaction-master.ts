@@ -61,8 +61,8 @@ export interface QueueRow {
     readonly waits: string;
     /** Why "use" is not offered from the queue, or `''`. */
     readonly useOff: string;
-    /** The use is an attack: the dice come from the app, and the target is the one named at Ready. */
-    readonly attack: boolean;
+    /** The use is an attack or a spell: the dice come from the app, and the creature is picked from a list (`app-readied-aim`). */
+    readonly aims: boolean;
   };
 }
 

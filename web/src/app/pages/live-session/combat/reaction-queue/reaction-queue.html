@@ -365,6 +365,20 @@
           </p>
         }
         <ng-container *ngTemplateOutlet="slotsTpl; context: { row: row }" />
+        @if (row.readied?.aims && row.answerNow && aim.held(row); as held) {
+          <app-readied-aim
+            [campaignId]="campaignId()"
+            [encounterId]="encounter().id"
+            [reactorId]="row.window.reactorId"
+            [readied]="held"
+            [encounter]="encounter()"
+            failedText="Dá para deixar passar."
+            [need]="aim.needOf(row)"
+            (needChange)="aim.setNeed(row, $event)"
+            [target]="aim.targetOf(row)"
+            (targetChange)="aim.setTarget(row, $event)"
+          />
+        }
         <div class="btns">
           @if (row.readied) {
             <!-- A readied action: the safe answer ("Deixar passar") comes first, as on the player's own prompt (582-05). -->
@@ -383,9 +397,9 @@
         matButton="outlined"
         type="button"
         class="btn"
-        [class.btn--off]="!row.answerNow || !!row.readied?.useOff"
+        [class.btn--off]="aim.useOff(row)"
         [attr.data-initial]="row.answerNow && !row.readied ? '' : null"
-        [disabled]="busy() || !row.answerNow || !!row.readied?.useOff"
+        [disabled]="busy() || aim.useOff(row)"
         disabledInteractive
         [attr.aria-describedby]="describedBy(row, true)"
         (click)="use(row)"

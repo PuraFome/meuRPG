@@ -147,7 +147,6 @@ export class ReactionSheets {
       round: e.round,
       readied: readiedOfWindow(e, window),
       reactorLabel: window.reactorLabel,
-      load: () => this.ctx.api.moves.turnOptions(this.ctx.campaignId(), e.id, window.reactorId),
       state: this.ctx.state(),
     };
     trackOpen(

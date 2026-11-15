@@ -45,7 +45,7 @@ describe('the prompt of a readied window (582-06, 582-07, 582-08)', () => {
     expect(p.note).toBe('Gasta a sua reação; ela volta no começo da sua vez.');
   });
 
-  it('names a spell and says that passing loses it, and does not offer to release it', () => {
+  it('names a spell and says that passing loses it, and offers to release it', () => {
     const p = readiedPrompt(
       held({ kind: ReadiedKind.SPELL, actionNamePt: 'Mísseis Mágicos' }),
       2,
@@ -53,7 +53,7 @@ describe('the prompt of a readied window (582-06, 582-07, 582-08)', () => {
     );
     expect(p.title).toBe('Soltar Mísseis Mágicos');
     expect(p.subtitle).toBe('Reação · a ação preparada de Pensantus');
-    expect(p.releasable).toBe(false);
+    expect(p.releasable).toBe(true);
     expect(p.note).toContain('Deixar passar perde a magia');
   });
 

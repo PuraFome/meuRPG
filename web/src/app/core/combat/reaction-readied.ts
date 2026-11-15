@@ -43,7 +43,7 @@ export interface ReadiedPromptView {
   readonly declineLabel: string;
   /** The words of the one button that uses it ("Esquivar agora"); an attack's are made from the target. */
   readonly useLabel: string;
-  /** Whether this app can answer "usar" for the held action: an attack and another action yes, a move and a spell not yet. */
+  /** Whether this app can answer "usar" for the held action: an attack and another action yes, a move not yet (it is made on the map). */
   readonly releasable: boolean;
   /** Said under the question when the held action cannot be used from the prompt. */
   readonly limit: string;
@@ -94,8 +94,8 @@ export function readiedPrompt(
         question: `Soltar ${name || 'a magia preparada'} agora?`,
         note: SPELL_NOTE,
         useLabel: 'Soltar agora',
-        releasable: false,
-        limit: ONLY_PASS,
+        releasable: true,
+        limit: '',
         ariaLabel: `Soltar ${name || 'a magia preparada'}`,
       };
     case ReadiedKind.MOVE:
@@ -204,7 +204,7 @@ export interface ReadiedMasterRow {
   readonly useOff: string;
 }
 
-/** The words of the use for each held kind, and why a move and a spell cannot be used from the queue. */
+/** The words of the use for each held kind, and why a move cannot be used from the queue. */
 function useWords(
   r: ReadiedAction | undefined,
   who: string,
@@ -220,10 +220,7 @@ function useWords(
         useOff: `Mover é pelo mapa: mova ${who} com a janela aberta.`,
       };
     case ReadiedKind.SPELL:
-      return {
-        useLabel: `Soltar por ${who}`,
-        useOff: 'Soltar a magia preparada ainda não é possível por aqui.',
-      };
+      return { useLabel: `Soltar por ${who}`, useOff: '' };
     default:
       return { useLabel: `Usar por ${who}`, useOff: '' };
   }
@@ -258,7 +255,7 @@ export function readiedRowFields(e: Encounter, w: ReactionWindow) {
     readied: {
       waits: row.waits,
       useOff: row.useOff,
-      attack: readiedOfWindow(e, w)?.kind === ReadiedKind.ATTACK,
+      aims: [ReadiedKind.ATTACK, ReadiedKind.SPELL].includes(readiedOfWindow(e, w)?.kind as never),
     },
   };
 }

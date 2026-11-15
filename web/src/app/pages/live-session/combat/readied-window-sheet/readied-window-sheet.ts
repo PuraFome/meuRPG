@@ -13,13 +13,7 @@ import {
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
-import type { Attack } from '../../../../../gen/meurpg/rules/v1/rules_pb';
-
-import type {
-  GetTurnOptionsResponse,
-  ReactionWindow,
-  ReadiedAction,
-} from '../../../../../gen/meurpg/play/v1/combat_pb';
+import type { ReactionWindow, ReadiedAction } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { CombatantState, ReadiedKind } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { article } from '../../../../core/format/article';
 import { CombatClient } from '../../../../core/combat/combat-client';
@@ -27,30 +21,15 @@ import { combatErrorMessage } from '../../../../core/combat/combat-errors';
 import type { CombatState } from '../../../../core/combat/combat-state';
 import { ownCombatant } from '../../../../core/combat/combat-view';
 import { playerAutoPassText, playerSecondsLeft } from '../../../../core/combat/reaction-autopass';
-import {
-  readiedGoneText,
-  readiedLegend,
-  readiedPrompt,
-  readiedTargetRows,
-} from '../../../../core/combat/reaction-readied';
+import type { AimNeed } from '../../../../core/combat/readied-aim';
+import { readiedGoneText, readiedPrompt } from '../../../../core/combat/reaction-readied';
 import { ActionKey } from '../../../../core/connect/idempotency';
 import { SheetFrame } from '../../../../shared/sheet/sheet-frame/sheet-frame';
 import { injectSheet } from '../../../../shared/sheet/sheet-host';
-import { ResourcePick } from '../resource-pick/resource-pick';
+import { ReadiedAimList } from '../readied-aim/readied-aim';
 
 /** How often the prompt's countdown redraws, in ms. */
 const CLOCK_TICK_MS = 1000;
-/** What a melee attack reaches when it says nothing, in feet. */
-const MELEE_REACH_FT = 5;
-
-/** How far the attack may be aimed: its long range when it has one (a thrown weapon, a bow), else its melee reach. */
-function attackReachFt(a: Attack): number {
-  if (a.longRangeFt > 0) {
-    return a.longRangeFt;
-  }
-  return a.melee ? Math.max(MELEE_REACH_FT, a.reachFt) : a.rangeFt;
-}
-
 /** What the page hands the prompt of a readied action's window. */
 export interface ReadiedWindowSheetData {
   readonly campaignId: string;
@@ -60,8 +39,6 @@ export interface ReadiedWindowSheetData {
   /** The row the window answers (`Combatant.readied` of its reactor); `undefined` when the caller cannot read it. */
   readonly readied: ReadiedAction | undefined;
   readonly reactorLabel: string;
-  /** Reads the reactor's own turn options: the held attack and the creatures it may be aimed at. */
-  readonly load: () => Promise<GetTurnOptionsResponse>;
   readonly state: CombatState;
 }
 
@@ -76,7 +53,7 @@ export interface ReadiedWindowSheetData {
 @Component({
   selector: 'app-readied-window-sheet',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [MatButtonModule, MatIconModule, ResourcePick, SheetFrame],
+  imports: [MatButtonModule, MatIconModule, ReadiedAimList, SheetFrame],
   template: `
     <app-sheet-frame
       icon="alarm"
@@ -99,20 +76,16 @@ export interface ReadiedWindowSheetData {
           <p class="what">
             <b>{{ view.lead }}</b> {{ view.quote }}. {{ view.question }}
           </p>
-          @if (aimsAtCreature()) {
-            @if (rows().length > 0) {
-              <app-resource-pick
-                [label]="legend()"
-                [rows]="rows()"
-                [chosen]="target()"
-                empty="Não há ninguém para escolher."
-                (pick)="pick($event)"
-              />
-            } @else if (readFailed()) {
-              <p class="small" role="status">Não deu para ler quem está ao alcance. Dá para deixar passar.</p>
-            } @else {
-              <p class="small" role="status">Lendo quem está ao alcance…</p>
-            }
+          @if (aims) {
+            <app-readied-aim
+              [campaignId]="data.campaignId"
+              [encounterId]="data.encounterId"
+              [readied]="data.readied!"
+              [encounter]="data.state.encounter()"
+              [reactorId]="data.window.reactorId"
+              [(need)]="need"
+              [(target)]="target"
+            />
           }
           <p class="small">{{ view.note }}</p>
           @if (view.limit) {
@@ -175,27 +148,37 @@ export class ReadiedWindowSheet {
     this.data.round,
     this.data.reactorLabel,
   );
-  /** An attack of the window is aimed at one creature of the list. */
-  protected readonly aimsAtCreature = signal(this.data.readied?.kind === ReadiedKind.ATTACK);
-  private readonly targets = signal<GetTurnOptionsResponse['attackTargets'][number]['targets']>([]);
-  private readonly reachFt = signal(MELEE_REACH_FT);
-  protected readonly readFailed = signal(false);
+  /** An attack or a spell of the window is aimed at a creature of the list. */
+  protected readonly aims =
+    this.data.readied?.kind === ReadiedKind.ATTACK || this.data.readied?.kind === ReadiedKind.SPELL;
+  protected readonly need = signal<AimNeed>('loading');
   protected readonly target = signal<string | null>(null);
 
-  protected readonly rows = computed(() =>
-    readiedTargetRows(this.targets(), this.data.readied?.targetCombatantId ?? '', this.reachFt()),
-  );
-  protected readonly legend = computed(() => readiedLegend(this.rows()));
   /** "Atacar o Zumbi 1" once a creature is chosen; "Atacar" before it. */
   protected readonly useLabel = computed(() => {
     const id = this.target();
-    const label = this.targets().find((t) => t.combatantId === id)?.label;
-    return label
-      ? `${this.view.useLabel} ${article(label) === 'a' ? 'a' : 'o'} ${label}`
-      : this.view.useLabel;
+    const label = this.data.state.encounter()?.combatants.find((c) => c.id === id)?.label;
+    if (!label) {
+      return this.view.useLabel;
+    }
+    const male = article(label) !== 'a';
+    return this.data.readied?.kind === ReadiedKind.SPELL
+      ? `Soltar ${male ? 'no' : 'na'} ${label}`
+      : `${this.view.useLabel} ${male ? 'o' : 'a'} ${label}`;
   });
-  /** The answer may be sent: a creature is chosen for an attack, nothing is asked of another action. */
-  protected readonly ready = computed(() => !this.aimsAtCreature() || this.target() !== null);
+  /** The answer may be sent: an attack needs a creature chosen (or the one named at Ready, when the list could not be read). */
+  protected readonly ready = computed(() => {
+    switch (this.need()) {
+      case 'required':
+        return this.target() !== null;
+      case 'optional':
+        return true;
+      case 'failed':
+        return (this.data.readied?.targetCombatantId ?? '') !== '';
+      default:
+        return !this.aims;
+    }
+  });
 
   protected readonly busy = signal(false);
   /** A request in the air: Esc and the backdrop do not close the sheet under it. */
@@ -230,9 +213,6 @@ export class ReadiedWindowSheet {
 
   constructor() {
     inject(DestroyRef).onDestroy(() => clearInterval(this.clockTimer));
-    if (this.aimsAtCreature()) {
-      void this.read();
-    }
     // The safe answer has the focus, and its ring: the sheet opens for a keyboard-style answer.
     afterNextRender(
       () =>
@@ -243,43 +223,16 @@ export class ReadiedWindowSheet {
     );
   }
 
-  private async read(): Promise<void> {
-    const key = this.data.readied?.actionKey ?? '';
-    try {
-      const res = await this.data.load();
-      const attack = res.options?.attacks.find((a) => a.attack?.key === key)?.attack;
-      this.reachFt.set(attack ? attackReachFt(attack) : MELEE_REACH_FT);
-      const list = res.attackTargets.find((x) => x.attackKey === key)?.targets ?? [];
-      this.targets.set(list);
-      this.chooseNamed();
-    } catch {
-      this.readFailed.set(true);
-    }
-  }
-
-  /** The creature the player named is chosen when it can be aimed at now. */
-  private chooseNamed(): void {
-    const named = this.data.readied?.targetCombatantId ?? '';
-    const mine = this.rows().find((r) => r.id === named);
-    if (mine && !mine.blocked) {
-      this.target.set(named);
-    }
-  }
-
-  protected pick(id: string): void {
-    this.error.set('');
-    this.target.set(id);
-  }
-
   /** "Atacar o Zumbi 1" or "Deixar passar": the answer to the window. */
   protected async answer(use: boolean): Promise<void> {
     if (this.busy() || (use && !this.ready())) {
       return;
     }
     const target = this.target();
-    const answer =
-      use && this.aimsAtCreature() && target
-        ? { use, creatureIds: [target], die: { inApp: true as const } }
+    const answer = !use
+      ? { use }
+      : this.aims
+        ? { use, ...(target ? { creatureIds: [target] } : {}), die: { inApp: true as const } }
         : { use };
     this.busy.set(true);
     this.error.set('');
