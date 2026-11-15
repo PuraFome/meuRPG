@@ -818,10 +818,10 @@ WHERE game_session_id = sqlc.arg(game_session_id) AND character_id = sqlc.arg(ch
 
 -- name: ListEncounterCombatEvents :many
 -- The events that count in the combat highlights (MR-032), oldest first, with
--- the undos that may take them back.
+-- the undos that may take them back (and the take-out of a part of a group, which takes the damage's roll back).
 SELECT id, kind, payload FROM session_events
 WHERE encounter_id = $1
-  AND kind IN ('attack_rolled', 'damage_rolled', 'damage_applied', 'spell_cast', 'action_taken', 'action_undone',
+  AND kind IN ('attack_rolled', 'damage_rolled', 'damage_applied', 'spell_cast', 'action_taken', 'action_undone', 'damage_part_removed',
     'reaction_answered', 'reaction_used', 'spell_zone_triggered', 'lasting_effect_triggered')
 ORDER BY seq
 LIMIT 20000;

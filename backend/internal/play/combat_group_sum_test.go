@@ -24,6 +24,12 @@ type groupHit struct {
 
 func newGroupHit(t *testing.T, sum int32) *groupHit {
 	t.Helper()
+	return newGroupHitWith(t, sum, nil)
+}
+
+// newGroupHitWith is newGroupHit with a step before the roll (a state of the target the damage depends on).
+func newGroupHitWith(t *testing.T, sum int32, before func(g *groupHit)) *groupHit {
+	t.Helper()
 	a, _, shrub := partsFight(t, func(a *armed) {
 		a.toren = a.caio.hero(t, a.campaignID, "Toren", "class:rogue", "race:human", 3, abilities(16, 16, 14, 12, 10), []string{rapier}, nil)
 	}, "monster:awakened-shrub")
@@ -32,6 +38,9 @@ func newGroupHit(t *testing.T, sum int32) *groupHit {
 	hit := a.mustAttack(t, a.caio, e, "Toren", rapier, shrub, func(r *playv1.RollAttackRequest) { r.D20Faces = []int32{5, 18} })
 	g := &groupHit{a: a, e: e, shrub: shrub, id: hit.GetPendingDamage().GetId()}
 	g.before, _, _ = a.hp(t, shrub)
+	if before != nil {
+		before(g)
+	}
 	g.rolled = a.mustDamage(t, a.caio, e, g.id, extrasMarked([]*playv1.SelectedExtra{{Key: "sneak-attack"}}, &playv1.TypedPart{DamageType: groupPiercing, Sum: sum})).GetPendingDamage()
 	return g
 }
