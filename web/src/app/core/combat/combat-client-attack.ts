@@ -29,6 +29,13 @@ function rolledBy(how: Extract<ConcentrationAnswer, { kind: 'app' | 'typed' }>) 
   };
 }
 
+/** How the d20 of an attack comes: rolled in the app, typed from a physical die, or not yet. */
+function attackRollOf(die: AttackDie | PairDie) {
+  if ('inApp' in die) return { case: 'rollInApp', value: true } as const;
+  if ('face' in die) return { case: 'd20Face', value: die.face } as const;
+  return { case: undefined } as const;
+}
+
 /** The calls of attacks, damage, roll modes, reactions and concentration. */
 export class CombatAttackCalls {
   constructor(private readonly base: CombatClientBase) {}
@@ -56,12 +63,7 @@ export class CombatAttackCalls {
       attackKey,
       targetId,
       idempotencyKey: key,
-      roll:
-        'inApp' in die
-          ? { case: 'rollInApp', value: true }
-          : 'face' in die
-            ? { case: 'd20Face', value: die.face }
-            : { case: undefined },
+      roll: attackRollOf(die),
       d20Faces: 'faces' in die ? [...die.faces] : [],
       asReaction,
       opportunityOfferId,

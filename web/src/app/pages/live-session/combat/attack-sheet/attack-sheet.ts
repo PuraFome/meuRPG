@@ -69,6 +69,7 @@ import { AttackSteps } from './attack-steps';
 import { ModeRequests } from './mode-requests';
 import { PowerTrade, dieLegend } from './power-trade';
 import { PowerTradeOffer } from './power-trade-offer';
+import { type TypedExtra, extrasSum, typedExtrasOf, typedFormulaOf } from './typed-extras';
 import { waitingEffectsOf } from './waiting-effects';
 
 /** An opportunity attack is a melee attack: it reaches 5 ft, whatever range the weapon has when thrown. */
@@ -189,25 +190,13 @@ export class AttackSheet {
     dieLegend(this.maneuverDice().length, this.trade.options().length > 0),
   );
   /** The extra dice typed beside the d20 (the effects' d4, then the table die), each with its sign. */
-  private typedExtras(): readonly { face: number; sign: number }[] | null {
-    const fields = this.typedFields();
-    const faces = this.extraFaces();
-    if (fields.length === 0 || faces.length !== fields.length || faces.some((f) => f === null)) {
-      return null;
-    }
-    return fields.map((f, i) => ({ face: faces[i] as number, sign: f.sign }));
+  private typedExtras(): readonly TypedExtra[] | null {
+    return typedExtrasOf(this.typedFields(), this.extraFaces());
   }
   /** With extra dice typed and all their faces there, the total adds them: "12 + 6 + 5 = 23". */
   protected readonly typedFormula = (d20: number): { text: string; total: number } | null => {
     const extras = this.typedExtras();
-    if (!extras) {
-      return null;
-    }
-    const bonus = this.trade.bonus();
-    const total = d20 + bonus + extras.reduce((n, e) => n + e.sign * e.face, 0);
-    const mod = bonus === 0 ? '' : ` ${bonus < 0 ? '−' : '+'} ${Math.abs(bonus)}`;
-    const text = extras.map((e) => ` ${e.sign < 0 ? '−' : '+'} ${e.face}`).join('');
-    return { text: `${d20}${mod}${text} = ${total}`, total };
+    return extras ? typedFormulaOf(d20, this.trade.bonus(), extras) : null;
   };
   /** Any extra die is asked beside the d20: the total and the confirm button read it. */
   protected readonly hasExtras = computed(() => this.typedFields().length > 0);
@@ -216,10 +205,9 @@ export class AttackSheet {
     () => this.hasExtras() && this.typedExtras() === null,
   );
   /** The attack bonus with the typed extra dice, for the total of the two d20. */
-  protected readonly pairModifier = computed(() => {
-    const extras = this.typedExtras();
-    return this.trade.bonus() + (extras?.reduce((n, e) => n + e.sign * e.face, 0) ?? 0);
-  });
+  protected readonly pairModifier = computed(
+    () => this.trade.bonus() + extrasSum(this.typedExtras()),
+  );
   private readonly body = viewChild<ElementRef<HTMLElement>>('body');
   private readonly back = viewChild('back', { read: ElementRef<HTMLButtonElement> });
 

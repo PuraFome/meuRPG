@@ -19,6 +19,7 @@ import type { CombatClient } from '../../../../core/combat/combat-client';
 import { attackResult } from '../../../../core/combat/combat-client-wire';
 import type {
   AttackDie,
+  AttackEffects,
   DamageDie,
   ModeChoice,
   PairDie,
@@ -148,14 +149,7 @@ export class AttackRolls {
           data.opportunity?.offerId ?? '',
           mode,
           data.catchWindowId ?? '',
-          {
-            extraDieFaces: extra,
-            useExtraAction: data.useExtraAction ?? false,
-            ...(maneuverKey ? { maneuverKey } : {}),
-            ...(trade ? { powerAttackKey: trade.key } : {}),
-            legendaryOption: data.legendary?.option ?? '',
-            ...(spend ? { spendFavor: true } : {}),
-          },
+          this.effectsOf(extra, maneuverKey, trade, spend),
         );
         data.state.apply(res.encounter);
         this.host.trade.made.set(trade ?? null);
@@ -166,6 +160,24 @@ export class AttackRolls {
       },
       (err) => this.fail(err),
     );
+  }
+
+  /** What rides on the attack besides the d20: the effects' dice, the table die, the power attack trade and the Inspiração. */
+  private effectsOf(
+    extra: readonly number[],
+    maneuverKey: string,
+    trade: ReturnType<PowerTrade['picked']>,
+    spend: boolean,
+  ): AttackEffects {
+    const { data } = this.s;
+    return {
+      extraDieFaces: extra,
+      useExtraAction: data.useExtraAction ?? false,
+      ...(maneuverKey ? { maneuverKey } : {}),
+      ...(trade ? { powerAttackKey: trade.key } : {}),
+      legendaryOption: data.legendary?.option ?? '',
+      ...(spend ? { spendFavor: true } : {}),
+    };
   }
 
   async rollDamage(
