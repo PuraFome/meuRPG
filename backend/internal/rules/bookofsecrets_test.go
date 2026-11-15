@@ -231,7 +231,9 @@ func TestASwitchedOffRitualIsNotOfferedToAPlayerInTheBook(t *testing.T) {
 	t.Parallel()
 	const off = "spell:detect-magic"
 	c := withOverlayOn(t, loadForTest(t), Overlay{Revision: 1, Off: []string{off}})
-	offered := func(c *Content, b Build) bool { return slices.Contains(optionKeys(choiceOf(t, c.Choices(b), bookKey)), off) }
+	offered := func(c *Content, b Build) bool {
+		return slices.Contains(optionKeys(choiceOf(t, c.Choices(b), bookKey)), off)
+	}
 	if offered(c.ForPlayer(), bookWarlock()) {
 		t.Errorf("a player is offered %s, which the master switched off", off)
 	}
