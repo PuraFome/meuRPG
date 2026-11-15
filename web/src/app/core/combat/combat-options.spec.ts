@@ -153,11 +153,11 @@ describe('the two-handed line of a versatile weapon (board 580-14)', () => {
   it('keeps the one-handed dice on the stats and says what two hands need, with a shield', () => {
     const a = axe(VersatileGrip.ONE_HAND_SHIELD);
     expect(plain(attackDetail(a))).toContain('1d6 + 3 cortante');
-    expect(versatileLine(a)).toBe('Com duas mãos, sem o escudo: 1d8 + 3');
+    expect(plain(versatileLine(a))).toBe('Com duas mãos, sem o escudo: 1d8 + 3');
   });
 
   it('says another weapon in hand is what stops the two hands', () => {
-    expect(versatileLine(axe(VersatileGrip.ONE_HAND_WEAPON))).toBe(
+    expect(plain(versatileLine(axe(VersatileGrip.ONE_HAND_WEAPON)))).toBe(
       'Com duas mãos, sem a outra arma: 1d8 + 3',
     );
   });
@@ -165,7 +165,8 @@ describe('the two-handed line of a versatile weapon (board 580-14)', () => {
   it('puts the two-handed dice on the stats and the one-handed ones on the line, with both hands free', () => {
     const a = axe(VersatileGrip.TWO_HANDS);
     expect(plain(attackDetail(a))).toContain('1d8 + 3 cortante');
-    expect(versatileLine(a)).toBe('Com duas mãos; com uma: 1d6 + 3');
+    expect(plain(versatileLine(a))).toBe('Com duas mãos; com uma: 1d6 + 3');
+    expect(versatileLine(a)).toContain('1d6\u00a0+\u00a03');
   });
 
   it('is empty for an attack with no grip', () => {

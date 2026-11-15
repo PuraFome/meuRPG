@@ -260,13 +260,15 @@ export function attackDetail(attack: Attack, reach = false): string {
  * two-handed dice). Empty for any other attack.
  */
 export function versatileLine(attack: Attack): string {
+  // The dice stay on one line ("1d10 + 3" never breaks before the "+ 3").
+  const block = (dice: string) => spacedDice(dice).replace(/ ([+−]) /g, '\u00a0$1\u00a0');
   switch (attack.grip) {
     case VersatileGrip.ONE_HAND_SHIELD:
-      return `Com duas mãos, sem o escudo: ${spacedDice(attack.versatileDamage)}`;
+      return `Com duas mãos, sem o escudo: ${block(attack.versatileDamage)}`;
     case VersatileGrip.ONE_HAND_WEAPON:
-      return `Com duas mãos, sem a outra arma: ${spacedDice(attack.versatileDamage)}`;
+      return `Com duas mãos, sem a outra arma: ${block(attack.versatileDamage)}`;
     case VersatileGrip.TWO_HANDS:
-      return `Com duas mãos; com uma: ${spacedDice(attack.damage)}`;
+      return `Com duas mãos; com uma: ${block(attack.damage)}`;
     default:
       return '';
   }

@@ -9456,47 +9456,66 @@ async function scanVersatileRail(browser: Browser, colorScheme: 'light' | 'dark'
     }
   };
   let campaignId = '';
-  try {
-    await m.goto('/');
-    await p.goto('/');
-    const gear = { weaponKeys: ['equipment:longsword'], armorKey: 'equipment:chain-mail', shield: true };
-    const table = await tableForCombat(m, p, `Acessibilidade empunhadura ${Date.now()}`, true, true, { build: toren, sheet: gear });
+  const begin = async (name: string, gear: Record<string, unknown>, at?: Record<string, [number, number]>) => {
+    const table = await tableForCombat(m, p, `Acessibilidade empunhadura ${name} ${Date.now()}`, true, true, { build: toren, sheet: gear });
     campaignId = table.campaignId;
-    await beginAttackCombatRPC(m, table, { Toren: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 });
+    await beginAttackCombatRPC(m, table, { Toren: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 }, at);
     await openSessionPage(p, campaignId);
     const tab = await openActionTab(p, 'Ataques');
     const row = tab.locator('app-action-row').filter({ has: p.getByRole('button', { name: 'Atacar com Espada longa' }) });
-    const line = row.getByTestId('versatile-line');
-    const checkLayout = async () => {
-      // The line wraps inside the row: it never makes the row wider than the screen, and it sits under the stats.
-      const rowBox = await boxOf(row);
-      const lineBox = await boxOf(line);
-      expect(lineBox.x).toBeGreaterThanOrEqual(rowBox.x);
-      expect(lineBox.x + lineBox.width).toBeLessThanOrEqual(rowBox.x + rowBox.width + 1);
-      expect(rowBox.x + rowBox.width).toBeLessThanOrEqual(width);
-      const stats = await boxOf(row.locator('.row__detail').first());
-      expect(lineBox.y).toBeGreaterThanOrEqual(stats.y + stats.height - 1);
-      expect(await p.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
-    };
+    return { tab, row, line: row.getByTestId('versatile-line'), stats: row.locator('.row__detail').first() };
+  };
+  const checkLayout = async (row: Locator, line: Locator) => {
+    // The line wraps inside the row: it never makes the row wider than the screen, and it sits under the stats.
+    const rowBox = await boxOf(row);
+    const lineBox = await boxOf(line);
+    expect(lineBox.x).toBeGreaterThanOrEqual(rowBox.x);
+    expect(lineBox.x + lineBox.width).toBeLessThanOrEqual(rowBox.x + rowBox.width + 1);
+    expect(rowBox.x + rowBox.width).toBeLessThanOrEqual(width);
+    const stats = await boxOf(row.locator('.row__detail').first());
+    expect(lineBox.y).toBeGreaterThanOrEqual(stats.y + stats.height - 1);
+    expect(await p.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  };
+  try {
+    await m.goto('/');
+    await p.goto('/');
 
     // The shield is equipped: the one-handed dice on the stats, and what two hands need on the second line.
-    await expect(row.locator('.row__detail').first()).toContainText('1d8 + 3 cortante');
-    await expect(line).toHaveText('Com duas mãos, sem o escudo: 1d10 + 3');
-    await checkLayout();
+    const withShield = await begin('com escudo', { weaponKeys: ['equipment:longsword'], armorKey: 'equipment:chain-mail', shield: true });
+    await expect(withShield.stats).toContainText('1d8 + 3 cortante');
+    await expect(withShield.line).toHaveText('Com duas mãos, sem o escudo: 1d10 + 3');
+    await checkLayout(withShield.row, withShield.line);
     await expectScreenPasses(p, `Combate, espada longa com o escudo ${where}`);
-    await shoot(row, 'trilho-com-escudo');
+    await shoot(withShield.row, 'trilho-com-escudo');
 
-    // The shield stowed (the action): both hands, so the stats show the two-handed dice and the line the one-handed ones.
-    const fold = tab.locator('app-fold').filter({ has: p.getByRole('heading', { name: 'Sacar ou guardar' }) });
+    // Stowing the shield in the combat (the action) asks the options again: the attack, now in the spent group, reads the new grip.
+    const fold = withShield.tab.locator('app-fold').filter({ has: p.getByRole('heading', { name: 'Sacar ou guardar' }) });
     await fold.getByRole('button', { name: /^Guardar .*Escudo$/ }).click();
-    await expect(line).toHaveText('Com duas mãos; com uma: 1d8 + 3');
-    await expect(row.locator('.row__detail').first()).toContainText('1d10 + 3 cortante');
-    await checkLayout();
+    const spent = await openSpentGroup(p, 'Ação');
+    await expect(spent.getByTestId('versatile-line')).toHaveText('Com duas mãos; com uma: 1d8 + 3');
+    await endOpenSessionRPC(m, campaignId);
+
+    // The shield stowed before the combat: both hands, so the stats show the two-handed dice and the line the one-handed ones.
+    const bothHands = await begin('duas mãos', { weaponKeys: ['equipment:longsword'], armorKey: 'equipment:chain-mail', shield: true, carriedKeys: ['equipment:shield'] }, { ...attackCombatSquares, Toren: [10, 5] });
+    await expect(bothHands.line).toHaveText('Com duas mãos; com uma: 1d8 + 3');
+    await expect(bothHands.stats).toContainText('1d10 + 3 cortante');
+    await checkLayout(bothHands.row, bothHands.line);
     await expectScreenPasses(p, `Combate, espada longa com as duas mãos ${where}`);
-    await shoot(row, 'trilho-duas-maos');
+    await shoot(bothHands.row, 'trilho-duas-maos');
+
+    // The attack the player picks from the rail rolls the dice the line shows.
+    await p.getByRole('button', { name: 'Atacar com Espada longa' }).click();
+    await viaTargetList(p, p.getByRole('dialog', { name: 'Atacar com Espada longa' }));
+    await p.getByRole('radiogroup').getByText('Capitão Goblin', { exact: true }).click();
+    await p.getByRole('button', { name: 'Rolar no app' }).click();
+    await expect(p.getByText(/Acertou|Errou|Crítico/).first()).toBeVisible();
+    // The damage step asks for the two-handed dice, and the roll the server makes is those dice.
+    const sheet = p.getByRole('dialog', { name: 'Atacar com Espada longa' });
+    await sheet.getByRole('button', { name: /Rolar 1d10\s\+\s3 no app/ }).click();
+    await expect(sheet.getByText(/1d10.*\+ 3.*= \d+/).first()).toBeVisible();
   } finally {
     if (campaignId) {
-      await endOpenSessionRPC(m, campaignId);
+      await endOpenSessionRPC(m, campaignId).catch(() => undefined);
     }
     await master.close();
     await player.close();
