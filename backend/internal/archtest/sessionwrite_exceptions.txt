@@ -35,6 +35,7 @@ maps traps_play.go (*Service).TriggerTrap # host: runs inside play's transaction
 maps upload.go (*Service).storeImage # permanent: gallery_images and image_requests only; no row of game_sessions or the live view
 play creature_host.go (*Service).CreatureRenamed # host: runs inside the funnel's transaction (characters' InSession): the session row is already locked, then the creature rows; characters tells the combat through the Tell
 play creature_host.go (*Service).CreaturesLeaving # host: runs inside the funnel's transaction (characters' InSession): the session row is already locked, then the creature rows; characters tells the combat through the Tell
+play creature_host.go (*Service).SpendDismissal # host: runs inside the funnel's transaction (characters' InSession): the session row is already locked, then the creature rows; characters tells the combat through the Tell
 play encounters.go (*Service).ClearBattleEncounter # permanent: master prep data (the battle encounter link of a session in preparation); no player view shows it
 play encounters.go (*Service).keepBattleEncounter # permanent: master prep data (the battle encounter link of a session in preparation); no player view shows it
 play package.go (*packagePart).Apply # permanent: campaign package import creates the campaign in the same transaction; assumes import never merges into an existing campaign, so no live session can show these rows

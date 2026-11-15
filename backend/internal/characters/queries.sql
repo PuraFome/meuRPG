@@ -542,11 +542,12 @@ LIMIT sqlc.arg(max_rows);
 
 -- name: InsertCharacterCreature :one
 INSERT INTO character_creatures
-    (campaign_id, character_id, monster_key, name, source, attack, summon_group_id, concentration_cast_id, hp_current, hp_max, created_at, create_key, create_hash, stat_block, summon_key)
+    (campaign_id, character_id, monster_key, name, source, attack, summon_group_id, concentration_cast_id, hp_current, hp_max, created_at, create_key, create_hash, stat_block, summon_key, creature_type, bonded)
 VALUES (
     sqlc.arg(campaign_id)::UUID, sqlc.arg(character_id)::UUID, sqlc.arg(monster_key), sqlc.arg(name), sqlc.arg(source),
     sqlc.arg(attack), sqlc.arg(summon_group_id)::UUID, sqlc.narg(concentration_cast_id)::UUID, sqlc.arg(hp_current), sqlc.arg(hp_max),
-    sqlc.arg(created_at), sqlc.narg(create_key), sqlc.narg(create_hash), sqlc.narg(stat_block)::JSONB, sqlc.narg(summon_key)
+    sqlc.arg(created_at), sqlc.narg(create_key), sqlc.narg(create_hash), sqlc.narg(stat_block)::JSONB, sqlc.narg(summon_key),
+    sqlc.arg(creature_type)::TEXT, sqlc.arg(bonded)::BOOLEAN
 )
 RETURNING *;
 -- A creature is made inside the owner's locked transaction (GiveCreature locks the owner first), so a
@@ -633,18 +634,52 @@ WHERE cc.campaign_id = sqlc.arg(campaign_id)::UUID
   AND cc.dismissed_at IS NULL
 ORDER BY cc.created_at, cc.id;
 
+-- name: GetBondedCreature :one
+-- The character's bonded steed (Find Steed), live or dismissed. A casting that brings it back locks its row
+-- (GetCharacterCreatureForUpdate) before it writes.
+SELECT sqlc.embed(cc), c.player_user_id
+FROM character_creatures cc
+JOIN characters c ON c.id = cc.character_id
+WHERE cc.campaign_id = sqlc.arg(campaign_id)::UUID
+  AND cc.character_id = sqlc.arg(character_id)::UUID
+  AND cc.bonded;
+
+-- name: GetBondedCreatureForUpdate :one
+-- The same, locking the row until the transaction ends: the casting that brings the steed back reads it this way.
+SELECT sqlc.embed(cc), c.player_user_id
+FROM character_creatures cc
+JOIN characters c ON c.id = cc.character_id
+WHERE cc.campaign_id = sqlc.arg(campaign_id)::UUID
+  AND cc.character_id = sqlc.arg(character_id)::UUID
+  AND cc.bonded
+FOR UPDATE OF cc;
+
+-- name: ReviveBondedCreature :one
+-- A new casting brings the bonded steed back at full hit points: the row is the same, live again. It returns the
+-- row, so a revive that touches none is an error (no rows) and not a silent success.
+UPDATE character_creatures
+SET dismissed_at = NULL, dismissed_reason = NULL, hp_current = hp_max
+WHERE campaign_id = sqlc.arg(campaign_id)::UUID AND id = sqlc.arg(id)::UUID AND bonded
+RETURNING id;
+
+-- name: EndBond :execrows
+-- A release ends the bond of a steed: the row stays as the history of the dismissal, and the character may bond another.
+UPDATE character_creatures
+SET bonded = false
+WHERE campaign_id = sqlc.arg(campaign_id)::UUID AND id = sqlc.arg(id)::UUID AND bonded;
+
 -- name: CountLiveCreaturesOfCharacter :one
 SELECT count(*)::INT4 FROM character_creatures
 WHERE campaign_id = sqlc.arg(campaign_id)::UUID AND character_id = sqlc.arg(character_id)::UUID AND dismissed_at IS NULL;
 
 -- name: DismissCreatures :many
 -- Sends the live ones of these creatures away, with the reason; a creature
--- dismissed because it was defeated is at 0 hit points. Returns the ones it
+-- dismissed because it was defeated (or, a steed, disappeared) is at 0 hit points. Returns the ones it
 -- dismissed, by ID.
 WITH changed AS (
     UPDATE character_creatures
     SET dismissed_at = sqlc.arg(at)::TIMESTAMPTZ, dismissed_reason = sqlc.arg(reason)::TEXT,
-        hp_current = CASE WHEN sqlc.arg(reason)::TEXT = 'defeated' THEN 0 ELSE hp_current END
+        hp_current = CASE WHEN sqlc.arg(reason)::TEXT IN ('defeated', 'disappeared') THEN 0 ELSE hp_current END
     WHERE campaign_id = sqlc.arg(campaign_id)::UUID
       AND id = ANY(sqlc.arg(ids)::UUID[])
       AND dismissed_at IS NULL

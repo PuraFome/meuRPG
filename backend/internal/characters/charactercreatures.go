@@ -56,6 +56,7 @@ const (
 	creatureSourceFamiliar = "familiar"
 	creatureSourceMaster   = "master"
 	creatureSourceTable    = "table"
+	creatureSourceSteed    = "find_steed"
 )
 
 var creatureSourceToProto = map[string]charactersv1.CreatureSource{
@@ -64,6 +65,7 @@ var creatureSourceToProto = map[string]charactersv1.CreatureSource{
 	"conjure_animals":    charactersv1.CreatureSource_CREATURE_SOURCE_CONJURE_ANIMALS,
 	creatureSourceMaster: charactersv1.CreatureSource_CREATURE_SOURCE_MASTER,
 	creatureSourceTable:  charactersv1.CreatureSource_CREATURE_SOURCE_TABLE,
+	creatureSourceSteed:  charactersv1.CreatureSource_CREATURE_SOURCE_FIND_STEED,
 }
 
 // creatureAttackNumber is the attack permission as the API's number
@@ -79,6 +81,10 @@ type CreatureHost interface {
 	// campaign's combat that is not ended, inside tx, and writes the combat's
 	// event. It returns the combat's ID, empty when none of them was in one.
 	CreaturesLeaving(ctx context.Context, tx pgx.Tx, campaignID, actorUserID string, creatureIDs []string, at time.Time) (encounterID string, err error)
+	// SpendDismissal spends the action of the owner's combatant for sending a steed away, inside tx: in a running combat that holds the
+	// steed it must be the owner's turn with the action unspent, or it answers the combat's refusal. It does nothing when the combat is
+	// not running or the steed is not in it.
+	SpendDismissal(ctx context.Context, tx pgx.Tx, campaignID, actorUserID, characterID, creatureID string, at time.Time) error
 	// LockSession takes the campaign's open session's row inside tx, if there is
 	// one. A change to a creature calls it first, as a combat's writes lock the
 	// session before the creatures: one lock order, no deadlock.
@@ -203,6 +209,21 @@ type creatureView struct {
 
 func (v creatureView) live() bool { return v.DismissedAt == nil }
 
+// Reasons a creature that fell in the fight is dismissed for: the steed of Find Steed disappears (its bond stays for the next cast).
+const (
+	dismissedDefeated    = "defeated"
+	dismissedDisappeared = "disappeared"
+	dismissedKeepsBond   = "dismissed"
+)
+
+// fallenReason is the reason a creature at 0 hit points is dismissed with.
+func fallenReason(source string) string {
+	if source == creatureSourceSteed {
+		return dismissedDisappeared
+	}
+	return dismissedDefeated
+}
+
 // visibleTo says whether the caller may see the creature: the master, or the
 // owner's player.
 func (v creatureView) visibleTo(m authz.Membership) bool {
@@ -218,6 +239,7 @@ func characterCreatureToProto(content *rules.Content, c charactersdb.CharacterCr
 		Source: creatureSourceToProto[c.Source], Attack: creatureAttackNumber[c.Attack], SummonGroupId: c.SummonGroupID,
 		DependsOnConcentration: c.ConcentrationCastID != nil,
 		HitPointsCurrent:       c.HpCurrent, HitPointsMax: c.HpMax, CreatedAt: timestamppb.New(c.CreatedAt), ArmorClass: i32(d.ArmorClass),
+		CreatureType: c.CreatureType, Bonded: c.Bonded,
 	}
 }
 
@@ -227,7 +249,7 @@ func creatureOf(content *rules.Content, v creatureView) link.Creature {
 	out := link.Creature{
 		ID: v.ID, CharacterID: v.CharacterID, OwnerUserID: conv.OrZero(v.ownerUserID), MonsterKey: v.MonsterKey, Name: v.Name,
 		Source: v.Source, SummonKey: conv.OrZero(v.SummonKey), Attack: v.Attack, GroupID: v.SummonGroupID, DependsOnConcentration: v.ConcentrationCastID != nil,
-		HitPointsCurrent: int(v.HpCurrent), HitPointsMax: int(v.HpMax),
+		HitPointsCurrent: int(v.HpCurrent), HitPointsMax: int(v.HpMax), CreatureType: v.CreatureType, Bonded: v.Bonded,
 	}
 	if d, ok := content.MonsterDerived(v.MonsterKey); ok {
 		out.InitiativeBonus = d.Initiative
@@ -599,13 +621,13 @@ func (s *Service) DismissCreature(
 	if err != nil {
 		return nil, err
 	}
-	reason := creatureDismissal(m)
+	reason, how := creatureDismissal(m), req.Msg.GetDismissal()
 	var v creatureView
 	var encounterID string
 	gone := false
 	err = s.inSession(ctx, m.CampaignID, func(tx pgx.Tx, t sessiontell.Tell) error {
 		var err error
-		v, encounterID, gone, err = s.dismissCreatureInTx(ctx, tx, m, req.Msg.GetCreatureId(), reason)
+		v, encounterID, gone, err = s.dismissCreatureInTx(ctx, tx, m, req.Msg.GetCreatureId(), reason, how)
 		if err == nil && !gone {
 			t.CreaturesChanged(conv.OrZero(v.ownerUserID))
 			t.EncounterChanged(encounterID)
@@ -621,7 +643,7 @@ func (s *Service) DismissCreature(
 // dismissCreatureInTx takes the creature out of its combat and away from its
 // owner, with its event; it returns the creature and the combat it left ("" for
 // none). gone says it was dismissed already, which changes nothing.
-func (s *Service) dismissCreatureInTx(ctx context.Context, tx pgx.Tx, m authz.Membership, rawID, reason string) (v creatureView, encounterID string, gone bool, err error) {
+func (s *Service) dismissCreatureInTx(ctx context.Context, tx pgx.Tx, m authz.Membership, rawID, reason string, how charactersv1.CreatureDismissal) (v creatureView, encounterID string, gone bool, err error) {
 	q := s.queries.WithTx(tx)
 	if err := s.lockSession(ctx, tx, m.CampaignID); err != nil {
 		return v, "", false, err
@@ -629,37 +651,85 @@ func (s *Service) dismissCreatureInTx(ctx context.Context, tx pgx.Tx, m authz.Me
 	if v, err = s.findCreature(ctx, q, m, rawID, true); err != nil {
 		// A creature that is gone already changes nothing, for the master and
 		// the owner alike; one the caller may not see is not found.
-		if connect.CodeOf(err) == connect.CodeNotFound && s.dismissedAlready(ctx, q, m, rawID) {
-			return v, "", true, nil
+		if gone, ok := s.dismissedView(ctx, q, m, rawID); connect.CodeOf(err) == connect.CodeNotFound && ok {
+			ended, err := s.releaseDismissed(ctx, q, m, gone, how)
+			return gone, "", !ended, err
 		}
 		return v, "", false, err
 	}
-	if s.creatureHost != nil {
-		if encounterID, err = s.creatureHost.CreaturesLeaving(ctx, tx, m.CampaignID, m.UserID, []string{v.ID}, s.now()); err != nil {
-			return v, "", false, err
-		}
+	if reason, encounterID, err = s.leaveCombat(ctx, tx, m, v, reason, how); err != nil {
+		return v, "", false, err
 	}
 	if _, err := q.DismissCreatures(ctx, charactersdb.DismissCreaturesParams{CampaignID: m.CampaignID, Ids: []string{v.ID}, Reason: reason, At: s.now()}); err != nil {
 		return v, encounterID, false, wrap("dismiss a creature", err)
+	}
+	if how == charactersv1.CreatureDismissal_CREATURE_DISMISSAL_RELEASE {
+		if _, err := q.EndBond(ctx, charactersdb.EndBondParams{CampaignID: m.CampaignID, ID: v.ID}); err != nil {
+			return v, encounterID, false, wrap("end the bond of a steed", err)
+		}
 	}
 	return v, encounterID, false, s.logCreatureEvent(ctx, tx, m, "creature_dismissed", map[string]any{
 		"character_id": v.CharacterID, "creature_ids": []string{v.ID}, "reason": reason,
 	})
 }
 
-// dismissedAlready says whether the creature exists, belongs to someone the
-// caller may see and was dismissed: dismissing it again is not an error.
-func (s *Service) dismissedAlready(ctx context.Context, q *charactersdb.Queries, m authz.Membership, rawID string) bool {
+// leaveCombat takes the creature out of its combat and answers the reason it is dismissed with and the combat it left: a steed's
+// dismissal costs the owner's player the action of its turn in a combat that holds it.
+func (s *Service) leaveCombat(ctx context.Context, tx pgx.Tx, m authz.Membership, v creatureView, reason string, how charactersv1.CreatureDismissal) (string, string, error) {
+	reason, err := steedDismissal(v, reason, how)
+	if err != nil || s.creatureHost == nil {
+		return reason, "", err
+	}
+	if v.Source == creatureSourceSteed && !isMaster(m) {
+		if err := s.creatureHost.SpendDismissal(ctx, tx, m.CampaignID, m.UserID, v.CharacterID, v.ID, s.now()); err != nil {
+			return reason, "", err
+		}
+	}
+	encounterID, err := s.creatureHost.CreaturesLeaving(ctx, tx, m.CampaignID, m.UserID, []string{v.ID}, s.now())
+	return reason, encounterID, err
+}
+
+// steedDismissal is the reason a creature is dismissed with: a steed that is dismissed (not released) keeps its bond, and its reason
+// says so ("dismissed"). Releasing a creature that is not a bonded steed is refused.
+func steedDismissal(v creatureView, reason string, how charactersv1.CreatureDismissal) (string, error) {
+	switch {
+	case how == charactersv1.CreatureDismissal_CREATURE_DISMISSAL_RELEASE && !v.Bonded:
+		return "", connect.NewError(connect.CodeInvalidArgument, errors.New("only a bonded steed can be released"))
+	case how != charactersv1.CreatureDismissal_CREATURE_DISMISSAL_RELEASE && v.Bonded:
+		return dismissedKeepsBond, nil
+	}
+	return reason, nil
+}
+
+// releaseDismissed ends the bond of a steed that was dismissed already, when the request releases it: a dismissed steed keeps its bond
+// until it is released. It says whether it ended one. Any other request changes nothing, and releasing what is not a bonded steed is refused.
+func (s *Service) releaseDismissed(ctx context.Context, q *charactersdb.Queries, m authz.Membership, v creatureView, how charactersv1.CreatureDismissal) (bool, error) {
+	if how != charactersv1.CreatureDismissal_CREATURE_DISMISSAL_RELEASE {
+		return false, nil
+	}
+	if v.Source != creatureSourceSteed {
+		return false, connect.NewError(connect.CodeInvalidArgument, errors.New("only a bonded steed can be released"))
+	}
+	n, err := q.EndBond(ctx, charactersdb.EndBondParams{CampaignID: m.CampaignID, ID: v.ID})
+	if err != nil {
+		return false, wrap("end the bond of a steed", err)
+	}
+	return n > 0, nil
+}
+
+// dismissedView is the creature when it exists, belongs to someone the caller may see and was dismissed: dismissing it again is not an
+// error.
+func (s *Service) dismissedView(ctx context.Context, q *charactersdb.Queries, m authz.Membership, rawID string) (creatureView, bool) {
 	id, ok := uid.Canonical(rawID)
 	if !ok {
-		return false
+		return creatureView{}, false
 	}
 	row, err := q.GetCharacterCreature(ctx, charactersdb.GetCharacterCreatureParams{CampaignID: m.CampaignID, ID: id})
 	if err != nil {
-		return false
+		return creatureView{}, false
 	}
 	v := viewOfRow(row)
-	return !v.live() && v.visibleTo(m)
+	return v, !v.live() && v.visibleTo(m)
 }
 
 // The kinds of the master's correction of a creature's hit points. Each is also
@@ -752,11 +822,11 @@ func (s *Service) adjustCreatureInTx(ctx context.Context, tx pgx.Tx, m authz.Mem
 	if hp == 0 {
 		// Out of the fight: it is dismissed (the master's correction may be undone
 		// by a heal only while it is in a combat).
-		if _, err := q.DismissCreatures(ctx, charactersdb.DismissCreaturesParams{CampaignID: m.CampaignID, Ids: []string{v.ID}, Reason: "defeated", At: s.now()}); err != nil {
+		if _, err := q.DismissCreatures(ctx, charactersdb.DismissCreaturesParams{CampaignID: m.CampaignID, Ids: []string{v.ID}, Reason: fallenReason(v.Source), At: s.now()}); err != nil {
 			return v, true, wrap("dismiss a defeated creature", err)
 		}
 		return v, true, s.logCreatureEvent(ctx, tx, m, "creature_dismissed", map[string]any{
-			"character_id": v.CharacterID, "creature_ids": []string{v.ID}, "reason": "defeated",
+			"character_id": v.CharacterID, "creature_ids": []string{v.ID}, "reason": fallenReason(v.Source),
 		})
 	}
 	if err := q.SetCharacterCreatureHitPoints(ctx, charactersdb.SetCharacterCreatureHitPointsParams{CampaignID: m.CampaignID, ID: v.ID, HpCurrent: hp}); err != nil {
