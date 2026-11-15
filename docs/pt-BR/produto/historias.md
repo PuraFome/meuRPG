@@ -1965,20 +1965,21 @@ O MVP tem os três estilos prontos da página "Regras da mesa" (RN-24); o resto 
 
 ### MR-058: Palavras de Interrupção no teste de um NPC
 
-**Como** jogador de um bardo do Conhecimento, **quero** ser perguntado se corto um teste que uma criatura do mestre faz fora do combate, **para** que as Palavras de Interrupção que escolhi continuem valendo quando um NPC mente ou pressiona o grupo numa cena sem mapa. **Como** mestre, **quero** rolar o teste e ver quem pode cortá-lo, **para** que os bardos da mesa respondam antes de o resultado ser dito.
+**Como** jogador de um bardo do Conhecimento, **quero** que me perguntem se o bardo corta um teste que uma criatura do mestre faz fora do combate, **para** que as Palavras de Interrupção escolhidas para o personagem continuem valendo quando um NPC mente ou pressiona o grupo numa cena sem mapa. **Como** mestre, **quero** rolar o teste e ver quais bardos podem cortá-lo, **para** que a mesa responda antes de o resultado ser dito.
 
 - Prioridade: MVP
 - Regras: RN-10, RN-20, RN-18
 - Módulos: play, characters
 
 #### Critérios de aceite
-- **Dado** uma cena sem combate e um bardo em "todos" com um uso da Inspiração de Bardo, **quando** o mestre rola "Rolar teste de um NPC" (Enganação, Persuasão, Intimidação ou outro teste) e diz que os bardos veem a criatura, **então** a rolagem espera e o bardo lê uma pergunta, "uma criatura" (ou o nome, se ele o conhece), com o seu dado, e nenhum número da criatura.
+- **Dado** uma cena sem combate e um bardo em "todos" com um uso da Inspiração de Bardo, **quando** o mestre rola "Teste de um NPC" (Enganação, Persuasão, Intimidação ou outro teste) e marca "Os bardos veem a criatura e ela os ouve", **então** a rolagem espera e o jogador do bardo lê uma pergunta, "uma criatura" (ou o nome da criatura, se o bardo a conhece), com o dado do bardo, e nenhum número da criatura.
 - **Dado** dois bardos assim, **quando** o primeiro responde, **então** o segundo é perguntado em seguida; **e** só o bardo da vez lê a pergunta, e os outros da mesa não leem nada.
-- **Dado** um bardo, **quando** ele corta, **então** só o uso da Inspiração de Bardo é gasto (nenhuma reação) e o dado sai do total; **quando** ele deixa passar, **então** nada é gasto.
-- **Dado** que os bardos não responderam, **quando** o mestre toca em "continuar sem o bardo", **então** o teste fecha na rolagem e uma resposta tardia é recusada.
-- **Dado** que ninguém pode cortá-lo (a configuração, nenhum uso, uma criatura que não é vista, uma criatura imune a encantamento), **quando** o mestre rola, **então** o teste fecha na hora.
+- **Dado** um bardo, **quando** o bardo corta, **então** só o uso da Inspiração de Bardo é gasto (nenhuma reação) e o dado sai do total; **quando** o bardo deixa passar, **então** nada é gasto. Um bardo que caiu a 0 pontos de vida, ou cuja configuração deixou de ser "todos", depois da pergunta só pode deixar passar.
+- **Dado** que os bardos não responderam, **quando** o mestre toca em "Continuar sem esperar", **então** o teste fecha na rolagem e uma resposta tardia é recusada. Um combate que começa, ou a sessão que termina, fecha o teste do mesmo jeito.
+- **Dado** que ninguém pode cortá-lo (a configuração, nenhum uso, uma criatura que os bardos não veem ou que não os ouve, uma criatura cujo token o mestre escondeu no mapa, uma criatura imune a encantamento), **quando** o mestre rola, **então** o teste fecha na hora.
 - **Dado** um combate aberto, **quando** o mestre rola o teste de um NPC assim, **então** é recusado com o motivo.
-- **Dado** o seletor do mestre, **então** ele lista os NPCs do palco, os tokens de NPC do mapa atual e a criatura pedida do bestiário, não todo NPC vivo.
+- **Dado** o seletor do mestre, **então** ele lista os NPCs do palco (com a marca dos escondidos dos jogadores), os tokens de NPC do mapa atual e a criatura pedida do bestiário, não todo NPC vivo; e diz, para cada criatura, se o mapa consegue medi-la contra um bardo (os dois tokens no mapa atual), para que o app peça a caixa só quando não consegue.
+- **Dado** um teste que fechou, **quando** o mestre abre a mesa de novo, **então** o mestre o lê outra vez (a criatura, o teste, a rolagem, quem cortou e com qual dado, quem deixou passar, quem ficou sem ser esperado, o total) até o próximo teste ser rolado ou a sessão terminar; nenhum jogador o lê.
 
 ### MR-047: Mais quebra-cabeças
 

@@ -343,8 +343,8 @@ func (a *npcAnswer) write(ctx context.Context, hold playdb.InspirationHold, asks
 	return out, nil
 }
 
-// mayCut says the bard may cut now: she has Cutting Words with the setting "todos" and is awake. She was asked when she was, and the
-// setting or her hit points may have changed since; passing is always allowed.
+// mayCut says the bard may cut now: the bard has Cutting Words with the setting "todos" and is awake. That held when the question was
+// asked, and the setting or the hit points may have changed since; passing is always allowed.
 func (a *npcAnswer) mayCut(ctx context.Context, bardID string, vit *playv1.CharacterVitals) error {
 	rs, err := a.s.roster.ReactionStats(ctx, a.tx, a.m.CampaignID, bardID)
 	if err != nil {

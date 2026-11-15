@@ -17,7 +17,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
 
-// npcCheckOffer is the question of a held NPC check as the caller reads it: the master reads his roll and the bards asked; a player reads
+// npcCheckOffer is the question of a held NPC check as the caller reads it: the master reads the roll and the bards asked; a player reads
 // only the question of the bard asked now, if it is their own, with no number of the creature's and no name the bard's player may not
 // know. Nobody else reads anything. A check whose session is over, or while a combat is open, is not listed.
 func (l *heldList) npcCheckOffer(ctx context.Context, h heldRoll) (*playv1.HeldRollOffer, error) {
@@ -101,7 +101,7 @@ func (s *Service) ListNpcCheckPicker(ctx context.Context, req *connect.Request[p
 	return connect.NewResponse(out), nil
 }
 
-// pickMonster adds the SRD creature the master asked for, when he asked for one.
+// pickMonster adds the SRD creature the master asked for, when the master asked for one.
 func (s *Service) pickMonster(ctx context.Context, campaignID, key string, out *playv1.ListNpcCheckPickerResponse) error {
 	if key == "" {
 		return nil

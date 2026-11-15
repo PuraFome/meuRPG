@@ -159,7 +159,7 @@ func TestNpcCheckForgetNeedsTheCheckItsSessionAndItsPeople(t *testing.T) {
 	stale := time.Now().Add(-48 * time.Hour)
 	now := n.h.clock.Now()
 	mine := n.plant(t, n.campaignID, n.toren.GetId(), n.caio.id, "scene_check", now)
-	hers := n.plant(t, n.campaignID, n.bri.GetId(), n.bia.id, "scene_check", now)
+	theirs := n.plant(t, n.campaignID, n.bri.GetId(), n.bia.id, "scene_check", now)
 	foreigners := n.plant(t, otherCampaign, foreign.GetId(), other.id, "npc_check", now, foreign)
 	leftover := func() string { return n.plant(t, n.campaignID, n.npcID, n.master.id, "npc_check", now, n.bri, n.lia) }
 	survives := func(what, id string) {
@@ -171,7 +171,7 @@ func TestNpcCheckForgetNeedsTheCheckItsSessionAndItsPeople(t *testing.T) {
 
 	// The session is over: the check of the earlier session is nobody's to answer.
 	n.master.end(t, n.session(t))
-	for what, id := range map[string]string{"their own hold of another kind": mine, "somebody else's hold of another kind": hers, "a check of another campaign": foreigners} {
+	for what, id := range map[string]string{"their own hold of another kind": mine, "somebody else's hold of another kind": theirs, "a check of another campaign": foreigners} {
 		_, err := n.pass(n.caio, id, newKey())
 		wantCode(t, "Caio answers "+what, err, connect.CodeNotFound)
 		survives("Caio answers "+what, id)
@@ -179,7 +179,7 @@ func TestNpcCheckForgetNeedsTheCheckItsSessionAndItsPeople(t *testing.T) {
 	one, two, three := leftover(), leftover(), leftover()
 	_, err := n.pass(n.caio, one, newKey())
 	wantCode(t, "a player that is not asked answers a check of a session that is over", err, connect.CodeNotFound)
-	survives("Caio answers a check he is not asked", one)
+	survives("Caio answers a check that does not ask Caio", one)
 	_, err = n.pass(n.bia, two, newKey())
 	wantCode(t, "an asked bard answers a check of a session that is over", err, connect.CodeNotFound)
 	if _, ok := n.hold(t, two); ok {
@@ -379,7 +379,7 @@ func TestNpcCheckCutTellsTheBardsVitals(t *testing.T) {
 }
 
 // TestNpcCheckCutNeedsABardAwakeWithTheSetting: the question asks a bard that may cut; by the time it is answered the bard may be at 0
-// hit points or have changed the setting: she cannot cut then (the use is not spent), but she may pass.
+// hit points or have changed the setting: the bard cannot cut then (the use is not spent), but may pass.
 func TestNpcCheckCutNeedsABardAwakeWithTheSetting(t *testing.T) {
 	t.Parallel()
 	for name, tc := range map[string]struct {
@@ -440,7 +440,7 @@ func TestNpcCheckSurvivesTheOrphanSweep(t *testing.T) {
 		t.Fatalf("the hold after the sweep = %+v, %v; want it kept, waiting", row, ok)
 	}
 	if got := n.listHeldRolls(t, n.firstAsked(res)); len(got) != 1 {
-		t.Errorf("the bard reads %v after the sweep, want her question", got)
+		t.Errorf("the bard reads %v after the sweep, want the bard's question", got)
 	}
 }
 
@@ -473,7 +473,7 @@ func TestNpcCheckIsForgottenWhenItsSessionEnds(t *testing.T) {
 }
 
 // TestNpcCheckLastBardSettlesInTheMastersName: the check settles by the last answer the same way it does by the skip: the event is the
-// creature's, written by the master (the bard's answer is her own, and is in her ask).
+// creature's, written by the master (the bard's answer is the bard's own, and is in the ask).
 func TestNpcCheckLastBardSettlesInTheMastersName(t *testing.T) {
 	t.Parallel()
 	n := newNpcTable(t, charactersv1.CuttingWordsAsk_CUTTING_WORDS_ASK_ALL)

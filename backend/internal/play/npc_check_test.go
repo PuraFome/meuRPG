@@ -97,7 +97,7 @@ func TestNpcCheckAsksTheBardsInOrderAndSettlesTheTotal(t *testing.T) {
 		first, second = n.ana, n.bia
 	}
 	if got := len(n.listHeldRolls(t, second)); got != 0 {
-		t.Fatalf("the second bard reads %d offers before her turn, want 0", got)
+		t.Fatalf("the second bard reads %d offers before the turn, want 0", got)
 	}
 	if got := n.listHeldRolls(t, first); len(got) != 1 || got[0].GetD20() != nil {
 		t.Fatalf("the first bard reads %v, want one question with no d20", got)
@@ -135,7 +135,7 @@ func (n *npcTable) resolved(t *testing.T) (total, cut int32, count int) {
 	return total, cut, count
 }
 
-// TestNpcCheckSettlesWithTheDieOffAndSpendsOneUse: one bard cuts a 4 off a 15: the check settles at 11 and her uses go down by one.
+// TestNpcCheckSettlesWithTheDieOffAndSpendsOneUse: one bard cuts a 4 off a 15: the check settles at 11 and the uses go down by one.
 func TestNpcCheckSettlesWithTheDieOffAndSpendsOneUse(t *testing.T) {
 	t.Parallel()
 	n := newNpcTable(t, charactersv1.CuttingWordsAsk_CUTTING_WORDS_ASK_ALL)

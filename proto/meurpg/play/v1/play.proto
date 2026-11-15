@@ -843,7 +843,7 @@ service PlayService {
   // nothing. Same errors as ApplyTrapDamage.
   rpc DiscardTrapDamage(DiscardTrapDamageRequest) returns (DiscardTrapDamageResponse);
 
-  // RollNpcCheck is the master's ability check for a creature of his side outside a combat: an NPC's Enganação,
+  // RollNpcCheck ("Teste de um NPC") is the master's ability check for a creature of the master's side outside a combat: an NPC's Enganação,
   // Persuasão or Intimidação against the party in a scene with no map (SRD 5.1, College of Lore, Cutting Words). The
   // creature is an NPC of the campaign or an SRD creature; the d20 follows the master's choice of rolling in the app or
   // typing a real die, whatever the table's dice setting says for the players.
@@ -855,7 +855,8 @@ service PlayService {
   // is not immune to being charmed, and it sees the creature within 60 feet: with a token of the creature and one of the
   // bard on the session's map, by the distance and, on a fog map, by what the bard's player sees (a creature hidden on
   // the map is not seen); with no such pair, `bard_sees` says it for every bard. The server has no source for a creature
-  // that cannot hear the bard outside a combat, so the master's `bard_sees` and his word are what it relies on. Nobody
+  // that cannot hear the bard outside a combat, so the master's `bard_sees` (the box "Os bardos veem a criatura e ela os
+  // ouve": Cutting Words needs the bard to see the creature and the creature to hear the bard) is what it relies on. Nobody
   // is asked when no bard qualifies, and the check settles at once. Only the use of Bardic Inspiration is spent.
   //
   // The check is a `npc_check_held` event while it waits, and a `npc_check_resolved` one when it settles (the master's own
@@ -871,7 +872,7 @@ service PlayService {
   //     while a combat is running: the creature's checks are the combat's then.
   rpc RollNpcCheck(RollNpcCheckRequest) returns (RollNpcCheckResponse);
 
-  // SkipNpcCheckAsks is the master's "continuar sem o bardo": it closes every question of a held NPC check that still
+  // SkipNpcCheckAsks is the master's "Continuar sem esperar": it closes every question of a held NPC check that still
   // waits for a bard and settles the check with the dice already taken off. Master only. The same call again, with the
   // same key or another, answers with the settled check and changes nothing; a bard's answer that comes after it is
   // refused with `failed_precondition` (the roll was answered already).

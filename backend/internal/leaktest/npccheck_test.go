@@ -17,7 +17,7 @@ import (
 )
 
 // An NPC's check that a Lore bard may cut (RN-10, RN-20): the master's roll is the master's alone. The bard asked reads the question
-// of her own turn, with the creature as "uma criatura" when she does not know its name, and no d20, bonus or total; the other players
+// of the bard's own turn, with the creature as "uma criatura" when the bard does not know its name, and no d20, bonus or total; the other players
 // read nothing of it, in the list of the questions, in the answer to a try at answering it or in the stream; a player cannot roll,
 // skip or list the picker.
 func TestNpcCheckReachesOnlyTheBardAsked(t *testing.T) {
@@ -91,9 +91,9 @@ func TestNpcCheckReachesOnlyTheBardAsked(t *testing.T) {
 	}
 	got := offers(ana)
 	if len(got) != 1 {
-		t.Fatalf("Ana lists %v, want her question", got)
+		t.Fatalf("Ana lists %v, want the bard's question", got)
 	}
-	// Ana's question is exactly the hold, the kind, the time, "uma criatura" and the size of her die with the uses she has left: no d20,
+	// Ana's question is exactly the hold, the kind, the time, "uma criatura" and the size of the bard's die with the uses left: no d20,
 	// no check, no asks, no creature.
 	wantOffer := &playv1.HeldRollOffer{
 		HoldId: hold, Kind: playv1.HeldRollKind_HELD_ROLL_KIND_NPC_CHECK, CreatedAt: got[0].GetCreatedAt(), RollerLabel: "uma criatura",
@@ -124,7 +124,7 @@ func TestNpcCheckReachesOnlyTheBardAsked(t *testing.T) {
 			case "ready", "heartbeat", "session_ended":
 			case "held_rolls_changed":
 				if p == caio {
-					t.Errorf("Caio's stream heard a hint of the held rolls, want none: none was his")
+					t.Errorf("Caio's stream heard a hint of the held rolls, want none: none was Caio's")
 				}
 				if proto.Size(ev.GetHeldRollsChanged()) != 0 {
 					t.Errorf("%s's hint of the held rolls = %v, want an empty hint", p.name, ev.GetHeldRollsChanged())

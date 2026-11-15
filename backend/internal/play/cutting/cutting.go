@@ -42,7 +42,8 @@ func (b Bard) Asks() bool {
 // Die is the size of the bard's die at the bard level (the Bardic Inspiration die).
 func Die(bardLevel int) int { return reaction.CuttingWordsDie(bardLevel) }
 
-// Sight is what decides whether a bard sees and hears the creature, and whether the bard's question may name it.
+// Sight is what decides whether the bard sees the creature and the creature hears the bard (Cutting Words needs both), and whether the
+// bard's question may name it.
 type Sight struct {
 	// Mapped says the creature and the bard both have a token on the session's current map: the map decides, and Box is not read.
 	Mapped bool
@@ -52,7 +53,7 @@ type Sight struct {
 	Seen bool
 	// TokenHidden says the master hid the creature's token: no player sees it.
 	TokenHidden bool
-	// Box is the master's "o bardo vê e ouve a criatura" for a table with no placement of both.
+	// Box is the master's "Os bardos veem a criatura e ela os ouve" for a table with no placement of both.
 	Box bool
 	// OnStage says the creature is on the stage of the open scene for the bard's player (an NPC the players see).
 	OnStage bool

@@ -372,7 +372,7 @@ A hold of kind `npc_check` is neither: it waits for the bards' dice, so the swee
 One row per Lore bard asked about an NPC's check outside a combat (migration 00354); the check itself is an `inspiration_holds` row of kind `npc_check` (`character_id` the NPC, `user_id` the master, `faces` the d20), and the asks cascade with it.
 `hold_id` (`CASCADE`) and `bard_character_id` are unique together, and so are `hold_id` and `position` (the order the bards are asked in).
 `state` is `asked`, `cut`, `passed` or `closed`; the one asked now is the first with `asked`.
-`sides` is the die of the bard's Bardic Inspiration, `creature_seen` whether the bard's player may read the creature's name, `die_face` the face that came off (`NULL` until she cuts), `physical` whether she typed it, `answer_key`, `answer_hash` and `answered_at` the answer, which a retry finds by key and whose body must be the same (another body under the key is a reused key; `answer_hash` is `NULL` until she answers).
+`sides` is the die of the bard's Bardic Inspiration, `creature_seen` whether the bard's player may read the creature's name, `die_face` the face that came off (`NULL` until the bard cuts), `physical` whether it was typed, `answer_key`, `answer_hash` and `answered_at` the answer, which a retry finds by key and whose body must be the same (another body under the key is a reused key; `answer_hash` is `NULL` until the bard answers).
 
 ## `trap_damages`
 
