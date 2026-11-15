@@ -66,10 +66,11 @@ export function favorCheck(scope: Page | Locator): Locator {
   return favorBox(scope).getByRole('checkbox', { name: /Usar a Inspiração/ });
 }
 
-/** Ticks the box and waits for the roll-mode segment to read "pela Inspiração" (a box that is dashed would not). */
+/** Ticks the box and waits for the roll-mode segment's own lock word, "pela Inspiração" (a box that is dashed would not). The line under the
+ * segment says "Vantagem pela Inspiração: ..." too, so the word is looked up in its own element, not by its text alone. */
 export async function tickFavor(scope: Page | Locator): Promise<void> {
   await favorCheck(scope).check();
-  await expect(scope.getByText('pela Inspiração')).toBeVisible();
+  await expect(scope.locator('.mode__lock', { hasText: 'pela Inspiração' })).toBeVisible();
 }
 
 /** `SetCombatantConditions` as the master: the keys the combatant has from now on (`[]` takes them all away). */
