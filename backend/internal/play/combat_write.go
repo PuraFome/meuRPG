@@ -979,7 +979,7 @@ func (s *Service) finish(ctx context.Context, m authz.Membership, res combatResu
 func (s *Service) publishRetried(ctx context.Context, campaignID string, res combatResult, d *encounterData) {
 	ev, err := readEvent(res.payload)
 	if err != nil || ev.Secret {
-		s.publishEncounterChangedToMaster(campaignID, d.enc) // the players were not told of the first call: nor of its replay
+		s.publishEncounterChangedToMaster(ctx, campaignID, d.enc) // the players were not told of the first call: nor of its replay
 	} else {
 		s.publishEncounterChanged(ctx, campaignID, d.enc)
 	}
