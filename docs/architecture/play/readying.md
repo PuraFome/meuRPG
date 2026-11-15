@@ -175,6 +175,8 @@ The answer carries no point and no direction: a spell placed on a map (a sphere 
 The readier releases it with `CastSpell`, which carries the point, while the READIED window is open.
 In a combat with no map the area is released with the creatures the answer picks, or with nobody.
 The Ready sheet offers the spells the window releases with darts, creatures or nothing.
+It shows with a reason, and does not offer, a spell that asks the caster an ability (Enhance Ability), the creatures of a summon (Conjure Animals) or a damage type (Flame Strike): the answer carries no `ability_key`, `summon` or `damage_type_key`.
+The sheet reads them as the cast sheet does: `needsAbility`, the summon options of the character and the `damage_choice` of the spell's details.
 While the row waits, `GetTurnOptions.spell_targets` of its readier also lists the targets of the held spell (`heldSpellTargets`), with the darts of its slot, so the window can show them.
 It does so only off the readier's turn, where the window opens and no ordinary entry is listed: on the turn a second action (Action Surge) could list the same spell twice, with nothing to tell the entries apart.
 A held spell attack lists none.

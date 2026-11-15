@@ -113,6 +113,7 @@ describe('ReadySheet (#582)', () => {
       ownerLabel: 'Tor',
       options: options(),
       summaries: new Map(),
+      choices: new Map(),
       spellTargets: [],
       theatre: false,
       noSpeed: false,
@@ -279,6 +280,25 @@ describe('ReadySheet (#582)', () => {
     expect(flat(cards[0])).toContain('Soltar pela janela ainda não dá para esta magia');
     expect(cards[1].classList).not.toContain('opt--off');
     expect(flat(cards[1])).toContain('Enfeitiçar Pessoa');
+  });
+
+  it('writes the reason in the card of a spell that asks an ability, creatures or a damage type, and lets a plain one be held', () => {
+    const { el, button, click } = render({
+      options: options({ spells: [missiles, charm, shield] }),
+      choices: new Map([
+        ['spell:magic-missile', 'ability'],
+        ['spell:charm-person', 'damage'],
+      ]),
+    });
+    click(button('Magia'));
+    const cards = Array.from(el.querySelectorAll('label.opt'));
+    expect(cards[0].classList).toContain('opt--off');
+    expect(flat(cards[0])).toContain(
+      'Soltar pela janela ainda não dá para esta magia: ela pede a habilidade ao conjurar.',
+    );
+    expect(flat(cards[1])).toContain('ela pede o tipo de dano ao conjurar.');
+    expect(cards[1].classList).toContain('opt--off');
+    expect(cards[0].querySelector('input')?.disabled).toBe(true);
   });
 
   it('lists "Outra" as Esquivar and Procurar and sends the one chosen', async () => {

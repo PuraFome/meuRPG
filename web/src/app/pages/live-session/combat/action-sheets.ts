@@ -28,6 +28,7 @@ import { ReadySheet, type ReadySheetData } from './ready-sheet/ready-sheet';
 import type { Observable } from 'rxjs';
 import { needsSheet, resourceOf, usedNote } from '../../../core/combat/feature-use';
 import { readySpeed } from '../../../core/combat/ready';
+import { readyChoices } from '../../../core/combat/ready-choices';
 import { ActionKey } from '../../../core/connect/idempotency';
 import { openBardicInspiration, openFlexibleCasting, openLayOnHands } from './resource-sheets';
 import { SpendSheet, type SpendSheetData } from './theatre/spend-sheet';
@@ -256,13 +257,23 @@ export class ActionSheets {
    * actions), the creatures of the fight to name in the trigger and where the readier stands (no map, no speed, a concentration).
    * The call, its refusals and the combat it answers are the sheet's own.
    */
-  openReady(): void {
+  async openReady(): Promise<void> {
     const own = this.ctx.own();
     const e = this.ctx.encounter();
     const options = this.ctx.options();
     if (!own || !e || !options?.options) {
       return;
     }
+    const campaignId = this.ctx.campaignId();
+    const choices = await readyChoices(options.options.spells, {
+      details: (key) => this.ctx.catalog.details(campaignId, key),
+      summons: async () =>
+        new Set(
+          (await this.ctx.creatures.summonOptions(campaignId, own.characterId)).spells
+            .filter((s) => !s.grantedBy)
+            .map((s) => s.spellKey),
+        ),
+    });
     const data: ReadySheetData = {
       campaignId: this.ctx.campaignId(),
       encounterId: e.id,
@@ -270,6 +281,7 @@ export class ActionSheets {
       ownerLabel: own.label,
       options: options.options,
       summaries: new Map(),
+      choices,
       spellTargets: options.spellTargets,
       theatre: this.ctx.theatre(),
       ...readySpeed(own.speedFt, options),
