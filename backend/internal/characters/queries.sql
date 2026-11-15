@@ -1004,6 +1004,14 @@ SET quantity = sqlc.arg(quantity), spent_last_combat = sqlc.arg(spent_last_comba
     last_encounter_id = sqlc.arg(last_encounter_id)::UUID, recovered = sqlc.arg(recovered), updated_at = sqlc.arg(now)
 WHERE character_id = sqlc.arg(character_id) AND ammo_key = sqlc.arg(ammo_key);
 
+-- name: WriteAmmunitionRefunded :exec
+-- An undone shot: the pieces held and the count of what the combat fired go down by it; with nothing fired left the row
+-- belongs to no combat (there is nothing to search for), and the recovered mark stays otherwise.
+UPDATE character_ammunition
+SET quantity = sqlc.arg(quantity), spent_last_combat = sqlc.arg(spent_last_combat),
+    last_encounter_id = sqlc.narg(last_encounter_id)::UUID, recovered = sqlc.arg(recovered), updated_at = sqlc.arg(now)
+WHERE character_id = sqlc.arg(character_id) AND ammo_key = sqlc.arg(ammo_key);
+
 -- name: ListAmmunitionOfEncounterForUpdate :many
 -- The rows the character spent in the combat, locked.
 SELECT ammo_key, quantity, spent_last_combat, recovered

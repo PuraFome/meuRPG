@@ -214,6 +214,8 @@ type attackFlow struct {
 	power *link.PowerAttack
 	// powerHidden says the master had hidden the trade's feature from the players (readPowerHidden).
 	powerHidden bool
+	// ammoSpent is the kind of ammunition the shot took and ammoLine the id of its line (spendAmmunition), "" for an attack that took none.
+	ammoSpent, ammoLine string
 }
 
 func newAttackFlow(s *Service, c *combatTx, m authz.Membership, req *playv1.RollAttackRequest, call attackCall, out *attackOut) *attackFlow {
@@ -806,6 +808,7 @@ func (f *attackFlow) attackEvent(run int32) actionEvent {
 	made.Stroke = f.rolled.Stroke // the use of Stroke of Luck: the log says the miss became a hit, the undo gives it back
 	made.ProtectedBy = f.protectedBy()
 	made.Parried = f.parried
+	made.Ammo, made.AmmoLine = f.ammoSpent, f.ammoLine
 	return made
 }
 

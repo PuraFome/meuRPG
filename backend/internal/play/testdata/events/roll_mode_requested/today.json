@@ -551,6 +551,8 @@
   "parried": {
     "event": "x"
   },
+  "ammo": "x",
+  "ammo_line": "x",
   "parry_ask": true,
   "sunlight_on": true,
   "sunlight_scope": "x",

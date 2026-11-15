@@ -49,6 +49,8 @@ type ItemKeeper interface {
 	SetAmmunition(ctx context.Context, tx pgx.Tx, campaignID, characterID, ammoKey string, quantity int32) (*charactersv1.SheetAmmunition, error)
 	// SpendAmmunition takes one piece of a kind for a shot in the encounter and returns the pieces left.
 	SpendAmmunition(ctx context.Context, tx pgx.Tx, campaignID, characterID, ammoKey, encounterID string) (left int32, err error)
+	// RefundAmmunition gives back pieces that an attack of the encounter took, when the attack is undone.
+	RefundAmmunition(ctx context.Context, tx pgx.Tx, campaignID, characterID, ammoKey, encounterID string, pieces int32) (left int32, err error)
 	// AmmunitionLeft is the pieces a character of the campaign holds of a kind.
 	AmmunitionLeft(ctx context.Context, tx pgx.Tx, campaignID, characterID, ammoKey string) (int32, error)
 	// RecoverAmmunition takes back half of what the character fired in the encounter.

@@ -139,6 +139,60 @@ func (s *Service) SpendAmmunition(ctx context.Context, tx pgx.Tx, campaignID, ch
 	return row.Quantity - 1, nil
 }
 
+// RefundAmmunition gives back pieces of a kind that an attack of the encounter took, when the attack is undone (an undone
+// attack did not happen), and returns the pieces held after. When the row counts that encounter, what it fired goes down
+// by the pieces (never below 0), and a row left with nothing fired belongs to no combat again: there is nothing to search
+// for. When the row counts another combat only the pieces come back. The stock stays at MaxAmmunition at most. The row is
+// locked like the shot's. invalid_argument for a key that is no kind of ammunition or for pieces under 1.
+func (s *Service) RefundAmmunition(ctx context.Context, tx pgx.Tx, campaignID, characterID, ammoKey, encounterID string, pieces int32) (left int32, err error) {
+	q := s.queries.WithTx(tx)
+	id, err := s.ammunitionCharacter(ctx, q, campaignID, characterID)
+	if err != nil {
+		return 0, err
+	}
+	enc, ok := uid.Canonical(encounterID)
+	if !ok {
+		return 0, invalidArgument(fieldErr("encounter_id", "is not an id"))
+	}
+	if pieces < 1 {
+		return 0, invalidArgument(fieldErr("pieces", "must be at least 1"))
+	}
+	content, err := s.contentFor(ctx, tx, campaignID)
+	if err != nil {
+		return 0, wrap("read rules content", err)
+	}
+	if !slices.Contains(content.AmmunitionKinds(), ammoKey) {
+		return 0, invalidArgument(fieldErr("ammo_key", "is not a kind of ammunition"))
+	}
+	row, err := q.GetAmmunitionForUpdate(ctx, charactersdb.GetAmmunitionForUpdateParams{CharacterID: id, AmmoKey: ammoKey})
+	if errors.Is(err, pgx.ErrNoRows) {
+		held, err := q.SetAmmunitionQuantity(ctx, charactersdb.SetAmmunitionQuantityParams{CharacterID: id, AmmoKey: ammoKey, Quantity: min(pieces, MaxAmmunition), Now: s.now()})
+		if err != nil {
+			return 0, wrap("refund ammunition", err)
+		}
+		return held.Quantity, nil
+	}
+	if err != nil {
+		return 0, wrap("lock ammunition", err)
+	}
+	quantity := min(row.Quantity, MaxAmmunition)
+	quantity += min(pieces, MaxAmmunition-quantity)
+	spent, last, recovered := row.SpentLastCombat, row.LastEncounterID, row.Recovered
+	if last != nil && *last == enc {
+		spent = max(spent-pieces, 0)
+		if spent == 0 {
+			last, recovered = nil, false
+		}
+	}
+	err = q.WriteAmmunitionRefunded(ctx, charactersdb.WriteAmmunitionRefundedParams{
+		CharacterID: id, AmmoKey: ammoKey, Quantity: quantity, SpentLastCombat: spent, LastEncounterID: last, Recovered: recovered, Now: s.now(),
+	})
+	if err != nil {
+		return 0, wrap("refund ammunition", err)
+	}
+	return quantity, nil
+}
+
 // AmmunitionLeft is the pieces a character of the campaign holds of a kind, 0 when it never held any. `not_found` for
 // a character that is not in the campaign. A nil tx reads outside a transaction (the turn's options).
 func (s *Service) AmmunitionLeft(ctx context.Context, tx pgx.Tx, campaignID, characterID, ammoKey string) (int32, error) {

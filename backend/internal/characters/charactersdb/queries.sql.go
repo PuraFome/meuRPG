@@ -4300,6 +4300,38 @@ func (q *Queries) WriteAmmunitionRecovered(ctx context.Context, arg WriteAmmunit
 	return err
 }
 
+const writeAmmunitionRefunded = `-- name: WriteAmmunitionRefunded :exec
+UPDATE character_ammunition
+SET quantity = $1, spent_last_combat = $2,
+    last_encounter_id = $3::UUID, recovered = $4, updated_at = $5
+WHERE character_id = $6 AND ammo_key = $7
+`
+
+type WriteAmmunitionRefundedParams struct {
+	Quantity        int32
+	SpentLastCombat int32
+	LastEncounterID *string
+	Recovered       bool
+	Now             time.Time
+	CharacterID     string
+	AmmoKey         string
+}
+
+// An undone shot: the pieces held and the count of what the combat fired go down by it; with nothing fired left the row
+// belongs to no combat (there is nothing to search for), and the recovered mark stays otherwise.
+func (q *Queries) WriteAmmunitionRefunded(ctx context.Context, arg WriteAmmunitionRefundedParams) error {
+	_, err := q.db.Exec(ctx, writeAmmunitionRefunded,
+		arg.Quantity,
+		arg.SpentLastCombat,
+		arg.LastEncounterID,
+		arg.Recovered,
+		arg.Now,
+		arg.CharacterID,
+		arg.AmmoKey,
+	)
+	return err
+}
+
 const writeAmmunitionSpent = `-- name: WriteAmmunitionSpent :exec
 UPDATE character_ammunition
 SET quantity = $1, spent_last_combat = $2,

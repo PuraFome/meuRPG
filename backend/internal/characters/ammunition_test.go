@@ -191,6 +191,107 @@ func TestSpendAmmunition(t *testing.T) {
 	}
 }
 
+func (et *editorTable) refund(t *testing.T, pc *charactersv1.Character, key, encounter string, pieces int32) (int32, error) {
+	t.Helper()
+	var left int32
+	err := et.inTx(t, func(tx pgx.Tx) error {
+		var err error
+		left, err = et.h.svc.RefundAmmunition(t.Context(), tx, et.campaign, pc.GetId(), key, encounter, pieces)
+		return err
+	})
+	return left, err
+}
+
+// A refund is the undo of a shot: the piece is held again and the combat's count of what was fired goes down by it.
+func TestRefundAmmunition(t *testing.T) {
+	t.Parallel()
+	et, pc := attuneTable(t)
+	enc, other := uuid.NewString(), uuid.NewString()
+	if _, err := et.setAmmo(t, pc, arrowKey, 10); err != nil {
+		t.Fatal(err)
+	}
+	for range 3 {
+		if _, err := et.shoot(t, pc, arrowKey, enc); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if left, err := et.refund(t, pc, arrowKey, enc, 1); err != nil || left != 8 {
+		t.Fatalf("refund: %d %v, want 8", left, err)
+	}
+	if a := ammoOf(et.read(t, et.master, pc.GetId()), arrowKey); a.GetQuantity() != 8 || a.GetSpentLastCombat() != 2 || a.GetRecovered() {
+		t.Errorf("after the refund: %+v, want 8 held, 2 fired", a)
+	}
+	// The recovery counts the two that stay fired.
+	got, err := et.recover(t, pc, enc)
+	if err != nil || len(got) != 1 || got[0].GetQuantity() != 9 {
+		t.Fatalf("recover: %+v %v, want 9 held (8 and half of 2)", got, err)
+	}
+	// A refund in another combat than the one the row counts only gives the piece back.
+	if left, err := et.refund(t, pc, arrowKey, other, 1); err != nil || left != 10 {
+		t.Fatalf("refund in another combat: %d %v, want 10", left, err)
+	}
+	if a := ammoOf(et.read(t, et.master, pc.GetId()), arrowKey); a.GetSpentLastCombat() != 2 || !a.GetRecovered() {
+		t.Errorf("the count of the other combat changed: %+v", a)
+	}
+}
+
+// The undo of the only shot of a combat leaves the row as if nothing was fired: nothing to recover, no count.
+func TestRefundOfTheOnlyShotLeavesNothingFired(t *testing.T) {
+	t.Parallel()
+	et, pc := attuneTable(t)
+	enc := uuid.NewString()
+	if _, err := et.setAmmo(t, pc, arrowKey, 5); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := et.shoot(t, pc, arrowKey, enc); err != nil {
+		t.Fatal(err)
+	}
+	if left, err := et.refund(t, pc, arrowKey, enc, 1); err != nil || left != 5 {
+		t.Fatalf("refund: %d %v, want 5", left, err)
+	}
+	if a := ammoOf(et.read(t, et.master, pc.GetId()), arrowKey); a.GetQuantity() != 5 || a.GetSpentLastCombat() != 0 || a.GetRecovered() {
+		t.Errorf("after the refund: %+v", a)
+	}
+	if _, err := et.recover(t, pc, enc); !errors.Is(err, ErrNothingToRecover) {
+		t.Errorf("recover after an undone only shot: %v, want nothing to recover", err)
+	}
+}
+
+func TestRefundAmmunitionEdges(t *testing.T) {
+	t.Parallel()
+	et, pc := attuneTable(t)
+	enc := uuid.NewString()
+	// A kind the character holds no row of gets the pieces.
+	if left, err := et.refund(t, pc, boltKey, enc, 2); err != nil || left != 2 {
+		t.Errorf("refund with no row: %d %v, want 2", left, err)
+	}
+	// The count never goes below 0 and the stock never over the maximum.
+	if _, err := et.setAmmo(t, pc, arrowKey, MaxAmmunition); err != nil {
+		t.Fatal(err)
+	}
+	if left, err := et.refund(t, pc, arrowKey, enc, 5); err != nil || left != MaxAmmunition {
+		t.Errorf("refund over the maximum: %d %v, want %d", left, err, MaxAmmunition)
+	}
+	if a := ammoOf(et.read(t, et.master, pc.GetId()), arrowKey); a.GetSpentLastCombat() != 0 {
+		t.Errorf("fired count after a refund of nothing fired: %+v", a)
+	}
+	for _, c := range []struct {
+		name, key, enc string
+		pieces         int32
+	}{
+		{"not ammunition", "equipment:longbow", enc, 1},
+		{"bad encounter", arrowKey, "nope", 1},
+		{"no piece", arrowKey, enc, 0},
+	} {
+		if _, err := et.refund(t, pc, c.key, c.enc, c.pieces); connect.CodeOf(err) != connect.CodeInvalidArgument {
+			t.Errorf("%s: %v", c.name, err)
+		}
+	}
+	if _, err := et.refund(t, &charactersv1.Character{Id: uuid.NewString()}, arrowKey, enc, 1); connect.CodeOf(err) != connect.CodeNotFound {
+		t.Errorf("another character: %v", err)
+	}
+}
+
 func TestAmmunitionLeft(t *testing.T) {
 	t.Parallel()
 	et, pc := attuneTable(t)

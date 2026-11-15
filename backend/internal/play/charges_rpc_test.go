@@ -437,6 +437,43 @@ func TestTheDiceOfTheLastChargeFollowTheTablesDiceMode(t *testing.T) {
 	}
 }
 
+// A second call for the last charge with another key is no retry: whoever gets the lock second finds the wait over and is
+// refused with invalid_argument "no last charge to roll" (no ChargesBlocked, no CharacterBlocked), also when the first one
+// destroyed the item. Only the same key reads the first answer back (TestRollLastChargeIsIdempotent).
+func TestTwoRollsOfTheLastChargeWithTwoKeysGiveOneSuccess(t *testing.T) {
+	t.Parallel()
+	c := newCharged(t, chargeWand)
+	c.mustSpend(t, c.ana, chargeWand, 7)
+	c.h.roller.queue(5) // one d20: the roll that loses the race never rolls
+	var wg sync.WaitGroup
+	errs := make([]error, 2)
+	for i, u := range []*user{c.ana, c.master} {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_, errs[i] = c.roll(t, u, chargeWand)
+		}()
+	}
+	wg.Wait()
+	var refused error
+	ok := 0
+	for _, err := range errs {
+		if err == nil {
+			ok++
+		} else {
+			refused = err
+		}
+	}
+	if ok != 1 {
+		t.Fatalf("the two rolls = %v, %v; want exactly one success", errs[0], errs[1])
+	}
+	wantCode(t, "the roll that came second", refused, connect.CodeInvalidArgument)
+	var ce *connect.Error
+	if !errors.As(refused, &ce) || !strings.Contains(ce.Message(), "no last charge to roll") || len(ce.Details()) != 0 {
+		t.Errorf("the second roll's error = %v, want invalid_argument \"no last charge to roll\" with no blocked detail", refused)
+	}
+}
+
 func TestRollLastChargeIsIdempotent(t *testing.T) {
 	t.Parallel()
 	c := newCharged(t, chargeStaff)
@@ -507,6 +544,35 @@ func TestTheMastersCorrectionOfTheCharges(t *testing.T) {
 }
 
 // The combat's line is the master's and the owner's: the other players read nothing of it (RN-10).
+// A charge's use is no action an undo can take back: item_charge_spent, the d20 of the last charge and the master's correction
+// all close the undo chain, so the attack before them cannot be undone any more (the charges are not given back either).
+func TestSpendingAChargeClosesTheUndoChain(t *testing.T) {
+	t.Parallel()
+	c := newCharged(t, chargeWand)
+	e := c.start(t, plan{
+		npcs:     []*playv1.Participant{{CharacterId: c.goblin.GetId()}},
+		npcRolls: []int{3},
+		players:  map[string]int32{"Toren": 10, "Pensantus": 18, "Brisa": 1},
+		reveal:   []string{"Goblin"},
+		at:       map[string][2]int32{"Toren": {3, 3}, "Goblin": {4, 3}, "Pensantus": {10, 3}, "Brisa": {8, 8}},
+	})
+	if _, err := c.attack(t, c.ana, e, "Pensantus", fireBolt, "Goblin", d20(1)); err != nil {
+		t.Fatalf("RollAttack() error = %v", err)
+	}
+	attackID := c.log(t, c.master, c.get(t, c.master)).GetUndoableEventId()
+	if attackID == "" {
+		t.Fatal("the attack is not offered to undo before the charge is spent")
+	}
+	c.mustSpend(t, c.ana, chargeWand, 1)
+	if id := c.log(t, c.master, c.get(t, c.master)).GetUndoableEventId(); id != "" {
+		t.Errorf("after a charge was spent the log offers %s to undo, want nothing", id)
+	}
+	wantEncounterBlocked(t, c.undo(t, c.master, e, attackID), blockedNothingToUndo)
+	if left := c.itemOf(t, c.ana, chargeWand).GetChargesLeft(); left != 6 {
+		t.Errorf("charges left = %d, want 6", left)
+	}
+}
+
 func TestACombatLogLineOfTheChargesIsTheOwnersAndTheMastersAlone(t *testing.T) {
 	t.Parallel()
 	c := newCharged(t, chargeWand)

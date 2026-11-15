@@ -428,6 +428,31 @@ func TestDuelingAddsTwoDamageToEveryOneHandedMeleeWeapon(t *testing.T) {
 	}
 }
 
+// An improvised weapon is not a melee weapon of its kind: a bow used as a club gets no Dueling bonus, beside a sword that
+// gets it or alone (SRD 5.1, "Improvised Weapons" and the Dueling style, a melee weapon wielded in one hand).
+func TestDuelingNeverAppliesToTheImprovisedMeleeLineOfABow(t *testing.T) {
+	t.Parallel()
+	c := loadForTest(t)
+	for name, weapons := range map[string][]string{
+		"a bow alone":          {"equipment:shortbow"},
+		"a bow beside a sword": {"equipment:longsword", "equipment:shortbow"},
+	} {
+		d := Derive(duelist(weapons...), c)
+		club, ok := attackOf(d, "equipment:shortbow:melee")
+		if !ok {
+			t.Fatalf("%s: no improvised line", name)
+		}
+		if club.Damage != "1d4+3" || club.DamageNotePT != "" || club.DamageDice != (DiceFormula{Count: 1, Sides: 4, Bonus: 3}) {
+			t.Errorf("%s: improvised line = %q (%q), want 1d4+3 and no Dueling note", name, club.Damage, club.DamageNotePT)
+		}
+	}
+	// With only the bow there is no weapon the bonus applies to: it stays a hint, as for a two-handed weapon.
+	d := Derive(duelist("equipment:shortbow"), c)
+	if !slices.ContainsFunc(d.Hints, func(h Hint) bool { return h.Source == "feature:fighter-fighting-style-dueling" }) {
+		t.Error("with a bow alone the Dueling bonus should stay a hint")
+	}
+}
+
 // Brutal Critical (SRD 5.1, Barbarian) adds one weapon die to a melee critical hit
 // at level 9, two at 13 and three at 17; nobody else has it.
 func TestBrutalCriticalDiceFollowTheBarbarianLevel(t *testing.T) {

@@ -95,7 +95,12 @@ The sheet's attack line carries the kind (`rules.Attack.AmmunitionKey`, from `ef
 `prepare` refuses with `AMMUNITION_EMPTY` when none is left, and nothing is written.
 `writeAttack` takes the piece after the roll settled, in the same transaction, through the characters keeper with the combat's id.
 It writes the `ammunition_spent` event just before the attack's own event, a line that only the master and the character's player read.
-That event never closes the undo chain (`chainAmmunition`), and the undo does not give the piece back: the master corrects the stock with `SetAmmunition`.
+The attack's event keeps the kind and the line's id (`ammo`, `ammo_line`).
+The undo of the attack means the attack did not happen, so it gives the piece back in its own transaction (`undoer.ammunitionBack`, then the keeper's `RefundAmmunition`) and takes the line out of the log with the attack.
+Extra Attack undoes one attack at a time, so each undo gives back one piece.
+The keeper lowers the combat's count of fired pieces by the refund, and a row left with nothing fired belongs to no combat again, so there is nothing to search for.
+An attack that took no piece (a thrown weapon, a melee weapon, the improvised line) gives nothing back.
+The `ammunition_spent` event still never closes the undo chain (`chainAmmunition`), so the undo of a later shot leaves the shot before it to undo.
 Two attacks at the last piece give one shot: the keeper locks the stock, and the second gets `AMMUNITION_EMPTY`.
 A thrown weapon, a melee weapon, the creatures and the master's NPCs spend nothing.
 
@@ -104,6 +109,8 @@ A weapon that fires ammunition has a second attack line, keyed `<weapon key>:mel
 It is a melee attack of 1d4 plus Strength, bludgeoning, without proficiency or the weapon's bonuses, and it spends no ammunition.
 `GetTurnOptions` fills `ammunition_left` on the ammunition line (0 when none is left) for the character's player and the master, and leaves it absent on every other line.
 A sheet's derived attacks never carry it.
+The line is a weapon attack and a melee one (`Kind` weapon), so what reads those two facts treats it as a Strength melee weapon attack: Rage, Divine Smite, Improved Divine Smite, the hit extras, the maneuvers and Hunter's Mark.
+It is not a weapon of its kind: it has no finesse, two-handed or light property, no proficiency and no magic of the bow, so Dueling, Great Weapon Fighting, Two-Weapon Fighting and Sneak Attack (which needs a finesse or ranged weapon) never apply to it.
 
 **Beams and bonus action attacks.**
 A cantrip with several beams (Eldritch Blast) is one attack roll per `RollAttack`, each beam with its own damage (Agonizing Blast on each), up to `Attack.Beams`; the combatant row remembers the attack of the action (`action_attack_key`) and `attacks_made` counts the beams.

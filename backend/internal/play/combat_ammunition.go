@@ -8,13 +8,15 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
+	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
 
 // Ammunition in the attack roll (SRD 5.1, "Weapons": the ammunition property). A player's character that makes a ranged
 // attack with a weapon that fires ammunition (the line carries the kind) takes one piece of it, in the transaction that
 // writes the attack: with none left the attack is refused before anything is written, and the piece is taken after the
-// roll settled, so a roll that waits for an answer takes nothing yet. A thrown weapon, a melee one, the improvised melee
-// line of a bow and the attacks of the creatures and of the master's NPCs carry no kind and take nothing.
+// roll settled, so a roll that waits for an answer takes nothing yet. The undo of the attack gives the piece back in its own
+// transaction (ammunitionBack). A thrown weapon, a melee one, the improvised melee line of a bow and the attacks of the
+// creatures and of the master's NPCs carry no kind and take nothing.
 
 // firesAmmunition says the attack takes a piece of ammunition: a player's character with a weapon line that fires some.
 func (f *attackFlow) firesAmmunition() bool {
@@ -68,9 +70,24 @@ func (f *attackFlow) spendAmmunition(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("encode the event payload: %w", err)
 	}
-	if _, err := insertRawAs(ctx, f.c, eventAmmunitionSpent, &f.m.UserID, &charID, nil, body); err != nil {
+	line, err := insertRawAs(ctx, f.c, eventAmmunitionSpent, &f.m.UserID, &charID, nil, body)
+	if err != nil {
 		return err
 	}
+	f.ammoSpent, f.ammoLine = f.attack.Ammunition, line
 	f.s.tellVitalsAfter(f.c.hints, campaignID, charID)
+	return nil
+}
+
+// ammunitionBack gives back the piece an undone attack took, to the character that fired it (the keeper lowers the combat's
+// count of what was fired by it). An attack that took none, or whose attacker is no player's character, gives nothing.
+func (u *undoer) ammunitionBack(ctx context.Context, who playdb.Combatant, ev actionEvent) error {
+	if ev.Ammo == "" || !backedByCharacter(who) {
+		return nil
+	}
+	if _, err := u.s.vitals.RefundAmmunition(ctx, u.c.tx, u.c.session.CampaignID, who.CharacterID, ev.Ammo, u.c.enc.ID, 1); err != nil {
+		return err
+	}
+	u.s.tellVitalsAfter(u.c.hints, u.c.session.CampaignID, who.CharacterID)
 	return nil
 }

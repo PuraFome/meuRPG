@@ -320,8 +320,9 @@ func TestTwoAttacksAtTheLastPieceGiveOneShot(t *testing.T) {
 	}
 }
 
-// The ammunition line never closes the undo chain: taking the second shot back leaves the first one to take back.
-func TestUndoingAShotLeavesTheShotBeforeItToUndo(t *testing.T) {
+// Undoing an attack means the attack did not happen, as the hit points and the slots already are: the piece comes back in the
+// undo's transaction, the line of the shot goes with it, and the shot before it is still offered to undo.
+func TestUndoingAShotGivesItsPieceBackAndLeavesTheShotBeforeItToUndo(t *testing.T) {
 	t.Parallel()
 	s := newArchery(t)
 	s.stock(t, 10)
@@ -331,12 +332,64 @@ func TestUndoingAShotLeavesTheShotBeforeItToUndo(t *testing.T) {
 			t.Fatalf("shot %d error = %v", i+1, err)
 		}
 	}
-	s.undoLast(t, e)
 	if got := s.held(t); got != 8 {
-		t.Errorf("arrows after the undo of a shot = %d, want 8: an undo does not give the pieces back", got)
+		t.Fatalf("arrows after two shots = %d, want 8", got)
+	}
+	s.undoLast(t, e)
+	if got := s.held(t); got != 9 {
+		t.Errorf("arrows after the undo of the second shot = %d, want 9: the undo gives its piece back", got)
+	}
+	if lines := s.ammoLines(t, s.caio, s.get(t, s.caio)); len(lines) != 1 {
+		t.Errorf("the owner reads %d ammunition lines after the undo, want 1 (the first shot's)", len(lines))
 	}
 	if id := s.log(t, s.master, s.get(t, s.master)).GetUndoableEventId(); id == "" {
 		t.Error("after the undo of the second shot the first one is not offered to undo")
+	}
+	s.undoLast(t, e)
+	if got := s.held(t); got != 10 {
+		t.Errorf("arrows after both undos = %d, want 10", got)
+	}
+}
+
+// Undoing the only shot of the combat leaves the stock as if nothing was fired: there is nothing to search for afterwards.
+func TestUndoingTheOnlyShotLeavesNothingToRecover(t *testing.T) {
+	t.Parallel()
+	s := newArchery(t)
+	s.stock(t, 10)
+	e := s.fight(t, 8)
+	if _, err := s.shoot(t, e, shortbowKey); err != nil {
+		t.Fatalf("RollAttack() error = %v", err)
+	}
+	s.undoLast(t, e)
+	if got := s.held(t); got != 10 {
+		t.Errorf("arrows after the undo = %d, want 10", got)
+	}
+	s.endEncounter(t, e)
+	_, err := s.master.charges.RecoverAmmunition(t.Context(), connect.NewRequest(&playv1.RecoverAmmunitionRequest{
+		CampaignId: s.campaignID, CharacterId: s.toren.GetId(), IdempotencyKey: newKey(),
+	}))
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Errorf("RecoverAmmunition() after an undone only shot error = %v, want invalid_argument (nothing fired)", err)
+	}
+	if got := s.held(t); got != 10 {
+		t.Errorf("arrows after the search = %d, want 10", got)
+	}
+}
+
+// An attack that takes no piece (a melee weapon, the improvised line) gives none back when it is undone.
+func TestUndoingAnAttackThatSpentNoAmmunitionTouchesNoStock(t *testing.T) {
+	t.Parallel()
+	s := newArchery(t)
+	s.stock(t, 7)
+	e := s.fight(t, 4)
+	for _, key := range []string{battleaxe, shortbowKey + ":melee"} {
+		if _, err := s.shoot(t, e, key); err != nil {
+			t.Fatalf("RollAttack(%s) error = %v", key, err)
+		}
+		s.undoLast(t, e)
+		if got := s.held(t); got != 7 {
+			t.Errorf("arrows after the undo of %s = %d, want 7", key, got)
+		}
 	}
 }
 

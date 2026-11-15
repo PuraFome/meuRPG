@@ -29,7 +29,14 @@ The d20 follows the table's dice mode ([Table rules](table-rules.md)): the app r
 A 1 loses the item as the catalog says, and a 20 on an item that regains charges gives back a die of them, rolled the same way.
 A typed 20 without the regain die's face is refused with `ChargesBlocked` `REGAIN_FACE_NEEDED`.
 Any other face only ends the wait.
-Two calls for the last charge give one success: the second reads the first one's answer or `ITEM_DESTROYED`.
+Two calls with the same idempotency key give one roll: the second reads the first one's answer.
+Two calls with different keys give one success: the one that gets the lock second finds no wait and is refused with `invalid_argument` "the item has no last charge to roll", with no blocked reason, also when the first roll destroyed the item.
+
+## Undo
+
+A charge cannot be given back by the master's undo.
+`item_charge_spent`, `item_charges_restored` and `item_destroyed` are not undoable kinds, so each of them closes the undo chain, and the attack before it can no longer be undone ([Undo](undo.md)).
+The master corrects the charges with `SetCharges`.
 
 ## The master's correction
 
@@ -51,6 +58,9 @@ A ranged attack with a weapon that fires ammunition takes one piece in the attac
 The keeper's `SpendAmmunition` starts the count of a combat over (nothing fired, not recovered) when the combat is not the one it last counted.
 With none left the attack is refused with `EncounterBlocked` `AMMUNITION_EMPTY`.
 Each shot writes the session event `ammunition_spent` with the combat's round, which reads as the line `AMMUNITION_SPENT`.
+The undo of the attack gives the piece back: the keeper's `RefundAmmunition` adds it to the stock and lowers the count of what the combat fired, in the undo's transaction, and the line leaves the log with the attack.
+It locks the stock row like the shot does, so a refund and a shot at the same time take turns.
+When the stock row counts another combat only the piece comes back, and a row left with nothing fired belongs to no combat again.
 
 ## Events
 
