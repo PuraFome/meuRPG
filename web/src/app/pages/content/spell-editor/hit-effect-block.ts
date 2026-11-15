@@ -42,6 +42,14 @@ const TRIGGER_CARDS: readonly TriggerCard[] = [
   { value: HIT_MARKED, label: 'Cada golpe no alvo marcado', hint: 'Só no alvo da magia.' },
 ];
 
+/** The trigger after the damage in the head's chip: "+1d6 radiante no próximo golpe". */
+const TRIGGER_SHORT: Readonly<Record<HitTriggerKey, string>> = {
+  next_hit: 'no próximo golpe',
+  next_melee_hit: 'no próximo golpe corpo a corpo',
+  each_hit: 'em cada golpe',
+  marked_target: 'em cada golpe no alvo marcado',
+};
+
 export const HIT_HOW_PT =
   'O efeito fica em quem conjura e espera o golpe que acerta. Num crítico, os dados dobram. Com teste de resistência, o alvo testa depois do dano, contra a CD de magia de quem conjura. Quando a concentração (ou a duração) acaba, o efeito acaba, com ou sem golpe.';
 
@@ -65,6 +73,8 @@ export class HitEffectBlock {
   readonly perSlot = input(0);
   /** The spell's level: a cantrip sends no extra targets per level. */
   readonly level = input(1);
+  /** The spell's other block, "Deixa um efeito nos alvos", is on too: this head sums the hit up, and one line says the two end together. */
+  readonly alsoEffect = input(false);
   /** The lock moved the trigger to the next hit on the last change: the block says so, politely. */
   readonly moved = input(false);
   /** The spell lasts ("timed", "until_dispelled") or not ("instant"). */
@@ -127,8 +137,18 @@ export class HitEffectBlock {
   });
   /** The plain "em quem conjura" is said once: the concentration chip already says it. */
   protected readonly showWhere = computed(
-    () => !this.concentration() || this.whereText() !== CASTER_PT,
+    () => this.alsoEffect() || !this.concentration() || this.whereText() !== CASTER_PT,
   );
+  /** "+1d6 radiante no próximo golpe": the hit in a chip, when the head has no room for the duration. */
+  protected readonly summary = computed(() => {
+    const h = this.hit();
+    const type = this.damageTypes()
+      .find((o) => o.value === h.damageType)
+      ?.label.toLowerCase();
+    return `+${h.dice}d${h.die} ${h.damageType ? (type ?? '') : 'do tipo da arma'} ${TRIGGER_SHORT[h.trigger as HitTriggerKey] ?? ''}`
+      .replace(/\s+/g, ' ')
+      .trim();
+  });
   protected readonly needsConcentration = computed(
     () => needsConcentration(this.hit().trigger) && !this.concentration(),
   );

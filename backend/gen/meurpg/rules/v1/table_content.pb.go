@@ -694,7 +694,7 @@ const (
 	TableEffectModifierKind_TABLE_EFFECT_MODIFIER_KIND_CHECK_DISADVANTAGE TableEffectModifierKind = 19
 	// Extra weapon damage on a hit the caster makes, as `trigger` says: `die` (d4, d6, d8, d10 or d12),
 	// `dice`, `per_slot_dice`, `max_dice`, `damage_type`, and optionally a `save` with the
-	// `on_fail_conditions` it puts on the target. Needs `trigger`, `die`, `dice` and `max_dice`; reads no other field. A spell has one of these. The
+	// `on_fail_conditions` it puts on the target. Needs `trigger`, `die` and `dice`; reads no other field. A spell has one of these. The
 	// spell must last (not instantaneous), and EACH_HIT and MARKED_TARGET need concentration.
 	TableEffectModifierKind_TABLE_EFFECT_MODIFIER_KIND_WEAPON_HIT_DAMAGE TableEffectModifierKind = 20
 )
@@ -5677,7 +5677,8 @@ type TableSpellEffect struct {
 	Modifiers  []*TableEffectModifier `protobuf:"bytes,3,rep,name=modifiers,proto3" json:"modifiers,omitempty"`
 	// The short label the other players read, at most 30 characters.
 	PlayerLabelPt string `protobuf:"bytes,4,opt,name=player_label_pt,json=playerLabelPt,proto3" json:"player_label_pt,omitempty"`
-	// Who sees the effect on the creature. Unset is OWNER.
+	// Who sees the effect on the creature. Unset is OWNER. A player who reads the spell reads this too (PUBLIC or
+	// OWNER names nobody); the label above and the aura stay the master's.
 	Visibility TableEffectAudience `protobuf:"varint,5,opt,name=visibility,proto3,enum=meurpg.rules.v1.TableEffectAudience" json:"visibility,omitempty"`
 	// Makes the effect an aura around the caster: it is not put on the targets, it reaches at the roll or the damage
 	// the creatures within the radius on the chosen side. The spell then targets the caster and lasts (not
@@ -5846,7 +5847,7 @@ type TableEffectModifier struct {
 	Dice int32 `protobuf:"varint,12,opt,name=dice,proto3" json:"dice,omitempty"`
 	// WEAPON_HIT_DAMAGE only: the extra dice for each slot level above the spell's own, 0 to 5.
 	PerSlotDice int32 `protobuf:"varint,13,opt,name=per_slot_dice,json=perSlotDice,proto3" json:"per_slot_dice,omitempty"`
-	// WEAPON_HIT_DAMAGE only, required: the most dice the damage has, at least `dice` and at most 20.
+	// WEAPON_HIT_DAMAGE only: the most dice the damage has, from `dice` to 20; 0 is no limit.
 	MaxDice int32 `protobuf:"varint,14,opt,name=max_dice,json=maxDice,proto3" json:"max_dice,omitempty"`
 	// WEAPON_HIT_DAMAGE only: the SRD damage type key of the extra damage ("damage-type:fire"). Unset is
 	// the weapon's own type.

@@ -82,9 +82,9 @@ func TestTableContentSpellAuraRoundTripAndRefusals(t *testing.T) {
 	}
 }
 
-// RN-10/RN-23: a player's copy of a table spell has no word of who sees its effect on the creature and no label for
-// the other players (the master's choices), and keeps the rest; the master reads both (the positive control).
-func TestAPlayersCopyOfATableSpellLeavesOutWhoSeesItsEffectAndItsLabel(t *testing.T) {
+// RN-10/RN-23: a player's copy of a table spell has no label for the other players (the master's choice) and no aura,
+// and keeps the rest, who sees the effect included (PUBLIC or OWNER names nobody); the master reads all (the positive control).
+func TestAPlayersCopyOfATableSpellLeavesOutItsEffectLabelAndKeepsWhoSeesIt(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
 	master, ana := h.newUser("Samuel"), h.newUser("Ana")
@@ -102,8 +102,8 @@ func TestAPlayersCopyOfATableSpellLeavesOutWhoSeesItsEffectAndItsLabel(t *testin
 		t.Fatalf("the master reads visibility %v and label %q, want both (the positive control)", m.GetVisibility(), m.GetPlayerLabelPt())
 	}
 	p := effectOf(ana)
-	if p.GetVisibility() != rulesv1.TableEffectAudience_TABLE_EFFECT_AUDIENCE_UNSPECIFIED || p.GetPlayerLabelPt() != "" {
-		t.Errorf("the player reads visibility %v and label %q, want neither", p.GetVisibility(), p.GetPlayerLabelPt())
+	if p.GetVisibility() != m.GetVisibility() || p.GetPlayerLabelPt() != "" {
+		t.Errorf("the player reads visibility %v and label %q, want the master's visibility and no label", p.GetVisibility(), p.GetPlayerLabelPt())
 	}
 	if len(p.GetModifiers()) != len(m.GetModifiers()) {
 		t.Errorf("the player's copy lost what the spell does: %v", p)
@@ -113,5 +113,24 @@ func TestAPlayersCopyOfATableSpellLeavesOutWhoSeesItsEffectAndItsLabel(t *testin
 	}
 	if got := effectOf(master); got.GetVisibility() != m.GetVisibility() {
 		t.Errorf("the master's copy changed after the player read it: %v", got)
+	}
+}
+
+// A player's read of a spell keeps who sees its effect, as PUBLIC or OWNER, and never the label of the other players.
+func TestAPlayerReadsWhoSeesAnEffectButNotItsLabel(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t)
+	master, ana := h.newUser("Samuel"), h.newUser("Ana")
+	campaign := h.newCampaign(master, "Mirathel", ana)
+	for _, audience := range []rulesv1.TableEffectAudience{rulesv1.TableEffectAudience_TABLE_EFFECT_AUDIENCE_PUBLIC, rulesv1.TableEffectAudience_TABLE_EFFECT_AUDIENCE_OWNER} {
+		created := master.addEntry(t, campaign, auraSpell("Brasa "+audience.String(), func(s *rulesv1.TableSpell) { s.Effect.Visibility = audience }))
+		e := ana.entries(t, campaign)[created.GetKey()]
+		if e == nil {
+			t.Fatalf("%v: the spell is not listed for the player", audience)
+		}
+		got := bodyMessage(e).(*rulesv1.TableSpell).GetEffect()
+		if got.GetVisibility() != audience || got.GetPlayerLabelPt() != "" {
+			t.Errorf("the player reads visibility %v and label %q, want %v and no label", got.GetVisibility(), got.GetPlayerLabelPt(), audience)
+		}
 	}
 }

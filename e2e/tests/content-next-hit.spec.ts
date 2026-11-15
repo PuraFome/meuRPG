@@ -1,7 +1,7 @@
 import { expect } from '@playwright/test';
 import { test } from './diagnostics';
 
-import { createEntryRPC, entryRoute, hitSpellBody, listEntriesJSON } from './content-support';
+import { createEntryRPC, entryRoute, hitModifier, hitSpellBody, listEntriesJSON } from './content-support';
 import { pickRadio } from './move-support';
 import { campaignWithEmptyPlayer } from './table-rules-support';
 import { newSignedInContext } from './support';
@@ -119,32 +119,116 @@ test('a recusa do efeito no próximo golpe volta no campo, e a magia só salva d
     const block = m.locator('app-hit-effect-block');
     await expect(m.getByLabel('Nome', { exact: true })).toHaveValue('Geada no Punho');
 
-    // The cap is the form's own refusal: it never reaches the server.
-    await block.getByLabel('No máximo').fill('');
-    await m.getByRole('button', { name: 'Salvar magia' }).click();
-    await expect(block.getByLabel('No máximo')).toHaveAttribute('aria-invalid', 'true');
-    await expect(block.getByText('Diga o máximo de dados, de 1 a 20.')).toBeVisible();
+    // An empty cap is no limit: the spell saves with it, and the field says so.
+    await expect(block.getByText('1 a 20; vazio: sem limite')).toBeVisible();
 
-    // Dice at 0 go to the server, which refuses them at their own field; what was typed stays.
-    await block.getByLabel('No máximo').fill('5');
-    await block.getByLabel('Dados', { exact: true }).fill('0');
-    await m.getByRole('button', { name: 'Salvar magia' }).click();
+    // Every number out of its range is the form's own refusal, all at once, at its field; none of them reaches the server, and what was typed stays.
     const dice = block.getByLabel('Dados', { exact: true });
+    const fieldNote = (label: string, note: string) => block.getByLabel(label, { exact: true }).locator('xpath=ancestor::app-text-field').getByText(note, { exact: true });
+    await dice.fill('0');
+    await block.getByLabel('A mais por nível').fill('7');
+    await block.getByLabel('No máximo').fill('30');
+    await m.getByRole('button', { name: 'Salvar magia' }).click();
     await expect(dice).toHaveAttribute('aria-invalid', 'true');
-    // Scoped to the field's own note: the refusal can also be read elsewhere on the screen.
-    await expect(dice.locator('xpath=ancestor::app-text-field').getByText('De 1 a 10 dados.', { exact: true })).toBeVisible();
-    await expect(m.getByRole('alert').filter({ hasText: 'Não foi possível salvar a magia.' })).toContainText('1 campo precisa de ajuste');
+    await expect(fieldNote('Dados', 'De 1 a 10 dados.')).toBeVisible();
+    await expect(fieldNote('A mais por nível', 'De 0 a 5 por nível.')).toBeVisible();
+    await expect(fieldNote('No máximo', 'De 1 a 20 dados.')).toBeVisible();
+    await expect(m.getByRole('alert').filter({ hasText: 'Não foi possível salvar a magia.' })).toContainText('3 campos precisam de ajuste');
     await expect(dice).toHaveValue('0');
 
     // The saved spell still has the old dice.
     const stored = (await listEntriesJSON(m, campaignId)).entries!.find((e) => e.namePt === 'Geada no Punho')!;
     expect(stored.tableSpell.effect.modifiers[0].dice).toBe(2);
 
-    // Fixed, it saves.
+    // Fixed, with the cap left empty, it saves with no limit.
     await dice.fill('3');
+    await block.getByLabel('A mais por nível').fill('1');
+    await block.getByLabel('No máximo').fill('');
     await m.getByRole('button', { name: 'Salvar magia' }).click();
     await expect(m.getByText('A magia Geada no Punho foi salva.')).toBeVisible();
     await expect(dice).not.toHaveAttribute('aria-invalid', 'true');
+    const saved = (await listEntriesJSON(m, campaignId)).entries!.find((e) => e.namePt === 'Geada no Punho')!;
+    expect(saved.tableSpell.effect.modifiers[0].dice).toBe(3);
+    expect(saved.tableSpell.effect.modifiers[0].maxDice ?? 0).toBe(0);
+  } finally {
+    await Promise.all([master.close(), player.close()]);
+  }
+});
+
+test('o mestre escolhe quem vê o efeito do próximo golpe e o que os outros leem, e a magia volta como ele a salvou @MR-025', { tag: ['@MR-025', '@RN-23'] }, async ({ browser }) => {
+  const master = await newSignedInContext(browser, 'Mestre Teste');
+  const player = await newSignedInContext(browser, 'Jogador Teste');
+  try {
+    const m = await master.newPage();
+    const p = await player.newPage();
+    await Promise.all([m.goto('/'), p.goto('/')]);
+    const campaignId = await campaignWithEmptyPlayer(m, p, `Próximo golpe quem vê ${Date.now()}`);
+    const key = await createEntryRPC(
+      m,
+      campaignId,
+      'tableSpell',
+      hitSpellBody('Sinal da Presa', { trigger: 'TABLE_HIT_TRIGGER_MARKED_TARGET', die: 6, dice: 1, perSlotDice: 0, maxDice: 0, damageType: '', save: '', onFailConditions: [], conditionDuration: '' }, { target: { kind: 'TABLE_SPELL_TARGET_KIND_CREATURE' }, range: { kind: 'SPELL_RANGE_KIND_RANGED', distanceFt: 90 } }),
+    );
+
+    await m.goto(entryRoute(campaignId, key));
+    const card = m.locator('app-hit-audience');
+    await expect(card.getByRole('heading', { name: 'Quem vê o efeito' })).toBeVisible();
+    // Stored with the audience unset: the caster alone.
+    await expect(card.getByRole('radio', { name: /^Só quem conjura e você/ })).toBeChecked();
+    await pickRadio(card, 'Todos na mesa');
+    await expect(card.getByText('Os outros leem só o nome da marca no alvo.')).toBeVisible();
+    await card.getByLabel('O que os outros jogadores leem').fill('Sinal da Presa');
+    await expect(card.getByText('No alvo marcado, na ordem. Nunca os dados. 14 de 30')).toBeVisible();
+    await m.getByRole('button', { name: 'Salvar magia' }).click();
+    await expect(m.getByText('A magia Sinal da Presa foi salva.')).toBeVisible();
+
+    const stored = (await listEntriesJSON(m, campaignId)).entries!.find((e) => e.namePt === 'Sinal da Presa')!;
+    expect(stored.tableSpell.effect.visibility).toBe('TABLE_EFFECT_AUDIENCE_PUBLIC');
+    expect(stored.tableSpell.effect.playerLabelPt).toBe('Sinal da Presa');
+
+    await m.reload();
+    await expect(card.getByRole('radio', { name: /^Todos na mesa/ })).toBeChecked();
+    await expect(card.getByLabel('O que os outros jogadores leem')).toHaveValue('Sinal da Presa');
+
+    // A player reads who sees the effect (the table), never the label the master wrote for the others.
+    await p.goto(entryRoute(campaignId, key));
+    await expect(p.getByText('Quem vê o efeito')).toBeVisible();
+    await expect(p.getByText('Todos na mesa')).toBeVisible();
+    await expect(p.getByText('Só quem conjura e você')).toHaveCount(0);
+    await expect(p.getByText('Sinal da Presa', { exact: true })).toHaveCount(1); // the title only
+  } finally {
+    await Promise.all([master.close(), player.close()]);
+  }
+});
+
+test('com os dois blocos ligados, cada cabeçalho se resume e uma concentração acaba os dois, e a leitura começa pelo nível @MR-025', { tag: ['@MR-025', '@RN-23'] }, async ({ browser }) => {
+  const master = await newSignedInContext(browser, 'Mestre Teste');
+  const player = await newSignedInContext(browser, 'Jogador Teste');
+  try {
+    const m = await master.newPage();
+    const p = await player.newPage();
+    await Promise.all([m.goto('/'), p.goto('/')]);
+    const campaignId = await campaignWithEmptyPlayer(m, p, `Próximo golpe dois blocos ${Date.now()}`);
+    const key = await createEntryRPC(
+      m,
+      campaignId,
+      'tableSpell',
+      hitSpellBody('Chama Gêmea', { save: '', onFailConditions: [], conditionDuration: '', damageType: 'damage-type:radiant', die: 6, dice: 1, maxDice: 6 }, { effect: { visibility: 'TABLE_EFFECT_AUDIENCE_OWNER', conditions: ['condition:blinded'], modifiers: [hitModifier({ save: '', onFailConditions: [], conditionDuration: '', damageType: 'damage-type:radiant', die: 6, dice: 1, maxDice: 6 })] } }),
+    );
+    await m.goto(entryRoute(campaignId, key));
+    const block = m.locator('app-hit-effect-block');
+    await expect(block.getByRole('switch', { name: 'Efeito no próximo golpe' })).toHaveAttribute('aria-checked', 'true');
+    await expect(block.locator('.head .mr-tag')).toHaveText('+1d6 radiante no próximo golpe corpo a corpo');
+    await expect(block.getByText('Uma concentração: quando acaba, os dois efeitos acabam juntos.')).toBeVisible();
+    await expect(m.locator('app-spell-effect .summary')).toContainText('em quem conjura');
+    // The audience is asked once, inside the targets' block: no second card beside the preview.
+    await expect(m.locator('app-hit-audience')).toHaveCount(0);
+    // What a player reads starts with the level and the school.
+    const preview = m.getByRole('complementary', { name: 'Como os jogadores veem' });
+    await expect(preview.getByText('Nível', { exact: true })).toBeVisible();
+    await expect(preview.getByText('2º círculo, evocação')).toBeVisible();
+    await p.goto(m.url());
+    await expect(p.getByText('2º círculo, evocação')).toBeVisible();
   } finally {
     await Promise.all([master.close(), player.close()]);
   }

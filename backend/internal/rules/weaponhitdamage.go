@@ -9,7 +9,7 @@ import (
 const (
 	maxHitBaseDice    = 10 // the dice at the spell's own slot level
 	maxHitPerSlotDice = 5
-	maxHitDice        = 20 // the most dice there are at any slot: max_dice
+	maxHitDice        = 20 // the most dice max_dice sets for any slot (0 is no limit)
 	maxHitConditions  = 8
 )
 
@@ -47,8 +47,8 @@ func checkHitCounts(m EffectModifier) error {
 		return modifierField("dice", "weapon_hit_damage needs dice from 1 to %d", maxHitBaseDice)
 	case m.PerSlotDice < 0 || m.PerSlotDice > maxHitPerSlotDice:
 		return modifierField("per_slot_dice", "per_slot_dice is from 0 to %d", maxHitPerSlotDice)
-	case m.MaxDice < 1 || m.MaxDice > maxHitDice || m.MaxDice < m.Dice:
-		return modifierField("max_dice", "max_dice is needed: from dice (at least 1) to %d", maxHitDice)
+	case m.MaxDice < 0 || m.MaxDice > maxHitDice || (m.MaxDice > 0 && m.MaxDice < m.Dice):
+		return modifierField("max_dice", "max_dice is empty (no limit) or from dice (at least 1) to %d", maxHitDice)
 	}
 	return checkHitSave(m)
 }

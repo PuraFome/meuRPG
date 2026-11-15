@@ -740,7 +740,7 @@ Members read the campaign's content, except creatures (below); only the master w
   A spell on its caster alone may make the effect an aura: it reaches, at each roll, the creatures within its radius on the chosen side ("allies" includes its bearer, as the SRD's allied auras do), gives only what a roll reads, and a player reads its bonus as the source's name or "Outra fonte", never the radius of an aura they do not own.
   The lasting effect of a class or a feature is a state of its owner.
   A spell may also write a next-hit effect on its caster: extra weapon damage on the caster's next hit, next melee hit, every hit while concentrating, or every hit on the creature the spell marked.
-  The master picks the die, the dice (more per slot level above, up to a cap) and the damage type (the weapon's if none).
+  The master picks the die, the dice (more per slot level above, up to a cap the master may leave out) and the damage type (the weapon's if none).
   It may add a saving throw for the target of the hit, with the conditions a fail gives, until the end of its next turn or as long as the spell lasts.
   So a table spell writes a lasting effect on its targets, a next-hit effect on its caster, or both, and never code.
   The damage is offered automatically after a weapon hit, doubled on a critical hit, and a miss keeps the effect.

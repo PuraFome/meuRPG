@@ -155,6 +155,7 @@
         [perSlot]="d.perSlot"
         [level]="d.level"
         [moved]="hitMoved()"
+        [alsoEffect]="d.effect.on"
         [duration]="d.duration"
         [durationText]="durationText()"
         [concentration]="d.concentration"
@@ -201,6 +202,16 @@
       </p>
       <app-entry-read [read]="preview()" [plain]="true" />
     </section>
+    @if (hitAudienceOn()) {
+      <app-hit-audience
+        [visibility]="d.effect.visibility"
+        [label]="d.effect.label"
+        [marked]="d.hit.trigger === 'marked_target'"
+        [issuesOf]="fieldIssues"
+        (visibilityChange)="setAudience($event)"
+        (labelChange)="setAudienceLabel($event)"
+      />
+    }
     @if (entry(); as saved) {
       <app-players-switch [campaignId]="campaignId()" [entry]="saved" (switched)="switched.emit($event)" />
     }

@@ -200,6 +200,13 @@ describe('what a player reads of the next-hit effect (#577)', () => {
     expect(visibilityText(TableEffectAudience.UNSPECIFIED)).toBe('Só quem conjura e você');
   });
 
+  it('says the audience the form picked, not the stored one, once it was changed', () => {
+    const draft = spellToDraft(spell({}, {}, { visibility: TableEffectAudience.OWNER }));
+    const picked = { ...draft, effect: { ...draft.effect, visibility: 'public' as const } };
+    expect(readHit(picked, nameOf)!.visibility).toBe('Todos na mesa');
+    expect(readHit(draft, nameOf)!.visibility).toBe('Só quem conjura e você');
+  });
+
   it("is not there without the modifier, or on a spell that does not last, and ignores the effect's other modifiers", () => {
     expect(hitOf(spell(null))).toBeNull();
     expect(hitOf(spell({}, { duration: { kind: SpellDurationKind.INSTANTANEOUS } }))).toBeNull();
