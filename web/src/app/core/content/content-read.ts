@@ -37,7 +37,7 @@ import {
   weaponUse,
   weightText,
 } from './weapon-text';
-import { previewRows } from './spell-preview';
+import { levelRow, previewRows } from './spell-preview';
 import { featChoiceRows, featOptionItems } from './content-read-feat';
 import { prerequisiteSupport, SIZE_WORDS } from './feat-text';
 import { featureKeyName } from './class-feature-text';
@@ -211,7 +211,7 @@ function readClassFeature(f: TableClassFeature, nameOf: NameOf): EntryRead {
 
 function readSpell(s: TableSpell, nameOf: NameOf): EntryRead {
   const draft = spellToDraft(s);
-  const rows: ReadRow[] = [...previewRows(draft, nameOf)];
+  const rows: ReadRow[] = [levelRow(draft, nameOf), ...previewRows(draft, nameOf)];
   const hit = readHit(draft, nameOf);
   const classes = names(s.classKeys, nameOf);
   if (classes) rows.push({ label: 'Classes', value: classes });

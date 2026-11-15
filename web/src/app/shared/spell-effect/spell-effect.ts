@@ -49,6 +49,10 @@ export interface EffectContext {
   readonly self: boolean;
   /** "As 3 criaturas da magia." */
   readonly targets: string;
+  /** "nos 3 alvos": where the effect lands, said in the head while the weapon hit's block is on too. */
+  readonly where?: string;
+  /** The block "Efeito no próximo golpe" is on too: the head is a summary and the duration is said once, by that block. */
+  readonly alsoHit?: boolean;
 }
 
 /** What the block of a feature's aura reads of the entry around it: nothing a spell would say, it always lasts and is the bearer's own. */
@@ -227,6 +231,8 @@ export class SpellEffect {
   /** The whole spell's lock line while the block is off and cannot be turned on. */
   protected readonly locked = computed(() => !this.effect().on && !this.context().lasts);
   protected readonly tagsOf = (r: EffectRow): string[] => rowTags(r, this.nameOf());
+  /** What the rows say, for the head while the weapon hit's block is on too: "+1d4 em ataques e testes de resistência". */
+  protected readonly summary = computed(() => this.effect().rows.flatMap((r) => this.tagsOf(r)));
   protected readonly labelCount = computed(
     () => `${[...this.effect().label].length} de ${MAX_LABEL}`,
   );

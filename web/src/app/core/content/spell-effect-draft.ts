@@ -428,15 +428,22 @@ export function rowOfModifier(rows: readonly EffectRow[], index: number): number
   return -1;
 }
 
-/** What is left of a stored effect when none of this block is on: its audience, label and `applies` go on to carry the weapon hit alone. */
-export function hitShell(d: SpellEffectDraft): TableSpellEffect | undefined {
-  if (!d.base) {
-    return undefined;
+/** The audience goes in only when the effect is new or the person changed it: a stored effect that left it unset keeps it unset. */
+function keepAudience(out: TableSpellEffect, d: SpellEffectDraft): void {
+  if (!d.base || effectToDraft(d.base).visibility !== d.visibility) {
+    out.visibility =
+      d.visibility === 'owner' ? TableEffectAudience.OWNER : TableEffectAudience.PUBLIC;
   }
-  const out = clone(TableSpellEffectSchema, d.base);
+}
+
+/** What is left of a stored effect when none of this block is on, to carry the weapon hit alone: the audience is the form's when it is new or changed. */
+export function hitShell(d: SpellEffectDraft): TableSpellEffect | undefined {
+  const out = d.base ? clone(TableSpellEffectSchema, d.base) : create(TableSpellEffectSchema);
   out.conditions = [];
   out.modifiers = [];
   out.aura = undefined;
+  keepAudience(out, d);
+  out.playerLabelPt = d.label.trim();
   return out;
 }
 
@@ -453,10 +460,7 @@ export function draftToEffect(d: SpellEffectDraft): TableSpellEffect | undefined
   }
   out.conditions = d.aura ? [] : [...d.conditions];
   out.modifiers = d.rows.flatMap(rowToModifiers);
-  if (!was || was.visibility !== d.visibility) {
-    out.visibility =
-      d.visibility === 'owner' ? TableEffectAudience.OWNER : TableEffectAudience.PUBLIC;
-  }
+  keepAudience(out, d);
   out.playerLabelPt = d.label.trim();
   out.aura = d.aura
     ? create(TableEffectAuraSchema, {

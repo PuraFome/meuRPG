@@ -1,0 +1,30 @@
+// What the prompt of a feature window adds to the resource sheets' shared styles: why "Usar" is off, and the footer's clock.
+.what {
+  margin: 0;
+}
+
+.missing {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--mr-space-1);
+  margin: 0;
+  font-size: var(--mr-font-15);
+  line-height: 20px;
+
+  .mat-icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    margin-top: 1px;
+    font-size: var(--mr-font-18);
+  }
+}
+
+// The clock sits over the two answers; the answers are side by side as the board draws them.
+.foot__clock {
+  margin-bottom: var(--mr-space-2);
+}
+
+.foot__one {
+  width: 100%;
+}

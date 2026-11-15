@@ -162,7 +162,8 @@ func (s *Service) lostTheRace(ctx context.Context, h heldRoll, req answerRequest
 	return err
 }
 
-// holdUsers are the users a change of a hold is for besides the master: who rolled, and the player of its combatant.
+// holdUsers are the users a change of a hold is for besides the master: who rolled, the player of its combatant and the
+// player of its character (the one a master rolled for outside a combat).
 func (s *Service) holdUsers(ctx context.Context, h heldRoll) []string {
 	users := []string{h.UserID}
 	if h.CombatantID != "" {
@@ -170,7 +171,7 @@ func (s *Service) holdUsers(ctx context.Context, h heldRoll) []string {
 			users = append(users, *who.UserID)
 		}
 	}
-	return users
+	return append(users, s.characterPlayer(ctx, h.CampaignID, h.CharacterID))
 }
 
 // concealed turns the refusal of a caller who may not answer into "not found", for the RPCs that conceal the hold: the

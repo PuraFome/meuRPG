@@ -491,7 +491,7 @@ func featureUseOf(m *rulesv1.FeatureUse) *rules.FeatureUse {
 	if m == nil {
 		return nil
 	}
-	u := &rules.FeatureUse{LimitScope: enumOrUnknown(useScopeOf, m.GetLimitScope()), LimitUses: m.GetLimitUses()}
+	u := &rules.FeatureUse{LimitScope: enumOrUnknown(useScopeOf, m.GetLimitScope()), LimitUses: m.GetLimitUses(), ChoiceLabel: m.GetChoiceLabel()}
 	if t := m.GetTargets(); t != nil {
 		u.Targets = &rules.FeatureTargets{Min: int(t.GetMin()), Max: int(t.GetMax()), Who: enumOrUnknown(featureWhoOf, t.GetWho()), RangeFt: int(t.GetRangeFt())}
 	}
@@ -500,6 +500,17 @@ func featureUseOf(m *rulesv1.FeatureUse) *rules.FeatureUse {
 	}
 	if a := m.GetApplies(); a != nil {
 		u.Applies = &rules.FeatureApplies{Heal: a.GetHeal(), TempHP: a.GetTempHp(), Effect: tableSpellEffectOf(a.GetEffect()), EffectRounds: int(a.GetEffectRounds())}
+	}
+	if t := m.GetTrigger(); t != nil {
+		u.Trigger = &rules.FeatureTrigger{RangeFt: int(t.GetRangeFt())}
+		for _, k := range t.GetKinds() {
+			// Every kind is a moment: the unspecified one is "unknown" too, which the rules refuse at its place.
+			word, ok := featureTriggerKindOf[k]
+			if !ok {
+				word = "unknown"
+			}
+			u.Trigger.Kinds = append(u.Trigger.Kinds, word)
+		}
 	}
 	return u
 }
@@ -580,6 +591,10 @@ var (
 		rulesv1.UseScope_USE_SCOPE_TURN:   rules.UseScopeTurn,
 		rulesv1.UseScope_USE_SCOPE_ROUND:  rules.UseScopeRound,
 		rulesv1.UseScope_USE_SCOPE_COMBAT: rules.UseScopeCombat,
+	}
+	featureTriggerKindOf = map[rulesv1.FeatureTriggerKind]string{
+		rulesv1.FeatureTriggerKind_FEATURE_TRIGGER_KIND_ENEMY_STARTS_TURN_WITHIN: rules.FeatureTriggerStartsTurn,
+		rulesv1.FeatureTriggerKind_FEATURE_TRIGGER_KIND_ENEMY_MOVES_WITHIN:       rules.FeatureTriggerMoves,
 	}
 	featureWhoOf = map[rulesv1.FeatureTargetWho]string{
 		rulesv1.FeatureTargetWho_FEATURE_TARGET_WHO_SELF:  rules.FeatureWhoSelf,
@@ -1229,8 +1244,9 @@ func parentHidden(e entryRow, hidden func(string) bool) bool {
 // spell, the list a casting reads from, the spells an effect grants or a subclass
 // always prepares).
 //
-// A table spell's effect goes without who sees it on the creature and the label the other players read (the
-// master's choices; the players read them only on the creatures, as the combat shows them).
+// A table spell's effect goes without the label the other players read (the master's choice; the players read it only
+// on the creatures, as the combat shows them) and without its aura. Who sees the effect stays: it is PUBLIC or OWNER,
+// names nobody, and a player who reads the spell may know whether the table sees its effect.
 //
 // A table spell's summon goes without the table creatures the player holds none of, and without its count
 // and limits: a player who casts the spell reads the creatures and the count from GetSummonOptions.
@@ -1247,11 +1263,11 @@ func forPlayer(e entryRow, hidden func(string) bool, held map[string]bool) entry
 	return e
 }
 
-// effectKeepsItsSecrets says the body is a spell whose effect carries what a player does not read: who sees it, and
-// the label of the other players and the aura (the radius and the side).
+// effectKeepsItsSecrets says the body is a spell whose effect carries what a player does not read: the label of the
+// other players and the aura (the radius and the side).
 func effectKeepsItsSecrets(body tableBody) bool {
 	sp, ok := body.(*rulesv1.TableSpell)
-	return ok && (sp.GetEffect().GetVisibility() != rulesv1.TableEffectAudience_TABLE_EFFECT_AUDIENCE_UNSPECIFIED || sp.GetEffect().GetPlayerLabelPt() != "" || sp.GetEffect().GetAura() != nil)
+	return ok && (sp.GetEffect().GetPlayerLabelPt() != "" || sp.GetEffect().GetAura() != nil)
 }
 
 // summons says the body brings creatures: a spell with a summon, or an entry with a feature that has one.
@@ -1305,8 +1321,8 @@ func (v playerView) strip(body tableBody) {
 		b.ClassKeys = v.visible(b.ClassKeys)
 		v.stripSummon(b.GetSummon())
 		if b.GetEffect() != nil {
-			b.Effect.Visibility, b.Effect.PlayerLabelPt = rulesv1.TableEffectAudience_TABLE_EFFECT_AUDIENCE_UNSPECIFIED, ""
-			b.Effect.Aura = nil // the radius and the side are the master's: a player reads them only on a creature they own
+			b.Effect.PlayerLabelPt = "" // the label is the master's; who sees the effect (visibility) stays
+			b.Effect.Aura = nil         // the radius and the side are the master's: a player reads them only on a creature they own
 		}
 	case *rulesv1.TableFeat:
 		v.stripFeat(b)

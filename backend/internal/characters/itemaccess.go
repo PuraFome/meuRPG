@@ -33,10 +33,19 @@ func (s *Service) ItemAccess(ctx context.Context, tx pgx.Tx, campaignID, charact
 }
 
 // ChargedItem reads an entry of a character's sheet as a read gives it (its charges, loss and pending roll), and locks
-// the character until the transaction ends. `not_found` for a character or an entry that is not there,
+// the character until the transaction ends (ChargedItemRead does not). `not_found` for a character or an entry that is not there,
 // `invalid_argument` for an entry that holds no charges. Package play reads the item before it rolls the dice it needs.
 func (s *Service) ChargedItem(ctx context.Context, tx pgx.Tx, campaignID, characterID, entryID string) (*charactersv1.SheetMagicItem, error) {
 	c, _, err := s.lockChargedItem(ctx, tx, campaignID, characterID, entryID)
+	if err != nil {
+		return nil, err
+	}
+	return c.view(), nil
+}
+
+// ChargedItemRead is ChargedItem for a pure read: it locks nothing.
+func (s *Service) ChargedItemRead(ctx context.Context, tx pgx.Tx, campaignID, characterID, entryID string) (*charactersv1.SheetMagicItem, error) {
+	c, _, err := s.loadChargedItem(ctx, tx, campaignID, characterID, entryID, false)
 	if err != nil {
 		return nil, err
 	}

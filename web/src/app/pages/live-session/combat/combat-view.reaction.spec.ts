@@ -24,6 +24,7 @@ import { RosterClient } from '../../../core/maps/roster-client';
 import { SpellCatalog } from '../../../core/combat/spell-catalog';
 import { AttackSheet } from './attack-sheet/attack-sheet';
 import { CombatView } from './combat-view';
+import { FeatureWindowSheet } from './feature-window-sheet/feature-window-sheet';
 import { ReactionSheet } from './reaction-sheet/reaction-sheet';
 import { nextTurn } from '../../../../test-settle';
 import { anyCallCombatClient } from '../../../core/combat/combat-client-testing';
@@ -206,6 +207,37 @@ describe('CombatView, the reaction windows', () => {
     );
     await settle(fixture);
     expect(opened).toHaveLength(1);
+  });
+
+  it('opens the feature prompt by itself for a feature window of the player, and shows the master its card instead', async () => {
+    const halo = (over: object = {}) =>
+      reactionWindow({
+        id: 'wf',
+        kind: ReactionKind.FEATURE,
+        reactorId: 't',
+        reactorLabel: 'Toren',
+        reactorIsPlayer: true,
+        trigger: {
+          actorId: 'g',
+          actorLabel: 'Goblin',
+          actionKey: 'feature:halo',
+          actionNamePt: 'Halo de esporos',
+          distanceFt: 5,
+        } as never,
+        ...over,
+      } as never);
+    const player = setup({ windows: [halo()] });
+    await settle(player.fixture);
+    expect(player.opened).toHaveLength(1);
+    expect(player.opened[0].component).toBe(FeatureWindowSheet);
+    expect(player.opened[0].config.role).toBe('alertdialog');
+    expect(player.opened[0].config.disableClose).toBe(true);
+    const master = setup({ master: true, windows: [halo({ answerNow: true })] });
+    await settle(master.fixture);
+    expect(master.opened.filter((o) => o.component === FeatureWindowSheet)).toHaveLength(0);
+    expect(
+      plain(master.el.querySelector('app-reaction-queue[part="rest"]')?.textContent),
+    ).toContain('Halo de esporos');
   });
 
   it("opens nothing for a window that is not the player's to answer, or the master's check", async () => {

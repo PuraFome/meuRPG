@@ -39,15 +39,23 @@ type gateEnv struct {
 	// session's number and tells HeldRollsChanged through it (heldRowChanged). Nil where the path has no session's transaction to tell
 	// through (a few places that make a combatTx outside write); the request's reply then tells it, with no number (heldHintInterceptor).
 	h *hints
+	// roster finds the player of a hold's character, to tell their stream (tellHeld); nil where no service is at hand.
+	roster CombatRoster
 }
 
 // combatGate is the environment of a path that runs in a combat's change.
-func combatGate(c *combatTx) gateEnv { return gateEnv{tx: c.tx, q: c.q, now: c.now, c: c, h: c.hints} }
+func combatGate(c *combatTx) gateEnv {
+	env := gateEnv{tx: c.tx, q: c.q, now: c.now, c: c, h: c.hints}
+	if c.svc != nil {
+		env.roster = c.svc.roster
+	}
+	return env
+}
 
 // outsideGate is the environment of a path that rolls in a transaction of its own, out of a combat's
 // change, which tells through h. The hold is stamped with the clock's time.
 func (s *Service) outsideGate(tx pgx.Tx, q *playdb.Queries, h *hints) gateEnv {
-	return gateEnv{tx: tx, q: q, now: s.now(), h: h}
+	return gateEnv{tx: tx, q: q, now: s.now(), h: h, roster: s.roster}
 }
 
 // stores is the held rolls' stores of the gate's transaction: a roll they keep, answer or forget is told (heldRowChanged).

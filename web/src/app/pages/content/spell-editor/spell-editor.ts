@@ -76,6 +76,7 @@ import { SwitchField } from '../../../shared/form-fields/switch-field';
 import { TextField } from '../../../shared/form-fields/text-field';
 import { Segmented } from '../../../shared/segmented/segmented';
 import { SpellEffect, type EffectContext } from '../../../shared/spell-effect/spell-effect';
+import { HitAudience, type HitAudienceValue } from './hit-audience';
 import { HitEffectBlock } from './hit-effect-block';
 import { SpellSummon } from './spell-summon';
 import { draftToEffect } from '../../../core/content/spell-effect-draft';
@@ -105,6 +106,7 @@ export interface EditorSaved {
     EditorBar,
     PlayersSwitch,
     EntryRead,
+    HitAudience,
     HitEffectBlock,
     MatButtonModule,
     MatIconModule,
@@ -213,6 +215,15 @@ export class SpellEditor {
       hasAttack: d.mechanic === 'attack',
       saveName: this.catalog().abilities.find((a) => a.ability === d.saveAbility)?.name ?? '',
       self: d.target === 'self',
+      alsoHit: d.hit.enabled && hitAvailable(d),
+      where:
+        d.target === 'self'
+          ? 'em quem conjura'
+          : d.target === 'creatures'
+            ? `nos ${n} alvos`
+            : d.target === 'area'
+              ? 'nas criaturas da área'
+              : 'no alvo',
       targets:
         d.target === 'self'
           ? 'Quem conjura.'
@@ -290,7 +301,29 @@ export class SpellEditor {
   });
 
   protected setHit(hit: HitDraft): void {
-    this.patch({ hit });
+    const before = this.draft();
+    // A spell with no stored effect starts its audience at the server's own default, the caster's alone, while the weapon hit is its
+    // only effect; turning the hit off gives the targets' block its public start back.
+    const fresh = !before.effect.on && !before.effect.base && hit.enabled !== before.hit.enabled;
+    this.patch(
+      fresh
+        ? { hit, effect: { ...before.effect, visibility: hit.enabled ? 'owner' : 'public' } }
+        : { hit },
+    );
+  }
+
+  /** The audience card of the side column: shown while the weapon hit is the spell's only effect (the targets' block asks it itself). */
+  protected readonly hitAudienceOn = computed(() => {
+    const d = this.draft();
+    return d.hit.enabled && hitAvailable(d) && !d.effect.on;
+  });
+
+  protected setAudience(visibility: HitAudienceValue): void {
+    this.patch({ effect: { ...this.draft().effect, visibility } });
+  }
+
+  protected setAudienceLabel(label: string): void {
+    this.patch({ effect: { ...this.draft().effect, label } });
   }
 
   /** The abilities by the wire key the saving throw of the hit carries. */
@@ -368,8 +401,10 @@ export class SpellEditor {
       return;
     }
     if (
-      this.saver.blockOn([...this.advance().map((r) => r.path), ...this.unreadable()], (path) =>
-        focusAfterRender(this.host.nativeElement, this.injector, path),
+      this.saver.blockOn(
+        [...this.advance().map((r) => r.path), ...this.unreadable()],
+        (path) => focusAfterRender(this.host.nativeElement, this.injector, path),
+        true,
       )
     ) {
       return;

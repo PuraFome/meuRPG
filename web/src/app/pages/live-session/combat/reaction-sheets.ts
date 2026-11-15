@@ -7,12 +7,17 @@ import type {
 import { reactorAttacks } from '../../../core/combat/opportunity';
 import { tradesOf } from '../../../core/combat/power-attack-trade';
 import { openWindows, promptView } from '../../../core/combat/reactions';
+import { featureWindowView, isFeatureWindow } from '../../../core/combat/reaction-feature';
 import { zoneCasterLabel, zoneSaveTitle } from '../../../core/effects/zone-save';
 import { openSheet, trackOpen } from '../../../shared/sheet/sheet-host';
 import {
   EffectSaveSheet,
   type EffectSaveSheetData,
 } from '../effects/effect-save-sheet/effect-save-sheet';
+import {
+  FeatureWindowSheet,
+  type FeatureWindowSheetData,
+} from './feature-window-sheet/feature-window-sheet';
 import { AttackSheet, type AttackSheetData } from './attack-sheet/attack-sheet';
 import { THROW_BACK_KEY, maneuverDiceOf, throwBackAttack } from './attack-sheet/attack-sheet-data';
 import {
@@ -56,6 +61,10 @@ export class ReactionSheets {
       this.effectSave(window);
       return;
     }
+    if (isFeatureWindow(window)) {
+      this.featureWindow(window, e.id, e.round);
+      return;
+    }
     const data: ReactionSheetData = {
       campaignId: this.ctx.campaignId(),
       encounterId: e.id,
@@ -89,6 +98,29 @@ export class ReactionSheets {
           }
         },
       },
+    );
+  }
+
+  /** The prompt of a reaction feature whose trigger happened (#743): "O Zumbi 1 chegou a 1,5 m de você. Usar o Halo de esporos?". Opens by itself, and has to be answered. */
+  private featureWindow(window: ReactionWindow, encounterId: string, round: number): void {
+    const data: FeatureWindowSheetData = {
+      campaignId: this.ctx.campaignId(),
+      encounterId,
+      window,
+      round,
+      load: () =>
+        this.ctx.api.moves.turnOptions(this.ctx.campaignId(), encounterId, window.reactorId),
+      state: this.ctx.state(),
+    };
+    const view = featureWindowView(window, round);
+    trackOpen(
+      this.reactionOpen,
+      openSheet<FeatureWindowSheet, FeatureWindowSheetData, void>(
+        this.ctx.dialog,
+        this.ctx.bottomSheet,
+        FeatureWindowSheet,
+        { data, ariaLabel: view.ariaLabel, alert: true },
+      ),
     );
   }
 

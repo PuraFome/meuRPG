@@ -1843,6 +1843,41 @@ func (q *Queries) ListAmmunitionOfEncounterForUpdate(ctx context.Context, arg Li
 	return items, nil
 }
 
+const listCampaignAmmunition = `-- name: ListCampaignAmmunition :many
+SELECT a.character_id, a.ammo_key, a.quantity
+FROM character_ammunition AS a
+JOIN characters AS c ON c.id = a.character_id
+WHERE c.campaign_id = $1::UUID
+ORDER BY a.character_id, a.ammo_key
+`
+
+type ListCampaignAmmunitionRow struct {
+	CharacterID string
+	AmmoKey     string
+	Quantity    int32
+}
+
+// The pieces every character of the campaign holds of each counted kind, for the campaign package.
+func (q *Queries) ListCampaignAmmunition(ctx context.Context, campaignID string) ([]ListCampaignAmmunitionRow, error) {
+	rows, err := q.db.Query(ctx, listCampaignAmmunition, campaignID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListCampaignAmmunitionRow
+	for rows.Next() {
+		var i ListCampaignAmmunitionRow
+		if err := rows.Scan(&i.CharacterID, &i.AmmoKey, &i.Quantity); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listCampaignContent = `-- name: ListCampaignContent :many
 SELECT campaign_id, content_key, kind, name_pt, data, revision, archived_at, created_at, updated_at, create_key, create_hash FROM campaign_content
 WHERE campaign_id = $1::UUID
@@ -1871,6 +1906,52 @@ func (q *Queries) ListCampaignContent(ctx context.Context, campaignID string) ([
 			&i.UpdatedAt,
 			&i.CreateKey,
 			&i.CreateHash,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listCampaignItemCharges = `-- name: ListCampaignItemCharges :many
+SELECT ic.character_id, ic.entry_id, ic.charges_used, ic.lost, ic.dawns_waited, ic.last_roll_pending
+FROM character_item_charges AS ic
+JOIN characters AS c ON c.id = ic.character_id
+WHERE c.campaign_id = $1::UUID
+ORDER BY ic.character_id, ic.entry_id
+`
+
+type ListCampaignItemChargesRow struct {
+	CharacterID     string
+	EntryID         string
+	ChargesUsed     int32
+	Lost            string
+	DawnsWaited     int32
+	LastRollPending bool
+}
+
+// Every row of the campaign's characters, for the dawn and the campaign package: the characters in a fixed order so two
+// writers lock them alike.
+func (q *Queries) ListCampaignItemCharges(ctx context.Context, campaignID string) ([]ListCampaignItemChargesRow, error) {
+	rows, err := q.db.Query(ctx, listCampaignItemCharges, campaignID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListCampaignItemChargesRow
+	for rows.Next() {
+		var i ListCampaignItemChargesRow
+		if err := rows.Scan(
+			&i.CharacterID,
+			&i.EntryID,
+			&i.ChargesUsed,
+			&i.Lost,
+			&i.DawnsWaited,
+			&i.LastRollPending,
 		); err != nil {
 			return nil, err
 		}

@@ -49,14 +49,16 @@ export class EntrySaver {
   /** Stops a save the client already knows is bad (`paths` are the fields it cannot send, in the order to show them): the server's older
    * refusal of those fields leaves the screen, so it does not sit beside the client's error, while its refusals of the other fields stay
    * (the stale banner stays too: the entry is out of date until it is reloaded). `show` takes the person to the first path. Returns
-   * whether it stopped. */
-  blockOn(paths: readonly string[], show: (path: string) => void): boolean {
+   * whether it stopped. With `countThem` the summary at the top counts the client's fields as well ("4 campos precisam de ajuste"), as a
+   * refusal of the server does; without it the summary has only the server's refusals that are left. */
+  blockOn(paths: readonly string[], show: (path: string) => void, countThem = false): boolean {
     if (paths.length === 0) {
       return false;
     }
     const kept = withoutFields(this.placement(), paths);
     this.placement.set(kept);
-    this.summary.set(kept.count > 0 ? refusalSummary(this.what, kept.count) : '');
+    const count = kept.count + (countThem ? new Set(paths).size : 0);
+    this.summary.set(count > 0 ? refusalSummary(this.what, count) : '');
     show(paths[0]);
     return true;
   }
