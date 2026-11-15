@@ -15,19 +15,20 @@ import (
 // of name each, followed by an end record that claims claimed entries.
 func rawDirectory(records int, claimed uint16) []byte {
 	var buf bytes.Buffer
+	var dirSize uint32 // the directory's size in bytes, as the end record states it
 	for range records {
 		rec := make([]byte, 46)
 		binary.LittleEndian.PutUint32(rec, 0x02014b50)
 		binary.LittleEndian.PutUint16(rec[28:], 1) // name length
 		buf.Write(rec)
 		buf.WriteByte('a')
+		dirSize += 46 + 1
 	}
-	dirSize := buf.Len()
 	end := make([]byte, eocdSize)
 	binary.LittleEndian.PutUint32(end, eocdSignature)
 	binary.LittleEndian.PutUint16(end[8:], claimed)
 	binary.LittleEndian.PutUint16(end[10:], claimed)
-	binary.LittleEndian.PutUint32(end[12:], uint32(dirSize)) //nolint:gosec // G115: a few MB
+	binary.LittleEndian.PutUint32(end[12:], dirSize)
 	binary.LittleEndian.PutUint32(end[16:], 0)
 	buf.Write(end)
 	return buf.Bytes()
