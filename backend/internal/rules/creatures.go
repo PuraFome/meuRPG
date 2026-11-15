@@ -902,3 +902,19 @@ func (c *content) monsterAttack(m *srd51.Monster, a srd51.MonsterAction, key str
 	}
 	return at
 }
+
+// CreatureWithMinInt is the entry of an SRD creature whose Intelligence is at least minInt (a steed's page): a lower score is
+// raised with its modifier, the rest is the entry's own.
+func (c *Content) CreatureWithMinInt(key string, minInt int) (Creature, bool) {
+	base, ok := c.CreatureByKey(key)
+	if !ok {
+		return Creature{}, false
+	}
+	base.Abilities = slices.Clone(base.Abilities)
+	for i, a := range base.Abilities {
+		if a.Ability == INT && a.Score < minInt {
+			base.Abilities[i].Score, base.Abilities[i].Modifier = minInt, modifier(minInt)
+		}
+	}
+	return base, true
+}

@@ -553,6 +553,56 @@ func (q *Queries) GetBondedCreature(ctx context.Context, arg GetBondedCreaturePa
 	return i, err
 }
 
+const getBondedCreatureForUpdate = `-- name: GetBondedCreatureForUpdate :one
+SELECT cc.id, cc.campaign_id, cc.character_id, cc.monster_key, cc.name, cc.source, cc.attack, cc.summon_group_id, cc.concentration_cast_id, cc.hp_current, cc.hp_max, cc.created_at, cc.dismissed_at, cc.dismissed_reason, cc.create_key, cc.create_hash, cc.stat_block, cc.summon_key, cc.creature_type, cc.bonded, c.player_user_id
+FROM character_creatures cc
+JOIN characters c ON c.id = cc.character_id
+WHERE cc.campaign_id = $1::UUID
+  AND cc.character_id = $2::UUID
+  AND cc.bonded
+FOR UPDATE OF cc
+`
+
+type GetBondedCreatureForUpdateParams struct {
+	CampaignID  string
+	CharacterID string
+}
+
+type GetBondedCreatureForUpdateRow struct {
+	CharacterCreature CharacterCreature
+	PlayerUserID      *string
+}
+
+// The same, locking the row until the transaction ends: the casting that brings the steed back reads it this way.
+func (q *Queries) GetBondedCreatureForUpdate(ctx context.Context, arg GetBondedCreatureForUpdateParams) (GetBondedCreatureForUpdateRow, error) {
+	row := q.db.QueryRow(ctx, getBondedCreatureForUpdate, arg.CampaignID, arg.CharacterID)
+	var i GetBondedCreatureForUpdateRow
+	err := row.Scan(
+		&i.CharacterCreature.ID,
+		&i.CharacterCreature.CampaignID,
+		&i.CharacterCreature.CharacterID,
+		&i.CharacterCreature.MonsterKey,
+		&i.CharacterCreature.Name,
+		&i.CharacterCreature.Source,
+		&i.CharacterCreature.Attack,
+		&i.CharacterCreature.SummonGroupID,
+		&i.CharacterCreature.ConcentrationCastID,
+		&i.CharacterCreature.HpCurrent,
+		&i.CharacterCreature.HpMax,
+		&i.CharacterCreature.CreatedAt,
+		&i.CharacterCreature.DismissedAt,
+		&i.CharacterCreature.DismissedReason,
+		&i.CharacterCreature.CreateKey,
+		&i.CharacterCreature.CreateHash,
+		&i.CharacterCreature.StatBlock,
+		&i.CharacterCreature.SummonKey,
+		&i.CharacterCreature.CreatureType,
+		&i.CharacterCreature.Bonded,
+		&i.PlayerUserID,
+	)
+	return i, err
+}
+
 const getCampaignContent = `-- name: GetCampaignContent :one
 SELECT campaign_id, content_key, kind, name_pt, data, revision, archived_at, created_at, updated_at, create_key, create_hash FROM campaign_content
 WHERE campaign_id = $1::UUID AND content_key = $2
@@ -3247,10 +3297,11 @@ func (q *Queries) PortraitInUse(ctx context.Context, arg PortraitInUseParams) (b
 	return exists, err
 }
 
-const reviveBondedCreature = `-- name: ReviveBondedCreature :exec
+const reviveBondedCreature = `-- name: ReviveBondedCreature :one
 UPDATE character_creatures
 SET dismissed_at = NULL, dismissed_reason = NULL, hp_current = hp_max
 WHERE campaign_id = $1::UUID AND id = $2::UUID AND bonded
+RETURNING id
 `
 
 type ReviveBondedCreatureParams struct {
@@ -3258,10 +3309,13 @@ type ReviveBondedCreatureParams struct {
 	ID         string
 }
 
-// A new casting brings the bonded steed back at full hit points: the row is the same, live again.
-func (q *Queries) ReviveBondedCreature(ctx context.Context, arg ReviveBondedCreatureParams) error {
-	_, err := q.db.Exec(ctx, reviveBondedCreature, arg.CampaignID, arg.ID)
-	return err
+// A new casting brings the bonded steed back at full hit points: the row is the same, live again. It returns the
+// row, so a revive that touches none is an error (no rows) and not a silent success.
+func (q *Queries) ReviveBondedCreature(ctx context.Context, arg ReviveBondedCreatureParams) (string, error) {
+	row := q.db.QueryRow(ctx, reviveBondedCreature, arg.CampaignID, arg.ID)
+	var id string
+	err := row.Scan(&id)
+	return id, err
 }
 
 const reviveCharacter = `-- name: ReviveCharacter :one

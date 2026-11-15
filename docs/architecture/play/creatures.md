@@ -30,11 +30,6 @@ The group's bonus is the first creature's of the summon, whichever member the pl
 **Table spells.** A table spell with a `summon` goes through `GetSummonOptions`, `CastSummon` and `CastSpell.summon` with the SRD's checks: the slot, concentration, the dismissal of the previous concentration and the undo.
 The creatures have `source` `table` and `summon_key` the spell's key.
 
-**Find Steed.** `CastSummon` takes the spell outside a combat (10 minutes), with a form of the five and a `SummonChoice.creature_type` of `celestial`, `fey` or `fiend`.
-The steed has `source` `find_steed`, `bonded` and the type, and its stat block snapshot keeps the Intelligence floor of 6 (`rules.Content.MonsterDerivedMinInt`).
-A character has one bonded steed.
-A new casting brings the same row back at full hit points, with its form, name and type, and refuses another form or type (`SUMMON_CHOICE_INVALID`).
-Only the owner and the master read the type.
 The count is the spell's formula with `slot()` the cast slot, plus the creatures added for each circle above the spell's own.
 A formula creature resolves with `slot()` the cast slot, and its numbers are kept in `character_creatures.stat_block`.
 A summon with its own initiative gives each creature its own `summon_group_id` and its own roll; one with the owner's group roll shares the casting's group.
@@ -49,6 +44,12 @@ The line of a dismissal carries the reason the creature was dismissed for.
 In a campaign that forces physical dice, a player cannot cast a spell whose creatures each roll their own initiative (the app's roller is refused and a typed die is one face): the master casts it, who is exempt from the forced mode.
 The owner plays the creatures in the same tabs as any summon.
 The undo gives the slot back and removes the creatures.
+
+**Find Steed.** `CastSummon` takes the spell outside a combat (10 minutes), with a form of the five and a `SummonChoice.creature_type` of `celestial`, `fey` or `fiend`.
+The steed has `source` `find_steed`, `bonded` and the type, and its stat block snapshot keeps the Intelligence floor of 6 (`rules.Content.MonsterDerivedMinInt`).
+A character has one bonded steed.
+A new casting brings the same row back at full hit points, with its form, name and type, and refuses another form or type (`SUMMON_CHOICE_INVALID`).
+Only the owner and the master read the type.
 
 **Table features.** A table feature with a `summon` goes through the same three paths, with `granted_by` (the feature's key, `feature:...@mesa`) in place of a slot.
 `CastSummon`, `CastSpell` and `CastSpellOutsideCombat` take `granted_by`; each one needs the summon choice, as a spell's summon does.

@@ -50,17 +50,14 @@ func (s *Service) bondedSteedOf(ctx context.Context, tx pgx.Tx, campaignID, char
 // reviveBondedSteed brings the character's bonded steed back at full hit points, live in the roster, and returns it as the
 // creature the casting made; nil when the character has none (the casting makes a new one).
 func (s *Service) reviveBondedSteed(ctx context.Context, q *charactersdb.Queries, content *rules.Content, sm link.Summon) ([]link.Creature, error) {
-	row, err := q.GetBondedCreature(ctx, charactersdb.GetBondedCreatureParams{CampaignID: sm.CampaignID, CharacterID: sm.CharacterID})
+	row, err := q.GetBondedCreatureForUpdate(ctx, charactersdb.GetBondedCreatureForUpdateParams{CampaignID: sm.CampaignID, CharacterID: sm.CharacterID})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, nil
 		}
 		return nil, wrap("read the bonded steed", err)
 	}
-	if _, err := q.GetCharacterCreatureForUpdate(ctx, charactersdb.GetCharacterCreatureForUpdateParams{CampaignID: sm.CampaignID, ID: row.CharacterCreature.ID}); err != nil {
-		return nil, wrap("lock the bonded steed", err)
-	}
-	if err := q.ReviveBondedCreature(ctx, charactersdb.ReviveBondedCreatureParams{CampaignID: sm.CampaignID, ID: row.CharacterCreature.ID}); err != nil {
+	if _, err := q.ReviveBondedCreature(ctx, charactersdb.ReviveBondedCreatureParams{CampaignID: sm.CampaignID, ID: row.CharacterCreature.ID}); err != nil {
 		return nil, wrap("bring the steed back", err)
 	}
 	back, err := q.GetCharacterCreature(ctx, charactersdb.GetCharacterCreatureParams{CampaignID: sm.CampaignID, ID: row.CharacterCreature.ID})

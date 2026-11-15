@@ -643,11 +643,23 @@ WHERE cc.campaign_id = sqlc.arg(campaign_id)::UUID
   AND cc.character_id = sqlc.arg(character_id)::UUID
   AND cc.bonded;
 
--- name: ReviveBondedCreature :exec
--- A new casting brings the bonded steed back at full hit points: the row is the same, live again.
+-- name: GetBondedCreatureForUpdate :one
+-- The same, locking the row until the transaction ends: the casting that brings the steed back reads it this way.
+SELECT sqlc.embed(cc), c.player_user_id
+FROM character_creatures cc
+JOIN characters c ON c.id = cc.character_id
+WHERE cc.campaign_id = sqlc.arg(campaign_id)::UUID
+  AND cc.character_id = sqlc.arg(character_id)::UUID
+  AND cc.bonded
+FOR UPDATE OF cc;
+
+-- name: ReviveBondedCreature :one
+-- A new casting brings the bonded steed back at full hit points: the row is the same, live again. It returns the
+-- row, so a revive that touches none is an error (no rows) and not a silent success.
 UPDATE character_creatures
 SET dismissed_at = NULL, dismissed_reason = NULL, hp_current = hp_max
-WHERE campaign_id = sqlc.arg(campaign_id)::UUID AND id = sqlc.arg(id)::UUID AND bonded;
+WHERE campaign_id = sqlc.arg(campaign_id)::UUID AND id = sqlc.arg(id)::UUID AND bonded
+RETURNING id;
 
 -- name: CountLiveCreaturesOfCharacter :one
 SELECT count(*)::INT4 FROM character_creatures
