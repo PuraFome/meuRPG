@@ -64,6 +64,7 @@ import { OwnerResubmit } from './owner-resubmit/owner-resubmit';
 import { RejectConfirm } from './reject-confirm/reject-confirm';
 import { RequestChanges } from './request-changes/request-changes';
 import { formatWhen, issueTitle } from './sheet-format';
+import { ownIssues } from './sheet-lost';
 import { SheetWrites, playerNameOf } from './character-sheet-writes';
 import { StoryPanel } from './story-panel/story-panel';
 import { XpWatcher } from '../../core/play/xp-watcher';
@@ -492,12 +493,7 @@ export class CharacterSheetPage {
 
   /** The sheet's own issues: the ones "A classe mudou" tells (code `table_content_changed`) are not repeated in the list. */
   protected ownIssues(full: FullSheetVm): readonly IssueVm[] {
-    if (full.changedContent.length === 0) {
-      return full.issues;
-    }
-    // A sentence the changed entry already tells above is not told again here (580-05).
-    const told = new Set(full.changedContent.flatMap((c) => c.messages));
-    return full.issues.filter((i) => i.code !== 'table_content_changed' && !told.has(i.message));
+    return ownIssues(full);
   }
 
   protected asFullSheet(sheet: FullSheetVm | BasicSheetVm): FullSheetVm {

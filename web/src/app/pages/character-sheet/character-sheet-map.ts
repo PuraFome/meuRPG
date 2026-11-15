@@ -38,7 +38,7 @@ import {
   FullSheetVm,
   ReviewVm,
 } from './character-sheet.types';
-import { lostKeys } from './sheet-format';
+import { featuresVm } from './sheet-lost';
 import { hitDiceWords } from '../../core/resources/hit-dice-text';
 
 const STATE_FROM_GEN: Record<GenCharacterState, CharacterState> = {
@@ -171,24 +171,6 @@ function spellVm(cs: GenDerivedSheet['spells'][number]) {
 }
 
 /** The features of the sheet; a feat or an option it keeps whose prerequisite it lost is marked (board 580-05). */
-function featuresVm(full: GenFullSheet, derived: GenDerivedSheet) {
-  const lost = lostKeys(full, derived.issues);
-  return derived.features.map((f) => featureVm(f, lost));
-}
-
-function featureVm(f: GenDerivedSheet['features'][number], lost: ReadonlySet<string>) {
-  return {
-    name: f.namePt,
-    sourcePt: f.sourcePt,
-    description: f.description,
-    descriptionPt: f.descriptionPt,
-    descriptionPtMissing: f.descriptionPtMissing,
-    descriptionPtOnly: f.descriptionPtOnly,
-    summaryPt: f.summaryPt,
-    lost: lost.has(f.key),
-  };
-}
-
 function coinsVm(coins: GenFullSheet['coins']) {
   return {
     cp: coins?.copper ?? 0,
