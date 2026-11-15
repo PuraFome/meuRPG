@@ -129,25 +129,34 @@ func (f *castFlow) mayCastNow(ctx context.Context) error {
 
 // findReadied finds the readied spell the cast releases: the caster's open READIED window holds this spell.
 func (f *castFlow) findReadied(ctx context.Context) error {
-	open, err := openWindowsOf(ctx, f.c)
-	if err != nil {
+	w, _, found, err := heldByWindow(ctx, f.c.q, f.c.enc.ID, f.caster.ID, f.call.spellKey)
+	if err != nil || !found {
 		return err
+	}
+	f.readied, err = readiedUseOf(ctx, f.c, w.ID, f.caster, readiedSpell)
+	return err
+}
+
+// heldByWindow finds the readied spell a combatant's open READIED window holds: the window and its row. A held spell
+// attack is not one (its release is a roll), and found is false when the combatant's windows hold no such spell.
+func heldByWindow(ctx context.Context, q *playdb.Queries, encID, casterID, spellKey string) (w playdb.ReactionWindow, row playdb.ReadiedAction, found bool, err error) {
+	open, err := q.ListOpenReactionWindows(ctx, encID)
+	if err != nil {
+		return w, row, false, fmt.Errorf("list the reaction windows: %w", err)
 	}
 	for _, w := range open {
-		if reaction.Kind(w.Kind) != reaction.Readied || conv.OrZero(w.ReactorID) != f.caster.ID {
+		if reaction.Kind(w.Kind) != reaction.Readied || conv.OrZero(w.ReactorID) != casterID {
 			continue
 		}
-		row, err := f.c.q.GetReadiedAction(ctx, playdb.GetReadiedActionParams{ID: windowTriggerOf(w).Readied, EncounterID: f.c.enc.ID})
+		row, err := q.GetReadiedAction(ctx, playdb.GetReadiedActionParams{ID: windowTriggerOf(w).Readied, EncounterID: encID})
 		if err != nil {
-			return fmt.Errorf("read the readied action: %w", err)
+			return w, row, false, fmt.Errorf("read the readied action: %w", err)
 		}
-		if row.Kind != readiedSpell || heldSpellAttackRow(row) || conv.OrZero(row.ActionKey) != f.call.spellKey {
-			continue
+		if row.Kind == readiedSpell && !heldSpellAttackRow(row) && conv.OrZero(row.ActionKey) == spellKey {
+			return w, row, true, nil
 		}
-		f.readied, err = readiedUseOf(ctx, f.c, w.ID, f.caster, readiedSpell)
-		return err
 	}
-	return nil
+	return w, row, false, nil
 }
 
 // chosenSlot is the slot of the cast: the request's, or the one a readied spell spent at Ready.
