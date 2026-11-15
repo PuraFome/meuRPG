@@ -39,8 +39,9 @@ func TestCombatAttackRollsTheDiceOfTheGrip(t *testing.T) {
 	} {
 		axe.Grip = tc.grip
 		got := combatAttack(axe)
-		if got.DiceSides != tc.sides || got.DiceCount != 1 || got.DiceBonus != 3 || got.TwoHanded {
-			t.Errorf("grip %q: dice %dd%d%+d two-handed=%v, want 1d%d+3 and not two-handed", tc.grip, got.DiceCount, got.DiceSides, got.DiceBonus, got.TwoHanded, tc.sides)
+		inBoth := tc.grip == rules.GripTwoHands
+		if got.DiceSides != tc.sides || got.DiceCount != 1 || got.DiceBonus != 3 || got.TwoHanded != inBoth {
+			t.Errorf("grip %q: dice %dd%d%+d two-handed=%v, want 1d%d+3 and two-handed=%v", tc.grip, got.DiceCount, got.DiceSides, got.DiceBonus, got.TwoHanded, tc.sides, inBoth)
 		}
 	}
 }

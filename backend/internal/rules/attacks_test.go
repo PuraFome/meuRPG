@@ -604,3 +604,34 @@ func TestVersatileGripFollowsTheGear(t *testing.T) {
 		})
 	}
 }
+
+// Great Weapon Fighting takes a melee weapon wielded with two hands: a versatile weapon in both hands
+// counts, the same weapon in one hand beside a shield does not, and a two-handed weapon always does.
+func TestAWeaponInBothHandsFollowsTheGrip(t *testing.T) {
+	t.Parallel()
+	c := loadForTest(t)
+	for _, tc := range []struct {
+		name   string
+		weapon string
+		shield bool
+		want   bool
+	}{
+		{"a versatile weapon alone", "equipment:longsword", false, true},
+		{"a versatile weapon beside a shield", "equipment:longsword", true, false},
+		{"a two-handed weapon", "equipment:greatsword", false, true},
+		{"a one-handed weapon", "equipment:shortsword", false, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			b := duelist(tc.weapon)
+			b.Shield = tc.shield
+			a, ok := attackOf(Derive(b, c), tc.weapon)
+			if !ok {
+				t.Fatalf("no %s on the sheet", tc.weapon)
+			}
+			if got := a.InBothHands(); got != tc.want {
+				t.Errorf("%s: in both hands = %v, want %v (grip %q)", tc.weapon, got, tc.want, a.Grip)
+			}
+		})
+	}
+}

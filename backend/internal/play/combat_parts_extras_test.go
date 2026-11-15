@@ -6,6 +6,7 @@ import (
 
 	"connectrpc.com/connect"
 
+	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
@@ -303,6 +304,52 @@ func TestRollDamageRerollsTheLowFacesOfAGreatWeapon(t *testing.T) {
 	if rr := weapon.GetRerolled(); len(rr) != 1 || rr[0].GetIndex() != 0 || rr[0].GetFrom() != 1 || rr[0].GetTo() != 4 || rr[0].GetSourceKey() != "" {
 		t.Errorf("the rerolls = %v, want the die 0 from 1 to 4", rr)
 	}
+}
+
+// Great Weapon Fighting rerolls a versatile weapon held in both hands (SRD 5.1, "Fighting Style"), and
+// not the same weapon held in one hand beside a shield.
+func TestRollDamageRerollsAVersatileWeaponOnlyInBothHands(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name   string
+		shield bool
+	}{{"in both hands", false}, {"beside a shield", true}} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			a, e, shrub := partsFight(t, func(a *armed) {
+				a.toren = a.caio.versatileHero(t, a.campaignID, tc.shield)
+			}, "monster:awakened-shrub")
+			hit := a.mustAttack(t, a.caio, e, "Toren", "equipment:longsword", shrub, d20(15))
+			a.h.roller.queue(1, 7) // the die, then the reroll of the 1 when it is rolled again
+			dmg := a.mustDamage(t, a.caio, e, hit.GetPendingDamage().GetId(), inAppDamage).GetPendingDamage()
+			var rerolled int
+			for _, r := range dmg.GetPartRolls() {
+				if r.GetPartKey() == extraWeaponDamage {
+					rerolled = len(r.GetRerolled())
+				}
+			}
+			if want := map[bool]int{false: 1, true: 0}[tc.shield]; rerolled != want {
+				t.Errorf("the weapon's rerolls = %d, want %d (parts %v)", rerolled, want, dmg.GetPartRolls())
+			}
+		})
+	}
+}
+
+// versatileHero creates Toren, a fighter with Great Weapon Fighting and a longsword, maybe with a shield.
+func (u *user) versatileHero(t *testing.T, campaignID string, shield bool) *charactersv1.Character {
+	t.Helper()
+	sheet := &charactersv1.CharacterSheet{Content: &charactersv1.CharacterSheet_Full{Full: &charactersv1.FullSheet{
+		BaseScores: abilities(16, 12, 14, 10, 8), RaceKey: "race:human", Classes: []*charactersv1.ClassLevel{classLevel("class:fighter", 2, "")},
+		WeaponKeys: []string{"equipment:longsword"}, Shield: shield,
+		FeatureChoiceKeys: []string{"feature:fighter-fighting-style-great-weapon-fighting"},
+	}}}
+	res, err := u.characters.CreateCharacter(t.Context(), connect.NewRequest(&charactersv1.CreateCharacterRequest{
+		CampaignId: campaignID, Kind: charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, Name: "Toren", Sheet: sheet,
+	}))
+	if err != nil {
+		t.Fatalf("CreateCharacter(Toren) error = %v", err)
+	}
+	return res.Msg.GetCharacter()
 }
 
 // TestMonsterResistanceHalvesTheDamageAndTheMasterSeesTheStep: a creature resistant to a
