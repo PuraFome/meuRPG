@@ -6224,8 +6224,11 @@ async function scanTableContent(browser: Browser, colorScheme: 'light' | 'dark',
       });
       await open(m, `/campaigns/${campaignId}/content?kind=weapons`);
       await expectScreenPasses(m, `Conteúdo da mesa, as armas ${where}`);
+      // The header wraps and the kinds strip scrolls inside its card: the page never scrolls sideways (#580, 580-12).
+      expect(await m.evaluate(() => document.documentElement.scrollWidth - window.innerWidth), `a lista de armas sem rolagem lateral ${where}`).toBeLessThanOrEqual(0);
+      expect(await m.evaluate(() => document.querySelector('h1.mr-page-title')!.getBoundingClientRect().width), `o título da lista com largura ${where}`).toBeGreaterThan(200);
       await open(m, entryRoute(campaignId, weapon));
-      await expect(m.getByLabel('Nome', { exact: true })).toHaveValue('Boleadeira de Vale');
+      await expect(m.getByLabel('Nome da arma', { exact: true })).toHaveValue('Boleadeira de Vale');
       await expectScreenPasses(m, `Editor de arma ${where}`);
       await open(m, `/campaigns/${campaignId}/content/new/weapon`);
       await expectScreenPasses(m, `Editor de arma, nova ${where}`);
@@ -6379,7 +6382,8 @@ async function scanTableContent(browser: Browser, colorScheme: 'light' | 'dark',
       await expect(m.getByText('Escolha ao menos um tipo de dano.')).toBeVisible();
       await expectScreenPasses(m, `Editor de criatura, a recusa numa linha de dano ${where}`);
     } else {
-      await m.getByRole('button', { name: 'Arquivar Lâmina de Nanquim' }).click();
+      await m.getByRole('button', { name: 'Ações de Lâmina de Nanquim' }).click();
+      await m.getByRole('menuitem', { name: 'Arquivar' }).click();
       await expect(m.getByRole('heading', { name: 'Arquivar Lâmina de Nanquim?' })).toBeVisible();
       await expectScreenPasses(m, `Arquivar, a folha de baixo ${where}`);
       await m.getByRole('button', { name: 'Voltar', exact: true }).click();
