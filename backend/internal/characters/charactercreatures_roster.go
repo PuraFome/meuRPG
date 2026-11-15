@@ -363,7 +363,7 @@ func (s *Service) DeleteCreatures(ctx context.Context, tx pgx.Tx, campaignID str
 
 // SyncCreatures implements play.CombatRoster: it keeps the creatures in step
 // with the combat that holds them. A creature whose combatant is defeated (0
-// hit points) is dismissed with the reason "defeated" and one that was
+// hit points) is dismissed with the reason "defeated" ("disappeared" for a steed) and one that was
 // dismissed as defeated and is up again (a heal, an undo) is back, each with
 // the hit points of its combatant. It returns who changed.
 func (s *Service) SyncCreatures(ctx context.Context, tx pgx.Tx, campaignID string, states []link.CreatureState, at time.Time) (link.CreatureChanges, error) {
@@ -415,12 +415,12 @@ func creaturesOfStates(ctx context.Context, q *charactersdb.Queries, campaignID 
 func syncCreature(ctx context.Context, q *charactersdb.Queries, content *rules.Content, campaignID string, v creatureView, st link.CreatureState, at time.Time, out *link.CreatureChanges) error {
 	switch {
 	case st.Defeated && v.live():
-		if _, err := q.DismissCreatures(ctx, charactersdb.DismissCreaturesParams{CampaignID: campaignID, Ids: []string{v.ID}, Reason: "defeated", At: at}); err != nil {
+		if _, err := q.DismissCreatures(ctx, charactersdb.DismissCreaturesParams{CampaignID: campaignID, Ids: []string{v.ID}, Reason: fallenReason(v.Source), At: at}); err != nil {
 			return wrap("dismiss a defeated creature", err)
 		}
 		v.HpCurrent = 0
 		out.Dismissed = append(out.Dismissed, creatureOf(content, v))
-	case !st.Defeated && !v.live() && v.DismissedReason != nil && *v.DismissedReason == "defeated":
+	case !st.Defeated && !v.live() && v.DismissedReason != nil && *v.DismissedReason == fallenReason(v.Source):
 		return reviveCreature(ctx, q, content, campaignID, v, st, out)
 	}
 	return nil
@@ -430,7 +430,7 @@ func syncCreature(ctx context.Context, q *charactersdb.Queries, content *rules.C
 // points, clamped to 0 and to its maximum.
 func reviveCreature(ctx context.Context, q *charactersdb.Queries, content *rules.Content, campaignID string, v creatureView, st link.CreatureState, out *link.CreatureChanges) error {
 	hp := int32(min(max(st.HP, 0), int(v.HpMax))) //nolint:gosec // clamped to the creature's maximum
-	if _, err := q.ReviveCreatures(ctx, charactersdb.ReviveCreaturesParams{CampaignID: campaignID, Ids: []string{v.ID}, Reason: "defeated"}); err != nil {
+	if _, err := q.ReviveCreatures(ctx, charactersdb.ReviveCreaturesParams{CampaignID: campaignID, Ids: []string{v.ID}, Reason: fallenReason(v.Source)}); err != nil {
 		return wrap("revive a creature", err)
 	}
 	if err := q.SetCharacterCreatureHitPoints(ctx, charactersdb.SetCharacterCreatureHitPointsParams{CampaignID: campaignID, ID: v.ID, HpCurrent: hp}); err != nil {
@@ -443,7 +443,7 @@ func reviveCreature(ctx context.Context, q *charactersdb.Queries, content *rules
 
 // WriteBackCreatures implements play.CombatRoster: a combat's end (or a
 // creature leaving it) writes each creature's hit points back. A creature at 0
-// is dismissed ("defeated") if it is not already.
+// is dismissed ("defeated", "disappeared" for a steed) if it is not already.
 func (s *Service) WriteBackCreatures(ctx context.Context, tx pgx.Tx, campaignID string, states []link.CreatureState, at time.Time) error {
 	if len(states) == 0 {
 		return nil
@@ -463,7 +463,7 @@ func (s *Service) WriteBackCreatures(ctx context.Context, tx pgx.Tx, campaignID 
 		}
 		hp := int32(min(max(st.HP, 0), int(row.CharacterCreature.HpMax))) //nolint:gosec // clamped to the creature's maximum
 		if st.Defeated {
-			if _, err := q.DismissCreatures(ctx, charactersdb.DismissCreaturesParams{CampaignID: campaignID, Ids: []string{id}, Reason: "defeated", At: at}); err != nil {
+			if _, err := q.DismissCreatures(ctx, charactersdb.DismissCreaturesParams{CampaignID: campaignID, Ids: []string{id}, Reason: fallenReason(row.CharacterCreature.Source), At: at}); err != nil {
 				return wrap("dismiss a defeated creature", err)
 			}
 			continue

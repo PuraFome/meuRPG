@@ -880,19 +880,19 @@ ORDER BY e.id;
 -- name: InsertCreatureCombatant :one
 -- A creature joins a combat. It has no initiative until its group rolls one,
 -- and no square until somebody places it; its hit points come from the
--- creature.
+-- creature. A steed of Find Steed joins as a controlled mount (mount_kind), any other creature as no mount.
 INSERT INTO combatants (
     encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face,
     order_index, grid_col, grid_row, speed_ft, hp_current, hp_max, hp_temp, created_at,
     creature_id, monster_key, summon_attack, summon_group_id,
     side, size, speed_fly_ft, jump_long_dft, jump_high_dft,
-    speed_swim_ft, speed_climb_ft, speed_burrow_ft
+    speed_swim_ft, speed_climb_ft, speed_burrow_ft, mount_kind
 ) VALUES (
     $1, $2, $3, $4, 'creature', false, $5, $6, $7,
     $8, $9, $10, $11, $12, $13, 0, $14,
     $15, $16, $17, $18,
     'party', $19, $20, $21, $22,
-    $23, $24, $25
+    $23, $24, $25, $26
 )
 RETURNING *;
 

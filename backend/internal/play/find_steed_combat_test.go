@@ -60,7 +60,8 @@ func riderInFight(t *testing.T) (*armed, *playv1.Encounter) {
 	})); err != nil {
 		t.Fatalf("MountCombatant(Aurélio, Trovão) error = %v", err)
 	}
-	return a, a.get(t, a.master)
+	after := a.get(t, a.master)
+	return a, after
 }
 
 // TestFindSteedJoinsTheCombatAsAControlledMount: the steed enters the combat marked as a controlled mount, so the rider mounts it with no
@@ -138,4 +139,27 @@ func ptrOr(s *string, none string) string {
 		return none
 	}
 	return *s
+}
+
+// TestFindSteedDismissedUnderItsRiderLandsTheRiderOnItsFeet: the master sending the steed away puts the rider on foot where it stands, with no
+// dismount window and no fall, and the bond stays for the next cast.
+func TestFindSteedDismissedUnderItsRiderLandsTheRiderOnItsFeet(t *testing.T) {
+	t.Parallel()
+	a, _ := riderInFight(t)
+	var id string
+	if err := a.h.pool.QueryRow(t.Context(), `SELECT id::text FROM character_creatures WHERE source = 'find_steed'`).Scan(&id); err != nil {
+		t.Fatalf("read the steed's creature: %v", err)
+	}
+	a.dismissCreatureAs(t, a.master, id)
+	got := a.steedRowOf(t, "Aurélio")
+	if got.MountedOn != "" || strings.Contains(got.Conditions, "prone") {
+		t.Errorf("Aurélio after the dismissal = %+v, want on foot and on his feet", got)
+	}
+	if a.windowOf(t, a.ana, reactionDismount) != nil {
+		t.Error("the dismissal opened a dismount window")
+	}
+	var bonded bool
+	if err := a.h.pool.QueryRow(t.Context(), `SELECT bonded FROM character_creatures WHERE id = $1`, id).Scan(&bonded); err != nil || !bonded {
+		t.Errorf("the dismissed steed: bonded = %v, err = %v, want the bond kept", bonded, err)
+	}
 }

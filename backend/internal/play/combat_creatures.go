@@ -255,6 +255,9 @@ func creatureRow(c *combatTx, cr link.Creature, n int, taken map[string]bool, gr
 	if cr.OwnerUserID != "" {
 		row.UserID = &cr.OwnerUserID
 	}
+	if cr.Source == summonSourceSteed {
+		row.MountKind = mountKindControlled // the steed of Find Steed is a willing mount that obeys its rider
+	}
 	// Whoever rolls for the group, the bonus is the first creature's of the casting.
 	if bonus, ok := groupBonus[cr.GroupID]; ok {
 		row.InitiativeBonus = bonus
@@ -654,6 +657,9 @@ func summonNames(raw []string, n int) ([]string, error) {
 // summonSourceTable is the source of the creatures of a table spell's summon.
 const summonSourceTable = "table"
 
+// summonSourceSteed is the source of the steed of Find Steed.
+const summonSourceSteed = "find_steed"
+
 // summonSourceOf is where a creature of the spell came from, as the table says: a table spell's summon (chk.Table)
 // or one of the SRD's spells.
 func summonSourceOf(spellKey string, chk link.SummonSpell) string {
@@ -668,7 +674,7 @@ func summonSourceOf(spellKey string, chk link.SummonSpell) string {
 	case "spell:conjure-animals":
 		return "conjure_animals"
 	case "spell:find-steed":
-		return "find_steed"
+		return summonSourceSteed
 	}
 	return ""
 }

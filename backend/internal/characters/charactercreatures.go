@@ -205,6 +205,20 @@ type creatureView struct {
 
 func (v creatureView) live() bool { return v.DismissedAt == nil }
 
+// Reasons a creature that fell in the fight is dismissed for: the steed of Find Steed disappears (its bond stays for the next cast).
+const (
+	dismissedDefeated    = "defeated"
+	dismissedDisappeared = "disappeared"
+)
+
+// fallenReason is the reason a creature at 0 hit points is dismissed with.
+func fallenReason(source string) string {
+	if source == creatureSourceSteed {
+		return dismissedDisappeared
+	}
+	return dismissedDefeated
+}
+
 // visibleTo says whether the caller may see the creature: the master, or the
 // owner's player.
 func (v creatureView) visibleTo(m authz.Membership) bool {
@@ -755,11 +769,11 @@ func (s *Service) adjustCreatureInTx(ctx context.Context, tx pgx.Tx, m authz.Mem
 	if hp == 0 {
 		// Out of the fight: it is dismissed (the master's correction may be undone
 		// by a heal only while it is in a combat).
-		if _, err := q.DismissCreatures(ctx, charactersdb.DismissCreaturesParams{CampaignID: m.CampaignID, Ids: []string{v.ID}, Reason: "defeated", At: s.now()}); err != nil {
+		if _, err := q.DismissCreatures(ctx, charactersdb.DismissCreaturesParams{CampaignID: m.CampaignID, Ids: []string{v.ID}, Reason: fallenReason(v.Source), At: s.now()}); err != nil {
 			return v, true, wrap("dismiss a defeated creature", err)
 		}
 		return v, true, s.logCreatureEvent(ctx, tx, m, "creature_dismissed", map[string]any{
-			"character_id": v.CharacterID, "creature_ids": []string{v.ID}, "reason": "defeated",
+			"character_id": v.CharacterID, "creature_ids": []string{v.ID}, "reason": fallenReason(v.Source),
 		})
 	}
 	if err := q.SetCharacterCreatureHitPoints(ctx, charactersdb.SetCharacterCreatureHitPointsParams{CampaignID: m.CampaignID, ID: v.ID, HpCurrent: hp}); err != nil {

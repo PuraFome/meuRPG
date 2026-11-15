@@ -50,6 +50,11 @@ The steed has `source` `find_steed`, `bonded` and the type, and its stat block s
 A character has one bonded steed.
 A new casting brings the same row back at full hit points, with its form, name and type, and refuses another form or type (`SUMMON_CHOICE_INVALID`).
 Only the owner and the master read the type.
+The spell takes 10 minutes, so the steed joins a combat when the combat starts, with `mount_kind` `controlled`.
+The rider mounts it with `MountCombatant`, and the pair then shares the steed's square and initiative.
+At 0 hit points the steed goes through the rider's dismount window, then its creature is dismissed with the reason `disappeared`.
+The bond stays, so a new casting brings the same steed back.
+A dismissal of the steed puts the rider on foot with no window (`unseatRider`).
 
 **Table features.** A table feature with a `summon` goes through the same three paths, with `granted_by` (the feature's key, `feature:...@mesa`) in place of a slot.
 `CastSummon`, `CastSpell` and `CastSpellOutsideCombat` take `granted_by`; each one needs the summon choice, as a spell's summon does.

@@ -4315,13 +4315,13 @@ INSERT INTO combatants (
     order_index, grid_col, grid_row, speed_ft, hp_current, hp_max, hp_temp, created_at,
     creature_id, monster_key, summon_attack, summon_group_id,
     side, size, speed_fly_ft, jump_long_dft, jump_high_dft,
-    speed_swim_ft, speed_climb_ft, speed_burrow_ft
+    speed_swim_ft, speed_climb_ft, speed_burrow_ft, mount_kind
 ) VALUES (
     $1, $2, $3, $4, 'creature', false, $5, $6, $7,
     $8, $9, $10, $11, $12, $13, 0, $14,
     $15, $16, $17, $18,
     'party', $19, $20, $21, $22,
-    $23, $24, $25
+    $23, $24, $25, $26
 )
 RETURNING id, encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face, tie_ordered, order_index, grid_col, grid_row, speed_ft, movement_used_ft, dashed, action_used, bonus_action_used, reaction_used, hp_current, hp_max, hp_temp, defeated, death_successes, death_failures, conditions, concentration_spell, created_at, attacks_made, ac_bonus, death_save_rolled, xp_value, turn_state, movement_used_dft, last_move_dft, side, size, speed_fly_ft, jump_long_dft, jump_high_dft, cover_mark, disengaged, creature_id, monster_key, summon_attack, summon_group_id, dismissed, action_surged, spell_cast, bonus_spell_cast, action_attack_key, bonus_attacks_left, hp_max_bonus, mage_armor_ac, attacked_hostile, took_damage, rage_end_pending, condition_sources, sneak_attack_turn, colossus_slayer_turn, inspiration_sides, inspiration_from, inspiration_expires_round, slots_used, death_round, death_order_index, revivify_blocked, effect_conditions, effect_ac_bonus, effect_speed_pct, effect_speed_add_ft, effect_no_action, effect_no_move, extra_action_used, exhaustion_level, hp_max_base, melee_hit_turn, effect_no_reaction, jump_long_bonus_dft, jump_doubled, table_once_turns, creature_spent, reaction_kind, reaction_round, initiative_counted_as, initiative_counted_by, object_interaction_used, speed_swim_ft, speed_climb_ft, speed_burrow_ft, feature_state, mounted_on_id, mount_kind, mount_prior_init, mount_move_used
 `
@@ -4352,13 +4352,14 @@ type InsertCreatureCombatantParams struct {
 	SpeedSwimFt     int32
 	SpeedClimbFt    int32
 	SpeedBurrowFt   int32
+	MountKind       string
 }
 
 // The character's creatures in a combat (MR-037). A creature is a
 // combatant of kind 'creature': character_id is its owner's.
 // A creature joins a combat. It has no initiative until its group rolls one,
 // and no square until somebody places it; its hit points come from the
-// creature.
+// creature. A steed of Find Steed joins as a controlled mount (mount_kind), any other creature as no mount.
 func (q *Queries) InsertCreatureCombatant(ctx context.Context, arg InsertCreatureCombatantParams) (Combatant, error) {
 	row := q.db.QueryRow(ctx, insertCreatureCombatant,
 		arg.EncounterID,
@@ -4386,6 +4387,7 @@ func (q *Queries) InsertCreatureCombatant(ctx context.Context, arg InsertCreatur
 		arg.SpeedSwimFt,
 		arg.SpeedClimbFt,
 		arg.SpeedBurrowFt,
+		arg.MountKind,
 	)
 	var i Combatant
 	err := row.Scan(
