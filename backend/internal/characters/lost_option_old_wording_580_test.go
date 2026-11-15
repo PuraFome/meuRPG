@@ -103,4 +103,3 @@ func TestAStoredOptionIssueSurvivesTheRenameOfItsOption(t *testing.T) {
 		t.Errorf("the owner reads a changed entry %v for an issue the sheet already had", keys)
 	}
 }
-
