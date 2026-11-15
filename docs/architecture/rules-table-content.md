@@ -743,7 +743,7 @@ Its fields are the modifier's own:
   `condition_duration` `spell_end` needs concentration, a timed duration or until dispelled, refused at `condition_duration`.
   A spell has one `weapon_hit_damage`: a second is refused at its `kind` ("a spell has one next-hit effect").
 - **The dice per slot.**
-  At a slot the dice are `dice` plus `per_slot_dice` for each level above the spell's own, never more than `max_dice`.
+  At a slot the dice are `dice` plus `per_slot_dice` for each level above the spell's own, never more than `max_dice` when it has one (0 is no limit, so at most 50 dice at the 9th slot).
   A critical hit doubles them, a resistance takes the damage by type, and the save is the target's against the spell's DC.
   How the hit uses all of this is in [Attacks and damage](play/attacks-and-damage.md#a-spells-hit-effect).
 - **Tags.**

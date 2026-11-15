@@ -7,6 +7,7 @@ import (
 	"connectrpc.com/connect"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
 // The dice a spell's hit effect adds per slot level are worked out at the cast (hitModifiersAtSlot) into the row, so the
@@ -45,6 +46,32 @@ func TestAHitSpellCastInAHigherSlotRollsItsPerLevelDiceInTheTypedGroup(t *testin
 			}
 			if _, err := a.damage(t, a.ana, e, hit.GetId(), typed(tc.accepted)); err != nil {
 				t.Errorf("the fire sum %d: error = %v, want it accepted", tc.accepted, err)
+			}
+		})
+	}
+}
+
+// A hit effect with no cap (max_dice 0) rolls every level its slot gives, to the 50 dice the rules allow at most
+// (10 and 5 more for each of the 8 levels above), where a cap stops it. A critical hit doubles that to 100, what a roll holds.
+func TestHitDiceAtWithNoCapGrowsWithEveryLevelAndAboveTheOldLimit(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name                      string
+		dice, perSlot, cap, above int
+		want                      int
+	}{
+		{"no cap, own slot", 2, 1, 0, 0, 2},
+		{"no cap, 3 levels above", 2, 1, 0, 3, 5},
+		{"no cap, past 20", 10, 5, 0, 8, 50},
+		{"a cap stops it", 2, 1, 4, 3, 4},
+		{"no per slot dice", 3, 0, 0, 5, 3},
+		{"a negative level is the spell's own", 2, 1, 0, -2, 2},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			m := rules.EffectModifier{Dice: tc.dice, PerSlotDice: tc.perSlot, MaxDice: tc.cap}
+			if got := hitDiceAt(m, tc.above); got != tc.want {
+				t.Errorf("hitDiceAt = %d, want %d", got, tc.want)
 			}
 		})
 	}
