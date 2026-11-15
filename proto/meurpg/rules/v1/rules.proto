@@ -1421,6 +1421,10 @@ message Attack {
   // The line is an improvised melee attack with a weapon that is not made for it (a bow used as a club): 1d4 plus Strength,
   // no proficiency, and no ammunition spent.
   bool improvised = 27;
+  // True for a weapon with the Arremesso (thrown) property, melee or ranged, SRD or from the table: range_ft and
+  // long_range_ft are then its throwing range. A weapon of ammunition has the same two numbers and is not thrown.
+  // False for a spell, an unarmed strike and a creature's attack.
+  bool thrown = 28;
 }
 
 // AttackKind says whether an attack is a weapon or a spell.
@@ -2584,6 +2588,17 @@ message PowerAttackOption {
   bool disabled = 5;
   // Set when `disabled` is true: the reason in Portuguese.
   string disabled_reason_pt = 6;
+  // The Portuguese name of the resource pool the trade spends a use of ("Fôlego do Atirador"), as in
+  // play.v1.ManeuverDieOption.resource_name_pt. Read by the roller: the owner of the attacker and the master. Empty
+  // when the trade spends nothing.
+  string resource_name_pt = 7;
+  // The uses the pool has before the trade, 0 or more: the roll spends one, so the screen shows what is left after it.
+  // The trade is listed at 0 (disabled). Read by the roller, like `resource_name_pt`. 0 when the trade spends nothing.
+  int32 uses_left = 8;
+  // When the pool the trade spends comes back: the pool's own Recharge, as in Resource.recharge and
+  // DisabledReason.recharge. Read by the roller, like `resource_name_pt`. RECHARGE_UNSPECIFIED when the trade spends
+  // nothing.
+  Recharge recharge = 9;
 }
 
 // SpellOption is a spell the character can cast.

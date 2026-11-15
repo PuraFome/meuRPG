@@ -2033,7 +2033,7 @@ func (q *Queries) ListCampaignsWithContent(ctx context.Context) ([]string, error
 }
 
 const listCharacterNames = `-- name: ListCharacterNames :many
-SELECT id, name FROM characters
+SELECT id, name, reserved FROM characters
 WHERE campaign_id = $1::UUID
   AND id = ANY($2::UUID[])
 ORDER BY id
@@ -2045,13 +2045,15 @@ type ListCharacterNamesParams struct {
 }
 
 type ListCharacterNamesRow struct {
-	ID   string
-	Name string
+	ID       string
+	Name     string
+	Reserved bool
 }
 
 // The names of the given characters of the campaign, whatever their kind or
 // status (package progression names the characters of an award, even one that
-// died since).
+// died since). reserved says the master gave the character back to the reserve
+// since: a player's reads leave it out (RN-10).
 func (q *Queries) ListCharacterNames(ctx context.Context, arg ListCharacterNamesParams) ([]ListCharacterNamesRow, error) {
 	rows, err := q.db.Query(ctx, listCharacterNames, arg.CampaignID, arg.Ids)
 	if err != nil {
@@ -2061,7 +2063,7 @@ func (q *Queries) ListCharacterNames(ctx context.Context, arg ListCharacterNames
 	var items []ListCharacterNamesRow
 	for rows.Next() {
 		var i ListCharacterNamesRow
-		if err := rows.Scan(&i.ID, &i.Name); err != nil {
+		if err := rows.Scan(&i.ID, &i.Name, &i.Reserved); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

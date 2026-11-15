@@ -13,6 +13,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { Code, ConnectError } from '@connectrpc/connect';
 
 import { DiceMode, DicePreference } from '../../../../../gen/meurpg/campaigns/v1/campaigns_pb';
+import { RollMode } from '../../../../../gen/meurpg/play/v1/combat_rolls_pb';
 import { type ReactionWindow } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import type { AnswerHeldRollResponse } from '../../../../../gen/meurpg/play/v1/resources_pb';
 import type { EffectSaveResult } from '../../../../../gen/meurpg/play/v1/lasting_effects_pb';
@@ -22,7 +23,11 @@ import type { CombatState } from '../../../../core/combat/combat-state';
 import { luckyText } from '../../../../core/combat/lucky';
 import { HeldRollController } from '../../../../core/held-rolls/held-roll-controller';
 import { type HeldAnswer, heldOfferOf } from '../../../../core/held-rolls/held-roll-offer';
+import { isPlayer } from '../../../../core/combat/combat-view';
 import { isOpen } from '../../../../core/combat/reactions';
+import { FavorSpend, circumstancesOfPrompt } from '../../../../core/play/favor-spend';
+import { FavorState } from '../../../../core/play/favor-state';
+import { FavorSpendBox } from '../../../../shared/favor-spend/favor-spend';
 import { ActionKey } from '../../../../core/connect/idempotency';
 import { type EffectSaveAnswer, EffectsClient } from '../../../../core/effects/effects-client';
 import {
@@ -82,6 +87,7 @@ const EFFECT_DIE_FACES = 4;
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     ExtraDice,
+    FavorSpendBox,
     RollDieOffer,
     HeldRollPrompt,
     MatButtonModule,
@@ -149,13 +155,37 @@ export class EffectSaveSheet {
     }
     return p.value;
   });
-  protected readonly view = computed(() =>
-    effectSaveView(
+  /** The master's Inspiração (RN-43) on the save of the player's character; a creature's save has none. */
+  protected readonly fav = new FavorSpend({
+    favor: inject(FavorState),
+    who: () => {
+      const me = this.data.state
+        .encounter()
+        ?.combatants.find((c) => c.id === this.data.window.reactorId);
+      return me && isPlayer(me) && !this.prompt().autoFail && !this.prompt().handedToMaster
+        ? { characterId: me.characterId, name: me.label }
+        : null;
+    },
+    circumstances: () => circumstancesOfPrompt(this.prompt().mode, this.prompt().modeSourcesPt),
+    changed: () => this.keys.renew(),
+  });
+  protected readonly view = computed(() => {
+    const v = effectSaveView(
       this.prompt(),
       this.data.round,
       zoneCasterLabel(this.data.state.encounter(), this.prompt().zoneId),
-    ),
-  );
+    );
+    // Ticked, the Inspiração decides the d20s the player types (two with advantage, one when it cancels a disadvantage) and the
+    // line says so: "Desvantagem (Envenenada) e Inspiração se anulam: um d20. Desmarque a caixa para voltar a desvantagem."
+    const lock = this.fav.lock();
+    return lock
+      ? {
+          ...v,
+          modeLine: lock.line,
+          mode: lock.mode === RollMode.ADVANTAGE ? ('advantage' as const) : ('normal' as const),
+        }
+      : v;
+  });
   /** The fields of the d4 the prompt lists (or the ones a refusal asked for). */
   protected readonly fields = computed<readonly ExtraDieField[]>(() => {
     const listed = dieFields(
@@ -252,10 +282,13 @@ export class EffectSaveSheet {
       return;
     }
     const maneuverKey = this.maneuver()?.key;
-    const how: EffectSaveAnswer =
-      maneuverKey && (asked.kind === 'app' || asked.kind === 'typed')
-        ? { ...asked, maneuverKey }
-        : asked;
+    const rolled = asked.kind === 'app' || asked.kind === 'typed';
+    const spendFavor = rolled && this.fav.spend();
+    const how: EffectSaveAnswer = {
+      ...asked,
+      ...(maneuverKey && rolled ? { maneuverKey } : {}),
+      ...(spendFavor ? { spendFavor: true } : {}),
+    } as EffectSaveAnswer;
     const w = this.data.window;
     this.busy.set(true);
     this.error.set('');
@@ -268,6 +301,9 @@ export class EffectSaveSheet {
         this.keys.keyFor({ window: w.id, how }),
       );
       this.data.state.apply(res.encounter);
+      if (spendFavor) {
+        this.fav.spent();
+      }
       if (res.held) {
         // Nothing was written: the d20 alone, and the result after the answer (Lucky's question first).
         this.held.ask(res.held);
@@ -348,7 +384,9 @@ export class EffectSaveSheet {
       );
       return;
     }
-    this.error.set(combatErrorMessage(err, 'rolar o teste de resistência'));
+    this.error.set(
+      this.fav.refused(err) ?? combatErrorMessage(err, 'rolar o teste de resistência'),
+    );
   }
 
   protected close(): void {

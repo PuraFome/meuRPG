@@ -621,7 +621,8 @@
             "NOT_IN_GROUP_CHECK",
             "ALREADY_ANSWERED",
             "COMBAT_BEGUN",
-            "NOT_HIDDEN"
+            "NOT_HIDDEN",
+            "NO_FREE_HAND"
           ],
           "unsent": []
         }

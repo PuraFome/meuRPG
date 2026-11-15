@@ -7,6 +7,7 @@ function setup(readSnapshot: () => Promise<boolean>, openCombat: boolean) {
   const services = {
     xpChanges: { bump: () => calls.push('xp') },
     spellCatalog: { forget: () => calls.push('catalog') },
+    favor: { follow: () => calls.push('favor'), refresh: () => calls.push('favor-refresh') },
   };
   const parts = {
     trapBoard: { refresh: () => calls.push('traps'), refreshDamages: () => undefined },
@@ -14,7 +15,11 @@ function setup(readSnapshot: () => Promise<boolean>, openCombat: boolean) {
     combat: { touchLog, encounter: () => (openCombat ? { id: 'e1', revision: 3 } : null) },
     mapState: { refresh: () => undefined },
   };
-  const state = { currentMapId: () => 'm1', isMaster: () => false };
+  const state = {
+    currentMapId: () => 'm1',
+    isMaster: () => false,
+    vitals: Object.assign(() => [], { update: () => undefined }),
+  };
   const loader = {
     readSnapshot: vi.fn(readSnapshot),
     scheduleVision: vi.fn(),
@@ -29,7 +34,10 @@ function setup(readSnapshot: () => Promise<boolean>, openCombat: boolean) {
     loader as never,
   );
   const priv = events as unknown as {
-    sessionHandlers(c: string, g: number): { onBehind(): Promise<boolean> };
+    sessionHandlers(
+      c: string,
+      g: number,
+    ): { onBehind(): Promise<boolean>; onReady(): void; onVitals(v: unknown): void };
     mapHandlers(g: number): { onVisionChanged(mapId: string): void };
     combatHandlers(g: number): {
       onEncounterChanged(c: { encounterId: string; revision: number }): void;
@@ -44,7 +52,7 @@ describe('LiveSessionEvents: a heartbeat ahead of the stream', () => {
       const { priv, loader, calls } = setup(() => Promise.resolve(worked), true);
       expect(await priv.sessionHandlers('c1', 1).onBehind()).toBe(worked);
       expect(loader.readSnapshot).toHaveBeenCalledTimes(1);
-      expect(calls).toEqual(['xp', 'catalog', 'traps', 'conversation']);
+      expect(calls).toEqual(['xp', 'catalog', 'traps', 'favor', 'conversation']);
     }
   });
 });
@@ -63,5 +71,20 @@ describe('LiveSessionEvents: reading the whole combat log', () => {
     priv.mapHandlers(1).onVisionChanged('m1');
     priv.combatHandlers(1).onEncounterChanged({ encounterId: 'e1', revision: 0 });
     expect(touchLog).not.toHaveBeenCalled();
+  });
+});
+
+describe("LiveSessionEvents: the master's Inspiração (RN-43)", () => {
+  it('follows the session on a ready, and again after a lost hint', async () => {
+    const { priv, calls } = setup(() => Promise.resolve(true), false);
+    priv.sessionHandlers('c1', 1).onReady();
+    await priv.sessionHandlers('c1', 1).onBehind();
+    expect(calls.filter((c) => c === 'favor')).toHaveLength(2);
+  });
+
+  it('reads who has it again on the vitals hint, the only one a grant tells', () => {
+    const { priv, calls } = setup(() => Promise.resolve(true), false);
+    priv.sessionHandlers('c1', 1).onVitals({ characterId: 'a' });
+    expect(calls).toContain('favor-refresh');
   });
 });

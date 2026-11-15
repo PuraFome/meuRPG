@@ -11,7 +11,7 @@ import {
   withoutRow,
 } from './content-violations';
 import { ActionKey } from '../connect/idempotency';
-import { contentErrorText, isStale, refusalOf } from './content-client';
+import { contentErrorText, isStale, isUnavailable, refusalOf } from './content-client';
 
 /**
  * What an editor does around a write (MR-025, E10-01 states 5): runs it, and on a refusal puts every violation back on
@@ -23,6 +23,8 @@ export class EntrySaver {
   readonly saving = signal(false);
   readonly placement = signal<Placement>(NO_PLACEMENT);
   readonly error = signal('');
+  /** The failure in `error` is the server being out of the air: nothing was written, and the notice draws a cloud. */
+  readonly offline = signal(false);
   readonly stale = signal(false);
   /** The summary of a refusal, for the alert at the top. */
   readonly summary = signal('');
@@ -103,6 +105,7 @@ export class EntrySaver {
   clear(): void {
     this.placement.set(NO_PLACEMENT);
     this.error.set('');
+    this.offline.set(false);
     this.stale.set(false);
     this.summary.set('');
   }
@@ -126,6 +129,7 @@ export class EntrySaver {
         this.stale.set(true);
       } else {
         this.error.set(contentErrorText(err, `salvar ${this.what}`));
+        this.offline.set(isUnavailable(err));
       }
       return null;
     } finally {

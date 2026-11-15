@@ -26,6 +26,7 @@ export interface PlayApi {
     die: HintDie,
     idempotencyKey: string,
     extraDieFaces?: readonly number[],
+    spendFavor?: boolean,
   ): Promise<TryPuzzleHintResponse>;
   /** The answer to the question a try waits on (a halfling's d20 of 1, a Bardic Inspiration die): `AnswerHeldRoll`; absent
    * in a client that has no such question. */

@@ -19,6 +19,7 @@ import {
   skillNoteOf,
   subclassHintOf,
   subclassWaits,
+  weaponGroups,
 } from './catalog-views';
 
 const SRD = { fromTable: false, archived: false, off: false };
@@ -291,5 +292,39 @@ describe('sectionHeadingOf', () => {
       'Clérigo · Vida · só truques',
     );
     expect(sectionHeadingOf(section({ maxCircle: 2 }))).toBe('Clérigo · até o 2º nível de magia');
+  });
+});
+
+describe('weaponGroups (#580 board 580-16)', () => {
+  const w = (key: string, over: Partial<typeof SRD & { namePt: string }> = {}) => ({
+    key,
+    namePt: key,
+    ...SRD,
+    ...over,
+  });
+  const weapons = [
+    w('equipment:dagger'),
+    w('weapon:machado@mesa', { fromTable: true }),
+    w('weapon:lanca@mesa', { fromTable: true, off: true }),
+    w('weapon:velha@mesa', { fromTable: true, archived: true }),
+  ];
+
+  it('puts the book first and the table apart, with the table weapons switched off for the players left out of theirs', () => {
+    const g = weaponGroups(weapons, [], false);
+    expect(g.book.map((x) => x.key)).toEqual(['equipment:dagger']);
+    expect(g.table.map((x) => x.key)).toEqual(['weapon:machado@mesa']);
+  });
+
+  it('offers the master a weapon that is switched off, never an archived one', () => {
+    expect(weaponGroups(weapons, [], true).table.map((x) => x.key)).toEqual([
+      'weapon:machado@mesa',
+      'weapon:lanca@mesa',
+    ]);
+  });
+
+  it('keeps a weapon the sheet already carries, archived or not', () => {
+    expect(weaponGroups(weapons, ['weapon:velha@mesa'], false).table.map((x) => x.key)).toContain(
+      'weapon:velha@mesa',
+    );
   });
 });

@@ -19,6 +19,7 @@ import {
   reasonValid,
   requestLine,
   sourceLine,
+  sourceLines,
   sourceWord,
   stepLine,
 } from './roll-mode';
@@ -86,6 +87,27 @@ describe('roll mode words and rules', () => {
       } as never;
       expect(sourceLine(source)).toBe('Desvantagem: Luz do sol (Sensibilidade à Luz do Sol)');
     }
+  });
+});
+
+describe('the sources of a roll made with the Inspiração', () => {
+  const src = (kind: AdvantageSourceKind, effect: RollMode, textPt: string) =>
+    ({ kind, effect, textPt }) as never;
+
+  it('reads "Vantagem: Inspiração, Outra fonte" on one line, the visible sources after', () => {
+    expect(
+      sourceLines([
+        src(AdvantageSourceKind.FAVOR, RollMode.ADVANTAGE, 'Inspiração do mestre'),
+        src(AdvantageSourceKind.OTHER_SOURCE, RollMode.ADVANTAGE, 'Outra fonte'),
+        src(AdvantageSourceKind.PRONE_TARGET, RollMode.DISADVANTAGE, 'Alvo caído'),
+      ]),
+    ).toEqual(['Vantagem: Inspiração, Outra fonte', 'Desvantagem: Alvo caído']);
+  });
+
+  it('keeps each source on its own line when no Inspiração was spent', () => {
+    const sources = [src(AdvantageSourceKind.OTHER_SOURCE, RollMode.ADVANTAGE, 'Outra fonte')];
+    expect(sourceLines(sources)).toEqual(sources.map(sourceLine));
+    expect(sourceLines(undefined)).toEqual([]);
   });
 });
 

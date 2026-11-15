@@ -62,6 +62,9 @@ function auditLayout(): LayoutIssue[] {
     const r = el.getBoundingClientRect();
     // 1px or less: a visually hidden label (clipped), for screen readers.
     if (r.width <= 1 || r.height <= 1) return false;
+    // The content of a closed <details> is not shown (its summary is).
+    const closed = el.closest('details:not([open])');
+    if (closed && !el.closest('summary')) return false;
     const cs = getComputedStyle(el);
     return cs.visibility !== 'hidden' && cs.display !== 'none' && Number(cs.opacity) !== 0;
   };
@@ -251,7 +254,8 @@ function auditLayout(): LayoutIssue[] {
       const nearest = c.closest('.mr-panel');
       if (nearest !== card) continue;
       // A strip that scrolls sideways on purpose (the tabs of a narrow card) clips its own controls.
-      const strip = c.closest('[role="tablist"]');
+      // The same goes for the kinds list of the table's content (a nav with a list), which scrolls inside its card.
+      const strip = c.closest('[role="tablist"], .menu__list');
       if (strip && ['auto', 'scroll'].includes(getComputedStyle(strip).overflowX)) continue;
       const r = c.getBoundingClientRect();
       if (r.right > cb.right + 1 || r.left < cb.left - 1) {

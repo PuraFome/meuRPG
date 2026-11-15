@@ -6,7 +6,9 @@ import type {
   RaceOptionVm,
   RulesCatalogVm,
   SubraceOptionVm,
+  WeaponOptionVm,
 } from './character-editor.types';
+import { offered } from './class-blocks';
 
 /** What the editor writes about the entries of the server's catalog: the sentences under a select, the name a
  * message gives an entry, the Constitution the preview adds up, and the skills the lists give. */
@@ -189,4 +191,15 @@ export function subclassWaits(
   subclassKey: string,
 ): boolean {
   return !!c && c.subclassLevel > 0 && level < c.subclassLevel && subclassKey === '';
+}
+
+/** The weapons a sheet may carry, the book's and the table's apart (#580): a table weapon that is archived is offered to nobody new,
+ * and one switched off for the players only to the master; a weapon the sheet already carries stays on the list either way. */
+export function weaponGroups(
+  weapons: readonly WeaponOptionVm[],
+  carried: readonly string[],
+  master: boolean,
+): { book: WeaponOptionVm[]; table: WeaponOptionVm[] } {
+  const shown = offered(weapons, carried, master);
+  return { book: shown.filter((x) => !x.fromTable), table: shown.filter((x) => x.fromTable) };
 }

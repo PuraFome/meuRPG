@@ -1,6 +1,6 @@
 import type { OptionPrerequisite } from '../../../gen/meurpg/rules/v1/table_content_pb';
 import { featureKeyName } from './class-feature-text';
-import type { KeyName } from './feat-text';
+import { type KeyName, listWith } from './feat-text';
 
 /**
  * What a table option is and asks for, in Portuguese (MR-025): the set it joins and its prerequisite as phrases. The server
@@ -43,7 +43,10 @@ export function optionSetLine(
   return offeredBy === '' ? optionSetName(set) : `Opção de ${offeredByName(offeredBy)}`;
 }
 
-/** The conditions of an option's prerequisite, one phrase each; none when it asks nothing. */
+/**
+ * The conditions of an option's prerequisite, one phrase each, in the words and the order the feat editor uses (board 580-02):
+ * the class level ("Bruxo 5"), the pact, the spell, then the options; none when it asks nothing.
+ */
 export function optionPrerequisiteParts(
   p: OptionPrerequisite | undefined,
   nameOf: KeyName,
@@ -53,18 +56,24 @@ export function optionPrerequisiteParts(
   }
   const out: string[] = [];
   if (p.classLevel && p.classLevel.classKey !== '') {
-    out.push(`nível ${p.classLevel.level} de ${nameOf(p.classLevel.classKey)}`);
-  }
-  if (p.requiresOptionKeys.length > 0) {
-    out.push(`a opção ${p.requiresOptionKeys.map((k) => optionKeyName(k, nameOf)).join(' e ')}`);
+    out.push(`${nameOf(p.classLevel.classKey)} ${p.classLevel.level}`);
   }
   if (p.requiresPact !== '') {
-    out.push(`a dádiva ${optionKeyName(p.requiresPact, nameOf)}`);
+    out.push(optionKeyName(p.requiresPact, nameOf));
   }
   if (p.requiresSpellKey !== '') {
-    out.push(`a magia ${nameOf(p.requiresSpellKey)}`);
+    out.push(nameOf(p.requiresSpellKey));
   }
+  out.push(...p.requiresOptionKeys.map((k) => optionKeyName(k, nameOf)));
   return out;
+}
+
+/** "Bruxo 5, Pacto da Lâmina, Rajada Mística e Olhar de Brasa", as a feat says it; empty when the option asks nothing. */
+export function optionPrerequisiteSupport(
+  p: OptionPrerequisite | undefined,
+  nameOf: KeyName,
+): string {
+  return listWith(optionPrerequisiteParts(p, nameOf), 'e');
 }
 
 /** The one line of a list row: the set, then what the option asks (nothing more when it asks nothing). */
@@ -75,9 +84,6 @@ export function optionSupport(
   offeredBy = '',
   offeredByName: OfferedByName = (key) => featureKeyName(key, nameOf),
 ): string[] {
-  const asks = optionPrerequisiteParts(p, nameOf);
-  return [
-    optionSetLine(set, offeredBy, offeredByName),
-    ...(asks.length > 0 ? [`Exige ${asks.join(', ')}`] : []),
-  ];
+  const asks = optionPrerequisiteSupport(p, nameOf);
+  return [optionSetLine(set, offeredBy, offeredByName), ...(asks ? [`Exige ${asks}`] : [])];
 }

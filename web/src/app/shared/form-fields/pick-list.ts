@@ -9,6 +9,8 @@ import type { SelectOption } from './select-field';
 
 let nextId = 0;
 
+const TABLE_WORDS = ' (da mesa)';
+
 /** The words of a chip whose key is not among the options: its label, and what its button says. */
 export interface ChipName {
   readonly label: string;
@@ -26,7 +28,10 @@ export interface ChipName {
     <div class="pick" role="group" [attr.aria-label]="label()" [attr.data-field]="path() || null">
       @for (key of values(); track key) {
         <span class="chip">
-          {{ nameOf(key) }}
+          {{ chipName(key) }}
+          @if (isTable(key)) {
+            <span class="mr-tag">Da mesa</span>
+          }
           <button type="button" class="chip__x" [attr.aria-label]="removeLabel(key)" [disabled]="disabled()" (click)="removed.emit(key)">
             <mat-icon aria-hidden="true">close</mat-icon>
           </button>
@@ -163,6 +168,16 @@ export class PickList {
 
   protected describedBy(): string | null {
     return this.issues().length > 0 || this.hint() !== '' ? this.noteId : null;
+  }
+
+  /** A table entry's name, its "(da mesa)" taken off: the badge says it. */
+  protected isTable(key: string): boolean {
+    return this.nameOf(key).endsWith(TABLE_WORDS);
+  }
+
+  protected chipName(key: string): string {
+    const name = this.nameOf(key);
+    return name.endsWith(TABLE_WORDS) ? name.slice(0, -TABLE_WORDS.length) : name;
   }
 
   protected nameOf(key: string): string {

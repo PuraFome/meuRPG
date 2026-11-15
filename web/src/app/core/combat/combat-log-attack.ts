@@ -24,6 +24,7 @@ import { hpCastText } from './combat-log-hp-cast';
 import { LogContext, LogRoll, PoolCard } from './combat-log-types';
 import { inThe, pushText, the } from './combat-log-words';
 import { powerAttackNote } from './power-attack-text';
+import { TRADE_PART_KEY } from './power-attack-trade';
 
 /** Whether the attack is made from afar, so the sentence says "atira". */
 function isShot(key: string): boolean {
@@ -289,8 +290,11 @@ export function damageNotes(d: CombatLogDamage | undefined): string[] {
     const base = `${st.labelPt || word}: ${st.before} → ${st.after}`;
     return st.ignored ? `${base} (o mestre deixou de fora)` : base;
   });
+  // The +10 of a power attack is told once, in the sentence ("com ataque poderoso (−5 no ataque, +10 no dano)"), so its part with
+  // numbers adds no line of its own; the part another player reads (no numbers) names the source and stays.
+  const shown = d.parts.filter((p) => !(p.partKey === TRADE_PART_KEY && p.flat !== 0));
   return [
-    ...d.parts.map((p) => partLine(p, d.parts)),
+    ...shown.map((p) => partLine(p, d.parts)),
     ...rolledLine(d),
     ...steps,
     ...countedSources(countedOf(d)),
