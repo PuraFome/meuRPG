@@ -553,10 +553,10 @@ SELECT * FROM pending_damages
 WHERE encounter_id = $1 AND id = $2;
 
 -- name: ListOpenPendingDamages :many
--- What still waits for a reaction, to be rolled or applied in the combat,
--- oldest first.
+-- What still waits for a reaction, to be rolled (or to have its group sum rolled) or applied in
+-- the combat, oldest first.
 SELECT * FROM pending_damages
-WHERE encounter_id = $1 AND status IN ('awaiting_reaction', 'awaiting_roll', 'rolled')
+WHERE encounter_id = $1 AND status IN ('awaiting_reaction', 'awaiting_roll', 'awaiting_group_sum', 'rolled')
 ORDER BY created_at, id;
 
 -- name: ListCastPendingDamages :many
@@ -570,7 +570,8 @@ ORDER BY created_at, id;
 -- the master), 'applied' for an NPC. amount is what lands, roll_total the roll
 -- before a half damage halves it. counted_dice are the dice a table minimum raised.
 UPDATE pending_damages
-SET status = $2, faces = $3, physical = $4, amount = $5, resolved_at = $6, roll_total = $7, counted_dice = $8
+SET status = $2, faces = $3, physical = $4, amount = $5, resolved_at = $6, roll_total = $7, counted_dice = $8,
+    awaited_damage_type_key = ''
 WHERE id = $1
 RETURNING *;
 
@@ -609,7 +610,17 @@ RETURNING *;
 UPDATE pending_damages
 SET status = 'awaiting_roll', faces = '{}', physical = false, amount = NULL, resolved_at = NULL, roll_total = NULL, taken = NULL,
     counted_dice = '[]', part_rolls = '[]', steps = '[]', after_steps = NULL, landed_before = NULL,
+    awaited_damage_type_key = '',
     parts = COALESCE(NULLIF(parts, 'null'::JSONB), '[]'::JSONB)
+WHERE id = $1
+RETURNING *;
+
+-- name: SetPendingDamageGroupSum :one
+-- The master took a part out of a group of parts that share a damage type, and the damage waits for the sum of that
+-- damage type alone: the parts as they are now (with the one taken out marked) and what the other damage types rolled.
+-- Run after the damage was taken back (ClearPendingDamageRoll), which left nothing else on the row.
+UPDATE pending_damages
+SET status = 'awaiting_group_sum', awaited_damage_type_key = $2, parts = $3, part_rolls = $4
 WHERE id = $1
 RETURNING *;
 
@@ -807,10 +818,10 @@ WHERE game_session_id = sqlc.arg(game_session_id) AND character_id = sqlc.arg(ch
 
 -- name: ListEncounterCombatEvents :many
 -- The events that count in the combat highlights (MR-032), oldest first, with
--- the undos that may take them back.
+-- the undos that may take them back (and the take-out of a part of a group, which takes the damage's roll back).
 SELECT id, kind, payload FROM session_events
 WHERE encounter_id = $1
-  AND kind IN ('attack_rolled', 'damage_rolled', 'damage_applied', 'spell_cast', 'action_taken', 'action_undone',
+  AND kind IN ('attack_rolled', 'damage_rolled', 'damage_applied', 'spell_cast', 'action_taken', 'action_undone', 'damage_part_removed',
     'reaction_answered', 'reaction_used', 'spell_zone_triggered', 'lasting_effect_triggered')
 ORDER BY seq
 LIMIT 20000;
@@ -1099,7 +1110,7 @@ WHERE move_id = $1;
 SELECT o.* FROM opportunity_offers o
 LEFT JOIN pending_damages p ON p.id = o.attack_pending_id
 WHERE o.encounter_id = $1
-  AND (o.state = 'pending' OR (o.state = 'attacked' AND p.status IN ('awaiting_reaction', 'awaiting_roll', 'rolled')))
+  AND (o.state = 'pending' OR (o.state = 'attacked' AND p.status IN ('awaiting_reaction', 'awaiting_roll', 'awaiting_group_sum', 'rolled')))
 ORDER BY o.created_at, o.id;
 
 -- name: ListTrapDamageStatuses :many

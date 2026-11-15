@@ -280,7 +280,7 @@ func (f *damageFlow) checkStatus() error {
 // cast: the pending damages of the cast still to be rolled are settled by this roll.
 func (f *damageFlow) openGroup(ctx context.Context) error {
 	f.group = []playdb.PendingDamage{f.p}
-	if f.p.CastID == nil {
+	if f.p.CastID == nil || f.p.Status == pendingAwaitingGroupSum { // the sum of one group is the roll of this damage alone
 		return nil
 	}
 	p := f.p
@@ -403,7 +403,16 @@ func (f *damageFlow) startEvent() {
 		Round: f.c.enc.Round, Secret: secretOf(f.attacker, f.target), Actor: f.attacker.ID, Target: p.TargetID, Pending: p.ID, Key: p.AttackKey,
 		DiceCount: p.DiceCount + p.ExtraDice, ExtraDice: p.ExtraDice, SavageDice: p.SavageDice, DiceSides: p.DiceSides, Modifier: conv.Int32(int(p.DiceBonus) + int(p.CriticalMax)), CriticalMax: p.CriticalMax, CriticalMaxRule: p.CriticalMaxRule, Faces: f.faces,
 		DamageType: p.DamageType, Critical: p.Critical, Physical: f.roll.Physical, Heal: p.Healing, Total: f.rolledTotal, DamageReroll: f.reroll, CountedDice: f.counted,
+		AwaitsSum: awaitedOf(p), // the undo of the roll of a group's sum puts the wait for it back
 	}
+}
+
+// awaitedOf is the damage type whose sum the roll of the pending damage takes, when the damage waits for one (combat_group_sum.go).
+func awaitedOf(p playdb.PendingDamage) string {
+	if p.Status != pendingAwaitingGroupSum {
+		return ""
+	}
+	return p.AwaitedDamageTypeKey
 }
 
 // settlePartsOfRoll does what a roll with parts leaves besides the damage: the slot a smite spent, the
@@ -412,7 +421,7 @@ func (f *damageFlow) settlePartsOfRoll(ctx context.Context) error {
 	if f.pr == nil {
 		return nil
 	}
-	vit, err := f.s.settleParts(ctx, f.c, f.attacker, f.pr, &f.out.made)
+	vit, err := f.s.settleParts(ctx, f.c, f.attacker, f.pr, &f.out.made, f.p.Status == pendingAwaitingGroupSum)
 	if err != nil {
 		return err
 	}

@@ -433,8 +433,9 @@ func TestPM06b_TheMasterTakesAnExtraOutWithAReason(t *testing.T) {
 			t.Errorf("%s reads %v, want the removal with its reason", who, en)
 		}
 	}
-	if en := line(a.ana); en != nil {
-		t.Errorf("another player reads %v, want no removal line", en)
+	// Another player reads what came out, by the name the roll line gave it, and never why or the part's key (#835).
+	if en := line(a.ana); en == nil || en.GetKeyNamePt() != line(a.caio).GetKeyNamePt() || en.GetReason() != "" || en.GetKey() != "" {
+		t.Errorf("another player reads %v, want the removal line with the part's name and no reason or key", en)
 	}
 	for who, u := range map[string]*user{"the master": a.master, "Toren's player": a.caio} {
 		if !strings.Contains(a.readsOf(t, u, e, ""), removalMarker) {

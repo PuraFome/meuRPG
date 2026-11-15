@@ -169,14 +169,36 @@ describe('the damage that waits for the master', () => {
   });
 
   it('says what is owed: to apply first, then to roll, else nothing', async () => {
-    const { openDamages, pendingNote } = await import('./attack-flow');
+    const { pendingNote } = await import('./attack-flow');
     const rolled = create(PendingDamageSchema, { status: PendingDamageStatus.ROLLED, amount: 5 });
     const waiting = create(PendingDamageSchema, { status: PendingDamageStatus.AWAITING_ROLL });
     const applied = create(PendingDamageSchema, { status: PendingDamageStatus.APPLIED, amount: 2 });
+    const sum = create(PendingDamageSchema, { status: PendingDamageStatus.AWAITING_GROUP_SUM });
     expect(pendingNote([waiting, rolled])).toBe('Falta aplicar 5 de dano');
     expect(pendingNote([waiting])).toBe('Falta rolar o dano');
+    expect(pendingNote([sum])).toBe('Falta rolar o dano');
     expect(pendingNote([applied])).toBeNull();
-    expect(openDamages([waiting, rolled, applied])).toHaveLength(2);
+  });
+
+  it('keeps only the damages that wait: the master also lists the applied one a take-out could undo', async () => {
+    const { openPendingDamages } = await import('./attack-flow');
+    const of = (status: PendingDamageStatus) =>
+      create(PendingDamageSchema, { id: `${status}`, status });
+    const all = [
+      PendingDamageStatus.AWAITING_ROLL,
+      PendingDamageStatus.ROLLED,
+      PendingDamageStatus.APPLIED,
+      PendingDamageStatus.DISCARDED,
+      PendingDamageStatus.AWAITING_REACTION,
+      PendingDamageStatus.AWAITING_GROUP_SUM,
+      PendingDamageStatus.UNSPECIFIED,
+    ].map(of);
+    expect(openPendingDamages(all).map((p) => p.status)).toEqual([
+      PendingDamageStatus.AWAITING_ROLL,
+      PendingDamageStatus.ROLLED,
+      PendingDamageStatus.AWAITING_REACTION,
+      PendingDamageStatus.AWAITING_GROUP_SUM,
+    ]);
   });
 });
 
