@@ -228,7 +228,7 @@
                 <span class="crit__text">{{ card.sentence }}</span>
               </div>
             }
-          } @else {
+          } @else if (!dmg.awaited()) {
             <p class="dmg__what">
               {{ dmg.showCritical() ? dmg.intro() : (s.pending()?.critical ? 'Acerto crítico: o dano segue a regra da mesa.' : 'Acertou: role o dano.') }}
             </p>

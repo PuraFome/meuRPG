@@ -157,6 +157,7 @@ describe('AttackSheet: the sum asked again after the master took a part out of a
     expect(text()).toContain('Geada no Punho');
     expect(text()).toContain('já digitado, fica');
     expect(text()).not.toContain('22 PV');
+    expect(text()).not.toContain('Acertou: role o dano.');
     expect(el.querySelectorAll('app-damage-parts')).toHaveLength(0);
   });
 
