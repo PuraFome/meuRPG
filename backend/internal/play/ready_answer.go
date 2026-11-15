@@ -17,6 +17,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/reaction"
 )
 
@@ -402,9 +403,10 @@ func readiedHeldForWindows(ctx context.Context, q *playdb.Queries, encID, window
 }
 
 // readiedMoveOf is the readied move the mover makes: a walk off its turn while its READIED window of a move is open. Any
-// other move (on its turn, forced, a jump, a placement, a legendary move) is not one.
+// other move (on its turn, forced, a jump, a placement, a legendary move, the master's drop of a token where it stands) is
+// not one.
 func (s *Service) readiedMoveOf(ctx context.Context, a *moveAttempt) error {
-	if !a.req.walking() || a.req.place || a.req.legendary != "" || actsNow(a.c.enc, a.target) {
+	if !a.req.walking() || a.req.place || a.req.legendary != "" || actsNow(a.c.enc, a.target) || a.staysPut() {
 		return nil
 	}
 	open, err := openWindowsOf(ctx, a.c)
@@ -428,6 +430,12 @@ func (s *Service) readiedMoveOf(ctx context.Context, a *moveAttempt) error {
 		return err
 	}
 	return s.mustReactNowOrOnTurn(ctx, a.c, a.target)
+}
+
+// staysPut says the master drops the token on the square it stands on: a token put right, which travels nothing. A player's
+// move to its own square is refused by mustGoSomewhere, window or not.
+func (a *moveAttempt) staysPut() bool {
+	return a.v.master && placed(a.target) && squareOfCombatant(a.target) == grid.Square{Col: int(a.req.col), Row: int(a.req.row)}
 }
 
 // openReadiedMove is the readied move of who whose READIED window is open while it is not on its turn, if any:
