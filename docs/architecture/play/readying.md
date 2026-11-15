@@ -203,10 +203,14 @@ The cast waits for the windows any cast opens (Counterspell), with the READIED w
 A spell attack's d20 held for a die waits the same way, and the master's window reads `answer_now` false.
 A countered release is the use: the row is `fired`, the reaction spent, the concentration ended and the slot lost.
 A refused release spends nothing and the window stays open.
-The readier's player marks the window with `MarkReactionRolling` while it chooses on the map.
-The mark is one-way: nothing takes it off, and going back to the window neither restarts the wait nor brings the 30 s clock back.
-The mark is read by the master and the reactor's player only: another player and the TV read the same wait line as before it.
-It is idempotent and the reactor's player's alone, and the window stays open and answerable.
+The readier's player sets the mark on entering the map (`MarkReactionRolling`) and clears it on going back (the same call with `clear`).
+The first set starts one wait of 120 s, and no later set or clear restarts it.
+The server records when the wait began, once, in the window's trigger, and never changes it afterwards.
+The master's row reads whether the player is on the map now (`rolling`) and when the wait began (`wait_began_at`).
+The master's screen passes the window when the 120 s end, with `AnswerReaction` PASS: the server runs no timer.
+The reactor's player reads the mark back too (a second device of the same player shows it), `rolling` and `wait_began_at`.
+No other player reads either: another player and the TV read the same wait line in every moment.
+Both ways are idempotent and the reactor's player's alone (the master and another player are refused), nothing is written to the log, and the window stays open and answerable.
 A held release whose spell breaks before the Counterspell windows are answered is lost: the row is `broken` and its window closes, the replay is refused as any cast off the readier's turn, and the master reads `held_dropped` in the log (`settleReplay`).
 Nothing is cast, and no write fails.
 "Deixar passar" loses the spell: the row is `ignored`, a `READIED_LOST` line names the spell, and the concentration ends.
