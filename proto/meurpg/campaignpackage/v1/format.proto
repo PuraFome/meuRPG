@@ -227,6 +227,9 @@ message PackageNpc {
   string master_notes = 5;
   // ENEMY, BOSS, MINION or STORY.
   meurpg.characters.v1.CharacterKind kind = 6;
+  // What the NPC's magic items spent and the pieces of ammunition it holds (see PackageCharacter).
+  repeated PackageItemCharge item_charges = 7;
+  repeated PackageAmmunition ammunition = 8;
 }
 
 // PackageCharacter is `characters/<n>.json`: a player's character, which is
@@ -238,6 +241,29 @@ message PackageCharacter {
   meurpg.characters.v1.CharacterSheet sheet = 3;
   meurpg.characters.v1.CharacterStory story = 4;
   string master_notes = 5;
+  // What the character's magic items spent, one for each entry of the sheet that is not at its catalog state, and the
+  // pieces of ammunition it holds. They are checked against the sheet and the rules content that come with them.
+  repeated PackageItemCharge item_charges = 6;
+  repeated PackageAmmunition ammunition = 7;
+}
+
+// PackageItemCharge is the stored state of one magic item of a sheet (the characters module's
+// `character_item_charges`): the charges spent, how it was lost, the dawns an item that waits for them has counted
+// and whether it waits for the d20 of its last charge. The entry is the id of the item on the sheet
+// (SheetMagicItem.id).
+message PackageItemCharge {
+  string entry_id = 1;
+  int32 charges_used = 2;
+  meurpg.characters.v1.ItemLoss lost = 3;
+  int32 dawns_waited = 4;
+  bool last_roll_pending = 5;
+}
+
+// PackageAmmunition is the pieces a character holds of one kind of ammunition. What a combat fired is no part of it:
+// a combat does not travel with a package.
+message PackageAmmunition {
+  string ammo_key = 1;
+  int32 quantity = 2;
 }
 
 // PackagePuzzle is `puzzles/<n>.json`: a puzzle as the master made it, with
