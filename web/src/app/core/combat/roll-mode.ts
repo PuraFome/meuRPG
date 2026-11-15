@@ -7,7 +7,7 @@ import {
   RollMode,
   RollModeRequestStatus,
 } from '../../../gen/meurpg/play/v1/combat_rolls_pb';
-import { extraDiceText, rollFormula } from './combat-dice';
+import { extraDiceText, modifierText, rollFormula } from './combat-dice';
 
 /** The three modes a d20 is rolled with, in the order the radio group shows them. */
 export const ROLL_MODES: readonly RollMode[] = [
@@ -70,9 +70,44 @@ export function sourceWord(source: AdvantageSource): string {
  * "Outra fonte" (an effect the master keeps from the players) and the advantage an active effect gives on a saving throw or an
  * ability check ("Efeito ativo: vantagem em testes de habilidade") are the server's sentence as it is: it already says what they are. */
 export function sourceLine(source: AdvantageSource): string {
+  if (source.kind === AdvantageSourceKind.FAVOR) {
+    return `Vantagem: ${sourceLabel(source)}`;
+  }
   return SENTENCE_SOURCES.has(source.kind)
     ? source.textPt
     : `${sourceWord(source)}: ${source.textPt}`;
+}
+
+/** How a source that is only a label reads in "Vantagem: Inspiração, Outra fonte": the master's Inspiração the roller spent, and a
+ * source the master keeps from the players (always "Outra fonte", never what it is). `null` for every other kind. */
+export function sourceLabel(source: AdvantageSource): string | null {
+  switch (source.kind) {
+    case AdvantageSourceKind.FAVOR:
+      return 'Inspiração';
+    case AdvantageSourceKind.OTHER_SOURCE:
+      return 'Outra fonte';
+    default:
+      return null;
+  }
+}
+
+/** The lines under a roll for its sources. A roll made with the Inspiração reads as the board has it, the labels of one side on one
+ * line ("Vantagem: Inspiração, Outra fonte"); any other roll reads each source with `sourceLine`, as before. */
+export function sourceLines(all: readonly AdvantageSource[] | undefined): string[] {
+  const sources = all ?? [];
+  if (!sources.some((s) => s.kind === AdvantageSourceKind.FAVOR)) {
+    return sources.map(sourceLine);
+  }
+  const lines: string[] = [];
+  for (const effect of [RollMode.ADVANTAGE, RollMode.DISADVANTAGE]) {
+    const labels = sources.filter((s) => s.effect === effect).flatMap((s) => sourceLabel(s) ?? []);
+    if (labels.length > 0) {
+      lines.push(
+        `${effect === RollMode.ADVANTAGE ? 'Vantagem' : 'Desvantagem'}: ${labels.join(', ')}`,
+      );
+    }
+  }
+  return [...lines, ...sources.filter((s) => sourceLabel(s) === null).map(sourceLine)];
 }
 
 /** The lines "Bênção +1d4: 3" for the dice an effect added to a roll, named after the effect. A roll whose sources already
@@ -166,13 +201,13 @@ export function stepLine(step: DamageStep): string {
 }
 
 /** The formula of a d20: `14 + 5 = 19` for the face that counts of a pair, the usual one for a single d20; `named` writes the
- * source of each extra die ("Golpe Certeiro 1d8 (5)"). */
-export function d20Formula(roll: DiceRoll, named = false): string {
+ * source of each extra die ("Golpe Certeiro 1d8 (5)"). `trade` is the penalty of a power attack the modifier already
+ * counts: it is written apart, so the formula reads "+ 6 − 5" and sums to the total. */
+export function d20Formula(roll: DiceRoll, named = false, trade = 0): string {
   if (roll.diceCount > 1 && roll.faces.length > 1) {
     const kept = roll.faces[roll.countedIndex] ?? roll.faces[0];
-    const mod =
-      roll.modifier === 0 ? '' : ` ${roll.modifier < 0 ? '−' : '+'} ${Math.abs(roll.modifier)}`;
+    const mod = modifierText(roll.modifier + trade) + modifierText(-trade);
     return `${kept}${mod}${extraDiceText(roll, named).text} = ${roll.total}`;
   }
-  return rollFormula(roll, named);
+  return rollFormula(roll, named, trade);
 }

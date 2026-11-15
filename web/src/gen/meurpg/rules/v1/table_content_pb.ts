@@ -2937,7 +2937,8 @@ export type TableSpellEffect = Message<"meurpg.rules.v1.TableSpellEffect"> & {
   playerLabelPt: string;
 
   /**
-   * Who sees the effect on the creature. Unset is OWNER.
+   * Who sees the effect on the creature. Unset is OWNER. A player who reads the spell reads this too (PUBLIC or
+   * OWNER names nobody); the label above and the aura stay the master's.
    *
    * @generated from field: meurpg.rules.v1.TableEffectAudience visibility = 5;
    */
@@ -3088,7 +3089,7 @@ export type TableEffectModifier = Message<"meurpg.rules.v1.TableEffectModifier">
   perSlotDice: number;
 
   /**
-   * WEAPON_HIT_DAMAGE only, required: the most dice the damage has, at least `dice` and at most 20.
+   * WEAPON_HIT_DAMAGE only: the most dice the damage has, from `dice` to 20; 0 is no limit.
    *
    * @generated from field: int32 max_dice = 14;
    */
@@ -5510,7 +5511,7 @@ export enum TableEffectModifierKind {
   /**
    * Extra weapon damage on a hit the caster makes, as `trigger` says: `die` (d4, d6, d8, d10 or d12),
    * `dice`, `per_slot_dice`, `max_dice`, `damage_type`, and optionally a `save` with the
-   * `on_fail_conditions` it puts on the target. Needs `trigger`, `die`, `dice` and `max_dice`; reads no other field. A spell has one of these. The
+   * `on_fail_conditions` it puts on the target. Needs `trigger`, `die` and `dice`; reads no other field. A spell has one of these. The
    * spell must last (not instantaneous), and EACH_HIT and MARKED_TARGET need concentration.
    *
    * @generated from enum value: TABLE_EFFECT_MODIFIER_KIND_WEAPON_HIT_DAMAGE = 20;

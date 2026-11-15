@@ -29,7 +29,7 @@ How the code does it lives in the [architecture docs](../architecture/README.md)
 | RN-18 | **Physical or app dice.** The master chooses whether the campaign lets players choose the dice. If it does, each player chooses between rolling in the app or rolling the physical die and typing the result. | [Detail](#rn-18-physical-or-app-dice) |
 | RN-19 | **Initiative.** In a battle with several identical NPCs, each rolls its own initiative; the group does not roll together. | [Detail](#rn-19-initiative) |
 | RN-20 | **What players see of enemies in combat.** Players do not see enemy hit points as a number. They see one word: "Ileso", "Ferido", "Muito ferido" or "Derrotado". | [Detail](#rn-20-what-players-see-of-enemies-in-combat) |
-| RN-21 | **Grid movement.** On the map grid, each square is 1.5 m and movement is a **circle**: the distance between two squares is the straight line between their centres, and what a combatant can reach is the circle of its remaining movement. | [Detail](#rn-21-grid-movement) |
+| RN-21 | **Grid movement.** On the map grid, each square is 1.5 m and movement is a **circle**: the distance between two squares is the straight line between their centres, and what a combatant can reach is the circle of its remaining movement. A rider mounts and dismounts at half speed, and a mount knocked from under it can throw it (DC 10 Dexterity save). | [Detail](#rn-21-grid-movement) |
 | RN-22 | **Conditions and concentration.** The app marks conditions (prone, poisoned...) and concentration, and reminds: when a concentrating character takes damage, the game asks its owner for the concentration save (RN-31). | [Detail](#rn-22-conditions-and-concentration) |
 | RN-23 | **Table content.** The master registers classes, subclasses, races, subraces, backgrounds, spells, feats, options, class features, weapons and creatures that hold only in their campaign, next to the SRD 5.1. Members read the campaign's content, except creatures; only the master writes. | [Detail](#rn-23-table-content) |
 | RN-24 | **Table rules.** At the top of the "Regras da mesa" page is the **table style**: "Tudo no app" (dice in the app, combat with a map, fog on in new maps), "Mesa física" (physical dice, combat without a map by default, fog off) or "Teatro da mente" (each player picks the dice, combat without a map, no fog), and "Personalizado" when the choices match none. | [Detail](#rn-24-table-rules) |
@@ -141,9 +141,25 @@ The master can also correct hit points, temporary hit points, spell slots (and p
   The loss has three outcomes, as the item says: it is gone (the wands, and the staffs of fire, frost, healing and swarming insects), it becomes a plain nonmagical item that stays on the sheet as what it is made of (the staffs of charming, striking and the woodlands), or it keeps only its bonus to attack and damage rolls (the staff of power).
   An item whose charges the SRD rolls (the luck blade, the nine lives stealer) has none set when it is new: the master sets them, from 0 to the maximum.
   The figurine of the ivory goats regains all its charges on the seventh dawn after the last one was spent.
+  The dawn is the master's: "Amanhecer" gives every character's items their dawn, and a long rest does the same as part of the rest when its request asks for it, and it does not by default.
+  A short rest never recharges items.
+  At a dawn an item that regains charges gets them back as its entry says (all of them, or its dice), up to the maximum, and an item that is full is left as it is.
+  The app rolls the dice of a dawn, also at a table of real dice, because the master rolls them for the table.
+  A master who rolled the dice at the table corrects the item's charges by hand, as the sheet allows.
+  The figurines count the dawn only while they have no charge left, and regain them all on the seventh.
+  A figurine with a charge left counts no dawn.
+  An item that is lost never recharges, and an item that waits for the d20 of its last charge waits for the roll first.
+  Every item that regained charges is recorded in the session history, and only the master and the owner read it.
   An item that does not recharge (a talisman, a scarab) keeps what is left until the master corrects it.
   A save of the sheet never changes the charges, and removing an item from the sheet drops what it spent.
   A player reads the charges of their own characters only, and the master reads all of them.
+- **Ammunition (SRD 5.1, "Weapons": the ammunition property).**
+  Arrows, bolts, sling bullets and blowgun needles are counted on the sheet, one number for each kind.
+  The owner sets the count while the sheet is open to editing, and the master at any time.
+  A kind the character has no count for is not counted: the shot spends nothing until the owner or the master sets a count.
+  A kind counted at 0 refuses the shot.
+  After a combat ends, a minute spent searching the battlefield gives back half, rounded down, of the pieces of each kind the character fired in it, once for each combat.
+  A player reads the ammunition of their own characters only, and the master reads all of them.
 - **Wholeness of Body of the Open Hand monk (level 6).**
   The monk's own action heals three times the monk level in hit points, up to the maximum.
   It has no roll and no dice to type.
@@ -165,6 +181,8 @@ The master takes a short or a long rest for the table, after a confirmation that
 | Short | Resources that recharge on a short or a long rest, and the warlock's pact slots. Each player spends hit dice one at a time, rolled in the app or typed from a real die (RN-18), and heals the roll plus the Constitution modifier. |
 | Long | Every resource that does not recharge at dawn or never, all spell slots, all hit points, and half of the total hit dice (at least one). Temporary hit points end. A character at 0 hit points gains nothing. |
 
+- The long rest can also be the dawn of the magic items: when the request asks for it, the items that recharge at dawn recharge in the same step, and a rest sent twice recharges once.
+  The request does not ask for it by default, and it means nothing on a short rest.
 - The app does not count hours: the master is warned when the session already had a long rest. A rest is refused while a combat runs.
 - Hit dice are kept by die size (SRD, "Multiclassing").
 - **Arcane Recovery** (Wizard): once per long rest, after a short rest, the player chooses expended slots whose combined level is at most half the wizard level, rounded up, none of the 6th level or higher. Only the wizard level counts, and never pact slots. The short rest sheet has a "Recuperação Arcana" section, and afterwards it reads "Recuperação Arcana: usada; volta no descanso longo." A refusal changes nothing.
@@ -456,6 +474,7 @@ If it does not, everyone uses the type the master picks.
 - A change applies from the next roll. NPCs always roll in the app, and the master can type a value.
 - With a physical die the player types the sum of the dice without the modifier (the d20 face, 1 to 20), and the app adds the modifier. The sum must fit between the minimum and the maximum of the dice.
 - The rule covers initiative, attack and damage rolls, spell attacks, spell damage and healing, Second Wind, death saves, the d20 of an RP scene action, searching for traps, puzzle hints, the group check, both sides of a contest, Hide, the ability check of Counterspell and the 4d6 ability scores of a new sheet. A mode the master forced refuses the other way with "A campanha mudou a forma de rolar os dados. Recarregue a página.".
+- The dice of the magic items' dawn, rolled by the master for the whole table, are always rolled by the app, like the reroll exceptions above.
 - A spell target's saving throw is always rolled by the app with the sheet's bonus.
 - A table feature's reroll ("rolar de novo?", RN-23) is rolled by the app even when the master forces physical dice: it is the one d20 the player cannot type.
 - The hit points rolled when a character is created are not part of this rule.
@@ -590,6 +609,25 @@ Leaving an enemy's reach provokes an opportunity attack, which the app offers to
 - A move that enters a trap the character knows asks "Isso entra no Fosso escondido. Mover assim mesmo?".
 - "Desfazer última ação" undoes moves, jumps and the Disengage flag. A move whose offer was answered can be undone only after undoing the answer.
 
+**Mounted combat** (SRD 5.1, "Mounted Combat").
+A rider mounts or dismounts a willing mount one size larger than itself (a Medium rider needs a Large mount; the pony and the mastiff of Find Steed are too small for it).
+Mounting needs the mount within 1.5 m and costs half the rider's speed on the surface it stands on, the Dash not counted; dismounting costs the same and lands on a free neighbouring square.
+A move holds one mount or one dismount.
+A player mounts their own creatures and the mounts the master marked "Montaria" on the party's side, and the master mounts any creature.
+A creature the master marked nothing acts on its own.
+The pair is one occupant of the mount's square, and the mount's turn is its own.
+
+- **A controlled mount** (the Find Steed steed, or a mount marked "adestrada") takes the rider's initiative and acts right after the rider, in one joint turn that ends when both parts have ended.
+  It can only Dash, Disengage and Dodge, and the rider's player moves it, with its speed and its movement.
+  The rider does not move on its own while mounted.
+- **An independent mount** keeps its own initiative and its own turn, and carries the rider along.
+- **Forced dismount.** When the mount is moved against its will (a shove or a push) or the rider is knocked prone, the rider's player makes a Dexterity saving throw against DC 10 (a window like the concentration save of RN-31): on a failure the rider falls prone within 1.5 m of the mount.
+  The master rolls for an NPC rider.
+- **A mount knocked prone or defeated** opens a reaction window for its rider (RN-31): the rider spends its reaction to land on its feet, or falls prone within 1.5 m.
+  A steed the caster dismisses lets the rider land on its feet with no window.
+- **An opportunity attack** against a mounted pair may target the mount or the rider.
+- A player reads the link between two creatures only when they see both of them; a hidden mount leaves its rider plain, and no player reads the master's mark or another player's save roll.
+
 **Sculpt Spells** (SRD 5.1, School of Evocation).
 An evocation wizard from level 2, casting an evocation spell that affects other creatures it can see, spares up to 1 + the spell's level of them (the level it is cast at). A spared creature succeeds on its saving throw with no roll and takes no damage when the spell would deal half; the save line says "Esculpir Magias".
 The caster is never among them, and only creatures the spell reaches and the caster sees can be named.
@@ -709,7 +747,7 @@ Members read the campaign's content, except creatures (below); only the master w
   A spell on its caster alone may make the effect an aura: it reaches, at each roll, the creatures within its radius on the chosen side ("allies" includes its bearer, as the SRD's allied auras do), gives only what a roll reads, and a player reads its bonus as the source's name or "Outra fonte", never the radius of an aura they do not own.
   The lasting effect of a class or a feature is a state of its owner.
   A spell may also write a next-hit effect on its caster: extra weapon damage on the caster's next hit, next melee hit, every hit while concentrating, or every hit on the creature the spell marked.
-  The master picks the die, the dice (more per slot level above, up to a cap) and the damage type (the weapon's if none).
+  The master picks the die, the dice (more per slot level above, up to a cap the master may leave out) and the damage type (the weapon's if none).
   It may add a saving throw for the target of the hit, with the conditions a fail gives, until the end of its next turn or as long as the spell lasts.
   So a table spell writes a lasting effect on its targets, a next-hit effect on its caster, or both, and never code.
   The damage is offered automatically after a weapon hit, doubled on a critical hit, and a miss keeps the effect.
@@ -1196,7 +1234,7 @@ These are the actions of a combat decided by a contest or by a state only some c
 The defender's player or the master answers a contest; everyone else reads "Esperando o mestre" or the waiting name.
 A player never reads an NPC's total, skill or modifier, the escape DC, who could see a hider, or another player's total.
 
-- **Grapple and shove** are special melee attacks of the Attack action: each replaces one attack, so Extra Attack gives more than one. The target is at most one size larger and within 5 ft; a grapple needs a free hand (a reminder; the app does not track hands). The attacker rolls Strength (Athletics) against the target's Strength (Athletics) or Dexterity (Acrobatics), the target's choice. The higher total wins; a tie changes nothing. A won grapple makes the target Grappled (speed 0). A won shove lets the winner knock the target prone or push it 5 ft away (no free square, no push). A grapple or shove counts as the Attack action for what follows it: a monk may spend ki on Flurry of Blows right after, but the Martial Arts bonus strike does not follow a grapple alone. Against a hostile creature it counts as an attack: it keeps a rage going and gives a hider's position away.
+- **Grapple and shove** are special melee attacks of the Attack action: each replaces one attack, so Extra Attack gives more than one. The target is at most one size larger and within 5 ft; a grapple needs a free hand (a reminder; the app does not track hands, except that a character in a beast form has none: its turn lists no Grapple, only Shove, and a Grapple request is refused for the player and the master alike, unless the beast has an attack of its own that grapples; a shove needs no hand). The attacker rolls Strength (Athletics) against the target's Strength (Athletics) or Dexterity (Acrobatics), the target's choice. The higher total wins; a tie changes nothing. A won grapple makes the target Grappled (speed 0). A won shove lets the winner knock the target prone or push it 5 ft away (no free square, no push). A grapple or shove counts as the Attack action for what follows it: a monk may spend ki on Flurry of Blows right after, but the Martial Arts bonus strike does not follow a grapple alone. Against a hostile creature it counts as an attack: it keeps a rage going and gives a hider's position away.
 - **Escape** is the grappled creature's action: Strength (Athletics) or Dexterity (Acrobatics) against the grappler's Strength (Athletics), or against a fixed DC when the grapple comes from a monster's attack (the master sets it; a player never reads it). A grapple ends when the grappler is incapacitated or out of the fight, when the grappled creature leaves its reach, or when the master releases it.
 - **Dragging.** A grappler that moves drags the creature, at half speed, unless the grappled creature is two or more sizes smaller. The dragged creature ends on the square behind the grappler; if that square is taken, the move is refused. It gets no opportunity attack against its grappler.
 - **Hide** is a Dexterity (Stealth) check as an action. The master says whether there is a place to hide. The Stealth total is compared with each creature's passive Perception (10 plus the bonus, +5 with advantage, -5 with disadvantage); a tie keeps the hider noticed. The master can say a creature sees the hider clearly. A hidden attacker has advantage against a creature that has not noticed it ("Atacante não visto"), and the attack gives its position away, hit or miss, for every creature. A spell with a verbal component ends hiding too; one with only somatic or material components does not. Armor that gives disadvantage on Stealth gives it on the Hide roll and on Stealth group checks. A player reads only "Escondida", never from whom nor who noticed.

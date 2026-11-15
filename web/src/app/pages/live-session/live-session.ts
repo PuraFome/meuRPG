@@ -56,6 +56,8 @@ const BADGE_MAX = 99;
   // The conversation panel is named here, not in the shared list, so the compiler can see that only the
   // `@defer` block uses it and gives it a chunk of its own.
   imports: [...LIVE_SESSION_IMPORTS, ConversationPanel],
+  // Who has the Inspiração is the root `FavorState`: the order list, the Grupo tab, the band and the roll sheets (built from the root
+  // injector) read one state.
   templateUrl: './live-session.html',
   styleUrl: './live-session.scss',
 })
@@ -67,6 +69,7 @@ export class LiveSession {
   protected readonly mover = this.parts.mover;
   protected readonly trapBoard = this.parts.trapBoard;
   protected readonly toasts = this.parts.toasts;
+  protected readonly favor = this.services.favor;
   protected readonly fog = this.parts.fog;
   protected readonly dark = this.parts.dark;
   protected readonly combat = this.parts.combat;

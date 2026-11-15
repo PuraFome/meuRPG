@@ -32,6 +32,7 @@ import { contestText } from './combat-log-contest';
 import { effectEndedText, effectLine, exhaustionLogText } from './combat-log-effects';
 import { LogContext, LogLine, NO_CONTEXT } from './combat-log-types';
 import { the } from './combat-log-words';
+import { MOUNT_LINES } from './combat-log-mount';
 
 /** What a line builder is given: the entry, the fields every line shares, the combat's name and who is reading. */
 interface LineArgs {
@@ -43,7 +44,10 @@ interface LineArgs {
 
 /** One builder per kind of entry, so a new kind is one more row and no function grows with it. A builder answers `null` for an
  * entry it cannot write (an effect with no effect in it). */
-const LINE_BUILDERS: ReadonlyMap<CombatLogKind, (args: LineArgs) => LogLine | null> = new Map([
+const LINE_BUILDERS: ReadonlyMap<CombatLogKind, (args: LineArgs) => LogLine | null> = new Map<
+  CombatLogKind,
+  (args: LineArgs) => LogLine | null
+>([
   [
     CombatLogKind.COMBAT_BEGUN,
     ({ base, encounterName, ctx }) => {
@@ -217,20 +221,7 @@ const LINE_BUILDERS: ReadonlyMap<CombatLogKind, (args: LineArgs) => LogLine | nu
       return { ...base, icon: 'door_open', text: ' abriu a porta' };
     },
   ],
-  // A rider got on or off a mount (SRD 5.1, "Mounting and Dismounting"): "Toren montou em Pônei". The server sends the line only to who
-  // sees both combatants; the master's alone when either is hidden.
-  [
-    CombatLogKind.MOUNTED,
-    ({ base, e }) => {
-      return { ...base, icon: 'pets', text: ` montou em ${e.targetLabel || 'uma montaria'}` };
-    },
-  ],
-  [
-    CombatLogKind.DISMOUNTED,
-    ({ base, e }) => {
-      return { ...base, icon: 'pets', text: ` desmontou de ${e.targetLabel || 'uma montaria'}` };
-    },
-  ],
+  ...MOUNT_LINES,
   [
     CombatLogKind.EFFECT_ENDED,
     ({ e, base, ctx }) => {
@@ -388,5 +379,7 @@ export function logLine(
   ctx: LogContext = NO_CONTEXT,
 ): LogLine | null {
   const base = { id: e.id, actor: e.actorLabel, hidden: e.hidden, undoable: e.undoable };
-  return LINE_BUILDERS.get(e.kind)?.({ e, base, encounterName, ctx }) ?? null;
+  const line = LINE_BUILDERS.get(e.kind)?.({ e, base, encounterName, ctx }) ?? null;
+  // "<nome> usou a Inspiração.": the server sends it only to the master and the roller's player, so a line that has it shows it.
+  return line && e.favorTextPt ? { ...line, notes: [...(line.notes ?? []), e.favorTextPt] } : line;
 }

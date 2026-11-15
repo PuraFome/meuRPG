@@ -10,6 +10,7 @@ import {
 } from '../combat/combat-errors';
 import { describeConnectError } from '../connect/connect-errors';
 import { resourceBlocked } from '../resources/resources-errors';
+import { favorRefusalText } from '../play/favor-errors';
 
 /** The reason of a trap call that failed with `EncounterBlocked`, or `null`. */
 export function trapBlockedReason(err: unknown): EncounterBlockedReason | null {
@@ -38,6 +39,10 @@ export function trapErrorMessage(err: unknown, what = 'fazer isso'): string {
     case EncounterBlockedReason.ACTION_USED:
       return 'Você já usou a sua ação neste turno.';
     default:
+  }
+  const favor = favorRefusalText(err);
+  if (favor) {
+    return favor;
   }
   // Another roll of the character waits for its question (the halfling's Lucky, a Bardic Inspiration die).
   const pending = pendingQuestionReasonText(resourceBlocked(err)?.reason);

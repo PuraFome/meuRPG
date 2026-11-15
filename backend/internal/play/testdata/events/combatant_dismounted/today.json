@@ -551,6 +551,8 @@
   "parried": {
     "event": "x"
   },
+  "ammo": "x",
+  "ammo_line": "x",
   "parry_ask": true,
   "sunlight_on": true,
   "sunlight_scope": "x",
@@ -1226,6 +1228,11 @@
     "fire": 1,
     "why": "x",
     "kept": true,
+    "cause": "x",
+    "auto_fail": true,
+    "land_col": 1,
+    "land_row": 1,
+    "no_room": true,
     "saved_ids": [
       "x"
     ],

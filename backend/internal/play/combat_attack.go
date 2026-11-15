@@ -214,6 +214,8 @@ type attackFlow struct {
 	power *link.PowerAttack
 	// powerHidden says the master had hidden the trade's feature from the players (readPowerHidden).
 	powerHidden bool
+	// ammoSpent is the kind of ammunition the shot took and ammoLine the id of its line (spendAmmunition), "" for an attack that took none.
+	ammoSpent, ammoLine string
 }
 
 func newAttackFlow(s *Service, c *combatTx, m authz.Membership, req *playv1.RollAttackRequest, call attackCall, out *attackOut) *attackFlow {
@@ -265,7 +267,10 @@ func (f *attackFlow) prepare(ctx context.Context) error {
 	if err := f.checkEconomy(ctx); err != nil {
 		return err
 	}
-	return f.readCover(ctx)
+	if err := f.readCover(ctx); err != nil {
+		return err
+	}
+	return f.checkAmmunition(ctx)
 }
 
 // writeAttack is what the settled d20 does: the event, the economy, the damage it opens and the offer it answers.
@@ -273,7 +278,7 @@ func (f *attackFlow) writeAttack(ctx context.Context) error {
 	// spendPowerAttack stays after resolve: rollExtraDice (in resolve) assigns maneuverSpent, and the power attack's
 	// resource is appended to what it left.
 	for _, phase := range []func(context.Context) error{
-		f.resolve, f.spendPowerAttack, f.readPowerHidden, f.autoParry, f.record, f.spendEconomy, f.spendLimit, f.closeThrow, f.openHitDamage, f.answerOffer, f.settle,
+		f.resolve, f.spendAmmunition, f.spendPowerAttack, f.readPowerHidden, f.autoParry, f.record, f.spendEconomy, f.spendLimit, f.closeThrow, f.openHitDamage, f.answerOffer, f.settle,
 	} {
 		if err := phase(ctx); err != nil {
 			return err
@@ -321,7 +326,7 @@ func (f *attackFlow) findTarget(ctx context.Context) error {
 // leave is theirs to hit even if it is out of their sight now (an NPC that retreated into the dark).
 func (f *attackFlow) movedTarget(ctx context.Context) (playdb.Combatant, bool) {
 	o, err := pendingOffer(ctx, f.c, f.call.offerID)
-	if err != nil || o.ReactorID != f.attacker.ID || o.MoverID != f.call.targetID {
+	if err != nil || o.ReactorID != f.attacker.ID || !offerTargets(f.cs, o, f.call.targetID) {
 		return playdb.Combatant{}, false
 	}
 	i := slices.IndexFunc(f.cs, func(x playdb.Combatant) bool { return x.ID == f.call.targetID })
@@ -343,8 +348,8 @@ func (f *attackFlow) checkOffer(ctx context.Context) error {
 		return err
 	}
 	f.offer = offer
-	if offer.ReactorID != f.attacker.ID || offer.MoverID != f.target.ID {
-		return connect.NewError(connect.CodeInvalidArgument, errors.New("an opportunity attack is made by the offer's reactor on its mover"))
+	if offer.ReactorID != f.attacker.ID || !offerTargets(f.cs, offer, f.target.ID) {
+		return connect.NewError(connect.CodeInvalidArgument, errors.New("an opportunity attack is made by the offer's reactor on its mover or the mover's rider"))
 	}
 	if f.attacker.ReactionUsed {
 		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_REACTION_USED, "the reaction is used")
@@ -803,6 +808,7 @@ func (f *attackFlow) attackEvent(run int32) actionEvent {
 	made.Stroke = f.rolled.Stroke // the use of Stroke of Luck: the log says the miss became a hit, the undo gives it back
 	made.ProtectedBy = f.protectedBy()
 	made.Parried = f.parried
+	made.Ammo, made.AmmoLine = f.ammoSpent, f.ammoLine
 	return made
 }
 

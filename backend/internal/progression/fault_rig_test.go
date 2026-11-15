@@ -131,11 +131,11 @@ type faultParty struct {
 	f     *faults
 }
 
-func (p faultParty) Names(ctx context.Context, campaignID string, ids []string) (map[string]string, error) {
+func (p faultParty) Names(ctx context.Context, campaignID string, ids []string, withReserved bool) (map[string]string, error) {
 	if err := p.f.take("names"); err != nil {
 		return nil, err
 	}
-	return p.inner.Names(ctx, campaignID, ids)
+	return p.inner.Names(ctx, campaignID, ids, withReserved)
 }
 
 func (p faultParty) Party(ctx context.Context, tx pgx.Tx, campaignID string) ([]link.Member, error) {
@@ -290,6 +290,7 @@ func newFaultRig(t *testing.T, mode campaignsv1.XpMode, n int) *faultRig {
 	if err != nil {
 		t.Fatalf("New() error = %v", err)
 	}
+	svc.SetSessionHost(tb.h.play)
 	srv := httpserver.New(httpserver.Config{Logger: slog.New(slog.DiscardHandler)})
 	svc.Mount(srv.Handle, fakeSessions{}, tb.h.camps, reqlimit.HandlerOption())
 	ts := httptest.NewServer(srv.Handler())

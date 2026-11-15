@@ -2015,6 +2015,18 @@ func (q *Queries) DeleteUnansweredFeatureWindow(ctx context.Context, arg DeleteU
 	return result.RowsAffected(), nil
 }
 
+const encounterHasRiders = `-- name: EncounterHasRiders :one
+SELECT EXISTS (SELECT 1 FROM combatants WHERE encounter_id = $1 AND mounted_on_id IS NOT NULL)
+`
+
+// Whether any combatant of the combat sits on a mount: the cheap check before the scans that look for a mount's rider.
+func (q *Queries) EncounterHasRiders(ctx context.Context, encounterID string) (bool, error) {
+	row := q.db.QueryRow(ctx, encounterHasRiders, encounterID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const endCombatantTurnPart = `-- name: EndCombatantTurnPart :exec
 UPDATE combatants
 SET turn_state = 'ended'
@@ -4824,8 +4836,10 @@ type InsertInspirationHoldParams struct {
 
 // A d20 roll that waits for the answer about a Bardic Inspiration die, or for the Lucky question
 // of a d20 that shows a 1 (lucky_index, NULL without one). A roll held in a combat also names its
-// combatant and its combat, which own the hold (00255); window_hold is the weapon attack a reaction
-// window kept. favor_spent says the roll was made with the roller's Inspiration, which a retry or the answer reads.
+// combatant and its combat, which own the hold (00255); window_hold says a reaction window held the
+// request first and the roll is the one its replay held (the weapon attack, a contest start or answer,
+// or a Hide), so the hold has a key of its own.
+// favor_spent says the roll was made with the roller's Inspiration, which a retry or the answer reads.
 func (q *Queries) InsertInspirationHold(ctx context.Context, arg InsertInspirationHoldParams) (InspirationHold, error) {
 	row := q.db.QueryRow(ctx, insertInspirationHold,
 		arg.CampaignID,
@@ -7122,6 +7136,54 @@ func (q *Queries) ListEncounterRollModeRequests(ctx context.Context, encounterID
 			&i.Reason,
 			&i.CreatedAt,
 			&i.AnsweredAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listEncountersOfCharacter = `-- name: ListEncountersOfCharacter :many
+SELECT e.id, e.game_session_id, e.map_id, e.map_point_id, e.name, e.status, e.round, e.current_combatant_id, e.grid_columns, e.grid_rows, e.revision, e.created_at, e.started_at, e.ended_at, e.mode, e.sunlight_on, e.sunlight_scope, e.sunlight_squares FROM encounters e
+WHERE EXISTS (SELECT 1 FROM combatants c WHERE c.encounter_id = e.id AND c.character_id = $1)
+ORDER BY e.created_at DESC, e.id DESC
+LIMIT 10
+`
+
+// The combats the character is a combatant of, the latest first, ended or not: the search for the ammunition of its
+// last combat reads the latest few.
+func (q *Queries) ListEncountersOfCharacter(ctx context.Context, characterID string) ([]Encounter, error) {
+	rows, err := q.db.Query(ctx, listEncountersOfCharacter, characterID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Encounter
+	for rows.Next() {
+		var i Encounter
+		if err := rows.Scan(
+			&i.ID,
+			&i.GameSessionID,
+			&i.MapID,
+			&i.MapPointID,
+			&i.Name,
+			&i.Status,
+			&i.Round,
+			&i.CurrentCombatantID,
+			&i.GridColumns,
+			&i.GridRows,
+			&i.Revision,
+			&i.CreatedAt,
+			&i.StartedAt,
+			&i.EndedAt,
+			&i.Mode,
+			&i.SunlightOn,
+			&i.SunlightScope,
+			&i.SunlightSquares,
 		); err != nil {
 			return nil, err
 		}
@@ -11289,6 +11351,40 @@ type SetReactionWindowStepParams struct {
 // the new trigger.
 func (q *Queries) SetReactionWindowStep(ctx context.Context, arg SetReactionWindowStepParams) (ReactionWindow, error) {
 	row := q.db.QueryRow(ctx, setReactionWindowStep, arg.ID, arg.Step, arg.Trigger)
+	var i ReactionWindow
+	err := row.Scan(
+		&i.ID,
+		&i.EncounterID,
+		&i.Seq,
+		&i.GroupID,
+		&i.Kind,
+		&i.Status,
+		&i.ClosedReason,
+		&i.ReactorID,
+		&i.PendingDamageID,
+		&i.HoldID,
+		&i.Step,
+		&i.Trigger,
+		&i.Outcome,
+		&i.CreatedAt,
+		&i.AnsweredAt,
+	)
+	return i, err
+}
+
+const setReactionWindowTrigger = `-- name: SetReactionWindowTrigger :one
+UPDATE reaction_windows SET trigger = $2 WHERE id = $1 AND status = 'open'
+RETURNING id, encounter_id, seq, group_id, kind, status, closed_reason, reactor_id, pending_damage_id, hold_id, step, trigger, outcome, created_at, answered_at
+`
+
+type SetReactionWindowTriggerParams struct {
+	ID      string
+	Trigger []byte
+}
+
+// The trigger of an open window changes and nothing else does: a second push of the mount a rider's save is asked for.
+func (q *Queries) SetReactionWindowTrigger(ctx context.Context, arg SetReactionWindowTriggerParams) (ReactionWindow, error) {
+	row := q.db.QueryRow(ctx, setReactionWindowTrigger, arg.ID, arg.Trigger)
 	var i ReactionWindow
 	err := row.Scan(
 		&i.ID,

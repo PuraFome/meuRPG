@@ -239,6 +239,7 @@ func newHarness(t *testing.T, live ...LiveConfig) *harness {
 	h.svc, h.chars, h.camps = svc, chars, camps
 	chars.SetCreatureHost(svc) // a creature dismissed leaves its combat, and its events and hints go through play (MR-037)
 	chars.SetReviewHost(svc)
+	chars.SetLevelUps(xpLevelUps{}) // progression's rule for a campaign that counts XP: a sheet with the XP of the next level can go up
 	chars.SetSessionHost(svc)
 	camps.SetSessionHost(svc)
 	srv := httpserver.New(httpserver.Config{Logger: logger})
@@ -278,6 +279,7 @@ type user struct {
 	lasting    playv1connect.LastingEffectServiceClient
 	favor      playv1connect.FavorServiceClient
 	resource   playv1connect.ResourceServiceClient
+	charges    playv1connect.ChargesServiceClient
 	casting    playv1connect.CastingServiceClient
 	feature    playv1connect.FeatureServiceClient
 	encounters playv1connect.EncounterServiceClient
@@ -317,6 +319,7 @@ func (h *harness) clients(userID string) *user {
 		lasting:    playv1connect.NewLastingEffectServiceClient(c, url),
 		favor:      playv1connect.NewFavorServiceClient(c, url),
 		resource:   playv1connect.NewResourceServiceClient(c, url),
+		charges:    playv1connect.NewChargesServiceClient(c, url),
 		casting:    playv1connect.NewCastingServiceClient(c, url),
 		feature:    playv1connect.NewFeatureServiceClient(c, url),
 		encounters: playv1connect.NewEncounterServiceClient(c, url),
@@ -784,3 +787,13 @@ func failureLog(t *testing.T) *slog.Logger {
 type writerFunc func([]byte) (int, error)
 
 func (f writerFunc) Write(b []byte) (int, error) { return f(b) }
+
+// xpLevelUps is progression's rule for a campaign that counts XP (RN-12), without the module: the sheet's XP reaching the next level's.
+type xpLevelUps struct{}
+
+func (xpLevelUps) LevelUpReason(_ context.Context, _ pgx.Tx, _, _ string, level, xp, next int32) (charactersv1.LevelUpReason, error) {
+	if level < 20 && next > 0 && xp >= next {
+		return charactersv1.LevelUpReason_LEVEL_UP_REASON_XP, nil
+	}
+	return charactersv1.LevelUpReason_LEVEL_UP_REASON_UNSPECIFIED, nil
+}

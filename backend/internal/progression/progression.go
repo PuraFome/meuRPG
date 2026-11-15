@@ -39,6 +39,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/nostore"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/rpcerr"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/sessiontell"
 	"github.com/PuraFome/meuRPG/backend/internal/progression/link"
 	"github.com/PuraFome/meuRPG/backend/internal/progression/progressiondb"
 )
@@ -51,8 +52,9 @@ type Party interface {
 	// first, with their level and XP, read in tx (nil outside a transaction).
 	Party(ctx context.Context, tx pgx.Tx, campaignID string) ([]link.Member, error)
 	// Names returns the names of those of ids that are characters of the
-	// campaign, by ID, whatever their kind or status.
-	Names(ctx context.Context, campaignID string, ids []string) (map[string]string, error)
+	// campaign, by ID, whatever their kind or status. A character given back
+	// to the reserve is left out unless withReserved (the master's reads).
+	Names(ctx context.Context, campaignID string, ids []string, withReserved bool) (map[string]string, error)
 	// AddExperience adds delta (negative to take back) to a player character's
 	// sheet inside tx, keeping the XP between 0 and 1,000,000, and returns the
 	// XP before and after. `not_found` for any character but a living or dead
@@ -71,7 +73,7 @@ type Combats interface {
 	EncounterNames(ctx context.Context, campaignID string, ids []string) (map[string]string, error)
 }
 
-// SessionLog is the open session's history and live stream (the play module
+// SessionLog is the open session's history (the play module
 // implements it): an award is an event of the session, when one is open
 // (ADR-0007).
 type SessionLog interface {
@@ -79,9 +81,6 @@ type SessionLog interface {
 	// session inside tx, and says whether there was one. The payload holds IDs
 	// and numbers only.
 	AppendEvent(ctx context.Context, tx pgx.Tx, campaignID, kind, actorUserID string, payload []byte, at time.Time) (bool, error)
-	// PublishXPChanged tells every stream of the campaign the XP changed. Call
-	// it after the commit.
-	PublishXPChanged(campaignID string)
 }
 
 // Treasures is the found treasure of the maps, for "Voltar à cidade" (MR-041;
@@ -148,16 +147,18 @@ type Config struct {
 // Service implements the ProgressionService Connect API, and the characters
 // module's LevelUps.
 type Service struct {
-	pool      *pgxpool.Pool
-	queries   *progressiondb.Queries
-	party     Party
-	combats   Combats
-	log       SessionLog
-	treasures Treasures
-	campaigns Campaigns
-	profiles  Profiles
-	logger    *slog.Logger
-	now       func() time.Time
+	pool    *pgxpool.Pool
+	queries *progressiondb.Queries
+	party   Party
+	combats Combats
+	log     SessionLog
+	// sessionHost is play's funnel, connected by SetSessionHost (session.go).
+	sessionHost sessiontell.Host
+	treasures   Treasures
+	campaigns   Campaigns
+	profiles    Profiles
+	logger      *slog.Logger
+	now         func() time.Time
 }
 
 // The compiler checks that Service implements the handler.

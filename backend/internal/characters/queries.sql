@@ -484,8 +484,9 @@ ORDER BY id;
 -- name: ListCharacterNames :many
 -- The names of the given characters of the campaign, whatever their kind or
 -- status (package progression names the characters of an award, even one that
--- died since).
-SELECT id, name FROM characters
+-- died since). reserved says the master gave the character back to the reserve
+-- since: a player's reads leave it out (RN-10).
+SELECT id, name, reserved FROM characters
 WHERE campaign_id = sqlc.arg(campaign_id)::UUID
   AND id = ANY(sqlc.arg(ids)::UUID[])
 ORDER BY id;
@@ -947,17 +948,32 @@ VALUES (sqlc.arg(id), sqlc.arg(campaign_id)::UUID, 'player', 'active', sqlc.arg(
 
 -- name: ListItemCharges :many
 -- What the character's magic items spent: one row for each entry that spent a charge or was lost.
-SELECT entry_id, charges_used, lost, dawns_waited
+SELECT entry_id, charges_used, lost, dawns_waited, last_roll_pending
 FROM character_item_charges
 WHERE character_id = sqlc.arg(character_id)
 ORDER BY entry_id;
 
+-- name: ListCampaignItemCharges :many
+-- Every row of the campaign's characters, for the dawn and the campaign package: the characters in a fixed order so two
+-- writers lock them alike.
+SELECT ic.character_id, ic.entry_id, ic.charges_used, ic.lost, ic.dawns_waited, ic.last_roll_pending
+FROM character_item_charges AS ic
+JOIN characters AS c ON c.id = ic.character_id
+WHERE c.campaign_id = sqlc.arg(campaign_id)::UUID
+ORDER BY ic.character_id, ic.entry_id;
+
 -- name: SetItemCharges :exec
 -- Writes what an entry spent, or restores it: a row of 0 spent that is not lost reads as a full item.
-INSERT INTO character_item_charges (character_id, entry_id, charges_used, lost, dawns_waited, updated_at)
-VALUES (sqlc.arg(character_id), sqlc.arg(entry_id), sqlc.arg(charges_used), sqlc.arg(lost), sqlc.arg(dawns_waited), sqlc.arg(now))
+INSERT INTO character_item_charges (character_id, entry_id, charges_used, lost, dawns_waited, last_roll_pending, updated_at)
+VALUES (sqlc.arg(character_id), sqlc.arg(entry_id), sqlc.arg(charges_used), sqlc.arg(lost), sqlc.arg(dawns_waited), sqlc.arg(last_roll_pending), sqlc.arg(now))
 ON CONFLICT (character_id, entry_id) DO UPDATE
-SET charges_used = excluded.charges_used, lost = excluded.lost, dawns_waited = excluded.dawns_waited, updated_at = excluded.updated_at;
+SET charges_used = excluded.charges_used, lost = excluded.lost, dawns_waited = excluded.dawns_waited,
+    last_roll_pending = excluded.last_roll_pending, updated_at = excluded.updated_at;
+
+-- name: DeleteItemCharges :exec
+-- Deletes the row of an entry: the item reads as full again.
+DELETE FROM character_item_charges
+WHERE character_id = sqlc.arg(character_id) AND entry_id = sqlc.arg(entry_id);
 
 -- name: DeleteItemChargesExcept :exec
 -- Deletes the rows of the entries a saved sheet no longer has.
@@ -965,6 +981,68 @@ DELETE FROM character_item_charges
 WHERE character_id = sqlc.arg(character_id)
   AND NOT (entry_id = ANY (sqlc.arg(keep_ids)::TEXT[]));
 
+-- name: ListAmmunition :many
+-- What the character holds of each counted kind of ammunition: every row, also one at 0.
+SELECT ammo_key, quantity, spent_last_combat, recovered
+FROM character_ammunition
+WHERE character_id = sqlc.arg(character_id)
+ORDER BY ammo_key;
+
+-- name: ListCampaignAmmunition :many
+-- The pieces every character of the campaign holds of each counted kind, for the campaign package.
+SELECT a.character_id, a.ammo_key, a.quantity
+FROM character_ammunition AS a
+JOIN characters AS c ON c.id = a.character_id
+WHERE c.campaign_id = sqlc.arg(campaign_id)::UUID
+ORDER BY a.character_id, a.ammo_key;
+
+-- name: GetAmmunitionQuantity :one
+SELECT quantity FROM character_ammunition
+WHERE character_id = sqlc.arg(character_id) AND ammo_key = sqlc.arg(ammo_key);
+
+-- name: GetAmmunitionForUpdate :one
+-- Locks the row until the transaction ends, so two shots at the last piece cannot both fire.
+SELECT quantity, spent_last_combat, last_encounter_id, recovered
+FROM character_ammunition
+WHERE character_id = sqlc.arg(character_id) AND ammo_key = sqlc.arg(ammo_key)
+FOR UPDATE;
+
+-- name: SetAmmunitionQuantity :one
+-- The master's or owner's count: the pieces held. What was fired in the last combat stays.
+INSERT INTO character_ammunition (character_id, ammo_key, quantity, updated_at)
+VALUES (sqlc.arg(character_id), sqlc.arg(ammo_key), sqlc.arg(quantity), sqlc.arg(now))
+ON CONFLICT (character_id, ammo_key) DO UPDATE
+SET quantity = excluded.quantity, updated_at = excluded.updated_at
+RETURNING quantity, spent_last_combat, recovered;
+
+-- name: WriteAmmunitionSpent :exec
+-- A shot: the pieces left and what the combat spent, with the combat that spent it.
+UPDATE character_ammunition
+SET quantity = sqlc.arg(quantity), spent_last_combat = sqlc.arg(spent_last_combat),
+    last_encounter_id = sqlc.arg(last_encounter_id)::UUID, recovered = sqlc.arg(recovered), updated_at = sqlc.arg(now)
+WHERE character_id = sqlc.arg(character_id) AND ammo_key = sqlc.arg(ammo_key);
+
+-- name: WriteAmmunitionRefunded :exec
+-- An undone shot: the pieces held and the count of what the combat fired go down by it; with nothing fired left the row
+-- belongs to no combat (there is nothing to search for), and the recovered mark stays otherwise.
+UPDATE character_ammunition
+SET quantity = sqlc.arg(quantity), spent_last_combat = sqlc.arg(spent_last_combat),
+    last_encounter_id = sqlc.narg(last_encounter_id)::UUID, recovered = sqlc.arg(recovered), updated_at = sqlc.arg(now)
+WHERE character_id = sqlc.arg(character_id) AND ammo_key = sqlc.arg(ammo_key);
+
+-- name: ListAmmunitionOfEncounterForUpdate :many
+-- The rows the character spent in the combat, locked.
+SELECT ammo_key, quantity, spent_last_combat, recovered
+FROM character_ammunition
+WHERE character_id = sqlc.arg(character_id) AND last_encounter_id = sqlc.arg(encounter_id)::UUID
+ORDER BY ammo_key
+FOR UPDATE;
+
+-- name: WriteAmmunitionRecovered :exec
+-- Takes the pieces back after the combat and marks the row recovered.
+UPDATE character_ammunition
+SET quantity = sqlc.arg(quantity), recovered = true, updated_at = sqlc.arg(now)
+WHERE character_id = sqlc.arg(character_id) AND ammo_key = sqlc.arg(ammo_key);
 
 -- name: SetRestState :exec
 -- A rest ended what the sheet's daily picks and short-rest proficiencies last until (#580): the whole list of picks and the

@@ -365,6 +365,7 @@ These decisions used to open and close the roadmap page.
 - **RN-10 (question 61)** — a scene is "discovered" when the master reveals the point or opens it in a session. Samuel decided 03/10/2026 (MR-029, MR-030).
 - **RN-10 (question 63)** — any scene point opens, even without actions; the scene belongs to the master and the server no longer refuses. Samuel decided 03/10/2026. NPCs in the scene delivered in slice 8.6 (MR-031).
 - **RN-10 (D5, D6, D9; questions 67-75)** — traps, treasures, lights, layers and fog per player. Accepted 04/10/2026 (Etapa 9 slices 9.3, 9.4, 9.5, 9.7, 9.8, 9.11; Etapa 10 slices 10.6d and 10.10b; systematic leak test `TestLeakMatrix` in Etapa 10).
+- **RN-10 (next-hit effect, 15/11/2026, Vinicius)** — the dice cap of a next-hit effect may be left empty, meaning no limit (`max_dice` 0, "Sem limite" in the editor); at most 50 dice at slot 9 and 100 on a critical. A player who reads the spell reads who sees its effect (PUBLIC or OWNER, which names nobody) and never the label or the aura, which stay the master's.
 - **RN-10 (delivery)** — Etapa 5 delivered the base with the maps (MR-008, MR-009); Etapa 7 the RP scenes (MR-015). Status: Decidido.
 - **RN-11** — only the master reads and edits master notes. Vinicius answered 29/09/2026.
 - **RN-12 (question 48)** — before the MVP the player may also level up through the guided sheet edit allowed by RN-01; the full MR-017 screen stays after the MVP. Samuel decided 03/10/2026.

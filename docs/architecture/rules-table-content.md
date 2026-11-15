@@ -730,7 +730,7 @@ Its fields are the modifier's own:
 | `die` | The die: d4, d6, d8, d10 or d12 | `die`: any other number |
 | `dice` | The dice at the spell's own slot level, 1 to 10 | `dice`: out of range |
 | `per_slot_dice` | The dice added for each slot level above the spell's own, 0 to 5 | `per_slot_dice`: out of range |
-| `max_dice` | The most dice there are at any slot; required, from `dice` to 20 | `max_dice`: unset, below `dice` or above 20 |
+| `max_dice` | The most dice there are at any slot, from `dice` to 20; 0 is no limit | `max_dice`: below `dice` or above 20, or negative |
 | `damage_type` | An SRD damage type key; unset is the weapon's | `damage_type`: not an SRD damage type |
 | `save` | The ability (`str` to `cha`) of the target's saving throw against the hit | `save`: not an ability |
 | `on_fail_conditions` | SRD condition keys a failed save gives, each once, 1 to 8 | `on_fail_conditions`: a save with none, a list without a `save`, more than 8, an unknown or repeated key (at `[i]`) |
@@ -745,7 +745,7 @@ Its fields are the modifier's own:
   `condition_duration` `spell_end` needs concentration, a timed duration or until dispelled, refused at `condition_duration`.
   A spell has one `weapon_hit_damage`: a second is refused at its `kind` ("a spell has one next-hit effect").
 - **The dice per slot.**
-  At a slot the dice are `dice` plus `per_slot_dice` for each level above the spell's own, never more than `max_dice`.
+  At a slot the dice are `dice` plus `per_slot_dice` for each level above the spell's own, never more than `max_dice` when it has one (0 is no limit, so at most 50 dice at the 9th slot).
   A critical hit doubles them, a resistance takes the damage by type, and the save is the target's against the spell's DC.
   How the hit uses all of this is in [Attacks and damage](play/attacks-and-damage.md#a-spells-hit-effect).
 - **Tags.**

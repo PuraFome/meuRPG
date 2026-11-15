@@ -156,6 +156,7 @@
           [extraFields]="play.extraDice.fields()"
           [(extraFaces)]="play.extraDice.faces"
           [held]="play.hintHeld()"
+          [favor]="fav"
           (answered)="play.answerHint($event)"
           (rolled)="play.tryHint($event)"
           (typed)="play.tryHint($event)"

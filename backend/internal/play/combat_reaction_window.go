@@ -112,6 +112,14 @@ type windowTrigger struct {
 	Held []string `json:"held,omitempty"`
 	// Bonus is what Parry adds to the armor class against the hit (ParryKind).
 	Bonus int32 `json:"bonus,omitempty"`
+	// Cause is what asked a rider's mount save ("pushed" or "prone"), Target the mount it sits on, and AtCol and AtRow the square a
+	// pushed mount stands on: the window closes when it is not there any more (the push was undone).
+	Cause string `json:"cause,omitempty"`
+	AtCol int32  `json:"at_col,omitempty"`
+	AtRow int32  `json:"at_row,omitempty"`
+	// Before are the squares the mount stood on after the earlier pushes the same save covers: the undo of the last one puts it back
+	// on the one before, and the window stays.
+	Before [][2]int32 `json:"before,omitempty"`
 	// Readied is the readied action (readied_actions.id) a READIED window was fired for.
 	Readied string `json:"readied,omitempty"`
 	// Moment is what triggered a FEATURE window: a rules.FeatureTrigger* kind. Key is then the feature, Actor the creature
@@ -225,8 +233,32 @@ func (s *Service) closeWindow(ctx context.Context, c *combatTx, w playdb.Reactio
 	if err != nil {
 		return w, fmt.Errorf("close a reaction window: %w", err)
 	}
+	if status == windowClosed {
+		// The Bardic die or Lucky question kept for this window's save has nothing to settle once the window is gone.
+		if err := forgetHoldsOfWindow(ctx, c.q, c.enc.ID, w); err != nil {
+			return w, fmt.Errorf("forget the question kept for a closed window: %w", err)
+		}
+	}
+	if status == windowClosed && w.Kind == string(reaction.MountSave) && w.ReactorID != nil {
+		// The Bardic die or Lucky question kept for the rider's save has nothing to settle once the window is gone.
+		if err := forgetHoldsOfKind(ctx, c.q, c.enc.ID, w.ReactorID, string(heldMountSave)); err != nil {
+			return w, fmt.Errorf("forget the question kept for a closed window: %w", err)
+		}
+	}
 	c.reactionNotes = append(c.reactionNotes, reactionNote{window: closed, byItself: status == windowClosed, reason: reason, spentOn: spentOn})
 	return closed, nil
+}
+
+// heldKindOfWindow is the kind of held roll a save window keeps its question in: the windows that ask a roll of the reactor.
+func heldKindOfWindow(k reaction.Kind) (heldKind, bool) {
+	switch k {
+	case reaction.Concentration:
+		return heldConcentrationSave, true
+	case reaction.EffectSave:
+		return heldEffectSave, true
+	default:
+		return "", false
+	}
 }
 
 // errNotYourTurnToAnswer is the refusal of a window that was answered or closed
@@ -275,6 +307,16 @@ func (s *Service) reactionGate(ctx context.Context, c *combatTx, ignoring ...str
 			return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_CONCENTRATION_SAVE_PENDING, "a concentration save waits for its answer")
 		}
 	}
+	for _, w := range open {
+		if w.Kind != string(reaction.MountSave) {
+			continue
+		}
+		if hidden, err := mountSaveHidden(ctx, c, w); err != nil {
+			return err
+		} else if !hidden { // a hidden rider or mount holds the turn as any reaction of the master's does (RN-10)
+			return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_MOUNT_SAVE_PENDING, "a rider's save to stay on its mount waits for its answer")
+		}
+	}
 	return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_REACTION_PENDING, "a reaction waits for its answer")
 }
 
@@ -318,18 +360,13 @@ func (s *Service) triggerGone(ctx context.Context, c *combatTx, w playdb.Reactio
 // (and the cases of a kind) that have nothing of their own to say, which go on to the checks every
 // window shares.
 func (s *Service) kindTriggerGone(ctx context.Context, c *combatTx, w playdb.ReactionWindow, t windowTrigger, byID map[string]playdb.Combatant) (gone, decided bool, err error) {
+	if gone, decided := combatantKindGone(w, t, byID); decided {
+		return gone, true, nil
+	}
 	switch reaction.Kind(w.Kind) {
-	case reaction.Concentration:
-		return concentrationGone(w, t, byID), true, nil
 	case reaction.FeatherFall, reaction.SlowFall:
 		gone, err = fallGone(ctx, c, t)
 		return gone, true, err
-	case reaction.EffectSave:
-		// A defeated creature or NPC owes no saving throw (RN-22): the window closes with it.
-		r, ok := byID[conv.OrZero(w.ReactorID)]
-		if ok && r.Defeated && r.Kind != kindPlayer {
-			return true, true, nil
-		}
 	case reaction.Contest:
 		waits, err := contestStillWaits(ctx, c, w)
 		return !waits, true, err
@@ -339,10 +376,6 @@ func (s *Service) kindTriggerGone(ctx context.Context, c *combatTx, w playdb.Rea
 	case reaction.Feature:
 		gone, err = s.featureGone(ctx, c, w, t, byID)
 		return gone, true, err
-	case reaction.LegendaryResistance:
-		if resistGone(t, byID) {
-			return true, true, nil
-		}
 	case reaction.Shield, reaction.ParryKind, reaction.MasterCheck:
 		if w.PendingDamageID != nil {
 			gone, err = pendingGone(ctx, c, *w.PendingDamageID)
@@ -350,6 +383,30 @@ func (s *Service) kindTriggerGone(ctx context.Context, c *combatTx, w playdb.Rea
 		}
 	}
 	return false, false, nil
+}
+
+// combatantKindGone is the part of kindTriggerGone that only reads the combatants of the encounter: the kinds whose window
+// closes with the creature it is about. decided is false for the kinds and the cases with nothing of their own to say.
+func combatantKindGone(w playdb.ReactionWindow, t windowTrigger, byID map[string]playdb.Combatant) (gone, decided bool) {
+	switch reaction.Kind(w.Kind) {
+	case reaction.Concentration:
+		return concentrationGone(w, t, byID), true
+	case reaction.MountSave:
+		return mountSaveGone(w, t, byID), true
+	case reaction.Dismount:
+		return dismountGone(w, t, byID), true
+	case reaction.EffectSave:
+		// A defeated creature or NPC owes no saving throw (RN-22): the window closes with it.
+		r, ok := byID[conv.OrZero(w.ReactorID)]
+		if ok && r.Defeated && r.Kind != kindPlayer {
+			return true, true
+		}
+	case reaction.LegendaryResistance:
+		if resistGone(t, byID) {
+			return true, true
+		}
+	}
+	return false, false
 }
 
 // concentrationGone says the reactor no longer concentrates on the spell the window asked a save for.
@@ -508,6 +565,9 @@ func (s *Service) closeInvalidWindows(ctx context.Context, c *combatTx, st settl
 		}
 		if reason, closes := reaction.Closure(reaction.Kind(w.Kind), f); closes {
 			if _, err := s.closeWindow(ctx, c, w, windowClosed, reason, windowOutcome{}, c.lastAnswered); err != nil {
+				return false, err
+			}
+			if err := s.fallWithWindow(ctx, c, w, f, st.byID); err != nil {
 				return false, err
 			}
 			changed = true

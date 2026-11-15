@@ -31,6 +31,7 @@ import {
 import { runBusy } from '../../../../shared/sheet/run-busy';
 import type { ReactionSheetData, ReactionSheetResult } from './reaction-sheet-data';
 import { slotAfter } from './reaction-sheet-view';
+import type { FavorSpend } from '../../../../core/play/favor-spend';
 
 /** The three steps of the sheet: the question, the die, the answer. */
 export type Step = 'ask' | 'roll' | 'result';
@@ -51,6 +52,8 @@ export interface ReactionFlowHost {
   /** The window being asked: the first one, then the second step the answer opened. */
   readonly asked: () => ReactionWindow;
   readonly chosen: () => SlotRow | null;
+  /** The box of the master's Inspiração for the concentration save: ticked, the save spends it. */
+  readonly fav?: FavorSpend;
 }
 
 /**
@@ -183,10 +186,13 @@ export class ReactionFlow {
       how.kind === 'typed' && extra.length > 0 ? { ...how, extra } : how;
     // The table die ticked ("Usar <nome>") goes with the roll the app or the player rolls.
     const maneuverKey = this.extra.maneuverKey();
-    const sent: ConcentrationAnswer =
+    const withDie: ConcentrationAnswer =
       maneuverKey && (typedMore.kind === 'app' || typedMore.kind === 'typed')
         ? { ...typedMore, maneuverKey }
         : typedMore;
+    // The Inspiração goes with a d20 that is rolled (never with the roll left to the master, or the master's keeping it).
+    const spend = (withDie.kind === 'app' || withDie.kind === 'typed') && !!this.host.fav?.spend();
+    const sent: ConcentrationAnswer = spend ? { ...withDie, spendFavor: true } : withDie;
     await runBusy(
       this.busy,
       this.error,
@@ -199,6 +205,7 @@ export class ReactionFlow {
           this.keys.keyFor({ window: w.id, how: sent }),
         );
         this.host.data.state.apply(res.encounter);
+        this.host.fav?.spent();
         if (res.held) {
           // Nothing was written: the window stays open and the question comes (Lucky's first).
           this.held.ask(res.held);
@@ -216,6 +223,11 @@ export class ReactionFlow {
         const more = this.extra.fromRefusal(err);
         if (more) {
           this.error.set(more);
+          return;
+        }
+        const favor = this.host.fav?.refused(err);
+        if (favor) {
+          this.error.set(favor);
           return;
         }
         await this.failed(err, null, 'resolver o teste de concentração');

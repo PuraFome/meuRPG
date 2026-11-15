@@ -75,12 +75,73 @@ func (s *Service) answerHeld(ctx context.Context, m authz.Membership, req answer
 	}
 	out, err := s.rerunHeld(ctx, h, a, state)
 	if err != nil {
+		if state != answerSettled && h.Round == nil && heldClosed(err) {
+			s.forgetClosedHold(ctx, h)
+		}
 		return nil, s.lostTheRace(ctx, h, req, err)
 	}
 	if state != answerSettled { // with a session open the gate told it, with the number
 		s.heldRollsChangedNoSession(ctx, h.CampaignID, s.holdUsers(ctx, h)...)
 	}
 	return out, nil
+}
+
+// heldClosed says the rerun of a held roll failed because what the roll was for is closed or gone: the session ended, the scene is
+// not open, the group check closed, the puzzle solved, the trap or the check not found. Nothing can answer such a question any more,
+// and its refusal is the one the path gave. Any other failure (the roll's own rules, a bad answer, a database error) leaves the
+// question to be answered again.
+func heldClosed(err error) bool {
+	ce, ok := errors.AsType[*connect.Error](err)
+	if !ok {
+		return false
+	}
+	switch ce.Code() {
+	case connect.CodeNotFound:
+		return true
+	case connect.CodeFailedPrecondition:
+	default:
+		return false
+	}
+	for _, d := range ce.Details() {
+		msg, derr := d.Value()
+		if derr != nil {
+			continue
+		}
+		switch b := msg.(type) {
+		case *playv1.GameSessionBlocked:
+			return b.GetReason() == playv1.GameSessionBlockedReason_GAME_SESSION_BLOCKED_REASON_NO_OPEN_SESSION
+		case *playv1.SceneBlocked:
+			return b.GetReason() == playv1.SceneBlockedReason_SCENE_BLOCKED_REASON_NO_OPEN_SCENE
+		case *playv1.PuzzleBlocked:
+			return b.GetReason() == playv1.PuzzleBlockedReason_PUZZLE_BLOCKED_REASON_NO_OPEN_SESSION || b.GetReason() == playv1.PuzzleBlockedReason_PUZZLE_BLOCKED_REASON_SOLVED
+		case *playv1.ContestBlocked:
+			return b.GetReason() == playv1.ContestBlockedReason_CONTEST_BLOCKED_REASON_GROUP_CHECK_CLOSED
+		}
+	}
+	return false
+}
+
+// forgetClosedHold drops, in a transaction of its own (the rerun's rolled back with its failure), the hold of a roll made out of a
+// combat whose rerun found what it was for closed, giving back the Inspiration it spent, so the gate lets the roller roll again. A
+// hold already gone or answered is left as the answer found it.
+func (s *Service) forgetClosedHold(ctx context.Context, h heldRoll) {
+	err := s.txOrNone(ctx, h.CampaignID, func(tx pgx.Tx, hh *hints, _ string) error {
+		env := s.outsideGate(tx, s.queries.WithTx(tx), hh)
+		stores := env.stores()
+		now, err := stores.byIDOf(ctx, holdRef{Campaign: h.CampaignID, Encounter: h.EncounterID, ID: h.ID})
+		if errors.Is(err, pgx.ErrNoRows) || (err == nil && now.AnswerKey != nil) {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		return stores.forget(ctx, now)
+	})
+	if err != nil {
+		s.logger.WarnContext(ctx, "play: cannot forget a held roll whose question closed", "error", err)
+		return
+	}
+	s.heldRollsChangedNoSession(ctx, h.CampaignID, s.holdUsers(ctx, h)...)
 }
 
 // lostTheRace says an answer that failed was too late when the roll was answered by another answer meanwhile (the
@@ -101,7 +162,8 @@ func (s *Service) lostTheRace(ctx context.Context, h heldRoll, req answerRequest
 	return err
 }
 
-// holdUsers are the users a change of a hold is for besides the master: who rolled, and the player of its combatant.
+// holdUsers are the users a change of a hold is for besides the master: who rolled, the player of its combatant and the
+// player of its character (the one a master rolled for outside a combat).
 func (s *Service) holdUsers(ctx context.Context, h heldRoll) []string {
 	users := []string{h.UserID}
 	if h.CombatantID != "" {
@@ -109,7 +171,7 @@ func (s *Service) holdUsers(ctx context.Context, h heldRoll) []string {
 			users = append(users, *who.UserID)
 		}
 	}
-	return users
+	return append(users, s.characterPlayer(ctx, h.CampaignID, h.CharacterID))
 }
 
 // concealed turns the refusal of a caller who may not answer into "not found", for the RPCs that conceal the hold: the

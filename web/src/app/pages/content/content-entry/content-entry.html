@@ -57,11 +57,13 @@
               <span class="mr-tag mr-tag--danger"><mat-icon aria-hidden="true">error_outline</mat-icon>Fora da campanha</span>
             }
             @if (state_(); as st) {
+              @if (kind() !== Kind.WEAPON || st.archived) {
               <span class="mr-tag">
                 @if (st.archived) {
                   <mat-icon aria-hidden="true">archive</mat-icon>
                 }{{ st.text }}
               </span>
+              }
             }
             @if (updated() && isMaster()) {
               <span class="mr-muted tags__updated">{{ updated() }}</span>
@@ -79,6 +81,8 @@
           </mat-menu>
         } @else if (isMaster() && entry() && !entry()!.archived && !asking()) {
           <button matButton="outlined" type="button" class="head__action" (click)="askArchive()"><mat-icon aria-hidden="true">archive</mat-icon>{{ leftOut().verb }}</button>
+        } @else if (isMaster() && entry()?.archived && kind() === Kind.WEAPON) {
+          <button matButton="outlined" type="button" class="head__action" [disabled]="archiving()" (click)="unarchive()"><mat-icon aria-hidden="true">unarchive</mat-icon>Desarquivar</button>
         }
       </header>
 
@@ -151,6 +155,9 @@
         <div class="archived">
           <div class="mr-notice mr-notice--neutral">
             <mat-icon aria-hidden="true">info</mat-icon>
+            @if (kind() === Kind.WEAPON) {
+              <p>Continua nas fichas que já a têm. Não entra numa ficha nova.</p>
+            } @else {
             <p>
               <strong>{{ nounPhrase() }} está {{ archivedWord() }}.</strong>
               @if (archivedOn()) {
@@ -161,8 +168,9 @@
               }
               A entrada só deixa de aparecer para fichas novas.
             </p>
+            }
           </div>
-          @if (!phone()) {
+          @if (!phone() && kind() !== Kind.WEAPON) {
             <button matButton="outlined" type="button" class="unarchive" [disabled]="archiving()" (click)="unarchive()"><mat-icon aria-hidden="true">unarchive</mat-icon>Desarquivar</button>
           }
         </div>
@@ -212,6 +220,9 @@
             }
             @case (Kind.CREATURE) {
               <app-creature-editor [campaignId]="campaignId()" [entry]="entry()" [catalog]="catalog()!" [entries]="entries()" [saveBlocked]="saveBlocked()" (saved)="onSaved($event)" (switched)="replace($event)" (reload)="load()" (cancelled)="goBack()" />
+            }
+            @case (Kind.WEAPON) {
+              <app-weapon-editor [campaignId]="campaignId()" [entry]="entry()" [menu]="menu()!" [catalog]="catalog()!" [entries]="entries()" [saveBlocked]="saveBlocked()" [leftOut]="leftOut().violation" (saved)="onSaved($event)" (switched)="replace($event)" (reload)="load()" (cancelled)="goBack()" />
             }
             @case (Kind.BACKGROUND) {
               <app-background-editor [campaignId]="campaignId()" [entry]="entry()" [menu]="menu()!" [catalog]="catalog()!" [entries]="entries()" [saveBlocked]="saveBlocked()" [leftOut]="leftOut().violation" (saved)="onSaved($event)" (switched)="replace($event)" (reload)="load()" (cancelled)="goBack()" />

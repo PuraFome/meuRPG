@@ -152,11 +152,16 @@ The screens of MR-025 and RN-23 use only the server of [Table content](character
   The draft edits only that modifier.
   `applyHit` writes it back in its own place and leaves the rest of the stored `kept.effect` alone: the other modifiers, the conditions, `applies`, the audience and the label.
   An effect left with no modifier and no condition is not sent.
-  The cap "No máximo" is required, from 1 to 20, and the form says so before the save.
+  The cap "No máximo" is from 1 to 20 dice and may stay empty, which is no limit.
+  The form says every number out of its range at once, each at its field, before the save (`hitRefusals`).
   The block is off for an instantaneous spell, and says why.
   The marked target is locked unless the target is "Uma criatura" with no extra targets per level (a cantrip has none, so a stale count there does not lock).
   When a change locks it, the trigger moves to "Próximo golpe com arma" and the block says so in a polite live region.
   "Cada golpe enquanto durar" and the marked target need concentration; the block says so while it is off.
+  The audience and the label of the other players ("Quem vê o efeito", `pages/content/spell-editor/hit-audience`) are a card of the side column while the hit is the spell's only effect; with "Deixa um efeito nos alvos" on, the same question is asked inside that block.
+  A new effect starts at "Só quem conjura e você", the server's own default (`hitShell` writes the audience when the effect is new or the person changed it, and leaves a stored unset audience unset).
+  A server refusal of the audience lands on the card, and a save the form stops (`EntrySaver.blockOn` with its count) says "N campos precisam de ajuste" for every field it names.
+  With "Deixa um efeito nos alvos" on too, each head is a summary (the rows' chips beside "nos 3 alvos"; the hit's "+1d6 radiante no próximo golpe" beside "em quem conjura") and one line under the hit's head says that one concentration (or duration) ends both.
   A refusal of the server lands at the field, and the read view and the editor's preview share `readHit`.
   "Salvar magia" stops and lands on the first of them.
   A refusal at `table_spell.summon.*` sits under its own field (`SPELL_SUMMON_TEXTS`).
@@ -225,7 +230,13 @@ flowchart LR
   It is off, with the reason, while the class reuses another class's list; the draft keeps the chips, and `castingInit` sends `srd_spell_keys` only while the list is the class's own.
   The subclass editor shows the switch "As magias da subclasse entram na lista da classe, para escolher" (`spells_expanded`) when the subclass names spells; `draftToSubclass` sends it only then.
   A refusal at `srd_spell_keys[<i>]` lands on the picker, at `spells_expanded` on the switch.
-- **Expertise only where proficient.** The effect picker draws the `only_proficient` field of the menu ("Só onde já tem proficiência") only while the effect has the level "Especialização" on a skill (`onlyProficientApplies`); `draftToEffect` sends it only then.
+- **Only where proficient.** The `only_proficient` field of the menu is drawn, and sent by `draftToEffect`, only where it means something (`onlyProficientApplies`): for the level "Especialização" on a skill ("Só onde já tem proficiência"), and for a `power_attack`, where it is the switch of its block.
+- **The power attack's block** (`shared/effect-picker/effect-power-attack.ts`, `power-attack-view.ts`).
+  "Ataque poderoso" draws `attack_penalty` ("Tira do ataque") and `damage_bonus` ("Soma no dano") side by side with the ranges the menu states, `weapon` as three cards ("Qualquer arma", "Só corpo a corpo", "Só à distância"), `weapon_properties` as the search chips of the SRD properties of the menu (up to 4), the proficiency switch and "Vale para:", the filter read back in words (`powerAttackReading`, a pure function).
+  The resource ("Gasta um uso de", the entry's own resources), "Quando vale" and the text are the picker's generic fields under "Mais opções", which names them while it is folded.
+  The editor says a number outside its range and a fifth property before the server does (`powerAttackIssues`, the fifth chip outlined); the server's refusals at the fields land on the same controls in the same words (`EFFECT_REFUSAL_TEXTS`, `power_attack.*`).
+  A feature has at most one: another effect of the entry that is a power attack dashes the type in the "Efeito" menu with the reason, and the server's `forbidden_effect` at `.type` says the same.
+  A stored power_attack with a number outside the ranges, a weapon kind that is not one of the three or a filter the block cannot hold is `EffectDraft.kept` (`keptOf`): shown read-only, written back as stored, only removable.
 - **The grid** (`shared/level-grid`) scrolls inside (titles pinned on top, the level on the left), one `<input>` per cell with `data-field` (`table_class.levels[4].slots[2]`) and an `aria-label`; arrows change row and Page Down jumps five.
   It shows the levels the casting type's default uses, and "Mostrar os 9 níveis de magia" opens the rest.
   The third-caster subclass uses the same grid without bonus and features.

@@ -49,6 +49,18 @@ const DefaultBuffer = 16
 // the page the person is looking at, and the oldest is the likeliest dead.
 const DefaultMaxPerUser = 4
 
+// DefaultMaxPerUserTotal is how many streams one user may hold open across all their
+// campaigns. Past it, the new stream replaces the user's oldest one in whichever campaign
+// (ErrReplaced), the same way as DefaultMaxPerUser, so one account with many campaigns
+// cannot take the instance's request slots either.
+const DefaultMaxPerUserTotal = 8
+
+// DefaultMaxStreams is how many streams the hub holds in all. Every open stream holds one
+// of the instance's concurrent requests (Cloud Run `concurrency` = 50, set in
+// docs/operations/README.md and the deploy runbook), so 40 leaves 10 slots for the ordinary
+// calls of everyone else. Past it, a new stream is refused (ErrFull) and no stream ends.
+const DefaultMaxStreams = 40
+
 // Why a subscription ended. Err returns one of these once Events is closed.
 var (
 	// ErrSlow: the subscriber did not keep up and was dropped.
@@ -58,6 +70,9 @@ var (
 	// ErrReplaced: the user opened one stream more than the cap on this
 	// campaign, and this one, their oldest, made room for it.
 	ErrReplaced = errors.New("live: replaced by a newer stream of the same user")
+	// ErrFull: the hub already holds the most streams the instance allows
+	// (DefaultMaxStreams); Subscribe returns it and ends no other stream.
+	ErrFull = errors.New("live: the instance holds the most streams it allows")
 )
 
 // Subscriber is who watches: their account, and whether they are the
@@ -84,6 +99,9 @@ type Audience struct {
 	// One more user, such as the player of the character the event is
 	// about. Empty for none.
 	UserID string
+	// NotMaster narrows UserID to a user's stream that is not the master's: an event the master already hears through
+	// Master tells the player of a character the master rolls for, and the master's own stream hears it once.
+	NotMaster bool
 	// Except lists players Players does not reach: "the players but these". It narrows Players only.
 	Except []string
 	// NoScreens leaves out the streams of the master's TV tab (Subscriber.Screen), which hear every
@@ -97,7 +115,7 @@ func (a Audience) includes(s Subscriber) bool {
 	if a.NoScreens && s.Screen {
 		return false
 	}
-	return a.Everyone || (a.Master && s.Master) || (a.Players && !s.Master && !slices.Contains(a.Except, s.UserID)) || (a.UserID != "" && a.UserID == s.UserID)
+	return a.Everyone || (a.Master && s.Master) || (a.Players && !s.Master && !slices.Contains(a.Except, s.UserID)) || (a.UserID != "" && a.UserID == s.UserID && (!a.NotMaster || !s.Master))
 }
 
 // Event is one live change, and who may receive it.
@@ -117,8 +135,10 @@ type Event struct {
 
 // Hub is the in-memory fan-out. The zero Hub is not usable: call New.
 type Hub struct {
-	buffer     int
-	maxPerUser int
+	buffer          int
+	maxPerUser      int
+	maxPerUserTotal int
+	maxStreams      int
 
 	mu     sync.Mutex
 	subs   map[string]map[*Subscription]struct{} // by campaign ID
@@ -132,7 +152,7 @@ func New(buffer int) *Hub {
 	if buffer <= 0 {
 		buffer = DefaultBuffer
 	}
-	return &Hub{buffer: buffer, maxPerUser: DefaultMaxPerUser, subs: map[string]map[*Subscription]struct{}{}}
+	return &Hub{buffer: buffer, maxPerUser: DefaultMaxPerUser, maxPerUserTotal: DefaultMaxPerUserTotal, maxStreams: DefaultMaxStreams, subs: map[string]map[*Subscription]struct{}{}}
 }
 
 // Subscription is one member watching one campaign. Read Events until it
@@ -155,28 +175,44 @@ func (h *Hub) SetMaxPerUser(n int) {
 	h.maxPerUser = n
 }
 
+// SetMaxPerUserTotal changes how many streams a user may hold across all
+// campaigns (tests use it; the default is DefaultMaxPerUserTotal). Call it
+// before any Subscribe.
+func (h *Hub) SetMaxPerUserTotal(n int) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.maxPerUserTotal = n
+}
+
+// SetMaxStreams changes how many streams the hub holds in all (tests use it;
+// the default is DefaultMaxStreams). Call it before any Subscribe.
+func (h *Hub) SetMaxStreams(n int) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.maxStreams = n
+}
+
 // Subscribe starts delivering the campaign's events for who. It fails with
 // ErrClosed once the hub is closed. When who already has the most streams
-// allowed on this campaign, their oldest one ends with ErrReplaced to make
-// room for this one.
+// allowed on this campaign, their oldest one there ends with ErrReplaced to
+// make room for this one; then, when who has the most streams allowed across
+// all campaigns, their oldest one anywhere ends the same way. When the hub
+// then still holds the most streams the instance allows, it fails with ErrFull
+// and no stream ends.
 func (h *Hub) Subscribe(campaignID string, who Subscriber) (*Subscription, error) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	if h.closed {
 		return nil, ErrClosed
 	}
-	held := 0
-	var oldest *Subscription
-	for other := range h.subs[campaignID] {
-		if other.who.UserID == who.UserID {
-			held++
-			if oldest == nil || other.seq < oldest.seq {
-				oldest = other
-			}
-		}
+	if h.streamsOf(who.UserID, campaignID) >= h.maxPerUser {
+		h.remove(h.oldestOf(who.UserID, campaignID), ErrReplaced)
 	}
-	if held >= h.maxPerUser {
-		h.remove(oldest, ErrReplaced)
+	if h.streamsOf(who.UserID, "") >= h.maxPerUserTotal {
+		h.remove(h.oldestOf(who.UserID, ""), ErrReplaced)
+	}
+	if h.total() >= h.maxStreams {
+		return nil, ErrFull
 	}
 	h.seq++
 	s := &Subscription{hub: h, campaignID: campaignID, who: who, events: make(chan Event, h.buffer), seq: h.seq}
@@ -185,6 +221,50 @@ func (h *Hub) Subscribe(campaignID string, who Subscriber) (*Subscription, error
 	}
 	h.subs[campaignID][s] = struct{}{}
 	return s, nil
+}
+
+// streamsOf counts the streams userID holds on the campaign, or on every campaign when campaignID is
+// empty. The caller holds h.mu.
+func (h *Hub) streamsOf(userID, campaignID string) int {
+	n := 0
+	h.eachOf(userID, campaignID, func(*Subscription) { n++ })
+	return n
+}
+
+// oldestOf is the stream userID opened first on the campaign, or on every campaign when campaignID
+// is empty; nil when there is none. The caller holds h.mu.
+func (h *Hub) oldestOf(userID, campaignID string) *Subscription {
+	var oldest *Subscription
+	h.eachOf(userID, campaignID, func(s *Subscription) {
+		if oldest == nil || s.seq < oldest.seq {
+			oldest = s
+		}
+	})
+	return oldest
+}
+
+// eachOf calls fn for each stream userID holds on the campaign, or on every campaign when
+// campaignID is empty. The caller holds h.mu.
+func (h *Hub) eachOf(userID, campaignID string, fn func(*Subscription)) {
+	for id, subs := range h.subs {
+		if campaignID != "" && id != campaignID {
+			continue
+		}
+		for s := range subs {
+			if s.who.UserID == userID {
+				fn(s)
+			}
+		}
+	}
+}
+
+// total counts every stream in the hub. The caller holds h.mu.
+func (h *Hub) total() int {
+	n := 0
+	for _, subs := range h.subs {
+		n += len(subs)
+	}
+	return n
 }
 
 // Publish hands ev to every subscription of the campaign in its audience,

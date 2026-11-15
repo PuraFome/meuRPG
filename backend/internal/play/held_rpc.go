@@ -34,6 +34,7 @@ var heldKindProto = map[heldKind]playv1.HeldRollKind{
 	heldCounterspell:      playv1.HeldRollKind_HELD_ROLL_KIND_COUNTERSPELL_CHECK,
 	heldContest:           playv1.HeldRollKind_HELD_ROLL_KIND_CONTEST,
 	heldInitiative:        playv1.HeldRollKind_HELD_ROLL_KIND_INITIATIVE,
+	heldMountSave:         playv1.HeldRollKind_HELD_ROLL_KIND_MOUNT_SAVE,
 	heldSceneCheck:        playv1.HeldRollKind_HELD_ROLL_KIND_SCENE_CHECK,
 	heldGroupCheck:        playv1.HeldRollKind_HELD_ROLL_KIND_GROUP_CHECK,
 	heldTrapSearch:        playv1.HeldRollKind_HELD_ROLL_KIND_TRAP_SEARCH,
@@ -258,6 +259,8 @@ func answerHeldCheckResultOf(out proto.Message, res *playv1.AnswerHeldRollRespon
 		res.Result, res.Next = &playv1.AnswerHeldRollResponse_TrapSearch{TrapSearch: o}, o.GetHeldRollOffer()
 	case *playv1.TryPuzzleHintResponse:
 		res.Result, res.Next = &playv1.AnswerHeldRollResponse_HintTry{HintTry: o}, o.GetHeldRollOffer()
+	case *playv1.RollMountSaveResponse:
+		res.Result, res.Next = &playv1.AnswerHeldRollResponse_MountSave{MountSave: o}, o.GetHeldRollOffer()
 	}
 }
 
@@ -390,11 +393,25 @@ func heldHintInterceptor(s *Service) connect.UnaryInterceptorFunc {
 				return res, err
 			}
 			if userID, uerr := authz.RequireSignedIn(ctx); uerr == nil {
-				s.heldRollsChangedNoSession(ctx, campaignOf(req.Any()), userID)
+				campaignID := campaignOf(req.Any())
+				s.heldRollsChangedNoSession(ctx, campaignID, userID, s.characterPlayer(ctx, campaignID, asked.GetHeldRollOffer().GetCharacterId()))
 			}
 			return res, err
 		}
 	}
+}
+
+// characterPlayer is the user who plays the character, empty for a non-player character, an unknown one or when it
+// cannot be read (the hint is only a nudge to read again).
+func (s *Service) characterPlayer(ctx context.Context, campaignID, characterID string) string {
+	if characterID == "" {
+		return ""
+	}
+	cs, err := s.roster.CombatCharacters(ctx, nil, campaignID, []string{characterID})
+	if err != nil || len(cs) != 1 {
+		return ""
+	}
+	return cs[0].PlayerUserID
 }
 
 // campaignOf is the campaign a request names.
@@ -447,23 +464,41 @@ func (env gateEnv) tellHeld(ctx context.Context, h heldRoll) error {
 		return nil
 	}
 	env.h.heldTold = true
+	users, err := env.heldUsers(ctx, h)
+	if err != nil {
+		return err
+	}
+	env.h.tell(h.CampaignID, heldRollsChangedEvent(live.Audience{Master: true}))
+	for _, id := range users {
+		env.h.tell(h.CampaignID, heldRollsChangedEvent(live.Audience{UserID: id, NotMaster: true}))
+	}
+	return nil
+}
+
+// heldUsers is the sorted users, each once, whom a held roll's hint tells besides the master: the roller, the combatant's player
+// and the character's player.
+func (env gateEnv) heldUsers(ctx context.Context, h heldRoll) ([]string, error) {
 	users := []string{h.UserID}
 	if h.CombatantID != "" {
 		cs, err := env.q.ListCombatants(ctx, h.EncounterID)
 		if err != nil {
-			return fmt.Errorf("list the combatants of the held roll: %w", err)
+			return nil, fmt.Errorf("list the combatants of the held roll: %w", err)
 		}
 		if i := slices.IndexFunc(cs, func(c playdb.Combatant) bool { return c.ID == h.CombatantID }); i >= 0 && cs[i].UserID != nil {
 			users = append(users, *cs[i].UserID)
 		}
 	}
-	env.h.tell(h.CampaignID, heldRollsChangedEvent(live.Audience{Master: true}))
-	for _, id := range slices.Compact(slices.Sorted(slices.Values(users))) {
-		if id != "" {
-			env.h.tell(h.CampaignID, heldRollsChangedEvent(live.Audience{UserID: id}))
+	if h.CharacterID != "" && env.roster != nil {
+		cs, err := env.roster.CombatCharacters(ctx, env.tx, h.CampaignID, []string{h.CharacterID})
+		if err != nil {
+			return nil, fmt.Errorf("find the character of the held roll: %w", err)
+		}
+		for _, c := range cs {
+			users = append(users, c.PlayerUserID)
 		}
 	}
-	return nil
+	users = slices.DeleteFunc(users, func(id string) bool { return id == "" })
+	return slices.Compact(slices.Sorted(slices.Values(users))), nil
 }
 
 // heldRollsChangedEvent is HeldRollsChanged for an audience, in a message of its own (the session's number is written into it).
@@ -485,7 +520,7 @@ func (s *Service) publishHeldRollsChanged(campaignID string, userIDs ...string) 
 	s.send(campaignID, live.Event{Audience: live.Audience{Master: true}, Message: msg})
 	for _, id := range slices.Compact(slices.Sorted(slices.Values(userIDs))) {
 		if id != "" {
-			s.send(campaignID, live.Event{Audience: live.Audience{UserID: id}, Message: msg})
+			s.send(campaignID, live.Event{Audience: live.Audience{UserID: id, NotMaster: true}, Message: msg})
 		}
 	}
 }

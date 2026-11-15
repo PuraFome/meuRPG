@@ -25,7 +25,9 @@ export interface RadioCard {
   imports: [FieldNote],
   template: `
     <div class="group" role="radiogroup" [attr.aria-label]="label()" [attr.aria-describedby]="noteId">
-      <span class="legend" aria-hidden="true">{{ label() }}</span>
+      @if (legend()) {
+        <span class="legend" [class.legend--strong]="strongLegend()" aria-hidden="true">{{ label() }}</span>
+      }
       <div class="cards">
         @for (o of options(); track o.value; let first = $first) {
           <label class="card" [class.card--off]="o.disabled">
@@ -67,6 +69,11 @@ export interface RadioCard {
     .legend {
       font-size: 14px;
       color: var(--mr-ink-muted);
+    }
+
+    .legend--strong {
+      font-weight: 700;
+      color: var(--mr-ink);
     }
 
     .cards {
@@ -163,6 +170,10 @@ export interface RadioCard {
 })
 export class RadioCards {
   readonly label = input.required<string>();
+  /** The group's name in bold ink, as a heading over the cards (the power attack block's "Com que armas"). */
+  readonly strongLegend = input(false);
+  /** The label is drawn above the cards; a card that has its own heading says it only to a screen reader. */
+  readonly legend = input(true);
   readonly options = input.required<readonly RadioCard[]>();
   readonly value = input.required<string>();
   readonly path = input('');

@@ -123,6 +123,14 @@ WHERE game_session_id = $1
 ORDER BY (status <> 'ended') DESC, created_at DESC, id DESC
 LIMIT 1;
 
+-- name: ListEncountersOfCharacter :many
+-- The combats the character is a combatant of, the latest first, ended or not: the search for the ammunition of its
+-- last combat reads the latest few.
+SELECT e.* FROM encounters e
+WHERE EXISTS (SELECT 1 FROM combatants c WHERE c.encounter_id = e.id AND c.character_id = $1)
+ORDER BY e.created_at DESC, e.id DESC
+LIMIT 10;
+
 -- name: GetOpenEncounter :one
 -- The session's combat that is not ended, if any. The partial unique index
 -- encounters_one_open_per_session allows at most one.
@@ -1633,6 +1641,11 @@ RETURNING *;
 UPDATE reaction_windows SET step = $2, trigger = $3 WHERE id = $1 AND status = 'open'
 RETURNING *;
 
+-- name: SetReactionWindowTrigger :one
+-- The trigger of an open window changes and nothing else does: a second push of the mount a rider's save is asked for.
+UPDATE reaction_windows SET trigger = $2 WHERE id = $1 AND status = 'open'
+RETURNING *;
+
 -- name: DeleteReactionWindowsOfEncounter :exec
 DELETE FROM reaction_windows WHERE encounter_id = $1;
 
@@ -2028,8 +2041,10 @@ DELETE FROM character_inspiration WHERE campaign_id = $1;
 -- name: InsertInspirationHold :one
 -- A d20 roll that waits for the answer about a Bardic Inspiration die, or for the Lucky question
 -- of a d20 that shows a 1 (lucky_index, NULL without one). A roll held in a combat also names its
--- combatant and its combat, which own the hold (00255); window_hold is the weapon attack a reaction
--- window kept. favor_spent says the roll was made with the roller's Inspiration, which a retry or the answer reads.
+-- combatant and its combat, which own the hold (00255); window_hold says a reaction window held the
+-- request first and the roll is the one its replay held (the weapon attack, a contest start or answer,
+-- or a Hide), so the hold has a key of its own.
+-- favor_spent says the roll was made with the roller's Inspiration, which a retry or the answer reads.
 INSERT INTO inspiration_holds (campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, created_at, round, lucky_index, combatant_id, encounter_id, window_hold, indomitable_ask, indomitable_failed, stroke_ask, stroke_failed, reroll_ask, reroll_index, reroll_at_most, reroll_resource, reroll_cost, reroll_source, counted_by, favor_spent)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, sqlc.narg(combatant_id), sqlc.narg(encounter_id), $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27)
 RETURNING *;
@@ -2243,3 +2258,7 @@ DELETE FROM character_favor WHERE character_id = $1 AND campaign_id = $2 RETURNI
 -- name: HasCharacterFavor :one
 -- Says the character has the Inspiration, without taking it: a roll a reaction window holds is checked against it, and the replay spends it.
 SELECT EXISTS (SELECT 1 FROM character_favor WHERE character_id = $1 AND campaign_id = $2);
+
+-- name: EncounterHasRiders :one
+-- Whether any combatant of the combat sits on a mount: the cheap check before the scans that look for a mount's rider.
+SELECT EXISTS (SELECT 1 FROM combatants WHERE encounter_id = $1 AND mounted_on_id IS NOT NULL);

@@ -2,6 +2,7 @@ import { type Signal, computed } from '@angular/core';
 
 import { damageFormula, extraDiceOf } from '../../../../core/combat/combat-dice';
 import { criticalSentence, criticalSum, brutalTyped } from '../../../../core/combat/critical';
+import { isTradePart } from '../../../../core/combat/power-attack-trade';
 import { activeParts, rollFormula } from '../../../../core/combat/damage-parts';
 import { typedBonusLine, typedFields } from '../../../../core/combat/typed-fields';
 import type { RollField } from '../../../../shared/multi-roll/multi-roll';
@@ -43,7 +44,9 @@ export class AttackDamage {
     })),
   );
   /** "Sem o + 3: o app soma o bônus.": the fixed number the player does not type. */
-  readonly bonusLine = computed(() => typedBonusLine(this.flat()));
+  readonly bonusLine = computed(() =>
+    typedBonusLine(this.flat(), this.parts().find((p) => isTradePart(p))?.labelPt ?? ''),
+  );
   /** The button of the typed answer: "Aplicar 14 de dano" once every sum is there. */
   readonly applyLabel = (total: number | null): string =>
     total === null ? 'Aplicar dano' : `Aplicar ${total} de dano`;

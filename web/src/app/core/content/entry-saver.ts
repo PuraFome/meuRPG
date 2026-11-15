@@ -11,7 +11,7 @@ import {
   withoutRow,
 } from './content-violations';
 import { ActionKey } from '../connect/idempotency';
-import { contentErrorText, isStale, refusalOf } from './content-client';
+import { contentErrorText, isStale, isUnavailable, refusalOf } from './content-client';
 
 /**
  * What an editor does around a write (MR-025, E10-01 states 5): runs it, and on a refusal puts every violation back on
@@ -23,6 +23,8 @@ export class EntrySaver {
   readonly saving = signal(false);
   readonly placement = signal<Placement>(NO_PLACEMENT);
   readonly error = signal('');
+  /** The failure in `error` is the server being out of the air: nothing was written, and the notice draws a cloud. */
+  readonly offline = signal(false);
   readonly stale = signal(false);
   /** The summary of a refusal, for the alert at the top. */
   readonly summary = signal('');
@@ -47,14 +49,16 @@ export class EntrySaver {
   /** Stops a save the client already knows is bad (`paths` are the fields it cannot send, in the order to show them): the server's older
    * refusal of those fields leaves the screen, so it does not sit beside the client's error, while its refusals of the other fields stay
    * (the stale banner stays too: the entry is out of date until it is reloaded). `show` takes the person to the first path. Returns
-   * whether it stopped. */
-  blockOn(paths: readonly string[], show: (path: string) => void): boolean {
+   * whether it stopped. With `countThem` the summary at the top counts the client's fields as well ("4 campos precisam de ajuste"), as a
+   * refusal of the server does; without it the summary has only the server's refusals that are left. */
+  blockOn(paths: readonly string[], show: (path: string) => void, countThem = false): boolean {
     if (paths.length === 0) {
       return false;
     }
     const kept = withoutFields(this.placement(), paths);
     this.placement.set(kept);
-    this.summary.set(kept.count > 0 ? refusalSummary(this.what, kept.count) : '');
+    const count = kept.count + (countThem ? new Set(paths).size : 0);
+    this.summary.set(count > 0 ? refusalSummary(this.what, count) : '');
     show(paths[0]);
     return true;
   }
@@ -103,6 +107,7 @@ export class EntrySaver {
   clear(): void {
     this.placement.set(NO_PLACEMENT);
     this.error.set('');
+    this.offline.set(false);
     this.stale.set(false);
     this.summary.set('');
   }
@@ -126,6 +131,7 @@ export class EntrySaver {
         this.stale.set(true);
       } else {
         this.error.set(contentErrorText(err, `salvar ${this.what}`));
+        this.offline.set(isUnavailable(err));
       }
       return null;
     } finally {

@@ -32,6 +32,8 @@ export class FakePuzzlesClient {
   cipherResult = 'R WHVRXUR HVWD VRE R DOWDU';
   hintCount = 0;
   hintKeys: string[] = [];
+  /** The `spend_favor` of each try of a hint. */
+  hintSpends: boolean[] = [];
   failWith: unknown;
   moveCount = 0;
   moveKeys: string[] = [];
@@ -156,8 +158,11 @@ export class FakePuzzlesClient {
     puzzleId: string,
     die: HintDie,
     key: string,
+    _extra?: readonly number[],
+    spendFavor = false,
   ): Promise<TryPuzzleHintResponse> {
     this.calls.push(['tryHint', campaignId, puzzleId, die, key]);
+    this.hintSpends.push(spendFavor);
     this.hintKeys.push(key);
     const n = ++this.hintCount;
     if (!this.hintResult) {

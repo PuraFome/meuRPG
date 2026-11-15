@@ -302,6 +302,7 @@ func combatAttack(a rules.Attack) link.Attack {
 		Beams: a.Beams, Light: a.Light, Unarmed: a.Key == rules.UnarmedStrikeKey, MartialArts: a.MartialArts, AbilityMod: a.AbilityMod,
 		Ability: string(a.Ability), Finesse: a.Finesse, TwoHanded: a.TwoHanded, Weapon: a.Kind == "weapon",
 		Magical: a.Magical, Silvered: a.Silvered, Adamantine: a.Adamantine, Properties: slices.Clone(a.Properties), Proficient: a.Proficient,
+		Ammunition: a.AmmunitionKey,
 	}
 }
 
@@ -336,17 +337,15 @@ func (s *Service) CombatTurnOptions(ctx context.Context, tx pgx.Tx, campaignID, 
 		MovementUsedFt: turn.MovementUsedFt, Dashed: turn.Dashed, AttacksMade: turn.AttacksMade, LastAttackKey: turn.AttackKey, FlurryLeft: turn.FlurryLeft, FrenzyReady: turn.FrenzyReady, ActionSurged: turn.ActionSurged, SpellCast: turn.SpellCast, BonusSpellCast: turn.BonusSpellCast,
 	}, usage)
 	out := turnOptionsToProto(opts)
+	if kind == "player" {
+		if err := s.fillAmmunitionLeft(ctx, tx, campaignID, characterID, d, out); err != nil {
+			return nil, err
+		}
+	}
 	if d.ArmorUntrained.Any() {
 		refuseSpellOptions(out)
 	}
-	// The Berserker's Rage asks whether to frenzy (SRD 5.1, Path of the Berserker).
-	if rules.HasFeature(d, "feature:frenzy") {
-		for _, a := range out.GetFeatureActions() {
-			if a.GetAction().GetKey() == "feature:rage" {
-				a.OffersFrenzy = true
-			}
-		}
-	}
+	offerFrenzy(d, out)
 	// The movement is kept in tenths of a foot (RN-21): the feet fields are those
 	// rounded down, so the two never disagree.
 	speed := turn.SpeedFt * 10
@@ -368,6 +367,43 @@ func (s *Service) CombatTurnOptions(ctx context.Context, tx pgx.Tx, campaignID, 
 		}
 	}
 	return out, nil
+}
+
+// offerFrenzy marks the Berserker's Rage as asking whether to frenzy (SRD 5.1, Path of the Berserker).
+func offerFrenzy(d rules.Derived, out *rulesv1.TurnOptions) {
+	if !rules.HasFeature(d, "feature:frenzy") {
+		return
+	}
+	for _, a := range out.GetFeatureActions() {
+		if a.GetAction().GetKey() == "feature:rage" {
+			a.OffersFrenzy = true
+		}
+	}
+}
+
+// fillAmmunitionLeft says on each attack line of a weapon that fires ammunition how many pieces the character has left
+// (the line has none for a kind the character has no count for). The options go to the character's player and the master alone, which is who may read the stock.
+func (s *Service) fillAmmunitionLeft(ctx context.Context, tx pgx.Tx, campaignID, characterID string, d rules.Derived, out *rulesv1.TurnOptions) error {
+	ammoOf := map[string]string{}
+	for _, a := range d.Attacks {
+		if a.AmmunitionKey != "" {
+			ammoOf[a.Key] = a.AmmunitionKey
+		}
+	}
+	for _, o := range out.GetAttacks() {
+		key, ok := ammoOf[o.GetAttack().GetKey()]
+		if !ok {
+			continue
+		}
+		left, counted, err := s.AmmunitionLeft(ctx, tx, campaignID, characterID, key)
+		if err != nil {
+			return err
+		}
+		if counted {
+			o.Attack.AmmunitionLeft = &left
+		}
+	}
+	return nil
 }
 
 // usageOf reads the slots a character has spent from its vitals.

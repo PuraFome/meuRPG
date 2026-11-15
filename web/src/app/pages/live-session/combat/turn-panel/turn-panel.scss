@@ -218,6 +218,11 @@
   vertical-align: middle;
 }
 
+.banner__favor,
+.turn__favor {
+  margin-top: var(--mr-space-1);
+}
+
 .banner__end {
   display: grid;
   flex: none;

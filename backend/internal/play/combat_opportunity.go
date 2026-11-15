@@ -419,3 +419,13 @@ func coverOrNone(c string) string {
 	}
 	return c
 }
+
+// offerTargets says the combatant is one the offer's attack may name: the mover, or the rider that sits on it (SRD 5.1, "Mounted
+// Combat": when the mount provokes, the reactor may hit either of the pair).
+func offerTargets(cs []playdb.Combatant, o playdb.OpportunityOffer, id string) bool {
+	if o.MoverID == id {
+		return true
+	}
+	rider := riderOf(cs, o.MoverID)
+	return rider != nil && rider.ID == id
+}

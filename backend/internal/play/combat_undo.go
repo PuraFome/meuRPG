@@ -115,6 +115,7 @@ func (c chainEvent) payload() (ev actionEvent, ok bool) {
 // that says something decides. The last one always does.
 var chainRules = []func(c chainEvent) chainVerdict{
 	chainCreatures,
+	chainAmmunition,
 	chainCastZoneCatch,
 	chainConcentrationEnd,
 	chainReadiedDefeat,
@@ -134,6 +135,7 @@ var chainRules = []func(c chainEvent) chainVerdict{
 	chainHeldFall,
 	chainRevive,
 	chainHideDecision,
+	chainForcedFall,
 	chainAction,
 }
 
@@ -145,6 +147,15 @@ func chainVerdictOf(c chainEvent) chainVerdict {
 		}
 	}
 	return chainClose
+}
+
+// chainAmmunition: the piece of ammunition a shot took is written before the attack's own event, which is what an undo
+// acts on: the line stays in the log, and it never closes the undo chain.
+func chainAmmunition(c chainEvent) chainVerdict {
+	if c.row.Kind == eventAmmunitionSpent {
+		return chainSkip
+	}
+	return chainGoOn
 }
 
 // chainCreatures: the creatures a cast or an ended concentration made or dismissed are
@@ -342,6 +353,31 @@ func chainHideDecision(c chainEvent) chainVerdict {
 	return chainGoOn
 }
 
+// chainForcedFall: an action whose change threw a rider at 0 hit points off its mount (the fall is written before the action's own
+// event, with no window: openMountSave) is no action an undo can take back, as the push whose save was answered is not. The change's own
+// events are the ones between the action's and the previous action's: the walk reads them all.
+func chainForcedFall(c chainEvent) chainVerdict {
+	if !slices.Contains(undoableKinds, c.row.Kind) {
+		return chainGoOn
+	}
+	i := slices.IndexFunc(c.recent, func(e playdb.ListRecentSessionEventsRow) bool { return e.ID == c.row.ID })
+	if i < 0 {
+		return chainGoOn
+	}
+	for _, e := range c.recent[i+1:] {
+		if slices.Contains(undoableKinds, e.Kind) {
+			break // the previous action's event: what is older is not this change's
+		}
+		if e.Kind != eventRiderThrown {
+			continue
+		}
+		if ev, err := readEvent(e.Payload); err == nil && ev.Reaction != nil && ev.Reaction.Window == "" {
+			return chainClose
+		}
+	}
+	return chainGoOn
+}
+
 // chainAction: the action of this combat an undo can take back, or the end of the chain.
 func chainAction(c chainEvent) chainVerdict {
 	e := c.row
@@ -413,7 +449,6 @@ type undoRun struct {
 	unpushed   []*forcedMove             // the creatures a cast pushed that the undo put back
 	rearmed    *trapFireEvent            // the trap an undone firing armed again
 	alsoUndone []string                  // the older parts of a firing that went with it
-	afterGear  func(context.Context)     // what the sheet's gear told after the commit (an undone swap)
 	gearOwner  string                    // the owner of the character whose swap was undone: his log changed
 }
 
@@ -624,9 +659,6 @@ func (s *Service) publishUndoRun(ctx context.Context, campaignID string, d *enco
 	s.publishUndone(ctx, campaignID, d, ev)
 	// The undo rewrote the log: full.
 	s.publishLogChange(ctx, campaignID, d.enc.ID, !ev.Secret, true)
-	if run.afterGear != nil {
-		run.afterGear(ctx)
-	}
 	if run.gearOwner != "" { // the swap's line was the owner's too
 		s.publishGearLog(ctx, campaignID, d.enc.ID, run.gearOwner)
 	}
@@ -643,7 +675,7 @@ func (s *Service) publishUndoRun(ctx context.Context, campaignID string, d *enco
 		s.followToSquare(ctx, campaignID, d, m.Target, &grid.Square{Col: int(m.Col), Row: int(m.Row)})
 	}
 	for _, vit := range run.vitals {
-		s.publishVitals(campaignID, vit)
+		s.publishVitals(ctx, campaignID, vit)
 	}
 	if run.rearmed != nil && s.traps != nil {
 		s.traps.TrapChanged(ctx, campaignID, run.rearmed.MapID, run.rearmed.PointID) // players who saw it fire lose it again
@@ -665,7 +697,7 @@ func (s *Service) followToSquare(ctx context.Context, campaignID string, d *enco
 // out of their sight (RN-10).
 func (s *Service) publishUndone(ctx context.Context, campaignID string, d *encounterData, ev actionEvent) {
 	if ev.UndoneKind == eventLegendarySpent { // the master's text spend: nothing a player sees
-		s.publishEncounterChangedToMaster(campaignID, d.enc)
+		s.publishEncounterChangedToMaster(ctx, campaignID, d.enc)
 		return
 	}
 	f, err := s.fogSightOf(ctx, campaignID, d.enc)
@@ -673,7 +705,7 @@ func (s *Service) publishUndone(ctx context.Context, campaignID string, d *encou
 		s.publishEncounterChanged(ctx, campaignID, d.enc)
 		return
 	}
-	s.send(campaignID, live.Event{Audience: live.Audience{Master: true}, Message: encounterChangedMessage(d.enc)})
+	s.sayOf(ctx)(campaignID, live.Event{Audience: live.Audience{Master: true}, Message: encounterChangedMessage(d.enc)})
 	told := slices.Clone(ev.SeenBy)
 	if !ev.Secret {
 		for _, id := range ev.combatantIDs() {
@@ -685,7 +717,7 @@ func (s *Service) publishUndone(ctx context.Context, campaignID string, d *encou
 	slices.Sort(told)
 	blind := encounterChangedMessage(playdb.Encounter{ID: d.enc.ID, Mode: d.enc.Mode})
 	for _, u := range slices.Compact(told) {
-		s.send(campaignID, live.Event{Audience: live.Audience{UserID: u}, Message: blind})
+		s.sayOf(ctx)(campaignID, live.Event{Audience: live.Audience{UserID: u}, Message: blind})
 	}
 }
 
@@ -780,8 +812,29 @@ func closeDamageWindows(ctx context.Context, c *combatTx, kind string, ev action
 		if id == "" {
 			continue
 		}
+		if err := forgetHoldsOfPending(ctx, c, id); err != nil {
+			return err
+		}
 		if err := c.q.CloseOpenReactionWindowsOfPending(ctx, playdb.CloseOpenReactionWindowsOfPendingParams{EncounterID: c.enc.ID, Pending: id, AnsweredAt: c.now}); err != nil {
 			return fmt.Errorf("close the windows of a damage taken back: %w", err)
+		}
+	}
+	return nil
+}
+
+// forgetHoldsOfPending forgets the question each open window of a damage kept for its reactor, before the windows are closed: the roll
+// of a save that waits for a damage taken back never happens (hold_forget.go).
+func forgetHoldsOfPending(ctx context.Context, c *combatTx, pending string) error {
+	open, err := openWindowsOf(ctx, c)
+	if err != nil {
+		return err
+	}
+	for _, w := range open {
+		if windowTriggerOf(w).Pending != pending { // the raw close below matches the trigger's pending, as these windows are about it
+			continue
+		}
+		if err := forgetHoldsOfWindow(ctx, c.q, c.enc.ID, w); err != nil {
+			return fmt.Errorf("forget the question kept for a window of a damage taken back: %w", err)
 		}
 	}
 	return nil

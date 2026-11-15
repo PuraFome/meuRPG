@@ -27,6 +27,13 @@
     @media (min-width: 1100px) {
       position: sticky;
       top: 88px;
+      // Preview, audience and switch together can be taller than the window: the column then scrolls inside it, so its last card is
+      // never cut off. The padding keeps a focus ring from being clipped at the edge; the negative margin keeps the column aligned.
+      max-height: calc(100vh - 88px - var(--mr-space-4));
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      padding: 4px;
+      margin: -4px;
     }
   }
 }

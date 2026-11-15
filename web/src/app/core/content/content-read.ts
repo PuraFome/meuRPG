@@ -1,6 +1,7 @@
 import { effectReadItem } from './spell-effect-tags';
 import type {
   TableBackground,
+  TableWeapon,
   TableClassFeature,
   TableEntry,
   TableFeat,
@@ -25,14 +26,23 @@ import {
 import { bonusText } from './feature-draft';
 import { summonLine } from './summon-names';
 import { entryEffectsPart } from './content-read-rolls';
+import { powerAttackRead } from './power-attack-rows';
 import { spellToDraft } from './spell-draft';
 import { readHit } from './hit-effect-read';
-import { previewRows } from './spell-preview';
+import {
+  priceText,
+  weaponDamage,
+  weaponProperties,
+  weaponRange,
+  weaponUse,
+  weightText,
+} from './weapon-text';
+import { levelRow, previewRows } from './spell-preview';
 import { featChoiceRows, featOptionItems } from './content-read-feat';
 import { prerequisiteSupport, SIZE_WORDS } from './feat-text';
 import { featureKeyName } from './class-feature-text';
 import { readCreature } from './content-read-creature';
-import { type OfferedByName, optionPrerequisiteParts, optionSetName } from './option-text';
+import { type OfferedByName, optionPrerequisiteSupport, optionSetName } from './option-text';
 import { parentTraitsOf, replacedNames } from './subrace-traits';
 
 function raceAbilitiesRow(r: TableRace, nameOf: NameOf): ReadRow {
@@ -121,13 +131,30 @@ function readBackground(b: TableBackground, nameOf: NameOf): EntryRead {
   return { rows, sections, text: [] };
 }
 
+function readWeapon(w: TableWeapon, nameOf: NameOf): EntryRead {
+  const rows: ReadRow[] = [{ label: 'Categoria', value: weaponUse(w) }];
+  const damage = weaponDamage(w, nameOf);
+  if (damage) rows.push({ label: 'Dano', value: damage });
+  const range = weaponRange(w);
+  if (range) rows.push({ label: 'Distância', value: range });
+  if (w.properties.length > 0)
+    rows.push({ label: 'Propriedades', value: weaponProperties(w, nameOf, false).join(', ') });
+  if (w.weightOz > 0) rows.push({ label: 'Peso', value: weightText(w.weightOz) });
+  if (w.priceCp > 0) rows.push({ label: 'Preço', value: priceText(w.priceCp) });
+  return { rows, sections: [], text: w.descPt };
+}
+
 function readFeat(
   f: TableFeat,
   nameOf: NameOf,
   optionSide?: (o: TableFeature) => string,
 ): EntryRead {
   const asks = prerequisiteSupport(f.prerequisite, nameOf);
-  const rows: ReadRow[] = [{ label: 'Pré-requisito', value: asks || 'Nenhum' }];
+  const power = powerAttackRead(f.effects);
+  // Board 580-01 draws the line only when the feat asks for something; the board of the power attack
+  // keeps it, saying "Nada", so the trade that follows reads under a line of what the feat asks.
+  const rows: ReadRow[] =
+    asks || power.rows.length > 0 ? [{ label: 'Pede', value: asks || 'Nada' }] : [];
   for (const e of f.effects) {
     if (e.type === 'ability_increase' && e.count > 0) {
       const from = e.from.map((k) => nameOf(`ability:${k}`));
@@ -137,25 +164,30 @@ function readFeat(
       });
     }
   }
-  rows.push(...featChoiceRows(f));
+  rows.push(...featChoiceRows(f), ...power.rows);
   const options = featOptionItems(f, nameOf, optionSide);
   return {
     rows,
     sections: [],
     text: f.descPt,
-    ...entryEffectsPart(f.effects, nameOf),
+    ...entryEffectsPart(power.rest, nameOf),
     ...(options.length > 0 ? { options } : {}),
   };
 }
 
 function readOption(o: TableOption, nameOf: NameOf, offeredByName: OfferedByName): EntryRead {
-  const asks = optionPrerequisiteParts(o.prerequisite, nameOf);
+  const asks = optionPrerequisiteSupport(o.prerequisite, nameOf);
+  const power = powerAttackRead(o.effects);
   const rows: ReadRow[] = [
     { label: 'Conjunto', value: optionSetName(o.set) },
     ...(o.offeredBy === '' ? [] : [{ label: 'Oferecida por', value: offeredByName(o.offeredBy) }]),
-    { label: 'Pré-requisito', value: asks.length > 0 ? asks.join(', ') : 'Nenhum' },
+    {
+      label: asks ? 'Pede' : 'Pré-requisito',
+      value: asks || 'Nenhum',
+    },
+    ...power.rows,
   ];
-  return { rows, sections: [], text: o.descPt, ...entryEffectsPart(o.effects, nameOf) };
+  return { rows, sections: [], text: o.descPt, ...entryEffectsPart(power.rest, nameOf) };
 }
 
 function readClassFeature(f: TableClassFeature, nameOf: NameOf): EntryRead {
@@ -168,17 +200,18 @@ function readClassFeature(f: TableClassFeature, nameOf: NameOf): EntryRead {
     },
   ];
   const summon = summonLine(f.summon, nameOf);
+  const power = powerAttackRead(f.effects);
   return {
-    rows,
+    rows: [...rows, ...power.rows],
     sections: [],
     text: summon ? [...f.descPt, summon] : f.descPt,
-    ...entryEffectsPart(f.effects, nameOf),
+    ...entryEffectsPart(power.rest, nameOf),
   };
 }
 
 function readSpell(s: TableSpell, nameOf: NameOf): EntryRead {
   const draft = spellToDraft(s);
-  const rows: ReadRow[] = [...previewRows(draft, nameOf)];
+  const rows: ReadRow[] = [levelRow(draft, nameOf), ...previewRows(draft, nameOf)];
   const hit = readHit(draft, nameOf);
   const classes = names(s.classKeys, nameOf);
   if (classes) rows.push({ label: 'Classes', value: classes });
@@ -209,6 +242,8 @@ export function readEntry(
       return readSubrace(body.value, nameOf, parentOf(body.value.raceKey));
     case 'tableBackground':
       return readBackground(body.value, nameOf);
+    case 'tableWeapon':
+      return readWeapon(body.value, nameOf);
     case 'tableFeat':
       return readFeat(body.value, nameOf, optionSide);
     case 'tableOption':

@@ -57,7 +57,7 @@ var actionEventKinds = []string{
 	"trap_triggered", "cover_set", "side_set", "mount_kind_set", "combatant_mounted", "combatant_dismounted", "opportunity_offered", "creature_summoned", "creature_dismissed",
 	"feature_used", "wild_shape_started", "wild_shape_ended", "familiar_sight", "door_opened", "hidden_reveal_answered", "combat_effect_ended",
 	"roll_mode_requested", "roll_mode_answered", "damage_part_removed", "state_changed", "reaction_answered",
-	"concentration_save_rolled", "character_revived", "lasting_effect_added", "lasting_effect_changed", "lasting_effect_ended",
+	"concentration_save_rolled", "mount_save_rolled", "rider_thrown", "character_revived", "lasting_effect_added", "lasting_effect_changed", "lasting_effect_ended",
 	"lasting_effect_visibility_changed", "lasting_effect_saved", "lasting_effect_triggered", "spell_zone_triggered", "spell_zone_moved", "exhaustion_changed",
 	"contest_started", "contest_resolved", "contest_deferred", "contest_closed", "shove_resolved", "grapple_released",
 	"hide_attempted", "hide_resolved", "hide_ended", "help_given", "help_cleared", "surprise_set", "hit_rider", "legendary_action_spent", "recharge_rolled", "monster_reaction_mode_set", "sunlight_set",
@@ -96,6 +96,12 @@ var otherWriters = map[string][]storedShape{
 	"favor_granted":             {storedShapeOf[favorGrantedEvent]("today.json")},
 	"favor_spent":               {storedShapeOf[favorSpentEvent]("today.json")},
 	"favor_passed":              {storedShapeOf[favorPassedEvent]("today.json")},
+	"item_charge_spent":         {storedShapeOf[itemUseEvent]("today.json")},
+	"item_charges_restored":     {storedShapeOf[itemUseEvent]("today.json")},
+	"item_destroyed":            {storedShapeOf[itemUseEvent]("today.json")},
+	"dawn_taken":                {storedShapeOf[dawnEvent]("today.json")},
+	"ammunition_spent":          {storedShapeOf[itemUseEvent]("today.json")},
+	"ammunition_recovered":      {storedShapeOf[ammunitionRecoveredEvent]("today.json")},
 }
 
 // vitalsEvent is the payload vitalsPayload writes, named so that a test can reflect on it.

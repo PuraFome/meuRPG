@@ -35,7 +35,10 @@
             "ATTUNEMENT_LIMIT",
             "ATTUNEMENT_RESTRICTED",
             "ATTUNEMENT_NEEDS_REST",
-            "ATTUNEMENT_SAME_ITEM"
+            "ATTUNEMENT_SAME_ITEM",
+            "CHARGES_NOT_ENOUGH",
+            "ITEM_DESTROYED",
+            "ITEM_NO_CHARGES"
           ],
           "unsent": []
         }
@@ -408,7 +411,7 @@
             "CREATURE_ACTION_RECHARGING", "CREATURE_ACTION_NO_USES_LEFT", "WALL_PLACEMENT_REQUIRED", "UNDO_TARGET_CHANGED",
             "ARMOR_IN_COMBAT", "WILD_SHAPE_ENDED", "FEATURE_TARGET", "FEATURE_CHOICE",
             "ALREADY_MOUNTED", "MOUNT_TAKEN",
-            "NOT_A_MOUNT", "MOUNT_TOO_SMALL", "MOUNT_TOO_FAR", "MOUNT_MOVE_USED", "MOUNTED", "NO_ROOM_TO_DISMOUNT", "MOUNT_ACTION_LIMITED", "READY_TRIGGER", "READY_ACTION", "READY_SPELL_TIME", "READY_OWN_TURN"
+            "NOT_A_MOUNT", "MOUNT_TOO_SMALL", "MOUNT_TOO_FAR", "MOUNT_MOVE_USED", "MOUNTED", "NO_ROOM_TO_DISMOUNT", "MOUNT_ACTION_LIMITED", "MOUNT_SAVE_PENDING", "READY_TRIGGER", "READY_ACTION", "READY_SPELL_TIME", "READY_OWN_TURN", "AMMUNITION_EMPTY"
           ],
           "unsent": [
             "RAGE_END_PENDING"
@@ -471,6 +474,22 @@
             "CANNOT_RECEIVE",
             "SELF"
           ]
+        }
+      ]
+    },
+    {
+      "module": "play",
+      "message": "meurpg.play.v1.ChargesBlocked",
+      "fields": [
+        {
+          "field": "reason",
+          "enum": "ChargesBlockedReason",
+          "reasons": [
+            "REGAIN_FACE_NEEDED",
+            "COMBAT_RUNNING",
+            "ALREADY_RECOVERED"
+          ],
+          "unsent": []
         }
       ]
     },
@@ -602,7 +621,8 @@
             "NOT_IN_GROUP_CHECK",
             "ALREADY_ANSWERED",
             "COMBAT_BEGUN",
-            "NOT_HIDDEN"
+            "NOT_HIDDEN",
+            "NO_FREE_HAND"
           ],
           "unsent": []
         }

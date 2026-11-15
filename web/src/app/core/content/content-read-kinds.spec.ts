@@ -319,7 +319,6 @@ const EXPECTED: Record<string, unknown> = {
   },
   'feat with ability increases': {
     rows: [
-      { label: 'Pré-requisito', value: 'Nenhum' },
       { label: 'Aumento de habilidade', value: '+1 em uma habilidade à escolha: Força' },
       { label: 'Aumento de habilidade', value: '+2 em 2 habilidades à escolha: ' },
     ],
@@ -328,6 +327,7 @@ const EXPECTED: Record<string, unknown> = {
   },
   'spell with classes': {
     rows: [
+      { label: 'Nível', value: 'Truque' },
       { label: 'Tempo', value: '1 ação' },
       { label: 'Alcance', value: '—' },
       { label: 'Alvo', value: 'Uma criatura' },
@@ -340,6 +340,7 @@ const EXPECTED: Record<string, unknown> = {
   },
   'spell with no classes': {
     rows: [
+      { label: 'Nível', value: '2º círculo' },
       { label: 'Tempo', value: '1 ação' },
       { label: 'Alcance', value: '—' },
       { label: 'Alvo', value: 'Uma criatura' },

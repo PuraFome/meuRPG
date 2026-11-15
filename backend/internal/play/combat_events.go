@@ -579,6 +579,10 @@ type actionEvent struct {
 	// Parried is the Parry the server used on its own to turn the attack's hit into a miss (combat_parry_auto.go): its
 	// line is written before the attack's own event, and the undo of the attack gives the reaction back.
 	Parried *parryUsed `json:"parried,omitempty"`
+	// Ammo is the kind of ammunition the attack took (a piece, given back when the attack is undone) and AmmoLine the
+	// id of the `ammunition_spent` event it wrote before its own: the undo takes the line back with the attack (linesBefore).
+	Ammo     string `json:"ammo,omitempty"`
+	AmmoLine string `json:"ammo_line,omitempty"`
 	// ParryAsk is the mode the master set on a monster (monster_reaction_mode_set): true asks the master for its Parry.
 	ParryAsk bool `json:"parry_ask,omitempty"`
 	// SunlightOn, SunlightScope and SunlightSquares are the sunlight the master set (sunlight_set): on or off, where
@@ -877,6 +881,9 @@ func (ev actionEvent) linesBefore() []string {
 	if ev.Parried != nil {
 		lines = append(lines, ev.Parried.Event) // the Parry's line goes with the attack it turned into a miss
 	}
+	if ev.AmmoLine != "" {
+		lines = append(lines, ev.AmmoLine) // the shot's line goes with the attack that fired it
+	}
 	if ev.Readied != nil && ev.Readied.Line != "" {
 		lines = append(lines, ev.Readied.Line) // the readied action's line goes with the action its use ran
 	}
@@ -975,7 +982,7 @@ func (s *Service) publishLogChanged(ctx context.Context, campaignID, encounterID
 // not tell that player anything that an ordinary change does not. A player's own read (ListCombatLog with since_seq) answers with the
 // whole log when an undo they may see happened.
 func (s *Service) publishLogChange(ctx context.Context, campaignID, encounterID string, players, full bool) {
-	s.sayLogChange(ctx, s.sayNow, campaignID, encounterID, players, full)
+	s.sayLogChange(ctx, s.sayOf(ctx), campaignID, encounterID, players, full)
 }
 
 // sayLogChange is publishLogChange through say: an after-commit step of Service.tx tells it with the session's number.

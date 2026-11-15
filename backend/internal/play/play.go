@@ -46,6 +46,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dice"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/nostore"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/ratelimit"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/sessiontell"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/tablerules"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/wiring"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
@@ -76,6 +77,8 @@ type SheetLocker interface {
 type VitalsKeeper interface {
 	// RestKeeper is the rests and the resources that move points between the vitals.
 	RestKeeper
+	// ItemKeeper is the charges of the magic items and the ammunition, which also belong to the character.
+	ItemKeeper
 	// ListVitals returns the vitals of the campaign's living, active player
 	// characters, oldest first.
 	ListVitals(ctx context.Context, campaignID string) ([]*playv1.CharacterVitals, error)
@@ -320,8 +323,8 @@ type CombatRoster interface {
 	Conditions() []link.Named
 	// RestoreEquipped puts a piece of gear back as the master's undo of a swap found it before: equipped or carried,
 	// inside tx, with the sheet's revision and the gear told to play as a change of the gear is. `failed_precondition`
-	// when the sheet no longer lists the piece or no longer allows it. It returns what to call after the commit, or nil.
-	RestoreEquipped(ctx context.Context, tx pgx.Tx, campaignID, characterID, key string, equip bool) (afterCommit func(ctx context.Context), err error)
+	// when the sheet no longer lists the piece or no longer allows it. What the gear tells goes through t, which carries the undo's number.
+	RestoreEquipped(ctx context.Context, tx pgx.Tx, campaignID, characterID, key string, equip bool, t sessiontell.Tell) error
 	// ContentNames returns the campaign's naming function: the Portuguese name of a
 	// content key ("spell:shield" is "Escudo Arcano"), or "" for an unknown key. The
 	// content is read once, when it is asked for, not on every name.
@@ -762,6 +765,7 @@ func (s *Service) Mount(handle func(pattern string, handler http.Handler), sessi
 	handle(playv1connect.NewCombatServiceHandler(s, opts...))
 	handle(playv1connect.NewContestServiceHandler(s, opts...))
 	handle(playv1connect.NewResourceServiceHandler(s, opts...))
+	handle(playv1connect.NewChargesServiceHandler(s, opts...))
 	handle(playv1connect.NewCastingServiceHandler(s, opts...))
 	handle(playv1connect.NewFeatureServiceHandler(s, opts...))
 	handle(playv1connect.NewPuzzleServiceHandler(s, opts...))

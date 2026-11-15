@@ -574,6 +574,25 @@ service CombatService {
   //   - `failed_precondition`: the square is not next to the mount, is a wall, or is taken (NO_ROOM_TO_DISMOUNT).
   rpc DismountCombatant(DismountCombatantRequest) returns (DismountCombatantResponse);
 
+  // RollMountSave answers the pending mount save of a rider (`Encounter.mount_save`): a Dexterity saving throw against DC 10 with
+  // the rider's own save bonus, its advantage and disadvantage and its auto-failures (paralyzed, stunned, unconscious and the
+  // like fail it with no d20), asked about Lucky and a Bardic Inspiration die like any save (held roll kind MOUNT_SAVE;
+  // AnswerHeldRoll settles it). On a success nothing changes but the log line ("Toren se segurou"). On a failure the rider
+  // falls: it gets the Prone condition, lands on the free square within 5 ft of the mount the server picks (the nearest, in
+  // the order of the grid's reach; with none free, the nearest free square, and the line says so), and its link to the mount is
+  // cleared; the mount gets back its own initiative and turn. The rider's player rolls, or the master (for an NPC rider, only
+  // the master). A retry of the key is the same answer. The roll is a closing event: the push or the prone that opened the
+  // window can be undone only before it is answered.
+  //
+  // Errors:
+  //   - `not_found`: the combat is not in the open session, or the rider is not visible to the caller.
+  //   - `permission_denied`: the caller is a player and the rider is not theirs.
+  //   - `invalid_argument`: no way of rolling is set, or `d20_face` is not 1 to 20.
+  //   - `failed_precondition`: the combat is ended (ENCOUNTER_ENDED); the rider owes no save (NOT_YOUR_TURN_TO_ANSWER); a roll of the
+  //     rider's waits for an answer (a held roll question); a physical d20 where the table's rules ask for the app's (the usual
+  //     roll refusals).
+  rpc RollMountSave(RollMountSaveRequest) returns (RollMountSaveResponse);
+
   // SetCombatantCover marks the cover a combatant has that the map does not show
   // (D4): none, half (+2 to AC and Dexterity saves), three-quarters (+5) or
   // total (it cannot be targeted). It adds to the cover the map gives against
@@ -2131,6 +2150,14 @@ enum EncounterBlockedReason {
   // other action of the mount (an attack, a spell, Help, Hide, Search, Ready, Use an Object, a grapple or a shove, a creature's
   // action) is refused. A reaction is not an action and stays free. `combatant_ids` names the mount. Nothing is changed.
   ENCOUNTER_BLOCKED_REASON_MOUNT_ACTION_LIMITED = 142;
+  // A rider owes the Dexterity saving throw of Encounter.mount_save (RollMountSave): the turn, a move, an action, a mount and a
+  // dismount wait for it, as for any open window (the master too). A player who does not see the rider or its mount is
+  // answered REACTION_PENDING, as for any reaction of the master's (RN-10): the refusal names nobody.
+  ENCOUNTER_BLOCKED_REASON_MOUNT_SAVE_PENDING = 143;
+
+  // RollAttack: the attack fires ammunition (a bow, a crossbow, a sling, a blowgun) and the character has a count for the kind
+  // (a row, even at 0) with none left. Nothing is written. A kind with no count is not counted and the shot goes. The melee line of the weapon, and a thrown weapon, spend no ammunition.
+  ENCOUNTER_BLOCKED_REASON_AMMUNITION_EMPTY = 145;
 }
 
 // FamiliarSightBlockedReason says why "Ver pelos olhos do familiar" was refused
@@ -2319,6 +2346,40 @@ message Encounter {
   SunlightScope sunlight_scope = 33;
   // The sunlit squares, sorted by row then column, read when the scope is SQUARES. Master only (RN-20, RN-29).
   repeated SunlightSquare sunlight_squares = 34;
+  // The Dexterity saving throw a mounted rider owes to stay on its mount (SRD 5.1, "Mounted Combat"): set while the window is
+  // open, read by the rider's player and the master and nobody else (RN-10: another player is told only "Esperando ..."
+  // through `reaction_wait`, and the outcome in the log, never the d20). It is not in `reaction_windows`: RollMountSave answers
+  // it. The turn, a move and a mount or a dismount wait for it (MOUNT_SAVE_PENDING).
+  MountSavePrompt mount_save = 35;
+}
+
+// MountSavePrompt is the pending save of a rider whose mount was moved against its will or who was knocked prone while
+// mounted (SRD 5.1, "Mounted Combat": a DC 10 Dexterity saving throw or the rider falls off and lands prone in a space within
+// 5 feet of the mount).
+message MountSavePrompt {
+  // The rider that rolls, and the mount it sits on (combatant IDs).
+  string rider_id = 1;
+  string mount_id = 2;
+  // The DC, 10.
+  int32 dc = 3;
+  // What opened the window.
+  MountSaveCause cause = 4;
+  // The circumstances of the d20 as the sheet shows them for a Dexterity saving throw ("desvantagem"), the same ones RollMountSave
+  // rolls with: one d20 for a normal roll, two for advantage or disadvantage. A rider that fails the save with no roll (paralyzed,
+  // stunned, unconscious: it auto-fails a Dexterity saving throw) reads `auto_fail`.
+  RollMode mode = 5;
+  bool auto_fail = 6;
+}
+
+// MountSaveCause is what asks a rider for its saving throw.
+enum MountSaveCause {
+  MOUNT_SAVE_CAUSE_UNSPECIFIED = 0;
+  // The mount was moved against its will by an effect: a shove or a push of a spell or a feature, a grappler's drag. Its
+  // own move, the master's token moves and a teleport the mount or the rider cast are voluntary and ask nothing.
+  MOUNT_SAVE_CAUSE_PUSHED = 1;
+  // The rider was knocked prone while it rode (a shove, a spell, a feature, a trap, an effect that lasts). The master's manual
+  // edit of the conditions and an undo are corrections and ask nothing.
+  MOUNT_SAVE_CAUSE_PRONE = 2;
 }
 
 // SpellZone is a lingering area a spell keeps on the map for a while (Moonbeam, Spirit
@@ -3716,6 +3777,51 @@ message DismountCombatantResponse {
   bool stopped_early = 3;
 }
 
+message RollMountSaveRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  // The rider that owes the save (`Encounter.mount_save.rider_id`).
+  string rider_id = 3;
+  oneof roll {
+    // The app rolls the d20 (with the rider's Dexterity saving throw bonus).
+    bool roll_in_app = 4;
+    // The face of a physical d20, 1 to 20 (a player only when the table allows it).
+    int32 d20_face = 5;
+  }
+  string idempotency_key = 6;
+  // The faces of the dice an effect adds to the saving throw (Bênção, Perdição), in the order of the effects, when the roll is a
+  // physical d20: one for each. With the app's dice the server rolls them.
+  repeated int32 extra_die_faces = 100;
+  // With a physical d20 and advantage or disadvantage on the save, the second d20; `d20_face` is the first.
+  optional int32 second_d20_face = 101;
+}
+
+message RollMountSaveResponse {
+  Encounter encounter = 1;
+  // Unset when the d20 waits for a question (`held_roll_offer`).
+  MountSaveResult result = 2;
+  // Set instead of `result` when the roller holds a Bardic Inspiration die or is a halfling whose d20 shows a 1: the d20 is
+  // rolled and kept, the window stays open and nothing is written (AnswerHeldRoll settles it). The master's roll never asks.
+  HeldRollOffer held_roll_offer = 3;
+}
+
+// MountSaveResult is what the save did. The d20 and the DC are the master's and the answering member's, the rider's player (the
+// DC when the table shows the DC of a saving throw): another reader of the event has only `held` in the log.
+message MountSaveResult {
+  DiceRoll save = 1;
+  int32 dc = 2;
+  // The rider stayed on its mount.
+  bool held = 3;
+  // The rider failed with no roll (it auto-fails a Dexterity saving throw).
+  bool auto_fail = 4;
+  // Where the rider landed after a fall, and the line's note that no square was free next to the mount.
+  int32 landed_col = 5;
+  int32 landed_row = 6;
+  bool no_room_next_to_mount = 7;
+  // The Bardic Inspiration die the player added after the d20, already in the total of `save`.
+  repeated BonusDie bonus_dice = 8;
+}
+
 // SetCombatantCoverRequest marks the cover a combatant has that the map does not
 // show.
 message SetCombatantCoverRequest {
@@ -4542,6 +4648,9 @@ enum HeldRollKind {
   // The ability check of a Counterspell above the slot's level (AnswerReaction), made with the spellcasting ability (SRD 5.1):
   // Lucky's reroll of a 1 and a Bardic Inspiration die are asked about before the spell is countered or not.
   HELD_ROLL_KIND_COUNTERSPELL_CHECK = 13;
+  // The Dexterity saving throw of a mounted rider (RollMountSave), DC 10: Lucky's reroll of a 1 and a Bardic Inspiration die are
+  // asked about before the rider stays on or falls, as for any saving throw.
+  HELD_ROLL_KIND_MOUNT_SAVE = 14;
 }
 
 // LuckyQuestion is the halfling's "Tirou 1: rolar de novo?" (SRD 5.1, Halfling, Lucky).
@@ -5891,6 +6000,16 @@ enum CombatLogKind {
   COMBAT_LOG_KIND_READIED_LOST = 106;
   // A character used a feature of its own (FeatureService.UseFeature): the actor, the targets and `feature_used`.
   COMBAT_LOG_KIND_FEATURE_USED = 103;
+  // A character spent charges of a magic item in a running combat (ChargesService.SpendCharges: "Pensantus gastou 1
+  // carga da Varinha de teia"), including the last one: the actor and `item_use`. Only the master and the character's
+  // owner get the line; no other player's log shows it or counts it (RN-10).
+  COMBAT_LOG_KIND_ITEM_CHARGE_SPENT = 113;
+  // A character rolled the d20 of an item's last charge in a running combat (ChargesService.RollLastCharge: "rolou 1
+  // no d20 da última carga: a Varinha de teia virou cinzas"): the actor and `item_use`. The audience of ITEM_CHARGE_SPENT.
+  COMBAT_LOG_KIND_ITEM_LAST_CHARGE_ROLLED = 114;
+  // A character fired a piece of ammunition with a ranged attack ("Tor atirou com o Arco longo: 1 flecha, restam 3"):
+  // the actor and `item_use`. The audience of ITEM_CHARGE_SPENT.
+  COMBAT_LOG_KIND_AMMUNITION_SPENT = 115;
   // A contest or a special action (SRD 5.1, "Contests", "Hide", "Help", "Surprise"): the
   // actor, the target and `contest`, which says what happened. Never a total (RN-20).
   COMBAT_LOG_KIND_CONTEST = 50;
@@ -5930,6 +6049,12 @@ enum CombatLogKind {
   COMBAT_LOG_KIND_MOUNTED = 107;
   // A rider got off its mount ("Toren desmontou de Pônei"): the same audience as MOUNTED.
   COMBAT_LOG_KIND_DISMOUNTED = 108;
+  // A rider's save passed to stay on its mount ("Toren se segurou na montaria"): the actor is the rider and the target the mount.
+  // `mount_save` has the cause and the outcome; the d20, the total and the DC are the master's and the rider's player's. A failed
+  // save writes no such line: it is the single RIDER_THROWN line. A hidden combatant in it makes the line the master's alone (RN-10).
+  COMBAT_LOG_KIND_MOUNT_SAVE = 109;
+  // A rider fell off its mount ("Toren caiu da montaria"): the same audience as MOUNT_SAVE, with no number for anyone.
+  COMBAT_LOG_KIND_RIDER_THROWN = 110;
 }
 
 // CombatLogStateChange is a state that began or ended.
@@ -6147,6 +6272,9 @@ message CombatLogEntry {
   CombatLogRecharge recharge = 115;
   // GEAR_SWAPPED: the piece and what the change cost. The master's and the owner's.
   CombatLogGearSwapped gear_swapped = 117;
+  // ITEM_CHARGE_SPENT, ITEM_LAST_CHARGE_ROLLED and AMMUNITION_SPENT: what was spent or rolled and what is left. The
+  // master's and the owner's.
+  ItemUseLogLine item_use = 130;
   // ACTION_READIED, READIED_FIRED and READIED_LOST: the trigger and the held action. The master's and the readier's
   // owner's; any other player's entry has the kind and the actor only (RN-10).
   CombatLogReadied readied = 119;
@@ -6167,6 +6295,25 @@ message CombatLogEntry {
   // the app replaces it by id. In an answer that is not full, the master's `undoable` flag is only right on the entry of
   // `undoable_event_id`; the app derives the flag from it.
   int64 seq = 116;
+  // MOUNT_SAVE and RIDER_THROWN: the cause, the outcome and where the rider landed.
+  CombatLogMountSave mount_save = 123;
+}
+
+// CombatLogMountSave is the line of a rider's save to stay on its mount, or of its fall.
+message CombatLogMountSave {
+  MountSaveCause cause = 1;
+  // The rider stayed on.
+  bool held = 2;
+  // The master's and the rider's player's: the d20 that counted, the total with the modifier and the DC. 0 for any other reader.
+  int32 d20 = 3;
+  int32 total = 4;
+  int32 dc = 5;
+  // The rider failed with no d20 (it auto-fails a Dexterity saving throw).
+  bool auto_fail = 6;
+  // RIDER_THROWN: where it landed, and that no square next to the mount was free (the master's note).
+  int32 landed_col = 7;
+  int32 landed_row = 8;
+  bool no_room_next_to_mount = 9;
 }
 
 // CombatLogEffectEnd is an effect that ended, in the combat log.
@@ -6298,6 +6445,40 @@ message CombatLogRecharge {
   int32 face = 2;
   // Whether the face made the action available again.
   bool recharged = 3;
+}
+
+// ItemUseOutcome is what an item's use left behind, on its log line.
+enum ItemUseOutcome {
+  ITEM_USE_OUTCOME_UNSPECIFIED = 0;
+  // Charges or a piece of ammunition were spent and some are left.
+  ITEM_USE_OUTCOME_SPENT = 1;
+  // The last charge was spent and the item waits for its d20.
+  ITEM_USE_OUTCOME_LAST_CHARGE = 2;
+  // The item was lost: at once with its last charge, or on a 1 of the d20.
+  ITEM_USE_OUTCOME_LOST = 3;
+  // The d20 did not lose the item, and it stays with no charges.
+  ITEM_USE_OUTCOME_STAYS = 4;
+  // A 20 on the d20 gave charges back.
+  ITEM_USE_OUTCOME_REGAINED = 5;
+}
+
+// ItemUseLogLine is the line of an item used in a combat, for the master and the owner: a magic item's charges or
+// the ammunition of a ranged attack.
+message ItemUseLogLine {
+  // The item's name, in Portuguese when the content has it, else the SRD's in English. For AMMUNITION_SPENT it is
+  // the weapon's.
+  string item_name_pt = 1;
+  // The charges or pieces spent; the charges regained on a REGAINED line.
+  int32 amount = 2;
+  // What is left of the item's charges, or of the ammunition, after the use.
+  int32 left = 3;
+  // The item's maximum charges; 0 on an ammunition line.
+  int32 max = 4;
+  // The d20 of ITEM_LAST_CHARGE_ROLLED; 0 on the other kinds.
+  int32 d20 = 5;
+  ItemUseOutcome outcome = 6;
+  // AMMUNITION_SPENT: the name of the kind fired ("flecha").
+  string ammunition_name_pt = 7;
 }
 
 // CombatLogReadied is a readied action in a line of the log, for the master and the readier's owner.
@@ -6745,6 +6926,12 @@ enum ReactionKind {
   // a held spell (as CastSpell, or RollAttack for a spell attack cantrip); a move is made with MoveCombatant while the
   // window is open, and AnswerReaction USE refuses it.
   REACTION_KIND_READIED = 19;
+  // Desmontar: the mount a rider sits on was knocked prone or dropped to 0 hit points, and the rider may use its reaction to
+  // land on its feet within 5 ft as the mount falls; otherwise it falls prone in a space within 5 ft (SRD 5.1, "Mounted
+  // Combat"). The window has no prompt: the answer USE lands the rider on its feet and PASS drops it prone. A rider that has no
+  // reaction left, or cannot react, falls at once and has no window. The rider's player and the master answer it; a creature's
+  // is the master's.
+  REACTION_KIND_DISMOUNT = 20;
   // A reaction feature that declares a `use.trigger` (a table feature, FeatureService.UseFeature): an enemy started its
   // turn within the reach, or moved to within it, and the owner may use the feature on it now, or not use it. The window
   // is the owner's player's, the master's for a hidden creature (the player reads nothing). The reactor and the

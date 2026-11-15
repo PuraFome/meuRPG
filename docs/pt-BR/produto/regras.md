@@ -29,7 +29,7 @@ Como o código faz isso está nos [docs de arquitetura](../../architecture/READM
 | RN-18 | **Dados físicos ou do app.** O mestre escolhe se a campanha deixa os jogadores escolherem os dados. Se deixa, cada jogador escolhe entre rolar no app ou rolar o dado físico e digitar o resultado. | [Detalhes](#rn-18-dados-físicos-ou-do-app) |
 | RN-19 | **Iniciativa.** Numa batalha com vários NPCs iguais, cada um rola a própria iniciativa; o grupo não rola junto. | [Detalhes](#rn-19-iniciativa) |
 | RN-20 | **O que o jogador vê dos inimigos no combate.** Os jogadores não veem os PV dos inimigos como número. Veem uma palavra: "Ileso", "Ferido", "Muito ferido" ou "Derrotado". | [Detalhes](#rn-20-o-que-o-jogador-vê-dos-inimigos-no-combate) |
-| RN-21 | **Movimento na grade.** Na grade do mapa, cada quadrado tem 1,5 m e o movimento é um **círculo**: a distância entre dois quadrados é a linha reta entre os centros, e o que um combatente alcança é o círculo do movimento que lhe resta. | [Detalhes](#rn-21-movimento-na-grade) |
+| RN-21 | **Movimento na grade.** Na grade do mapa, cada quadrado tem 1,5 m e o movimento é um **círculo**: a distância entre dois quadrados é a linha reta entre os centros, e o que um combatente alcança é o círculo do movimento que lhe resta. Um cavaleiro monta e desmonta por metade do deslocamento, e uma montaria tirada de baixo dele pode derrubá-lo (teste de Destreza CD 10). | [Detalhes](#rn-21-movimento-na-grade) |
 | RN-22 | **Condições e concentração.** O app marca condições (derrubado, envenenado...) e concentração, e avisa: quando um personagem concentrado sofre dano, o jogo pede ao dono dele o teste de resistência de concentração (RN-31). | [Detalhes](#rn-22-condições-e-concentração) |
 | RN-23 | **Conteúdo da mesa.** O mestre cadastra classes, subclasses, raças, sub-raças, antecedentes, magias, talentos, opções, características de classe, armas e criaturas que valem só na campanha dele, ao lado do SRD 5.1. Os membros leem o conteúdo da campanha, menos as criaturas; só o mestre escreve. | [Detalhes](#rn-23-conteúdo-da-mesa) |
 | RN-24 | **Regras da mesa.** No topo da página "Regras da mesa" fica o **estilo da mesa**: "Tudo no app" (dados no app, combate com mapa, névoa ligada nos mapas novos), "Mesa física" (dados físicos, combate sem mapa por padrão, névoa desligada) ou "Teatro da mente" (cada jogador escolhe os dados, combate sem mapa, sem névoa), e "Personalizado" quando as escolhas não batem com nenhum. | [Detalhes](#rn-24-regras-da-mesa) |
@@ -131,9 +131,25 @@ O mestre também pode corrigir à mão, a qualquer momento da sessão, PV, PV te
   A perda tem três desfechos, como o item diz: ele some (as varinhas e os cajados de fogo, gelo, cura e enxame de insetos), vira um item comum sem magia que fica na ficha como aquilo de que é feito (os cajados de encantamento, de golpe e dos bosques), ou guarda só o bônus de ataque e de dano (o cajado de poder).
   Um item cujas cargas o SRD sorteia (a lâmina da sorte, o ladrão de nove vidas) não tem nenhuma definida quando é novo: o mestre as define, de 0 até o máximo.
   A estatueta das cabras de marfim recupera todas as cargas no sétimo amanhecer depois que a última foi gasta.
+  O amanhecer é do mestre: "Amanhecer" dá a vez do amanhecer aos itens de todos os personagens, e o descanso longo faz o mesmo como parte do descanso quando o pedido pede, e por padrão não pede.
+  Um descanso curto nunca recarrega itens.
+  Num amanhecer, um item que recupera cargas as recebe como a entrada dele diz (todas, ou os dados dele), até o máximo, e um item cheio fica como está.
+  O app rola os dados de um amanhecer, também numa mesa de dados físicos, porque o mestre os rola pela mesa.
+  O mestre que rolou os dados na mesa corrige as cargas do item à mão, como a ficha permite.
+  As estatuetas só contam o amanhecer enquanto não têm nenhuma carga, e recuperam todas no sétimo.
+  Uma estatueta com carga sobrando não conta amanhecer.
+  Um item perdido nunca recarrega, e um item que espera o d20 da última carga espera a rolagem primeiro.
+  Cada item que recuperou cargas fica registrado no histórico da sessão, e só o mestre e o dono o leem.
   Um item que não recarrega (um talismã, um escaravelho) guarda o que sobrou até o mestre corrigir.
   Salvar a ficha nunca muda as cargas, e tirar um item da ficha descarta o que ele gastou.
   Um jogador lê as cargas só dos próprios personagens, e o mestre lê todas.
+- **Munição (SRD 5.1, "Weapons": a propriedade de munição).**
+  Flechas, virotes, balas de funda e dardos de zarabatana são contados na ficha, um número para cada tipo.
+  O dono define a quantidade enquanto a ficha está aberta para edição, e o mestre a qualquer momento.
+  Um tipo para o qual o personagem não tem contagem não é contado: o tiro não gasta nada até o dono ou o mestre definir uma quantidade.
+  Um tipo contado em 0 recusa o tiro.
+  Depois que um combate termina, um minuto procurando no campo de batalha devolve metade, arredondada para baixo, das peças de cada tipo que o personagem disparou nele, uma vez para cada combate.
+  Um jogador lê a munição só dos próprios personagens, e o mestre lê toda.
 - **Sintonização.**
   Um personagem fica sintonizado com no máximo três itens mágicos ao mesmo tempo, e só um item que a ficha lista como um que pede sintonização pode ser sintonizado.
   Um descanso curto ou longo abre uma janela para cada personagem que ele cobre, e nessa janela o dono sintoniza um item ou encerra uma sintonização; o mestre faz qualquer um dos dois a qualquer hora.
@@ -165,6 +181,8 @@ O mestre faz um descanso curto ou longo pela mesa, depois de uma confirmação q
 | Curto | Os recursos que recarregam em um descanso curto ou longo, e os espaços de pacto do bruxo. Cada jogador gasta dados de vida um de cada vez, rolados no app ou digitados de um dado real (RN-18), e cura a rolagem mais o modificador de Constituição. |
 | Longo | Todo recurso que não recarrega ao amanhecer ou nunca recarrega, todos os espaços de magia, todos os PV e metade do total de dados de vida (pelo menos um). Os PV temporários acabam. Um personagem em 0 PV não ganha nada. |
 
+- O descanso longo também pode ser o amanhecer dos itens mágicos: quando o pedido pede, os itens que recarregam ao amanhecer recarregam no mesmo passo, e um descanso enviado duas vezes recarrega uma vez.
+  O pedido não pede por padrão, e isso não significa nada num descanso curto.
 - O app não conta horas: o mestre é avisado quando a sessão já teve um descanso longo. Um descanso é recusado enquanto um combate está em andamento.
 - Os dados de vida são guardados por tamanho de dado (SRD, "Multiclassing").
 - **Recuperação Arcana** (Mago): uma vez por descanso longo, depois de um descanso curto, o jogador escolhe espaços gastos cujo nível combinado seja no máximo metade do nível de mago, arredondado para cima, nenhum de nível 6 ou maior. Só conta o nível de mago, e nunca os espaços de pacto. A folha do descanso curto tem uma seção "Recuperação Arcana", e depois ela diz "Recuperação Arcana: usada; volta no descanso longo." Uma recusa não muda nada.
@@ -456,6 +474,7 @@ Se não deixa, todos usam o tipo que o mestre define.
 - Uma mudança vale a partir da próxima rolagem. Os NPCs sempre rolam no app, e o mestre pode digitar um valor.
 - Com um dado físico o jogador digita a soma dos dados sem o modificador (a face do d20, de 1 a 20), e o app soma o modificador. A soma precisa caber entre o mínimo e o máximo dos dados.
 - A regra cobre a iniciativa, as rolagens de ataque e de dano, os ataques de magia, o dano e a cura de magias, o Retomar o Fôlego, os testes contra a morte, o d20 de uma ação de cena de RP, a busca por armadilhas, as dicas de quebra-cabeça, o teste em grupo, os dois lados de uma disputa, o Esconder-se, o teste de habilidade da Contramágica e os valores de habilidade em 4d6 de uma ficha nova. Um modo que o mestre forçou recusa o outro jeito com "A campanha mudou a forma de rolar os dados. Recarregue a página.".
+- Os dados do amanhecer dos itens mágicos, rolados pelo mestre pela mesa toda, são sempre rolados pelo app, como as exceções de "rolar de novo" acima.
 - O teste de resistência de um alvo de magia é sempre rolado pelo app com o bônus da ficha.
 - O "rolar de novo?" de uma característica da mesa (RN-23) é rolado pelo app mesmo quando o mestre força os dados físicos: é o único d20 que o jogador não pode digitar.
 - Os PV rolados quando um personagem é criado não fazem parte desta regra.
@@ -590,6 +609,25 @@ Sair do alcance de um inimigo provoca um ataque de oportunidade, que o app ofere
 - Um movimento que entra numa armadilha que o personagem conhece pergunta "Isso entra no Fosso escondido. Mover assim mesmo?".
 - "Desfazer última ação" desfaz movimentos, saltos e a marca de Desengajar. Um movimento cuja oferta foi respondida só pode ser desfeito depois de desfazer a resposta.
 
+**Combate montado** (SRD 5.1, "Mounted Combat").
+Um cavaleiro monta ou desmonta de uma montaria disposta de um tamanho acima do seu (um cavaleiro Médio precisa de uma montaria Grande; o pônei e o mastim de Encontrar Montaria são pequenos demais para ele).
+Montar exige a montaria a até 1,5 m e custa metade do deslocamento do cavaleiro na superfície onde ele está, sem contar a Disparada; desmontar custa o mesmo e pousa num quadrado vizinho livre.
+Um movimento comporta uma montada ou uma desmontada.
+O jogador monta as próprias criaturas e as montarias que o mestre marcou como "Montaria" do lado do grupo, e o mestre monta qualquer criatura.
+Uma criatura sem marca do mestre age por conta própria.
+O par ocupa um só lugar, o quadrado da montaria, e o turno da montaria continua sendo dela.
+
+- **Montaria adestrada** (a montaria de Encontrar Montaria, ou uma marcada como "adestrada") toma a iniciativa do cavaleiro e age logo depois dele, num turno conjunto que termina quando as duas partes terminam.
+  Só pode usar Disparada, Desengajar e Esquivar, e o jogador do cavaleiro a move, com o deslocamento e o movimento dela.
+  O cavaleiro não se move por conta própria enquanto monta.
+- **Montaria independente** mantém a própria iniciativa e o próprio turno, e leva o cavaleiro junto.
+- **Desmontada forçada.** Quando a montaria é movida contra a vontade (um empurrão ou uma repulsão) ou o cavaleiro é derrubado, o jogador do cavaleiro faz um teste de resistência de Destreza contra CD 10 (uma janela, como a de concentração da RN-31): se falhar, o cavaleiro cai derrubado a até 1,5 m da montaria.
+  O mestre rola pelo cavaleiro NPC.
+- **Montaria derrubada ou abatida** abre uma janela de reação para o cavaleiro (RN-31): ele gasta a reação para cair de pé ou cai derrubado a até 1,5 m.
+  Uma montaria dispensada pelo conjurador deixa o cavaleiro cair de pé, sem janela.
+- **Um ataque de oportunidade** contra o par pode mirar a montaria ou o cavaleiro.
+- O jogador lê o vínculo entre duas criaturas só quando vê as duas; uma montaria escondida deixa o cavaleiro como se estivesse sozinho, e nenhum jogador lê a marca do mestre nem a rolagem de outro.
+
 **Esculpir Magias** (SRD 5.1, Escola de Evocação).
 Um mago de evocação a partir do nível 2, ao conjurar uma magia de evocação que afeta outras criaturas que ele vê, poupa até 1 + o nível da magia delas (o nível em que é conjurada). Uma criatura poupada passa no teste de resistência sem rolar e não sofre dano quando a magia causaria metade; a linha do teste diz "Esculpir Magias".
 O conjurador nunca está entre elas, e só podem ser nomeadas criaturas que a magia alcança e que o conjurador vê.
@@ -709,7 +747,7 @@ Os membros leem o conteúdo da campanha, menos as criaturas; só o mestre escrev
   Uma magia só em quem conjura pode fazer do efeito uma aura: ela alcança, a cada jogada, as criaturas dentro do raio no lado escolhido (“aliados” inclui quem conjura, como nas auras aliadas do SRD), dá só o que uma jogada lê, e o jogador lê o bônus dela como o nome da fonte ou "Outra fonte", nunca o raio de uma aura que não é dele.
   O efeito duradouro de uma classe ou característica é um estado do dono.
   Uma magia também pode escrever um efeito no próximo golpe de quem conjura: dano extra de arma no próximo golpe, no próximo golpe corpo a corpo, em cada golpe enquanto concentra, ou em cada golpe no alvo marcado pela magia.
-  O mestre escolhe o dado, a quantidade (mais por nível de espaço acima, até um teto) e o tipo de dano (o da arma, se não escolher nenhum).
+  O mestre escolhe o dado, a quantidade (mais por nível de espaço acima, até um teto, que o mestre pode deixar sem) e o tipo de dano (o da arma, se não escolher nenhum).
   Pode somar um teste de resistência do alvo do golpe, com as condições de uma falha, até o fim do próximo turno dele ou enquanto a magia durar.
   Assim uma magia da mesa escreve um efeito duradouro nos alvos, um efeito no próximo golpe de quem conjura, ou os dois, e nunca código.
   O dano é oferecido sozinho depois de um golpe de arma, dobra num golpe crítico, e um erro mantém o efeito.
@@ -1196,7 +1234,7 @@ São as ações de um combate decididas por uma disputa ou por um estado que só
 O jogador do defensor, ou o mestre, responde a uma disputa; todos os outros leem "Esperando o mestre" ou o nome de quem se espera.
 Um jogador nunca lê o total, a perícia nem o modificador de um NPC, a CD de fuga, quem poderia ver quem se escondeu, nem o total de outro jogador.
 
-- **Agarrar e empurrar** são ataques corpo a corpo especiais da ação Atacar: cada um substitui um ataque, então o Ataque Extra dá mais de um. O alvo tem no máximo um tamanho acima e está a até 1,5 m; agarrar exige uma mão livre (um lembrete; o app não controla as mãos). Quem ataca rola Força (Atletismo) contra a Força (Atletismo) ou a Destreza (Acrobacia) do alvo, à escolha do alvo. O total maior vence; um empate não muda nada. Uma agarrada vencida deixa o alvo Agarrado (velocidade 0). Um empurrão vencido deixa o vencedor derrubar o alvo ou empurrá-lo 1,5 m para longe (sem quadrado livre, sem empurrão). Agarrar ou empurrar conta como a ação Atacar para o que vem depois: um monge pode gastar ki em Rajada de Golpes logo em seguida, mas o golpe bônus das Artes Marciais não segue uma agarrada sozinha. Contra uma criatura hostil conta como ataque: mantém uma fúria e entrega a posição de quem se esconde.
+- **Agarrar e empurrar** são ataques corpo a corpo especiais da ação Atacar: cada um substitui um ataque, então o Ataque Extra dá mais de um. O alvo tem no máximo um tamanho acima e está a até 1,5 m; agarrar exige uma mão livre (um lembrete; o app não controla as mãos, exceto que um personagem em forma de fera não tem nenhuma: o turno dele não lista Agarrar, só Empurrar, e um pedido de Agarrar é recusado para o jogador e para o mestre, a menos que a fera tenha um ataque próprio que agarra; empurrar não exige mão). Quem ataca rola Força (Atletismo) contra a Força (Atletismo) ou a Destreza (Acrobacia) do alvo, à escolha do alvo. O total maior vence; um empate não muda nada. Uma agarrada vencida deixa o alvo Agarrado (velocidade 0). Um empurrão vencido deixa o vencedor derrubar o alvo ou empurrá-lo 1,5 m para longe (sem quadrado livre, sem empurrão). Agarrar ou empurrar conta como a ação Atacar para o que vem depois: um monge pode gastar ki em Rajada de Golpes logo em seguida, mas o golpe bônus das Artes Marciais não segue uma agarrada sozinha. Contra uma criatura hostil conta como ataque: mantém uma fúria e entrega a posição de quem se esconde.
 - **Escapar** é a ação da criatura agarrada: Força (Atletismo) ou Destreza (Acrobacia) contra a Força (Atletismo) de quem agarra, ou contra uma CD fixa quando a agarrada vem do ataque de um monstro (o mestre a define; um jogador nunca a lê). Uma agarrada termina quando quem agarra fica incapacitado ou fora da luta, quando a criatura agarrada sai do alcance dele, ou quando o mestre a solta.
 - **Arrastar.** Quem agarra e se move arrasta a criatura, à metade da velocidade, a menos que a criatura agarrada seja dois ou mais tamanhos menor. A criatura arrastada termina no quadrado atrás de quem agarra; se esse quadrado está ocupado, o movimento é recusado. Ela não ganha ataque de oportunidade contra quem a agarra.
 - **Esconder-se** é um teste de Destreza (Furtividade) como ação. O mestre diz se há onde se esconder. O total de Furtividade é comparado com a Percepção passiva de cada criatura (10 mais o bônus, +5 com vantagem, -5 com desvantagem); um empate mantém quem se esconde notado. O mestre pode dizer que uma criatura vê claramente quem se esconde. Um atacante escondido tem vantagem contra uma criatura que não o notou ("Atacante não visto"), e o ataque entrega a posição dele, acertando ou errando, para toda criatura. Uma magia com componente verbal também encerra o esconder; uma só com componentes somáticos ou materiais, não. Uma armadura que dá desvantagem em Furtividade a dá na jogada de Esconder-se e nos testes de grupo de Furtividade. Um jogador lê só "Escondida", nunca de quem nem quem notou.

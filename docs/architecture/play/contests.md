@@ -20,6 +20,7 @@ The service is `play/combat_contests*.go` (start, answer, shove choice, close, r
 
 ## How contests fit into combat
 
+- **A start, an answer or a Hide held by a reaction window** (Cutting Words, or the master's check of "Sempre") is run again when the window is answered. If the replay then holds the d20 for a Bardic Inspiration die, the player's answer runs the request under the answer's own key, because the request's key belongs to the event that held it and a run under it would count as a retry and write nothing (`held-rolls.md`, "With a reaction window").
 - **A contest waits in the reaction window** of kind `CONTEST` (`combat_contests_window.go`): `settleReactions` calls `syncContests`, which opens a window for each waiting contest (the reactor is the defender or the shover when a player, the master otherwise) and replaces it when the reactor changes (a roll left to the master); `triggerGone` closes it when the contest no longer waits.
   The player of an NPC's contest reads "Esperando o mestre", of a player's "Esperando <nome>", with no timeout.
   `Hide` and `Help` go through `mustActNow`, and so through the reaction gate (see [Reactions](reactions.md)).
@@ -56,6 +57,9 @@ The group check is also how the master asks one, some or all living player chara
 Both sides of a contest, and a Hide, add the flat bonuses of their lasting effects that apply to ability checks (`roll_bonus` of checks, `check_bonus` of the skill): `prepareCheck` and the answer options go through `withCheckBonus`, which reads them with `checkBonusesOf`, the reader the other checks use.
 A bonus to saves or to attacks never enters a contest.
 Each bonus is a note of the roll (`effect_bonus`, "Marca de Nanquim +3"; it says nothing of advantage, `notesMode` skips it); an effect the master hides reads "Outra fonte +3" to the player and by name to the master alone (RN-10), decided when the roll is read (`rollNote.proto(master)`), not when it is kept.
+The notes follow one hiding rule: a note whose source the master hides (`rollNote.Hidden`, set from `hideFor` when the notes are made and kept with the roll, beside `Shown` for a source judged readable) reads "Outra fonte" (kind `other`) to a reader but the master, keeps its advantage or disadvantage, and a bonus keeps its value. A note stored with neither flag reads as hidden, unless it is the roller's own act (an Inspiração, Palavras de Interrupção).
+The master reads every note in full.
+`TestTheNotesOfAContestRollFollowTheHidingRule` holds the rows for a contest start, a contest answer and a Hide.
 
 ## The floor of a check
 

@@ -1,5 +1,6 @@
 import { Ability, type Content } from '../../../gen/meurpg/rules/v1/rules_pb';
 import type { TableEntry } from '../../../gen/meurpg/rules/v1/table_content_pb';
+import type { SearchOption } from '../../shared/form-fields/search-pick';
 import type { SelectOption } from '../../shared/form-fields/select-field';
 import { featureKeyName } from './class-feature-text';
 import { offeringFeatures, offeringLabel, offeringRead } from './offering-features';
@@ -43,6 +44,8 @@ export interface CatalogVm {
   /** The races and sub-races a feat may ask for, not the archived. */
   readonly raceChoices: readonly SelectOption[];
   readonly spells: readonly SelectOption[];
+  /** The spells as a search offers them: a cantrip is marked "truque", another by its circle ("3º nível"). */
+  readonly spellSearch: readonly SearchOption[];
   /** The SRD's spells, not the table's, each named with its circle and school ("Auxílio (2º nível, Abjuração)"): what a class's own list can name. */
   readonly srdSpells: readonly SelectOption[];
   /** The Portuguese name of any key of the catalog and of the table's entries (the key itself when unknown). */
@@ -111,6 +114,7 @@ export function catalogVm(content: Content, entries: readonly TableEntry[] = [])
   const subclassLevels = new Map(content.classes.map((c) => [c.key, c.subclassLevel]));
 
   const schools = schoolNames(content.spells);
+  for (const [key, name] of schools) if (!names.has(key)) names.set(key, name);
   const byName = (a: { label: string }, b: { label: string }) =>
     a.label.localeCompare(b.label, 'pt-BR');
   const capital = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
@@ -146,6 +150,15 @@ export function catalogVm(content: Content, entries: readonly TableEntry[] = [])
     spells: content.spells
       .filter((s) => !s.archived)
       .map((s) => ({ value: s.key, label: s.namePt }))
+      .sort(byName),
+    spellSearch: content.spells
+      .filter((s) => !s.archived)
+      .map((s) => ({
+        value: s.key,
+        label: s.namePt,
+        hint: s.level === 0 ? 'truque' : `${s.level}º nível`,
+        group: '',
+      }))
       .sort(byName),
     srdSpells: content.spells
       .filter((s) => !s.archived && !isTableKey(s.key))

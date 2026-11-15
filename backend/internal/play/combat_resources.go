@@ -275,6 +275,26 @@ func poolLeft(v *playv1.CharacterVitals, key string) (left int32, found bool) {
 	return 0, false
 }
 
+// poolName is the Portuguese name of the resource pool key, "" for a pool the character does not have.
+func poolName(v *playv1.CharacterVitals, key string) string {
+	for _, r := range v.GetResources() {
+		if r.GetKey() == key {
+			return r.GetNamePt()
+		}
+	}
+	return ""
+}
+
+// poolRecharge is when the resource pool key comes back, RECHARGE_UNSPECIFIED for a pool the character does not have.
+func poolRecharge(v *playv1.CharacterVitals, key string) rulesv1.Recharge {
+	for _, r := range v.GetResources() {
+		if r.GetKey() == key {
+			return r.GetRecharge()
+		}
+	}
+	return rulesv1.Recharge_RECHARGE_UNSPECIFIED
+}
+
 // layCall is what UseLayOnHands reads from its request before the change.
 type layCall struct {
 	fr     flowRequest
@@ -335,7 +355,7 @@ func (s *Service) UseLayOnHands(
 		s.publishEncounterChanged(ctx, m.CampaignID, d.enc)
 		s.publishLogChanged(ctx, m.CampaignID, d.enc.ID, !ev.Secret)
 		for _, vit := range run.told {
-			s.publishVitals(m.CampaignID, vit)
+			s.publishVitals(ctx, m.CampaignID, vit)
 		}
 	})
 	if err != nil {
@@ -582,7 +602,7 @@ func (s *Service) flexible(ctx context.Context, fr flowRequest, hash *string, ki
 	out, err := s.finish(ctx, m, res, func(ctx context.Context, d *encounterData) {
 		s.publishEncounterChanged(ctx, m.CampaignID, d.enc)
 		s.publishLogChanged(ctx, m.CampaignID, d.enc.ID, !ev.Secret)
-		s.publishVitals(m.CampaignID, after)
+		s.publishVitals(ctx, m.CampaignID, after)
 	})
 	if err != nil {
 		return nil, nil, 0, err
@@ -663,7 +683,7 @@ func (s *Service) GiveBardicInspiration(
 	out, err := s.finish(ctx, m, res, func(ctx context.Context, d *encounterData) {
 		s.publishEncounterChanged(ctx, m.CampaignID, d.enc)
 		s.publishLogChanged(ctx, m.CampaignID, d.enc.ID, !ev.Secret)
-		s.publishVitals(m.CampaignID, after)
+		s.publishVitals(ctx, m.CampaignID, after)
 	})
 	if err != nil {
 		return nil, err

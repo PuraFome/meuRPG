@@ -35,14 +35,15 @@ export function extraDiceText(
   };
 }
 
-/** A roll as the formula the table reads, the total included; `named` is as in `extraDiceText`. */
-export function rollFormula(roll: DiceRoll, named = false): string {
+/** A roll as the formula the table reads, the total included; `named` is as in `extraDiceText`; `trade` is the penalty of
+ * a power attack the modifier already counts, written apart after the bonus. */
+export function rollFormula(roll: DiceRoll, named = false, trade = 0): string {
   // A d20 a feature raised says so (Talento Confiável): what came up, what it counted as, and the feature.
   const treated = treatedFormula(roll);
   if (treated) {
     return treated;
   }
-  const mod = modifierText(roll.modifier);
+  const mod = modifierText(roll.modifier + trade) + modifierText(-trade);
   if (roll.diceCount === 0) {
     return `${roll.total}`;
   }

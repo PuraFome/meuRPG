@@ -55,6 +55,9 @@ import { RollPicker } from '../../../../shared/roll-picker/roll-picker';
 import { SheetFrame } from '../../../../shared/sheet/sheet-frame/sheet-frame';
 import { injectSheet, openSheet } from '../../../../shared/sheet/sheet-host';
 import { CheckMode } from '../check-mode/check-mode';
+import { FavorSpend } from '../../../../core/play/favor-spend';
+import { FavorState } from '../../../../core/play/favor-state';
+import { FavorSpendBox } from '../../../../shared/favor-spend/favor-spend';
 
 /** What the player's block hands the roll sheet. */
 export interface SceneRollSheetData {
@@ -107,6 +110,7 @@ export function openSceneRollSheet(
   imports: [
     CheckMode,
     ExtraDice,
+    FavorSpendBox,
     RollDieOffer,
     HeldRollPrompt,
     MatButtonModule,
@@ -128,6 +132,11 @@ export class SceneRollSheet {
   protected readonly action = this.data.action;
 
   protected readonly typing = signal(false);
+  /** The master's Inspiração (RN-43) for the player's own check: ticked, the roll spends it. */
+  protected readonly fav = new FavorSpend({
+    favor: inject(FavorState),
+    who: () => ({ characterId: '', name: '' }),
+  });
   /** A short screen (320×568): the typed form uses the picker's tighter size, so the field,
    * the live total and the footer all fit with nothing covered (E7-04). */
   protected readonly short = mediaQuery('(max-height: 600px)');
@@ -265,15 +274,24 @@ export class SceneRollSheet {
     }
     this.busy.set(true);
     this.error.set('');
+    const spend = this.fav.spend();
     try {
       const made = await this.api.roll(
         this.data.campaignId,
         this.action.id,
         die,
-        this.key.keyFor({ action: this.action.id, die, extra, maneuver: this.extra.maneuverKey() }),
+        this.key.keyFor({
+          action: this.action.id,
+          die,
+          extra,
+          maneuver: this.extra.maneuverKey(),
+          favor: spend,
+        }),
         extra,
         this.extra.maneuverKey(),
+        spend,
       );
+      this.fav.spent();
       if (made.$typeName !== 'meurpg.play.v1.SceneRoll') {
         this.hold(made);
         return;
@@ -289,6 +307,11 @@ export class SceneRollSheet {
       const more = this.extra.fromRefusal(err);
       if (more) {
         this.error.set(more);
+        return;
+      }
+      const refused = this.fav.refused(err);
+      if (refused !== null) {
+        this.error.set(refused);
         return;
       }
       this.error.set(sceneErrorMessage(err, 'rolar a ação'));

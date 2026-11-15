@@ -1,6 +1,12 @@
 /** The first sentence the trigger's refusal says, and what the form says itself when a stored trigger is unknown. */
 export const HIT_TRIGGER_PT = 'Escolha quando vale.';
 
+/** The ranges the server holds the numbers to; the form says the same words before the save, at the field. */
+export const HIT_DICE_RANGE_PT = 'De 1 a 10 dados.';
+export const HIT_PER_SLOT_RANGE_PT = 'De 0 a 5 por nível.';
+export const HIT_CAP_RANGE_PT = 'De 1 a 20 dados.';
+export const HIT_CAP_BELOW_PT = 'De 1 a 20 dados, e nunca abaixo dos dados da magia.';
+
 /** What the server's reason at a field of a spell's "Efeito no próximo golpe" says in Portuguese (#577): the paths of
  * backend/internal/rules/weaponhitdamage.go (`checkWeaponHitDamage`, `spellHitRefusal`), under `table_spell.effect.modifiers[i]`.
  * Every refusal there has the reason `bad_value`, so the field alone tells which; the effect's own limit of modifiers is `limit`. */
@@ -16,11 +22,11 @@ export const HIT_FIELD_TEXTS: readonly { shape: RegExp; reason?: string; text: s
     text: `${HIT_TRIGGER_PT} “Cada golpe” e “alvo marcado” pedem concentração; o alvo marcado pede também o alvo Uma criatura.`,
   },
   { shape: /^table_spell\.effect\.modifiers\[\]\.die$/, text: 'O dado é d4, d6, d8, d10 ou d12.' },
-  { shape: /^table_spell\.effect\.modifiers\[\]\.dice$/, text: 'De 1 a 10 dados.' },
-  { shape: /^table_spell\.effect\.modifiers\[\]\.per_slot_dice$/, text: 'De 0 a 5 por nível.' },
+  { shape: /^table_spell\.effect\.modifiers\[\]\.dice$/, text: HIT_DICE_RANGE_PT },
+  { shape: /^table_spell\.effect\.modifiers\[\]\.per_slot_dice$/, text: HIT_PER_SLOT_RANGE_PT },
   {
     shape: /^table_spell\.effect\.modifiers\[\]\.max_dice$/,
-    text: 'De 1 a 20 dados, e nunca abaixo dos dados da magia.',
+    text: HIT_CAP_BELOW_PT,
   },
   {
     shape: /^table_spell\.effect\.modifiers\[\]\.damage_type$/,
