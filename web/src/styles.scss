@@ -372,6 +372,9 @@ html {
 // The weapons list of the sheet editor (board 580-16, state 4): the name at the left and
 // the category and damage at the right of each row, quiet.
 .mr-weapons-panel.mat-mdc-select-panel {
+  // The list opens under the field's helper line ("Escolha quantas quiser.", 20 px and a 4 px gap), not over it.
+  margin-top: var(--mr-space-6);
+
   .mdc-list-item__primary-text {
     flex: 1;
     min-width: 0;
@@ -392,6 +395,26 @@ html {
     flex: none;
     font-size: var(--mr-font-14);
     color: var(--mr-ink-muted);
+  }
+
+  // The label of the table's group carries the book icon, ahead of its words (the mark of the table's content elsewhere).
+  .mat-mdc-optgroup-label .mdc-list-item__primary-text {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .mat-mdc-optgroup-label .mat-icon {
+    order: -1;
+    width: 16px;
+    height: 16px;
+    font-size: var(--mr-font-16);
+  }
+
+  // A rule between the table's weapons and the SRD's.
+  .mat-mdc-optgroup + .mat-mdc-optgroup {
+    margin-top: var(--mr-space-1);
+    border-top: 1px solid var(--mr-line);
   }
 }
 

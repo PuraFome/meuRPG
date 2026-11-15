@@ -19,7 +19,7 @@ import { addClueRPC, cartClues, cartHooks, createNoteRPC } from './notes-support
 import { createCapitaoRPC, createMiraRPC, playedCombatRPC, putOnStageRPC, uploadPortrait } from './stage-support';
 import { printRoute, tableForPrinting } from './print-support';
 import { tableWithOpenChoices } from './choices-support';
-import { classCard, passClassStep, tableForLevelUp } from './levelup-support';
+import { classCard, passClassStep, tableForLevelUp, toren as levelUpToren } from './levelup-support';
 import { aurora, auroraSheet, beginPlacedCombatRPC, nael, naelSheet, orla, orlaSheet, spendForRestRPC } from './rests-support';
 import { castSheet, choiceCard, openCastOf, pickChoice, pickSlotRadio, pickTargetOf, tableForCasting } from './casting-support';
 import { movingTable, paintRPC, pickRadio, tapSquare } from './move-support';
@@ -15665,4 +15665,65 @@ test('a opção de uma característica que pede nível e opção passa no axe e 
 test('a opção de uma característica que pede nível e opção passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-025', '@RN-23'] }, async ({ browser }) => {
   test.setTimeout(240_000);
   await scanOptionAsks(browser, 'light', 1280);
+});
+
+// The weapons list of the sheet editor (#580, board 580-16, state 4): the table's group first with its book icon, a rule between the
+// two groups, "Do SRD" second, and the helper line under the field stays in sight above the open list.
+async function scanWeaponsList(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport: sizeOf(width) });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport: sizeOf(width) });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  try {
+    await Promise.all([m.goto('/'), p.goto('/')]);
+    const table = await tableForLevelUp(m, p, `Acessibilidade armas ${Date.now()}`, { build: levelUpToren, session: false, milestone: false });
+    await createEntryRPC(m, table.campaignId, 'tableWeapon', { namePt: 'Machado de Lenhador', category: 'WEAPON_CATEGORY_SIMPLE', damage: '1d6', damageType: 'damage-type:slashing', properties: [], weightOz: 80, priceCp: 700 });
+    await open(p, `/campaigns/${table.campaignId}/characters/${table.characterId}/edit`);
+    await p.getByRole('tab', { name: 'Equipamento' }).click();
+    const select = p.getByRole('combobox', { name: 'Armas', exact: true });
+    await select.scrollIntoViewIfNeeded();
+    await select.click();
+    await expect(p.getByRole('option', { name: /Machado de Lenhador/ })).toBeVisible();
+    const list = await p.evaluate(() => {
+      const label = (g: Element) => g.querySelector('.mat-mdc-optgroup-label')!;
+      const groups = [...document.querySelectorAll('.mr-weapons-panel mat-optgroup')];
+      const hint = [...document.querySelectorAll('mat-hint')].find((h) => h.textContent?.includes('Escolha quantas quiser'))!;
+      const at = hint.getBoundingClientRect();
+      const top = document.elementFromPoint(at.left + at.width / 2, at.top + at.height / 2);
+      return {
+        labels: groups.map((g) => label(g).textContent!.replace(/menu_book/, '').replace(/\s+/g, ' ').trim()),
+        icons: groups.map((g) => label(g).querySelector('mat-icon')?.textContent?.trim() ?? ''),
+        rules: groups.map((g) => getComputedStyle(g).borderTopWidth),
+        iconBeforeText: (() => {
+          const icon = label(groups[0]).querySelector('mat-icon')!.getBoundingClientRect();
+          const range = document.createRange();
+          const words = [...label(groups[0]).querySelector('.mdc-list-item__primary-text')!.childNodes].find((n) => n.nodeType === Node.TEXT_NODE && n.textContent!.trim() !== '')!;
+          range.selectNodeContents(words);
+          return icon.right <= range.getBoundingClientRect().left;
+        })(),
+        hintCovered: !!top?.closest('.mr-weapons-panel'),
+        hintAbovePanel: document.querySelector('.mr-weapons-panel')!.getBoundingClientRect().top - at.bottom,
+      };
+    });
+    expect(list.labels, `a lista abre com o grupo da mesa e depois o do SRD ${where}`).toEqual(['Da mesa', 'Do SRD']);
+    expect(list.icons, `só o rótulo "Da mesa" tem o ícone de livro ${where}`).toEqual(['menu_book', '']);
+    expect(list.iconBeforeText, `o ícone vem antes do rótulo ${where}`).toBe(true);
+    expect(list.rules, `uma linha separa os dois grupos ${where}`).toEqual(['0px', '1px']);
+    expect(list.hintCovered, `a linha de ajuda do campo não fica atrás da lista ${where}`).toBe(false);
+    expect(list.hintAbovePanel, `a lista abre abaixo da linha de ajuda ${where}`).toBeGreaterThanOrEqual(0);
+    await expectScreenPasses(p, `Editar ficha, a lista de armas aberta ${where}`);
+  } finally {
+    await Promise.all([master.close(), player.close()]);
+  }
+}
+
+test('a lista de armas do editor, com o grupo da mesa, a linha entre os grupos e a ajuda à vista, passa no axe e nas conferências de layout no tema claro, no celular', { tag: ['@a11y', '@MR-025', '@MR-040'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanWeaponsList(browser, 'light', 390);
+});
+
+test('a lista de armas do editor, com o grupo da mesa, a linha entre os grupos e a ajuda à vista, passa no axe e nas conferências de layout no tema escuro, no tablet', { tag: ['@a11y', '@MR-025', '@MR-040'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanWeaponsList(browser, 'dark', 768);
 });

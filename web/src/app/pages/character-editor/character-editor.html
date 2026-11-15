@@ -738,6 +738,7 @@
                       <mat-select-trigger>{{ views.weaponNames() }}</mat-select-trigger>
                       @if (views.weaponGroups().table.length > 0) {
                         <mat-optgroup label="Da mesa">
+                          <mat-icon aria-hidden="true">menu_book</mat-icon>
                           @for (w of views.weaponGroups().table; track w.key) {
                             <mat-option [value]="w.key">
                               <span class="weapon-row">
