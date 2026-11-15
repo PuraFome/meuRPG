@@ -258,6 +258,20 @@ describe('WeaponEditor (#580 S2, board 580-10)', () => {
     );
   });
 
+  it('says on a ranged weapon what board 580-11 says: where the players pick it', () => {
+    const { fixture, el } = setup();
+    const e = stored();
+    e.charactersUsing = 1;
+    fixture.componentRef.setInput('entry', e);
+    Array.from(el.querySelectorAll<HTMLButtonElement>('button'))
+      .find((b) => text(b).includes('À distância'))!
+      .click();
+    fixture.detectChanges();
+    expect(text(el.querySelector('.card-note')!)).toContain(
+      'Os jogadores a escolhem no editor da ficha, na lista de armas, com as do SRD.',
+    );
+  });
+
   it('hides the damage row of the preview until there is a damage, and shows Arremesso plain', () => {
     const { fixture, el } = setup(false);
     const preview = () => text(el.querySelector('.preview')!);

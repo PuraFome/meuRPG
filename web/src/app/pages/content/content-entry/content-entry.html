@@ -57,11 +57,13 @@
               <span class="mr-tag mr-tag--danger"><mat-icon aria-hidden="true">error_outline</mat-icon>Fora da campanha</span>
             }
             @if (state_(); as st) {
+              @if (kind() !== Kind.WEAPON || st.archived) {
               <span class="mr-tag">
                 @if (st.archived) {
                   <mat-icon aria-hidden="true">archive</mat-icon>
                 }{{ st.text }}
               </span>
+              }
             }
             @if (updated() && isMaster()) {
               <span class="mr-muted tags__updated">{{ updated() }}</span>

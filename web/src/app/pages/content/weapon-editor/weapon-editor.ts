@@ -145,7 +145,7 @@ export class WeaponEditor {
   /** "No livro: 4 lb" under the weight in kilograms. */
   protected readonly inBook = computed(() => {
     const kg = Number(this.draft().weightKg.replace(',', '.'));
-    return Number.isFinite(kg) && kg > 0 ? `No livro: ${Math.round(kg * 2 * 10) / 10} lb` : '';
+    return Number.isFinite(kg) && kg > 0 ? `No livro: ${Math.round(kg * 2 * 10) / 10} lb.` : '';
   });
   /** "20 pés." under a distance typed in meters; the long one says what it means. */
   protected feet(meters: string, tail: string): string {
