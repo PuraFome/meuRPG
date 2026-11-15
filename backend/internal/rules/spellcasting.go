@@ -224,6 +224,7 @@ func (x *deriver) characterSpells(casters []caster) {
 	s.addAlwaysPrepared()
 	s.addGrantedKnown()
 	s.addBook()
+	s.markWarlockList()
 	s.checkKnownCount()
 	s.checkPreparedCount(counted)
 
@@ -307,6 +308,17 @@ func (s *spellSheet) addBook() {
 				s.x.d.Spells[i].FromBook = true
 			}
 		}
+	}
+}
+
+// markWarlockList marks the spells on the character's warlock list when the sheet has the Book of
+// Ancient Secrets, which casts the warlock spells the character knows as rituals.
+func (s *spellSheet) markWarlockList() {
+	if !slices.Contains(s.x.b.FeatureChoices, bookInvocationKey) {
+		return
+	}
+	for i := range s.x.d.Spells {
+		s.x.d.Spells[i].WarlockList = s.x.onWarlockList(s.x.d.Spells[i].Spell)
 	}
 }
 

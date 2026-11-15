@@ -404,7 +404,7 @@ func (cb *choiceBuilder) arcanum(g *groupBuild, fk string) {
 	})
 	var keys []string
 	for _, e := range c.spellEntries {
-		if e.Level == level && !cb.retiredPick(fk, e) && cb.onWarlockList(e) {
+		if e.Level == level && !cb.retiredPick(fk, e) && cb.x.onWarlockList(e) {
 			keys = append(keys, e.Key)
 		}
 	}
@@ -414,15 +414,15 @@ func (cb *choiceBuilder) arcanum(g *groupBuild, fk string) {
 
 // onWarlockList says whether a spell is on the warlock's list for this character:
 // the class's own or the patron's expanded list.
-func (cb *choiceBuilder) onWarlockList(e SpellEntry) bool {
+func (x *deriver) onWarlockList(e SpellEntry) bool {
 	if slices.Contains(e.Classes, classWarlock) {
 		return true
 	}
-	for _, oc := range cb.x.classes {
+	for _, oc := range x.classes {
 		if oc.key != classWarlock || oc.subclass == nil || !oc.subclass.ExpandedList {
 			continue
 		}
-		if s := cb.c.spells[e.Key]; s != nil && slices.Contains(s.Subclasses, oc.subclass.Key) {
+		if s := x.c.spells[e.Key]; s != nil && slices.Contains(s.Subclasses, oc.subclass.Key) {
 			return true
 		}
 	}

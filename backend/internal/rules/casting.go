@@ -184,17 +184,19 @@ func (d Derived) SpellStanding(spellKey string, ritualTag bool) SpellStanding {
 	return out
 }
 
-// castsAsRitual says a ritual feature of the sheet casts the spell of the sheet as a
-// ritual: the class's Ritual Casting, or, with the Book of Ancient Secrets, the book's
-// two spells and the warlock spells the warlock knows. The sheet does not say which class
-// knows a spell, so on a multiclass sheet a spell on the warlock list counts whoever knows it.
+// castsAsRitual says a ritual feature of the sheet casts the spell of the sheet as a ritual:
+// the class's Ritual Casting, or, with the Book of Ancient Secrets, the book's two spells and
+// the warlock spells the character knows (the ones on the character's warlock list, the
+// patron's expanded list included: CharacterSpell.WarlockList). The sheet does not say which
+// class knows a spell, so on a multiclass sheet a spell on the warlock list counts whoever
+// knows it.
 func (d Derived) castsAsRitual(cs CharacterSpell, book bool) bool {
 	for _, sc := range d.Spellcasting {
 		if sc.Ritual && (cs.Prepared || sc.Class == wizardClass) {
 			return true
 		}
 	}
-	return book && (cs.FromBook || (cs.Prepared && slices.Contains(cs.Spell.Classes, classWarlock)))
+	return book && (cs.FromBook || (cs.Prepared && cs.WarlockList))
 }
 
 // MageArmorSpell is Mage Armor's key, and mageArmorBase the 13 in its "base AC

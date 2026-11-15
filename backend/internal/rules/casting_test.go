@@ -245,7 +245,7 @@ func bookRitual(key string, prepared bool) CharacterSpell {
 
 // warlockSpell is a ritual on the warlock's list that the warlock knows.
 func warlockSpell(key string) CharacterSpell {
-	return CharacterSpell{Spell: SpellEntry{Key: key, Ritual: true, Classes: []string{"class:warlock", "class:wizard"}}, Prepared: true}
+	return CharacterSpell{Spell: SpellEntry{Key: key, Ritual: true, Classes: []string{"class:warlock", "class:wizard"}}, Prepared: true, WarlockList: true}
 }
 
 // multiclassBook is a sorcerer/warlock with the Book of Ancient Secrets that knows Comprehend Languages.

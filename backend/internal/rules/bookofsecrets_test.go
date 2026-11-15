@@ -397,3 +397,54 @@ func TestTheOwnerOfABookRitualIsToldWhenTheTableRitualChanges(t *testing.T) {
 		})
 	}
 }
+
+// TestAWarlockSpellTheCharacterKnowsIsOneOnTheirWarlockList: the Book of Ancient Secrets casts the warlock
+// spells the character knows as rituals, and the character's warlock list is the class's own with the
+// patron's expanded list. A spell known from a list that is not the warlock's (here a sorcerer's) is not one.
+func TestAWarlockSpellTheCharacterKnowsIsOneOnTheirWarlockList(t *testing.T) {
+	t.Parallel()
+	const patron = "subclass:patrono-do-livro" + tableSuffix
+	const ritual = "spell:detect-magic" // a ritual of the 1st level that is not on the warlock's list
+	c := withOverlay(t, Overlay{Revision: 1, Subclasses: []TableSubclass{{
+		TableEntry: TableEntry{Key: patron, NamePT: "Patrono do Livro"}, Class: "class:warlock",
+		AlwaysPrepared: []TableAlwaysPrepared{{ClassLevel: 1, Spell: ritual}}, SpellsExpanded: true,
+	}}})
+	known := func(b Build) Build {
+		b.SpellsKnown = []string{ritual, "spell:charm-person"}
+		return b
+	}
+	standing := func(t *testing.T, b Build) SpellStanding {
+		t.Helper()
+		return Derive(known(b), c).SpellStanding(ritual, true)
+	}
+	t.Run("the patron's expanded list counts", func(t *testing.T) {
+		t.Parallel()
+		b := bookWarlock()
+		b.Classes[0].Subclass = patron
+		if got := standing(t, b); !got.CanRitual {
+			t.Errorf("a spell on the patron's expanded list = %+v, want a ritual", got)
+		}
+	})
+	t.Run("a spell off the warlock list does not", func(t *testing.T) {
+		t.Parallel()
+		if got := standing(t, bookWarlock()); got.CanRitual {
+			t.Errorf("a spell off the warlock's list = %+v, want no ritual", got)
+		}
+	})
+	t.Run("a spell of another class's list does not", func(t *testing.T) {
+		t.Parallel()
+		b := bookWarlock()
+		b.Classes = []ClassLevel{{Class: "class:warlock", Subclass: "subclass:fiend", Level: 5}, {Class: "class:sorcerer", Level: 1}}
+		if got := standing(t, b); got.CanRitual {
+			t.Errorf("a sorcerer's spell off the warlock's list = %+v, want no ritual", got)
+		}
+	})
+	t.Run("a spell of the warlock list does", func(t *testing.T) {
+		t.Parallel()
+		b := bookWarlock()
+		b.SpellsKnown = []string{"spell:comprehend-languages"}
+		if got := Derive(b, c).SpellStanding("spell:comprehend-languages", true); !got.CanRitual {
+			t.Errorf("a warlock spell known = %+v, want a ritual", got)
+		}
+	})
+}
