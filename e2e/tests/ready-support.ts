@@ -57,7 +57,7 @@ export async function shootReady(page: Page, screen: string, width: number, sche
 }
 
 /** The player's own call of `ReadyAction`: the held attack, with the trigger of the boards (the spec has no need to drive the sheet again). */
-export async function readyAttackRPC(player: Page, campaignId: string, encounter: Encounter, who: string, target: string): Promise<Encounter> {
+export async function readyAttackRPC(player: Page, campaignId: string, encounter: Encounter, who: string, target?: string): Promise<Encounter> {
   const id = (label: string): string => encounter.combatants.find((c) => c.label === label)!.id;
   return readyRPC(player, 'ReadyAction', {
     campaignId,
@@ -66,6 +66,21 @@ export async function readyAttackRPC(player: Page, campaignId: string, encounter
     triggerText: goblinTrigger,
     kind: 'READIED_KIND_ATTACK',
     actionKey: 'equipment:dagger',
-    targetCombatantId: id(target),
+    ...(target ? { targetCombatantId: id(target) } : {}),
+  });
+}
+
+/** The player's own call of `ReadyAction` for a spell of one action held with a slot of its level (no target named when `target` is left out). */
+export async function readySpellRPC(player: Page, campaignId: string, encounter: Encounter, who: string, spellKey: string, slotLevel: number, target?: string): Promise<Encounter> {
+  const id = (label: string): string => encounter.combatants.find((c) => c.label === label)!.id;
+  return readyRPC(player, 'ReadyAction', {
+    campaignId,
+    encounterId: encounter.id,
+    combatantId: id(who),
+    triggerText: goblinTrigger,
+    kind: 'READIED_KIND_SPELL',
+    spellKey,
+    slotLevel,
+    ...(target ? { targetCombatantId: id(target) } : {}),
   });
 }

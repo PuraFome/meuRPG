@@ -97,7 +97,7 @@ import {
 } from './table-sheet-support';
 import { openCombatPanel, openMap, openOrderRow, openTurn } from './combat-layout';
 import { waitForEncounterRevision } from './revision-support';
-import { goblinTrigger, openReadySheet, readyAttackRPC, readyRPC, shootReady } from './ready-support';
+import { goblinTrigger, openReadySheet, readyAttackRPC, readyRPC, readySpellRPC, shootReady } from './ready-support';
 import { WIDTHS, beginVrockFight, pagesFor, shoot, useCreatureActionRPC, viewportOf } from './recharge-support';
 import { chooseRow, openTvPanel, rollForTableRPC, tvRoute } from './table-screen-support';
 import { LIT, WIDTHS as SUN_WIDTHS, sunSpot as sunBar, mapCard as sunMapCard, paintStatus as sunPaintStatus, setSunlightRPC, shoot as shootSun, sunSwitch, sunlightTable, viewportOf as sunViewport } from './sunlight-support';
@@ -14336,7 +14336,8 @@ async function scanReadyWindowScreens(browser: Browser, colorScheme: 'light' | '
 
     // The master lets it pass: the readier reads that it closed without them.
     await queue.getByRole('button', { name: 'Deixar passar' }).click();
-    await expect(prompt).toContainText('Passou sozinho: você não respondeu em 30 s.');
+    await expect(prompt).toContainText('A janela fechou.');
+    await expect(prompt.getByRole('button', { name: 'Fechar' })).toBeFocused();
     await expectScreenPasses(p, `Preparar, a janela que fechou sem resposta ${where}`);
     await shoot(p, 'janela-acabou');
     await prompt.getByRole('button', { name: 'Fechar' }).click();
@@ -14357,6 +14358,31 @@ async function scanReadyWindowScreens(browser: Browser, colorScheme: 'light' | '
     await shoot(p, 'janela-mover');
     await move.getByRole('button', { name: 'Deixar passar' }).click();
     await expect(move).toHaveCount(0);
+
+    // A readied spell is released from the prompt ("Soltar"), with the creature named at Ready chosen.
+    const round4 = await passTurnsToAndWait(m, campaignId, 'Pensantus', [m, p]);
+    await waitForEncounterRevision(p, await readySpellRPC(p, campaignId, round4, 'Pensantus', 'spell:magic-missile', 1, 'Capitão Goblin'));
+    await passTurnsToAndWait(m, campaignId, 'Capitão Goblin', [m, p]);
+    await m.locator('app-readied-fold').getByRole('button', { name: 'Disparar a ação de Pensantus' }).click();
+    const spell = p.getByRole('alertdialog', { name: 'Soltar Mísseis Mágicos' });
+    await expect(spell).toBeVisible();
+    await expect(spell.getByRole('radio', { name: /Capitão Goblin/ })).toBeChecked();
+    await expectScreenPasses(p, `Preparar, o aviso do gatilho com uma magia ${where}`);
+    await shoot(p, 'janela-magia');
+    await spell.getByRole('button', { name: 'Deixar passar' }).click();
+    await expect(spell).toHaveCount(0);
+
+    // A readied attack with no creature named: the master's row asks who, with the use off until he picks.
+    const round5 = await passTurnsToAndWait(m, campaignId, 'Pensantus', [m, p]);
+    await waitForEncounterRevision(p, await readyAttackRPC(p, campaignId, round5, 'Pensantus'));
+    await passTurnsToAndWait(m, campaignId, 'Capitão Goblin', [m, p]);
+    await m.locator('app-readied-fold').getByRole('button', { name: 'Disparar a ação de Pensantus' }).click();
+    const who = m.locator('app-reaction-queue[part="rest"]');
+    await expect(who.getByRole('radio', { name: /Capitão Goblin/ })).toBeVisible();
+    await who.scrollIntoViewIfNeeded();
+    await expectScreenPasses(m, `Preparar, a fila do mestre pedindo em quem o ataque preparado é feito ${where}`);
+    await shoot(m, 'janela-fila-alvo');
+    await who.getByRole('button', { name: 'Deixar passar' }).click();
   } finally {
     if (campaignId) {
       await endOpenSessionRPC(m, campaignId);

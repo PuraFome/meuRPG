@@ -3,7 +3,7 @@ import { test } from './diagnostics';
 import { beginAttackCombatRPC, getEncounterRPC, passTurnsToAndWait, pensantusCasting, tableForCombat, type Encounter } from './combat-support';
 import { openCombatPanel } from './combat-layout';
 import { endSessionOf } from './feature-use-support';
-import { goblinTrigger, readiedOf, readyAttackRPC } from './ready-support';
+import { goblinTrigger, readiedOf, readyAttackRPC, readySpellRPC } from './ready-support';
 import { openSessionPage } from './live-session-support';
 import { waitForEncounterRevision } from './revision-support';
 import { newSignedInContext, openCombatLog } from './support';
@@ -76,6 +76,9 @@ test('o mestre dispara, o jogador lê o gatilho e ataca, e o mestre lê a mesma 
     const log = await openCombatLog(p);
     // The server's line carries the held action and the trigger, no target (the attack's own line follows it).
     await expect(log).toContainText(`Pensantus usou a ação preparada: Adaga, “${goblinTrigger}”`);
+    // The readied attack is a reaction but not an opportunity attack: its own line does not say so.
+    await expect(log).toContainText('Pensantus ataca o Capitão Goblin com a Adaga');
+    await expect(log).not.toContainText('(ataque de oportunidade)');
   } finally {
     await endSessionOf(m, campaignId);
     await master.close();
@@ -92,8 +95,11 @@ test('deixar passar mantém a reação, e uma janela que o mestre passou diz iss
     await expect(prompt).toBeVisible();
     // The master lets it pass from his queue while the readier still reads the prompt: it says so and only closes.
     await m.locator('app-reaction-queue[part="rest"]').getByRole('button', { name: 'Deixar passar' }).click();
-    await expect(prompt).toContainText('Passou sozinho: você não respondeu em 30 s.');
+    // Nothing on the wire says who closed it (the clock ran for a few seconds only): the text does not claim the 30 s, and the focus goes to Fechar.
+    await expect(prompt).toContainText('A janela fechou.');
+    await expect(prompt).not.toContainText('Passou sozinho');
     await expect(prompt.getByRole('button', { name: 'Deixar passar' })).toHaveCount(0);
+    await expect(prompt.getByRole('button', { name: 'Fechar' })).toBeFocused();
     await prompt.getByRole('button', { name: 'Fechar' }).click();
     await expect(prompt).toHaveCount(0);
     const after = await getEncounterRPC(p, campaignId);
@@ -146,6 +152,125 @@ test('o jogador deixa passar pelo próprio aviso: a reação continua livre e a 
     await waitForEncounterRevision(p, after);
     const log = await openCombatLog(p);
     await expect(log).toContainText('Pensantus deixou passar a ação preparada (Adaga)');
+  } finally {
+    await endSessionOf(m, campaignId);
+    await master.close();
+    await player.close();
+  }
+});
+
+test('um ataque de magia preparado é solto pelo jogador, na criatura que ele escolhe', { tag: ['@RN-31', '@RN-22'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  const master = await newSignedInContext(browser, 'Mestre Teste', { viewport: { width: 1280, height: 900 } });
+  const player = await newSignedInContext(browser, 'Jogador Teste', { viewport: { width: 1280, height: 900 } });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  await m.goto('/');
+  await p.goto('/');
+  const table = await tableForCombat(m, p, `Preparar magia ${Date.now()}`, true, true, { sheet: pensantusCasting });
+  const campaignId = table.campaignId;
+  try {
+    const begun = await beginAttackCombatRPC(m, table, faces, squares);
+    await openSessionPage(p, campaignId);
+    await expect(p.getByRole('heading', { name: 'Sua vez, Pensantus' })).toBeVisible();
+    await waitForEncounterRevision(p, await readySpellRPC(p, campaignId, begun, 'Pensantus', 'spell:fire-bolt', 0, 'Capitão Goblin'));
+    await openSessionPage(m, campaignId);
+    await passTurnsToAndWait(m, campaignId, 'Capitão Goblin', [m, p]);
+    await fire(m);
+
+    // A cantrip that attacks is held as a spell and released as an attack: the creatures it reaches, the one named at Ready chosen.
+    const prompt = p.getByRole('alertdialog', { name: 'Soltar Raio de Fogo' });
+    await expect(prompt).toBeVisible();
+    await expect(prompt).toContainText('ao alcance');
+    await expect(prompt.getByRole('radio', { name: /Capitão Goblin/ })).toBeChecked();
+    await expect(prompt.locator('.pair button')).toHaveText(['Deixar passar', 'Soltar no Capitão Goblin']);
+    await prompt.getByRole('button', { name: 'Soltar no Capitão Goblin' }).click();
+    await expect(prompt).toHaveCount(0);
+    const after = await getEncounterRPC(p, campaignId);
+    expect(after.reactionWindows ?? []).toHaveLength(0);
+    expect(after.combatants.find((c) => c.label === 'Pensantus')?.reactionUsed).toBe(true);
+    await waitForEncounterRevision(p, after);
+    await expect(p.getByTestId('readied-lost')).toHaveCount(0);
+    const log = await openCombatLog(p);
+    await expect(log).not.toContainText('(ataque de oportunidade)');
+  } finally {
+    await endSessionOf(m, campaignId);
+    await master.close();
+    await player.close();
+  }
+});
+
+test('uma magia de dardos preparada é recusada na soltura, e deixá-la passar não gera o aviso de perda', { tag: ['@RN-31', '@RN-22'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  const master = await newSignedInContext(browser, 'Mestre Teste', { viewport: { width: 1280, height: 900 } });
+  const player = await newSignedInContext(browser, 'Jogador Teste', { viewport: { width: 1280, height: 900 } });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  await m.goto('/');
+  await p.goto('/');
+  const table = await tableForCombat(m, p, `Preparar magia passa ${Date.now()}`, true, true, { sheet: pensantusCasting });
+  const campaignId = table.campaignId;
+  try {
+    const begun = await beginAttackCombatRPC(m, table, faces, squares);
+    await openSessionPage(p, campaignId);
+    await expect(p.getByRole('heading', { name: 'Sua vez, Pensantus' })).toBeVisible();
+    await waitForEncounterRevision(p, await readySpellRPC(p, campaignId, begun, 'Pensantus', 'spell:magic-missile', 1, 'Capitão Goblin'));
+    await openSessionPage(m, campaignId);
+    await passTurnsToAndWait(m, campaignId, 'Capitão Goblin', [m, p]);
+    await fire(m);
+    const prompt = p.getByRole('alertdialog', { name: 'Soltar Mísseis Mágicos' });
+    // Magic Missile shares darts among its targets, which AnswerReaction does not carry: the server refuses the release (and nothing is
+    // spent), the prompt says what it needs and the readier can still let it pass.
+    await prompt.getByRole('button', { name: 'Soltar no Capitão Goblin' }).click();
+    await expect(prompt.getByRole('alert')).toContainText('Não deu para soltar a magia por aqui: ela pede dardos ou um ponto no mapa');
+    expect((await getEncounterRPC(p, campaignId)).combatants.find((c) => c.label === 'Pensantus')?.reactionUsed ?? false).toBe(false);
+    await prompt.getByRole('button', { name: 'Deixar passar' }).click();
+    await expect(prompt).toHaveCount(0);
+    const after = await getEncounterRPC(p, campaignId);
+    await waitForEncounterRevision(p, after);
+    const log = await openCombatLog(p);
+    await expect(log).toContainText('se perdeu');
+    // The readier chose it: the loss is in the log, but nothing interrupts the table with a notice.
+    await expect(p.getByTestId('readied-lost')).toHaveCount(0);
+  } finally {
+    await endSessionOf(m, campaignId);
+    await master.close();
+    await player.close();
+  }
+});
+
+test('o mestre escolhe em quem o ataque preparado, sem alvo no gatilho, é feito por um jogador', { tag: ['@RN-31', '@RN-22'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  const master = await newSignedInContext(browser, 'Mestre Teste', { viewport: { width: 1280, height: 900 } });
+  const player = await newSignedInContext(browser, 'Jogador Teste', { viewport: { width: 1280, height: 900 } });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  await m.goto('/');
+  await p.goto('/');
+  const table = await tableForCombat(m, p, `Preparar sem alvo ${Date.now()}`, true, true, { sheet: pensantusCasting });
+  const campaignId = table.campaignId;
+  try {
+    const begun = await beginAttackCombatRPC(m, table, faces, squares);
+    await openSessionPage(p, campaignId);
+    await expect(p.getByRole('heading', { name: 'Sua vez, Pensantus' })).toBeVisible();
+    await waitForEncounterRevision(p, await readyAttackRPC(p, campaignId, begun, 'Pensantus'));
+    await openSessionPage(m, campaignId);
+    await passTurnsToAndWait(m, campaignId, 'Capitão Goblin', [m, p]);
+    await fire(m);
+    const queue = m.locator('app-reaction-queue[part="rest"]');
+    // No creature was named: the use waits for the master to pick one (the server refuses an attack with none).
+    await expect(queue.getByRole('radio', { name: /Capitão Goblin/ })).toBeVisible();
+    const use = queue.getByRole('button', { name: 'Atacar por Pensantus' });
+    await expect(use).toHaveClass(/btn--off/);
+    await queue.locator('label', { hasText: 'Capitão Goblin' }).click();
+    await expect(use).not.toHaveClass(/btn--off/);
+    await use.click();
+    await expect(queue.locator('.row')).toHaveCount(0);
+    const after = await getEncounterRPC(m, campaignId);
+    expect(after.reactionWindows ?? []).toHaveLength(0);
+    expect(after.combatants.find((c) => c.label === 'Pensantus')?.reactionUsed).toBe(true);
+    // The readier's prompt, still open, says the window closed (the reaction was used).
+    await expect(p.getByRole('alertdialog', { name: 'Ação preparada: atacar com Adaga' })).toContainText('A janela fechou e a sua reação foi usada.');
   } finally {
     await endSessionOf(m, campaignId);
     await master.close();
