@@ -42,8 +42,8 @@ func TestCombatantMountMigration(t *testing.T) {
 	old := combatant("Antiga")
 	horse, rider, other := combatant("Cavalo"), combatant("Cavaleiro"), combatant("Outro")
 
-	if _, err := provider.Up(ctx); err != nil {
-		t.Fatalf("Up() error = %v", err)
+	if _, err := provider.UpTo(ctx, 333); err != nil {
+		t.Fatalf("UpTo(333) error = %v", err)
 	}
 	// An old row is unmounted: no steed, no kind, nothing kept, no move used.
 	var steed *string

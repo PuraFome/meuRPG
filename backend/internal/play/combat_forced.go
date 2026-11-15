@@ -194,6 +194,9 @@ func (p *pusher) push(ctx context.Context, target playdb.Combatant) (*forcedMove
 	if rider := riderOf(p.cs, target.ID); rider != nil {
 		p.remember(rider.ID, col, row)
 	}
+	if err := p.s.mountPushed(ctx, p.c, target.ID); err != nil { // a mount that carries a rider owes it a save (combat_mount_save.go)
+		return nil, err
+	}
 	p.moved = append(p.moved, zoneStep{who: target.ID, from: &from, path: []grid.Square{plan.to}, travels: true})
 	return &moved, nil
 }
