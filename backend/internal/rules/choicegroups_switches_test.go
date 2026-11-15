@@ -6,10 +6,8 @@ import (
 	"testing"
 )
 
-// The table's switches apply to every spell choice: what the master switched off is not offered to a player
-// in the book's rituals, the Pact of the Tome's cantrips, a Mystic Arcanum or a bonus cantrip, and the master
-// reads it all the same. A build that holds a pick is the stored sheet (the server refuses a new switched-off
-// pick before it reads a draft), so the pick stays.
+// The table's switches apply to every spell choice: the book's rituals, the Pact of the Tome's cantrips, a Mystic
+// Arcanum and a bonus cantrip. A sheet that holds a pick keeps it, and the master reads it all the same.
 
 // spellChoiceRows are the spell choices of a sheet, each with a spell that is on its list.
 func spellChoiceRows() []struct {
@@ -65,8 +63,7 @@ func TestTheSwitchesApplyToEverySpellChoice(t *testing.T) {
 	}
 }
 
-// The pick of a scoped choice is a key of the sheet: the master's switches and the archive judge it as they judge a
-// known spell, and the owner reads it and is told when it changes.
+// The spell of a pick is a key of the sheet, like a known spell.
 func TestTheSpellOfAPickIsAKeyOfTheSheet(t *testing.T) {
 	t.Parallel()
 	for _, row := range spellChoiceRows() {

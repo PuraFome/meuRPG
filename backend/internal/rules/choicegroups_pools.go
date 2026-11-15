@@ -385,9 +385,8 @@ func (cb *choiceBuilder) retired(key string) bool {
 }
 
 // retiredPick says a spell is archived, or switched off for the player reading, and the sheet has not
-// picked it for the choice: it is not offered. The build is the stored sheet (a new pick of a retired spell is
-// refused before a draft is read, because the spell of a pick is a key of the sheet), so a sheet that has the
-// pick keeps it, and the master reads it all the same.
+// picked it for the choice. The table's switches apply to every spell choice; a sheet that has the pick keeps it,
+// and the master reads it all the same.
 func (cb *choiceBuilder) retiredPick(choiceKey string, e SpellEntry) bool {
 	if slices.Contains(cb.scoped[choiceKey], e.Key) {
 		return false

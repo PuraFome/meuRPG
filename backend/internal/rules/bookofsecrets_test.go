@@ -226,10 +226,8 @@ func TestSwappingTheBookAwayTakesItsRitualsWithIt(t *testing.T) {
 	}
 }
 
-// TestASwitchedOffRitualIsNotOfferedToAPlayerInTheBook: what the master switched off never reaches a
-// player (RN-23), so the book does not offer it. The build read is the stored sheet: the server refuses a
-// new pick of it before a draft is read, so a build that holds the pick keeps it. The master reads it all
-// the same.
+// TestASwitchedOffRitualIsNotOfferedToAPlayerInTheBook: the table's switches apply to the book's choice
+// (RN-23). A sheet that holds the pick keeps it, and the master reads it all the same.
 func TestASwitchedOffRitualIsNotOfferedToAPlayerInTheBook(t *testing.T) {
 	t.Parallel()
 	const off = "spell:detect-magic"

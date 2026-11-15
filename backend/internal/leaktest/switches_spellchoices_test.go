@@ -10,10 +10,9 @@ import (
 )
 
 // The table's switches apply to every spell choice: the book's rituals, the Pact of the Tome's cantrips, a Mystic
-// Arcanum and a bonus cantrip. Every kind of person previews a sheet that puts the pick of a spell the master switched
-// off in the draft, and a sheet without it. The master's preview offers and keeps the spell (the control); no player's
-// preview names it, and a draft that holds it is refused, never kept.
-func TestTheSwitchesApplyToEverySpellChoiceInTheDraft(t *testing.T) {
+// Arcanum and a bonus cantrip. Every kind of person previews a sheet with the pick and one without it, before and after
+// the master's switch; the master's answer is the control.
+func TestTheSwitchesApplyToEverySpellChoiceForEveryone(t *testing.T) {
 	p := newSummonProbe(t)
 	w := p.w
 	const (
@@ -67,7 +66,7 @@ func TestTheSwitchesApplyToEverySpellChoiceInTheDraft(t *testing.T) {
 		for _, who := range people {
 			for _, withPick := range []bool{false, true} {
 				if got := preview(who.person, who.kind, i, withPick); who.member != got.ok() || (who.member && !strings.Contains(string(got.body), r.spell)) {
-					t.Errorf("%s, before the switch, %s, pick in the draft %v: HTTP %d, names the spell %v; want a member to read it (the control)",
+					t.Errorf("%s, before the switch, %s, with the pick %v: HTTP %d, names the spell %v; want a member to read it (the control)",
 						r.name, who.name, withPick, got.status, strings.Contains(string(got.body), r.spell))
 				}
 			}
@@ -94,7 +93,7 @@ func TestTheSwitchesApplyToEverySpellChoiceInTheDraft(t *testing.T) {
 					t.Errorf("the preview names the spell: HTTP %d %s", without.status, shorten(without.body))
 				}
 				if with.ok() {
-					t.Errorf("a draft that holds the spell is kept: HTTP %d %s", with.status, shorten(with.body))
+					t.Errorf("the answer differs from the control: HTTP %d %s", with.status, shorten(with.body))
 				}
 			})
 		}

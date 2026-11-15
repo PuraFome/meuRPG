@@ -12,9 +12,7 @@ import (
 )
 
 // The table's switches apply to every spell choice: the book's rituals, the Pact of the Tome's cantrips, a
-// Mystic Arcanum and a bonus cantrip. A player never gets a new pick of a spell the master switched off, in a
-// preview of a new sheet, of a locked sheet, in a completion of the choices; a sheet that holds the pick keeps it;
-// the master picks it all the same.
+// Mystic Arcanum and a bonus cantrip. A sheet that holds the pick keeps it, and the master picks it all the same.
 
 type spellSwitchRow struct {
 	name, choiceKey string
@@ -138,7 +136,7 @@ func TestTheSwitchesApplyToEverySpellChoicePreviewsAndCompletions(t *testing.T) 
 	}
 }
 
-// switchedOff says err is the refusal of a new pick of the switched-off content key.
+// refusedAsSwitchedOff says err is the switched-off-content refusal for the content key.
 func refusedAsSwitchedOff(err error, key string) bool {
 	ce, ok := errors.AsType[*connect.Error](err)
 	if !ok || ce.Code() != connect.CodeFailedPrecondition {
