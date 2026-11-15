@@ -439,7 +439,6 @@ type undoRun struct {
 	unpushed   []*forcedMove             // the creatures a cast pushed that the undo put back
 	rearmed    *trapFireEvent            // the trap an undone firing armed again
 	alsoUndone []string                  // the older parts of a firing that went with it
-	afterGear  func(context.Context)     // what the sheet's gear told after the commit (an undone swap)
 	gearOwner  string                    // the owner of the character whose swap was undone: his log changed
 }
 
@@ -650,9 +649,6 @@ func (s *Service) publishUndoRun(ctx context.Context, campaignID string, d *enco
 	s.publishUndone(ctx, campaignID, d, ev)
 	// The undo rewrote the log: full.
 	s.publishLogChange(ctx, campaignID, d.enc.ID, !ev.Secret, true)
-	if run.afterGear != nil {
-		run.afterGear(ctx)
-	}
 	if run.gearOwner != "" { // the swap's line was the owner's too
 		s.publishGearLog(ctx, campaignID, d.enc.ID, run.gearOwner)
 	}
@@ -669,7 +665,7 @@ func (s *Service) publishUndoRun(ctx context.Context, campaignID string, d *enco
 		s.followToSquare(ctx, campaignID, d, m.Target, &grid.Square{Col: int(m.Col), Row: int(m.Row)})
 	}
 	for _, vit := range run.vitals {
-		s.publishVitals(campaignID, vit)
+		s.publishVitals(ctx, campaignID, vit)
 	}
 	if run.rearmed != nil && s.traps != nil {
 		s.traps.TrapChanged(ctx, campaignID, run.rearmed.MapID, run.rearmed.PointID) // players who saw it fire lose it again
@@ -691,7 +687,7 @@ func (s *Service) followToSquare(ctx context.Context, campaignID string, d *enco
 // out of their sight (RN-10).
 func (s *Service) publishUndone(ctx context.Context, campaignID string, d *encounterData, ev actionEvent) {
 	if ev.UndoneKind == eventLegendarySpent { // the master's text spend: nothing a player sees
-		s.publishEncounterChangedToMaster(campaignID, d.enc)
+		s.publishEncounterChangedToMaster(ctx, campaignID, d.enc)
 		return
 	}
 	f, err := s.fogSightOf(ctx, campaignID, d.enc)
@@ -699,7 +695,7 @@ func (s *Service) publishUndone(ctx context.Context, campaignID string, d *encou
 		s.publishEncounterChanged(ctx, campaignID, d.enc)
 		return
 	}
-	s.send(campaignID, live.Event{Audience: live.Audience{Master: true}, Message: encounterChangedMessage(d.enc)})
+	s.sayOf(ctx)(campaignID, live.Event{Audience: live.Audience{Master: true}, Message: encounterChangedMessage(d.enc)})
 	told := slices.Clone(ev.SeenBy)
 	if !ev.Secret {
 		for _, id := range ev.combatantIDs() {
@@ -711,7 +707,7 @@ func (s *Service) publishUndone(ctx context.Context, campaignID string, d *encou
 	slices.Sort(told)
 	blind := encounterChangedMessage(playdb.Encounter{ID: d.enc.ID, Mode: d.enc.Mode})
 	for _, u := range slices.Compact(told) {
-		s.send(campaignID, live.Event{Audience: live.Audience{UserID: u}, Message: blind})
+		s.sayOf(ctx)(campaignID, live.Event{Audience: live.Audience{UserID: u}, Message: blind})
 	}
 }
 

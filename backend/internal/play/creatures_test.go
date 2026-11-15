@@ -144,7 +144,7 @@ func TestGiveCreatureLocksTheSessionBeforeTheOwner(t *testing.T) {
 	// session's lock.
 	observer := dbtest.SideConnection(t, a.h.pool)
 	for waiting := false; !waiting; {
-		n, err := dbtest.WaitingStatements(ctx, observer, `%FROM game_sessions%FOR UPDATE%`)
+		n, err := dbtest.WaitingForTable(ctx, observer, "game_sessions")
 		if err != nil {
 			t.Fatalf("look for the waiting gift: %v", err)
 		}
