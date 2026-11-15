@@ -4,10 +4,12 @@ import (
 	"testing"
 
 	"connectrpc.com/connect"
+	"github.com/jackc/pgx/v5"
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 )
 
 // Find Steed (#588 slice 3): a paladin casts it outside a combat and gets a steed that stays bonded to the character.
@@ -194,4 +196,71 @@ func TestFindSteedOptionsSayWhatTheSheetOffers(t *testing.T) {
 	if got := find().GetBondedSteed(); got.GetId() != steed.GetId() {
 		t.Errorf("bonded steed = %v, want %s", got, steed.GetId())
 	}
+}
+
+// intOfCreature is the Intelligence score ContentService.GetCreature answers for the creature (empty id: the entry's own).
+func (a *armed) intOfCreature(t *testing.T, key, creatureID string) int32 {
+	t.Helper()
+	res, err := a.ana.content.GetCreature(t.Context(), connect.NewRequest(&rulesv1.GetCreatureRequest{CampaignId: a.campaignID, Key: key, CreatureId: creatureID}))
+	if err != nil {
+		t.Fatalf("GetCreature(%s) error = %v", key, err)
+	}
+	for _, s := range res.Msg.GetCreature().GetAbilities() {
+		if s.GetAbility() == rulesv1.Ability_ABILITY_INTELLIGENCE {
+			return s.GetScore()
+		}
+	}
+	t.Fatalf("GetCreature(%s) has no Intelligence", key)
+	return 0
+}
+
+// TestFindSteedSheetShowsTheIntelligenceFloor: the owner's page of the steed reads Intelligence 6, the creature's entry keeps its
+// own 2, and the page says nothing in the log about an unreadable stat block.
+func TestFindSteedSheetShowsTheIntelligenceFloor(t *testing.T) {
+	t.Parallel()
+	a := newRiders(t)
+	steed := a.mustCastSteed(t, warhorse, "fey")
+	if got := a.intOfCreature(t, warhorse, steed.GetId()); got != 6 {
+		t.Errorf("the steed's Intelligence on its sheet = %d, want 6", got)
+	}
+	if got := a.intOfCreature(t, warhorse, ""); got != 2 {
+		t.Errorf("the warhorse entry's Intelligence = %d, want its own 2", got)
+	}
+}
+
+// TestFindSteedCombatAndListReadTheIntelligenceFloor: the creature's saving throw (the combat's read, through the stat block of the
+// row) uses Intelligence 6, and a warhorse given by the master, with no floor, keeps 2.
+func TestFindSteedCombatAndListReadTheIntelligenceFloor(t *testing.T) {
+	t.Parallel()
+	a := newRiders(t)
+	steed := a.mustCastSteed(t, warhorse, "fey")
+	plain := a.give(t, a.toren, warhorse, "Sem vínculo")
+	saveOf := func(id string) int {
+		var bonus int
+		err := db.InTx(t.Context(), a.h.pool, func(tx pgx.Tx) error {
+			s, err := a.h.chars.CreatureSave(t.Context(), tx, a.campaignID, id, warhorse, "int")
+			bonus = s.Bonus
+			return err
+		})
+		if err != nil {
+			t.Fatalf("CreatureSave() error = %v", err)
+		}
+		return bonus
+	}
+	if got := saveOf(steed.GetId()); got != -2 {
+		t.Errorf("the steed's Intelligence save = %d, want -2 (score 6)", got)
+	}
+	if got := saveOf(plain.GetId()); got != -4 {
+		t.Errorf("a warhorse with no floor: Intelligence save = %d, want -4 (score 2)", got)
+	}
+}
+
+// TestFindSteedOptionsAreRefusedToAnotherPlayer: another player does not read the summon options of a character with a bonded steed,
+// the steed it would bring back included.
+func TestFindSteedOptionsAreRefusedToAnotherPlayer(t *testing.T) {
+	t.Parallel()
+	a := newRiders(t)
+	a.mustCastSteed(t, warhorse, "fey", "Trovão")
+	_, err := a.caio.characters.GetSummonOptions(t.Context(), connect.NewRequest(&charactersv1.GetSummonOptionsRequest{CampaignId: a.campaignID, CharacterId: a.pens.GetId()}))
+	wantCode(t, "GetSummonOptions as another player", err, connect.CodeNotFound)
 }
