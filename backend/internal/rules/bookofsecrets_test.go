@@ -260,3 +260,106 @@ func TestAPickOfTheBookIsNotRemovedAlone(t *testing.T) {
 	after.FeatureChoices = slices.DeleteFunc(after.FeatureChoices, func(k string) bool { return k == ScopedChoice(bookKey, "spell:detect-magic") })
 	wantRefusal(t, CheckLevelUp(b, after, c), LevelUpReasonFeatureChoice, "full.feature_choice_keys")
 }
+
+// bookTaker is a warlock of the Tome at the given level, with two invocations and no book.
+func bookTaker(t *testing.T, c *Content, level int) Build {
+	t.Helper()
+	b := sweepUp(t, c, sweepBase(t, c, "class:warlock", "subclass:fiend"), "class:warlock", "subclass:fiend", level)
+	b.FeatureChoices = slices.DeleteFunc(b.FeatureChoices, func(k string) bool {
+		return strings.HasPrefix(k, "feature:pact-of-the-") || strings.HasPrefix(k, "feature:eldritch-invocation-")
+	})
+	tome := "feature:pact-of-the-tome#cantrips"
+	b.FeatureChoices = append(b.FeatureChoices, "feature:pact-of-the-tome", "feature:eldritch-invocation-devils-sight",
+		ScopedChoice(tome, "spell:guidance"), ScopedChoice(tome, "spell:shillelagh"), ScopedChoice(tome, "spell:eldritch-blast"))
+	return b
+}
+
+// TestTheBookTakenWithoutItsRitualsIsAskedAtTheNextLevel: a plain option picked at a level
+// opens its choice, and the level does not have to answer it; the next level asks it as a late
+// choice and refuses to go on without it. The level-up lists only the choices of the sheet
+// before and of the bare new level, so a pick made in the same request is the only way to
+// answer it now.
+func TestTheBookTakenWithoutItsRitualsIsAskedAtTheNextLevel(t *testing.T) {
+	t.Parallel()
+	c := loadForTest(t)
+	ways := []struct {
+		name  string
+		level int
+		take  func(ch *LevelUpChoices)
+	}{
+		{"as the new invocation", 4, func(ch *LevelUpChoices) {
+			ch.FeatureChoices = slices.DeleteFunc(ch.FeatureChoices, c.c.isInvocation)
+			ch.FeatureChoices = append(ch.FeatureChoices, bookInvocation)
+		}},
+		{"in place of an invocation given up", 5, func(ch *LevelUpChoices) {
+			ch.FeatureChoices = slices.DeleteFunc(ch.FeatureChoices, c.c.isInvocation)
+			ch.SwapInvocation = "feature:eldritch-invocation-devils-sight"
+			ch.FeatureChoices = append(ch.FeatureChoices, bookInvocation)
+		}},
+	}
+	for _, way := range ways {
+		t.Run(way.name, func(t *testing.T) {
+			t.Parallel()
+			b := bookTaker(t, c, way.level)
+			if way.level == 5 {
+				b.FeatureChoices = append(b.FeatureChoices, "feature:eldritch-invocation-beast-speech")
+			}
+			ch := satisfy(t, c, b, "class:warlock", "")
+			way.take(&ch)
+			after := mustApply(t, c, b, ch)
+			if !slices.Contains(after.FeatureChoices, bookInvocation) {
+				t.Fatalf("the sheet after the level lacks the book: %v", after.FeatureChoices)
+			}
+			if err := CheckLevelUp(b, after, c); err != nil {
+				t.Fatalf("the level that takes the book without its rituals: %v", err)
+			}
+			o, err := LevelUpOptions(after, "class:warlock", c)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !offersChoice(o.LateChoices, bookKey) {
+				t.Fatalf("the next level's late choices = %+v, want the book's rituals", o.LateChoices)
+			}
+			next := satisfy(t, c, after, "class:warlock", "")
+			if !slices.ContainsFunc(next.LateChoices, func(k string) bool { choice, _, ok := SplitScopedChoice(k); return ok && choice == bookKey }) {
+				t.Fatalf("the next level's picks %v do not answer the rituals", next.LateChoices)
+			}
+			if err := CheckLevelUp(after, mustApply(t, c, after, next), c); err != nil {
+				t.Fatalf("the next level with the rituals: %v", err)
+			}
+			none := next
+			none.LateChoices = without(next.LateChoices, bookKey)
+			wantRefusal(t, CheckLevelUp(after, mustApply(t, c, after, none), c), LevelUpReasonLateChoice, "full.feature_choice_keys")
+		})
+	}
+}
+
+// TestThePactOfTheTomeTakenWithoutItsCantripsIsAskedAtTheNextLevel is the same rule for the
+// Pact Boon of level 3: the cantrips of the Tome stay open and the next level asks them.
+func TestThePactOfTheTomeTakenWithoutItsCantripsIsAskedAtTheNextLevel(t *testing.T) {
+	t.Parallel()
+	c := loadForTest(t)
+	b := sweepUp(t, c, sweepBase(t, c, "class:warlock", "subclass:fiend"), "class:warlock", "subclass:fiend", 2)
+	ch := satisfy(t, c, b, "class:warlock", "")
+	ch.FeatureChoices = slices.DeleteFunc(ch.FeatureChoices, func(k string) bool { return strings.HasPrefix(k, "feature:pact-of-the-") })
+	ch.FeatureChoices = append(ch.FeatureChoices, "feature:pact-of-the-tome")
+	after := mustApply(t, c, b, ch)
+	if err := CheckLevelUp(b, after, c); err != nil {
+		t.Fatalf("the level that takes the Pact of the Tome without its cantrips: %v", err)
+	}
+	const tomeKey = "feature:pact-of-the-tome#cantrips"
+	o, err := LevelUpOptions(after, "class:warlock", c)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !offersChoice(o.LateChoices, tomeKey) {
+		t.Fatalf("the next level's late choices = %+v, want the Tome's cantrips", o.LateChoices)
+	}
+	next := satisfy(t, c, after, "class:warlock", "")
+	if err := CheckLevelUp(after, mustApply(t, c, after, next), c); err != nil {
+		t.Fatalf("the next level with the cantrips: %v", err)
+	}
+	none := next
+	none.LateChoices = without(next.LateChoices, tomeKey)
+	wantRefusal(t, CheckLevelUp(after, mustApply(t, c, after, none), c), LevelUpReasonLateChoice, "full.feature_choice_keys")
+}
