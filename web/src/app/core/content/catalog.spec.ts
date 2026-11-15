@@ -135,6 +135,7 @@ describe('the catalog the editors read', () => {
       { value: 'school:abjuration', label: 'Abjuração' },
       { value: 'school:evocation', label: 'Evocação' },
     ]);
+    expect(vm.nameOf('school:evocation')).toBe('Evocação');
   });
 
   it('says the level a class chooses its subclass at, 0 for a class it does not know', () => {

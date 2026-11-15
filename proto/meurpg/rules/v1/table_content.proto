@@ -1226,7 +1226,8 @@ message TableSpellEffect {
   repeated TableEffectModifier modifiers = 3;
   // The short label the other players read, at most 30 characters.
   string player_label_pt = 4 [(meurpg.options.v1.max_len) = 120];
-  // Who sees the effect on the creature. Unset is OWNER.
+  // Who sees the effect on the creature. Unset is OWNER. A player who reads the spell reads this too (PUBLIC or
+  // OWNER names nobody); the label above and the aura stay the master's.
   TableEffectAudience visibility = 5;
   // Makes the effect an aura around the caster: it is not put on the targets, it reaches at the roll or the damage
   // the creatures within the radius on the chosen side. The spell then targets the caster and lasts (not
@@ -1313,7 +1314,7 @@ enum TableEffectModifierKind {
   TABLE_EFFECT_MODIFIER_KIND_CHECK_DISADVANTAGE = 19;
   // Extra weapon damage on a hit the caster makes, as `trigger` says: `die` (d4, d6, d8, d10 or d12),
   // `dice`, `per_slot_dice`, `max_dice`, `damage_type`, and optionally a `save` with the
-  // `on_fail_conditions` it puts on the target. Needs `trigger`, `die`, `dice` and `max_dice`; reads no other field. A spell has one of these. The
+  // `on_fail_conditions` it puts on the target. Needs `trigger`, `die` and `dice`; reads no other field. A spell has one of these. The
   // spell must last (not instantaneous), and EACH_HIT and MARKED_TARGET need concentration.
   TABLE_EFFECT_MODIFIER_KIND_WEAPON_HIT_DAMAGE = 20;
 }
@@ -1389,7 +1390,7 @@ message TableEffectModifier {
   int32 dice = 12;
   // WEAPON_HIT_DAMAGE only: the extra dice for each slot level above the spell's own, 0 to 5.
   int32 per_slot_dice = 13;
-  // WEAPON_HIT_DAMAGE only, required: the most dice the damage has, at least `dice` and at most 20.
+  // WEAPON_HIT_DAMAGE only: the most dice the damage has, from `dice` to 20; 0 is no limit.
   int32 max_dice = 14;
   // WEAPON_HIT_DAMAGE only: the SRD damage type key of the extra damage ("damage-type:fire"). Unset is
   // the weapon's own type.
@@ -2177,6 +2178,20 @@ message FeatureUse {
   repeated FeatureChoice choices = 4 [(meurpg.options.v1.max_items) = 8];
   // What the use does besides spending. Unset only spends and goes to the log.
   FeatureApplies applies = 5;
+  // When the app asks the player to use the feature without being asked for it: a reaction window opens for the owner.
+  // Unset: the player uses the feature from the Usar sheet only. It needs the economy `reaction`.
+  FeatureTrigger trigger = 6;
+  // The question over the options, as the player reads it ("Qual forma"), at most 80 characters. Empty: the app asks
+  // "Qual opção". It needs `choices`.
+  string choice_label = 7 [(meurpg.options.v1.max_len) = 80];
+}
+
+// FeatureTrigger is what a reaction feature waits for. Refusals are at `use.trigger.kinds[i]` and `use.trigger.range_ft`.
+message FeatureTrigger {
+  // The moments that open the window, one to two, no repeats.
+  repeated FeatureTriggerKind kinds = 1 [(meurpg.options.v1.max_items) = 2];
+  // The reach in feet from the owner, 1 to 300.
+  int32 range_ft = 2;
 }
 
 // FeatureTargets are the creatures a feature's use is aimed at.

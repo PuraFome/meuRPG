@@ -95,8 +95,12 @@ func (p *packagePart) exportCharacters(ctx context.Context, q *charactersdb.Quer
 	for _, n := range noteRows {
 		notes[n.CharacterID] = n.Notes
 	}
+	states, err := itemStates(ctx, q, campaignID)
+	if err != nil {
+		return err
+	}
 	for _, c := range chars {
-		if err := exportCharacter(snap, c, notes[c.ID]); err != nil {
+		if err := exportCharacter(snap, c, notes[c.ID], states[c.ID]); err != nil {
 			return err
 		}
 	}
@@ -107,7 +111,7 @@ func (p *packagePart) exportCharacters(ctx context.Context, q *charactersdb.Quer
 // or an NPC, unless it is no part of the table to come. Its sheet and story are
 // read first, so a stored document that cannot be read stops the export even
 // for a character that would be left out.
-func exportCharacter(snap *campaignpackage.Snapshot, c charactersdb.ListCharactersForPackageRow, notes string) error {
+func exportCharacter(snap *campaignpackage.Snapshot, c charactersdb.ListCharactersForPackageRow, notes string, items *packageItemState) error {
 	sheet, err := loadSheet(c.ID, c.Sheet)
 	if err != nil {
 		return err
@@ -123,11 +127,11 @@ func exportCharacter(snap *campaignpackage.Snapshot, c charactersdb.ListCharacte
 		return nil // the app's own copy of a creature put in combat: it is made again on first use
 	case c.Kind == kindPlayer:
 		name := campaignpackage.EntryName("characters", snap.Next("characters"), ".json")
-		out := &pkgv1.PackageCharacter{Id: c.ID, Name: c.Name, Sheet: sheet, Story: story, MasterNotes: notes}
+		out := &pkgv1.PackageCharacter{Id: c.ID, Name: c.Name, Sheet: sheet, Story: story, MasterNotes: notes, ItemCharges: items.chargesOf(), Ammunition: items.ammoOf()}
 		return snap.AddMessage(pkgv1.PackageEntryKind_PACKAGE_ENTRY_KIND_CHARACTER, name, out)
 	}
 	name := campaignpackage.EntryName("npcs", snap.Next("npcs"), ".json")
-	out := &pkgv1.PackageNpc{Id: c.ID, Name: c.Name, Kind: kindFromDB[c.Kind], Sheet: sheet, Story: story, MasterNotes: notes}
+	out := &pkgv1.PackageNpc{Id: c.ID, Name: c.Name, Kind: kindFromDB[c.Kind], Sheet: sheet, Story: story, MasterNotes: notes, ItemCharges: items.chargesOf(), Ammunition: items.ammoOf()}
 	return snap.AddMessage(pkgv1.PackageEntryKind_PACKAGE_ENTRY_KIND_NPC, name, out)
 }
 
@@ -346,6 +350,7 @@ type stagedCharacter struct {
 	sheet     []byte
 	story     []byte
 	notes     string
+	items     stagedItemState
 	createdAt time.Time
 }
 
@@ -376,6 +381,7 @@ func (p *packagePart) stageCharacters(in *campaignpackage.Import, sc *stagedCont
 		}
 		c := p.stageOne(in, content, master, stageInput{
 			kind: pkgv1.PackageProblemKind_PACKAGE_PROBLEM_KIND_NPC, id: n.GetId(), name: n.GetName(), sheet: n.GetSheet(), story: n.GetStory(), notes: n.GetMasterNotes(), player: false, npcKind: n.GetKind(),
+			charges: n.GetItemCharges(), ammo: n.GetAmmunition(),
 		}, base.Add(time.Duration(i)*orderStep))
 		if c != nil {
 			out.npcs = append(out.npcs, c)
@@ -389,6 +395,7 @@ func (p *packagePart) stageCharacters(in *campaignpackage.Import, sc *stagedCont
 		}
 		c := p.stageOne(in, content, master, stageInput{
 			kind: pkgv1.PackageProblemKind_PACKAGE_PROBLEM_KIND_CHARACTER, id: ch.GetId(), name: ch.GetName(), sheet: ch.GetSheet(), story: ch.GetStory(), notes: ch.GetMasterNotes(), player: true,
+			charges: ch.GetItemCharges(), ammo: ch.GetAmmunition(),
 		}, base.Add(time.Duration(len(npcFiles)+i)*orderStep))
 		if c != nil {
 			out.players = append(out.players, c)
@@ -406,6 +413,8 @@ type stageInput struct {
 	story           *charactersv1.CharacterStory
 	player          bool
 	npcKind         charactersv1.CharacterKind
+	charges         []*pkgv1.PackageItemCharge
+	ammo            []*pkgv1.PackageAmmunition
 }
 
 // stageOne checks one character or NPC and returns it ready to insert.
@@ -461,6 +470,9 @@ func (p *packagePart) stageChecked(in *campaignpackage.Import, content *rules.Co
 		return nil, packageInvalid
 	}
 	out := &stagedCharacter{id: id, name: name, kind: kind, notes: notes}
+	if out.items, ok = stageItemState(content, checked, c.charges, c.ammo); !ok {
+		return nil, packageInvalid
+	}
 	if out.sheet, err = storeJSON.Marshal(checked); err != nil {
 		return nil, packageInvalid
 	}
@@ -594,6 +606,9 @@ func applyNpcs(ctx context.Context, q *charactersdb.Queries, in *campaignpackage
 			ID: c.id, CampaignID: in.CampaignID, Kind: c.kind, MasterUserID: &in.UserID, Name: c.name, Sheet: c.sheet, Story: c.story, Now: c.createdAt,
 		}); err != nil {
 			return fmt.Errorf("insert an imported NPC: %w", err)
+		}
+		if err := applyItemState(ctx, q, c); err != nil {
+			return err
 		}
 		if c.notes == "" {
 			continue

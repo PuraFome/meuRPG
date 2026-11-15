@@ -70,6 +70,16 @@ describe('SpellEffect (#579, boards 579-01, 579-02 and 579-04)', () => {
     );
   });
 
+  it('with the weapon hit on too, says where it lands and sums the rows up in chips, and leaves the duration to the other block', () => {
+    const rows: EffectRow[] = [{ ...emptyRow('ac_bonus'), value: '2' }];
+    const { el } = setup(on({ rows }), { alsoHit: true, where: 'nos 3 alvos' });
+    const line = el.querySelector('.summary')!;
+    expect(text(line)).toContain('nos 3 alvos');
+    expect(line.querySelectorAll('.mr-tag').length).toBe(1);
+    expect(el.querySelector('.duration')).toBeNull();
+    expect(text(setup(on({ rows })).el)).toContain('Dura 1 minuto');
+  });
+
   it('turns on, with the duration and the concentration of the spell', async () => {
     const { fixture, el, sent } = setup(emptyEffect());
     el.querySelector<HTMLButtonElement>('button[role="switch"]')!.click();

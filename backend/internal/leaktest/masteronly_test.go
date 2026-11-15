@@ -70,6 +70,13 @@ func riderNumbers(_ *world, _ *person, m protoreflect.Message) bool {
 	return fd != nil && m.Get(fd).Bool()
 }
 
+// featureWindow is true for the window of a reaction feature: its trigger names the creature that triggered it and the feature,
+// and the reactor's player reads it (a hidden creature's window is never sent to a player at all).
+func featureWindow(_ *world, _ *person, m protoreflect.Message) bool {
+	fd := m.Descriptor().Fields().ByName("kind")
+	return fd != nil && m.Get(fd).Enum() == protoreflect.EnumNumber(playv1.ReactionKind_REACTION_KIND_FEATURE)
+}
+
 func ownOrAnyPlayerCharacter(w *world, p *person, m protoreflect.Message) bool {
 	return own(w, p, m) || playerCharacter(w, p, m)
 }
@@ -167,7 +174,7 @@ var masterOnly = []masterOnlyField{
 	{"meurpg.play.v1.Combatant", "death_successes", "the table keeps the death saves to the owner and the master (RN-24)", own},
 	{"meurpg.play.v1.PendingDamage", "steps", "an NPC's resistances are the master's; a player's character's go to its owner", func(w *world, _ *person, m protoreflect.Message) bool { return targetsPlayer(w, m) }},
 	{"meurpg.play.v1.PendingDamage", "amount_after_steps", "the damage after an NPC's resistances is the master's", func(w *world, _ *person, m protoreflect.Message) bool { return targetsPlayer(w, m) }},
-	{"meurpg.play.v1.ReactionWindow", "trigger", "the numbers of what happened (total, armor class, damage) are the master's (RN-20)", nil},
+	{"meurpg.play.v1.ReactionWindow", "trigger", "the numbers of what happened (total, armor class, damage) are the master's (RN-20); a FEATURE window names the creature and the feature to the reactor's player, and holds no number of an attack", featureWindow},
 	{"meurpg.play.v1.ReactionWindow", "answer_now", "the order the master answers in is his", nil},
 	{"meurpg.play.v1.Combatant", "death_failures", "the table keeps the death saves to the owner and the master (RN-24)", own},
 	{"meurpg.play.v1.Combatant", "reaction_kind", "which reaction a combatant spent is the master's and its player's; a joint-turn partner reads reaction_used only, and an NPC's never reaches a player", own},

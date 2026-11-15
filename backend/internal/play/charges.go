@@ -39,6 +39,8 @@ type ItemKeeper interface {
 	ItemAccess(ctx context.Context, tx pgx.Tx, campaignID, characterID string) (playerUserID string, dead, sheetEditable bool, err error)
 	// ChargedItem reads an entry of the character's sheet with its charges, and locks the character.
 	ChargedItem(ctx context.Context, tx pgx.Tx, campaignID, characterID, entryID string) (*charactersv1.SheetMagicItem, error)
+	// ChargedItemRead is ChargedItem for a pure read: it locks nothing.
+	ChargedItemRead(ctx context.Context, tx pgx.Tx, campaignID, characterID, entryID string) (*charactersv1.SheetMagicItem, error)
 	// SpendItemCharges spends charges of an entry and returns the entry after.
 	SpendItemCharges(ctx context.Context, tx pgx.Tx, campaignID, characterID, entryID string, amount int32) (after *charactersv1.SheetMagicItem, err error)
 	// ResolveLastCharge settles the d20 of an item whose last charge went; extra is the charges a 20 gives back.
@@ -56,6 +58,9 @@ type ItemKeeper interface {
 	AmmunitionLeft(ctx context.Context, tx pgx.Tx, campaignID, characterID, ammoKey string) (left int32, counted bool, err error)
 	// RecoverAmmunition takes back half of what the character fired in the encounter.
 	RecoverAmmunition(ctx context.Context, tx pgx.Tx, campaignID, characterID, encounterID string) ([]*charactersv1.SheetAmmunition, error)
+	// RestoreDawn gives every magic item of the campaign's characters its dawn, with the dice rolled by roll, and
+	// returns the items that regained charges.
+	RestoreDawn(ctx context.Context, tx pgx.Tx, campaignID string, roll link.DawnRoll) ([]link.DawnItem, error)
 }
 
 // chargeCall is what a write of ChargesService reads from its request before the transaction.

@@ -284,6 +284,8 @@ A `dismount` window has the rider as `reactor_id`, and its `trigger` keeps the m
 `seq` is `unique_rowid()`, the order windows opened in.
 A waiting contest is also a window of kind `contest`, opened and closed by `syncContests` after every change.
 
+A `feature` window's `trigger` JSON holds `key` (the feature), `actor` (the creature that triggered it), `distance` (feet), `moment` (`enemy_starts_turn_within` or `enemy_moves_within`) and `hidden` (true when the master hid the creature: the window is the master's alone).
+
 ## `opportunity_offers`
 
 The opportunity attack a move offered to a hostile reactor (MR-034, RN-21): `mover_id`, `reactor_id`, the square of the line where the mover left the reach (`left_col`, `left_row`, both or neither; where he returns if the attack takes him to 0 HP), `jumped` (the move was a long jump) and `state`.
