@@ -157,6 +157,21 @@ describe('ContentEntry', () => {
       .find((b) => text(b).includes(label))!
       .click();
 
+  it('shows an archived weapon as board 580-16 card 3: one line, and "Desarquivar" in the header', async () => {
+    const lance = entry(TableContentKind.WEAPON, 'Lança-arpão', {
+      archived: true,
+      key: 'weapon:lanca-arpao@mesa',
+    });
+    const { el } = await setup(Role.MASTER, 'weapon:lanca-arpao@mesa', [lance]);
+    expect(text(el.querySelector('.archived')!)).toContain(
+      'Continua nas fichas que já a têm. Não entra numa ficha nova.',
+    );
+    expect(text(el.querySelector('.archived')!)).not.toContain('está arquivada');
+    expect(el.querySelector('.archived button')).toBeNull();
+    expect(text(el.querySelector('.head')!)).toContain('Desarquivar');
+    expect(el.querySelector('app-players-switch')).toBeNull();
+  });
+
   it('opens the race in the editor for the master, with the state in words and "Arquivar"', async () => {
     const { el } = await setup(Role.MASTER, 'race:corujeiro@mesa');
     expect(text(el.querySelector('h1')!)).toBe('Corujeiro');
