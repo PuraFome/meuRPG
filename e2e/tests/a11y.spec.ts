@@ -15343,7 +15343,7 @@ for (const [colorScheme, theme] of [
  * 12 px text; "Pré-requisito perdido." has 16 px above and below it (the empty banners and the live region add nothing).
  */
 async function expectLostRows(page: Page, table: LostTable, kind: LostKind, where: string): Promise<void> {
-  const row = page.locator('details.feature', { has: page.locator('.feature__lost') });
+  const row = page.locator('details.feature', { has: page.locator('.feature__lost') }).filter({ hasText: table.entryName });
   await expect(row, `uma linha perdida ${where}`).toHaveCount(1);
   await expect(row.locator('.feature__name')).toHaveText(table.entryName);
   const look = await row.evaluate((el) => {
@@ -15377,7 +15377,7 @@ async function expectLostRows(page: Page, table: LostTable, kind: LostKind, wher
   expect(look.tagBorder, `a etiqueta tem borda tracejada ${where}`).toBe('dashed');
   expect(look.tagInk, `a etiqueta na cor de aviso ${where}`).toBe(look.tagLine);
   expect(look.nameInk, `o nome da linha perdida em tinta suave ${where}`).toBe(look.mutedInk);
-  if (kind === 'option') {
+  if (kind !== 'feat') {
     expect(look.option && !look.source, `a linha da opção não tem rótulo à direita ${where}`).toBe(true);
     expect(look.sub, `a linha da opção diz de quem ela é ${where}`).toBe('Opção de ' + table.featName);
   } else {
@@ -15418,20 +15418,25 @@ async function scanLostPrerequisite(browser: Browser, colorScheme: 'light' | 'da
   const where = `(${reader === 'owner' ? 'dono' : 'mestre'}, ${colorScheme}, ${width}px)`;
   try {
     await Promise.all([m.goto('/'), p.goto('/')]);
-    for (const kind of ['feat', 'option'] as const) {
+    for (const kind of ['feat', 'option', 'both'] as const) {
       const table = await lostPrerequisiteTable(m, p, `Acessibilidade pré-requisito perdido ${Date.now()}`, kind, true);
       const page = reader === 'owner' ? p : m;
       await open(page, `/campaigns/${table.campaignId}/characters/${table.characterId}`);
       const asked = reader === 'owner' ? 'uma condição que a mesa não mostra' : 'Ordem Esquecida 3, e Toren não tem nível de Ordem Esquecida';
       await expect(page.getByText(`${table.entryName} pede ${asked}:`)).toBeVisible();
       await expect(page.getByText('Pré-requisito perdido.').first()).toBeVisible();
-      await expect(page.getByText('Não vale agora')).toBeVisible();
+      await expect(page.getByText('Não vale agora')).toHaveCount(kind === 'both' ? 2 : 1);
+      if (kind === 'both') {
+        // The feat and its option, lost together, are two lines of one list in "Pendências de regra".
+        await expect(page.getByRole('note', { name: 'Pendências de regra' }).locator('li')).toHaveCount(2);
+        await expect(page.getByText(`${table.alsoName} pede ${asked}:`)).toBeVisible();
+      }
       await expectLostRows(page, table, kind, where);
       // The story sits beside the features on a tablet, never over them: the heading of the features stays in sight.
       const features = await page.locator('app-features-panel').boundingBox();
       const story = await page.locator('app-story-panel').boundingBox();
       expect(features && story && features.x < story.x + story.width && story.x < features.x + features.width && features.y < story.y + story.height && story.y < features.y + features.height, `a história cobre as características ${where}`).toBe(false);
-      await expectScreenPasses(page, `Ficha com ${kind === 'feat' ? 'o talento' : 'a opção'} de pré-requisito perdido ${where}`);
+      await expectScreenPasses(page, `Ficha com ${{ feat: 'o talento', option: 'a opção', both: 'o talento e a opção' }[kind]} de pré-requisito perdido ${where}`);
     }
   } finally {
     await Promise.all([master.close(), player.close()]);
