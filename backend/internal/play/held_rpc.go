@@ -34,6 +34,7 @@ var heldKindProto = map[heldKind]playv1.HeldRollKind{
 	heldCounterspell:      playv1.HeldRollKind_HELD_ROLL_KIND_COUNTERSPELL_CHECK,
 	heldContest:           playv1.HeldRollKind_HELD_ROLL_KIND_CONTEST,
 	heldInitiative:        playv1.HeldRollKind_HELD_ROLL_KIND_INITIATIVE,
+	heldMountSave:         playv1.HeldRollKind_HELD_ROLL_KIND_MOUNT_SAVE,
 	heldSceneCheck:        playv1.HeldRollKind_HELD_ROLL_KIND_SCENE_CHECK,
 	heldGroupCheck:        playv1.HeldRollKind_HELD_ROLL_KIND_GROUP_CHECK,
 	heldTrapSearch:        playv1.HeldRollKind_HELD_ROLL_KIND_TRAP_SEARCH,
@@ -258,6 +259,8 @@ func answerHeldCheckResultOf(out proto.Message, res *playv1.AnswerHeldRollRespon
 		res.Result, res.Next = &playv1.AnswerHeldRollResponse_TrapSearch{TrapSearch: o}, o.GetHeldRollOffer()
 	case *playv1.TryPuzzleHintResponse:
 		res.Result, res.Next = &playv1.AnswerHeldRollResponse_HintTry{HintTry: o}, o.GetHeldRollOffer()
+	case *playv1.RollMountSaveResponse:
+		res.Result, res.Next = &playv1.AnswerHeldRollResponse_MountSave{MountSave: o}, o.GetHeldRollOffer()
 	}
 }
 

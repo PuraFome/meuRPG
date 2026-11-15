@@ -7,9 +7,11 @@ import (
 	"strings"
 
 	"github.com/jackc/pgx/v5"
+	"google.golang.org/protobuf/proto"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules/reaction"
 )
 
 // The one way to drop a held roll. A spend of the Inspiration deletes the character's row and the hold remembers it
@@ -97,6 +99,66 @@ func forgetHold(ctx context.Context, q *playdb.Queries, id string) error {
 	}
 	for _, r := range rows {
 		if err := favorGiveBackIf(ctx, q, r.UnsettledFavor, r.CampaignID, r.CharacterID, r.IdempotencyKey); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// forgetHoldsOfWindow drops the questions kept for one window that closed by itself, giving back the Inspiration the unanswered ones
+// spent. A hold has no column that names its window: the request it stores does (window_id), and a reactor can have two windows of one
+// kind open, so only the holds whose request names this window go. A kind that keeps no question forgets nothing.
+func forgetHoldsOfWindow(ctx context.Context, q *playdb.Queries, encounterID string, w playdb.ReactionWindow) error {
+	kind, ok := heldKindOfWindow(reaction.Kind(w.Kind))
+	if !ok || w.ReactorID == nil {
+		return nil
+	}
+	holds, err := q.ListOpenInspirationHolds(ctx, playdb.ListOpenInspirationHoldsParams{EncounterID: &encounterID, CombatantID: w.ReactorID})
+	if err != nil {
+		return fmt.Errorf("list the held rolls of a combatant: %w", err)
+	}
+	for _, h := range holds {
+		if h.Kind == string(kind) && windowOfHold(kind, h.Request) == w.ID {
+			if err := forgetHold(ctx, q, h.ID); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// windowOfHold is the window the request of a held save answers; empty when the request says none.
+func windowOfHold(kind heldKind, request []byte) string {
+	switch kind {
+	case heldConcentrationSave:
+		var req playv1.ResolveConcentrationSaveRequest
+		if proto.Unmarshal(request, &req) == nil {
+			return req.GetWindowId()
+		}
+	case heldEffectSave:
+		var req playv1.RollEffectSaveRequest
+		if proto.Unmarshal(request, &req) == nil {
+			return req.GetWindowId()
+		}
+	}
+	return ""
+}
+
+// forgetHoldsOfKind drops the questions of one kind a combatant keeps open in a combat (the one a window kept for its roller, when the
+// window closes by itself), giving back the Inspiration the unanswered ones spent.
+func forgetHoldsOfKind(ctx context.Context, q *playdb.Queries, encounterID string, combatantID *string, kind string) error {
+	if combatantID == nil {
+		return nil
+	}
+	holds, err := q.ListOpenInspirationHolds(ctx, playdb.ListOpenInspirationHoldsParams{EncounterID: &encounterID, CombatantID: combatantID})
+	if err != nil {
+		return fmt.Errorf("list the held rolls of a combatant: %w", err)
+	}
+	for _, h := range holds {
+		if h.Kind != kind {
+			continue
+		}
+		if err := forgetHold(ctx, q, h.ID); err != nil {
 			return err
 		}
 	}

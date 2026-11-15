@@ -27,9 +27,12 @@
 # `-run '^(TestA|TestB)$'`. The leaktest package is split the same way, in
 # leak-1 to leak-4: every test builds its own world, so no test needs another
 # to run first. The rules package (pure, CPU-bound under -race and coverage)
-# is split in rules-1 to rules-3: whole, it reached the 25-minute -timeout. A package is split by adding its prefix to split_prefixes, its
-# directory to split_dir (when it is not the prefix), its number of parts to
-# split_parts, and its parts to case_packages' pattern. The hash is stable:
+# is split in rules-1 to rules-3: whole, it reached the 25-minute -timeout. The
+# migrations package is split in migrations-1 to migrations-3: every test
+# migrates its own fresh database, and whole it neared the -timeout too. A
+# package is split by adding its prefix to split_prefixes, its directory under
+# backend/ to split_path, its number of parts to split_parts, and its parts to
+# the split-group patterns of case_packages and --run. The hash is stable:
 # adding a test never moves the others, and a NEW test lands in a part by
 # itself. A test too heavy to share a part is pinned to one of its own (pinned_tests). The tests are read from the source, so a group needs no compile to
 # get its `-run`; --check proves each test is in
@@ -41,9 +44,9 @@ module=github.com/PuraFome/meuRPG/backend
 
 case_packages() {
   case "$1" in
-    play-[1-9]|leak-[1-9]|rules-[1-9]) echo "$module/internal/$(split_dir "${1%-*}")" ;;
+    play-[1-9]|leak-[1-9]|rules-[1-9]|migrations-[1-9]) echo "$module/$(split_path "${1%-*}")" ;;
     maps) echo "$module/internal/maps" ;;
-    characters) echo "$module/internal/characters $module/migrations $module/internal/progression" ;;
+    characters) echo "$module/internal/characters $module/internal/progression" ;;
     # The CPU-bound pure packages, kept off the runners of the database ones: rules (split
     # above, in rules-1 to rules-3) and dungeon with puzzle.
     dungeon) echo "$module/internal/rules/dungeon $module/internal/rules/puzzle" ;;
@@ -53,19 +56,27 @@ case_packages() {
 }
 
 # play-2 to play-6 name the same package as play-1, leak-2 to leak-4 the same as leak-1,
-# and rules-2 and rules-3 the same as rules-1: only the first part of a split
-# package counts here.
-named_groups="play-1 maps characters rules-1 dungeon leak-1"
+# rules-2 and rules-3 the same as rules-1, and migrations-2 and migrations-3 the same as
+# migrations-1: only the first part of a split package counts here.
+named_groups="play-1 maps characters rules-1 dungeon leak-1 migrations-1"
 
-# The split packages, by the prefix of their groups (play-N, leak-N, rules-N): the
-# directory under internal/ that case_packages names, and the number of parts.
-split_prefixes="play leak rules"
-split_dir() { case "$1" in leak) echo leaktest ;; *) echo "$1" ;; esac; }
+# The split packages, by the prefix of their groups (play-N, leak-N, rules-N,
+# migrations-N): the directory under backend/ that case_packages names, and the
+# number of parts.
+split_prefixes="play leak rules migrations"
+split_path() {
+  case "$1" in
+    leak) echo internal/leaktest ;;
+    migrations) echo migrations ;;
+    *) echo "internal/$1" ;;
+  esac
+}
 split_parts() {
   case "$1" in
     play) echo 6 ;;
     leak) echo 4 ;;
     rules) echo 3 ;;
+    migrations) echo 3 ;;
     *) echo "not a split package: $1" >&2; return 1 ;;
   esac
 }
@@ -81,13 +92,13 @@ split_tests() {
   # --check reads once and passes the list on through the shell variable
   # SPLIT_TESTS_<prefix>.
   if [ -n "${!listed:-}" ]; then echo "${!listed}"; return; fi
-  grep -hE '^func (Test|Fuzz|Example)([A-Z0-9_][A-Za-z0-9_]*)?\(' "internal/$(split_dir "$prefix")"/*_test.go \
+  grep -hE '^func (Test|Fuzz|Example)([A-Z0-9_][A-Za-z0-9_]*)?\(' "$(split_path "$prefix")"/*_test.go \
     | sed -E 's/^func ([A-Za-z0-9_]+)\(.*/\1/' | grep -vx TestMain | sort -u
 }
 
 # The same list, from `go test -list`, which compiles the test binary and runs no test.
 split_tests_compiled() {
-  go test -list '.*' "$module/internal/$(split_dir "$1")" | grep -E '^(Test|Fuzz|Example)[A-Za-z0-9_]*$' | sort
+  go test -list '.*' "$module/$(split_path "$1")" | grep -E '^(Test|Fuzz|Example)[A-Za-z0-9_]*$' | sort
 }
 
 # The tests of a split package that run alone in a part of their own: "<test> <part>" lines. Pin a test that takes over about a
@@ -96,6 +107,7 @@ split_tests_compiled() {
 pinned_tests() {
   case "$1" in
     leak) echo "TestAHiddenWriteMovesThePlayersNumberAndNothingElse 4" ;;
+    migrations) echo "TestMigrationsUpDownUp 1" ;;
     *) ;;
   esac
 }
@@ -146,7 +158,7 @@ run_regex() {
 if [ "${1:-}" = "--run" ]; then
   group=${2:?usage: go-db-shard.sh --run <group>}
   case "$group" in
-    play-[1-9]|leak-[1-9]|rules-[1-9])
+    play-[1-9]|leak-[1-9]|rules-[1-9]|migrations-[1-9])
       # A part number past the package's parts has no tests: fail, do not run nothing.
       if [ "${group#*-}" -gt "$(split_parts "${group%-*}")" ]; then
         echo "::error::unknown group: $group" >&2

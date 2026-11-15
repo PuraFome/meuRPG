@@ -72,6 +72,13 @@ type reactionEvent struct {
 	Why string `json:"why,omitempty"`
 	// Concentration: the spell, the DC and whether it was kept.
 	Kept bool `json:"kept,omitempty"`
+	// Mount save: what asked it (mountCausePushed, mountCauseProne), whether the rider failed with no d20, where it landed after the fall
+	// and that no square next to the mount was free.
+	Cause    string `json:"cause,omitempty"`
+	AutoFail bool   `json:"auto_fail,omitempty"`
+	LandCol  int32  `json:"land_col,omitempty"`
+	LandRow  int32  `json:"land_row,omitempty"`
+	NoRoom   bool   `json:"no_room,omitempty"`
 	// Feather Fall: the creatures saved.
 	Saved2 []string `json:"saved_ids,omitempty"`
 	// Slow Fall: the points taken off the fall (Before and After are the damage around it).
@@ -97,6 +104,8 @@ var reactionNames = map[reaction.Kind]string{
 	reaction.FeatherFall:         "Queda Suave",
 	reaction.SlowFall:            "Queda Lenta",
 	reaction.Concentration:       "Teste de concentração",
+	reaction.MountSave:           "Teste para ficar na montaria",
+	reaction.Dismount:            "Desmontar de pé",
 	reaction.MasterCheck:         "Verificação do mestre",
 	reaction.LegendaryResistance: "Resistência Lendária",
 	reaction.ParryKind:           "Aparar",

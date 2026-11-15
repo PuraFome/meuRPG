@@ -86,6 +86,7 @@ var reactionLiners = map[reaction.Kind]reactionLiner{
 	reaction.SlowFall:           (*reactionFacts).slowFall,
 	reaction.Concentration:      (*reactionFacts).concentration,
 	reaction.ParryKind:          (*reactionFacts).parry,
+	reaction.Dismount:           (*reactionFacts).dismount,
 }
 
 // reactionLine is the line for the viewer, and whether it names the reactor.

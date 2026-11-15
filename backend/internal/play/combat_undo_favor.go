@@ -119,8 +119,8 @@ func (s *Service) favorVitals(ctx context.Context, c *combatTx, ids []string) []
 
 // publishFavorUndo tells what the undo of a favor event changed: the master, and the owners the event was told to, that the combat and its
 // log changed. No other player hears of it.
-func (s *Service) publishFavorUndo(campaignID string, enc playdb.Encounter, ev actionEvent) {
-	s.publishEncounterChangedToMaster(campaignID, enc)
+func (s *Service) publishFavorUndo(ctx context.Context, campaignID string, enc playdb.Encounter, ev actionEvent) {
+	s.publishEncounterChangedToMaster(ctx, campaignID, enc)
 	s.send(campaignID, live.Event{Audience: live.Audience{Master: true}, Message: combatLogChangedMessage(enc.ID, true)})
 	if ev.Secret {
 		return
