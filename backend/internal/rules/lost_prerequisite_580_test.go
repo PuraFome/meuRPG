@@ -1,6 +1,7 @@
 package rules
 
 import (
+	"cmp"
 	"slices"
 	"strconv"
 	"strings"
@@ -119,5 +120,86 @@ func TestALostOptionWithAHiddenConditionIsMaskedForAPlayerAndNamedForTheMaster(t
 		if s := pv.Lost.SentencePT("Tor", true); strings.Contains(s, w) {
 			t.Errorf("a player's view names %q even read as the master's: %q", w, s)
 		}
+	}
+}
+
+// Preflight #253, A6: the exact shape of the list. Several conditions a player may not read are one phrase, and the
+// last of the list whatever their place in the prerequisite (its place would say which kind it stands for); three
+// conditions read "A, B e C".
+func TestTheListOfMissingConditions(t *testing.T) {
+	t.Parallel()
+	score := LostCondition{AskPT: "Força 13", LinkPT: "e", HasPT: "tem 11"}
+	level := LostCondition{AskPT: "nível 8", LinkPT: "e", HasPT: "está no 4"}
+	spell := LostCondition{AskPT: "a magia Raio", LinkPT: "que", HasPT: "não conhece mais"}
+	class := LostCondition{AskPT: "Ordem 3", LinkPT: "e", HasPT: "não tem nível de Ordem", Hidden: true}
+	pact := LostCondition{AskPT: "a Dádiva do Pacto Elo", LinkPT: "que", HasPT: "não tem mais", Hidden: true}
+	races := LostCondition{AskPT: "ser Oculto ou Rubro", ShownPT: "ser Rubro", LinkPT: "que", HasPT: "não é", Hidden: true}
+	const tail = ": o talento só vale de novo quando Tor cumprir."
+	cases := []struct {
+		name           string
+		conditions     []LostCondition
+		player, master string
+	}{
+		{"three conditions", []LostCondition{score, level, spell},
+			"X pede Força 13, e Tor tem 11, nível 8, e Tor está no 4 e a magia Raio, que Tor não conhece mais" + tail, ""},
+		{"several hidden conditions are one phrase", []LostCondition{class, pact},
+			"X pede uma condição que a mesa não mostra" + tail,
+			"X pede Ordem 3, e Tor não tem nível de Ordem e a Dádiva do Pacto Elo, que Tor não tem mais" + tail},
+		{"a hidden condition among the others is told last", []LostCondition{class, score, pact, level},
+			"X pede Força 13, e Tor tem 11, nível 8, e Tor está no 4 e uma condição que a mesa não mostra" + tail,
+			"X pede Ordem 3, e Tor não tem nível de Ordem, Força 13, e Tor tem 11, a Dádiva do Pacto Elo, que Tor não tem mais e nível 8, e Tor está no 4" + tail},
+		{"a list of races with a hidden one names the others, as the picker does", []LostCondition{races, score},
+			"X pede ser Rubro, que Tor não é e Força 13, e Tor tem 11" + tail,
+			"X pede ser Oculto ou Rubro, que Tor não é e Força 13, e Tor tem 11" + tail},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			l := LostPrerequisite{EntryPT: "X", Conditions: tc.conditions}
+			if got := l.SentencePT("Tor", false); got != tc.player {
+				t.Errorf("a player reads %q, want %q", got, tc.player)
+			}
+			if want := cmp.Or(tc.master, tc.player); l.SentencePT("Tor", true) != want {
+				t.Errorf("the master reads %q, want %q", l.SentencePT("Tor", true), want)
+			}
+		})
+	}
+}
+
+// Preflight #253, A5: the sentence says the score the sheet shows. A feat that gives Strength +1 and is lost gives
+// nothing: the feat that asks for Strength 15 says the 13 of the sheet, not the 14 it would have with the other.
+func TestALostFeatSaysTheScoreTheSheetShows(t *testing.T) {
+	t.Parallel()
+	const giver, asker = "feat:da-forca" + tableSuffix, "feat:pede-forca" + tableSuffix
+	feat := func(key, name string, p FeatPrerequisite, effects ...Effect) TableFeat {
+		return TableFeat{TableEntry: TableEntry{Key: key, NamePT: name}, DescPT: []string{"Texto."}, Prerequisite: p, Effects: effects}
+	}
+	c := withOverlayOn(t, loadForTest(t), Overlay{Revision: 1, Feats: []TableFeat{
+		feat(giver, "Dá força", FeatPrerequisite{Level: 20}, Effect{Type: "modifier", Target: "score.str", Mode: "add", Value: "1", Cap: 20}),
+		feat(asker, "Pede força", FeatPrerequisite{Minimums: map[Ability]int{STR: 15}}),
+	}})
+	b := postureBuild(3)
+	b.Classes[0].Subclass = ""
+	b.BaseScores[STR] = 12 // 13 with the race; 14 if the lost feat gave its +1
+	b.Feats = []string{giver, asker}
+	d := Derive(b, c)
+	shown := 0
+	for _, s := range d.Abilities {
+		if s.Ability == STR {
+			shown = s.Score
+		}
+	}
+	var got string
+	for _, is := range d.Issues {
+		if is.Lost != nil && is.Lost.Key == asker {
+			got = is.Lost.SentencePT("Tor", false)
+		}
+	}
+	if shown != 13 {
+		t.Fatalf("the sheet shows Strength %d, want 13: the lost feat gives nothing", shown)
+	}
+	const want = "Pede força pede Força 15, e Tor tem 13: o talento só vale de novo quando Tor cumprir."
+	if got != want {
+		t.Errorf("sentence = %q, want %q", got, want)
 	}
 }

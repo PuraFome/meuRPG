@@ -32,6 +32,9 @@ type LostCondition struct {
 	// Hidden says the condition is on an entry the players may not read and the sheet does not have: a player reads
 	// hiddenAskPT for it. In a player's view of the content AskPT is empty.
 	Hidden bool
+	// ShownPT is what a player reads of a hidden condition that also asks for something they may read: the races
+	// they may read of a list with a hidden one, as the feat's picker names them. Empty for any other.
+	ShownPT string
 }
 
 // lostNobody stands for the character in the stored message, which is the same for every reader.
@@ -44,25 +47,39 @@ func (l LostPrerequisite) SentencePT(name string, master bool) string {
 	if name == "" {
 		name = lostNobody
 	}
-	var parts []string
-	for _, c := range l.Conditions {
-		part := hiddenAskPT
-		if !c.Hidden || master && c.AskPT != "" {
-			part = c.AskPT + ", " + c.LinkPT + " " + name + " " + c.HasPT
-		}
-		if !slices.Contains(parts, part) {
-			parts = append(parts, part)
-		}
-	}
 	what := "o talento"
 	if l.Option {
 		what = "a opção"
 	}
-	asked := listPT(parts)
+	asked := listPT(l.asked(name, master))
 	if asked == "" { // no condition to name: the prerequisite as a whole
 		asked = "um pré-requisito que " + name + " não cumpre"
 	}
 	return fmt.Sprintf("%s pede %s: %s só vale de novo quando %s cumprir.", l.EntryPT, asked, what, name)
+}
+
+// asked are the missing conditions as the reader gets them, each once. The conditions a player may not read are
+// one phrase for all of them, and the last: its place in the list would say which kind of condition it stands for.
+func (l LostPrerequisite) asked(name string, master bool) []string {
+	var parts []string
+	hidden := false
+	for _, c := range l.Conditions {
+		ask := c.AskPT
+		if c.Hidden && (!master || ask == "") {
+			ask = c.ShownPT
+		}
+		if ask == "" {
+			hidden = true
+			continue
+		}
+		if part := ask + ", " + c.LinkPT + " " + name + " " + c.HasPT; !slices.Contains(parts, part) {
+			parts = append(parts, part)
+		}
+	}
+	if hidden {
+		parts = append(parts, hiddenAskPT)
+	}
+	return parts
 }
 
 // listPT joins phrases as a list: "A", "A e B", "A, B e C".
@@ -190,7 +207,10 @@ func (c *content) lostRace(u FeatUnmet, b Build) LostCondition {
 		asked = []string{u.Key}
 	}
 	lc := LostCondition{AskPT: "ser " + c.racesPT(asked), LinkPT: "que", HasPT: "não é"}
-	lc.Hidden = slices.ContainsFunc(asked, func(k string) bool { return c.hiddenOn(b, k) })
+	shown := slices.DeleteFunc(slices.Clone(asked), func(k string) bool { return c.hiddenOn(b, k) })
+	if lc.Hidden = len(shown) < len(asked); lc.Hidden && len(shown) > 0 {
+		lc.ShownPT = "ser " + c.racesPT(shown)
+	}
 	return lc
 }
 

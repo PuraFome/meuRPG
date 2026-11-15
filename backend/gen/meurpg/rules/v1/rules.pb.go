@@ -7635,6 +7635,10 @@ type Issue struct {
 	// problem is not about one field.
 	Field string `protobuf:"bytes,2,opt,name=field,proto3" json:"field,omitempty"`
 	// What is wrong, in Portuguese, for the app to show.
+	// The text is written for the reader of the call: a feat or an option that lost its prerequisite
+	// ("feat_prerequisite", "option_prerequisite") names the character and says what is missing, and a condition on an
+	// entry the players may not read is named for the master only ("uma condição que a mesa não mostra" for a player).
+	// So the same issue may read differently for two readers; tell issues apart by code and field, never by this text.
 	Message       string `protobuf:"bytes,3,opt,name=message,proto3" json:"message,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

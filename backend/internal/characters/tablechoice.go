@@ -258,6 +258,13 @@ func (r reader) tell(d *rulesv1.DerivedSheet, issues []rules.Issue) {
 	}
 }
 
+// derived is the DerivedSheet of d as the reader gets it: each lost prerequisite in the reader's sentence.
+func (r reader) derived(d rules.Derived) *rulesv1.DerivedSheet {
+	out := derivedToProto(d)
+	r.tell(out, d.Issues)
+	return out
+}
+
 // changeSentence is how "A classe mudou" tells an issue: the sentence of the
 // change, naming the class or subclass it is about only when that is the entry that
 // changed ("Guardião do Vale agora dá 2 perícias no nível 1; esta ficha tem 3."),
