@@ -149,7 +149,8 @@ function readFeat(
   optionSide?: (o: TableFeature) => string,
 ): EntryRead {
   const asks = prerequisiteSupport(f.prerequisite, nameOf);
-  const rows: ReadRow[] = [{ label: asks ? 'Pede' : 'Pré-requisito', value: asks || 'Nenhum' }];
+  // Board 580-01 draws the line only when the feat asks for something.
+  const rows: ReadRow[] = asks ? [{ label: 'Pede', value: asks }] : [];
   for (const e of f.effects) {
     if (e.type === 'ability_increase' && e.count > 0) {
       const from = e.from.map((k) => nameOf(`ability:${k}`));
