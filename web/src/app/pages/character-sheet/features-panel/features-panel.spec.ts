@@ -67,3 +67,36 @@ describe('FeaturesPanel "Lembretes"', () => {
     ).toEqual([SHIELD_HINT.text, OTHER_HINT.text]);
   });
 });
+
+describe('FeaturesPanel, a feat or option that does not apply now (board 580-05)', () => {
+  it('marks the lost row with a "Não vale agora" tag, and only that row', () => {
+    const fixture = TestBed.createComponent(FeaturesPanel);
+    const row = (name: string, lost: boolean) => ({
+      name,
+      sourcePt: 'Opção de Truques de lâmina',
+      description: '',
+      descriptionPt: '',
+      descriptionPtMissing: false,
+      descriptionPtOnly: true,
+      summaryPt: '',
+      lost,
+    });
+    fixture.componentRef.setInput('sheet', {
+      kind: 'full',
+      features: [row('Golpe do Corvo', false), row('Asa Partida', true)],
+      hints: [],
+      gear: [],
+      itemModifiers: [],
+      shieldIdle: false,
+      resistances: [],
+      languages: [],
+      proficiencies: [],
+    } as unknown as FullSheetVm);
+    fixture.detectChanges();
+    const rows = Array.from(
+      (fixture.nativeElement as HTMLElement).querySelectorAll<HTMLElement>('.feature'),
+    );
+    expect(rows[0].querySelector('.feature__lost')).toBeNull();
+    expect(rows[1].querySelector('.feature__lost')?.textContent?.trim()).toBe('Não vale agora');
+  });
+});
