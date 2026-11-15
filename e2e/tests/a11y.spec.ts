@@ -78,6 +78,7 @@ import { beginCrowdedCombatRPC, boxIn, callFeatBody, chamadosFeatBody, elementFe
 import { createFeatOptionsRPC, expectInViewport, featShotScale, featViewport, openSelect, shootFeat, type FeatOptionsTable } from './feat-options-support';
 import { archiveEntryRPC, checkMinimumFeatBody, costsRaceBody, createEntryRPC, creatureBody, criticalFeatureBody, damageCreatureBody, entryRoute, expectCardsHoldTheirText, giveFeatRPC, heavyBlowFeatBody, hitModifier, hitSpellBody, minimumFeatBody, raceBody, rerollFeatBody, spellBody, steadyShotFeatBody, updateEntryRPC } from './content-support';
 import { rerollTable } from './reroll-support';
+import { aloneFlow, damageCard, expectDashed, expectFits, otherPlayerLogFlow, rolledFlow, shootTakeOut, sneakHit, takeOutRPC, takeOutShotScale, takeOutTable, twoPartsFlow, type TakeOutOptions } from './take-out-support';
 import { generateSceneRPC, mapRoute, tableForImages } from './images-support';
 import { treasureRoute } from './treasure-support';
 import { classBody, createClassRPC, createSubclassRPC, halfCasterBody, listEntries } from './classes-support';
@@ -15161,5 +15162,171 @@ for (const [colorScheme, theme] of [
       test.setTimeout(420_000);
       await scanReadyWindowScreens(browser, colorScheme, width);
     });
+  }
+}
+
+// #835: taking an extra out of a typed group. One table per theme and width; the screens come in the order the flow goes.
+async function scanTakeOutScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const where = `(${colorScheme}, ${width}px)`;
+  const t = await takeOutTable(browser, { colorScheme, masterWidth: width, playerWidth: width, ...takeOutShotScale });
+  const { m, p, campaignId } = t;
+  try {
+    await sneakHit(t);
+    await openSessionPage(m, campaignId);
+    const card = damageCard(m);
+    await expect(card.getByText('Aplicado · 15')).toBeVisible();
+    await expectScreenPasses(m, `Tirar parte, o grupo na carta do mestre ${where}`);
+    await expectFits(m, card, `Tirar parte, o grupo ${where}`);
+    await shootTakeOut(m, 'master-group', width, colorScheme, card);
+
+    // The panel with what it undoes, and the empty reason.
+    await card.getByRole('button', { name: 'Tirar o Ataque Furtivo' }).click();
+    const panel = card.getByRole('alertdialog', { name: 'Tirar o Ataque Furtivo do dano?' });
+    const field = panel.getByLabel('Motivo (aparece no registro)');
+    const confirm = panel.getByRole('button', { name: 'Tirar e pedir a soma' });
+    await field.fill('x');
+    await field.fill('');
+    await expect(panel.getByText('Escreva o motivo, com até 120 caracteres.')).toBeVisible();
+    await expectDashed(confirm);
+    await expectScreenPasses(m, `Tirar parte, o motivo vazio ${where}`);
+    await shootTakeOut(m, 'empty-reason', width, colorScheme, panel);
+    await field.fill('Sem aliado perto do alvo');
+    await expectScreenPasses(m, `Tirar parte, a confirmação com a lista do que se desfaz ${where}`);
+    await expectFits(m, panel, `Tirar parte, a confirmação ${where}`);
+    await shootTakeOut(m, 'confirm', width, colorScheme, panel);
+
+    // Sending, then a refusal of the server: nothing changed and the panel stays.
+    let release = (): void => undefined;
+    const gate = new Promise<void>((resolve) => (release = resolve));
+    await m.route('**/*CombatService/RemoveDamagePart', async (route) => {
+      await gate;
+      await route.fulfill({ status: 503, contentType: 'application/json', body: '{"code":"unavailable","message":"x"}' });
+    });
+    await confirm.click();
+    const sending = panel.getByRole('button', { name: 'Tirando…' });
+    await expect(sending).toBeVisible();
+    await expectDashed(sending);
+    await expectDashed(panel.getByRole('button', { name: 'Voltar' }));
+    await expectScreenPasses(m, `Tirar parte, enviando ${where}`);
+    await shootTakeOut(m, 'sending', width, colorScheme, panel);
+    release();
+    await expect(panel.getByRole('alert')).toContainText('Não deu para tirar a parte agora. Nada mudou. Tente de novo.');
+    await expectScreenPasses(m, `Tirar parte, a recusa ${where}`);
+    await expectFits(m, panel, `Tirar parte, a recusa ${where}`);
+    await shootTakeOut(m, 'refusal', width, colorScheme, panel);
+    await m.unroute('**/*CombatService/RemoveDamagePart');
+    await confirm.click();
+
+    // The master waits for the sum of the one who attacked.
+    await expect(card.getByText('Esperando Vex')).toBeVisible();
+    await expect(card.getByText('tirado: “Sem aliado perto do alvo”')).toBeVisible();
+    await expectScreenPasses(m, `Tirar parte, a espera do mestre ${where}`);
+    await expectFits(m, card, `Tirar parte, a espera ${where}`);
+    await shootTakeOut(m, 'waiting-master', width, colorScheme, card);
+    const strip = m.getByText('Falta a soma de Vex').first();
+    await expect(strip).toBeVisible();
+    await shootTakeOut(m, 'strip', width, colorScheme, strip);
+
+    // The roller: the card on her turn, then the sheet with one field.
+    const notice = p.getByText('Falta digitar de novo a soma do dano do seu ataque.');
+    await expect(notice).toBeVisible();
+    await expectScreenPasses(p, `Tirar parte, o aviso na vez de quem rolou ${where}`);
+    await shootTakeOut(p, 'roller-card', width, colorScheme, notice);
+    await p.getByRole('button', { name: 'Digitar a soma' }).click();
+    const sheet = p.getByRole('dialog').filter({ has: p.getByRole('heading', { name: 'Digitar o dano de novo' }) });
+    await expect(sheet.getByLabel('Rapieira, perfurante: 1d8')).toBeVisible();
+    await expect(sheet.getByText(/ PV/)).toHaveCount(0);
+    await expectScreenPasses(p, `Tirar parte, a folha de quem rolou ${where}`);
+    await expectFits(p, sheet, `Tirar parte, a folha ${where}`);
+    await shootTakeOut(p, 'roller-sheet', width, colorScheme);
+    await sheet.getByLabel('Rapieira, perfurante: 1d8').fill('1');
+    await sheet.getByRole('button', { name: 'Aplicar 4 de dano' }).click();
+    await sheet.getByRole('button', { name: /Voltar à sua vez/ }).click();
+    await expect(card.getByText('Esperando Vex')).toHaveCount(0);
+
+    // The log: the master and the attacker read the reason.
+    await openCombatPanel(m, 'Registro');
+    const masterLog = m.getByRole('log', { name: 'Registro do combate' });
+    await expect(masterLog.getByText(/Sem aliado perto do alvo/)).toBeVisible();
+    await expectScreenPasses(m, `Tirar parte, o registro do mestre ${where}`);
+    await shootTakeOut(m, 'master-log', width, colorScheme, masterLog);
+    const playerLog = await openCombatLog(p);
+    await expect(playerLog.getByText(/Sem aliado perto do alvo/)).toBeVisible();
+    await expectScreenPasses(p, `Tirar parte, o registro de quem rolou ${where}`);
+    await shootTakeOut(p, 'player-log', width, colorScheme, playerLog);
+  } finally {
+    await t.done().catch(() => undefined);
+  }
+
+  // The sheet was still open on the applied damage when the master took the part out: it goes back to the group field.
+  const again = await takeOutTable(browser, { colorScheme, masterWidth: width, playerWidth: width, ...takeOutShotScale });
+  try {
+    const open = await sneakHit(again, true);
+    await takeOutRPC(again, 'Sem aliado perto do alvo');
+    await expect(open.getByText(/O mestre tirou o Ataque Furtivo/)).toBeVisible();
+    await expect(open.getByLabel('Rapieira, perfurante: 1d8')).toBeVisible();
+    await expectScreenPasses(again.p, `Tirar parte, a folha que já estava aberta ${where}`);
+    await shootTakeOut(again.p, 'sheet-open', width, colorScheme);
+  } finally {
+    await again.done().catch(() => undefined);
+  }
+}
+
+for (const [colorScheme, theme] of [
+  ['light', 'claro'],
+  ['dark', 'escuro'],
+] as const) {
+  for (const width of [390, 768, 1280]) {
+    test(
+      `tirar uma parte de um grupo digitado passa no axe e nas conferências de layout no tema ${theme}, em ${width}`,
+      { tag: ['@a11y', '@MR-012'] },
+      async ({ browser }) => {
+        test.setTimeout(300_000);
+        await scanTakeOutScreens(browser, colorScheme, width);
+      },
+    );
+  }
+}
+
+// #835, board 835-04 states 2 to 4: a part alone in its type, the group that keeps two parts, and the damage rolled on a character and not applied.
+async function scanTakeOutStates(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const where = `(${colorScheme}, ${width}px)`;
+  const view = {
+    scan: async (page: Page, screen: string) => {
+      await expectScreenPasses(page, `${screen} ${where}`);
+      const wide = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+      expect(wide, `${screen} ${where}: a página rola de lado em ${wide}px`).toBeLessThanOrEqual(0);
+    },
+    shoot: (page: Page, screen: string, at?: Locator) => shootTakeOut(page, screen, width, colorScheme, at),
+  };
+  const states: [TakeOutOptions, (t: Awaited<ReturnType<typeof takeOutTable>>, v: typeof view) => Promise<void>][] = [
+    [{ feats: ['radiant'] }, aloneFlow],
+    [{ feats: ['pierce'] }, twoPartsFlow],
+    [{ ally: true }, rolledFlow],
+    [{ ally: true }, otherPlayerLogFlow],
+  ];
+  for (const [options, flow] of states) {
+    const t = await takeOutTable(browser, { colorScheme, masterWidth: width, playerWidth: width, ...takeOutShotScale }, options);
+    try {
+      await flow(t, view);
+    } finally {
+      await t.done().catch(() => undefined);
+    }
+  }
+}
+
+for (const [colorScheme, theme] of [
+  ['light', 'claro'],
+  ['dark', 'escuro'],
+] as const) {
+  for (const width of [390, 768, 1280]) {
+    test(
+      `tirar uma parte de um grupo digitado, os outros estados, passa no axe e nas conferências de layout no tema ${theme}, em ${width}`,
+      { tag: ['@a11y', '@MR-012'] },
+      async ({ browser }) => {
+        test.setTimeout(420_000);
+        await scanTakeOutStates(browser, colorScheme, width);
+      },
+    );
   }
 }
