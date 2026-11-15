@@ -217,10 +217,18 @@ function spellBlocked(o: SpellOption): string {
  * Whether the window can release a spell today: it names darts, creatures (one or several) or nothing, as the cast screens do. A spell
  * placed on the map (a point or a direction) cannot yet. Read from what `GetTurnOptions` says of the spell (`spell_targets`); with no
  * entry (an attack cantrip, which is released as an attack) nothing is known against it. In a combat with no map nothing is placed.
+ * A spell that asks the caster a choice (`choices`) cannot either: the answer carries none.
  */
-function releaseBlocked(all: readonly SpellTargets[], key: string): string {
+function releaseBlocked(
+  all: readonly SpellTargets[],
+  key: string,
+  choices: ReadonlyMap<string, CastChoice> = new Map(),
+): string {
   const t = all.find((x) => x.spellKey === key);
-  return t && t.placement !== AreaPlacement.UNSPECIFIED ? SPELL_PENDING_TEXT : '';
+  if (t && t.placement !== AreaPlacement.UNSPECIFIED) {
+    return SPELL_PENDING_TEXT;
+  }
+  return choiceBlocked(choices, key);
 }
 
 /** Why the window cannot release a spell that asks the caster a choice (an ability, creatures, a damage type); `''` when it asks none. */
@@ -271,10 +279,7 @@ export function readySpellRows(
         id: o.spell?.key ?? '',
         title: o.spell?.namePt || o.spell?.name || '',
         sub: spellSub(o, level, summaries),
-        blocked:
-          spellBlocked(o) ||
-          releaseBlocked(spellTargets, o.spell?.key ?? '') ||
-          choiceBlocked(choices, o.spell?.key ?? ''),
+        blocked: spellBlocked(o) || releaseBlocked(spellTargets, o.spell?.key ?? '', choices),
         level,
         slots: level > 0 ? slotsOf(o) : [],
         spell: true,

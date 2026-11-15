@@ -44,6 +44,9 @@ export const pensantusReadyKit = {
 export const moveOffText = 'Mover pela janela ainda não dá: por enquanto o mestre move a ficha.';
 export const spellOffText = 'Soltar pela janela ainda não dá para esta magia: ela pede um ponto ou uma direção no mapa.';
 
+/** Why a spell that asks the caster a choice is off in the sheet: here a summon's creatures (the window sends no `summon` yet). */
+export const summonOffText = 'Soltar pela janela ainda não dá para esta magia: ela pede as criaturas ao conjurar.';
+
 /** The trigger of the specs: the zombie of the boards, with the goblin of the table. */
 export const goblinTrigger = 'Quando o goblin passar pela porta';
 
