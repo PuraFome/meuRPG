@@ -13,7 +13,7 @@ import { diceTable, openDice, stepModifier } from './free-dice-support';
 import { chooseReaders, lineOf, messageBoxOf, openConversaTable, say } from './conversa-support';
 import { followMapLink, openChatTab, openPlayerMap, openSheetTab, endOpenSessionRPC, endSessionRPC, openRolls, openSessionPage, openLive, showMapTool, showMasterTab, startSessionRPC, tableWithPensantus, openSessionMenu, clickStartCombat, expectStartCombatOffered, endSessionFromBar } from './live-session-support';
 import { canvasPng, createMapRPC, createPointRPC, placeTokenRPC, revealMapRPC, setCurrentMapRPC, tableForMaps, uploadImageRPC } from './maps-support';
-import { type Encounter, adjustVitalsRPC, attackCombatSquares, beginAttackCombatRPC, setGridRPC, combatRPC, getEncounterRPC, startEncounterRPC, endTurnOf, passTurnsTo, passTurnsToAndWait, pensantusCasting, waitTurnLeaves, tableForCombat, toren, torenSheet } from './combat-support';
+import { type Encounter, adjustVitalsRPC, attackCombatSquares, beginAttackCombatRPC, setGridRPC, combatRPC, getEncounterRPC, startEncounterRPC, endTurnOf, passTurnsTo, passTurnsToAndWait, pensantusAttacks, pensantusCasting, waitTurnLeaves, tableForCombat, toren, torenSheet } from './combat-support';
 import { addActionRPC, attachTwoImagesRPC, cartActions, getOpenSceneRPC, openSceneOnlyToRPC, openSceneRPC, rollSceneRPC, sceneActionIdsRPC, setAttemptsRPC, setMayJoinRPC, setSceneImagesRPC, setShowDcRPC, tableForScenes } from './scene-support';
 import { addClueRPC, cartClues, cartHooks, createNoteRPC } from './notes-support';
 import { createCapitaoRPC, createMiraRPC, playedCombatRPC, putOnStageRPC, uploadPortrait } from './stage-support';
@@ -95,7 +95,7 @@ import {
   icaroSheetBody,
   lockAndMilestone,
 } from './table-sheet-support';
-import { openCombatPanel, openMap, openOrderRow, openTurn } from './combat-layout';
+import { masterLog, openCombatPanel, openMap, openOrderRow, openTurn } from './combat-layout';
 import { waitForEncounterRevision } from './revision-support';
 import { WIDTHS, beginVrockFight, pagesFor, shoot, useCreatureActionRPC, viewportOf } from './recharge-support';
 import { chooseRow, openTvPanel, rollForTableRPC, tvRoute } from './table-screen-support';
@@ -9486,6 +9486,739 @@ async function scanAttunementScreens(browser: Browser, colorScheme: 'light' | 'd
     await master.close();
     await player.close();
   }
+}
+
+/** Judges a screen of the charges and the ammunition like every other and, when `E2E_SHOTS_DIR` names a folder, saves its viewport as `563-<screen>-<width>-<scheme>.png`. */
+async function expectChargesScreen(page: Page, screen: string): Promise<void> {
+  await expectScreenPasses(page, screen);
+  const dir = process.env.E2E_SHOTS_DIR;
+  if (!dir) {
+    return;
+  }
+  mkdirSync(dir, { recursive: true });
+  // A sheet page opens on its header: bring the equipment section to the top so the shot shows the rows, unless a dialog is open over the page.
+  const gear = page.getByRole('region', { name: 'Equipamento' });
+  if ((await page.locator('[role="dialog"]:visible, [role="alertdialog"]:visible').count()) === 0 && (await gear.count()) > 0) {
+    await gear.first().evaluate((el) => el.scrollIntoView({ block: 'start' }));
+    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  }
+  const width = page.viewportSize()?.width ?? 0;
+  const dark = await page.evaluate(() => matchMedia('(prefers-color-scheme: dark)').matches);
+  const slug = screen
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 70);
+  await page.screenshot({ path: join(dir, `563-${slug}-${width}-${dark ? 'dark' : 'light'}.png`) });
+}
+
+/**
+ * The charges of magic items and the ammunition (#563), through the real stack: the owner's locked sheet with its item rows
+ * (normal, at 0, destroyed, a ring that never recharges, an item with no charge data), the use sheet, the d20 of the last
+ * charge and the row that asks for it, then the ammunition list (empty with the free-text hint, "Adicionar munição", with a
+ * kind and nothing to recover). A rolled start that waits for the master needs no extra step: the sword is in the sheet. The
+ * recovery after a shot needs a combat: its other states are in the unit specs of the panel.
+ */
+async function scanChargesScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: 900 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const sheet = {
+      weaponKeys: ['equipment:longsword', 'equipment:longbow'],
+      armorKey: 'equipment:chain-mail',
+      equipment: [{ name: 'Mochila', quantity: 1 }, { name: 'Flechas (20)', quantity: 1 }],
+      magicItems: [
+        { key: 'item:ring-of-shooting-stars' },
+        { key: 'item:staff-of-fire' },
+        { key: 'item:luck-blade' },
+        { key: 'item:ring-of-evasion' },
+        { key: 'item:scarab-of-protection' },
+        { key: 'item:ring-of-three-wishes' },
+        { key: 'item:ring-of-protection' },
+      ],
+    };
+    const table = await tableForCombat(m, p, `Acessibilidade cargas ${Date.now()}`, true, true, { build: toren, sheet });
+    campaignId = table.campaignId;
+    const route = `/campaigns/${campaignId}/characters/${table.characterId}`;
+
+    // The master puts the items in the states of the board: the evasion ring at 0, the scarab destroyed, the staff at its last charge.
+    const read = await callRPC(m, 'meurpg.characters.v1.CharacterService/GetCharacter', { campaignId, characterId: table.characterId });
+    expect(read.ok(), await read.text()).toBeTruthy();
+    const entries = ((await read.json()).character.sheet.full.magicItems ?? []) as { id: string; key: string }[];
+    const entryOf = (key: string) => entries.find((e) => e.key === key)!.id;
+    const setCharges = async (key: string, chargesLeft: number, lost = 'ITEM_LOSS_UNSPECIFIED') => {
+      const res = await callRPC(m, 'meurpg.play.v1.ChargesService/SetCharges', {
+        campaignId,
+        characterId: table.characterId,
+        entryId: entryOf(key),
+        chargesLeft,
+        lost,
+        idempotencyKey: crypto.randomUUID(),
+      });
+      expect(res.ok(), await res.text()).toBeTruthy();
+    };
+    await setCharges('item:ring-of-shooting-stars', 5);
+    await setCharges('item:ring-of-evasion', 0);
+    await setCharges('item:scarab-of-protection', 0, 'ITEM_LOSS_GONE');
+    await setCharges('item:staff-of-fire', 1);
+
+    // The owner's locked sheet: "Usar" works, the rest only the master changes.
+    await openLive(p, route);
+    const gear = p.getByRole('region', { name: 'Equipamento' });
+    const rowOf = (name: RegExp) => gear.locator('.magic-row').filter({ hasText: name });
+    await expect(rowOf(/Anel de estrelas cadentes/).getByText('5 de 6 cargas')).toBeVisible();
+    if (width === 390) {
+      // The count and its word are one unit: on a phone the six pips take the line, and "5 de 6 cargas" moves under them whole.
+      const lineTops = await rowOf(/Anel de estrelas cadentes/)
+        .getByText('5 de 6 cargas')
+        .evaluate((el) => {
+          const tops = new Set<number>();
+          const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+          for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+            if (!node.textContent?.trim()) {
+              continue;
+            }
+            const range = document.createRange();
+            range.selectNodeContents(node);
+            for (const rect of Array.from(range.getClientRects())) {
+              tops.add(Math.round(rect.top));
+            }
+          }
+          return tops.size;
+        });
+      expect(lineTops, 'the charge count and "cargas" share one line').toBe(1);
+    }
+    await expect(rowOf(/Anel de estrelas cadentes/).getByText('Volta 1d6 ao amanhecer')).toBeVisible();
+    await expect(gear.getByText('Travada: usar cargas continua valendo, o resto, só o mestre muda.')).toBeVisible();
+    await expect(rowOf(/Anel de evasão/).getByRole('button', { name: /^Usar / })).toHaveAttribute('aria-disabled', 'true');
+    await expect(rowOf(/Escaravelho/).getByText('Destruída')).toBeVisible();
+    await expect(rowOf(/Anel de proteção/).getByText('Pede sintonização')).toBeVisible();
+    await expectChargesScreen(p, `Ficha, itens com cargas ${where}`);
+
+    // The use sheet.
+    await rowOf(/Anel de estrelas cadentes/).getByRole('button', { name: /^Usar / }).click();
+    const use = p.getByRole('dialog', { name: /^Usar / });
+    await expect(use.getByText('Restam 5 de 6 cargas')).toBeVisible();
+    await expectChargesScreen(p, `Usar cargas ${where}`);
+    await use.getByRole('button', { name: 'Fechar' }).first().click();
+    await expect(use).toBeHidden();
+    // The focus goes back to the item's "Usar".
+    await expect(rowOf(/Anel de estrelas cadentes/).getByRole('button', { name: /^Usar / })).toBeFocused();
+
+    // The last charge of a staff that rolls a d20: the alert, then the row that asks for the roll.
+    await rowOf(/Cajado do fogo/).getByRole('button', { name: /^Usar / }).click();
+    await p.getByRole('dialog', { name: /^Usar / }).getByRole('button', { name: /^Gastar 1 carga/ }).click();
+    const last = p.getByRole('alertdialog', { name: 'A última carga se foi' });
+    await expect(last).toBeVisible();
+    await expectChargesScreen(p, `A última carga se foi ${where}`);
+    // Esc and the close button both close it, and neither skips the die; the backdrop does not. The focus goes back to the row.
+    if (colorScheme === 'dark') {
+      await p.keyboard.press('Escape');
+    } else {
+      await last.getByRole('button', { name: 'Fechar' }).first().click();
+    }
+    await expect(last).toBeHidden();
+    await expect(rowOf(/Cajado do fogo/).getByRole('button', { name: /^Rolar/ })).toBeFocused();
+    await expect(rowOf(/Cajado do fogo/).getByText('Falta rolar o d20 da última carga.')).toBeVisible();
+    await expect(rowOf(/Cajado do fogo/).getByRole('button', { name: /^Rolar/ })).toBeVisible();
+    await expectChargesScreen(p, `Ficha, o d20 da última carga espera ${where}`);
+
+    // The ammunition: no kind counted, the free text looks like ammunition.
+    await expect(gear.getByText('“Flechas (20)” parece munição: para o app contar, adicione em Munição.')).toBeVisible();
+    await expectChargesScreen(p, `Ficha, munição vazia com a dica ${where}`);
+
+    // The master adds a kind; the list shows, with nothing to recover yet.
+    await openLive(m, route);
+    const masterGear = m.getByRole('region', { name: 'Equipamento' });
+    await masterGear.getByRole('button', { name: 'Adicionar', exact: true }).click();
+    const add = m.getByRole('dialog', { name: 'Adicionar munição' });
+    await expect(add).toBeVisible();
+    await expectChargesScreen(m, `Adicionar munição ${where}`);
+    await add.getByRole('button', { name: /^Adicionar 20 flechas/ }).click();
+    await expect(add).toBeHidden();
+    await expect(masterGear.getByRole('heading', { name: 'Munição contada pelo app' })).toBeVisible();
+    await expect(masterGear.getByRole('button', { name: 'Recuperar a metade' })).toHaveAttribute('aria-disabled', 'true');
+    await expect(masterGear.getByText('Nada gasto no último combate: não há o que recuperar.')).toBeVisible();
+    await expectChargesScreen(m, `Ficha, munição contada, nada a recuperar ${where}`);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+for (const [colorScheme, width] of [['light', 1280], ['dark', 390]] as const) {
+  test(`os itens com cargas e a munição passam no axe e nas conferências de layout no tema ${colorScheme === 'light' ? 'claro, no desktop' : 'escuro, no celular'}`, { tag: ['@a11y', '@563'] }, async ({ browser }) => {
+    test.setTimeout(300_000);
+    await scanChargesScreens(browser, colorScheme, width);
+  });
+}
+
+/**
+ * The ammunition on the attack row (#563), through the real stack: the bow with no kind counted (no tag), counted with 7 (a tag),
+ * at 3 (warning), at 0 (dashed tag, "Atacar" off with the reason) and the improvised melee row, which stays open and never carries
+ * a count. The master sets the count, the player's screen re-reads the turn. The two bow buttons are named in full: a bow has two rows.
+ */
+async function scanAmmunitionAttackScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: 900 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await Promise.all([m.goto('/'), p.goto('/')]);
+    const table = await tableForCombat(m, p, `Acessibilidade munição no ataque ${Date.now()}`, true, true, {
+      sheet: { ...pensantusAttacks, weaponKeys: ['equipment:dagger', 'equipment:longbow'] },
+    });
+    campaignId = table.campaignId;
+    await beginAttackCombatRPC(m, table, { Pensantus: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 });
+    const setArrows = async (quantity: number) => {
+      const res = await callRPC(m, 'meurpg.play.v1.ChargesService/SetAmmunition', { campaignId, characterId: table.characterId, ammoKey: 'equipment:arrow', quantity });
+      expect(res.ok(), await res.text()).toBeTruthy();
+    };
+    const bow = p.getByRole('button', { name: 'Atacar com Arco longo', exact: true });
+    const melee = p.getByRole('button', { name: 'Atacar com Arco longo, corpo a corpo', exact: true });
+    const tag = p.getByTestId('ammo-tag');
+    const reread = async () => {
+      await openSessionPage(p, campaignId);
+      await openActionTab(p, 'Ataques');
+    };
+
+    // No kind counted: the shot goes, no tag; the melee line is its own row, with its note.
+    await reread();
+    await expect(bow).toBeVisible();
+    await expect(tag).toHaveCount(0);
+    await expect(bow).not.toHaveAttribute('aria-disabled', 'true');
+    await expect(melee).toBeVisible();
+    await expect(p.getByText('Improvisado: não gasta flecha.')).toBeVisible();
+    await expectChargesScreen(p, `Ataques, arco sem munição contada e a linha corpo a corpo ${where}`);
+
+    await setArrows(7);
+    await reread();
+    await expect(tag).toHaveText('7 flechas');
+    await expect(bow).not.toHaveAttribute('aria-disabled', 'true');
+    await expectChargesScreen(p, `Ataques, 7 flechas ${where}`);
+
+    await setArrows(3);
+    await reread();
+    await expect(tag).toContainText('3 flechas');
+    await expect(bow).not.toHaveAttribute('aria-disabled', 'true');
+    await expectChargesScreen(p, `Ataques, 3 flechas em aviso ${where}`);
+
+    await setArrows(0);
+    await reread();
+    await expect(tag).toHaveText('0 flechas');
+    await expect(bow).toHaveAttribute('aria-disabled', 'true');
+    await expect(p.getByText('Sem flechas: o tiro não sai.')).toBeVisible();
+    await expect(bow).toHaveAccessibleDescription('Sem flechas: o tiro não sai.');
+    await expect(melee).not.toHaveAttribute('aria-disabled', 'true');
+    await expect(tag).toHaveCount(1);
+    await expectChargesScreen(p, `Ataques, sem flechas e a linha corpo a corpo aberta ${where}`);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+for (const [colorScheme, width] of [['light', 1280], ['dark', 390]] as const) {
+  test(`a munição na linha de ataque passa no axe e nas conferências de layout no tema ${colorScheme === 'light' ? 'claro, no desktop' : 'escuro, no celular'}`, { tag: ['@a11y', '@563'] }, async ({ browser }) => {
+    test.setTimeout(300_000);
+    await scanAmmunitionAttackScreens(browser, colorScheme, width);
+  });
+}
+
+/**
+ * The log of charges and ammunition (#563), through the real stack: a shot with the bow, the last charge of a staff that rolls a
+ * d20 and the d20 that left it with no charges. The master and the owner read the three lines; they are the same axe states of the
+ * log as the others. The player acts through the RPCs of the owner (a shot, a use, a roll), the screens only read.
+ */
+async function scanChargesLogScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: 900 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await Promise.all([m.goto('/'), p.goto('/')]);
+    const table = await tableForCombat(m, p, `Acessibilidade registro de cargas ${Date.now()}`, true, true, {
+      sheet: { ...pensantusAttacks, weaponKeys: ['equipment:dagger', 'equipment:longbow'], magicItems: [{ key: 'item:staff-of-fire' }] },
+    });
+    campaignId = table.campaignId;
+    const enc = await beginAttackCombatRPC(m, table, { Pensantus: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 });
+    const id = (label: string) => enc.combatants.find((c) => c.label === label)!.id;
+    const ok = async (res: Awaited<ReturnType<typeof callRPC>>) => expect(res.ok(), await res.text()).toBeTruthy();
+
+    // Seven arrows counted and the staff at its last charge, as the master sets them.
+    await ok(await callRPC(m, 'meurpg.play.v1.ChargesService/SetAmmunition', { campaignId, characterId: table.characterId, ammoKey: 'equipment:arrow', quantity: 7 }));
+    const read = await callRPC(m, 'meurpg.characters.v1.CharacterService/GetCharacter', { campaignId, characterId: table.characterId });
+    expect(read.ok(), await read.text()).toBeTruthy();
+    const entries = ((await read.json()).character.sheet.full.magicItems ?? []) as { id: string; key: string }[];
+    const staff = entries.find((e) => e.key === 'item:staff-of-fire')!.id;
+    await ok(await callRPC(m, 'meurpg.play.v1.ChargesService/SetCharges', { campaignId, characterId: table.characterId, entryId: staff, chargesLeft: 1, lost: 'ITEM_LOSS_UNSPECIFIED', idempotencyKey: crypto.randomUUID() }));
+
+    // The owner shoots, spends the last charge and rolls the d20 (a 14: the staff stays, with no charges).
+    await ok(await callRPC(p, 'meurpg.play.v1.CombatService/RollAttack', { campaignId, encounterId: enc.id, attackerId: id('Pensantus'), attackKey: 'equipment:longbow', targetId: id('Goblin 1'), idempotencyKey: crypto.randomUUID(), d20Face: 12 }));
+    await ok(await callRPC(p, 'meurpg.play.v1.ChargesService/SpendCharges', { campaignId, characterId: table.characterId, entryId: staff, amount: 1, idempotencyKey: crypto.randomUUID() }));
+    await ok(await callRPC(p, 'meurpg.play.v1.ChargesService/RollLastCharge', { campaignId, characterId: table.characterId, entryId: staff, idempotencyKey: crypto.randomUUID(), d20Face: 14 }));
+
+    const lines = ['atirou com o Arco longo: 1 flecha, restam 6', 'gastou a última carga do Cajado do fogo', 'rolou 14 no d20 da última carga: o Cajado do fogo fica, sem cargas'];
+    await openSessionPage(m, campaignId);
+    const mlog = await masterLog(m);
+    for (const line of lines) {
+      await expect(mlog).toContainText(line);
+    }
+    await expectChargesScreen(m, `Registro do combate, cargas e munição, visto pelo mestre ${where}`);
+
+    await openSessionPage(p, campaignId);
+    const ownerLog = await openCombatLog(p);
+    for (const line of lines) {
+      await expect(ownerLog).toContainText(line);
+    }
+    await expectChargesScreen(p, `Registro do combate, cargas e munição, visto pelo dono ${where}`);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+for (const [colorScheme, width] of [['light', 1280], ['dark', 390]] as const) {
+  test(`o registro de cargas e munição passa no axe e nas conferências de layout no tema ${colorScheme === 'light' ? 'claro, no desktop' : 'escuro, no celular'}`, { tag: ['@a11y', '@563'] }, async ({ browser }) => {
+    test.setTimeout(300_000);
+    await scanChargesLogScreens(browser, colorScheme, width);
+  });
+}
+
+/**
+ * The master's "Cargas e munição" in the Grupo tab (#563), through the real stack: the panel with an item at 0, a destroyed
+ * one, a ring that never recharges and a kind of ammunition, the "Corrigir" stepper ("eram N"), the "Destruída" switch, the
+ * ammunition's own stepper, then the long rest's "Amanhecer" row (on, off, and the explanation opened by the info button) and,
+ * last, the panel's "Amanhecer" with its result. The server's refusals and the empty list are in the unit specs of the panel.
+ */
+async function scanChargesMasterScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: width <= 390 ? 700 : 900 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  m.setDefaultTimeout(20_000);
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const sheet = {
+      weaponKeys: ['equipment:longbow'],
+      armorKey: 'equipment:chain-mail',
+      magicItems: [
+        { key: 'item:ring-of-shooting-stars' },
+        { key: 'item:ring-of-evasion' },
+        { key: 'item:scarab-of-protection' },
+        { key: 'item:ring-of-three-wishes' },
+      ],
+    };
+    const table = await tableForCombat(m, p, `Acessibilidade cargas do grupo ${Date.now()}`, true, true, { build: toren, sheet });
+    campaignId = table.campaignId;
+
+    // The states of the board: the stars ring at 4, the evasion ring at 0, the scarab destroyed, 15 arrows counted.
+    const read = await callRPC(m, 'meurpg.characters.v1.CharacterService/GetCharacter', { campaignId, characterId: table.characterId });
+    expect(read.ok(), await read.text()).toBeTruthy();
+    const entries = ((await read.json()).character.sheet.full.magicItems ?? []) as { id: string; key: string }[];
+    const setCharges = async (key: string, chargesLeft: number, lost = 'ITEM_LOSS_UNSPECIFIED') => {
+      const res = await callRPC(m, 'meurpg.play.v1.ChargesService/SetCharges', {
+        campaignId,
+        characterId: table.characterId,
+        entryId: entries.find((e) => e.key === key)!.id,
+        chargesLeft,
+        lost,
+        idempotencyKey: crypto.randomUUID(),
+      });
+      expect(res.ok(), await res.text()).toBeTruthy();
+    };
+    await setCharges('item:ring-of-shooting-stars', 4);
+    await setCharges('item:ring-of-evasion', 0);
+    await setCharges('item:scarab-of-protection', 0, 'ITEM_LOSS_GONE');
+    const ammo = await callRPC(m, 'meurpg.play.v1.ChargesService/SetAmmunition', {
+      campaignId,
+      characterId: table.characterId,
+      ammoKey: 'equipment:arrow',
+      quantity: 15,
+    });
+    expect(ammo.ok(), await ammo.text()).toBeTruthy();
+
+    await openSessionPage(m, campaignId, 'grupo');
+    const panel = m.getByRole('region', { name: 'Cargas e munição' });
+    await expect(panel.locator('.pc__name').filter({ hasText: 'Anel de estrelas cadentes' })).toBeVisible();
+    await expect(panel.getByText('4 de 6')).toBeVisible();
+    await expect(panel.getByText('Destruída')).toBeVisible();
+    await expect(panel.locator('.pc__name').filter({ hasText: 'Flecha' })).toBeVisible();
+    await expectChargesScreen(m, `Cargas e munição, o painel do mestre ${where}`);
+
+    // "Corrigir" on an item: the stepper says what it was; a step and "Salvar".
+    await panel.getByRole('button', { name: /^Corrigir Anel de estrelas cadentes/ }).click();
+    const editor = panel.getByRole('group', { name: 'Corrigir Anel de estrelas cadentes' });
+    await expect(editor).toContainText('eram 4');
+    await expectChargesScreen(m, `Cargas e munição, corrigir um item ${where}`);
+    await editor.getByRole('button', { name: /^Mais uma carga/ }).click();
+    await editor.getByRole('switch', { name: 'Destruída' }).click();
+    await expect(editor.getByRole('switch', { name: 'Destruída' })).toHaveAttribute('aria-checked', 'true');
+    await expectChargesScreen(m, `Cargas e munição, "Destruída" ligada ${where}`);
+    // "Destruída" zeroes the count and turning it off leaves it at 0: one step up, then the save.
+    await editor.getByRole('switch', { name: 'Destruída' }).click();
+    await editor.getByRole('button', { name: /^Mais uma carga/ }).click();
+    await editor.getByRole('button', { name: 'Salvar' }).click();
+    await expect(editor).toBeHidden();
+    await expect(panel.getByText('1 de 6')).toBeVisible();
+    await expectChargesScreen(m, `Cargas e munição, depois de corrigir ${where}`);
+
+    // The ammunition has its own stepper, without the switch.
+    await panel.getByRole('button', { name: 'Corrigir Flecha', exact: true }).click();
+    const ammoEditor = panel.getByRole('group', { name: 'Corrigir Flecha' });
+    await expect(ammoEditor).toContainText('eram 15');
+    await expect(ammoEditor.getByRole('switch')).toHaveCount(0);
+    await expectChargesScreen(m, `Cargas e munição, corrigir a munição ${where}`);
+    await ammoEditor.getByRole('button', { name: 'Cancelar' }).click();
+    await expect(ammoEditor).toBeHidden();
+
+    // The long rest asks the dawn: on, off, and the explanation opened by the icon button.
+    const rest = m.getByRole('region', { name: 'Descanso' });
+    await rest.getByRole('button', { name: 'Descanso longo' }).click();
+    const question = rest.getByRole('alertdialog', { name: 'Começar o descanso longo?' });
+    const dawn = question.getByRole('checkbox', { name: 'Amanhecer' });
+    await expect(dawn).toBeChecked();
+    await expect(question.getByText('Anel de evasão: ', { exact: false })).toBeVisible();
+    await expectChargesScreen(m, `Descanso longo, com o Amanhecer ${where}`);
+    await dawn.click();
+    await expect(question.getByText('As cargas do amanhecer ficam como estão:', { exact: false })).toBeVisible();
+    await expectChargesScreen(m, `Descanso longo, Amanhecer desmarcado ${where}`);
+    const info = question.getByRole('button', { name: 'O que é o Amanhecer' });
+    await expect(info).toHaveAttribute('aria-expanded', 'false');
+    await info.click();
+    await expect(info).toHaveAttribute('aria-expanded', 'true');
+    await expect(question.getByText('os itens que dizem “ao amanhecer” recebem as cargas de volta', { exact: false })).toBeVisible();
+    await expectChargesScreen(m, `Descanso longo, a explicação do Amanhecer ${where}`);
+    await rest.getByRole('button', { name: 'Cancelar' }).click();
+    await expect(rest.getByRole('alertdialog')).toHaveCount(0);
+
+    // The panel's "Amanhecer": the table's dawn, with what each item got back.
+    await panel.getByRole('button', { name: 'Amanhecer' }).click();
+    await expect(panel.getByText('Amanhecer. 2 itens receberam cargas:')).toBeVisible();
+    await expectChargesScreen(m, `Cargas e munição, o Amanhecer feito ${where}`);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+for (const [colorScheme, width] of [['light', 1280], ['dark', 390]] as const) {
+  test(`as cargas e a munição do grupo passam no axe e nas conferências de layout no tema ${colorScheme === 'light' ? 'claro, no desktop' : 'escuro, no celular'}`, { tag: ['@a11y', '@563'] }, async ({ browser }) => {
+    test.setTimeout(300_000);
+    await scanChargesMasterScreens(browser, colorScheme, width);
+  });
+}
+
+/**
+ * The states of the charges that the other scans of #563 leave out, through the real stack. The owner's sheet at a table that lets
+ * each player choose, with the player's choice on physical dice: the use sheet loading ("Gastando...") and failing, a refusal of
+ * the server in words (the master took charges away while the sheet was open), the d20 of the last charge with "Face do d20" first
+ * and "Rolar no app" beside it, the result "Tirou 14", the 1 that leaves "Sem magia" ("Virou um cajado comum."), the 20 that asks
+ * for the face of the regain die, and the item the master marked as keeping only its bonus ("Ficou só o +2 no ataque e no dano.").
+ * Not reached here: a table that forces the app or the physical dice (the unit specs of the sheet), and the d20 rolled in the app
+ * (the face is the server's, so the text of the result is not fixed).
+ */
+async function scanChargesRollScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: 900 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  m.setDefaultTimeout(20_000);
+  p.setDefaultTimeout(20_000);
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await Promise.all([m.goto('/'), p.goto('/')]);
+    const sheet = {
+      weaponKeys: ['equipment:longsword'],
+      armorKey: 'equipment:chain-mail',
+      magicItems: [
+        { key: 'item:ring-of-shooting-stars' },
+        { key: 'item:staff-of-fire' },
+        { key: 'item:staff-of-striking' },
+        { key: 'item:staff-of-the-magi' },
+        { key: 'item:staff-of-power' },
+      ],
+    };
+    const table = await tableForCombat(m, p, `Acessibilidade último d20 ${Date.now()}`, true, true, { build: toren, sheet });
+    campaignId = table.campaignId;
+    const route = `/campaigns/${campaignId}/characters/${table.characterId}`;
+    await setDiceModeRPC(m, campaignId, 'DICE_MODE_PLAYERS_CHOOSE');
+    const pref = await callRPC(p, 'meurpg.campaigns.v1.CampaignService/SetMyDicePreference', { campaignId, preference: 'DICE_PREFERENCE_PHYSICAL' });
+    expect(pref.ok(), await pref.text()).toBeTruthy();
+
+    const read = await callRPC(m, 'meurpg.characters.v1.CharacterService/GetCharacter', { campaignId, characterId: table.characterId });
+    expect(read.ok(), await read.text()).toBeTruthy();
+    const entries = ((await read.json()).character.sheet.full.magicItems ?? []) as { id: string; key: string }[];
+    const setCharges = async (key: string, chargesLeft: number, lost = 'ITEM_LOSS_UNSPECIFIED') => {
+      const res = await callRPC(m, 'meurpg.play.v1.ChargesService/SetCharges', {
+        campaignId,
+        characterId: table.characterId,
+        entryId: entries.find((e) => e.key === key)!.id,
+        chargesLeft,
+        lost,
+        idempotencyKey: crypto.randomUUID(),
+      });
+      expect(res.ok(), await res.text()).toBeTruthy();
+    };
+    await setCharges('item:staff-of-fire', 1);
+    await setCharges('item:staff-of-striking', 1);
+    await setCharges('item:staff-of-the-magi', 1);
+    await setCharges('item:staff-of-power', 0, 'ITEM_LOSS_PARTLY_MAGIC');
+
+    await openLive(p, route);
+    const gear = p.getByRole('region', { name: 'Equipamento' });
+    const rowOf = (name: RegExp) => gear.locator('.magic-row').filter({ hasText: name });
+    const use = p.getByRole('dialog', { name: /^Usar / });
+    const last = p.getByRole('alertdialog', { name: 'A última carga se foi' });
+    const spend = '**/meurpg.play.v1.ChargesService/SpendCharges';
+
+    // The use sheet while the server has not answered, then when it did not get through: the same sheet, with the reason.
+    await rowOf(/Anel de estrelas cadentes/).getByRole('button', { name: /^Usar / }).click();
+    await expect(use).toBeVisible();
+    let answer!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      answer = resolve;
+    });
+    await p.route(spend, async (r) => {
+      await gate;
+      await r.fulfill({ status: 503, contentType: 'application/json', body: '{"code":"unavailable","message":"x"}' });
+    });
+    await use.getByRole('button', { name: /^Gastar 1 carga/ }).click();
+    await expect(use.getByRole('button', { name: 'Gastando...' })).toBeVisible();
+    await expectChargesScreen(p, `Usar cargas, gastando ${where}`);
+    answer();
+    await expect(use.getByRole('alert')).toContainText('Nada mudou');
+    await expectChargesScreen(p, `Usar cargas, o servidor não respondeu ${where}`);
+    await p.unroute(spend);
+
+    // The master takes the charges away while the sheet is open: the owner asks for three and the server says why not.
+    await setCharges('item:ring-of-shooting-stars', 1);
+    await use.getByRole('button', { name: 'Mais uma carga' }).click();
+    await use.getByRole('button', { name: 'Mais uma carga' }).click();
+    await use.getByRole('button', { name: /^Gastar 3 cargas/ }).click();
+    await expect(use.getByRole('alert')).toContainText('Cargas a menos');
+    await expectChargesScreen(p, `Usar cargas, o servidor recusou ${where}`);
+    await use.getByRole('button', { name: 'Fechar' }).first().click();
+    await expect(use).toBeHidden();
+
+    // The d20 with the player's own dice: "Face do d20" leads, "Rolar no app" stays beside it.
+    await rowOf(/Cajado do fogo/).getByRole('button', { name: /^Usar / }).click();
+    await use.getByRole('button', { name: /^Gastar 1 carga/ }).click();
+    await expect(last).toBeVisible();
+    await expect(last.getByLabel('Face do d20')).toBeVisible();
+    await expect(last.getByRole('button', { name: 'Rolar no app' })).toBeVisible();
+    await expectChargesScreen(p, `A última carga se foi, dados físicos ${where}`);
+    await last.getByLabel('Face do d20').fill('14');
+    await last.getByRole('button', { name: 'Confirmar' }).click();
+    await expect(last).toBeHidden();
+    await expect(gear.getByText(/Tirou 14\./)).toBeVisible();
+    await expectChargesScreen(p, `Resultado do d20, Tirou 14 ${where}`);
+
+    // A 1: the staff stays on the sheet as a plain one, with the tag "Sem magia".
+    await rowOf(/Cajado de ataque/).getByRole('button', { name: /^Usar / }).click();
+    await use.getByRole('button', { name: /^Gastar 1 carga/ }).click();
+    await expect(last).toBeVisible();
+    await last.getByLabel('Face do d20').fill('1');
+    await last.getByRole('button', { name: 'Confirmar' }).click();
+    await expect(last).toBeHidden();
+    await expect(gear.getByText(/Tirou 1\./)).toBeVisible();
+    await expect(rowOf(/Cajado de ataque/).getByText('Sem magia')).toBeVisible();
+    await expect(rowOf(/Cajado de ataque/).getByText('Virou um cajado comum.')).toBeVisible();
+    await expectChargesScreen(p, `Resultado do d20, Tirou 1 e o item sem magia ${where}`);
+
+    // The item that keeps only its bonus, as the master marked it.
+    await expect(rowOf(/Cajado do poder/).getByText('Sem magia')).toBeVisible();
+    await expect(rowOf(/Cajado do poder/).getByText('Ficou só o +2 no ataque e no dano.')).toBeVisible();
+    await expectChargesScreen(p, `Ficha, o item que ficou só com o bônus ${where}`);
+
+    // A typed 20 on an item that regains charges asks for the face of the die that counts them.
+    await rowOf(/Cajado do arcano/).getByRole('button', { name: /^Usar / }).click();
+    await use.getByRole('button', { name: /^Gastar 1 carga/ }).click();
+    await expect(last).toBeVisible();
+    await last.getByLabel('Face do d20').fill('20');
+    await last.getByRole('button', { name: 'Confirmar' }).click();
+    await expect(last.getByLabel('Face do d12')).toBeVisible();
+    await expectChargesScreen(p, `A última carga se foi, a face do dado das cargas ${where}`);
+    await last.getByLabel('Face do d12').fill('7');
+    await last.getByRole('button', { name: 'Confirmar' }).click();
+    await expect(last).toBeHidden();
+    await expect(gear.getByText(/Tirou 20\./)).toBeVisible();
+    await expectChargesScreen(p, `Resultado do d20, Tirou 20 e as cargas de volta ${where}`);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+for (const [colorScheme, width] of [['light', 1280], ['dark', 390]] as const) {
+  test(`o último d20 e o uso de cargas passam no axe e nas conferências de layout no tema ${colorScheme === 'light' ? 'claro, no desktop' : 'escuro, no celular'}`, { tag: ['@a11y', '@563'] }, async ({ browser }) => {
+    test.setTimeout(300_000);
+    await scanChargesRollScreens(browser, colorScheme, width);
+  });
+}
+
+/**
+ * "Recuperar a metade" (#563), through the real stack: two shots of the longbow in one combat, the combat over, then the master's
+ * sheet with the button on ("Recuperar a metade: 1 peça") and, after the tap, its done state ("Recuperou 1 peça deste combate").
+ * The button off during the combat and with nothing spent is in the scan of the items and the unit specs of the panel.
+ */
+async function scanChargesRecoverScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: 900 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await Promise.all([m.goto('/'), p.goto('/')]);
+    const table = await tableForCombat(m, p, `Acessibilidade recuperar munição ${Date.now()}`, true, true, {
+      sheet: { ...pensantusAttacks, weaponKeys: ['equipment:dagger', 'equipment:longbow'] },
+    });
+    campaignId = table.campaignId;
+    const enc = await beginAttackCombatRPC(m, table, { Pensantus: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 });
+    const id = (label: string) => enc.combatants.find((c) => c.label === label)!.id;
+    const ok = async (res: Awaited<ReturnType<typeof callRPC>>) => expect(res.ok(), await res.text()).toBeTruthy();
+    await ok(await callRPC(m, 'meurpg.play.v1.ChargesService/SetAmmunition', { campaignId, characterId: table.characterId, ammoKey: 'equipment:arrow', quantity: 20 }));
+
+    // Two shots, one in each turn of Pensantus: two arrows spent, one comes back.
+    const shoot = async () =>
+      ok(await callRPC(p, 'meurpg.play.v1.CombatService/RollAttack', { campaignId, encounterId: enc.id, attackerId: id('Pensantus'), attackKey: 'equipment:longbow', targetId: id('Goblin 1'), idempotencyKey: crypto.randomUUID(), d20Face: 12 }));
+    await shoot();
+    await combatRPC(m, 'EndTurn', { campaignId, encounterId: enc.id, expectedCombatantId: id('Pensantus'), discardPendingDamage: true });
+    await passTurnsTo(m, campaignId, 'Pensantus');
+    await shoot();
+    await combatRPC(m, 'EndEncounter', { campaignId, encounterId: enc.id });
+
+    await openLive(m, `/campaigns/${campaignId}/characters/${table.characterId}`);
+    const gear = m.getByRole('region', { name: 'Equipamento' });
+    const recover = gear.getByRole('button', { name: /^Recuperar a metade/ });
+    await expect(recover).toBeVisible();
+    await expect(recover).not.toHaveAttribute('aria-disabled', 'true');
+    await expectChargesScreen(m, `Ficha, Recuperar a metade ligado ${where}`);
+    await recover.click();
+    await expect(gear.getByRole('status').filter({ hasText: 'Recuperou 1 peça deste combate.' })).toBeVisible();
+    await expect(recover).toHaveAttribute('aria-disabled', 'true');
+    await expectChargesScreen(m, `Ficha, Recuperar a metade feito ${where}`);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+for (const [colorScheme, width] of [['light', 1280], ['dark', 390]] as const) {
+  test(`recuperar a metade da munição passa no axe e nas conferências de layout no tema ${colorScheme === 'light' ? 'claro, no desktop' : 'escuro, no celular'}`, { tag: ['@a11y', '@563'] }, async ({ browser }) => {
+    test.setTimeout(300_000);
+    await scanChargesRecoverScreens(browser, colorScheme, width);
+  });
+}
+
+/**
+ * The master's "Cargas e munição" where the scan of the panel does not go (#563), through the real stack: nobody in the party has an
+ * item with charges (the empty list and "Nenhum item espera o amanhecer."), the sheets that cannot be read (the panel and the long
+ * rest's "Amanhecer" row, which stays on and does not claim that no item waits) and a table whose only item is full ("Nenhum item
+ * espera o amanhecer." with the list). The read fails through a 503 on the character read of this page.
+ */
+async function scanChargesPanelStates(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: width <= 390 ? 700 : 900 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  m.setDefaultTimeout(20_000);
+  const where = `(${colorScheme}, ${width}px)`;
+  const campaigns: string[] = [];
+  try {
+    await Promise.all([m.goto('/'), p.goto('/')]);
+    const empty = await tableForCombat(m, p, `Acessibilidade cargas vazias ${Date.now()}`);
+    campaigns.push(empty.campaignId);
+
+    await openSessionPage(m, empty.campaignId, 'grupo');
+    const panel = m.getByRole('region', { name: 'Cargas e munição' });
+    await expect(panel.getByText('Nenhum personagem do grupo tem itens com cargas nem munição.')).toBeVisible();
+    await expect(panel.getByText('Nenhum item espera o amanhecer.')).toBeVisible();
+    await expect(panel.getByRole('button', { name: 'Amanhecer' })).toHaveAttribute('aria-disabled', 'true');
+    await expectChargesScreen(m, `Cargas e munição, lista vazia e nenhum item espera o amanhecer ${where}`);
+
+    // The sheets cannot be read: the panel says so, and the long rest asks "Amanhecer" without saying that no item waits.
+    const read = '**/meurpg.characters.v1.CharacterService/GetCharacter';
+    await m.route(read, (r) => r.fulfill({ status: 503, contentType: 'application/json', body: '{"code":"unavailable","message":"x"}' }));
+    await openSessionPage(m, empty.campaignId, 'grupo');
+    await expect(panel.getByText('Não foi possível ler as cargas do grupo.')).toBeVisible();
+    await expectChargesScreen(m, `Cargas e munição, não foi possível ler ${where}`);
+    const rest = m.getByRole('region', { name: 'Descanso' });
+    await rest.getByRole('button', { name: 'Descanso longo' }).click();
+    const question = rest.getByRole('alertdialog', { name: 'Começar o descanso longo?' });
+    await expect(question.getByRole('checkbox', { name: 'Amanhecer' })).toBeChecked();
+    await expect(question.getByText('Não foi possível ler os itens do amanhecer.', { exact: false })).toBeVisible();
+    await expectChargesScreen(m, `Descanso longo, o Amanhecer sem a leitura das cargas ${where}`);
+    await rest.getByRole('button', { name: 'Cancelar' }).click();
+    await m.unroute(read);
+
+    // A table whose only item is full: the list shows it, and nothing waits for the dawn.
+    const full = await tableForCombat(m, p, `Acessibilidade cargas cheias ${Date.now()}`, true, true, {
+      build: toren,
+      sheet: { weaponKeys: ['equipment:longsword'], armorKey: 'equipment:chain-mail', magicItems: [{ key: 'item:ring-of-shooting-stars' }] },
+    });
+    campaigns.push(full.campaignId);
+    await openSessionPage(m, full.campaignId, 'grupo');
+    await expect(panel.getByText('6 de 6')).toBeVisible();
+    await expect(panel.getByText('Nenhum item espera o amanhecer.')).toBeVisible();
+    await expect(panel.getByRole('button', { name: 'Amanhecer' })).toHaveAttribute('aria-disabled', 'true');
+    await expectChargesScreen(m, `Cargas e munição, nenhum item espera o amanhecer ${where}`);
+  } finally {
+    for (const campaignId of campaigns) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+for (const [colorScheme, width] of [['light', 1280], ['dark', 390]] as const) {
+  test(`o painel de cargas e munição vazio, com erro e sem item no amanhecer passa no axe e nas conferências de layout no tema ${colorScheme === 'light' ? 'claro, no desktop' : 'escuro, no celular'}`, { tag: ['@a11y', '@563'] }, async ({ browser }) => {
+    test.setTimeout(300_000);
+    await scanChargesPanelStates(browser, colorScheme, width);
+  });
 }
 
 test('a sintonização passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@561'] }, async ({ browser }) => {

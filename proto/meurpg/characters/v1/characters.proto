@@ -1685,6 +1685,56 @@ message SheetMagicItem {
   // roll is the next thing to do with the item. Filled by the server on every read; a save ignores
   // it. Only the character's player and the master read it.
   bool last_roll_pending = 12;
+  // What the catalog says of how the item recharges and what its last charge does, for the sheet's lines
+  // ("Volta 1d6 + 1 ao amanhecer", "Não volta", the d20 of the last charge). Absent for an item with no
+  // charges. Filled by the server on every read from the catalog; a save ignores it. Read by the same
+  // people as the charges: the character's player and the master.
+  ItemRecharge recharge = 13;
+}
+
+// ItemRecharge is the catalog's charge rules of one item (SRD 5.1: each wand, staff, ring and
+// talisman says when its charges return and what its last charge does). The sheet draws its recharge
+// line, the rolled start and the d20 dialog from it.
+message ItemRecharge {
+  // When the charges return; ITEM_RECHARGE_KIND_UNSPECIFIED when they never do ("Não volta").
+  ItemRechargeKind kind = 1;
+  // The dice of the charges that return at dawn ("1d6+1"); empty when all of them return. Not used
+  // when the kind is UNSPECIFIED.
+  string regain_dice = 2;
+  // The dawns to wait after the last charge before all return; only for DAWNS_AFTER_EMPTY.
+  int32 wait_dawns = 3;
+  // The dice of the charges a new copy holds ("1d4-1"), which the master sets; empty when a new copy
+  // is full. The sheet says "O mestre define as cargas iniciais (dice)" while the count is not set.
+  string start_dice = 4;
+  // What the last charge does; UNSPECIFIED when nothing happens. D20 asks the owner for a d20 and
+  // ALWAYS loses the item at once.
+  ItemEmptyRule empty = 5;
+  // How the item is lost when the last charge goes (a 1 of the d20, or at once for ALWAYS), shown as
+  // "Virou um bordão comum" or "Ficou só o +2 no ataque e no dano"; UNSPECIFIED when never lost.
+  ItemLoss on_loss = 6;
+  // The dice of the charges a natural 20 of the last-charge d20 gives back ("1d8+2"); empty when the
+  // item has no such rule.
+  string regain_on_twenty = 7;
+}
+
+// ItemRechargeKind says when the charges of an item return.
+enum ItemRechargeKind {
+  // The charges never return by themselves.
+  ITEM_RECHARGE_KIND_UNSPECIFIED = 0;
+  // Some or all of them return at dawn.
+  ITEM_RECHARGE_KIND_DAWN = 1;
+  // All of them return after a number of dawns that follow the last charge (the goat figurines).
+  ITEM_RECHARGE_KIND_DAWNS_AFTER_EMPTY = 2;
+}
+
+// ItemEmptyRule says what happens when the last charge of an item is spent.
+enum ItemEmptyRule {
+  // Nothing: the item waits for its charges.
+  ITEM_EMPTY_RULE_UNSPECIFIED = 0;
+  // The owner rolls a d20 (a 1 loses the item as on_loss says; a 20 can give charges back).
+  ITEM_EMPTY_RULE_D20 = 1;
+  // The item is lost at once, as on_loss says.
+  ITEM_EMPTY_RULE_ALWAYS = 2;
 }
 
 // SheetAmmunition is what a character holds of one kind of ammunition (SRD 5.1: arrows, bolts, sling

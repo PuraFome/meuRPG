@@ -774,6 +774,20 @@ describe('LiveSession', () => {
       expect(button(el, 'Descanso longo')).toBeTruthy();
     });
 
+    it('gives the master "Cargas e munição" in the Grupo tab, right above the "Descanso" card', async () => {
+      asMaster();
+      const el = await render();
+      const charges = el.querySelector('app-party-charges');
+      const rest = el.querySelector('app-rest-card');
+      expect(charges?.querySelector('h2')?.textContent).toContain('Cargas e munição');
+      expect(charges?.nextElementSibling).toBe(rest);
+    });
+
+    it('never gives a player "Cargas e munição" of the table', async () => {
+      const el = await render();
+      expect(el.querySelector('app-party-charges')).toBeNull();
+    });
+
     it('never gives a player the rests', async () => {
       const el = await render();
       expect(el.querySelector('app-rest-card')).toBeNull();
