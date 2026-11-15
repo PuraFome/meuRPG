@@ -103,9 +103,7 @@ export class ReadiedAimList implements OnInit {
   });
   protected readonly npcs = computed(
     () =>
-      new Set(
-        (this.encounter()?.combatants ?? []).filter((c) => !isPlayer(c)).map((c) => c.id),
-      ),
+      new Set((this.encounter()?.combatants ?? []).filter((c) => !isPlayer(c)).map((c) => c.id)),
   );
   protected readonly creatures = computed(
     () => new Set((this.encounter()?.combatants ?? []).filter(isCreature).map((c) => c.id)),
@@ -143,4 +141,3 @@ export class ReadiedAimList implements OnInit {
     }
   }
 }
-

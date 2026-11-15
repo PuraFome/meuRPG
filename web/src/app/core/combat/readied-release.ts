@@ -40,7 +40,10 @@ export interface ReleasePick {
 export const NO_PICK: ReleasePick = { chosen: [], dealt: new Map() };
 
 /** The entry the server lists for the spell a row holds. */
-export function heldTargetsOf(res: GetTurnOptionsResponse, r: ReadiedAction): SpellTargets | undefined {
+export function heldTargetsOf(
+  res: GetTurnOptionsResponse,
+  r: ReadiedAction,
+): SpellTargets | undefined {
   return res.spellTargets.find((x) => x.spellKey === r.actionKey);
 }
 
@@ -121,5 +124,7 @@ export function aimedUse(
     return { use: true, ...(target ? { creatureIds: [target] } : {}), die: { inApp: true } };
   }
   const targets = releaseTargets(plan, pick);
-  return targets ? { use: true, ...(targets.length > 0 ? { targets } : {}), die: { inApp: true } } : null;
+  return targets
+    ? { use: true, ...(targets.length > 0 ? { targets } : {}), die: { inApp: true } }
+    : null;
 }

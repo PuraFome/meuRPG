@@ -11,6 +11,7 @@ import {
   ReadiedActionSchema,
   ReadiedKind,
   ReadiedStatus,
+  SpellTargetsSchema,
   TargetInReachSchema,
 } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import {
@@ -62,7 +63,13 @@ describe('ReadiedWindowSheet (#582, boards 582-06 to 582-08)', () => {
   const close = vi.fn();
 
   function setup(
-    opts: { row?: Record<string, unknown>; fail?: boolean; gone?: boolean; used?: boolean } = {},
+    opts: {
+      row?: Record<string, unknown>;
+      fail?: boolean;
+      gone?: boolean;
+      used?: boolean;
+      spellTargets?: Record<string, unknown>;
+    } = {},
   ) {
     const state = new State();
     state.apply(
@@ -93,6 +100,9 @@ describe('ReadiedWindowSheet (#582, boards 582-06 to 582-08)', () => {
             } as never),
           ],
         }),
+        spellTargets: opts.spellTargets
+          ? [create(SpellTargetsSchema, opts.spellTargets as never)]
+          : [],
         attackTargets: [
           create(AttackTargetsSchema, {
             attackKey: 'equipment:longsword',
@@ -281,6 +291,54 @@ describe('ReadiedWindowSheet (#582, boards 582-06 to 582-08)', () => {
       expect.any(String),
     );
     expect(close).toHaveBeenCalled();
+  });
+
+  it('splits the darts of a held Magic Missile among the creatures and sends them as targets', async () => {
+    answerReaction.mockResolvedValue({ encounter: encounter({ revision: 9 } as never) });
+    const { el, settle, button } = setup({
+      row: {
+        kind: ReadiedKind.SPELL,
+        actionKey: 'spell:magic-missile',
+        actionNamePt: 'Mísseis Mágicos',
+        targetCombatantId: 'z1',
+      },
+      spellTargets: {
+        spellKey: 'spell:magic-missile',
+        maxTargets: 3,
+        darts: [{ slotLevel: 1, darts: 3 }],
+        targets: [reach('tor', 'Tor', 0), reach('z1', 'Zumbi 1', 5)],
+      },
+    });
+    await settle();
+    expect(flat(el.querySelector('.cap'))).toBe('Divida os 3 dardos entre os alvos');
+    expect(flat(el.querySelector('[role=status]:not(.foot__clock)'))).toContain('0 de 3');
+    const use = () => button('Soltar');
+    expect(use().getAttribute('aria-disabled')).toBe('true');
+    const add = (label: string) =>
+      (
+        el.querySelector(`button[aria-label="Pôr um dardo em ${label}"]`) as HTMLButtonElement
+      ).click();
+    add('Zumbi 1');
+    add('Zumbi 1');
+    add('Tor (você)');
+    await settle();
+    expect(use().getAttribute('aria-disabled')).toBeNull();
+    use().click();
+    await settle();
+    expect(answerReaction).toHaveBeenCalledWith(
+      'c',
+      'enc',
+      'w1',
+      {
+        use: true,
+        targets: [
+          { combatantId: 'z1', darts: 2 },
+          { combatantId: 'tor', darts: 1 },
+        ],
+        die: { inApp: true },
+      },
+      expect.any(String),
+    );
   });
 
   it('releases a readied spell with no creature chosen: the server uses the one named at Ready', async () => {

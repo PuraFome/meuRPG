@@ -4,6 +4,7 @@ import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { Code, ConnectError } from '@connectrpc/connect';
 
 import {
+  AreaPlacement,
   CombatantState,
   EncounterBlockedReason,
   EncounterBlockedSchema,
@@ -260,11 +261,15 @@ describe('ReadySheet (#582)', () => {
     }
   });
 
-  it('writes the reason in the card of a spell the window cannot release, and lets the others be held', () => {
+  it('writes the reason in the card of a spell placed on the map the window cannot release, and lets the others be held', () => {
     const { el, button, click } = render({
       options: options({ spells: [missiles, charm] }),
       spellTargets: [
-        create(SpellTargetsSchema, { spellKey: 'spell:magic-missile', maxTargets: 3 }),
+        create(SpellTargetsSchema, {
+          spellKey: 'spell:magic-missile',
+          maxTargets: 0,
+          placement: AreaPlacement.POINT,
+        }),
         create(SpellTargetsSchema, { spellKey: 'spell:charm-person', maxTargets: 1 }),
       ],
     });

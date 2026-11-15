@@ -218,61 +218,6 @@ function releaseBlocked(all: readonly SpellTargets[], key: string): string {
   return t && t.placement !== AreaPlacement.UNSPECIFIED ? SPELL_PENDING_TEXT : '';
 }
 
-/** "1º círculo · restam 2": a slot level and how many are free. */
-function slotText(level: number, free: number): string {
-  const word = free === 1 ? 'resta 1' : `restam ${free}`;
-  return `${level}º círculo · ${word}`;
-}
-
-/** The levels a spell can be held with, one entry each: pact and plain slots of one level count together. */
-function slotsOf(o: SpellOption): readonly ReadySlot[] {
-  const free = new Map<number, number>();
-  for (const s of o.slots) {
-    if (!s.resource) {
-      free.set(s.level, (free.get(s.level) ?? 0) + s.free);
-    }
-  }
-  return [...free.entries()]
-    .filter(([, n]) => n > 0)
-    .sort(([a], [b]) => a - b)
-    .map(([level, n]) => ({ level, text: slotText(level, n) }));
-}
-
-/** Why a spell cannot be held, in the card; `''` when it can. Only a spell of 1 action can (SRD 5.1, "Ready"). */
-function spellBlocked(o: SpellOption): string {
-  if (o.economy === ActionEconomy.REACTION) {
-    return 'É uma reação: só uma magia de 1 ação pode ser preparada.';
-  }
-  if (o.economy === ActionEconomy.BONUS_ACTION) {
-    return 'É uma ação bônus: só uma magia de 1 ação pode ser preparada.';
-  }
-  if (o.economy !== ActionEconomy.ACTION) {
-    return 'Demora mais de 1 ação: só uma magia de 1 ação pode ser preparada.';
-  }
-  if (!o.enabled) {
-    return o.reason?.code === DisabledReasonCode.NO_SLOT
-      ? `Sem espaços de ${o.spell?.level ?? 1}º círculo.`
-      : reasonText(o.reason);
-  }
-  return '';
-}
-
-/**
- * Whether the window can release a spell today: it casts on the one creature the readier named (or the one it picks), so a spell that
- * wants darts, a placed area (a point or a direction), or any number or several targets cannot. Read from what `GetTurnOptions` says of
- * the spell (`spell_targets`); with no entry (an attack cantrip, which is released as an attack) nothing is known against it. A spell
- * that targets only the caster has `max_targets` 0 like an area in a combat with no map, so it is off too.
- */
-function releaseBlocked(all: readonly SpellTargets[], key: string): string {
-  const t = all.find((x) => x.spellKey === key);
-  if (!t) {
-    return '';
-  }
-  const single =
-    t.maxTargets === 1 && t.darts.length === 0 && t.placement === AreaPlacement.UNSPECIFIED;
-  return single ? '' : SPELL_PENDING_TEXT;
-}
-
 /** "1º círculo · 1 ação · Evocação ...": the line under a spell's name. */
 function spellSub(o: SpellOption, level: number, summaries: ReadonlyMap<string, string>): string {
   const line = spellLine(o, summaries.get(o.spell?.key ?? '') ?? '');
