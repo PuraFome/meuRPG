@@ -164,8 +164,16 @@ No effect of the spell happens: no damage, no lasting effect, no zone, no `spell
 ### The release
 
 The release is the spell's cast as a reaction, through `castSpell` with `readied` set (`findReadied`).
-`AnswerReaction` "Usar" builds the `CastSpellRequest` from the row: the targets are `creature_ids`, or the target named at Ready.
-A spell placed on the map (an area, a wall) is released with `CastSpell` by the readier, with its point, while the READIED window is open.
+`AnswerReaction` "Usar" builds the `CastSpellRequest` from the answer and the row.
+The targets are `targets` (each with its darts), or `creature_ids`, or the target named at Ready.
+`targets` and `creature_ids` together are `invalid_argument`.
+`origin` is the point of the cast.
+`castSpell` checks them as a cast on the caster's turn: the darts of the slot, the number of targets and the point.
+`targets` and `origin` on another kind of row, or on a held spell attack, are `invalid_argument`.
+The Ready sheet offers the spells the window releases with darts, creatures or nothing; the point and the direction are released with `CastSpell` by the readier while the READIED window is open.
+While the row waits, `GetTurnOptions.spell_targets` of its readier also lists the targets of the held spell (`heldSpellTargets`), with the darts of its slot, so the window can show them.
+A held spell attack lists none.
+The list is the owner's and the master's, as the options are (RN-10).
 The release spends no slot, the reaction instead of the action, and takes the slot level of Ready (a pact slot spent at Ready counts as a slot of its level).
 The release is checked as a cast: a spell the caster no longer has prepared is refused, and can only be let pass.
 `CastSpell` is a release only off the caster's turn, for the spell its own open READIED window holds (`findReadied`); any other cast is an ordinary one.
