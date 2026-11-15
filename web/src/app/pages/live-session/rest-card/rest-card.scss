@@ -184,3 +184,124 @@
   flex-wrap: wrap;
   gap: var(--mr-space-2);
 }
+
+// "Amanhecer" in a long rest: a dashed rule above the check row, the lines of what the dawn gives and the explanation in place.
+.question__dawn {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+  padding-top: var(--mr-space-3);
+  border-top: 1px dashed var(--mr-control-line);
+}
+
+.dawn__head {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--mr-space-3);
+  min-height: 44px;
+}
+
+.dawn__text {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.dawn__title {
+  font-size: var(--mr-font-16);
+  line-height: 20px;
+}
+
+.dawn__hint {
+  font-size: var(--mr-font-14);
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+// 44 px target around the info icon; open, it takes the accent outline.
+.dawn__info {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1.5px solid transparent;
+  border-radius: var(--mr-radius-md);
+  background: none;
+  color: var(--mr-ink-muted);
+  cursor: pointer;
+
+  &[aria-expanded='true'] {
+    border-color: var(--mr-accent);
+    color: var(--mr-accent-text);
+  }
+
+  &:focus-visible {
+    outline: 3px solid var(--mr-focus);
+    outline-offset: 2px;
+  }
+}
+
+.dawn__explain {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--mr-space-3);
+  padding: var(--mr-space-3);
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-surface);
+  font-size: var(--mr-font-15);
+  line-height: 21px;
+
+  p {
+    margin: 0;
+  }
+
+  // 20px on a 21px line puts the icon's middle on the middle of the capitals of the first line (the 24px default sat 2px low).
+  .mat-icon {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+    color: var(--mr-ink-muted);
+  }
+}
+
+.dawn__lines {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dawn__line,
+.dawn__off,
+.dawn__problem {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--mr-space-2);
+  margin: 0;
+  font-size: var(--mr-font-14);
+  line-height: 20px;
+
+  .mat-icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    font-size: var(--mr-font-18);
+    color: var(--mr-ink-muted);
+  }
+}
+
+.dawn__rule {
+  margin: 0;
+  font-size: var(--mr-font-14);
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}

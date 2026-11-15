@@ -13,6 +13,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
@@ -88,7 +89,9 @@ type logEntry struct {
 	// name on a line of the removal, rolls what the log reads of the combat's own tables.
 	removed   *actionEvent
 	partLabel string
-	rolls     *logRolls
+	// partHidden says the part is one the other players read as "Outra fonte".
+	partHidden bool
+	rolls      *logRolls
 	// favor is the variant of a line about the Inspiration (combat_log_favor.go).
 	favor string
 }
@@ -546,7 +549,8 @@ func buildLog(events []playdb.ListEncounterEventsRow) []*logEntry {
 func undoneEvents(events []playdb.ListEncounterEventsRow) map[string]bool {
 	undone := map[string]bool{}
 	for _, e := range events {
-		if e.Kind != eventActionUndone {
+		// The take-out of a part of a group takes the damage's roll back, as an undo does (combat_group_sum.go).
+		if e.Kind != eventActionUndone && e.Kind != eventDamagePartRemoved {
 			continue
 		}
 		markUndone(undone, e.Payload)
@@ -873,11 +877,15 @@ func (b *logBuilder) partRemoved(e playdb.ListEncounterEventsRow, entry *logEntr
 		return true
 	}
 	host.hosts = append(host.hosts, e.ID)
+	if ev.AwaitsSum != "" { // the damage was taken back and awaits a new sum: its roll is no line, the part's name is the event's
+		entry.partLabel, entry.partHidden = ev.PartLabel, ev.PartHidden
+		return true
+	}
 	host.removed = &ev
 	if host.dmg != nil {
 		for _, r := range host.dmg.Parts {
 			if r.Key == ev.Key {
-				entry.partLabel = r.Label
+				entry.partLabel, entry.partHidden = r.Label, ev.PartHidden || r.Hide
 			}
 		}
 		if ev.After != nil {
@@ -1321,7 +1329,7 @@ func (e *logEntry) fillGearSwapped(_ *logViewing, out *playv1.CombatLogEntry) bo
 func (e *logEntry) fillItemUse(_ *logViewing, out *playv1.CombatLogEntry) bool {
 	use := e.item
 	out.ItemUse = &playv1.ItemUseLogLine{
-		ItemNamePt: use.Name, Amount: use.Amount, Left: use.Left, Max: use.Max, D20: use.D20, Outcome: itemOutcomeOf(use.Outcome), AmmunitionNamePt: use.Ammo,
+		ItemNamePt: use.Name, Amount: use.Amount, Left: use.Left, Max: use.Max, D20: use.D20, Outcome: itemOutcomeOf(use.Outcome), AmmunitionNamePt: use.Ammo, Lost: charactersv1.ItemLoss(use.Lost),
 	}
 	return true
 }

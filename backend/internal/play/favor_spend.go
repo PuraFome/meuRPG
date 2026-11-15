@@ -11,6 +11,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/play/advantage"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 )
@@ -283,7 +284,7 @@ func checkFavor(ctx context.Context, q *playdb.Queries, a favorAsk, seen []comba
 // the sources they may read alone), never on the one the roll is made with, so a hidden source cannot change the answer. A request that answers a master's
 // decision (requestID) is the master's to settle.
 func favorAgainst(fv favorUse, want playv1.RollMode, requestID string) error {
-	asked, ok := modeFromProto(want)
+	asked, ok := advantage.ModeFromProto(want)
 	if (!fv.Spent && !fv.Checked) || !ok || requestID != "" || !fv.Seen.Better(asked) {
 		return nil
 	}
@@ -317,7 +318,7 @@ func (m modeResult) withFavor(fv favorUse, names func(string) string) modeResult
 		return m
 	}
 	m.Sources = append(append([]combat.Source(nil), m.Sources...), favorSource)
-	m.Shown = append(append([]*playv1.AdvantageSource(nil), m.Shown...), sourceProto(favorSource, textContext{self: true, names: names}, nil))
+	m.Shown = append(append([]*playv1.AdvantageSource(nil), m.Shown...), advantage.SourceProto(favorSource, advantage.TextContext{Self: true, Names: names}, nil))
 	m.Mode = combat.Resolve(m.Sources)
 	return m
 }

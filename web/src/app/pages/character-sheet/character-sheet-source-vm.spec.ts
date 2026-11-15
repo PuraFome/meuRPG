@@ -37,6 +37,9 @@ describe('toCharacterSheetVm on a bare and on a dense character', () => {
               { name: 'Corda', quantity: 0 },
               { name: 'Tocha', quantity: 3 },
             ],
+            ammunition: [
+              { key: 'equipment:arrow', namePt: 'Flechas', quantity: 15, spentLastCombat: 6 },
+            ],
             coins: { copper: 1, silver: 2, electrum: 3, gold: 4, platinum: 5 },
             experiencePoints: 900,
             challengeRating: '2',
@@ -118,6 +121,16 @@ describe('toCharacterSheetVm on a bare and on a dense character', () => {
     expect(sheet.equipment).toEqual([
       { name: 'Corda', quantity: 1 },
       { name: 'Tocha', quantity: 3 },
+    ]);
+    expect(sheet.ammunition).toEqual([
+      {
+        key: 'equipment:arrow',
+        namePt: 'Flechas',
+        quantity: 15,
+        spent: 6,
+        back: 3,
+        recovered: false,
+      },
     ]);
     expect(sheet.proficiencies).toEqual(['Leve', 'Simples', 'Ferreiro']);
     expect(sheet.pactSlots).toEqual({ level: 2, count: 2 });

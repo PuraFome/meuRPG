@@ -13,6 +13,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
+	"github.com/PuraFome/meuRPG/backend/internal/play/advantage"
 	"github.com/PuraFome/meuRPG/backend/internal/play/live"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
@@ -133,7 +134,7 @@ func (s *Service) refundPromptViews(ctx context.Context, campaignID string, rows
 	for _, c := range chars {
 		names[c.ID] = c.Name
 	}
-	text := textContext{names: s.namesFor(ctx, campaignID)}
+	text := advantage.TextContext{Names: s.namesFor(ctx, campaignID)}
 	out := make([]*playv1.FavorRefundPrompt, 0, len(rows))
 	for _, r := range rows {
 		var hidden []hiddenSourceJSON
@@ -142,7 +143,7 @@ func (s *Service) refundPromptViews(ctx context.Context, campaignID string, rows
 		}
 		view := &playv1.FavorRefundPrompt{Id: r.ID, CharacterId: r.CharacterID, CharacterName: names[r.CharacterID], RollLabelPt: r.RollLabelPt, Status: refundStatusProto(r.Status)}
 		for _, h := range hidden {
-			view.HiddenSources = append(view.HiddenSources, sourceProto(combat.Source{Kind: h.Kind, Effect: combat.RollMode(h.Effect), Condition: h.Condition, Against: h.Against}, text, nil))
+			view.HiddenSources = append(view.HiddenSources, advantage.SourceProto(combat.Source{Kind: h.Kind, Effect: combat.RollMode(h.Effect), Condition: h.Condition, Against: h.Against}, text, nil))
 		}
 		out = append(out, view)
 	}

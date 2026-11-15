@@ -8,6 +8,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dice"
+	"github.com/PuraFome/meuRPG/backend/internal/play/advantage"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/reaction"
@@ -145,7 +146,7 @@ func (f *attackFlow) applyProtection() error {
 	}
 	before := f.truth.Mode
 	f.truth = f.truth.protectionMode(f.cs[i], f.v)
-	if asked, ok := modeFromProto(f.req.GetRollMode()); ok && asked == before && f.req.GetRollModeRequestId() == "" {
+	if asked, ok := advantage.ModeFromProto(f.req.GetRollMode()); ok && asked == before && f.req.GetRollModeRequestId() == "" {
 		f.req = withoutRollMode(f.req)
 	}
 	if f.req.GetRollMode() != playv1.RollMode_ROLL_MODE_UNSPECIFIED || f.req.GetRollModeRequestId() != "" {

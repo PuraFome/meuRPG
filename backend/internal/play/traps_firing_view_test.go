@@ -11,6 +11,7 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/play/advantage"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 )
 
@@ -33,12 +34,12 @@ func aFiringEvent() *trapFireEvent {
 				Target: "c-toren", Character: "char-toren", Player: true, Conditions: []string{"condition:prone"},
 				Attacks: []trapAttackEvent{
 					{D20: 14, Modifier: 5, Total: 19, Outcome: outcomeHit, TargetAC: 16, Sources: srcs[:1]},
-					{D20: 17, Modifier: 5, Total: 22, Outcome: outcomeCrit, TargetAC: 16, D20B: 3, Counted: 0, Mode: modeAdvantageKey, Sources: srcs[:1]},
-					{D20: 2, Modifier: 5, Total: 7, Outcome: outcomeMiss, TargetAC: 16, D20B: 12, Counted: 1, Mode: modeDisadvantageKey},
+					{D20: 17, Modifier: 5, Total: 22, Outcome: outcomeCrit, TargetAC: 16, D20B: 3, Counted: 0, Mode: advantage.ModeAdvantageKey, Sources: srcs[:1]},
+					{D20: 2, Modifier: 5, Total: 7, Outcome: outcomeMiss, TargetAC: 16, D20B: 12, Counted: 1, Mode: advantage.ModeDisadvantageKey},
 				},
 				Saves: []saveRoll{
 					{D20: 9, Bonus: 3, Total: 12, DC: 12, Saved: true},
-					{D20: 13, Bonus: 3, Total: 16, DC: 15, D20B: 4, Counted: 1, RollMode: modeAdvantageKey, Extra: []effectDie{{Key: "effect:bless", Faces: 4, Sign: 1, Face: 2}}, Lucky: &luckyReroll{Index: 0, From: 1, To: 13}},
+					{D20: 13, Bonus: 3, Total: 16, DC: 15, D20B: 4, Counted: 1, RollMode: advantage.ModeAdvantageKey, Extra: []effectDie{{Key: "effect:bless", Faces: 4, Sign: 1, Face: 2}}, Lucky: &luckyReroll{Index: 0, From: 1, To: 13}},
 					{Bonus: 3, Total: 3, DC: 15, Auto: true},
 					{D20: 6, Bonus: 0, Total: 6, DC: 14, Unknown: true},
 				},

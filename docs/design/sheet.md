@@ -79,6 +79,20 @@ The browser draws what the server sends and computes no rule: multiclass prerequ
   Saved, the panel says "Bônus salvo."
   The bonus is added to the armor class or to the weapon's attack and damage only while the piece is equipped and the rules count it (the reason is in the sheet when they do not); otherwise its chip is dashed.
   On a locked sheet the owner has no "⋮" and the panel says "Travada: equipar e guardar continuam valendo; marcas, bônus e itens mágicos, só o mestre muda."
+  When the sheet has an item with charges, the lock line says "Travada: usar cargas continua valendo, o resto, só o mestre muda."
+  An item with charges is a row with its name, a "Usar" button (84 px wide, 44 px tall), pips, "N de M cargas" and a line for when they come back ("Volta 1d6 + 1 ao amanhecer", "Não volta: ...").
+  "Usar" works on a locked sheet and is off at 0 charges, with the reason under the row.
+  A rolled start that the master has not set shows "O mestre define as cargas iniciais (1d4 − 1)." and an off "Usar".
+  A lost item has a dashed tag, "Destruída", or "Sem magia" with "Virou um bordão comum." or "Ficou só o +2 no ataque e no dano.".
+  The last charge of an item that asks for a d20 leaves "Falta rolar o d20 da última carga." and a "Rolar" button on its row.
+  "Usar" opens a bottom sheet on a phone and a dialog from a tablet up: "Restam N de M cargas", a stepper "Cargas a gastar" and "Gastar N cargas", which reads "Gastando..." while it waits and shows a refusal in words in place.
+  The d20 of the last charge is an alert dialog, "A última carga se foi", that follows the table's dice: "Rolar no app", or "Face do d20" first with "Rolar no app" beside it when the player rolls their own dice.
+  A typed 20 on an item that regains charges asks for the face of its regain die, "Face do d8".
+  The result of a use or a roll ("Tirou 14. ...") is read in a live region under the list.
+- **Munição** (`equipment-panel`): a section of "Equipamento" with one row per counted kind of ammunition and its pieces.
+  "Recuperar a metade: 3 flechas" is off during a combat, with nothing spent and after it ran, each with its reason under it; after it ran the line says "Recuperou 3 flechas deste combate. O resto se perdeu.".
+  "Adicionar munição" opens a sheet with the four SRD bundles (flechas, virotes, balas de funda, agulhas de zarabatana, 20, 20, 20 and 50).
+  While the list is empty, a free-text item that names ammunition gets the hint "“Flechas (20)” parece munição: para o app contar, adicione em Munição." with an "Adicionar" button.
 - **Other speeds** (`combat-stats`): under the walking speed of the "Deslocamento" box, one line for each speed beyond walking ("Voo 3 m (10 pés)", "Natação", "Escalada", "Escavação") and "Respira na água" when the table gives it; the box has no extra line for a character with only a walking speed.
 - **Resources** (`resource-counters`, `shared/count-pips`): inside a session the sheet shows "Recursos" right after the combat numbers, one read-only box per resource (name, "2 de 3", pips, and when it comes back), then "Espaços de magia" with a row per spell level and the pact slots as "Pacto · 2º nível".
   Outside a session the sheet shows the maximums only. Nothing in the block takes focus.
@@ -88,6 +102,7 @@ The browser draws what the server sends and computes no rule: multiclass prerequ
 - **Creatures** (`creatures-panel`, `creature-card`, `creature-page`): a "Criaturas" panel after "Combate" and "Magias", only for whoever can have a creature; HP numbers reach the owner and the master only (RN-20), and for others the panel does not exist.
   Renaming, dismissing and fixing HP are questions in place (`creature-edit`), never dialogs; a dismissal is a warning `alertdialog` with focus on "Voltar" that states what it costs.
 - **XP and level up:** `xp-block` shows XP; `level-up-banner` shows "Pode subir de nível"; the steps page is `pages/level-up`. "A classe mudou" (`changed-content`) lists what a master's change did to this character.
+- **Level-up steps bar:** `pages/level-up/steps-bar` draws one segment per step on a phone. From 768 px it draws numbered circles with a line between them, 56 px long and down to 16 px as the row narrows, so the last step is always inside the page. Between 768 and 1023 px only the current step keeps its label on screen; the others keep theirs for screen readers, and the line under the title says the step.
 
 ## Editors
 

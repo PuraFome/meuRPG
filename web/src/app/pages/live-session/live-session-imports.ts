@@ -27,6 +27,7 @@ import { LiveToast } from '../../shared/live-toast/live-toast';
 import { MasterLive } from './puzzles/master-live/master-live';
 import { RouterLink } from '@angular/router';
 import { MasterPuzzles } from './puzzles/master-puzzles/master-puzzles';
+import { PartyChargesPanel } from './party-charges/party-charges';
 import { PartyPanel } from './party-panel/party-panel';
 import { RestCard } from './rest-card/rest-card';
 import { CharacterEffectsPanel } from './effects/character-effects-panel';
@@ -85,6 +86,7 @@ export const LIVE_SESSION_IMPORTS = [
   RouterLink,
   MasterPuzzles,
   PartyPanel,
+  PartyChargesPanel,
   RestCard,
   CharacterEffectsPanel,
   PuzzleNotice,

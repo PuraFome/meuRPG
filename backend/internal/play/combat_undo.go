@@ -507,23 +507,7 @@ func (s *Service) undoInTx(ctx context.Context, c *combatTx, expected string, ru
 	if err != nil {
 		return nil, err
 	}
-	// Before anything is written: the hit points the action left must still be there.
-	if err := s.checkHolds(ctx, c, ev); err != nil {
-		return nil, err
-	}
-	run.unpushed = pushesOf(ev.Hits)
-	if id := creatureToPutBack(ev); id != "" {
-		if err := run.noteSnapBack(ctx, c, id); err != nil {
-			return nil, err
-		}
-	}
-	if run.vitals, err = s.takeBackOf(ctx, c, run, last, ev); err != nil {
-		return nil, err
-	}
-	// What the action ended or revealed is as it was (takeBack): the lines it wrote
-	// about it go too.
-	run.alsoUndone = append(run.alsoUndone, ev.linesBefore()...)
-	if err := s.takeBackAround(ctx, c, run, recent, last, ev); err != nil {
+	if err := s.takeBackAction(ctx, c, run, recent, last, ev); err != nil {
 		return nil, err
 	}
 	if err := touch(ctx, c); err != nil {
@@ -533,6 +517,30 @@ func (s *Service) undoInTx(ctx context.Context, c *combatTx, expected string, ru
 	// and counts for them alone.
 	run.made = actionEvent{Round: c.enc.Round, Secret: ev.Secret, Fogged: ev.Fogged, SeenBy: ev.SeenBy, Actor: ev.Actor, Target: ev.Target, Undone: last.ID, UndoneKind: last.Kind, UndoneAlso: run.alsoUndone}
 	return run.made, nil
+}
+
+// takeBackAction takes one action back with what went with it: the check that its target is as it left it, the
+// action's own put-back, the lines it wrote, and the companions of its kind. The master's undo and the take-out of
+// a part of a group (combat_group_sum.go) both run it, so what depends on a damage is put back by the same code.
+func (s *Service) takeBackAction(ctx context.Context, c *combatTx, run *undoRun, recent []playdb.ListRecentSessionEventsRow, last playdb.ListRecentSessionEventsRow, ev actionEvent) error {
+	var err error
+	// Before anything is written: the hit points the action left must still be there.
+	if err := s.checkHolds(ctx, c, ev); err != nil {
+		return err
+	}
+	run.unpushed = pushesOf(ev.Hits)
+	if id := creatureToPutBack(ev); id != "" {
+		if err := run.noteSnapBack(ctx, c, id); err != nil {
+			return err
+		}
+	}
+	if run.vitals, err = s.takeBackOf(ctx, c, run, last, ev); err != nil {
+		return err
+	}
+	// What the action ended or revealed is as it was (takeBack): the lines it wrote
+	// about it go too.
+	run.alsoUndone = append(run.alsoUndone, ev.linesBefore()...)
+	return s.takeBackAround(ctx, c, run, recent, last, ev)
 }
 
 // takeBackOf takes the action back by its kind: a favor event and a gear swap have their own, the others go through takeBack.

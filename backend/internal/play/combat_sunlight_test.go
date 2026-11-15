@@ -6,6 +6,7 @@ import (
 	"connectrpc.com/connect"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/play/advantage"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
@@ -423,8 +424,8 @@ func TestSunlight_ThePromptsNameTheSunToTheMasterAlone(t *testing.T) {
 	sources := []combat.Source{{Kind: combat.SourceSunlightSave, Effect: combat.ModeDisadvantage, Condition: combat.TraitSunlightWeakness}}
 	const sun = "Luz do sol (Fraqueza à Luz do Sol)"
 	for what, shown := range map[string]func(master bool) []*playv1.AdvantageSource{
-		"shownSources": func(m bool) []*playv1.AdvantageSource { return shownSources(sources, names, m) },
-		"shownRecs":    func(m bool) []*playv1.AdvantageSource { return shownRecs(sourceRecs(sources), names, m) },
+		"advantage.ShownSources": func(m bool) []*playv1.AdvantageSource { return advantage.ShownSources(sources, names, m) },
+		"shownRecs":              func(m bool) []*playv1.AdvantageSource { return shownRecs(sourceRecs(sources), names, m) },
 	} {
 		if got := shown(true); len(got) != 1 || got[0].GetTextPt() != sun {
 			t.Errorf("%s for the master = %v, want %q", what, got, sun)

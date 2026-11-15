@@ -51,7 +51,7 @@ A pull request that touches no file of a workflow still starts it, and its jobs 
 | Job | Checks |
 | --- | --- |
 | `proto` | `buf lint`, `buf format`, `buf breaking` against `main`, and that `buf generate` and `make sqlc` leave the committed generated code unchanged |
-| `go (lint)` | `golangci-lint` as a ratchet, the [complexity limits](#complexity-limits) and the [`//nolint` cap](#the-nolint-cap). It runs no `go test`: `go-db` runs every package |
+| `go (lint)` | `golangci-lint` as a ratchet, the [complexity limits](#complexity-limits), the [`//nolint` cap](#the-nolint-cap) and the [`play` size cap](#the-play-size-cap). It runs no `go test`: `go-db` runs every package |
 | `govulncheck (called vulnerabilities)` | `govulncheck ./...` (version pinned): fails on a known vulnerability in a module or in the Go standard library that the code actually calls. See [Vulnerability scans](#vulnerability-scans) |
 | `go-db <group>` | `go test -race -covermode=atomic -coverpkg=./...` for one group of packages against its own in-memory database, with `MEURPG_REQUIRE_DB=1`: [PostgreSQL or CockroachDB, by the event](#which-database-the-tests-run-on). Each package has a 25-minute `-timeout` inside the job's 30 |
 | `go-db groups` | Checks once per run that the groups hold every package and every test of the split packages (`play`, `leaktest`, `rules`) exactly once, and that the tests read from the source are the ones `go test -list` prints. The groups do not wait for it |
@@ -59,7 +59,7 @@ A pull request that touches no file of a workflow still starts it, and its jobs 
 | `go (integration tests against CockroachDB)` | Waits for every group, the group check and the list check; the stable check for a branch protection rule. The name is stable for a branch protection rule; a preflight runs it on PostgreSQL |
 | `go (coverage)` | Merges the groups' profiles and enforces the [coverage floor](#coverage-floors) |
 
-**The groups** are defined in `.github/scripts/go-db-shard.sh`: `play-1` to `play-6`, `maps`, `characters`, `migrations-1` to `migrations-3`, `rules-1` to `rules-3`, `dungeon` (with `rules/puzzle`), `leak-1` to `leak-4`, and `rest`.
+**The groups** are defined in `.github/scripts/go-db-shard.sh`: `play-1` to `play-6`, `maps`, `characters`, `migrations-1` to `migrations-3`, `rules-1` to `rules-3`, `dungeon` (with `rules/puzzle` and the pure subpackages of `play`, `play/advantage`), `leak-1` to `leak-4`, and `rest`.
 The heavy packages are named by hand and `rest` holds everything else, so a new package lands in `rest` and is never skipped.
 The `play`, `leaktest`, `rules` and `migrations` packages are split by test: each part runs the tests whose name hashes (`cksum`) to it, so a new test lands in a part by itself and adding one never moves the others.
 A test that takes more than about a third of the 25-minute `-timeout` on CockroachDB is pinned: `pinned_tests` in the script lists "test part" lines per split package, a pinned test runs alone in its part, and the other tests are hashed over the parts that are not pinned. `leak-4` holds `TestAHiddenWriteMovesThePlayersNumberAndNothingElse` alone, and `migrations-1` holds `TestMigrationsUpDownUp`, which migrates a database up, down and up again through every migration. To pin another test, give its package a part of its own (raise `split_parts`, add the part to the matrices of `backend.yml` and `nightly-hunt.yml`) and add its line to `pinned_tests`; `--check` fails for a pinned test that does not exist, a part outside the package's parts, and a package with every part pinned.
@@ -103,6 +103,7 @@ The job `go-db database image` pulls the image the run needs (PostgreSQL in a pr
 Every group and the list check download it with the action `.github/actions/load-database-image`, which loads it and gives the tag as its `image` output (it writes no environment file). The step that starts the database passes the tag as `TEST_POSTGRES_IMAGE` or `TEST_COCKROACH_IMAGE` (through the `image` input of `test-database`, or the step's `env:`); `test-database` refuses a tag that is not the picked database's.
 `start-postgres.sh` and `start-cockroach.sh` then run that local image with `--pull=never`: the "Start the test database" step of a group prints the image and says it is not pulled, and the only job of the run that touches a registry for it is `go-db database image`.
 A registry that refuses the pull fails that job with its own message, once: nothing retries, and the groups are skipped, so `go (integration tests against CockroachDB)` fails and says the image job did not succeed.
+`start-cockroach.sh` starts the container with a `tmpfs` at `/cockroach-io` and `--external-io-dir=/cockroach-io`: the tests keep a backup of the migrated template there, and every test database on CockroachDB is a `RESTORE` of it (docs/testing.md).
 The scripts' `ref` mode, `database-image.sh ref postgres|cockroach`, prints the pin.
 
 Both images are pinned by digest in the `env:` of `.github/workflows/backend.yml`, one place each: `COCKROACH_IMAGE` (the digest also in `deploy/local/compose.yaml` and `compose.ci.yaml`, kept in sync as above) and `POSTGRES_IMAGE` (the mirror of the official image on Amazon's public registry, the major line 17).
@@ -142,6 +143,17 @@ It needs only `grep`, and runs in a second.
 - A lower count always passes. The step then prints a notice; `.github/scripts/nolint-cap.sh --lower` writes the cap down to the count (it never raises it), so the number follows the work that removes suppressions.
 - To go up, edit `.github/nolint-cap` in the same PR and say in the description why the suppression cannot be avoided: the reviewer sees the number change. Fixing the finding is the default.
 - The count is the whole backend's, so lower the number in the PR that removes suppressions: otherwise the room they leave could be used by a new one.
+
+### The `play` size cap
+
+`backend/internal/play` is the package every session edits, so its size is capped.
+`.github/scripts/play-cap.sh` counts the lines (`wc -l`) of the hand-written, non-test Go files directly in the package (generated files and `testdata/` left out, the subpackages not counted) and fails when the count passes the number in `.github/play-cap`.
+It prints the files and the functions too, and caps neither.
+
+- A lower count always passes; `.github/scripts/play-cap.sh --lower` writes the cap down to the count (it never raises it). The PR that moves logic to a subpackage lowers the cap by what it moved.
+- To go up, edit `.github/play-cap` in the same PR and say in the description why the lines cannot go to a subpackage: the reviewer sees the number change.
+- When two PRs of a train both edit the cap, the merge recounts: run `play-cap.sh` on the merged tree and write the count it prints (or `--lower`). Never add the two edits to each other.
+- Which code moves, and the import rules of the subpackages: [Play module](architecture/play/README.md#subpackages).
 
 ### Coverage floors
 

@@ -334,6 +334,16 @@
             (attunementOpened)="magic.openAttunement()"
             (magicAdding)="magic.openPicker()"
             (magicRemoving)="magic.openRemove($event)"
+            [chargesResult]="magic.charges.result()"
+            [chargesError]="magic.charges.error()"
+            (chargesUsed)="magic.charges.openUse($event)"
+            (lastChargeRolled)="magic.charges.openRoll($event)"
+            [canAddAmmunition]="vm.canEdit && vm.state !== 'dead'"
+            [combatRunning]="magic.charges.combatRunning()"
+            [ammunitionNotice]="magic.charges.ammunitionNotice()"
+            [ammunitionError]="magic.charges.ammunitionError()"
+            (ammunitionAdding)="magic.charges.openAdd($event)"
+            (ammunitionRecovered)="magic.charges.recover()"
           />
           <div class="sheet__traits">
             <app-features-panel class="sheet__features" [sheet]="full" />

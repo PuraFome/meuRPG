@@ -208,7 +208,7 @@ func settleable(p playdb.PendingDamage) error {
 	switch p.Status {
 	case pendingAwaitingReaction:
 		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_REACTION_PENDING, "the hit waits for the target's reaction")
-	case pendingAwaitingRoll:
+	case pendingAwaitingRoll, pendingAwaitingGroupSum:
 		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_DAMAGE_NOT_ROLLED, "the damage was not rolled yet")
 	case pendingApplied, pendingDiscarded:
 		return resolvedDamageError()
