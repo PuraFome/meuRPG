@@ -216,7 +216,7 @@ describe('FeatEditor (MR-025)', () => {
     expect((field(el, 'table_feat.name_pt') as HTMLInputElement).value).toBe('');
     expect((field(el, 'table_feat.prerequisite.level') as HTMLInputElement).value).toBe('');
     expect(text(el.querySelector('.preview')!)).toContain('Novo talento');
-    expect(text(el.querySelector('.preview')!)).toContain('Pré-requisitoNenhum');
+    expect(text(el.querySelector('.preview')!)).not.toContain('Pré-requisito');
   });
 
   it('draws the races as chips, the size and the feature to lack, and writes them in the preview by name', () => {

@@ -532,11 +532,11 @@ describe('what a player reads of a feat (MR-025)', () => {
     expect(withSide.options?.[0].text).toBe('Você mantém a lâmina erguida.');
   });
 
-  it('says "Nenhum" for a feat that asks nothing', () => {
+  it('draws no prerequisite line for a feat that asks nothing (board 580-01)', () => {
     const e = entry(TableContentKind.FEAT, 'Livre', {
       body: { case: 'tableFeat', value: create(TableFeatSchema, { namePt: 'Livre' }) },
     });
-    expect(readEntry(e, nameOf).rows).toEqual([{ label: 'Pré-requisito', value: 'Nenhum' }]);
+    expect(readEntry(e, nameOf).rows).toEqual([]);
   });
 });
 
