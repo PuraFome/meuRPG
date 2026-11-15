@@ -139,6 +139,19 @@ export interface ReadiedWindowSheetData {
     '../resource-pick/resource-sheet.scss',
     '../feature-window-sheet/feature-window-sheet.scss',
   ],
+  // The board (582-06) keeps the two answers side by side at 390 px; the shared pair stacks them under 380 px of room.
+  styles: `
+    .pair {
+      grid-template-columns: 1fr 1fr;
+    }
+    .pair:has(.pair__btn:only-child) {
+      grid-template-columns: 1fr;
+    }
+    .pair__btn {
+      white-space: normal;
+      line-height: 1.2;
+    }
+  `,
 })
 export class ReadiedWindowSheet {
   private readonly api = inject(CombatClient);
