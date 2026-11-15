@@ -43,3 +43,34 @@ func TestAnSRDFightingStyleNamesTheFeatureThatOffersIt(t *testing.T) {
 		}
 	}
 }
+
+func TestAnOptionNamesTheKeyOfTheFeatureThatOffersIt(t *testing.T) {
+	t.Parallel()
+	c := withOverlay(t, postureOverlay())
+	d := Derive(postureBuild(5, postureHeron), c)
+	if got := featureOf(t, d, postureHeron).OptionOfKey; got != postureFeature {
+		t.Errorf("option of key = %q, want %q", got, postureFeature)
+	}
+	if got := featureOf(t, d, postureFeature).OptionOfKey; got != "" {
+		t.Errorf("the offering feature's own row says %q, want nothing", got)
+	}
+}
+
+// A Fighter and a Paladin each have a feature called "Estilo de Luta": the option says which one offers it by key.
+func TestTwoFeaturesWithOneNameAreToldApartByKey(t *testing.T) {
+	t.Parallel()
+	c := loadForTest(t)
+	b := standard("class:fighter", 2)
+	b.Classes = []ClassLevel{{Class: "class:fighter", Level: 1}, {Class: "class:paladin", Level: 2}}
+	b.FeatureChoices = []string{"feature:fighter-fighting-style-defense", "feature:fighting-style-dueling"}
+	d := Derive(b, c)
+	for option, parent := range map[string]string{
+		"feature:fighter-fighting-style-defense": "feature:fighter-fighting-style",
+		"feature:fighting-style-dueling": "feature:paladin-fighting-style",
+	} {
+		f := featureOf(t, d, option)
+		if f.OptionOfPT != "Estilo de Luta" || f.OptionOfKey != parent {
+			t.Errorf("%s is an option of %q (%q), want %q", option, f.OptionOfKey, f.OptionOfPT, parent)
+		}
+	}
+}

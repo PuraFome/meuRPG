@@ -1186,6 +1186,9 @@ type Feature struct {
 	// OptionOfPT is, for an option the character picked, the Portuguese name of the feature, trait or feat that
 	// offers it ("Truques de lâmina"); empty for the other features.
 	OptionOfPT string `json:"-"`
+	// OptionOfKey is the key of that feature, trait or feat: two of them can have one name (the Fighter's and the
+	// Paladin's "Estilo de Luta"); empty for the other features.
+	OptionOfKey string `json:"-"`
 }
 
 // Proficiency is an armor, weapon or tool proficiency.
