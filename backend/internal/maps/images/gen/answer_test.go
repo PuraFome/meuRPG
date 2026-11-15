@@ -85,7 +85,7 @@ func TestParseAnswerSentences(t *testing.T) {
 		is     error
 	}{
 		{"a 500 with no error object", 500, `{}`, "the image service is unavailable\nstatus 500", ErrUnavailable},
-		{"a 400 with an error object and no message", 400, `{"error":{"code":"invalid_request"}}`, "the image service is unavailable\nstatus 400", ErrUnavailable},
+		{"a 400 with an error object and no message keeps the reason word", 400, `{"error":{"code":"invalid_request"}}`, "the image service is unavailable\nstatus 400: invalid_request", ErrUnavailable},
 		{"a message with the string code", 400, `{"error":{"message":"bad value","code":"invalid_request"}}`, "the image service is unavailable\nstatus 400: invalid_request", ErrUnavailable},
 		{"a message with the numeric code", 400, `{"error":{"message":"bad value","code":400}}`, "the image service is unavailable\nstatus 400: 400", ErrUnavailable},
 		{"the status word over the code", 429, `{"error":{"message":"slow down","code":429,"status":"RESOURCE_EXHAUSTED"}}`, "the image service is unavailable\nstatus 429: RESOURCE_EXHAUSTED", ErrUnavailable},
