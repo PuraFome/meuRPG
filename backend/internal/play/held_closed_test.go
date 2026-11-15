@@ -30,7 +30,7 @@ func TestAHeldRollWhoseGroupCheckClosedIsForgottenWithItsRefusal(t *testing.T) {
 		return res.Msg, nil
 	}
 	held, err := rollFor(check.GetId())
-	if err != nil || held.GetInspirationOffer() == nil {
+	if err != nil || held.GetHeldRollOffer().GetDie() == nil {
 		t.Fatalf("Dalila's roll = %v, %v; want the die's question", held, err)
 	}
 	if _, err := a.master.contests.CloseGroupCheck(t.Context(), connect.NewRequest(&playv1.CloseGroupCheckRequest{
@@ -39,7 +39,7 @@ func TestAHeldRollWhoseGroupCheckClosedIsForgottenWithItsRefusal(t *testing.T) {
 		t.Fatalf("CloseGroupCheck() error = %v", err)
 	}
 
-	_, err = a.answerHeldRoll(t, dalila, held.GetInspirationOffer().GetHoldId(), dieAnswer(false))
+	_, err = a.answerHeldRoll(t, dalila, held.GetHeldRollOffer().GetHoldId(), dieAnswer(false))
 	wantContestBlocked(t, "the answer of a closed group check", err, playv1.ContestBlockedReason_CONTEST_BLOCKED_REASON_GROUP_CHECK_CLOSED)
 	if n := countRows(t, a.h, countInspirationHold, a.campaignID); n != 0 {
 		t.Errorf("held rolls after the refusal = %d, want it forgotten", n)
@@ -50,7 +50,7 @@ func TestAHeldRollWhoseGroupCheckClosedIsForgottenWithItsRefusal(t *testing.T) {
 
 	next := a.mustRequestGroup(t, func(r *playv1.RequestGroupCheckRequest) { r.Dc = 20 })
 	again, err := rollFor(next.GetId())
-	if err != nil || again.GetInspirationOffer() == nil {
+	if err != nil || again.GetHeldRollOffer().GetDie() == nil {
 		t.Fatalf("Dalila's next roll = %v, %v; want it accepted, with the die's question", again, err)
 	}
 }
