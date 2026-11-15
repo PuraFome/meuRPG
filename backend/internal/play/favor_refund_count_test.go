@@ -47,7 +47,12 @@ func (f *favorFight) dropTheHold(t *testing.T, holdID string) {
 	}
 }
 
-// otherPromptOfTheRoll opens, by SQL, the prompt another member of the same group check has for the roll of the prompt.
+// otherPromptOfTheRoll opens, by SQL, the prompt another member of the same group check has for the roll of the prompt. It is by SQL because
+// no request can make two prompts of one roll key: a request rolls for one character (RollGroupCheck for the caller's own, which
+// myCharacter reads as the one living character a player may own, characters_one_living_player_character; RollForPlayer for the one named,
+// and it never spends: favorOnMember returns at byMaster), and the key of another member is refused as used for another change (groupReplay
+// compares the actor). So this guards the character filter of CloseFavorRefundPromptsOfRoll against a row the API cannot make; the real
+// members of a group check are driven in favor_groupcheck_refund_test.go.
 func (f *favorFight) otherPromptOfTheRoll(t *testing.T, of *playv1.FavorRefundPrompt, characterID string) string {
 	t.Helper()
 	var id string
