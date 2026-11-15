@@ -363,6 +363,21 @@ describe('a table class, race and background in the editor (E10-02 state 5)', ()
       'Adaga Simples · 1d4',
     ]);
   });
+
+  it('draws the book icon on the label of "Da mesa" and none on the SRD\'s (board 580-16, state 4)', async () => {
+    const { fixture, el } = await render();
+    await openStep(fixture, 'Equipamento');
+    Array.from(el.querySelectorAll<HTMLElement>('mat-form-field'))
+      .find((f) => f.querySelector('mat-label')?.textContent?.trim() === 'Armas')!
+      .querySelector<HTMLElement>('.mat-mdc-select-trigger')!
+      .click();
+    await settle(fixture);
+    const [table, book] = Array.from(document.querySelectorAll('mat-optgroup'));
+    const icon = table.querySelector('.mat-mdc-optgroup-label mat-icon');
+    expect(icon?.textContent?.trim()).toBe('menu_book');
+    expect(icon?.getAttribute('aria-hidden')).toBe('true');
+    expect(book.querySelector('.mat-mdc-optgroup-label mat-icon')).toBeNull();
+  });
 });
 
 describe('the "Outro" background (E10-02 state 5, question 82)', () => {
