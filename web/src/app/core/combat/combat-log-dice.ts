@@ -9,6 +9,7 @@ import { groupHolder } from './damage-parts';
 import { modifierText, rollText, treatedFormula, treatedSourceName } from './combat-dice';
 import { listNames } from './conditions';
 import { hasRuleReroll, luckyText } from './lucky';
+import { damageTypeName } from './table-cast-options';
 
 /**
  * The lines under a log sentence that tell the dice: a die a table feature's floor counted as another number (a
@@ -29,6 +30,10 @@ export function markedFaces(faces: readonly number[], counted: readonly CountedD
 
 /** "Espada curta 1d6 (4) + 2 = 6": the dice of one part of a damage, with the dice a floor raised marked. */
 export function partLine(p: DamagePartRoll, all: readonly DamagePartRoll[] = []): string {
+  // A part whose numbers the reader may not know (another player's view of a power attack) has its name and its damage type.
+  if (p.diceCount === 0 && p.flat === 0 && p.sum === 0 && p.damageTypeKey !== '') {
+    return `${p.labelPt} ${damageTypeName(p.damageTypeKey).toLowerCase()}`;
+  }
   const dice = p.diceCount > 0 ? `${p.diceCount}d${p.diceSides}` : '';
   const faces = p.faces.length > 0 ? ` (${markedFaces(p.faces, p.countedDice)})` : '';
   const flat = p.flat !== 0 ? ` ${p.flat > 0 ? '+' : '−'} ${Math.abs(p.flat)}` : '';

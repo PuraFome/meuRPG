@@ -428,6 +428,31 @@ func TestDuelingAddsTwoDamageToEveryOneHandedMeleeWeapon(t *testing.T) {
 	}
 }
 
+// An improvised weapon is not a melee weapon of its kind: a bow used as a club gets no Dueling bonus, beside a sword that
+// gets it or alone (SRD 5.1, "Improvised Weapons" and the Dueling style, a melee weapon wielded in one hand).
+func TestDuelingNeverAppliesToTheImprovisedMeleeLineOfABow(t *testing.T) {
+	t.Parallel()
+	c := loadForTest(t)
+	for name, weapons := range map[string][]string{
+		"a bow alone":          {"equipment:shortbow"},
+		"a bow beside a sword": {"equipment:longsword", "equipment:shortbow"},
+	} {
+		d := Derive(duelist(weapons...), c)
+		club, ok := attackOf(d, "equipment:shortbow:melee")
+		if !ok {
+			t.Fatalf("%s: no improvised line", name)
+		}
+		if club.Damage != "1d4+3" || club.DamageNotePT != "" || club.DamageDice != (DiceFormula{Count: 1, Sides: 4, Bonus: 3}) {
+			t.Errorf("%s: improvised line = %q (%q), want 1d4+3 and no Dueling note", name, club.Damage, club.DamageNotePT)
+		}
+	}
+	// With only the bow there is no weapon the bonus applies to: it stays a hint, as for a two-handed weapon.
+	d := Derive(duelist("equipment:shortbow"), c)
+	if !slices.ContainsFunc(d.Hints, func(h Hint) bool { return h.Source == "feature:fighter-fighting-style-dueling" }) {
+		t.Error("with a bow alone the Dueling bonus should stay a hint")
+	}
+}
+
 // Brutal Critical (SRD 5.1, Barbarian) adds one weapon die to a melee critical hit
 // at level 9, two at 13 and three at 17; nobody else has it.
 func TestBrutalCriticalDiceFollowTheBarbarianLevel(t *testing.T) {
@@ -500,5 +525,41 @@ func TestReliableTalentCountsOnlyForChecksThatAddProficiency(t *testing.T) {
 	}
 	if Derive(standard("class:fighter", 20), c).ReliableTalent {
 		t.Error("a fighter has Reliable Talent")
+	}
+}
+
+// A weapon that fires ammunition gets a second line, the improvised melee one: 1d4 plus Strength, no proficiency and
+// no magic of the weapon, bludgeoning, and it is flagged so the combat spends no ammunition on it. The ammunition line
+// names the kind; no other weapon gets an improvised line.
+func TestAnAmmunitionWeaponHasAnImprovisedMeleeLine(t *testing.T) {
+	t.Parallel()
+	c := loadForTest(t)
+	b := standard("class:fighter", 5)
+	b.BaseScores = map[Ability]int{STR: 14, DEX: 16, CON: 13, INT: 12, WIS: 10, CHA: 8}
+	b.Weapons = []string{"equipment:shortbow", "equipment:handaxe", "equipment:longsword", "equipment:crossbow-light"}
+	d := Derive(b, c)
+	bow, ok := attackOf(d, "equipment:shortbow")
+	if !ok || bow.AmmunitionKey != "equipment:arrow" || bow.Improvised || bow.Melee {
+		t.Fatalf("shortbow = %+v, want the ranged line that fires arrows", bow)
+	}
+	club, ok := attackOf(d, "equipment:shortbow:melee")
+	if !ok {
+		t.Fatal("the shortbow has no improvised melee line")
+	}
+	if !club.Improvised || !club.Melee || club.Kind != "weapon" || club.Ability != STR || club.AttackBonus != 2 || club.Proficient ||
+		club.Damage != "1d4+2" || club.DamageDice != (DiceFormula{Count: 1, Sides: 4, Bonus: 2}) || club.DamageType != "damage-type:bludgeoning" ||
+		club.AmmunitionKey != "" || club.MagicBonus != 0 || club.RangeFt > 5 || club.NamePT != bow.NamePT+", corpo a corpo" {
+		t.Errorf("improvised line = %+v, want a melee 1d4+2 bludgeoning line at +2 with no proficiency and no ammunition", club)
+	}
+	if _, ok := attackOf(d, "equipment:crossbow-light:melee"); !ok {
+		t.Error("the light crossbow has no improvised melee line")
+	}
+	for _, key := range []string{"equipment:handaxe", "equipment:longsword"} {
+		if a, _ := attackOf(d, key); a.AmmunitionKey != "" || a.Improvised {
+			t.Errorf("%s = %+v, want no ammunition and not improvised", key, a)
+		}
+		if _, ok := attackOf(d, key+":melee"); ok {
+			t.Errorf("%s has an improvised line", key)
+		}
 	}
 }

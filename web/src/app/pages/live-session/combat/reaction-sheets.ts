@@ -5,6 +5,7 @@ import type {
   ReactionWindow,
 } from '../../../../gen/meurpg/play/v1/combat_pb';
 import { reactorAttacks } from '../../../core/combat/opportunity';
+import { tradesOf } from '../../../core/combat/power-attack-trade';
 import { openWindows, promptView } from '../../../core/combat/reactions';
 import { featureWindowView, isFeatureWindow } from '../../../core/combat/reaction-feature';
 import { zoneCasterLabel, zoneSaveTitle } from '../../../core/effects/zone-save';
@@ -247,7 +248,8 @@ export class ReactionSheets {
     byMaster: boolean,
   ): void {
     const e = this.ctx.encounter();
-    const attack = options?.options?.attacks.find((a) => a.attack?.key === key)?.attack;
+    const option = options?.options?.attacks.find((a) => a.attack?.key === key);
+    const attack = option?.attack;
     if (!e || !attack) {
       return;
     }
@@ -263,6 +265,7 @@ export class ReactionSheets {
       state: this.ctx.state(),
       asReaction: true,
       maneuverDice: maneuverDiceOf(options, attack, !byMaster),
+      powerAttacks: tradesOf(option),
       opportunity: {
         offerId: offer.id,
         targetId: offer.moverId,

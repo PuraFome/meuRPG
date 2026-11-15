@@ -37,7 +37,7 @@ describe('FeatPicker', () => {
     const el = setup();
     const [grappler, athlete] = cards(el).map(text);
     expect(grappler).toContain('Agarrador');
-    expect(grappler).toContain('Pede: Força 13.');
+    expect(grappler).toContain('Pede Força 13.');
     expect(grappler).not.toContain('Da mesa');
     expect(athlete).toContain('Atleta');
     expect(athlete).toContain('Da mesa');
@@ -133,13 +133,35 @@ describe('FeatPicker', () => {
     expect(boxes.map((b) => b.disabled)).toEqual([false, false, true]);
   });
 
-  it('puts the feats the character meets first under "Disponíveis" and the others under "Ainda não cumpre", each with its reason', () => {
+  it('puts the feats the character meets first under "Disponíveis" and the others under "Ainda não disponíveis", each with its reason', () => {
     const el = setup();
     const headings = Array.from(el.querySelectorAll('.group')).map(text);
-    expect(headings).toEqual(['Disponíveis', 'Ainda não cumpre']);
+    expect(headings).toEqual(['Disponíveis', 'Ainda não disponíveis']);
     const lists = Array.from(el.querySelectorAll('.cards'));
     expect(lists.map((l) => l.querySelectorAll('.card').length)).toEqual([2, 1]);
     expect(text(lists[1])).toContain('Precisa de Força 15.');
+  });
+
+  it('offers "Todos" and "Só os que posso (N)": the second hides the feats the character does not qualify for (#580 board 580-04)', () => {
+    const el = setup();
+    const buttons = Array.from(el.querySelectorAll<HTMLButtonElement>('.filter button'));
+    expect(buttons.map((b) => text(b.querySelector('span')!))).toEqual([
+      'Todos',
+      'Só os que posso (2)',
+    ]);
+    expect(buttons.map((b) => b.getAttribute('aria-pressed'))).toEqual(['true', 'false']);
+    buttons[1].click();
+    fixture.detectChanges();
+    expect(Array.from(el.querySelectorAll('.group')).map(text)).toEqual(['Disponíveis']);
+    expect(cards(el).length).toBe(2);
+    expect(
+      Array.from(el.querySelectorAll<HTMLButtonElement>('.filter button')).map((b) =>
+        b.getAttribute('aria-pressed'),
+      ),
+    ).toEqual(['false', 'true']);
+    buttons[0].click();
+    fixture.detectChanges();
+    expect(cards(el).length).toBe(3);
   });
 
   it('filters by name with no case and no accents, and says how many were found', () => {
@@ -154,7 +176,7 @@ describe('FeatPicker', () => {
     search.value = 'mestre das';
     search.dispatchEvent(new Event('input'));
     fixture.detectChanges();
-    expect(Array.from(el.querySelectorAll('.group')).map(text)).toEqual(['Ainda não cumpre']);
+    expect(Array.from(el.querySelectorAll('.group')).map(text)).toEqual(['Ainda não disponíveis']);
     expect(text(el.querySelector('[role="status"]')!)).toBe('1 talento encontrado.');
   });
 
@@ -216,12 +238,11 @@ describe('FeatPicker', () => {
     fixture.componentRef.setInput('nameOf', (k: string) => names[k] ?? k);
     fixture.detectChanges();
     const [h, o] = cards(el).map(text);
-    expect(h).toContain('Pede: Destreza 13 e uma condição que a mesa não mostra.');
+    // A feat the character cannot take says what is missing once, never again as "Pede" (board 580-04).
+    expect(h).not.toContain('Pede Destreza 13');
     expect(h).toContain('Pede uma condição que a mesa não mostra.');
     expect(h).not.toMatch(/feat:|race:/);
-    expect(o).toContain(
-      'Pede: Destreza 13, ser Gnomo ou Halfling, ter tamanho pequeno e não ter Agarrador.',
-    );
+    expect(o).not.toContain('Pede Destreza 13');
     expect(o).toContain('Só para Gnomo ou Halfling.');
     expect(o).toContain('Só para tamanho pequeno.');
     expect(o).toContain('Não pode ter Agarrador.');

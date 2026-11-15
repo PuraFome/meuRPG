@@ -40,9 +40,9 @@ import type { EntrySaver } from '../../../core/content/entry-saver';
         </div>
       }
     </div>
-    @if (saver().error(); as error) {
+    @if (!errorAtFoot() && saver().error(); as error) {
       <div class="mr-notice mr-notice--danger" role="alert">
-        <mat-icon aria-hidden="true">error</mat-icon>
+        <mat-icon aria-hidden="true">{{ saver().offline() ? 'cloud_off' : 'error' }}</mat-icon>
         <p>{{ error }}</p>
       </div>
     }
@@ -68,6 +68,8 @@ import type { EntrySaver } from '../../../core/content/entry-saver';
 export class EditorAlerts {
   readonly saver = input.required<EntrySaver>();
   readonly reload = output<void>();
+  /** The editor draws the failure of the save itself, in its foot bar (the sticky one), and not here. */
+  readonly errorAtFoot = input(false);
 
   /** "Não foi possível salvar a magia." is the bold lead; the rest is the plain line. */
   protected lead(summary: string): string {
@@ -87,17 +89,23 @@ export class EditorAlerts {
   imports: [MatButtonModule, MatIconModule],
   host: { '[class.bar--sticky]': 'sticky()' },
   template: `
+    @if (error()) {
+      <div class="mr-notice mr-notice--danger notice" role="alert">
+        <mat-icon aria-hidden="true">{{ offline() ? 'cloud_off' : 'error' }}</mat-icon>
+        <p>{{ error() }}</p>
+      </div>
+    }
     <div class="bar">
       @if (blocked()) {
         <button matButton="filled" type="button" class="mr-button--off" disabled disabledInteractive [attr.aria-describedby]="'bar-reason'">
           <mat-icon aria-hidden="true">block</mat-icon>{{ saveLabel() }}
         </button>
       } @else {
-        <button matButton="filled" type="button" [attr.aria-disabled]="saving()" (click)="!saving() && save.emit()">
+        <button matButton="filled" type="button" [class.mr-button--off]="saving()" [disabled]="saving()" disabledInteractive [attr.aria-disabled]="saving()" (click)="!saving() && save.emit()">
           <mat-icon aria-hidden="true">save</mat-icon>{{ saving() ? 'Salvando...' : saveLabel() }}
         </button>
       }
-      <button matButton="outlined" type="button" (click)="cancel.emit()">Cancelar</button>
+      <button matButton="outlined" type="button" [class.mr-button--off]="saving()" [disabled]="saving()" disabledInteractive (click)="cancel.emit()">Cancelar</button>
       <p class="bar__note" id="bar-reason">{{ blocked() || hint() }}</p>
     </div>
   `,
@@ -115,6 +123,10 @@ export class EditorAlerts {
       padding: var(--mr-space-3) var(--mr-gutter);
       border-top: 1px solid var(--mr-line);
       background: var(--mr-surface);
+    }
+
+    .notice {
+      margin-bottom: var(--mr-space-3);
     }
 
     .bar {
@@ -140,6 +152,9 @@ export class EditorBar {
   /** Stuck to the foot of the screen while the page scrolls. */
   readonly sticky = input(false);
   readonly saving = input(false);
+  /** The failure of the save, said directly above the buttons ("" when nothing failed), and whether the server is out of the air. */
+  readonly error = input('');
+  readonly offline = input(false);
   /** Why saving is off right now, or "". */
   readonly blocked = input('');
   /** The line beside the buttons when saving is on. */

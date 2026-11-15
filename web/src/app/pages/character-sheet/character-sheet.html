@@ -293,7 +293,7 @@
         <app-combat-column class="sheet__combat" [sheet]="full" [vitals]="vitals()" [liveSlots]="hasLiveSlots()" (spellOpened)="describeSpell($event)">
           <!-- The live counters of an open session (PM-07b 7), right after the combat numbers. -->
           @if (vitals(); as live) {
-            <app-resource-counters resources [vitals]="live" />
+            <app-resource-counters resources [vitals]="live" [campaignId]="vm.campaignId" [viewer]="vm.isMaster ? 'master' : 'owner'" />
           }
           <!-- MR-037: the character's creatures, right after Combate and Magias (E9-10). -->
           @if (vm.characterKind === 'player' && vm.state !== 'pending') {

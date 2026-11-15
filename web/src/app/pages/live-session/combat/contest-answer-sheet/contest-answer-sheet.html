@@ -58,6 +58,7 @@
         [diceMode]="data.diceMode"
         [preference]="data.preference"
         [busy]="busy()"
+        [favor]="fav"
         deferLabel="Deixar o mestre rolar por mim"
         (roll)="answer($event)"
         (defer)="answer(null)"

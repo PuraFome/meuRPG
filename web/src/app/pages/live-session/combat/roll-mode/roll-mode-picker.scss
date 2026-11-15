@@ -12,6 +12,40 @@
   background: var(--mr-surface);
 }
 
+.mode__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px var(--mr-space-3);
+}
+
+.mode__lock {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--mr-font-14);
+  color: var(--mr-ink-muted);
+
+  .mat-icon {
+    width: 16px;
+    height: 16px;
+    font-size: var(--mr-font-16);
+  }
+}
+
+.note--lock {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--mr-space-2);
+
+  .mat-icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    font-size: var(--mr-font-18);
+  }
+}
+
 .mode__title {
   margin: 0;
   font-family: var(--mr-font-display);

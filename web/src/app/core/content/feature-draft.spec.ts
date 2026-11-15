@@ -1,6 +1,7 @@
 import { create } from '@bufbuild/protobuf';
 
 import {
+  OptionPrerequisiteSchema,
   TableBackgroundSchema,
   TableFeatureSchema,
   TableRaceSchema,
@@ -285,6 +286,20 @@ describe('the option list of a feature (a table feature the player picks from)',
       ['feature:postura-touro@mesa', 'Postura do Touro'],
       ['', 'Postura do Lobo'],
     ]);
+  });
+
+  it('keeps what an option of a class or subclass feature asks, through a load and a save (#580)', () => {
+    const f = withOptions();
+    f.options[1].prerequisite = create(OptionPrerequisiteSchema, {
+      classLevel: { classKey: 'class:fighter', level: 7 },
+      requiresOptionKeys: ['feature:postura-garca@mesa'],
+    });
+    const sent = draftToFeature(featureToDraft(f), m);
+    expect(sent.options?.[0].prerequisite).toBeUndefined();
+    expect(sent.options?.[1].prerequisite).toMatchObject({
+      classLevel: { classKey: 'class:fighter', level: 7 },
+      requiresOptionKeys: ['feature:postura-garca@mesa'],
+    });
   });
 
   it('a feature with no options sends none (an absent repeated field is an empty list), and the paths include each option', () => {

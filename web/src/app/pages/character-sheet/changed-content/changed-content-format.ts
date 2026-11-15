@@ -20,6 +20,7 @@ const KINDS: Record<string, Kind> = {
   subrace: { title: 'A sub-raça mudou.', noun: 'a sub-raça' },
   background: { title: 'O antecedente mudou.', noun: 'o antecedente' },
   spell: { title: 'A magia mudou.', noun: 'a magia' },
+  weapon: { title: 'A arma mudou.', noun: 'a arma' },
 };
 
 const FALLBACK: Kind = { title: 'O conteúdo mudou.', noun: 'o conteúdo' };

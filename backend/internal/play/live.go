@@ -45,6 +45,12 @@ func errWatchReplaced() error {
 	return connect.NewError(connect.CodeUnavailable, errors.New("replaced by a newer stream of this user; reconnect"))
 }
 
+// errWatchFull refuses a stream when the instance already holds the most streams it allows
+// (live.ErrFull, live.DefaultMaxStreams). The app reconnects with its growing backoff.
+func errWatchFull() error {
+	return connect.NewError(connect.CodeUnavailable, rpclog.ErrInstanceFull)
+}
+
 // errWatchIdle ends a stream of an instance that no longer receives calls (LiveConfig.Idle): after a deploy it is
 // the old revision, whose hub hears nothing of what the table does. The app reconnects to the active revision.
 func errWatchIdle() error {
@@ -216,6 +222,9 @@ func (s *Service) WatchGameSession(
 	// Subscribe before reading the session: an end that happens after the
 	// read below is then always delivered to this stream.
 	sub, err := s.hub.Subscribe(m.CampaignID, live.Subscriber{UserID: m.UserID, Master: m.Role == authz.RoleMaster})
+	if errors.Is(err, live.ErrFull) {
+		return errWatchFull()
+	}
 	if err != nil {
 		return nil // the server is shutting down: the app reconnects to the next one
 	}

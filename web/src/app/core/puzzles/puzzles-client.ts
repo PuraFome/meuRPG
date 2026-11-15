@@ -210,6 +210,7 @@ export class PuzzlesClient {
     die: HintDie,
     idempotencyKey: string,
     extraDieFaces: readonly number[] = [],
+    spendFavor = false,
   ): Promise<TryPuzzleHintResponse> {
     return this.client.tryPuzzleHint({
       campaignId,
@@ -223,6 +224,7 @@ export class PuzzlesClient {
             : { case: undefined },
       d20Faces: 'faces' in die ? [...die.faces] : [],
       extraDieFaces: [...extraDieFaces],
+      ...(spendFavor ? { spendFavor: true } : {}),
     });
   }
 

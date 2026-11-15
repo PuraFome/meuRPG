@@ -8,6 +8,7 @@ import (
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	mapsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1"
+	progressionv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/progression/v1"
 )
 
 // A reserved character (MR-049) is invisible to every player until one claims it: the
@@ -111,6 +112,36 @@ func TestGivingACharacterBackToTheReserveHidesItFromItsFormerOwner(t *testing.T)
 			if c.GetId() == w.reserved.GetId() {
 				t.Errorf("%s lists the character given back", p.name)
 			}
+		}
+	}
+}
+
+// The XP history keeps the shares of a character the master gave back to the reserve, and no
+// player reads that character in it (RN-10): not its ID, its name or its XP. The master still does.
+func TestGivingACharacterBackToTheReserveLeavesItOutOfThePlayersXPHistory(t *testing.T) {
+	w := newWorld(t)
+	ctx := t.Context()
+	must(w.stranger.characters.ClaimCharacter(ctx, rq(&charactersv1.ClaimCharacterRequest{Token: w.claimToken})))
+	ms := must(w.master.xp.AddMilestone(ctx, rq(&progressionv1.AddMilestoneRequest{CampaignId: w.campaign, Text: "Chegaram a torre"}))).GetMilestone()
+	must(w.master.xp.MarkMilestoneReached(ctx, rq(&progressionv1.MarkMilestoneReachedRequest{CampaignId: w.campaign, MilestoneId: ms.GetId(), CharacterIds: []string{w.reserved.GetId()}, IdempotencyKey: newKey()})))
+	must(w.master.characters.ReturnCharacterToReserve(ctx, rq(&charactersv1.ReturnCharacterToReserveRequest{CampaignId: w.campaign, CharacterId: w.reserved.GetId()})))
+	named := func(p *person) bool {
+		got := must(p.xp.ListXPAwards(ctx, rq(&progressionv1.ListXPAwardsRequest{CampaignId: w.campaign})))
+		for _, a := range got.GetAwards() {
+			for _, sh := range a.GetShares() {
+				if sh.GetCharacterId() == w.reserved.GetId() || sh.GetCharacterName() == w.reserved.GetName() {
+					return true
+				}
+			}
+		}
+		return false
+	}
+	if !named(w.master) {
+		t.Errorf("the master's XP history does not hold the character given back")
+	}
+	for _, p := range []*person{w.ana, w.caio, w.stranger} {
+		if named(p) {
+			t.Errorf("%s reads the character given back in the XP history", p.name)
 		}
 	}
 }

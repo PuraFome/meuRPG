@@ -3,6 +3,7 @@ import { computed } from '@angular/core';
 import { DiceMode } from '../../../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import { RollMode } from '../../../../../gen/meurpg/play/v1/combat_rolls_pb';
 import { d20Count, modeStatus, orNormal } from '../../../../core/combat/roll-mode';
+import type { FavorSpend } from '../../../../core/play/favor-spend';
 import type { RollField } from '../../../../shared/multi-roll/multi-roll';
 import type { CastChoices, CastHooks } from './cast-choices';
 import type { CastState } from './cast-state';
@@ -28,9 +29,9 @@ export class CastMode {
   readonly sources = computed(() =>
     this.attacked().length === 1 ? this.attacked()[0].sources : [],
   );
-  readonly chosen = computed(() => this.s.picked() ?? this.suggested());
+  readonly chosen = computed(() => this.fav.mode() ?? this.s.picked() ?? this.suggested());
   private readonly state = computed(() =>
-    this.mixed() && this.s.picked() === null
+    this.fav.mode() !== null || (this.mixed() && this.s.picked() === null)
       ? 'ready'
       : modeStatus(this.approval, this.suggested(), this.chosen(), this.s.reason(), null),
   );
@@ -49,6 +50,7 @@ export class CastMode {
     private readonly s: CastState,
     private readonly choices: CastChoices,
     private readonly hooks: CastHooks,
+    private readonly fav: FavorSpend,
   ) {
     this.approval = s.data.master ? 'free' : 'blocked';
   }

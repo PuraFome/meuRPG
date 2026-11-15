@@ -37,6 +37,9 @@ import {
   shieldEndedForMaster,
   shieldLabelForMaster,
 } from '../../../../core/combat/combat-effects';
+import { FavorChip } from '../../../../shared/favor-chip/favor-chip';
+import { FavorState } from '../../../../core/play/favor-state';
+import { RowFavor } from './row-favor';
 import { NudgeButton } from '../../nudge-button/nudge-button';
 import { tieNumbers } from '../../../../core/format/text';
 import { joinDots } from '../../../../core/format/text';
@@ -92,6 +95,7 @@ function concentrationOf(c: Combatant): string {
 @Component({
   selector: 'app-order-list',
   imports: [
+    FavorChip,
     NudgeButton,
     EndAidQuestion,
     FormTag,
@@ -318,9 +322,7 @@ export class OrderList {
     return !isPlayer(c) && !isCreature(c);
   }
 
-  protected creature(c: Combatant): boolean {
-    return isCreature(c);
-  }
+  protected readonly creature = isCreature;
 
   /** An NPC the master marked "Aliado": a side, said apart from the conditions. */
   protected ally(c: Combatant): boolean {
@@ -332,15 +334,11 @@ export class OrderList {
     return labelTags(conditionTags(c), c.effectLabels);
   }
 
-  /** The spell it concentrates on, written out (the combat sends its name). */
-  protected concentration(c: Combatant): string {
-    return c.concentrationSpellNamePt;
-  }
-
   protected readonly down = isDown;
   protected readonly dying = isDying;
   protected readonly downText = downText;
   protected readonly player = isPlayer;
+  protected readonly favor = new RowFavor(inject(FavorState));
   protected readonly word = stateWordOf;
 
   /** The legend of the three shapes, once a player's creature is in the order. */

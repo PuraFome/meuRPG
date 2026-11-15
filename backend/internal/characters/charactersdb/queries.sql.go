@@ -331,6 +331,22 @@ func (q *Queries) DeleteCreatures(ctx context.Context, arg DeleteCreaturesParams
 	return err
 }
 
+const deleteItemCharges = `-- name: DeleteItemCharges :exec
+DELETE FROM character_item_charges
+WHERE character_id = $1 AND entry_id = $2
+`
+
+type DeleteItemChargesParams struct {
+	CharacterID string
+	EntryID     string
+}
+
+// Deletes the row of an entry: the item reads as full again.
+func (q *Queries) DeleteItemCharges(ctx context.Context, arg DeleteItemChargesParams) error {
+	_, err := q.db.Exec(ctx, deleteItemCharges, arg.CharacterID, arg.EntryID)
+	return err
+}
+
 const deleteItemChargesExcept = `-- name: DeleteItemChargesExcept :exec
 DELETE FROM character_item_charges
 WHERE character_id = $1
@@ -489,6 +505,55 @@ func (q *Queries) GetAbilityRolls(ctx context.Context, arg GetAbilityRollsParams
 	var i GetAbilityRollsRow
 	err := row.Scan(&i.Sets, &i.Source, &i.RolledAt)
 	return i, err
+}
+
+const getAmmunitionForUpdate = `-- name: GetAmmunitionForUpdate :one
+SELECT quantity, spent_last_combat, last_encounter_id, recovered
+FROM character_ammunition
+WHERE character_id = $1 AND ammo_key = $2
+FOR UPDATE
+`
+
+type GetAmmunitionForUpdateParams struct {
+	CharacterID string
+	AmmoKey     string
+}
+
+type GetAmmunitionForUpdateRow struct {
+	Quantity        int32
+	SpentLastCombat int32
+	LastEncounterID *string
+	Recovered       bool
+}
+
+// Locks the row until the transaction ends, so two shots at the last piece cannot both fire.
+func (q *Queries) GetAmmunitionForUpdate(ctx context.Context, arg GetAmmunitionForUpdateParams) (GetAmmunitionForUpdateRow, error) {
+	row := q.db.QueryRow(ctx, getAmmunitionForUpdate, arg.CharacterID, arg.AmmoKey)
+	var i GetAmmunitionForUpdateRow
+	err := row.Scan(
+		&i.Quantity,
+		&i.SpentLastCombat,
+		&i.LastEncounterID,
+		&i.Recovered,
+	)
+	return i, err
+}
+
+const getAmmunitionQuantity = `-- name: GetAmmunitionQuantity :one
+SELECT quantity FROM character_ammunition
+WHERE character_id = $1 AND ammo_key = $2
+`
+
+type GetAmmunitionQuantityParams struct {
+	CharacterID string
+	AmmoKey     string
+}
+
+func (q *Queries) GetAmmunitionQuantity(ctx context.Context, arg GetAmmunitionQuantityParams) (int32, error) {
+	row := q.db.QueryRow(ctx, getAmmunitionQuantity, arg.CharacterID, arg.AmmoKey)
+	var quantity int32
+	err := row.Scan(&quantity)
+	return quantity, err
 }
 
 const getAttunementOpen = `-- name: GetAttunementOpen :one
@@ -1692,6 +1757,92 @@ func (q *Queries) InsertNpcFromCreature(ctx context.Context, arg InsertNpcFromCr
 	return i, err
 }
 
+const listAmmunition = `-- name: ListAmmunition :many
+SELECT ammo_key, quantity, spent_last_combat, recovered
+FROM character_ammunition
+WHERE character_id = $1
+ORDER BY ammo_key
+`
+
+type ListAmmunitionRow struct {
+	AmmoKey         string
+	Quantity        int32
+	SpentLastCombat int32
+	Recovered       bool
+}
+
+// What the character holds of each counted kind of ammunition: every row, also one at 0.
+func (q *Queries) ListAmmunition(ctx context.Context, characterID string) ([]ListAmmunitionRow, error) {
+	rows, err := q.db.Query(ctx, listAmmunition, characterID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListAmmunitionRow
+	for rows.Next() {
+		var i ListAmmunitionRow
+		if err := rows.Scan(
+			&i.AmmoKey,
+			&i.Quantity,
+			&i.SpentLastCombat,
+			&i.Recovered,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listAmmunitionOfEncounterForUpdate = `-- name: ListAmmunitionOfEncounterForUpdate :many
+SELECT ammo_key, quantity, spent_last_combat, recovered
+FROM character_ammunition
+WHERE character_id = $1 AND last_encounter_id = $2::UUID
+ORDER BY ammo_key
+FOR UPDATE
+`
+
+type ListAmmunitionOfEncounterForUpdateParams struct {
+	CharacterID string
+	EncounterID string
+}
+
+type ListAmmunitionOfEncounterForUpdateRow struct {
+	AmmoKey         string
+	Quantity        int32
+	SpentLastCombat int32
+	Recovered       bool
+}
+
+// The rows the character spent in the combat, locked.
+func (q *Queries) ListAmmunitionOfEncounterForUpdate(ctx context.Context, arg ListAmmunitionOfEncounterForUpdateParams) ([]ListAmmunitionOfEncounterForUpdateRow, error) {
+	rows, err := q.db.Query(ctx, listAmmunitionOfEncounterForUpdate, arg.CharacterID, arg.EncounterID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListAmmunitionOfEncounterForUpdateRow
+	for rows.Next() {
+		var i ListAmmunitionOfEncounterForUpdateRow
+		if err := rows.Scan(
+			&i.AmmoKey,
+			&i.Quantity,
+			&i.SpentLastCombat,
+			&i.Recovered,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listCampaignContent = `-- name: ListCampaignContent :many
 SELECT campaign_id, content_key, kind, name_pt, data, revision, archived_at, created_at, updated_at, create_key, create_hash FROM campaign_content
 WHERE campaign_id = $1::UUID
@@ -1801,7 +1952,7 @@ func (q *Queries) ListCampaignsWithContent(ctx context.Context) ([]string, error
 }
 
 const listCharacterNames = `-- name: ListCharacterNames :many
-SELECT id, name FROM characters
+SELECT id, name, reserved FROM characters
 WHERE campaign_id = $1::UUID
   AND id = ANY($2::UUID[])
 ORDER BY id
@@ -1813,13 +1964,15 @@ type ListCharacterNamesParams struct {
 }
 
 type ListCharacterNamesRow struct {
-	ID   string
-	Name string
+	ID       string
+	Name     string
+	Reserved bool
 }
 
 // The names of the given characters of the campaign, whatever their kind or
 // status (package progression names the characters of an award, even one that
-// died since).
+// died since). reserved says the master gave the character back to the reserve
+// since: a player's reads leave it out (RN-10).
 func (q *Queries) ListCharacterNames(ctx context.Context, arg ListCharacterNamesParams) ([]ListCharacterNamesRow, error) {
 	rows, err := q.db.Query(ctx, listCharacterNames, arg.CampaignID, arg.Ids)
 	if err != nil {
@@ -1829,7 +1982,7 @@ func (q *Queries) ListCharacterNames(ctx context.Context, arg ListCharacterNames
 	var items []ListCharacterNamesRow
 	for rows.Next() {
 		var i ListCharacterNamesRow
-		if err := rows.Scan(&i.ID, &i.Name); err != nil {
+		if err := rows.Scan(&i.ID, &i.Name, &i.Reserved); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -2282,17 +2435,18 @@ func (q *Queries) ListDeadPlayerCharacters(ctx context.Context, campaignID strin
 }
 
 const listItemCharges = `-- name: ListItemCharges :many
-SELECT entry_id, charges_used, lost, dawns_waited
+SELECT entry_id, charges_used, lost, dawns_waited, last_roll_pending
 FROM character_item_charges
 WHERE character_id = $1
 ORDER BY entry_id
 `
 
 type ListItemChargesRow struct {
-	EntryID     string
-	ChargesUsed int32
-	Lost        string
-	DawnsWaited int32
+	EntryID         string
+	ChargesUsed     int32
+	Lost            string
+	DawnsWaited     int32
+	LastRollPending bool
 }
 
 // What the character's magic items spent: one row for each entry that spent a charge or was lost.
@@ -2310,6 +2464,7 @@ func (q *Queries) ListItemCharges(ctx context.Context, characterID string) ([]Li
 			&i.ChargesUsed,
 			&i.Lost,
 			&i.DawnsWaited,
+			&i.LastRollPending,
 		); err != nil {
 			return nil, err
 		}
@@ -3293,6 +3448,40 @@ func (q *Queries) SetActiveStates(ctx context.Context, arg SetActiveStatesParams
 	return err
 }
 
+const setAmmunitionQuantity = `-- name: SetAmmunitionQuantity :one
+INSERT INTO character_ammunition (character_id, ammo_key, quantity, updated_at)
+VALUES ($1, $2, $3, $4)
+ON CONFLICT (character_id, ammo_key) DO UPDATE
+SET quantity = excluded.quantity, updated_at = excluded.updated_at
+RETURNING quantity, spent_last_combat, recovered
+`
+
+type SetAmmunitionQuantityParams struct {
+	CharacterID string
+	AmmoKey     string
+	Quantity    int32
+	Now         time.Time
+}
+
+type SetAmmunitionQuantityRow struct {
+	Quantity        int32
+	SpentLastCombat int32
+	Recovered       bool
+}
+
+// The master's or owner's count: the pieces held. What was fired in the last combat stays.
+func (q *Queries) SetAmmunitionQuantity(ctx context.Context, arg SetAmmunitionQuantityParams) (SetAmmunitionQuantityRow, error) {
+	row := q.db.QueryRow(ctx, setAmmunitionQuantity,
+		arg.CharacterID,
+		arg.AmmoKey,
+		arg.Quantity,
+		arg.Now,
+	)
+	var i SetAmmunitionQuantityRow
+	err := row.Scan(&i.Quantity, &i.SpentLastCombat, &i.Recovered)
+	return i, err
+}
+
 const setAttunementOpen = `-- name: SetAttunementOpen :exec
 INSERT INTO character_vitals
     (character_id, attunement_open, revision, updated_at)
@@ -3507,19 +3696,21 @@ func (q *Queries) SetFamiliarSight(ctx context.Context, arg SetFamiliarSightPara
 }
 
 const setItemCharges = `-- name: SetItemCharges :exec
-INSERT INTO character_item_charges (character_id, entry_id, charges_used, lost, dawns_waited, updated_at)
-VALUES ($1, $2, $3, $4, $5, $6)
+INSERT INTO character_item_charges (character_id, entry_id, charges_used, lost, dawns_waited, last_roll_pending, updated_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
 ON CONFLICT (character_id, entry_id) DO UPDATE
-SET charges_used = excluded.charges_used, lost = excluded.lost, dawns_waited = excluded.dawns_waited, updated_at = excluded.updated_at
+SET charges_used = excluded.charges_used, lost = excluded.lost, dawns_waited = excluded.dawns_waited,
+    last_roll_pending = excluded.last_roll_pending, updated_at = excluded.updated_at
 `
 
 type SetItemChargesParams struct {
-	CharacterID string
-	EntryID     string
-	ChargesUsed int32
-	Lost        string
-	DawnsWaited int32
-	Now         time.Time
+	CharacterID     string
+	EntryID         string
+	ChargesUsed     int32
+	Lost            string
+	DawnsWaited     int32
+	LastRollPending bool
+	Now             time.Time
 }
 
 // Writes what an entry spent, or restores it: a row of 0 spent that is not lost reads as a full item.
@@ -3530,6 +3721,7 @@ func (q *Queries) SetItemCharges(ctx context.Context, arg SetItemChargesParams) 
 		arg.ChargesUsed,
 		arg.Lost,
 		arg.DawnsWaited,
+		arg.LastRollPending,
 		arg.Now,
 	)
 	return err
@@ -4084,4 +4276,91 @@ func (q *Queries) UpsertVitals(ctx context.Context, arg UpsertVitalsParams) (Ups
 	var i UpsertVitalsRow
 	err := row.Scan(&i.Revision, &i.UpdatedAt)
 	return i, err
+}
+
+const writeAmmunitionRecovered = `-- name: WriteAmmunitionRecovered :exec
+UPDATE character_ammunition
+SET quantity = $1, recovered = true, updated_at = $2
+WHERE character_id = $3 AND ammo_key = $4
+`
+
+type WriteAmmunitionRecoveredParams struct {
+	Quantity    int32
+	Now         time.Time
+	CharacterID string
+	AmmoKey     string
+}
+
+// Takes the pieces back after the combat and marks the row recovered.
+func (q *Queries) WriteAmmunitionRecovered(ctx context.Context, arg WriteAmmunitionRecoveredParams) error {
+	_, err := q.db.Exec(ctx, writeAmmunitionRecovered,
+		arg.Quantity,
+		arg.Now,
+		arg.CharacterID,
+		arg.AmmoKey,
+	)
+	return err
+}
+
+const writeAmmunitionRefunded = `-- name: WriteAmmunitionRefunded :exec
+UPDATE character_ammunition
+SET quantity = $1, spent_last_combat = $2,
+    last_encounter_id = $3::UUID, recovered = $4, updated_at = $5
+WHERE character_id = $6 AND ammo_key = $7
+`
+
+type WriteAmmunitionRefundedParams struct {
+	Quantity        int32
+	SpentLastCombat int32
+	LastEncounterID *string
+	Recovered       bool
+	Now             time.Time
+	CharacterID     string
+	AmmoKey         string
+}
+
+// An undone shot: the pieces held and the count of what the combat fired go down by it; with nothing fired left the row
+// belongs to no combat (there is nothing to search for), and the recovered mark stays otherwise.
+func (q *Queries) WriteAmmunitionRefunded(ctx context.Context, arg WriteAmmunitionRefundedParams) error {
+	_, err := q.db.Exec(ctx, writeAmmunitionRefunded,
+		arg.Quantity,
+		arg.SpentLastCombat,
+		arg.LastEncounterID,
+		arg.Recovered,
+		arg.Now,
+		arg.CharacterID,
+		arg.AmmoKey,
+	)
+	return err
+}
+
+const writeAmmunitionSpent = `-- name: WriteAmmunitionSpent :exec
+UPDATE character_ammunition
+SET quantity = $1, spent_last_combat = $2,
+    last_encounter_id = $3::UUID, recovered = $4, updated_at = $5
+WHERE character_id = $6 AND ammo_key = $7
+`
+
+type WriteAmmunitionSpentParams struct {
+	Quantity        int32
+	SpentLastCombat int32
+	LastEncounterID string
+	Recovered       bool
+	Now             time.Time
+	CharacterID     string
+	AmmoKey         string
+}
+
+// A shot: the pieces left and what the combat spent, with the combat that spent it.
+func (q *Queries) WriteAmmunitionSpent(ctx context.Context, arg WriteAmmunitionSpentParams) error {
+	_, err := q.db.Exec(ctx, writeAmmunitionSpent,
+		arg.Quantity,
+		arg.SpentLastCombat,
+		arg.LastEncounterID,
+		arg.Recovered,
+		arg.Now,
+		arg.CharacterID,
+		arg.AmmoKey,
+	)
+	return err
 }
