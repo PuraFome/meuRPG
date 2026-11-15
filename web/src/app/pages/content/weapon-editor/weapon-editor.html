@@ -59,7 +59,9 @@
       <app-entry-read [read]="preview()" [plain]="true" />
     </section>
     @if (entry(); as saved) {
+      @if (!saved.archived) {
       <app-players-switch [campaignId]="campaignId()" [entry]="saved" (switched)="switched.emit($event)" />
+      }
     }
     @if (entry(); as used) {
       @if (used.charactersUsing > 0) {

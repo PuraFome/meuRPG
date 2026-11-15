@@ -79,6 +79,8 @@
           </mat-menu>
         } @else if (isMaster() && entry() && !entry()!.archived && !asking()) {
           <button matButton="outlined" type="button" class="head__action" (click)="askArchive()"><mat-icon aria-hidden="true">archive</mat-icon>{{ leftOut().verb }}</button>
+        } @else if (isMaster() && entry()?.archived && kind() === Kind.WEAPON) {
+          <button matButton="outlined" type="button" class="head__action" [disabled]="archiving()" (click)="unarchive()"><mat-icon aria-hidden="true">unarchive</mat-icon>Desarquivar</button>
         }
       </header>
 
@@ -151,6 +153,9 @@
         <div class="archived">
           <div class="mr-notice mr-notice--neutral">
             <mat-icon aria-hidden="true">info</mat-icon>
+            @if (kind() === Kind.WEAPON) {
+              <p>Continua nas fichas que já a têm. Não entra numa ficha nova.</p>
+            } @else {
             <p>
               <strong>{{ nounPhrase() }} está {{ archivedWord() }}.</strong>
               @if (archivedOn()) {
@@ -161,8 +166,9 @@
               }
               A entrada só deixa de aparecer para fichas novas.
             </p>
+            }
           </div>
-          @if (!phone()) {
+          @if (!phone() && kind() !== Kind.WEAPON) {
             <button matButton="outlined" type="button" class="unarchive" [disabled]="archiving()" (click)="unarchive()"><mat-icon aria-hidden="true">unarchive</mat-icon>Desarquivar</button>
           }
         </div>
