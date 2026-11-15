@@ -283,9 +283,10 @@ var economyToProto = map[string]rulesv1.ActionEconomy{
 }
 
 var gripToProto = map[rules.Grip]rulesv1.VersatileGrip{
-	rules.GripOneHandShield: rulesv1.VersatileGrip_VERSATILE_GRIP_ONE_HAND_SHIELD,
-	rules.GripOneHandWeapon: rulesv1.VersatileGrip_VERSATILE_GRIP_ONE_HAND_WEAPON,
-	rules.GripTwoHands:      rulesv1.VersatileGrip_VERSATILE_GRIP_TWO_HANDS,
+	rules.GripOneHandShield:  rulesv1.VersatileGrip_VERSATILE_GRIP_ONE_HAND_SHIELD,
+	rules.GripOneHandWeapon:  rulesv1.VersatileGrip_VERSATILE_GRIP_ONE_HAND_WEAPON,
+	rules.GripOneHandDueling: rulesv1.VersatileGrip_VERSATILE_GRIP_ONE_HAND_DUELING,
+	rules.GripTwoHands:       rulesv1.VersatileGrip_VERSATILE_GRIP_TWO_HANDS,
 }
 
 func attackToProto(a rules.Attack) *rulesv1.Attack {

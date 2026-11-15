@@ -263,7 +263,8 @@ export function attackDetail(attack: Attack, reach = false): string {
 /**
  * The second line under the stats of a versatile weapon (board 580-14, canvas H), by the grip the server worked out
  * from the gear. One hand, because a shield or another weapon is in hand: "Com duas mãos, sem o escudo: 1d8 + 3" (the
- * stats line keeps the one-handed dice). Both hands: "Com duas mãos; com uma: 1d6 + 3" (the stats line shows the
+ * stats line keeps the one-handed dice). One hand with nothing else in it, because the Dueling style's bonus needs the
+ * one hand: "Com duas mãos, sem o Duelismo: 1d10 + 3" (the stats line keeps the one-handed dice with the bonus). Both hands: "Com duas mãos; com uma: 1d6 + 3" (the stats line shows the
  * two-handed dice). Empty for any other attack.
  */
 export function versatileLine(attack: Attack): string {
@@ -274,6 +275,8 @@ export function versatileLine(attack: Attack): string {
       return `Com duas mãos, sem o escudo: ${block(attack.versatileDamage)}`;
     case VersatileGrip.ONE_HAND_WEAPON:
       return `Com duas mãos, sem a outra arma: ${block(attack.versatileDamage)}`;
+    case VersatileGrip.ONE_HAND_DUELING:
+      return `Com duas mãos, sem o Duelismo: ${block(attack.versatileDamage)}`;
     case VersatileGrip.TWO_HANDS:
       return `Com duas mãos; com uma: ${block(attack.damage)}`;
     default:

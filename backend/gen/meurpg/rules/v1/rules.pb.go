@@ -816,7 +816,8 @@ func (DailyChoiceKind) EnumDescriptor() ([]byte, []int) {
 }
 
 // VersatileGrip says how a versatile weapon is held. The sheet has no hand for each piece of gear, so the
-// gear decides: both hands when no shield and no other weapon is equipped, one hand otherwise.
+// gear and the Dueling style decide: both hands when no shield and no other weapon is equipped and the
+// character has no Dueling, one hand otherwise.
 type VersatileGrip int32
 
 const (
@@ -827,6 +828,9 @@ const (
 	VersatileGrip_VERSATILE_GRIP_ONE_HAND_WEAPON VersatileGrip = 2
 	// Both hands: nothing else is in hand.
 	VersatileGrip_VERSATILE_GRIP_TWO_HANDS VersatileGrip = 3
+	// One hand with nothing else in hand, because the character has the Dueling style: damage carries its
+	// bonus and versatile_damage does not.
+	VersatileGrip_VERSATILE_GRIP_ONE_HAND_DUELING VersatileGrip = 4
 )
 
 // Enum value maps for VersatileGrip.
@@ -836,12 +840,14 @@ var (
 		1: "VERSATILE_GRIP_ONE_HAND_SHIELD",
 		2: "VERSATILE_GRIP_ONE_HAND_WEAPON",
 		3: "VERSATILE_GRIP_TWO_HANDS",
+		4: "VERSATILE_GRIP_ONE_HAND_DUELING",
 	}
 	VersatileGrip_value = map[string]int32{
-		"VERSATILE_GRIP_UNSPECIFIED":     0,
-		"VERSATILE_GRIP_ONE_HAND_SHIELD": 1,
-		"VERSATILE_GRIP_ONE_HAND_WEAPON": 2,
-		"VERSATILE_GRIP_TWO_HANDS":       3,
+		"VERSATILE_GRIP_UNSPECIFIED":      0,
+		"VERSATILE_GRIP_ONE_HAND_SHIELD":  1,
+		"VERSATILE_GRIP_ONE_HAND_WEAPON":  2,
+		"VERSATILE_GRIP_TWO_HANDS":        3,
+		"VERSATILE_GRIP_ONE_HAND_DUELING": 4,
 	}
 )
 
@@ -15849,12 +15855,13 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\x0fDailyChoiceKind\x12!\n" +
 	"\x1dDAILY_CHOICE_KIND_UNSPECIFIED\x10\x00\x12\x1b\n" +
 	"\x17DAILY_CHOICE_KIND_SKILL\x10\x01\x12\x1a\n" +
-	"\x16DAILY_CHOICE_KIND_TOOL\x10\x02*\x95\x01\n" +
+	"\x16DAILY_CHOICE_KIND_TOOL\x10\x02*\xba\x01\n" +
 	"\rVersatileGrip\x12\x1e\n" +
 	"\x1aVERSATILE_GRIP_UNSPECIFIED\x10\x00\x12\"\n" +
 	"\x1eVERSATILE_GRIP_ONE_HAND_SHIELD\x10\x01\x12\"\n" +
 	"\x1eVERSATILE_GRIP_ONE_HAND_WEAPON\x10\x02\x12\x1c\n" +
-	"\x18VERSATILE_GRIP_TWO_HANDS\x10\x03*X\n" +
+	"\x18VERSATILE_GRIP_TWO_HANDS\x10\x03\x12#\n" +
+	"\x1fVERSATILE_GRIP_ONE_HAND_DUELING\x10\x04*X\n" +
 	"\n" +
 	"AttackKind\x12\x1b\n" +
 	"\x17ATTACK_KIND_UNSPECIFIED\x10\x00\x12\x16\n" +

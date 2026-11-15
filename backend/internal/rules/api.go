@@ -1048,10 +1048,11 @@ type Grip string
 
 // The grips of a versatile weapon. A line of any other weapon has no grip.
 const (
-	GripNone          Grip = ""
-	GripOneHandShield Grip = "one_hand_shield" // a shield is equipped
-	GripOneHandWeapon Grip = "one_hand_weapon" // another weapon is equipped
-	GripTwoHands      Grip = "two_hands"       // nothing else is in hand
+	GripNone           Grip = ""
+	GripOneHandShield  Grip = "one_hand_shield"  // a shield is equipped
+	GripOneHandWeapon  Grip = "one_hand_weapon"  // another weapon is equipped
+	GripOneHandDueling Grip = "one_hand_dueling" // nothing else is in hand, and the Dueling style keeps it in one
+	GripTwoHands       Grip = "two_hands"        // nothing else is in hand
 )
 
 // InBothHands says the weapon is wielded with two hands: a two-handed weapon, or a versatile one held

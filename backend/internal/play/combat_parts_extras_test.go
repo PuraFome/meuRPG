@@ -335,6 +335,48 @@ func TestRollDamageRerollsAVersatileWeaponOnlyInBothHands(t *testing.T) {
 	}
 }
 
+// TestDuelingKeepsALoneVersatileWeaponInOneHand: with the Dueling style a lone longsword rolls the one-handed
+// die with the style's +2, and Great Weapon Fighting beside Dueling never joins it on the same roll: the
+// longsword is in one hand (no reroll), the greatsword is in two (the reroll, no +2).
+func TestDuelingKeepsALoneVersatileWeaponInOneHand(t *testing.T) {
+	t.Parallel()
+	const dueling, greatWeapon = "feature:fighter-fighting-style-dueling", "feature:fighter-fighting-style-great-weapon-fighting"
+	for _, tc := range []struct {
+		name                string
+		class               *charactersv1.ClassLevel
+		weapon              string
+		styles              []string
+		sides, bonus, rolls int32
+		rerolls             int
+	}{
+		{"Dueling, a lone longsword", classLevel("class:fighter", 2, ""), "equipment:longsword", []string{dueling}, 8, 5, 1, 0},
+		{"Dueling and Great Weapon Fighting, a lone longsword", classLevel("class:fighter", 10, "subclass:champion"), "equipment:longsword", []string{dueling, greatWeapon}, 8, 5, 1, 0},
+		{"Dueling and Great Weapon Fighting, a greatsword", classLevel("class:fighter", 10, "subclass:champion"), "equipment:greatsword", []string{dueling, greatWeapon}, 6, 3, 2, 1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			a, e, shrub := partsFight(t, func(a *armed) {
+				a.toren = a.caio.heroWith(t, a.campaignID, "Toren", tc.class, abilities(16, 12, 14, 10, 8), []string{tc.weapon}, nil, tc.styles)
+			}, "monster:awakened-shrub")
+			hit := a.mustAttack(t, a.caio, e, "Toren", tc.weapon, shrub, d20(15)).GetPendingDamage()
+			if hit.GetDiceCount() != tc.rolls || hit.GetDiceSides() != tc.sides || hit.GetBonus() != tc.bonus {
+				t.Errorf("the damage to roll = %dd%d%+d, want %dd%d%+d", hit.GetDiceCount(), hit.GetDiceSides(), hit.GetBonus(), tc.rolls, tc.sides, tc.bonus)
+			}
+			a.h.roller.queue(1, 5, 4) // a 1 first: Great Weapon Fighting would roll it again
+			dmg := a.mustDamage(t, a.caio, e, hit.GetId(), inAppDamage).GetPendingDamage()
+			var rerolled int
+			for _, r := range dmg.GetPartRolls() {
+				if r.GetPartKey() == extraWeaponDamage {
+					rerolled = len(r.GetRerolled())
+				}
+			}
+			if rerolled != tc.rerolls {
+				t.Errorf("the weapon's rerolls = %d, want %d (parts %v)", rerolled, tc.rerolls, dmg.GetPartRolls())
+			}
+		})
+	}
+}
+
 // versatileHero creates Toren, a fighter with Great Weapon Fighting and a longsword, maybe with a shield.
 func (u *user) versatileHero(t *testing.T, campaignID string, shield bool) *charactersv1.Character {
 	t.Helper()

@@ -493,6 +493,29 @@ describe("the sheet maps the background equipment and a versatile weapon's two-h
   });
 });
 
+describe('the sheet row of a lone versatile weapon of a Dueling character', () => {
+  it('shows the one-handed dice with the bonus and its note, and the two-handed dice without it on the line', () => {
+    const sword = {
+      $typeName: 'meurpg.rules.v1.Attack',
+      key: 'equipment:longsword',
+      kind: AttackKind.WEAPON,
+      damage: '1d8+5',
+      versatileDamage: '1d10+3',
+      damageNotePt: 'Inclui +2 de Estilo de Luta: Duelismo (sem outra arma na mão)',
+      grip: VersatileGrip.ONE_HAND_DUELING,
+    } as Attack;
+    const sheet = toCharacterSheetVm({
+      ...characterWithFullSheet(minimalFullSheet()),
+      derived: { ...minimalDerivedSheet(), attacks: [sword] },
+    }).sheet as FullSheetVm;
+    expect(sheet.attacks[0].damage).toBe('1d8 + 5');
+    expect(sheet.attacks[0].damageNotePt).toContain('Inclui +2');
+    expect(sheet.attacks[0].versatileLine.replace(/\u00a0/g, ' ')).toBe(
+      'Com duas mãos, sem o Duelismo: 1d10 + 3',
+    );
+  });
+});
+
 describe("the sheet maps a Warlock's Pact Magic apart from the spell slots", () => {
   const withDerived = (over: Partial<DerivedSheet>) =>
     toCharacterSheetVm({

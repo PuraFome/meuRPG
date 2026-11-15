@@ -162,6 +162,13 @@ describe('the two-handed line of a versatile weapon (board 580-14)', () => {
     );
   });
 
+  it('keeps the one-handed dice with the Dueling bonus on the stats, and the line gives the two-handed dice without it', () => {
+    const a = axe(VersatileGrip.ONE_HAND_DUELING);
+    a.damage = '1d6+5';
+    expect(plain(attackDetail(a))).toContain('1d6 + 5 cortante');
+    expect(plain(versatileLine(a))).toBe('Com duas mãos, sem o Duelismo: 1d8 + 3');
+  });
+
   it('puts the two-handed dice on the stats and the one-handed ones on the line, with both hands free', () => {
     const a = axe(VersatileGrip.TWO_HANDS);
     expect(plain(attackDetail(a))).toContain('1d8 + 3 cortante');

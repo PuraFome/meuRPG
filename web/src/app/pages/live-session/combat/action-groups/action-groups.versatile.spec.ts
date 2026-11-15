@@ -58,6 +58,12 @@ describe('ActionGroups: the two-handed line of a versatile weapon (board 580-14)
     );
   });
 
+  it('keeps the one-handed dice for a lone weapon of a Dueling character, and the line gives the two-handed ones', () => {
+    const { stats, line } = setup(VersatileGrip.ONE_HAND_DUELING);
+    expect(stats).toContain('1d6 + 3 cortante');
+    expect(line).toBe('Com duas mãos, sem o Duelismo: 1d8 + 3');
+  });
+
   it('shows the two-handed dice on the stats and the one-handed ones on the line with both hands free', () => {
     const { stats, line } = setup(VersatileGrip.TWO_HANDS);
     expect(stats).toContain('1d8 + 3 cortante');

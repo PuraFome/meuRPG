@@ -111,13 +111,17 @@ func (x *deriver) weaponAttack(i int, key string, martialArts bool, martialDie i
 }
 
 // versatileGrip is how the i-th weapon of the sheet is held: with one hand while a shield or another
-// weapon is equipped, with both otherwise.
+// weapon is equipped, or while the character has the Dueling style (its bonus needs the one hand, so a
+// lone weapon stays in it); with both otherwise.
 func (x *deriver) versatileGrip(i int) Grip {
 	switch {
 	case x.shieldWielded():
 		return GripOneHandShield
 	case x.otherWeaponOn(i):
 		return GripOneHandWeapon
+	}
+	if _, source := x.oneMeleeWeaponBonus(); source != "" {
+		return GripOneHandDueling
 	}
 	return GripTwoHands
 }

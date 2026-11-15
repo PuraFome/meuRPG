@@ -1434,7 +1434,8 @@ message Attack {
 }
 
 // VersatileGrip says how a versatile weapon is held. The sheet has no hand for each piece of gear, so the
-// gear decides: both hands when no shield and no other weapon is equipped, one hand otherwise.
+// gear and the Dueling style decide: both hands when no shield and no other weapon is equipped and the
+// character has no Dueling, one hand otherwise.
 enum VersatileGrip {
   VERSATILE_GRIP_UNSPECIFIED = 0;
   // One hand, because a shield is equipped.
@@ -1443,6 +1444,9 @@ enum VersatileGrip {
   VERSATILE_GRIP_ONE_HAND_WEAPON = 2;
   // Both hands: nothing else is in hand.
   VERSATILE_GRIP_TWO_HANDS = 3;
+  // One hand with nothing else in hand, because the character has the Dueling style: damage carries its
+  // bonus and versatile_damage does not.
+  VERSATILE_GRIP_ONE_HAND_DUELING = 4;
 }
 
 // AttackKind says whether an attack is a weapon or a spell.
