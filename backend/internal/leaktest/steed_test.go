@@ -85,4 +85,27 @@ func TestASteedAndItsTypeAndBondAreTheOwnersAndTheMastersOnly(t *testing.T) {
 			t.Errorf("Ana's summon options lack %s (the positive control): %s", want, options.body)
 		}
 	}
+	// The picked type is not on the page of the creature, for anyone: the stat block's own type stays what everyone reads.
+	page := &rulesv1.GetCreatureRequest{CampaignId: w.campaign, Key: "monster:warhorse", CreatureId: steedID}
+	for _, who := range []*person{w.ana, w.master} {
+		got := who.call(rulesv1connect.ContentServiceGetCreatureProcedure, page)
+		if !got.ok() || bytes.Contains(got.body, []byte(`"fey"`)) {
+			t.Errorf("the page of the steed for %s: status %d, carries the picked type: %v", who.name, got.status, bytes.Contains(got.body, []byte(`"fey"`)))
+		}
+	}
+	// Another player cannot dismiss or release the steed, and learns nothing from the refusal.
+	for _, how := range []charactersv1.CreatureDismissal{charactersv1.CreatureDismissal_CREATURE_DISMISSAL_DISMISS, charactersv1.CreatureDismissal_CREATURE_DISMISSAL_RELEASE} {
+		got := w.caio.call(charactersv1connect.CharacterServiceDismissCreatureProcedure, &charactersv1.DismissCreatureRequest{CampaignId: w.campaign, CreatureId: steedID, Dismissal: how})
+		if got.ok() {
+			t.Errorf("Caio's %v of the steed succeeded", how)
+		}
+		for _, secret := range []string{"fey", "bonded", name} {
+			if bytes.Contains(got.body, []byte(secret)) {
+				t.Errorf("Caio's %v refusal carries %q", how, secret)
+			}
+		}
+	}
+	if list := w.ana.call(charactersv1connect.CharacterServiceListCharacterCreaturesProcedure, &charactersv1.ListCharacterCreaturesRequest{CampaignId: w.campaign, CharacterId: paladin.GetId()}); !bytes.Contains(list.body, []byte(`"bonded":true`)) {
+		t.Errorf("the steed is not bonded and live after Caio's calls: %s", list.body)
+	}
 }
