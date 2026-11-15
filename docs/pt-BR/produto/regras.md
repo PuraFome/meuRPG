@@ -610,14 +610,14 @@ Sair do alcance de um inimigo provoca um ataque de oportunidade, que o app ofere
 - "Desfazer última ação" desfaz movimentos, saltos e a marca de Desengajar. Um movimento cuja oferta foi respondida só pode ser desfeito depois de desfazer a resposta.
 
 **Combate montado** (SRD 5.1, "Mounted Combat").
-Um cavaleiro monta ou desmonta de uma montaria disposta de um tamanho acima do seu (um cavaleiro Médio precisa de uma montaria Grande; o pônei e o mastim de Encontrar Montaria são pequenos demais para ele).
+Um cavaleiro monta ou desmonta de uma montaria disposta de um tamanho acima do seu (um cavaleiro Médio precisa de uma montaria Grande; o pônei e o mastim de Convocar Montaria são pequenos demais para ele).
 Montar exige a montaria a até 1,5 m e custa metade do deslocamento do cavaleiro na superfície onde ele está, sem contar a Disparada; desmontar custa o mesmo e pousa num quadrado vizinho livre.
 Um movimento comporta uma montada ou uma desmontada.
 O jogador monta as próprias criaturas e as montarias que o mestre marcou como "Montaria" do lado do grupo, e o mestre monta qualquer criatura.
 Uma criatura sem marca do mestre age por conta própria.
 O par ocupa um só lugar, o quadrado da montaria, e o turno da montaria continua sendo dela.
 
-- **Montaria adestrada** (a montaria de Encontrar Montaria, ou uma marcada como "adestrada") toma a iniciativa do cavaleiro e age logo depois dele, num turno conjunto que termina quando as duas partes terminam.
+- **Montaria adestrada** (a montaria de Convocar Montaria, ou uma marcada como "adestrada") toma a iniciativa do cavaleiro e age logo depois dele, num turno conjunto que termina quando as duas partes terminam.
   Só pode usar Disparada, Desengajar e Esquivar, e o jogador do cavaleiro a move, com o deslocamento e o movimento dela.
   O cavaleiro não se move por conta própria enquanto monta.
 - **Montaria independente** mantém a própria iniciativa e o próprio turno, e leva o cavaleiro junto.
@@ -626,6 +626,14 @@ O par ocupa um só lugar, o quadrado da montaria, e o turno da montaria continua
 - **Montaria derrubada ou abatida** abre uma janela de reação para o cavaleiro (RN-31): ele gasta a reação para cair de pé ou cai derrubado a até 1,5 m.
   Uma montaria dispensada pelo conjurador deixa o cavaleiro cair de pé, sem janela.
 - **Um ataque de oportunidade** contra o par pode mirar a montaria ou o cavaleiro.
+- **Convocar Montaria** (SRD 5.1) dá ao personagem uma só montaria vinculada.
+  Uma nova conjuração traz de volta a mesma montaria com os PV cheios, com a forma, o nome e o tipo, e recusa outra forma ou outro tipo.
+  "Dispensar" manda a montaria embora e mantém o vínculo, e "Libertar" encerra o vínculo.
+  Num combate que tem a montaria, qualquer um dos dois custa a ação do dono; o mestre e a dispensa fora do combate são gratuitos.
+  Com 0 PV a montaria desaparece e o vínculo fica, então uma nova conjuração a traz de volta.
+  A Inteligência da montaria é no mínimo 6, e nenhum efeito lê um valor menor.
+  O conjurador escolhe celestial, feérico ou ínfero; só o dono e o mestre leem a escolha.
+  Uma magia que mira só o conjurador também pode alcançar a montaria (`also_steed`) enquanto ele a cavalga: um efeito duradouro cai nos dois, e qualquer outra magia deixa uma nota de texto.
 - O jogador lê o vínculo entre duas criaturas só quando vê as duas; uma montaria escondida deixa o cavaleiro como se estivesse sozinho, e nenhum jogador lê a marca do mestre nem a rolagem de outro.
 
 **Esculpir Magias** (SRD 5.1, Escola de Evocação).
