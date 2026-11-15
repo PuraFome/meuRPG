@@ -1,22 +1,11 @@
 import { ReactionKind, type ReactionWindow } from '../../../gen/meurpg/play/v1/combat_pb';
+import { AUTO_PASS_SECONDS, ROLLING_WAIT_SECONDS, clockText } from './reaction-clock';
+import { readiedSecondsLeft } from './readied-wait';
 import { isOpen } from './reactions';
 
-/**
- * How long a player's optional reaction waits before it passes by itself.
- * Vinicius, 10/10: an unanswered optional reaction passes after 30 s.
- */
-export const AUTO_PASS_SECONDS = 30;
-
-/**
- * How long an optional reaction waits once its player said they are rolling the die (`ReactionWindow.rolling`):
- * a physical die takes a while to be found, rolled and typed. Still bounded, so a player who walked away does not
- * hold the table forever; after it, the window passes by itself like any other, and the master can pass it by hand
- * sooner ("Deixar passar").
- */
-export const ROLLING_WAIT_SECONDS = 120;
+export { AUTO_PASS_SECONDS, ROLLING_WAIT_SECONDS, clockText };
 
 const MS_PER_SECOND = 1000;
-const SECONDS_PER_MINUTE = 60;
 
 /** `seconds` held between 0 and `max`. */
 function clamp(seconds: number, max: number): number {
@@ -89,6 +78,8 @@ export class AutoPassClock {
   private readonly seen = new Map<string, number>();
   /** When this screen first saw each window marked as being rolled: the longer wait counts from here. */
   private readonly rollingSince = new Map<string, number>();
+  /** The readied windows kept as the screen last saw them: their wait is the server's (`wait_began_at`), not this screen's (#857). */
+  private readonly readied = new Map<string, ReactionWindow>();
   private readonly sent = new Set<string>();
 
   /** Looks at the open windows at `now` (ms): forgets the gone ones, starts the clock of the new ones. */
@@ -98,8 +89,11 @@ export class AutoPassClock {
       waiting.map((w) => w.id),
       now,
     );
+    this.readied.clear();
     for (const w of waiting) {
-      if (w.rolling && !this.rollingSince.has(w.id)) {
+      if (w.kind === ReactionKind.READIED) {
+        this.readied.set(w.id, w);
+      } else if (w.rolling && !this.rollingSince.has(w.id)) {
         this.rollingSince.set(w.id, now);
       }
     }
@@ -126,6 +120,11 @@ export class AutoPassClock {
     const since = this.seen.get(windowId);
     if (since === undefined) {
       return null;
+    }
+    // A readied window: the 30 s, then the one wait of 2 minutes the server dates from the player's first entry on the map.
+    const held = this.readied.get(windowId);
+    if (held) {
+      return readiedSecondsLeft(held, since, now);
     }
     // A window its player is rolling waits longer, counted from when this screen saw the mark (never shorter than
     // what was left: the 30 s may be nearly up when the mark arrives).
@@ -188,15 +187,6 @@ export function playerSecondsLeft(openedAt: number, now: number): number {
 /** The master's card while the player rolls: "Rolando… passa sozinho em 1 min 52 s". */
 export function rollingText(seconds: number): string {
   return `Rolando… ${autoPassText(seconds).toLowerCase()}`;
-}
-
-/** "1 min 52 s", or "24 s" under a minute. */
-export function clockText(seconds: number): string {
-  if (seconds < SECONDS_PER_MINUTE) {
-    return `${seconds} s`;
-  }
-  const rest = seconds % SECONDS_PER_MINUTE;
-  return `${Math.floor(seconds / SECONDS_PER_MINUTE)} min${rest > 0 ? ` ${rest} s` : ''}`;
 }
 
 /** What the player reads once they are rolling, in both steps: how long the table waits for the die. */
