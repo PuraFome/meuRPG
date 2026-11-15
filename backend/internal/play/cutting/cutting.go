@@ -1,0 +1,121 @@
+// Package cutting holds the rules of Cutting Words ("Palavras de Interrupção", SRD 5.1, College of Lore) on an ability check a creature
+// of the master's side makes outside a combat, over plain values: which bard is asked, whether it sees the creature, what the creature is
+// called to it, the order of the questions and what the check comes to. The questions, the dice and what they spend are the play
+// package's.
+package cutting
+
+import (
+	"slices"
+
+	"github.com/PuraFome/meuRPG/backend/internal/rules/reaction"
+)
+
+// UnnamedLabel is how a bard's question calls a creature the bard's player does not see.
+const UnnamedLabel = "uma criatura"
+
+// Bard is a bard of the party as the question of a check reads it.
+type Bard struct {
+	// Feature says the character has Cutting Words.
+	Feature bool
+	// Ask is the bard's "Perguntar" setting: "all", "attacks" (the default, also what "" means) or "never".
+	Ask string
+	// HitPoints are the current hit points: a bard at 0 is unconscious.
+	HitPoints int
+	// UsesLeft are the uses of Bardic Inspiration the bard has left.
+	UsesLeft int
+}
+
+// Asks says the bard is asked about a check: it is the setting "todos" that asks about checks (the default asks about attacks only),
+// and the bard must be awake and have a use of Bardic Inspiration left. Outside a combat no reaction is spent, so none is asked
+// about.
+func (b Bard) Asks() bool {
+	return b.Feature && b.Ask == "all" && b.HitPoints > 0 && b.UsesLeft > 0
+}
+
+// Die is the size of the bard's die at the bard level (the Bardic Inspiration die).
+func Die(bardLevel int) int { return reaction.CuttingWordsDie(bardLevel) }
+
+// Sight is what decides whether a bard sees and hears the creature, and whether the bard's question may name it.
+type Sight struct {
+	// Mapped says the creature and the bard both have a token on the session's current map: the map decides, and Box is not read.
+	Mapped bool
+	// DistanceFt is the distance between the two tokens, in feet.
+	DistanceFt int
+	// Seen says the bard's player sees the creature's square (the fog of the map; true on a map with no fog).
+	Seen bool
+	// TokenHidden says the master hid the creature's token: no player sees it.
+	TokenHidden bool
+	// Box is the master's "o bardo vê e ouve a criatura" for a table with no placement of both.
+	Box bool
+	// OnStage says the creature is on the stage of the open scene for the bard's player (an NPC the players see).
+	OnStage bool
+}
+
+// Sees says the bard sees the creature within the 60 feet of the reactions and the creature hears it. Outside a combat nothing says a creature
+// is deafened, so it is the master's box that answers when there is no map.
+func (s Sight) Sees() bool {
+	if s.Mapped {
+		return s.DistanceFt <= reaction.RangeFt && s.Seen && !s.TokenHidden
+	}
+	return s.Box
+}
+
+// Named says the bard's player sees the creature itself, so its question may say who it is: the creature is in the bard's sight on the
+// map, or, with no map, it is an NPC the players see on the stage. The master's box alone does not say the player sees it.
+func (s Sight) Named() bool {
+	if s.Mapped {
+		return s.Sees()
+	}
+	return s.Box && s.OnStage
+}
+
+// Label is what a bard's question calls the creature.
+func Label(name string, named bool) string {
+	if named && name != "" {
+		return name
+	}
+	return UnnamedLabel
+}
+
+// State is where a bard's question stands.
+type State int
+
+// The states of a question: open (or waiting for the bards before it), the die taken off, let go, and closed with no answer.
+const (
+	Waiting State = iota
+	Cut
+	Passed
+	Closed
+)
+
+// Current is the index of the question that is open now: the first still waiting, in the order the bards are asked, -1 when none is.
+func Current(states []State) int {
+	return slices.Index(states, Waiting)
+}
+
+// Settle is what the check comes to: the total with every die the bards took off. A check is not a damage, so the total may fall below
+// zero. cut is the sum of the dice.
+func Settle(total int, dice []int) (settled, cut int) {
+	for _, d := range dice {
+		cut += d
+	}
+	return total - cut, cut
+}
+
+var abilities = []string{"ability:str", "ability:dex", "ability:con", "ability:int", "ability:wis", "ability:cha"}
+
+var skills = []string{
+	"skill:acrobatics", "skill:animal-handling", "skill:arcana", "skill:athletics", "skill:deception", "skill:history", "skill:insight",
+	"skill:intimidation", "skill:investigation", "skill:medicine", "skill:nature", "skill:perception", "skill:performance",
+	"skill:persuasion", "skill:religion", "skill:sleight-of-hand", "skill:stealth", "skill:survival",
+}
+
+// ValidCheck says the key is an ability check or a skill check of the SRD ("skill:deception", "ability:cha"); a saving throw is not one.
+func ValidCheck(key string) bool {
+	return slices.Contains(abilities, key) || slices.Contains(skills, key)
+}
+
+// CheckKeys are the checks a creature may be rolled for: the six abilities in the order of the sheet, then the skills in alphabetical order.
+func CheckKeys() []string {
+	return append(slices.Clone(abilities), skills...)
+}

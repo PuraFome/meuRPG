@@ -412,6 +412,21 @@ type InspirationHold struct {
 	FavorSpent           bool
 }
 
+type NpcCheckAsk struct {
+	ID              string
+	HoldID          string
+	BardCharacterID string
+	Position        int32
+	State           string
+	Sides           int32
+	CreatureSeen    bool
+	DieFace         *int32
+	Physical        bool
+	AnswerKey       *string
+	CreatedAt       time.Time
+	AnsweredAt      *time.Time
+}
+
 type OpportunityOffer struct {
 	ID              string
 	EncounterID     string

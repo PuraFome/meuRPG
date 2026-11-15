@@ -1802,6 +1802,7 @@ WHERE h.campaign_id = $1 AND h.answer_key IS NULL AND h.round IS NULL
   AND (h.lucky_index IS NULL OR h.lucky_answer_key IS NOT NULL)
   AND NOT h.stroke_ask
   AND NOT h.reroll_ask
+  AND h.kind <> 'npc_check'
   AND NOT EXISTS (SELECT 1 FROM character_inspiration d WHERE d.character_id = h.character_id)
 RETURNING h.id, h.campaign_id, h.character_id, h.favor_spent, h.answer_key
 )
@@ -1817,7 +1818,8 @@ type DeleteOrphanInspirationHoldsRow struct {
 // The held rolls of a character whose die is gone (it ran out): there is nothing left to ask.
 // A roll held in a combat (round set) has its die on the combatant and is forgotten by the
 // round it was held in (outsideRoll) or when the combat ends (dieToCharacters). A roll whose
-// Lucky question, whose reroll question or whose Stroke of Luck question still waits stays: those questions need no die.
+// Lucky question, whose reroll question or whose Stroke of Luck question still waits stays: those questions need no die. A check of
+// the master's side (npc_check) waits for the bards' dice, never for the NPC's: it stays.
 // Only hold_forget.go calls it.
 func (q *Queries) DeleteOrphanInspirationHolds(ctx context.Context, campaignID string) ([]DeleteOrphanInspirationHoldsRow, error) {
 	rows, err := q.db.Query(ctx, deleteOrphanInspirationHolds, campaignID)

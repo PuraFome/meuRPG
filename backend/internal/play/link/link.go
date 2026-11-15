@@ -140,6 +140,8 @@ type TokenPosition struct {
 	// character's own token.
 	CreatureID string
 	XBP, YBP   int32
+	// Hidden says the master hid the character's token: no player sees it. Only MapTokens fills it.
+	Hidden bool
 }
 
 // Sheet is what the actions of a combat need from a character's sheet: the

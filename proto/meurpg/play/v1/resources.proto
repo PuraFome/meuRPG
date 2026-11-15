@@ -272,6 +272,12 @@ service ResourceService {
   // The response is rendered for the member who answers, whoever rolled.
   // The same answer given again is rendered the same way.
   //
+  // The question of a check a creature of the master's side makes outside a combat (HeldRollKind NPC_CHECK, RollNpcCheck) is
+  // the bard's, not the roller's: only the bard that is asked may answer it, with a CuttingWordsAnswer, and the master's way
+  // out is SkipNpcCheckAsks. Anyone else, and a bard whose turn has not come, gets `not_found`; a bard whose question was
+  // answered or closed already gets `failed_precondition` (the roll was answered already). The answer is a CuttingWordsAnswered:
+  // the bard's own die and the uses left, never the creature's roll.
+  //
   // Errors: `not_found` for a hold that is gone or one the caller may not answer; `invalid_argument`
   // for an answer of the wrong question, for a missing roll_in_app or typed_face, or a typed face outside
   // the die; ResourceBlocked LUCKY_PENDING for the die's answer while the Lucky question of the same
@@ -282,7 +288,8 @@ service ResourceService {
   // ListHeldRolls lists the questions of the rolls that wait and the caller may answer, oldest first: a
   // player's own rolls, in a combat and out of one; the master's, every roll of the campaign. A question
   // whose combat round is over, or whose die ran out, is not listed. Read it again when the stream says
-  // HeldRollsChanged.
+  // HeldRollsChanged. An NPC_CHECK is listed to the bard that is asked now and to the master only, and while no combat
+  // runs.
   rpc ListHeldRolls(ListHeldRollsRequest) returns (ListHeldRollsResponse);
 }
 
@@ -796,6 +803,8 @@ message AnswerHeldRollRequest {
     IndomitableAnswer indomitable = 6;
     StrokeOfLuckAnswer stroke_of_luck = 7;
     RerollAnswer reroll = 8;
+    // The bard's answer to the question of an NPC_CHECK (Cutting Words on a check of the master's side outside a combat).
+    CuttingWordsAnswer cutting_words = 9;
   }
 }
 
@@ -846,6 +855,30 @@ message StrokeOfLuckAnswer {
   bool use = 1;
 }
 
+// CuttingWordsAnswer answers the bard's question of a check a creature of the master's side makes outside a combat (SRD 5.1,
+// College of Lore, Cutting Words). Only the bard that is asked may answer it; anyone else gets `not_found`.
+message CuttingWordsAnswer {
+  // True: take the bard's die off the roll, spending one use of Bardic Inspiration (outside a combat there is no
+  // reaction to spend). False: let it pass.
+  bool cut = 1;
+  // How the die comes (RN-18) when `cut` is true: the app rolls it, or the player typed the face of a real die. Required then.
+  oneof roll {
+    bool roll_in_app = 2;
+    int32 typed_face = 3;
+  }
+}
+
+// CuttingWordsAnswered is what the bard reads after the answer: its own die and the uses it has left, never the creature's
+// roll, whether the check settled or what it came to.
+message CuttingWordsAnswered {
+  // The answer, as given.
+  bool cut = 1;
+  // The bard's die. Unset when the bard let it pass.
+  DiceRoll die = 2;
+  // The uses of Bardic Inspiration left after the answer.
+  int32 uses_left = 3;
+}
+
 // RerollAnswer answers the question of a d20 that showed a low face and may be rolled again (SRD 5.1: the die is rolled
 // again and the new roll must be used, even when it is worse). The server rolls the new die itself, so there is no way
 // of rolling to choose.
@@ -873,6 +906,8 @@ message AnswerHeldRollResponse {
     AnswerReactionResponse counterspell_check = 14;
     SubmitInitiativeResponse initiative = 10;
     RollMountSaveResponse mount_save = 15;
+    // The bard's answer to an NPC_CHECK question.
+    CuttingWordsAnswered cutting_words = 16;
   }
   // The next question of the same roll, copied out of the result, when the roll still waits: the d20 Lucky
   // rolled again is asked about the die next. Unset when the roll was written.

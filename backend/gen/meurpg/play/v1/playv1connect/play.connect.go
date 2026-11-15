@@ -136,6 +136,15 @@ const (
 	// PlayServiceDiscardTrapDamageProcedure is the fully-qualified name of the PlayService's
 	// DiscardTrapDamage RPC.
 	PlayServiceDiscardTrapDamageProcedure = "/meurpg.play.v1.PlayService/DiscardTrapDamage"
+	// PlayServiceRollNpcCheckProcedure is the fully-qualified name of the PlayService's RollNpcCheck
+	// RPC.
+	PlayServiceRollNpcCheckProcedure = "/meurpg.play.v1.PlayService/RollNpcCheck"
+	// PlayServiceSkipNpcCheckAsksProcedure is the fully-qualified name of the PlayService's
+	// SkipNpcCheckAsks RPC.
+	PlayServiceSkipNpcCheckAsksProcedure = "/meurpg.play.v1.PlayService/SkipNpcCheckAsks"
+	// PlayServiceListNpcCheckPickerProcedure is the fully-qualified name of the PlayService's
+	// ListNpcCheckPicker RPC.
+	PlayServiceListNpcCheckPickerProcedure = "/meurpg.play.v1.PlayService/ListNpcCheckPicker"
 	// PlayServiceGrantSceneAttemptProcedure is the fully-qualified name of the PlayService's
 	// GrantSceneAttempt RPC.
 	PlayServiceGrantSceneAttemptProcedure = "/meurpg.play.v1.PlayService/GrantSceneAttempt"
@@ -907,6 +916,48 @@ type PlayServiceClient interface {
 	// DiscardTrapDamage drops a trap damage that is not in a combat, applying
 	// nothing. Same errors as ApplyTrapDamage.
 	DiscardTrapDamage(context.Context, *connect.Request[v1.DiscardTrapDamageRequest]) (*connect.Response[v1.DiscardTrapDamageResponse], error)
+	// RollNpcCheck is the master's ability check for a creature of his side outside a combat: an NPC's Enganação,
+	// Persuasão or Intimidação against the party in a scene with no map (SRD 5.1, College of Lore, Cutting Words). The
+	// creature is an NPC of the campaign or an SRD creature; the d20 follows the master's choice of rolling in the app or
+	// typing a real die, whatever the table's dice setting says for the players.
+	//
+	// The bards of the party that may cut it are asked, one at a time, in the order of the party, through the held rolls
+	// (HeldRollKind NPC_CHECK: ListHeldRolls, HeldRollsChanged, AnswerHeldRoll with a CuttingWordsAnswer). A bard is asked
+	// when its character is alive, above 0 hit points, in the campaign's party, a College of Lore bard with Cutting Words,
+	// its setting "Perguntar" is "todos" (checks are asked only then), it has a Bardic Inspiration use left, the creature
+	// is not immune to being charmed, and it sees the creature within 60 feet: with a token of the creature and one of the
+	// bard on the session's map, by the distance and, on a fog map, by what the bard's player sees (a creature hidden on
+	// the map is not seen); with no such pair, `bard_sees` says it for every bard. The server has no source for a creature
+	// that cannot hear the bard outside a combat, so the master's `bard_sees` and his word are what it relies on. Nobody
+	// is asked when no bard qualifies, and the check settles at once. Only the use of Bardic Inspiration is spent.
+	//
+	// The check is a `npc_check_held` event while it waits, and a `npc_check_resolved` one when it settles (the master's own
+	// history: no player ever reads either). A retry with the same idempotency_key answers with the first read.
+	//
+	// Errors:
+	//   - `invalid_argument`: neither roll_in_app nor d20_face is set, roll_in_app is false, d20_face is not 1 to 20, the
+	//     key is not a UUID, neither an NPC nor a creature is named, or the check is not an ability or a skill;
+	//   - `not_found`: the NPC is not a living NPC of the campaign (a player's character is not one), the creature is not
+	//     an SRD creature, or the caller is not a member;
+	//   - `permission_denied`: the caller is a player;
+	//   - `failed_precondition`: no open session (GameSessionBlocked, NO_OPEN_SESSION); or ResourceBlocked COMBAT_OPEN
+	//     while a combat is running: the creature's checks are the combat's then.
+	RollNpcCheck(context.Context, *connect.Request[v1.RollNpcCheckRequest]) (*connect.Response[v1.RollNpcCheckResponse], error)
+	// SkipNpcCheckAsks is the master's "continuar sem o bardo": it closes every question of a held NPC check that still
+	// waits for a bard and settles the check with the dice already taken off. Master only. The same call again, with the
+	// same key or another, answers with the settled check and changes nothing; a bard's answer that comes after it is
+	// refused with `failed_precondition` (the roll was answered already).
+	//
+	// Errors: `invalid_argument` for a key that is not a UUID; `not_found` for a check that is gone or is not the campaign's;
+	// `permission_denied` for a player; `failed_precondition` with no open session.
+	SkipNpcCheckAsks(context.Context, *connect.Request[v1.SkipNpcCheckAsksRequest]) (*connect.Response[v1.SkipNpcCheckAsksResponse], error)
+	// ListNpcCheckPicker lists the creatures the master can pick for RollNpcCheck: the NPCs on the stage of the open scene
+	// (the hidden ones marked), the NPCs with a token on the session's current map, and the SRD creature named by
+	// `monster_key`, each with its checks and the bonus the master reads. Master only.
+	//
+	// Errors: `not_found` for a creature that is not an SRD one or a caller who is not a member; `permission_denied` for a
+	// player.
+	ListNpcCheckPicker(context.Context, *connect.Request[v1.ListNpcCheckPickerRequest]) (*connect.Response[v1.ListNpcCheckPickerResponse], error)
 	// GrantSceneAttempt gives one character one more attempt at one action of
 	// the open scene: "Dar mais uma tentativa" (MR-015, question 55). Only the
 	// campaign's master may call it, and only while a scene is open. The
@@ -1321,6 +1372,24 @@ func NewPlayServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(playServiceMethods.ByName("DiscardTrapDamage")),
 			connect.WithClientOptions(opts...),
 		),
+		rollNpcCheck: connect.NewClient[v1.RollNpcCheckRequest, v1.RollNpcCheckResponse](
+			httpClient,
+			baseURL+PlayServiceRollNpcCheckProcedure,
+			connect.WithSchema(playServiceMethods.ByName("RollNpcCheck")),
+			connect.WithClientOptions(opts...),
+		),
+		skipNpcCheckAsks: connect.NewClient[v1.SkipNpcCheckAsksRequest, v1.SkipNpcCheckAsksResponse](
+			httpClient,
+			baseURL+PlayServiceSkipNpcCheckAsksProcedure,
+			connect.WithSchema(playServiceMethods.ByName("SkipNpcCheckAsks")),
+			connect.WithClientOptions(opts...),
+		),
+		listNpcCheckPicker: connect.NewClient[v1.ListNpcCheckPickerRequest, v1.ListNpcCheckPickerResponse](
+			httpClient,
+			baseURL+PlayServiceListNpcCheckPickerProcedure,
+			connect.WithSchema(playServiceMethods.ByName("ListNpcCheckPicker")),
+			connect.WithClientOptions(opts...),
+		),
 		grantSceneAttempt: connect.NewClient[v1.GrantSceneAttemptRequest, v1.GrantSceneAttemptResponse](
 			httpClient,
 			baseURL+PlayServiceGrantSceneAttemptProcedure,
@@ -1419,6 +1488,9 @@ type playServiceClient struct {
 	listTrapDamages        *connect.Client[v1.ListTrapDamagesRequest, v1.ListTrapDamagesResponse]
 	applyTrapDamage        *connect.Client[v1.ApplyTrapDamageRequest, v1.ApplyTrapDamageResponse]
 	discardTrapDamage      *connect.Client[v1.DiscardTrapDamageRequest, v1.DiscardTrapDamageResponse]
+	rollNpcCheck           *connect.Client[v1.RollNpcCheckRequest, v1.RollNpcCheckResponse]
+	skipNpcCheckAsks       *connect.Client[v1.SkipNpcCheckAsksRequest, v1.SkipNpcCheckAsksResponse]
+	listNpcCheckPicker     *connect.Client[v1.ListNpcCheckPickerRequest, v1.ListNpcCheckPickerResponse]
 	grantSceneAttempt      *connect.Client[v1.GrantSceneAttemptRequest, v1.GrantSceneAttemptResponse]
 	putOnStage             *connect.Client[v1.PutOnStageRequest, v1.PutOnStageResponse]
 	takeOffStage           *connect.Client[v1.TakeOffStageRequest, v1.TakeOffStageResponse]
@@ -1594,6 +1666,21 @@ func (c *playServiceClient) ApplyTrapDamage(ctx context.Context, req *connect.Re
 // DiscardTrapDamage calls meurpg.play.v1.PlayService.DiscardTrapDamage.
 func (c *playServiceClient) DiscardTrapDamage(ctx context.Context, req *connect.Request[v1.DiscardTrapDamageRequest]) (*connect.Response[v1.DiscardTrapDamageResponse], error) {
 	return c.discardTrapDamage.CallUnary(ctx, req)
+}
+
+// RollNpcCheck calls meurpg.play.v1.PlayService.RollNpcCheck.
+func (c *playServiceClient) RollNpcCheck(ctx context.Context, req *connect.Request[v1.RollNpcCheckRequest]) (*connect.Response[v1.RollNpcCheckResponse], error) {
+	return c.rollNpcCheck.CallUnary(ctx, req)
+}
+
+// SkipNpcCheckAsks calls meurpg.play.v1.PlayService.SkipNpcCheckAsks.
+func (c *playServiceClient) SkipNpcCheckAsks(ctx context.Context, req *connect.Request[v1.SkipNpcCheckAsksRequest]) (*connect.Response[v1.SkipNpcCheckAsksResponse], error) {
+	return c.skipNpcCheckAsks.CallUnary(ctx, req)
+}
+
+// ListNpcCheckPicker calls meurpg.play.v1.PlayService.ListNpcCheckPicker.
+func (c *playServiceClient) ListNpcCheckPicker(ctx context.Context, req *connect.Request[v1.ListNpcCheckPickerRequest]) (*connect.Response[v1.ListNpcCheckPickerResponse], error) {
+	return c.listNpcCheckPicker.CallUnary(ctx, req)
 }
 
 // GrantSceneAttempt calls meurpg.play.v1.PlayService.GrantSceneAttempt.
@@ -2388,6 +2475,48 @@ type PlayServiceHandler interface {
 	// DiscardTrapDamage drops a trap damage that is not in a combat, applying
 	// nothing. Same errors as ApplyTrapDamage.
 	DiscardTrapDamage(context.Context, *connect.Request[v1.DiscardTrapDamageRequest]) (*connect.Response[v1.DiscardTrapDamageResponse], error)
+	// RollNpcCheck is the master's ability check for a creature of his side outside a combat: an NPC's Enganação,
+	// Persuasão or Intimidação against the party in a scene with no map (SRD 5.1, College of Lore, Cutting Words). The
+	// creature is an NPC of the campaign or an SRD creature; the d20 follows the master's choice of rolling in the app or
+	// typing a real die, whatever the table's dice setting says for the players.
+	//
+	// The bards of the party that may cut it are asked, one at a time, in the order of the party, through the held rolls
+	// (HeldRollKind NPC_CHECK: ListHeldRolls, HeldRollsChanged, AnswerHeldRoll with a CuttingWordsAnswer). A bard is asked
+	// when its character is alive, above 0 hit points, in the campaign's party, a College of Lore bard with Cutting Words,
+	// its setting "Perguntar" is "todos" (checks are asked only then), it has a Bardic Inspiration use left, the creature
+	// is not immune to being charmed, and it sees the creature within 60 feet: with a token of the creature and one of the
+	// bard on the session's map, by the distance and, on a fog map, by what the bard's player sees (a creature hidden on
+	// the map is not seen); with no such pair, `bard_sees` says it for every bard. The server has no source for a creature
+	// that cannot hear the bard outside a combat, so the master's `bard_sees` and his word are what it relies on. Nobody
+	// is asked when no bard qualifies, and the check settles at once. Only the use of Bardic Inspiration is spent.
+	//
+	// The check is a `npc_check_held` event while it waits, and a `npc_check_resolved` one when it settles (the master's own
+	// history: no player ever reads either). A retry with the same idempotency_key answers with the first read.
+	//
+	// Errors:
+	//   - `invalid_argument`: neither roll_in_app nor d20_face is set, roll_in_app is false, d20_face is not 1 to 20, the
+	//     key is not a UUID, neither an NPC nor a creature is named, or the check is not an ability or a skill;
+	//   - `not_found`: the NPC is not a living NPC of the campaign (a player's character is not one), the creature is not
+	//     an SRD creature, or the caller is not a member;
+	//   - `permission_denied`: the caller is a player;
+	//   - `failed_precondition`: no open session (GameSessionBlocked, NO_OPEN_SESSION); or ResourceBlocked COMBAT_OPEN
+	//     while a combat is running: the creature's checks are the combat's then.
+	RollNpcCheck(context.Context, *connect.Request[v1.RollNpcCheckRequest]) (*connect.Response[v1.RollNpcCheckResponse], error)
+	// SkipNpcCheckAsks is the master's "continuar sem o bardo": it closes every question of a held NPC check that still
+	// waits for a bard and settles the check with the dice already taken off. Master only. The same call again, with the
+	// same key or another, answers with the settled check and changes nothing; a bard's answer that comes after it is
+	// refused with `failed_precondition` (the roll was answered already).
+	//
+	// Errors: `invalid_argument` for a key that is not a UUID; `not_found` for a check that is gone or is not the campaign's;
+	// `permission_denied` for a player; `failed_precondition` with no open session.
+	SkipNpcCheckAsks(context.Context, *connect.Request[v1.SkipNpcCheckAsksRequest]) (*connect.Response[v1.SkipNpcCheckAsksResponse], error)
+	// ListNpcCheckPicker lists the creatures the master can pick for RollNpcCheck: the NPCs on the stage of the open scene
+	// (the hidden ones marked), the NPCs with a token on the session's current map, and the SRD creature named by
+	// `monster_key`, each with its checks and the bonus the master reads. Master only.
+	//
+	// Errors: `not_found` for a creature that is not an SRD one or a caller who is not a member; `permission_denied` for a
+	// player.
+	ListNpcCheckPicker(context.Context, *connect.Request[v1.ListNpcCheckPickerRequest]) (*connect.Response[v1.ListNpcCheckPickerResponse], error)
 	// GrantSceneAttempt gives one character one more attempt at one action of
 	// the open scene: "Dar mais uma tentativa" (MR-015, question 55). Only the
 	// campaign's master may call it, and only while a scene is open. The
@@ -2798,6 +2927,24 @@ func NewPlayServiceHandler(svc PlayServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(playServiceMethods.ByName("DiscardTrapDamage")),
 		connect.WithHandlerOptions(opts...),
 	)
+	playServiceRollNpcCheckHandler := connect.NewUnaryHandler(
+		PlayServiceRollNpcCheckProcedure,
+		svc.RollNpcCheck,
+		connect.WithSchema(playServiceMethods.ByName("RollNpcCheck")),
+		connect.WithHandlerOptions(opts...),
+	)
+	playServiceSkipNpcCheckAsksHandler := connect.NewUnaryHandler(
+		PlayServiceSkipNpcCheckAsksProcedure,
+		svc.SkipNpcCheckAsks,
+		connect.WithSchema(playServiceMethods.ByName("SkipNpcCheckAsks")),
+		connect.WithHandlerOptions(opts...),
+	)
+	playServiceListNpcCheckPickerHandler := connect.NewUnaryHandler(
+		PlayServiceListNpcCheckPickerProcedure,
+		svc.ListNpcCheckPicker,
+		connect.WithSchema(playServiceMethods.ByName("ListNpcCheckPicker")),
+		connect.WithHandlerOptions(opts...),
+	)
 	playServiceGrantSceneAttemptHandler := connect.NewUnaryHandler(
 		PlayServiceGrantSceneAttemptProcedure,
 		svc.GrantSceneAttempt,
@@ -2926,6 +3073,12 @@ func NewPlayServiceHandler(svc PlayServiceHandler, opts ...connect.HandlerOption
 			playServiceApplyTrapDamageHandler.ServeHTTP(w, r)
 		case PlayServiceDiscardTrapDamageProcedure:
 			playServiceDiscardTrapDamageHandler.ServeHTTP(w, r)
+		case PlayServiceRollNpcCheckProcedure:
+			playServiceRollNpcCheckHandler.ServeHTTP(w, r)
+		case PlayServiceSkipNpcCheckAsksProcedure:
+			playServiceSkipNpcCheckAsksHandler.ServeHTTP(w, r)
+		case PlayServiceListNpcCheckPickerProcedure:
+			playServiceListNpcCheckPickerHandler.ServeHTTP(w, r)
 		case PlayServiceGrantSceneAttemptProcedure:
 			playServiceGrantSceneAttemptHandler.ServeHTTP(w, r)
 		case PlayServicePutOnStageProcedure:
@@ -3085,6 +3238,18 @@ func (UnimplementedPlayServiceHandler) ApplyTrapDamage(context.Context, *connect
 
 func (UnimplementedPlayServiceHandler) DiscardTrapDamage(context.Context, *connect.Request[v1.DiscardTrapDamageRequest]) (*connect.Response[v1.DiscardTrapDamageResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.PlayService.DiscardTrapDamage is not implemented"))
+}
+
+func (UnimplementedPlayServiceHandler) RollNpcCheck(context.Context, *connect.Request[v1.RollNpcCheckRequest]) (*connect.Response[v1.RollNpcCheckResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.PlayService.RollNpcCheck is not implemented"))
+}
+
+func (UnimplementedPlayServiceHandler) SkipNpcCheckAsks(context.Context, *connect.Request[v1.SkipNpcCheckAsksRequest]) (*connect.Response[v1.SkipNpcCheckAsksResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.PlayService.SkipNpcCheckAsks is not implemented"))
+}
+
+func (UnimplementedPlayServiceHandler) ListNpcCheckPicker(context.Context, *connect.Request[v1.ListNpcCheckPickerRequest]) (*connect.Response[v1.ListNpcCheckPickerResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.PlayService.ListNpcCheckPicker is not implemented"))
 }
 
 func (UnimplementedPlayServiceHandler) GrantSceneAttempt(context.Context, *connect.Request[v1.GrantSceneAttemptRequest]) (*connect.Response[v1.GrantSceneAttemptResponse], error) {
