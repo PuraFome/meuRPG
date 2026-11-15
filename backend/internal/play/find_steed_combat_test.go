@@ -206,3 +206,26 @@ func TestFindSteedHealedBeforeTheAnswerIsBackWithItsHitPoints(t *testing.T) {
 		t.Errorf("after the heal Aurélio rides %q, want the steed", got.MountedOn)
 	}
 }
+
+// TestFindSteedPonyAndMastiffAreTooSmallForAMediumRider: the pony and the mastiff are Small steeds, so a Medium caster cannot mount them
+// (SRD 5.1 asks a mount one size larger); the combat refuses with MOUNT_TOO_SMALL and leaves the pair apart.
+func TestFindSteedPonyAndMastiffAreTooSmallForAMediumRider(t *testing.T) {
+	t.Parallel()
+	for _, form := range []string{"monster:pony", "monster:mastiff"} {
+		a := newRiders(t)
+		a.mustCastSteed(t, form, "celestial", "Trovão")
+		e := a.start(t, plan{
+			npcs: []*playv1.Participant{{CharacterId: a.goblin.GetId()}}, npcRolls: []int{3},
+			players: map[string]int32{"Aurélio": 18, "Toren": 10, "Trovão": 12},
+			reveal:  []string{"Goblin"},
+			at:      map[string][2]int32{"Aurélio": {3, 3}, "Toren": {6, 3}, "Goblin": {12, 3}, "Trovão": {4, 3}},
+		})
+		_, err := a.ana.combat.MountCombatant(t.Context(), connect.NewRequest(&playv1.MountCombatantRequest{
+			CampaignId: a.campaignID, EncounterId: e.GetId(), RiderId: a.id(t, "Aurélio"), MountId: a.id(t, "Trovão"), IdempotencyKey: newKey(),
+		}))
+		b := wantBlockedBy(t, "a Medium paladin on the "+form, err, reasonMountTooSmall)
+		if len(b.GetCombatantIds()) != 1 || b.GetCombatantIds()[0] != a.id(t, "Trovão") {
+			t.Errorf("%s: combatant_ids = %v, want the steed", form, b.GetCombatantIds())
+		}
+	}
+}
