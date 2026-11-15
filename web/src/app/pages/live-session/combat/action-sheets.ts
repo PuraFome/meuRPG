@@ -270,7 +270,6 @@ export class ActionSheets {
       ownerLabel: own.label,
       options: options.options,
       summaries: new Map(),
-      spellTargets: options.spellTargets,
       theatre: this.ctx.theatre(),
       ...readySpeed(own.speedFt, options),
       concentrating: own.concentrationSpell ? own.concentrationSpellNamePt : '',

@@ -148,3 +148,45 @@ describe('masterWaitNote', () => {
     expect(masterWaitNote(e, { w1: 5 }, name)).toContain('Vinicius');
   });
 });
+
+describe("masterWaitNote of a readied window's wait (#857, 857-08 card 7)", () => {
+  const name = () => '';
+  const readied = (over: object = {}) =>
+    reactionWindow({
+      id: 'r1',
+      kind: ReactionKind.READIED,
+      reactorId: 'p',
+      reactorLabel: 'Pensantus',
+      reactorIsPlayer: true,
+      answerNow: true,
+      ...over,
+    } as never);
+  const pen = combatant({ id: 'p', label: 'Pensantus', kind: CombatantKind.PLAYER });
+
+  it('says "Esperando a reação de Pensantus" and the time left before the player is on the map', () => {
+    const e = encounter({ combatants: [pen, goblin], reactionWindows: [readied()] });
+    expect(masterWaitNote(e, { r1: 24 }, name)).toBe(
+      'Esperando a reação de Pensantus · passa sozinho em 24 s',
+    );
+  });
+
+  it('says the player is on the map, with the 2 minutes counted as minutes', () => {
+    const e = encounter({
+      combatants: [pen, goblin],
+      reactionWindows: [readied({ rolling: true })],
+    });
+    expect(masterWaitNote(e, { r1: 108 }, name)).toBe(
+      'Pensantus está no mapa · passa sozinho em 1 min 48 s',
+    );
+  });
+
+  it('says it again as the same wait once the player is back from the map', () => {
+    const e = encounter({
+      combatants: [pen, goblin],
+      reactionWindows: [readied({ rolling: false })],
+    });
+    expect(masterWaitNote(e, { r1: 72 }, name)).toBe(
+      'Esperando a reação de Pensantus · passa sozinho em 1 min 12 s',
+    );
+  });
+});

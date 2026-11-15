@@ -1,16 +1,18 @@
 import { DestroyRef, computed, effect, inject, signal, untracked } from '@angular/core';
 import { Code, ConnectError } from '@connectrpc/connect';
 
-import type {
-  Encounter,
-  OpportunityOffer,
-  ReactionWindow,
+import {
+  type Encounter,
+  type OpportunityOffer,
+  ReactionKind,
+  type ReactionWindow,
 } from '../../../gen/meurpg/play/v1/combat_pb';
 import type { CombatClient } from './combat-client';
 import type { CombatState } from './combat-state';
 import { barText, offersToAnswer, reactorIsMasters } from './opportunity';
 import { revealBarText } from './hidden-reveal';
 import { AutoPassClock, autoPassKey, autoPassText } from './reaction-autopass';
+import { masterBarWait } from './readied-wait';
 import { openWindows } from './reactions';
 import { windowsBarText } from './reaction-master';
 
@@ -55,6 +57,13 @@ export function masterWaitNote(
   }
   const soonest = Math.min(...Object.values(left));
   const text = windowsBarText(e);
+  // A readied window says where its player is, and counts a minute as a minute (#857).
+  const readied = openWindows(e).find(
+    (w) => w.kind === ReactionKind.READIED && left[w.id] === soonest,
+  );
+  if (readied && text && Number.isFinite(soonest)) {
+    return masterBarWait(readied.reactorLabel, readied.rolling, soonest);
+  }
   return text && Number.isFinite(soonest)
     ? `${text} · ${autoPassText(soonest).toLowerCase()}`
     : text;

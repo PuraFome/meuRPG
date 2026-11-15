@@ -9,6 +9,7 @@ import {
   effect,
   inject,
   input,
+  output,
   signal,
   untracked,
 } from '@angular/core';
@@ -72,6 +73,8 @@ import {
   sayAnswer,
 } from './reaction-queue-text';
 import { readiedRefusalText } from '../../../../core/combat/readied-refusal';
+import type { ReleasePlan } from '../../../../core/combat/readied-release';
+import { masterRowWait } from '../../../../core/combat/readied-wait';
 import { ReadiedAimList } from '../readied-aim/readied-aim';
 import { ReadiedAimState } from './readied-aim-state';
 import { ParryOffer } from './parry-offer';
@@ -80,6 +83,12 @@ import { ResistanceOffer } from './resistance-offer';
 import { RollPicker } from '../../../../shared/roll-picker/roll-picker';
 
 let nextId = 0;
+
+/** "Soltar por X" and "Mover por X" open the map for the master (#857, #856): the window, and the plan of a held spell (`null` for a move). */
+export interface ReleaseRequest {
+  readonly window: ReactionWindow;
+  readonly plan: ReleasePlan | null;
+}
 
 /**
  * The master's side of the reaction windows (PM-04b 8, PM-04c 9 and 12b, PM-04d 2): every open window of the combat,
@@ -260,11 +269,8 @@ export class ReactionQueue {
   }
 
   /** What a row's buttons point to: the reason "use" is off, the wait another window holds, or the line that says who the table waits for. */
-  protected describedBy(row: QueueRow, forUse: boolean): string | null {
+  protected describedBy(row: QueueRow): string | null {
     const id = this.uid + row.window.id;
-    if (forUse && row.readied?.useOff) {
-      return `${id}-off`;
-    }
     if (row.status) {
       return `${id}-why`;
     }
@@ -272,9 +278,19 @@ export class ReactionQueue {
   }
 
   protected readonly aim = new ReadiedAimState(() => this.encounter());
+  protected readonly readiedWait = masterRowWait;
+  /** The master releases a held spell that needs the map, or a held move, on the map: the screen opens it. */
+  readonly release = output<ReleaseRequest>();
 
   protected use(row: QueueRow): Promise<void> {
     const w = row.window;
+    const map = this.aim.mapRelease(row);
+    if (map) {
+      if (row.answerNow && !this.busy()) {
+        this.release.emit({ window: w, plan: map.plan });
+      }
+      return Promise.resolve();
+    }
     if (row.readied) {
       // The button may be off while `disabledInteractive` still lets the click through: nothing is sent then.
       const answer = this.aim.answerOf(row);

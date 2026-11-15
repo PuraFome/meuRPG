@@ -3,7 +3,6 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
-  DestroyRef,
   effect,
   ElementRef,
   inject,
@@ -20,7 +19,9 @@ import { article } from '../../../../core/format/article';
 import { CombatClient } from '../../../../core/combat/combat-client';
 import type { CombatState } from '../../../../core/combat/combat-state';
 import { ownCombatant } from '../../../../core/combat/combat-view';
-import { playerAutoPassText, playerSecondsLeft } from '../../../../core/combat/reaction-autopass';
+import { otherDeviceText, playerWaitText } from '../../../../core/combat/readied-wait';
+import { ReleaseWatch } from '../../../../core/combat/release-watch';
+import { moveOffText } from '../../../../core/combat/release-text';
 import { readiedRefusalText } from '../../../../core/combat/readied-refusal';
 import type { AimNeed } from '../../../../core/combat/readied-aim';
 import type { ReactionAnswer } from '../../../../core/combat/combat-client-types';
@@ -30,6 +31,7 @@ import {
   type ReleasePlan,
   aimedUse,
   releaseComplete,
+  releaseMapNotice,
 } from '../../../../core/combat/readied-release';
 import { readiedGoneText, readiedPrompt } from '../../../../core/combat/reaction-readied';
 import { ActionKey } from '../../../../core/connect/idempotency';
@@ -37,8 +39,6 @@ import { SheetFrame } from '../../../../shared/sheet/sheet-frame/sheet-frame';
 import { injectSheet } from '../../../../shared/sheet/sheet-host';
 import { ReadiedAimList } from '../readied-aim/readied-aim';
 
-/** How often the prompt's countdown redraws, in ms. */
-const CLOCK_TICK_MS = 1000;
 /** What the page hands the prompt of a readied action's window. */
 export interface ReadiedWindowSheetData {
   readonly campaignId: string;
@@ -49,6 +49,11 @@ export interface ReadiedWindowSheetData {
   readonly readied: ReadiedAction | undefined;
   readonly reactorLabel: string;
   readonly state: CombatState;
+  /**
+   * "Soltar no mapa" (a held spell that needs the map) and "Mover agora" (a held move): the sheet closes and this opens the map for
+   * the release, with the plan the options gave for the spell (`null` for a move). Absent where the map cannot open.
+   */
+  readonly toMap?: (plan: ReleasePlan | null) => void;
 }
 
 /**
@@ -80,7 +85,13 @@ export interface ReadiedWindowSheetData {
           </div>
         }
         @if (gone()) {
-          <p class="what" role="status">{{ goneText() }}</p>
+          <p class="what" role="status" data-testid="readied-gone">
+            @if (goneView(); as g) {
+              <b>{{ g.lead }}</b> {{ g.rest }}
+            } @else {
+              {{ goneText() }}
+            }
+          </p>
         } @else {
           @if (useHeld()) {
             <p class="what" role="status">
@@ -103,10 +114,34 @@ export interface ReadiedWindowSheetData {
               [(plan)]="plan"
             />
           }
-          <p class="small">{{ view.note }}</p>
-          @if (view.limit) {
-            <p class="missing" id="readied-limit">
-              <mat-icon aria-hidden="true">block</mat-icon>{{ view.limit }}
+          @if (mapNotice(); as n) {
+            <div class="mr-notice mr-notice--neutral" data-testid="release-map-notice">
+              <mat-icon aria-hidden="true">{{ isMove ? 'open_with' : 'map' }}</mat-icon>
+              <p>
+                <b>{{ n.lead }}</b> {{ n.rest }}
+              </p>
+            </div>
+          }
+          @if (view.legend.length) {
+            <ul class="legend" data-testid="readied-legend">
+              @for (line of view.legend; track line.text) {
+                <li>
+                  <mat-icon aria-hidden="true">{{ line.icon }}</mat-icon>
+                  <span>
+                    @if (line.lead) {
+                      <b>{{ line.lead }}</b>
+                    }
+                    {{ line.text }}
+                  </span>
+                </li>
+              }
+            </ul>
+          } @else {
+            <p class="small">{{ view.note }}</p>
+          }
+          @if (moveOff()) {
+            <p class="missing" id="readied-limit" role="status">
+              <mat-icon aria-hidden="true">block</mat-icon>{{ moveOffLine() }}
             </p>
           }
         }
@@ -117,7 +152,12 @@ export interface ReadiedWindowSheetData {
             Fechar
           </button>
         } @else {
-          <p class="small foot__clock" role="status">{{ autoPass() }}</p>
+          <p class="small foot__clock" role="status" data-testid="readied-clock">
+            @if (otherDevice()) {
+              <mat-icon aria-hidden="true">location_on</mat-icon>
+            }
+            {{ autoPass() }}
+          </p>
           <div class="pair">
             <button
               matButton="outlined"
@@ -129,7 +169,22 @@ export interface ReadiedWindowSheetData {
             >
               {{ view.declineLabel }}
             </button>
-            @if (view.releasable) {
+            @if (mapRelease()) {
+              <button
+                matButton="filled"
+                type="button"
+                class="pair__btn"
+                [class.pair__btn--off]="moveOff()"
+                [attr.aria-describedby]="moveOff() ? 'readied-limit' : null"
+                [disabled]="!ready() || busy() || moveOff()"
+                disabledInteractive
+                data-testid="release-to-map"
+                (click)="goToMap()"
+              >
+                <mat-icon aria-hidden="true">{{ isMove ? 'directions_walk' : 'map' }}</mat-icon
+                >{{ isMove ? view.useLabel : 'Soltar no mapa' }}
+              </button>
+            } @else if (view.releasable) {
               <button
                 matButton="filled"
                 type="button"
@@ -161,6 +216,30 @@ export interface ReadiedWindowSheetData {
     .pair__btn {
       white-space: normal;
       line-height: 1.2;
+    }
+    .pair__btn--off {
+      border: 1px dashed currentColor;
+      background: transparent;
+      color: var(--mr-text-muted);
+    }
+    .legend {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: grid;
+      gap: 8px;
+      font-size: 0.875rem;
+    }
+    .legend li {
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+    }
+    .legend mat-icon {
+      flex: none;
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
     }
   `,
 })
@@ -220,22 +299,49 @@ export class ReadiedWindowSheet {
   protected readonly error = signal('');
   private readonly key = new ActionKey();
 
-  /** The master's screen passes the window after 30 s without an answer, like any optional reaction. */
-  private readonly openedAt = Date.now();
-  private readonly clock = signal(this.openedAt);
-  private readonly clockTimer = setInterval(() => this.clock.set(Date.now()), CLOCK_TICK_MS);
+  protected readonly isMove = this.data.readied?.kind === ReadiedKind.MOVE;
+  /**
+   * The window as the combat has it: the master's screen passes it after 30 s, or after the one wait of 120 s once the player opened
+   * the map (on this device or another: `rolling`). A held spell or move says what became of it once the window went away.
+   */
+  private readonly watch = new ReleaseWatch(() => this.data.state.encounter(), {
+    windowId: this.data.window.id,
+    readiedId: this.data.readied?.id ?? '',
+    reactorId: this.data.window.reactorId,
+    spellName: this.data.readied?.kind === ReadiedKind.SPELL ? this.data.readied.actionNamePt : '',
+    move: this.isMove,
+  });
+  /** The player is on the map in another device: this sheet reads the wait as theirs, not as a prompt of its own. */
+  protected readonly otherDevice = computed(() => this.watch.window()?.rolling === true);
   protected readonly autoPass = computed(() =>
-    playerAutoPassText(playerSecondsLeft(this.openedAt, this.clock())),
+    this.otherDevice()
+      ? otherDeviceText(this.watch.secondsLeft())
+      : playerWaitText(this.watch.secondsLeft()),
   );
 
   /** The window is no longer in the combat: the time ran out, or the master answered for the player. */
-  protected readonly gone = computed(
-    () =>
-      !this.busy() &&
-      !(this.data.state.encounter()?.reactionWindows ?? []).some(
-        (w) => w.id === this.data.window.id,
-      ),
+  protected readonly gone = computed(() => !this.busy() && this.watch.gone());
+  protected readonly goneView = computed(() =>
+    this.data.readied?.kind === ReadiedKind.SPELL || this.isMove ? this.watch.view() : null,
   );
+  /** The release opens the map: a spell the options place on it, or a move. */
+  protected readonly mapRelease = computed(
+    () => !!this.data.toMap && (this.isMove || this.plan()?.onMap === true),
+  );
+  protected readonly mapNotice = computed(() =>
+    this.mapRelease() && this.data.readied
+      ? releaseMapNotice(this.plan(), this.data.readied.kind)
+      : null,
+  );
+  /** A move with no speed to spend (a grapple, a speed of 0): "Mover agora" is off, and the line says why. */
+  private readonly moveLeft = signal<number | null>(null);
+  protected readonly moveOff = computed(() => this.isMove && this.moveLeft() === 0);
+  protected readonly moveOffLine = computed(() => {
+    const who = this.data.state
+      .encounter()
+      ?.combatants.find((c) => c.id === this.data.window.reactorId);
+    return moveOffText(who?.conditions.includes('condition:grappled') ?? false);
+  });
   /**
    * The use was sent and its roll was held for other windows: the window leaving the combat is then the use, not a time out. The
    * window's `answer_now` is the master's alone, so the readier is not told when the hold ends: both answers stay and the server
@@ -248,13 +354,6 @@ export class ReadiedWindowSheet {
       untracked(() => this.sheet.close());
     }
   });
-  /** When the window was seen gone: the countdown stops there, so the text does not change as the clock goes on. */
-  private readonly goneAt = signal<number | null>(null);
-  protected readonly markGone = effect(() => {
-    if (this.gone() && untracked(this.goneAt) === null) {
-      this.goneAt.set(Date.now());
-    }
-  });
   /** The window going away takes the focus to "Fechar", so it does not fall to the page behind. */
   protected readonly focusClose = effect(() => {
     if (this.gone()) {
@@ -264,19 +363,44 @@ export class ReadiedWindowSheet {
   protected readonly goneText = computed(() => {
     const e = this.data.state.encounter();
     const own = e ? ownCombatant(e) : null;
-    const at = this.goneAt();
     return readiedGoneText({
       reactionUsed: own?.reactionUsed ?? false,
       down: own?.state === CombatantState.DOWN,
-      // This screen's own clock (the wire has no time for the window): it started when the prompt opened.
-      timedOut: at !== null && playerSecondsLeft(this.openedAt, at) === 0,
+      timedOut: this.watch.secondsLeft() === 0,
+      afterMap: this.watch.waitedOnMap(),
     });
   });
 
   constructor() {
-    inject(DestroyRef).onDestroy(() => clearInterval(this.clockTimer));
+    if (this.isMove && this.data.toMap) {
+      void this.readMoveLeft();
+    }
     // The safe answer has the focus, and its ring: the sheet opens for a keyboard-style answer.
     afterNextRender(() => this.focusInitial(), { injector: this.injector });
+  }
+
+  /** What the move can spend in this window: the server's own number, so a grapple or a speed of 0 shows before the map opens. */
+  private async readMoveLeft(): Promise<void> {
+    try {
+      const res = await this.api.moves.moveOptions(
+        this.data.campaignId,
+        this.data.encounterId,
+        this.data.window.reactorId,
+      );
+      this.moveLeft.set(res.movementLeftDft);
+    } catch {
+      // The map says it itself: the sheet keeps the button on.
+    }
+  }
+
+  /** "Soltar no mapa" and "Mover agora": the sheet closes and the map opens for the release. */
+  protected goToMap(): void {
+    const toMap = this.data.toMap;
+    if (!toMap || this.busy() || !this.ready() || this.moveOff()) {
+      return;
+    }
+    this.sheet.close();
+    toMap(this.plan());
   }
 
   private focusInitial(): void {

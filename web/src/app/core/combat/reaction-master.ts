@@ -59,8 +59,8 @@ export interface QueueRow {
   readonly readied?: {
     /** "Esperando Tor". */
     readonly waits: string;
-    /** Why "use" is not offered from the queue, or `''`. */
-    readonly useOff: string;
+    /** "Depois de Pensantus" for the window that waits behind another (one at a time), or `''`. */
+    readonly after: string;
     /** The use is an attack or a spell: the dice come from the app, and the creature is picked from a list (`app-readied-aim`). */
     readonly aims: boolean;
   };
@@ -194,7 +194,7 @@ function rowOf(e: Encounter, w: ReactionWindow, before: ReactionWindow | undefin
       tag: player ? 'Jogador' : 'NPC',
       answerNow: w.answerNow,
       slots: [],
-      ...readiedRowFields(e, w),
+      ...readiedRowFields(e, w, before),
     };
   }
   const status = player

@@ -12,6 +12,7 @@ import {
   readiedGoneText,
   readiedLegend,
   readiedPrompt,
+  readiedRowFields,
   readiedTargetRows,
   readiedMasterRow,
 } from './reaction-readied';
@@ -54,7 +55,53 @@ describe('the prompt of a readied window (582-06, 582-07, 582-08)', () => {
     expect(p.title).toBe('Soltar Mísseis Mágicos');
     expect(p.subtitle).toBe('Reação · a ação preparada de Pensantus');
     expect(p.releasable).toBe(true);
-    expect(p.note).toContain('Deixar passar perde a magia');
+    expect(p.note).toBe(
+      'Guardada, a magia prende a sua concentração. Deixar passar perde a magia e o espaço.',
+    );
+  });
+
+  it('says what a held spell costs in the three lines of board 857-01, with the level it was held with', () => {
+    const p = readiedPrompt(
+      held({ kind: ReadiedKind.SPELL, actionNamePt: 'Bola de Fogo', slotLevel: 3 }),
+      2,
+      'Pensantus',
+    );
+    expect(p.legend).toEqual([
+      { icon: 'square', lead: 'Reação:', text: 'gasta quando a magia sair.' },
+      {
+        icon: 'auto_fix_normal',
+        lead: 'Sem espaço:',
+        text: 'o de 3º nível foi gasto ao preparar.',
+      },
+      { icon: 'adjust', lead: '', text: p.note },
+    ]);
+  });
+
+  it('says nothing of a slot for a held cantrip', () => {
+    const p = readiedPrompt(
+      held({ kind: ReadiedKind.SPELL, actionNamePt: 'Raio de Gelo', slotLevel: 0 }),
+      2,
+      'Pensantus',
+    );
+    expect(p.legend.map((l) => l.lead)).toEqual(['Reação:', '']);
+  });
+
+  it('says a held move in the two lines of board 857-05, and releases it from the map', () => {
+    const p = readiedPrompt(held({ kind: ReadiedKind.MOVE, moveFt: 30 }), 2, 'Tor');
+    expect(p.releasable).toBe(true);
+    expect(p.useLabel).toBe('Mover agora');
+    expect(p.legend).toEqual([
+      {
+        icon: 'square',
+        lead: 'Reação:',
+        text: 'gasta quando você mover; volta no começo da sua vez.',
+      },
+      {
+        icon: 'open_with',
+        lead: '',
+        text: 'Provoca ataques de oportunidade, como qualquer movimento.',
+      },
+    ]);
   });
 
   it('says a move with its limit and a standard action by its name, with one button', () => {
@@ -64,7 +111,7 @@ describe('the prompt of a readied window (582-06, 582-07, 582-08)', () => {
       'Tor',
     );
     expect(plain(move.question)).toBe('Mover agora, até 7,5 m?');
-    expect(move.releasable).toBe(false);
+    expect(move.releasable).toBe(true);
     const other = readiedPrompt(
       held({ kind: ReadiedKind.OTHER, actionNamePt: 'Esquivar', triggerText: 'Se a porta abrir' }),
       2,
@@ -137,6 +184,16 @@ describe('a window that closed without the player', () => {
     );
     expect(readiedGoneText({ ...base, down: true, timedOut: true })).toBe('Você ficou Caído.');
   });
+
+  it('says 2 minutes when the player had been on the map, 30 s when not', () => {
+    const base = { reactionUsed: false, down: false, timedOut: true };
+    expect(readiedGoneText({ ...base, afterMap: true })).toBe(
+      'Passou sozinho: você não respondeu em 2 min.',
+    );
+    expect(readiedGoneText({ ...base, afterMap: false })).toBe(
+      'Passou sozinho: você não respondeu em 30 s.',
+    );
+  });
 });
 
 describe("the master's row of a readied window (582-05)", () => {
@@ -163,10 +220,9 @@ describe("the master's row of a readied window (582-05)", () => {
     expect(row.waits).toBe('Esperando Tor');
     expect(row.useLabel).toBe('Atacar por Tor');
     expect(row.passLabel).toBe('Deixar passar');
-    expect(row.useOff).toBe('');
   });
 
-  it('cannot use a move or a spell for the player from here, and says so', () => {
+  it('answers a move and a spell for the player with the board words, none of them off', () => {
     const move = encounter({
       combatants: [
         combatant({
@@ -176,8 +232,47 @@ describe("the master's row of a readied window (582-05)", () => {
         }),
       ],
     });
-    expect(readiedMasterRow(move, w).useOff).toBe(
-      'Mover é pelo mapa: mova Tor com a janela aberta.',
-    );
+    const row = readiedMasterRow(move, w);
+    expect(row.useLabel).toBe('Mover por Tor');
+    const spell = encounter({
+      combatants: [
+        combatant({
+          id: 'tor',
+          label: 'Tor',
+          readied: held({ kind: ReadiedKind.SPELL, actionNamePt: 'Bola de Fogo' }),
+        }),
+      ],
+    });
+    expect(readiedMasterRow(spell, w).useLabel).toBe('Soltar por Tor');
+  });
+});
+
+describe('the second readied window of a queue (857-08 card 6)', () => {
+  const e = encounter({
+    combatants: [
+      combatant({ id: 'pen', label: 'Pensantus', readied: held({ kind: ReadiedKind.SPELL }) }),
+      combatant({ id: 'tor', label: 'Tor', readied: held({ kind: ReadiedKind.MOVE, moveFt: 30 }) }),
+    ],
+  });
+  const second = reactionWindow({
+    id: 'w2',
+    kind: ReactionKind.READIED,
+    reactorId: 'tor',
+    reactorLabel: 'Tor',
+    reactorIsPlayer: true,
+    answerNow: false,
+  });
+  const first = reactionWindow({
+    id: 'w1',
+    kind: ReactionKind.READIED,
+    reactorId: 'pen',
+    reactorLabel: 'Pensantus',
+    reactorIsPlayer: true,
+    answerNow: true,
+  });
+
+  it('waits behind the first one, and says so', () => {
+    expect(readiedRowFields(e, second, first).readied.after).toBe('Depois de Pensantus');
+    expect(readiedRowFields(e, first, undefined).readied.after).toBe('');
   });
 });

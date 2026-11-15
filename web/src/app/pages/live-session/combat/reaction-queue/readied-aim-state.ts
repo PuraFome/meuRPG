@@ -4,6 +4,7 @@ import type { ReactionAnswer } from '../../../../core/combat/combat-client-types
 import type { Encounter } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import type { AimNeed } from '../../../../core/combat/readied-aim';
 import type { QueueRow } from '../../../../core/combat/reaction-master';
+import { ReadiedKind } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { readiedOfWindow } from '../../../../core/combat/reaction-readied';
 import {
   NO_PICK,
@@ -61,6 +62,16 @@ export class ReadiedAimState {
     this.targets.update((m) => ({ ...m, [row.window.id]: target }));
   }
 
+  /** A held move, or a held spell the options place on the map: its use opens the map (`plan` is `null` for a move); `null` for any other. */
+  mapRelease(row: QueueRow): { readonly plan: ReleasePlan | null } | null {
+    const kind = this.held(row)?.kind;
+    if (kind === ReadiedKind.MOVE) {
+      return { plan: null };
+    }
+    const plan = this.planOf(row);
+    return kind === ReadiedKind.SPELL && plan?.onMap ? { plan } : null;
+  }
+
   /** Whether the use waits for a creature to be picked. */
   off(row: QueueRow): boolean {
     if (!row.readied?.aims) {
@@ -82,12 +93,12 @@ export class ReadiedAimState {
 
   /** Whether the use button is off: not this window's turn, a use the queue cannot make, or a creature still to pick. */
   useOff(row: QueueRow): boolean {
-    return !row.answerNow || !!row.readied?.useOff || this.off(row);
+    return !row.answerNow || this.off(row);
   }
 
   /** The use of a readied action: the creature picked or the held spell's targets, and the d20 of the app (`creature_ids` or `targets`, `roll`); `null` while it is off. */
   answerOf(row: QueueRow): ReactionAnswer | null {
-    if (row.readied?.useOff || this.off(row)) {
+    if (this.off(row)) {
       return null;
     }
     return row.readied?.aims
