@@ -3,7 +3,7 @@
 The master grants Inspiration to a player character; the rule is [RN-43](../../product/rules.md#rn-43-the-masters-inspiration).
 The code calls it favor because "inspiration" already means the Bardic Inspiration die ([Held rolls](held-rolls.md)); the app says "Inspiração".
 The contract is `FavorService` (`proto/meurpg/play/v1/favor.proto`).
-The code is `favor_grant.go`, `favor_pass.go`, `favor_read.go`, `favor_events.go`, `favor_rpc.go` and `favor_spend.go`.
+The code is `favor_grant.go`, `favor_pass.go`, `favor_read.go`, `favor_events.go`, `favor_refund.go` and `favor_spend.go`.
 `GrantFavor`, `GetFavor`, `PassFavor`, `AnswerFavorPass`, `CancelFavorPass` and `AnswerFavorRefund` are built (`favor_refund.go` is the refund).
 The spend is the helper `useFavor`, which the roll paths call.
 
@@ -18,7 +18,7 @@ A player character gets a grant whatever its status: a dead one is granted too.
 ## The grant
 
 `GrantFavor` is the master's call, in an open session, with or without a combat.
-It does not touch the combat: no combatant is read or written.
+In a combat it writes the grant as the combat's last action: `favorStage` reads the encounter and the combatant, and the event is stamped with the encounter (below, "The log and the undo"). Outside a combat it touches nothing of one.
 
 1.
    It checks the caller is the master, the key and the character id, and finds the open session.
@@ -71,7 +71,7 @@ The pass is read again under the session's lock: one that is no longer pending i
   It closes the pass `accepted`, deletes the giver's row (`SpendCharacterFavor`), inserts the receiver's with `ON CONFLICT DO NOTHING` and writes `favor_passed`.
   If the receiver already has one (or is no player character of the table any more), the insert gives no row and the call answers `CANNOT_RECEIVE`: the transaction is rolled back whole, so nothing changed, no event was written, no number moved and no hint was sent, and the pass stays pending.
   Only the master is told: `CANNOT_RECEIVE` goes to nobody else.
-  A giver that has none by now (nothing takes it while the pass is pending, but the master's undo of a grant will) gets `NOT_THE_HOLDER`, again with nothing changed.
+  A giver that has none by now gets `NOT_THE_HOLDER`, again with nothing changed; that is a defence only, since nothing takes the row while the pass is pending (the master's undo of a grant cancels the ask in the same transaction, `takeFavorFrom`). A giver or a receiver sent back to the reserve while the ask waits is the same: `NOT_THE_HOLDER` for the giver, `CANNOT_RECEIVE` for the receiver.
   An accept racing a grant to the receiver ends one way or the other: the grant first (the accept is `CANNOT_RECEIVE`) or the accept first (the grant is `ALREADY_HAS`); the receiver never has two rows.
 - **Refuse** closes it `refused` and writes `favor_pass_refused`; nothing moves.
 
@@ -210,10 +210,10 @@ The log entry of a roll made with the Inspiration carries `favor_text_pt`: "<nam
 The master and the roller's own player read it; another player and someone outside the campaign read the roll as any other.
 A zone's save names the creature that rolled it, not the zone's owner.
 The undo of an attack or a cast puts the row back in the undo's transaction, and the master's undo does not stack: a character that was granted another since keeps the one.
-A concentration save and an effect save are not undoable kinds, so they have no undo, except the save of a zone at its cast: the undo of the cast gives its Inspiration back.
+A concentration save and an effect save are not undoable kinds, so they have no undo, except the save of a zone at its cast: the undo of the cast gives its Inspiration back and, as the undo of a roll does, closes the refund prompt that spend opened as kept (`keepRefundOfKey`, in the roll's undo, in `takeBackOlder` and in `zoneAnswerBack`), so a later "Devolver" cannot mint a second one.
 `keep` and `hand_to_master` on a concentration save, and a skipped effect save, ignore `spend_favor` without refusing it.
 Each roll that spends moves the session's hint number once, as the roll already does, and a refusal moves none.
-**In a combat.** A favor event written while the session's combat is running (not in setup), and whose characters are all player combatants of it, carries the open encounter (the `session_events.encounter_id` column) and, in its payload, the round, the combatants (`combatant_id`, `target_id`), `secret` (a hidden combatant is in it) and the audience (`fogged` and `seen_by`: the owners of the characters named), with the names `actionEvent` uses, so the log reads them (`favorInCombat`, `favorStage`). Outside a combat, or with a character that is not a combatant, the event carries none of it: no line and no undo.
+**In a combat.** A favor event written while the session's combat is running (not in setup), and whose characters are all player combatants of it, carries the open encounter (the `session_events.encounter_id` column) and, in its payload, the round, the combatants (`combatant_id`, `target_id`), `secret` (a defensive stamp: no player's combatant can be hidden, so it is never set by the API) and the audience (`fogged` and `seen_by`: the owners of the characters named), with the names `actionEvent` uses, so the log reads them (`favorInCombat`, `favorStage`). Outside a combat, or with a character that is not a combatant, the event carries none of it: no line and no undo.
 Three log kinds carry the line, in `CombatLogFavor.text_pt`, built for each reader (`combat_log_favor.go`):
 
 | Kind | Event | Master | Giver or roller | Receiver |
@@ -222,13 +222,13 @@ Three log kinds carry the line, in `CombatLogFavor.text_pt`, built for each read
 | `FAVOR_PASS_ANSWERED` (118) | `favor_pass_refused`, `favor_pass_canceled`, and the undo of an accepted pass | names | "O mestre recusou: a Inspiração continua com você." / "Você desistiu de passar a Inspiração." | after an undo only: "O mestre desfez a passagem: a Inspiração não está mais com você." (no actor in the entry) |
 | `FAVOR_REFUNDED` (117) | `favor_refunded` | "O mestre devolveu a Inspiração de Brisa." | "O mestre devolveu a sua Inspiração." | none |
 
-No other player reads a line, nor hears of it or of its undo (`seen_by`), and an entry with a hidden combatant is the master's alone, even after the master shows it (`secret`).
+No other player reads a line, nor hears of it or of its undo (`seen_by`), and an entry with a hidden combatant is the master's alone, even after the master shows it (`secret`). No hidden player combatant can exist (`SetCombatantHidden` refuses a player's combatant, `TestAPlayersCombatantCannotBeHidden`), so the `secret` stamp is a defence for a row the API cannot make, not a feature; its tests set the flag in the table.
 `chainFavor` keeps the ask, the prompt, the kept prompt and every favor event of another combat or of none out of the undo chain; a grant, an accepted pass, a refusal and a cancel of this combat are its actions (`favorUndoKinds`).
 The master's undo (`takeBackFavor`) of a grant takes the row back; of an accepted pass it takes it from the receiver and gives it to the giver in the undo's own transaction; of a refusal or a cancel it only closes the line.
 It is refused `UNDO_TARGET_CHANGED` (naming the combatant) when the character spent it since, and `ALREADY_HAS` when the giver has another by then; nothing changes, since the transaction rolls back whole.
 The undo tells the master and the owners of the event, and no other player.
-The grant's line is the master's alone and reuses `FAVOR_PASSED` ("O mestre deu a Inspiração a Toren."; `fillFavor` says nothing to a player, and the event's `seen_by` is empty, so the owner of the character granted hears nothing of it either), so the screen offers its undo from the line the master reads (`undoable` on the entry), not from `undoable_event_id` alone. A hidden combatant makes it `secret` as the rest.
-A refusal or a cancel moved nothing, so its `seen_by` is the giver's owner alone (`stageOfPass(moved=false)`); only an accepted pass (and its undo) is told to the receiver's owner too.
+The grant's line is the master's alone and reuses `FAVOR_PASSED` ("O mestre deu a Inspiração a Toren."; `fillFavor` says nothing to a player, and the event's `seen_by` is empty, so the owner of the character granted hears nothing of it either), so the screen offers its undo from the line the master reads (`undoable` on the entry), not from `undoable_event_id` alone. The stamp is the same defence as for the rest.
+A giver's own cancel and a refusal written in a combat are the master's last action too (`favorUndoKinds`; the plan meant it): his undo of one only takes its line away. A refusal or a cancel moved nothing, so its `seen_by` is the giver's owner alone (`stageOfPass(moved=false)`); only an accepted pass (and its undo) is told to the receiver's owner too.
 The undo of a grant or an accepted pass also cancels the pending ask of the character that lost the row (`takeFavorFrom`): it closes the `favor_passes` row as `canceled` with no key and writes a `favor_pass_canceled` with no combat (so no line and no action to undo), in the undo's transaction. It sends no hint of its own: the vitals hint the undo already sends to the master and the owner makes their screens read `GetFavor` again.
 
 ## The refund prompt
@@ -282,8 +282,8 @@ A player calling it is `permission_denied`.
 `favor_round2_test.go` covers the spell attack that spends once, `ADDS_NOTHING` judged on what the roller reads (an attack, a save and a check, with a hidden advantage, a hidden pair and a visible control) and the spend before a Protection that cancels the advantage.
 `favor_pass_test.go` covers the pass: the ask and its refusals in order, the retries, the answers, `CANNOT_RECEIVE`, the cancel, the read, the spend refused while pending, the end of a session, the hints, and the races (two asks, accept and cancel, two accepts, accept and a grant to the receiver, accept and a spend).
 `favor_pass_log_test.go` and `favor_refund_test.go` cover the combat's lines, the hints of each reader (a third player hears nothing), the undo of a pass and of a grant with the ask they cancel, and the refund prompt: the answers, `ALREADY_HAS`, the prompt closed by the undo or the forgetting of its roll, and the hint number of a keep.
-`favor_race_test.go` covers a spend racing the master's answer of a refund prompt and an accept racing the undo of the grant (at most one row, one winner); the one-row rule is the primary key of `character_favor`, which holds the same on CockroachDB.
+`favor_race_test.go` covers a spend racing the master's answer of a refund prompt and an accept racing the undo of the grant; `favor_refund_test.go` has the undo of a cast whose zone's save opened a prompt, and `favor_pass_test.go` the accept with a giver or a receiver in the reserve (at most one row, one winner); the one-row rule is the primary key of `character_favor`, which holds the same on CockroachDB.
 `TestAuthorizationMatrix` has the rows of the calls.
 `internal/leaktest/favor_test.go` proves that a third player reads nothing of who has it, in the read, the log and the stream.
 `internal/leaktest/favor_checks_test.go` proves that the source "Inspiração" of a spent check reaches the roller and the master and no one else.
-`internal/leaktest/favor_pass_test.go` proves, for the grant, the ask, the refusal, the cancel, the accept, the refund prompt and its answers and the undo of a grant, of a pass and of a refusal or a cancel, that each line, read and hint reaches only its readers, and that a third player reads nothing of the Inspiration in any read and hears no hint of it.
+`internal/leaktest/favor_pass_test.go` proves, for the grant, the ask, the refusal, the cancel, the accept, the refund prompt and its answers and the undo of a grant, of a pass and of a refusal or a cancel, that each line, read and hint reaches only its readers, and that a third player reads nothing of the Inspiration in any read and hears no hint of it. The same file proves the end of a session (the pass it cancels and the prompt it keeps reach the master and the giver's owner alone), the text of the prompt's hidden sources (the master's `refund_prompts` and no other field or reader) and a third player's writes (`PassFavor` of a character that is not hers `FAILED_PRECONDITION` `NOT_THE_HOLDER`, `CancelFavorPass` of another's ask `NOT_FOUND`, `AnswerFavorPass` `PERMISSION_DENIED`).

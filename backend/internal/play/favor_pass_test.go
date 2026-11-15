@@ -1151,3 +1151,34 @@ func TestPassFavorReadsNoSession(t *testing.T) {
 		t.Errorf("GetFavor() after the session = %v, want no pending pass", got)
 	}
 }
+
+// A giver sent back to the reserve while its ask waits is no holder of the table: the accept is NOT_THE_HOLDER (the reason of a giver
+// that is no player character of the caller's), nothing moves and the pass stays pending. A receiver in the reserve is CANNOT_RECEIVE.
+func TestAnswerFavorPassAcceptWithAGiverOrAReceiverInTheReserve(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name     string
+		reserved func(f *favorParty) string
+		want     playv1.FavorBlockedReason
+	}{
+		{"the giver", func(f *favorParty) string { return f.toren.GetId() }, playv1.FavorBlockedReason_FAVOR_BLOCKED_REASON_NOT_THE_HOLDER},
+		{"the receiver", func(f *favorParty) string { return f.pens.GetId() }, blockedCannotReceive},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			f := newFavorParty(t)
+			if err := f.grant(f.toren.GetId()); err != nil {
+				t.Fatalf("GrantFavor() error = %v", err)
+			}
+			p := f.mustAsk(t, f.toren.GetId(), f.pens.GetId())
+			f.execSQL(t, `UPDATE characters SET reserved = true, player_user_id = NULL WHERE id = $1`, tc.reserved(f))
+			w := f.world(t)
+			_, err := f.answer(p.GetId(), true)
+			wantFavorBlocked(t, "Aceitar with "+tc.name+" in the reserve", err, tc.want)
+			f.wantSame(t, "the refused accept", w)
+			if s := f.passStatus(t, p.GetId()); s != "pending" || !f.has(t, f.toren.GetId()) || f.has(t, f.pens.GetId()) {
+				t.Errorf("pass %q, Toren has it %v, Pensantus %v, want it pending and unmoved", s, f.has(t, f.toren.GetId()), f.has(t, f.pens.GetId()))
+			}
+		})
+	}
+}

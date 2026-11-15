@@ -1,9 +1,12 @@
 package leaktest
 
 import (
+	"errors"
 	"slices"
 	"testing"
+	"time"
 
+	"connectrpc.com/connect"
 	"google.golang.org/protobuf/proto"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
@@ -24,6 +27,8 @@ type stepSpec struct {
 	gone  []*canary
 	allow map[*person][]string
 	need  map[*person][]string
+	// quiet makes the master's hints count too: the step is one that tells nobody anything.
+	quiet bool
 }
 
 // eventCasesAfter are the kinds of the events a stream got after the first n, apart from the marker and the heartbeat.
@@ -48,6 +53,7 @@ type passRun struct {
 	watchers map[*person]*streamWatcher
 	all      []*canary
 	pass     *playv1.FavorPass
+	passID   *canary
 	prompt   string
 }
 
@@ -151,7 +157,7 @@ func (r *passRun) checkWanted(name string, spec stepSpec, ans *answers) {
 func (r *passRun) checkHints(name string, spec stepSpec, marks map[*person]int) {
 	for _, p := range r.people {
 		got := eventCasesAfter(r.watchers[p], marks[p])
-		if p != r.w.master {
+		if p != r.w.master || spec.quiet {
 			for _, k := range got {
 				if !slices.Contains(spec.allow[p], k) {
 					r.t.Errorf("%s: %s heard %s, want only %v (heard %v)", name, p.name, k, spec.allow[p], got)
@@ -192,7 +198,8 @@ func (r *passRun) ask() {
 	r.pass = must(w.caio.favor.PassFavor(r.t.Context(), rq(&playv1.PassFavorRequest{
 		CampaignId: w.campaign, FromCharacterId: w.toren.GetId(), ToCharacterId: w.pens.GetId(), IdempotencyKey: newKey(),
 	}))).GetPass()
-	r.all = append(r.all, w.secrets.add(&canary{needle: r.pass.GetId(), kind: "favor-pass-id", readers: names([]*person{w.caio})}))
+	r.passID = w.secrets.add(&canary{needle: r.pass.GetId(), kind: "favor-pass-id", readers: names([]*person{w.caio})})
+	r.all = append(r.all, r.passID)
 }
 
 func (r *passRun) answerPass(accept bool) func() {
@@ -283,6 +290,8 @@ func TestFavorPassAndRefundReachOnlyWhoTheyAreFor(t *testing.T) {
 	undoneR := r.add("favor-line-undone-receiver", "O mestre desfez a passagem: a Inspiração não está mais com você.", ana)
 	refundedM := r.add("favor-line-refunded-master", "O mestre devolveu a Inspiração de "+toren+".")
 	refundedR := r.add("favor-line-refunded-roller", "O mestre devolveu a sua Inspiração.", caio)
+	// The sources the roller could not read are the master's text alone, in the prompt he reads and in no other field or reader.
+	hiddenText := r.add("favor-refund-hidden-source", "Bênção: vantagem neste ataque")
 	both := func(cs ...*canary) map[*canary][]*person {
 		out := map[*canary][]*person{}
 		for _, c := range cs {
@@ -313,6 +322,7 @@ func TestFavorPassAndRefundReachOnlyWhoTheyAreFor(t *testing.T) {
 	allow, _ = toCaio(vitalsLog, nil)
 	r.step("the undo of the cancel", r.undo, stepSpec{gone: []*canary{canceledM, canceledG}, allow: allow})
 	r.step("the third ask", r.ask, stepSpec{allow: map[*person][]string{caio: vitalsOnly}})
+	r.step("the third player's writes", r.thirdWrites, stepSpec{quiet: true})
 	// Only the accepted pass reaches the receiver.
 	want = both(passedM)
 	want[passedG], want[passedR] = []*person{caio}, []*person{ana}
@@ -329,7 +339,7 @@ func TestFavorPassAndRefundReachOnlyWhoTheyAreFor(t *testing.T) {
 	// The refund: a roll that spent the Inspiration for nothing (a hidden advantage the roller does not read) asks the master alone.
 	r.hide(toren)
 	r.step("the grant for the refund", r.grant(w.toren.GetId()), stepSpec{want: both(grantT), allow: map[*person][]string{caio: vitalsOnly}})
-	rolled := stepSpec{allow: map[*person][]string{caio: rollHints, ana: tableHints, r.third: tableHints}}
+	rolled := stepSpec{want: both(hiddenText), allow: map[*person][]string{caio: rollHints, ana: tableHints, r.third: tableHints}}
 	r.step("the roll that opens the prompt", r.spendAndPrompt, rolled)
 	allow, need = toCaio(vitalsLog, vitalsLog)
 	r.step("the refund", r.answerRefund(true), stepSpec{want: map[*canary][]*person{refundedM: nil, refundedR: {caio}}, allow: allow, need: need})
@@ -340,4 +350,109 @@ func TestFavorPassAndRefundReachOnlyWhoTheyAreFor(t *testing.T) {
 	r.settle()
 	r.step("the roll that opens the second prompt", r.spendAndPrompt, rolled)
 	r.step("the keep", r.answerRefund(false), stepSpec{need: map[*person][]string{w.master: vitalsOnly}})
+}
+
+// blockedReason is the FavorBlocked reason a refusal carries, unspecified when it carries none.
+func blockedReason(err error) playv1.FavorBlockedReason {
+	if ce, ok := errors.AsType[*connect.Error](err); ok {
+		for _, d := range ce.Details() {
+			if v, derr := d.Value(); derr == nil {
+				if b, isBlocked := v.(*playv1.FavorBlocked); isBlocked {
+					return b.GetReason()
+				}
+			}
+		}
+	}
+	return playv1.FavorBlockedReason_FAVOR_BLOCKED_REASON_UNSPECIFIED
+}
+
+// wantRefused checks the exact code and reason of a write a third player made: a stranger's character or pass is not told apart from one that
+// is not there, and a call of the master's is the master's.
+func (r *passRun) wantRefused(what string, err error, code connect.Code, reason playv1.FavorBlockedReason) {
+	r.t.Helper()
+	if connect.CodeOf(err) != code || blockedReason(err) != reason {
+		r.t.Errorf("%s: error = %v (code %v, reason %v), want code %v and reason %v", what, err, connect.CodeOf(err), blockedReason(err), code, reason)
+	}
+}
+
+// thirdWrites are Dani's writes on an Inspiration that is not hers while Caio's ask is pending: each is refused with its exact code and
+// reason, changes nothing and tells nobody anything.
+func (r *passRun) thirdWrites() {
+	w := r.w
+	ctx := r.t.Context()
+	unspecified := playv1.FavorBlockedReason_FAVOR_BLOCKED_REASON_UNSPECIFIED
+	_, err := r.third.favor.PassFavor(ctx, rq(&playv1.PassFavorRequest{CampaignId: w.campaign, FromCharacterId: w.toren.GetId(), ToCharacterId: w.pens.GetId(), IdempotencyKey: newKey()}))
+	r.wantRefused("Dani's PassFavor of Caio's character", err, connect.CodeFailedPrecondition, playv1.FavorBlockedReason_FAVOR_BLOCKED_REASON_NOT_THE_HOLDER)
+	_, err = r.third.favor.CancelFavorPass(ctx, rq(&playv1.CancelFavorPassRequest{CampaignId: w.campaign, PassId: r.pass.GetId(), IdempotencyKey: newKey()}))
+	r.wantRefused("Dani's CancelFavorPass of Caio's ask", err, connect.CodeNotFound, unspecified)
+	_, err = r.third.favor.AnswerFavorPass(ctx, rq(&playv1.AnswerFavorPassRequest{CampaignId: w.campaign, PassId: r.pass.GetId(), Accept: true, IdempotencyKey: newKey()}))
+	r.wantRefused("Dani's AnswerFavorPass", err, connect.CodePermissionDenied, unspecified)
+	_, err = r.w.ana.favor.CancelFavorPass(ctx, rq(&playv1.CancelFavorPassRequest{CampaignId: w.campaign, PassId: r.pass.GetId(), IdempotencyKey: newKey()}))
+	r.wantRefused("the receiver's CancelFavorPass of the ask", err, connect.CodeNotFound, unspecified)
+}
+
+// A session that ends cancels the pass still pending and keeps the refund prompt still open: each is the master's and the giver's owner's to
+// hear, nobody else's (the receiver and a third player hear nothing of either), and no pass or prompt is read after it.
+func TestFavorSessionEndReachesOnlyWhoItIsFor(t *testing.T) {
+	defer func() {
+		if rec := recover(); rec != nil {
+			t.Fatalf("the test: %v", rec)
+		}
+	}()
+	r := newPassRun(t)
+	w, caio := r.w, r.w.caio
+	hiddenText := r.add("favor-refund-hidden-source", "Bênção: vantagem neste ataque")
+	r.hide(labelToren)
+	r.step("the grant", r.grant(w.toren.GetId()), stepSpec{allow: map[*person][]string{caio: vitalsOnly}})
+	r.step("the roll that opens the prompt", r.spendAndPrompt, stepSpec{
+		want: map[*canary][]*person{hiddenText: nil}, allow: map[*person][]string{caio: rollHints, w.ana: tableHints, r.third: tableHints},
+	})
+	r.step("the grant again", r.grant(w.toren.GetId()), stepSpec{allow: map[*person][]string{caio: vitalsOnly}})
+	r.step("the ask", r.ask, stepSpec{allow: map[*person][]string{caio: vitalsOnly}})
+	r.step("the third player's writes", r.thirdWrites, stepSpec{quiet: true, want: map[*canary][]*person{r.passID: {caio}}})
+	r.endTheSession(map[*person]bool{w.master: true, caio: true})
+	var pass, prompt string
+	if err := w.pool.QueryRow(t.Context(), `SELECT (SELECT status FROM favor_passes WHERE id = $1), (SELECT status FROM favor_refund_prompts WHERE id = $2)`, r.pass.GetId(), r.prompt).Scan(&pass, &prompt); err != nil {
+		t.Fatalf("read the pass and the prompt: %v", err)
+	}
+	if pass != "canceled" || prompt != "kept" {
+		t.Errorf("after the session's end the pass is %q and the prompt %q, want the pass canceled and the prompt kept", pass, prompt)
+	}
+}
+
+// endTheSession ends the combat and the session and reads what each stream heard: the vitals hint of Toren (the cancel of his ask and the
+// keeping of his prompt) reaches the master and the giver's owner and nobody else, and no event of the end carries a canary of the pass or
+// the prompt to a player who may not read it. The streams end with the session, so the events are read after they close.
+func (r *passRun) endTheSession(hearsToren map[*person]bool) {
+	w := r.w
+	ctx := r.t.Context()
+	marks := map[*person]int{}
+	for p, sw := range r.watchers {
+		marks[p] = sw.count()
+	}
+	must(w.master.combat.EndEncounter(ctx, rq(&playv1.EndEncounterRequest{CampaignId: w.campaign, EncounterId: w.encounter.GetId(), IdempotencyKey: newKey()})))
+	must(w.master.play.EndGameSession(ctx, rq(&playv1.EndGameSessionRequest{CampaignId: w.campaign, GameSessionId: w.session})))
+	for p, sw := range r.watchers {
+		select {
+		case <-sw.done:
+		case <-time.After(30 * time.Second):
+			r.t.Fatalf("%s's stream did not end with the session", p.name)
+		}
+		heard := false
+		for _, ev := range sw.since(marks[p]) {
+			if ev.GetVitalsChanged().GetVitals().GetCharacterId() == w.toren.GetId() {
+				heard = true
+			}
+			if p == w.master {
+				continue
+			}
+			body := mustJSON(ev)
+			for _, f := range w.inspect(p, reply{status: 200, body: body, msg: ev}, nil) {
+				r.t.Errorf("%s: event %s of the session's end: %s\n\tevent: %s", p.name, eventCase(ev), f, shorten(body))
+			}
+		}
+		if heard != hearsToren[p] {
+			r.t.Errorf("%s heard Toren's vitals hint at the session's end = %v, want %v", p.name, heard, hearsToren[p])
+		}
+	}
 }

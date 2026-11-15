@@ -544,11 +544,20 @@ func (s *Service) takeBackOf(ctx context.Context, c *combatTx, run *undoRun, las
 		return nil, s.takeBackGearSwap(ctx, c, run, last.Payload)
 	}
 	vitals, err := s.takeBack(ctx, c, last.Kind, ev)
-	if err != nil || !ev.Favor || last.IdempotencyKey == nil {
+	if err != nil || !ev.Favor {
 		return vitals, err
 	}
 	// The Inspiration the roll spent is back (favorBack): the master's question about it closes as kept.
-	return vitals, keepRefundOfRoll(ctx, c.q, c.session.CampaignID, *last.IdempotencyKey)
+	return vitals, keepRefundOfKey(ctx, c, last.IdempotencyKey)
+}
+
+// keepRefundOfKey closes as kept the refund prompt of the roll written under the key, when the undo gave its Inspiration back: every path
+// of the undo that gives one back goes through it (the undone roll, an older event that goes with it, an answer to a zone's catch).
+func keepRefundOfKey(ctx context.Context, c *combatTx, key *string) error {
+	if key == nil {
+		return nil
+	}
+	return keepRefundOfRoll(ctx, c.q, c.session.CampaignID, *key)
 }
 
 // creatureToPutBack is the creature whose square the undo of ev changes behind the mover's
@@ -663,6 +672,11 @@ func (s *Service) takeBackOlder(ctx context.Context, c *combatTx, run *undoRun, 
 	more, err := s.takeBack(ctx, c, older.Kind, pe)
 	if err != nil {
 		return err
+	}
+	if pe.Favor {
+		if err := keepRefundOfKey(ctx, c, older.IdempotencyKey); err != nil {
+			return err
+		}
 	}
 	run.vitals = append(run.vitals, more...)
 	run.alsoUndone = append(append(run.alsoUndone, older.ID), pe.linesBefore()...)

@@ -367,3 +367,45 @@ func TestRefundLineOfAHiddenRollerIsTheMastersAlone(t *testing.T) {
 	f.hideBySQL(t, f.toren.GetId(), false)
 	f.wantTexts(t, "the refund after the flag is cleared", want)
 }
+
+// The undo of a zone's cast gives back the Inspiração spent on the save of a catch at the cast, as it does the roll's own undo: the prompt
+// of that spend closes as kept too, or the master's later "Devolver" would mint a second Inspiração for a roller that spent the first again.
+func TestUndoOfTheCastKeepsTheRefundPromptOfAZoneSave(t *testing.T) {
+	t.Parallel()
+	c := wallCave(t)
+	c.wallFight(t)
+	e := c.get(t, c.master)
+	f := favorFightOf(t, c.armed, e)
+	c.mustCastArea(t, c.ana, "Pensantus", wallOfFireKey, slotOfLevel(4), at(5, 8), nil, northWall(playv1.WallSide_WALL_SIDE_LEFT))
+	w := c.windowOf(t, c.caio, playv1.ReactionKind_REACTION_KIND_EFFECT_SAVE)
+	if w == nil {
+		t.Fatal("Toren's player has no question: the wall caught his character at the cast")
+	}
+	f.execSQL(t, `INSERT INTO character_favor (character_id, campaign_id) SELECT $1, campaign_id FROM characters WHERE id = $1`, c.toren.GetId())
+	f.hiddenEffect(t, "Toren", false, `[{"kind":"save_advantage","abilities":["dex"]}]`)
+	c.h.roller.queue(4, 4, 4, 4, 4, 4, 4)
+	if _, err := c.rollEffectSave(t, c.caio, e, w.GetId(), func(r *playv1.RollEffectSaveRequest) {
+		r.Roll, r.SpendFavor = &playv1.RollEffectSaveRequest_RollInApp{RollInApp: true}, true
+	}); err != nil {
+		t.Fatalf("the spend on the zone's save error = %v", err)
+	}
+	prompts := f.prompts(t, f.master)
+	if len(prompts) != 1 {
+		t.Fatalf("the master reads %d refund prompts of the zone's save, want 1", len(prompts))
+	}
+	if err := f.undo(t, f.master, e, f.log(t, f.master, e).GetUndoableEventId()); err != nil {
+		t.Fatalf("UndoLastAction(the cast) error = %v", err)
+	}
+	if !f.favorHolds(t) {
+		t.Fatal("the undo of the cast did not give the Inspiração back")
+	}
+	f.execSQL(t, `DELETE FROM character_favor WHERE campaign_id = $1`, f.campaignID) // the roller spends it again
+	if status := f.promptStatus(t, prompts[0].GetId()); status != "kept" {
+		t.Errorf("the prompt of the undone cast's save is %q, want kept", status)
+	}
+	_, err := f.answerRefund(f.master, prompts[0].GetId(), true, newKey())
+	wantFavorBlocked(t, "an answer to the prompt of an undone cast's save", err, blockedPassClosed)
+	if f.rows(t) != 0 {
+		t.Errorf("character_favor has %d rows, want 0: no second Inspiração", f.rows(t))
+	}
+}

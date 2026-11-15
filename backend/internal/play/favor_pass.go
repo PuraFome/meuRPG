@@ -550,6 +550,12 @@ func (s *Service) acceptPass(ctx context.Context, tx pgx.Tx, h *hints, c favorPa
 		}
 		return playdb.FavorPass{}, err // a failed read is not the receiver's state
 	}
+	if _, err := s.favorReceiver(ctx, tx, closed.CampaignID, closed.FromCharacterID); err != nil {
+		if favorReasonOf(err) == playv1.FavorBlockedReason_FAVOR_BLOCKED_REASON_NOT_A_PLAYER_CHARACTER {
+			return playdb.FavorPass{}, errNotTheHolder() // the giver is back in the reserve: it is no holder of the table any more
+		}
+		return playdb.FavorPass{}, err
+	}
 	if _, err := q.SpendCharacterFavor(ctx, playdb.SpendCharacterFavorParams{CharacterID: closed.FromCharacterID, CampaignID: closed.CampaignID}); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return playdb.FavorPass{}, errNotTheHolder() // the giver has none by now (nothing else takes it while the pass is pending)

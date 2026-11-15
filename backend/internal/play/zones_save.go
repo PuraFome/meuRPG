@@ -170,7 +170,7 @@ func (s *Service) zoneResistsBack(ctx context.Context, c *combatTx, recent []pla
 		if err != nil || ev.CastID != castID {
 			continue
 		}
-		if err := s.zoneAnswerBack(ctx, c, cs, ev); err != nil {
+		if err := s.zoneAnswerBack(ctx, c, cs, ev, newer.IdempotencyKey); err != nil {
 			return err
 		}
 	}
@@ -179,13 +179,16 @@ func (s *Service) zoneResistsBack(ctx context.Context, c *combatTx, recent []pla
 
 // zoneAnswerBack gives back what one answer to a catch of the cast spent: the master's Legendary Resistance, or the Inspiration of
 // the player's character that rolled the save. The undo's transaction puts the row back; it does not stack on a newer grant.
-func (s *Service) zoneAnswerBack(ctx context.Context, c *combatTx, cs []playdb.Combatant, ev actionEvent) error {
+func (s *Service) zoneAnswerBack(ctx context.Context, c *combatTx, cs []playdb.Combatant, ev actionEvent, key *string) error {
 	reactor, here := combatantByID(cs, ev.Target)
 	if !here {
 		return nil // a creature that left the combat has nothing to put back
 	}
 	if ev.Favor && reactor.CharacterID != "" {
 		if err := favorGiveBack(ctx, c.q, c.session.CampaignID, reactor.CharacterID); err != nil {
+			return err
+		}
+		if err := keepRefundOfKey(ctx, c, key); err != nil { // the master's question about that spend has nothing left to refund
 			return err
 		}
 	}
