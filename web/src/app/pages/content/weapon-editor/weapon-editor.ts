@@ -22,6 +22,7 @@ import { type CatalogVm } from '../../../core/content/catalog';
 import { type EntryBody, TableContentClient } from '../../../core/content/content-client';
 import type { EffectMenuVm } from '../../../core/content/effect-draft';
 import { EntrySaver, focusAfterRender } from '../../../core/content/entry-saver';
+import { refusalSummary } from '../../../core/content/content-violations';
 import { previewRead } from '../../../core/content/preview';
 import {
   type WeaponDraft,
@@ -240,6 +241,10 @@ export class WeaponEditor {
     if (res) {
       this.saved.emit(res);
       return;
+    }
+    // The clash of two properties is the client's own message, drawn on the same refusal: the count says it too.
+    if (this.clash() && !this.saver.placement().fields.includes('table_weapon.properties')) {
+      this.saver.summary.set(refusalSummary('a arma', this.saver.placement().count + 1));
     }
     this.saver.focusRefusal(this.host.nativeElement, this.injector);
   }

@@ -23,7 +23,7 @@
         <app-text-field label="Dano" [value]="d.damage" path="table_weapon.damage" [issues]="issuesOf('table_weapon.damage')" hint="Como 1d8 ou 2d6." (valueChange)="patch({ damage: $event })" />
         <app-select-field label="Tipo de dano" [options]="damageTypeOptions()" [value]="d.damageType" placeholder="Escolha…" path="table_weapon.damage_type" [issues]="issuesOf('table_weapon.damage_type')" (valueChange)="patch({ damageType: $event })" />
         @if (versatile()) {
-          <app-text-field label="Com duas mãos" [value]="d.twoHandedDamage" path="table_weapon.two_handed_damage" [issues]="issuesOf('table_weapon.two_handed_damage')" hint="Pede o Versátil." (valueChange)="patch({ twoHandedDamage: $event })" />
+          <app-text-field label="Com duas mãos" placeholder="—" [value]="d.twoHandedDamage" path="table_weapon.two_handed_damage" [issues]="issuesOf('table_weapon.two_handed_damage')" hint="Pede o Versátil." (valueChange)="patch({ twoHandedDamage: $event })" />
         } @else {
           <p class="hint side">Sem Versátil, não há dano com duas mãos.</p>
         }
