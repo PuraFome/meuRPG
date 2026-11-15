@@ -36,15 +36,16 @@ export function ownIssues(full: FullSheetVm): readonly IssueVm[] {
 
 /**
  * An option's row stands right under the row of the feature that offers it, the engine's order kept otherwise
- * (board 580-05: the options are indented under their feature). An option whose feature is not on the sheet stays where it is.
+ * (board 580-05: the options are indented under their feature), found by its key: two features can share a name (the
+ * Fighter's and the Paladin's "Estilo de Luta"). An option whose feature is not on the sheet stays where it is.
  */
 function optionsUnderTheirFeature(features: readonly Feature[]): Feature[] {
   const under = new Map<string, Feature[]>();
   const rest: Feature[] = [];
   for (const f of features) {
     const parent =
-      f.optionOfPt !== ''
-        ? features.find((p) => p.optionOfPt === '' && p.namePt === f.optionOfPt)
+      f.optionOfKey !== ''
+        ? features.find((p) => p.optionOfKey === '' && p.key === f.optionOfKey)
         : undefined;
     if (parent) {
       under.set(parent.key, [...(under.get(parent.key) ?? []), f]);
