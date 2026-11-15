@@ -365,7 +365,9 @@ func reachable(edges map[string]map[string]string, from string) map[string]bool 
 // playSubpackages are the subpackages of play that hold logic moved out of it (docs/architecture/play/README.md#subpackages): each
 // with the other play subpackages it may import. A subpackage that is not here, and is not one of
 // playSeamPackages, fails the test, so a new one is added on purpose with its place in the order.
-var playSubpackages = map[string][]string{}
+var playSubpackages = map[string][]string{
+	"advantage": {}, // the modes, the source kinds of the API and the sentence of each source
+}
 
 // playSeamPackages are the subpackages of play that are not moved logic: the seam to other modules, the live hub, the
 // sqlc queries and the voice generator. They are not held to playSubpackages.

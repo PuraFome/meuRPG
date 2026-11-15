@@ -12,6 +12,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
+	"github.com/PuraFome/meuRPG/backend/internal/play/advantage"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
@@ -542,7 +543,7 @@ func (s *Service) rollRiderSave(ctx context.Context, c *combatTx, m authz.Member
 	saved := combat.SaveSucceeded(d20.Total, int(dc))
 	re.save = &saveRoll{
 		D20: re.D20, Bonus: conv.Int32(save.Bonus), Total: re.Total, DC: dc, Saved: saved,
-		countedRoll: countedOf(d20), D20B: clamp32(d20.otherFace(), 0, 20), Counted: clamp32(d20.Index, 0, 1), RollMode: modeKey(mode),
+		countedRoll: countedOf(d20), D20B: clamp32(d20.otherFace(), 0, 20), Counted: clamp32(d20.Index, 0, 1), RollMode: advantage.ModeKey(mode),
 	}
 	return s.resistRiderSave(ctx, c, target, re, saved)
 }

@@ -11,6 +11,7 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
+	"github.com/PuraFome/meuRPG/backend/internal/play/advantage"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
@@ -242,7 +243,7 @@ func (s *Service) mountSavePrompt(ctx context.Context, m authz.Membership, d *en
 	if err != nil {
 		return nil, err
 	}
-	out.Mode, out.AutoFail = modeToProto[facts.mode], facts.autoFail
+	out.Mode, out.AutoFail = advantage.ModeToProto[facts.mode], facts.autoFail
 	return out, nil
 }
 

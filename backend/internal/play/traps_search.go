@@ -19,6 +19,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dice"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
+	"github.com/PuraFome/meuRPG/backend/internal/play/advantage"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/live"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
@@ -322,7 +323,7 @@ func (s *Service) prepareSearchRoll(ctx context.Context, ts *trapSearch, r *sear
 	if r.names, err = s.namerFor(ctx, r.c.tx, ts.m.CampaignID); err != nil {
 		return false, err
 	}
-	ts.shown = shownSources(r.cm.Sources, r.names, ts.m.Role == authz.RoleMaster)
+	ts.shown = advantage.ShownSources(r.cm.Sources, r.names, ts.m.Role == authz.RoleMaster)
 	if r.bonus, err = s.withEffectDice(ts.in, ts.in.extraFaces, &r.cm, r.opt.Bonus); err != nil {
 		return false, err
 	}
@@ -474,7 +475,7 @@ func trapSearchEvent(ts *trapSearch, r *searchTurn, d searchDice, found maplink.
 		Favor: r.favor.Used,
 	}
 	if r.cm.Mode != combat.ModeNormal {
-		ev.RollMode, ev.Counted = modeKey(r.cm.Mode), conv.Int32(d.counted)
+		ev.RollMode, ev.Counted = advantage.ModeKey(r.cm.Mode), conv.Int32(d.counted)
 	}
 	if r.step.Bonus != nil {
 		ev.Res = &resourceEvent{Kind: resBardicUse, Sides: r.step.Bonus.Sides, Face: r.step.Bonus.Face}
@@ -541,7 +542,7 @@ func trapSearchAnswer(ts *trapSearch) *playv1.SearchForTrapsResponse {
 		Roll:          checkRoll(ev.D20, ev.Modifier, ev.Physical, ev.floor()),
 		FoundPointIds: ev.Found,
 		SpentAction:   ev.OnTurn,
-		Mode:          modeToProto[modeOfKey(ev.RollMode)],
+		Mode:          advantage.ModeToProto[advantage.ModeOfKey(ev.RollMode)],
 		Sources:       ts.shown,
 		BonusDice:     bonusDiceOf(ev),
 	}

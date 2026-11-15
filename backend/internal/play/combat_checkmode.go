@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
+	"github.com/PuraFome/meuRPG/backend/internal/play/advantage"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
@@ -200,7 +201,7 @@ func (s *Service) spendCheckHelps(ctx context.Context, c *combatTx, ids []string
 func notesOfSources(sources []combat.Source, hide func(combat.Source) bool) []rollNote {
 	var out []rollNote
 	for _, src := range sources {
-		label, kind := textContext{self: true, names: func(k string) string { return k }}.sentence(src), src.Kind
+		label, kind := advantage.TextContext{Self: true, Names: func(k string) string { return k }}.Sentence(src), src.Kind
 		hidden := hide != nil && hide(src)
 		if hidden {
 			label, kind = otherSourceTx, "other" // an effect the master hides (RN-22), or the sun (RN-20): the kind says no more than the label

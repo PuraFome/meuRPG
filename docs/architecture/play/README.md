@@ -90,6 +90,7 @@ The package `play` itself is capped in size (`.github/play-cap`, [CI](../../ci.m
 | `play/live` | The live stream's hub |
 | `play/playdb` | The sqlc queries (generated) |
 | `play/voice` | The voice generator and its fake |
+| `play/advantage` | The roll modes as the database and the API spell them, the API's source kinds, and the sentence of each advantage source with the hiding of the ones a viewer may not know |
 
 A function of `play` that takes no `context.Context`, reads no query and is no `Service` method (a rule, a text builder, a calculation over plain values) moves with its tests when a change edits it, or the PR says why it cannot. The candidates are advantage, the log's text, the contests' calculations and the pure part of the undo kinds. A move lowers the cap by the lines that left `play`.
 

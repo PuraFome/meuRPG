@@ -11,6 +11,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/play/advantage"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
@@ -118,7 +119,7 @@ func (s *Service) hintTryAnswer(ctx context.Context, m authz.Membership, res *hi
 	resp := &playv1.TryPuzzleHintResponse{
 		Run:      out,
 		Roll:     hintRollProto(res.try),
-		Mode:     modeToProto[modeOfKey(res.try.RollMode)],
+		Mode:     advantage.ModeToProto[advantage.ModeOfKey(res.try.RollMode)],
 		Sources:  res.sources,
 		Passed:   res.try.Passed,
 		Replayed: res.replayed,
@@ -403,7 +404,7 @@ func (h *hintTryTx) record(ctx context.Context, plan hintTryPlan, step gateResul
 		RunID: h.run.ID, UserID: &h.m.UserID, CharacterID: &plan.who.ID, IdempotencyKey: h.key, HintIndex: clamp32(plan.next, 0, maxHints),
 		Passed: passed, GrantedCount: granted, D20: clamp32(d20.Face(), 1, 20), Modifier: clamp32(plan.bonus+dieFace, -1000, 1000),
 		Total: clamp32(d20.Total, -1000, 1000), Physical: d20.Physical, CreatedAt: now,
-		D20B: clamp32(d20.otherFace(), 0, 20), Counted: clamp32(d20.Index, 0, 1), RollMode: modeKey(plan.cm.Mode),
+		D20B: clamp32(d20.otherFace(), 0, 20), Counted: clamp32(d20.Index, 0, 1), RollMode: advantage.ModeKey(plan.cm.Mode),
 		LuckyIndex: luckyAt, BonusSides: bonusSides, BonusFace: bonusFace, CountedBy: d20.CountedBy,
 	})
 	if err != nil {

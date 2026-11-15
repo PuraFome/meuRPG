@@ -14,6 +14,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dice"
+	"github.com/PuraFome/meuRPG/backend/internal/play/advantage"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
@@ -519,7 +520,7 @@ func (s *Service) spellAttack(ctx context.Context, c *combatTx, m authz.Membersh
 		return err
 	}
 	choice := rolled.choice
-	hit.D20B, hit.Counted, hit.RollMode, hit.SuggestedMode, hit.ReasonID = clamp32(d20.otherFace(), 0, 20), clamp32(d20.Index, 0, 1), modeKey(choice.Mode), modeKey(choice.Suggested), choice.ReasonID
+	hit.D20B, hit.Counted, hit.RollMode, hit.SuggestedMode, hit.ReasonID = clamp32(d20.otherFace(), 0, 20), clamp32(d20.Index, 0, 1), advantage.ModeKey(choice.Mode), advantage.ModeKey(choice.Suggested), choice.ReasonID
 	result, targetAC, err := s.resolveSpellAttack(ctx, c, m, sp, caster, target, cover, hit, modes, rolled, bonusFace)
 	if err != nil {
 		return err
@@ -613,7 +614,7 @@ func (s *Service) spellSave(ctx context.Context, c *combatTx, m authz.Membership
 	sources := combat.SaveMode(combat.SaveScene{Creature: creature, Ability: sp.SaveAbility, EffectVisible: true, Against: against})
 	bonuses := rollBonusesOf(modes.in.states, target.ID, rules.RollAppliesSave)
 	save.Bonus += bonusTotal(bonuses)
-	modes.save[target.ID] = append(shownSourcesHiding(sources, modes.names, hideUnlessMaster(modes.v.master)), bonusSources(bonuses, modes.names, modes.v.master, modes.v.owns(target))...)
+	modes.save[target.ID] = append(advantage.ShownSourcesHiding(sources, modes.names, advantage.HideUnlessMaster(modes.v.master)), bonusSources(bonuses, modes.names, modes.v.master, modes.v.owns(target))...)
 	// Cover adds to a Dexterity save (SRD): half +2, three-quarters +5. The bonus
 	// the save shows already has it.
 	if sp.SaveAbility == "dex" && !cover.total() && !sp.IgnoresCover { // Chama Sagrada: no benefit from cover (SRD)
@@ -697,7 +698,7 @@ func (s *Service) rollSpellSave(ctx context.Context, c *combatTx, sp link.Spell,
 		Extra: extra,
 		D20:   clamp32(d20.Face(), 1, 20), Bonus: conv.Int32(save.Bonus), Total: conv.Int32(d20.Total + extraTotal),
 		DC: clamp32(sp.SaveDC, 0, math.MaxInt32), Saved: saved, Unknown: !save.Known,
-		D20B: clamp32(d20.otherFace(), 0, 20), Counted: clamp32(d20.Index, 0, 1), RollMode: modeKey(saveMode), Lucky: lucky,
+		D20B: clamp32(d20.otherFace(), 0, 20), Counted: clamp32(d20.Index, 0, 1), RollMode: advantage.ModeKey(saveMode), Lucky: lucky,
 		countedRoll: countedOf(d20),
 	}
 	return saved, nil
