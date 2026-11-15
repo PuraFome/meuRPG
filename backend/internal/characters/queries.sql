@@ -484,8 +484,9 @@ ORDER BY id;
 -- name: ListCharacterNames :many
 -- The names of the given characters of the campaign, whatever their kind or
 -- status (package progression names the characters of an award, even one that
--- died since).
-SELECT id, name FROM characters
+-- died since). reserved says the master gave the character back to the reserve
+-- since: a player's reads leave it out (RN-10).
+SELECT id, name, reserved FROM characters
 WHERE campaign_id = sqlc.arg(campaign_id)::UUID
   AND id = ANY(sqlc.arg(ids)::UUID[])
 ORDER BY id;

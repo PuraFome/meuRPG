@@ -37,7 +37,7 @@ func (s *Service) ListTreasuresToConvert(
 	for _, t := range found {
 		characterIDs = append(characterIDs, t.FinderIDs...)
 	}
-	names, err := s.party.Names(ctx, m.CampaignID, characterIDs)
+	names, err := s.party.Names(ctx, m.CampaignID, characterIDs, true)
 	if err != nil {
 		return nil, s.dbError(ctx, "read the finders' names", fmt.Errorf("treasures: %w", err))
 	}
