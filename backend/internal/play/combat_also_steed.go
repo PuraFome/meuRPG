@@ -9,22 +9,12 @@ import (
 
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/play/steed"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
 // A spell that targets only the caster also targets the bonded steed the caster rides (SRD 5.1, "Find Steed"). A spell with a lasting effect
 // puts it on the steed's combatant as on the caster's; any other spell leaves the steed to the table, and the cast says so in one line.
-
-const (
-	steedTargetNote = "O corcel também é alvo da magia."
-	steedTableNote  = "O corcel também é alvo da magia: o Mestre aplica o efeito a ele."
-)
-
-// selfTargeted says the spell reaches only the caster (SRD: "a spell you cast that targets only you").
-func selfTargeted(content *rules.Content, spellKey string) bool {
-	det, ok := content.SpellDetails(spellKey)
-	return ok && det.Target.Kind == rules.TargetSelf
-}
 
 // bondedSteedOf is the combatant of the bonded steed the player's character rides, or nil.
 func (s *Service) bondedSteedOf(ctx context.Context, tx pgx.Tx, campaignID string, cs []playdb.Combatant, who playdb.Combatant) (*playdb.Combatant, error) {
@@ -53,8 +43,8 @@ func (s *Service) attachAlsoSteed(ctx context.Context, campaignID string, d *enc
 	if opts == nil || len(opts.GetSpells()) == 0 {
 		return nil
 	}
-	steed, err := s.bondedSteedOf(ctx, nil, campaignID, d.cs, who)
-	if err != nil || steed == nil {
+	mount, err := s.bondedSteedOf(ctx, nil, campaignID, d.cs, who)
+	if err != nil || mount == nil {
 		return err
 	}
 	content, err := s.roster.RulesContent(ctx, nil, campaignID)
@@ -62,7 +52,7 @@ func (s *Service) attachAlsoSteed(ctx context.Context, campaignID string, d *enc
 		return err
 	}
 	for _, o := range opts.GetSpells() {
-		o.AlsoSteed = selfTargeted(content, o.GetSpell().GetKey())
+		o.AlsoSteed = steed.SelfTargeted(content, o.GetSpell().GetKey())
 	}
 	return nil
 }
@@ -76,21 +66,22 @@ func (f *castFlow) checkAlsoSteed(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	if !selfTargeted(content, f.call.spellKey) {
+	if !steed.SelfTargeted(content, f.call.spellKey) {
 		return connect.NewError(connect.CodeInvalidArgument, errors.New("also_steed is for a spell that reaches only the caster"))
 	}
-	steed, err := f.s.bondedSteedOf(ctx, f.c.tx, f.m.CampaignID, f.cs, f.caster)
+	mount, err := f.s.bondedSteedOf(ctx, f.c.tx, f.m.CampaignID, f.cs, f.caster)
 	if err != nil {
 		return err
 	}
-	if steed == nil {
+	if mount == nil {
 		return connect.NewError(connect.CodeFailedPrecondition, errors.New("the caster does not ride its bonded steed"))
 	}
-	f.steed = steed
-	f.steedNote = steedTableNote
+	f.steed = mount
+	f.steedTarget = false
 	if def, ok := content.CombatSpellEffect(f.call.spellKey); ok && !hitsOnly(def) {
-		f.steedTarget, f.steedNote = true, steedTargetNote
+		f.steedTarget = true
 	}
+	f.steedNote = steed.NoteFor(f.steedTarget)
 	return nil
 }
 

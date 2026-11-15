@@ -12,6 +12,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/play/steed"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 )
@@ -390,13 +391,7 @@ func (s *Service) noEffectWhy(content *rules.Content, def *rules.EffectDef, mons
 	if slices.ContainsFunc(def.Conditions, func(k string) bool { return immuneCreature(creature, k) }) {
 		return whyImmune
 	}
-	if score == 0 {
-		i := slices.IndexFunc(creature.Abilities, func(a rules.AbilityScore) bool { return a.Ability == rules.INT })
-		if i >= 0 {
-			score = creature.Abilities[i].Base
-		}
-	}
-	if def.Key == "spell:hideous-laughter" && score != 0 && score <= 4 {
+	if def.Key == "spell:hideous-laughter" && steed.TooSimple(score, creature.Abilities) {
 		return whyTooSimple
 	}
 	return ""
