@@ -22,6 +22,7 @@ import {
   type TurnOptions,
 } from '../../../../../gen/meurpg/rules/v1/rules_pb';
 import { article } from '../../../../core/combat/combat-log';
+import { AMMUNITION } from '../../../../core/combat/ammunition-line';
 import {
   attackDetail,
   throwNote,
@@ -435,11 +436,17 @@ export class ActionGroups {
 
   /** The line of why under an attack: its bonus action rule, or the beams of a cast still to fire. */
   protected attackNote(o: AttackOption): string {
-    return bonusAttackLine(o) || beamsLeftLine(o) || (o.attack ? throwNote(o.attack) : '');
+    return (
+      bonusAttackLine(o) ||
+      beamsLeftLine(o) ||
+      (o.attack ? throwNote(o.attack) || AMMUNITION.note(o.attack) : '')
+    );
   }
 
   /** The line of each power attack trade the server lists on a weapon ("Golpe Pesado: −5 no ataque, +10 no dano"). */
   protected readonly powerLines = tradeLinesOf;
+  protected readonly ammo = AMMUNITION;
+  protected readonly countsAmmo = computed(() => AMMUNITION.counted(this.options().attacks));
   protected readonly attackTags = attackTagsOf;
   protected readonly attackMarks = attackMarksOf;
   /** The counting magic bonus the server says is in an attack's numbers. */

@@ -13,7 +13,7 @@ import { diceTable, openDice, stepModifier } from './free-dice-support';
 import { chooseReaders, lineOf, messageBoxOf, openConversaTable, say } from './conversa-support';
 import { followMapLink, openChatTab, openPlayerMap, openSheetTab, endOpenSessionRPC, endSessionRPC, openRolls, openSessionPage, openLive, showMapTool, showMasterTab, startSessionRPC, tableWithPensantus, openSessionMenu, clickStartCombat, expectStartCombatOffered, endSessionFromBar } from './live-session-support';
 import { canvasPng, createMapRPC, createPointRPC, placeTokenRPC, revealMapRPC, setCurrentMapRPC, tableForMaps, uploadImageRPC } from './maps-support';
-import { type Encounter, adjustVitalsRPC, attackCombatSquares, beginAttackCombatRPC, setGridRPC, combatRPC, getEncounterRPC, startEncounterRPC, endTurnOf, passTurnsTo, passTurnsToAndWait, pensantusCasting, waitTurnLeaves, tableForCombat, toren, torenSheet } from './combat-support';
+import { type Encounter, adjustVitalsRPC, attackCombatSquares, beginAttackCombatRPC, setGridRPC, combatRPC, getEncounterRPC, startEncounterRPC, endTurnOf, passTurnsTo, passTurnsToAndWait, pensantusAttacks, pensantusCasting, waitTurnLeaves, tableForCombat, toren, torenSheet } from './combat-support';
 import { addActionRPC, attachTwoImagesRPC, cartActions, getOpenSceneRPC, openSceneOnlyToRPC, openSceneRPC, rollSceneRPC, sceneActionIdsRPC, setAttemptsRPC, setMayJoinRPC, setSceneImagesRPC, setShowDcRPC, tableForScenes } from './scene-support';
 import { addClueRPC, cartClues, cartHooks, createNoteRPC } from './notes-support';
 import { createCapitaoRPC, createMiraRPC, playedCombatRPC, putOnStageRPC, uploadPortrait } from './stage-support';
@@ -9585,6 +9585,84 @@ for (const [colorScheme, width] of [['light', 1280], ['dark', 390]] as const) {
   test(`os itens com cargas e a munição passam no axe e nas conferências de layout no tema ${colorScheme === 'light' ? 'claro, no desktop' : 'escuro, no celular'}`, { tag: ['@a11y', '@563'] }, async ({ browser }) => {
     test.setTimeout(300_000);
     await scanChargesScreens(browser, colorScheme, width);
+  });
+}
+
+/**
+ * The ammunition on the attack row (#563), through the real stack: the bow with no kind counted (no tag), counted with 7 (a tag),
+ * at 3 (warning), at 0 (dashed tag, "Atacar" off with the reason) and the improvised melee row, which stays open and never carries
+ * a count. The master sets the count, the player's screen re-reads the turn. The two bow buttons are named in full: a bow has two rows.
+ */
+async function scanAmmunitionAttackScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: 900 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await Promise.all([m.goto('/'), p.goto('/')]);
+    const table = await tableForCombat(m, p, `Acessibilidade munição no ataque ${Date.now()}`, true, true, {
+      sheet: { ...pensantusAttacks, weaponKeys: ['equipment:dagger', 'equipment:longbow'] },
+    });
+    campaignId = table.campaignId;
+    await beginAttackCombatRPC(m, table, { Pensantus: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 });
+    const setArrows = async (quantity: number) => {
+      const res = await callRPC(m, 'meurpg.play.v1.ChargesService/SetAmmunition', { campaignId, characterId: table.characterId, ammoKey: 'equipment:arrow', quantity });
+      expect(res.ok(), await res.text()).toBeTruthy();
+    };
+    const bow = p.getByRole('button', { name: 'Atacar com Arco longo', exact: true });
+    const melee = p.getByRole('button', { name: 'Atacar com Arco longo, corpo a corpo', exact: true });
+    const tag = p.getByTestId('ammo-tag');
+    const reread = async () => {
+      await openSessionPage(p, campaignId);
+      await openActionTab(p, 'Ataques');
+    };
+
+    // No kind counted: the shot goes, no tag; the melee line is its own row, with its note.
+    await reread();
+    await expect(bow).toBeVisible();
+    await expect(tag).toHaveCount(0);
+    await expect(bow).not.toHaveAttribute('aria-disabled', 'true');
+    await expect(melee).toBeVisible();
+    await expect(p.getByText('Improvisado: não gasta flecha.')).toBeVisible();
+    await expectScreenPasses(p, `Ataques, arco sem munição contada e a linha corpo a corpo ${where}`);
+
+    await setArrows(7);
+    await reread();
+    await expect(tag).toHaveText('7 flechas');
+    await expect(bow).not.toHaveAttribute('aria-disabled', 'true');
+    await expectScreenPasses(p, `Ataques, 7 flechas ${where}`);
+
+    await setArrows(3);
+    await reread();
+    await expect(tag).toContainText('3 flechas');
+    await expect(bow).not.toHaveAttribute('aria-disabled', 'true');
+    await expectScreenPasses(p, `Ataques, 3 flechas em aviso ${where}`);
+
+    await setArrows(0);
+    await reread();
+    await expect(tag).toHaveText('0 flechas');
+    await expect(bow).toHaveAttribute('aria-disabled', 'true');
+    await expect(p.getByText('Sem flechas: o tiro não sai.')).toBeVisible();
+    await expect(bow).toHaveAccessibleDescription('Sem flechas: o tiro não sai.');
+    await expect(melee).not.toHaveAttribute('aria-disabled', 'true');
+    await expect(tag).toHaveCount(1);
+    await expectScreenPasses(p, `Ataques, sem flechas e a linha corpo a corpo aberta ${where}`);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+for (const [colorScheme, width] of [['light', 1280], ['dark', 390]] as const) {
+  test(`a munição na linha de ataque passa no axe e nas conferências de layout no tema ${colorScheme === 'light' ? 'claro, no desktop' : 'escuro, no celular'}`, { tag: ['@a11y', '@563'] }, async ({ browser }) => {
+    test.setTimeout(300_000);
+    await scanAmmunitionAttackScreens(browser, colorScheme, width);
   });
 }
 
