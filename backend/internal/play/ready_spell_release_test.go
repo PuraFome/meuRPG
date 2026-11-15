@@ -1,0 +1,135 @@
+package play
+
+import (
+	"slices"
+	"testing"
+
+	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+)
+
+// The release of a readied spell with its own targets, darts and point (#857): the answer carries what CastSpell would.
+
+// readyForRelease readies the caster's spell on its own turn and gives the turn on, so its window can be fired.
+func (a *armed) readyForRelease(t *testing.T, spell string, slot int32, target string) *playv1.Encounter {
+	t.Helper()
+	e := a.castersFight(t, 1)
+	a.mustReady(t, a.ana, a.readySpell(t, e, "Pensantus", spell, slot, target))
+	return a.mustEndTurn(t, a.master, e)
+}
+
+// castLine is the cast line of the spell in the log, nil when there is none.
+func (a *armed) castLine(t *testing.T, e *playv1.Encounter, spell string) *playv1.CombatLogEntry {
+	t.Helper()
+	var found *playv1.CombatLogEntry
+	for _, r := range a.log(t, a.master, e).GetRounds() {
+		for _, en := range r.GetEntries() {
+			if en.GetKind() == playv1.CombatLogKind_COMBAT_LOG_KIND_SPELL_CAST && en.GetKey() == spell {
+				found = en
+			}
+		}
+	}
+	return found
+}
+
+func withTargets(targets ...*playv1.SpellTarget) func(*playv1.AnswerReactionRequest) {
+	return func(r *playv1.AnswerReactionRequest) {
+		useSpellAnswer(r)
+		r.Targets = targets
+	}
+}
+
+// The three darts of a readied Magic Missile go where the answer splits them.
+func TestAReadiedMagicMissileIsReleasedWithItsDartsSplit(t *testing.T) {
+	t.Parallel()
+	a := newCasters(t)
+	e := a.readyForRelease(t, magicMissileSpell, 1, "Capitão Goblin")
+	w := a.mustFire(t, e, "Pensantus")
+	res := a.mustAnswer(t, a.ana, e, w.GetId(), withTargets(darts(a, t, "Capitão Goblin", 2), darts(a, t, "Goblin", 1)))
+	if !res.GetResult().GetUsed() {
+		t.Fatalf("the use's result = %v", res.GetResult())
+	}
+	cast := a.castLine(t, e, magicMissileSpell)
+	if cast == nil || len(cast.GetSpell().GetTargets()) != 2 {
+		t.Fatalf("the release's line = %v, want two targets", cast)
+	}
+	got := map[string]int32{}
+	for _, tg := range cast.GetSpell().GetTargets() {
+		got[tg.GetTargetId()] += tg.GetDarts()
+	}
+	if got[a.id(t, "Capitão Goblin")] != 2 || got[a.id(t, "Goblin")] != 1 {
+		t.Errorf("darts by target = %v, want 2 on the Capitão and 1 on the Goblin", got)
+	}
+}
+
+// Darts that do not add up to the slot's are refused, and the window stays open to be answered again.
+func TestAReadiedMagicMissileRefusesWrongDarts(t *testing.T) {
+	t.Parallel()
+	a := newCasters(t)
+	e := a.readyForRelease(t, magicMissileSpell, 1, "Capitão Goblin")
+	w := a.mustFire(t, e, "Pensantus")
+	if _, err := a.answerReaction(t, a.ana, e, w.GetId(), withTargets(darts(a, t, "Capitão Goblin", 1), darts(a, t, "Goblin", 1))); err == nil {
+		t.Fatal("two darts of three were taken")
+	}
+	if !a.readiedOpen(t, "Pensantus") || a.readiedStatus(t, "Pensantus") != readiedWaiting {
+		t.Errorf("the refused answer left rows %q", a.readiedStatus(t, "Pensantus"))
+	}
+	a.mustAnswer(t, a.ana, e, w.GetId(), withTargets(darts(a, t, "Goblin", 3)))
+}
+
+// A readied Sleep is released on the point of the answer.
+func TestAReadiedSleepIsReleasedOnThePointOfTheAnswer(t *testing.T) {
+	t.Parallel()
+	a := newCasters(t)
+	e := a.readyForRelease(t, sleepSpell, 1, "")
+	w := a.mustFire(t, e, "Pensantus")
+	a.h.roller.queue(8, 8)
+	a.mustAnswer(t, a.ana, e, w.GetId(), func(r *playv1.AnswerReactionRequest) {
+		useSpellAnswer(r)
+		r.Origin = &playv1.SpellOrigin{Col: 7, Row: 5}
+	})
+	if a.castLine(t, e, sleepSpell) == nil {
+		t.Error("Sleep was not cast")
+	}
+}
+
+// targets and creature_ids together are refused: the answer names the targets one way.
+func TestAReadiedSpellRefusesTargetsAndCreatureIDsTogether(t *testing.T) {
+	t.Parallel()
+	a := newCasters(t)
+	e := a.readyForRelease(t, magicMissileSpell, 1, "Capitão Goblin")
+	w := a.mustFire(t, e, "Pensantus")
+	_, err := a.answerReaction(t, a.ana, e, w.GetId(), func(r *playv1.AnswerReactionRequest) {
+		useSpellAnswer(r)
+		r.Targets = []*playv1.SpellTarget{darts(a, t, "Goblin", 3)}
+		r.CreatureIds = []string{a.id(t, "Goblin")}
+	})
+	if err == nil {
+		t.Error("both lists were taken")
+	}
+}
+
+// While the row waits, the options of its readier list the targets of the held spell, with the darts of its slot.
+func TestTheOptionsListTheTargetsOfAHeldSpellWhileItWaits(t *testing.T) {
+	t.Parallel()
+	a := newCasters(t)
+	e := a.readyForRelease(t, magicMissileSpell, 1, "Capitão Goblin")
+	got := a.mustOptions(t, a.ana, e, "Pensantus").GetSpellTargets()
+	i := slices.IndexFunc(got, func(s *playv1.SpellTargets) bool { return s.GetSpellKey() == magicMissileSpell && slices.ContainsFunc(s.GetDarts(), func(d *playv1.DartsAtSlot) bool { return d.GetSlotLevel() == 1 && d.GetDarts() == 3 }) })
+	if i < 0 || len(got[i].GetTargets()) == 0 {
+		t.Errorf("the options list no held Magic Missile at 1st level: %v", got)
+	}
+}
+
+// A readied attack takes no targets and no point: they are for a spell.
+func TestAReadiedAttackRefusesTargetsAndOrigin(t *testing.T) {
+	t.Parallel()
+	a := newCasters(t)
+	e := a.castersFight(t, 1)
+	e = a.passTo(t, e, "Brisa")
+	a.mustReady(t, a.bia, a.readySpell(t, e, "Brisa", guidingBolt, 1, "Capitão Goblin"))
+	e = a.mustEndTurn(t, a.master, e)
+	w := a.mustFire(t, e, "Brisa")
+	if _, err := a.answerReaction(t, a.bia, e, w.GetId(), withTargets(darts(a, t, "Goblin", 1))); err == nil {
+		t.Error("a held spell attack took targets")
+	}
+}

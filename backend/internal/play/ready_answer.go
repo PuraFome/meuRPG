@@ -132,6 +132,9 @@ func (s *Service) answerReadied(ctx context.Context, m authz.Membership, in answ
 	if err != nil {
 		return nil, true, s.dbError(ctx, "read the readied action", err)
 	}
+	if (len(msg.GetTargets()) > 0 || msg.GetOrigin() != nil) && (row.Kind != readiedSpell || heldSpellAttackRow(row)) {
+		return nil, true, connect.NewError(connect.CodeInvalidArgument, errors.New("targets and origin are for a readied spell"))
+	}
 	switch row.Kind {
 	case readiedAttack:
 		out, err := s.useReadiedAttack(ctx, m, in, msg, w, row)
