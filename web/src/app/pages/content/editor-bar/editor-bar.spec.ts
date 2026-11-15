@@ -76,7 +76,10 @@ describe('EditorBar: the failed save', () => {
   it('draws the notice directly above the buttons, with the cloud when the server is out of the air', () => {
     const fixture = TestBed.createComponent(EditorBar);
     fixture.componentRef.setInput('saveLabel', 'Salvar talento');
-    fixture.componentRef.setInput('error', 'Não deu para salvar o talento agora. Nada mudou. Tente de novo.');
+    fixture.componentRef.setInput(
+      'error',
+      'Não deu para salvar o talento agora. Nada mudou. Tente de novo.',
+    );
     fixture.componentRef.setInput('offline', true);
     fixture.detectChanges();
     const el = fixture.nativeElement as HTMLElement;

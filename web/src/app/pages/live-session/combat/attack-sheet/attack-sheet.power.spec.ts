@@ -466,8 +466,12 @@ describe('AttackSheet: the power attack trade ("Troca do talento")', () => {
       expect(notice).not.toBeNull();
       // Under the checks and above the before-and-after box, as the board draws it.
       expect(notice!.closest('app-power-trade-offer')).not.toBeNull();
-      expect(notice!.previousElementSibling).toBe(s.el.querySelector('app-power-trade-offer fieldset'));
-      expect(notice!.nextElementSibling).toBe(s.el.querySelector('app-power-trade-offer .box')!.parentElement);
+      expect(notice!.previousElementSibling).toBe(
+        s.el.querySelector('app-power-trade-offer fieldset'),
+      );
+      expect(notice!.nextElementSibling).toBe(
+        s.el.querySelector('app-power-trade-offer .box')!.parentElement,
+      );
       expect(s.el.querySelector('app-roll-die-offer legend.offer__legend')).toBeNull();
       expect(s.el.querySelector('.chosen')!.previousElementSibling).toBeNull();
     });
