@@ -93,3 +93,39 @@ func TestTakingSneakAttackOutOfAGroupGivesTheTurnsUseBack(t *testing.T) {
 		t.Errorf("after the second roll: Sneak Attack marked %v, slots used %d; want it free and the slot spent once", h.marked(t, featureSneakAttack), h.slotsUsed(t))
 	}
 }
+
+// The undo of the second roll gives back what that roll did, and the second roll spent nothing: the damage that waits again
+// must still not spend what the first roll paid, so a roll after the undo leaves the slot spent once.
+func TestTheRollAfterTheUndoOfTheSecondRollSpendsNothingAgain(t *testing.T) {
+	t.Parallel()
+	h := newSumSmiteHit(t, "Brisa", true)
+	if _, err := h.takeOut(t, "sneak-attack", "x"); err != nil {
+		t.Fatalf("RemoveDamagePart() error = %v", err)
+	}
+	if _, err := h.a.damage(t, h.a.caio, h.e, h.id, typedDamage(4)); err != nil {
+		t.Fatalf("RollDamage(second) error = %v", err)
+	}
+	if err := h.a.undo(t, h.a.master, h.e, h.a.log(t, h.a.master, h.e).GetUndoableEventId()); err != nil {
+		t.Fatalf("UndoLastAction(the second roll) error = %v", err)
+	}
+	if h.slotsUsed(t) != 1 {
+		t.Fatalf("slots used = %d after the undo of the second roll, want 1", h.slotsUsed(t))
+	}
+	p := h.pending(t)
+	if p.GetStatus() != playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_AWAITING_GROUP_SUM {
+		t.Errorf("status = %v after the undo of the second roll, want the damage waiting for the sum again", p.GetStatus())
+	}
+	if p.GetAwaitedDamageTypeKey() != groupPiercing {
+		t.Errorf("awaited = %q after the undo, want %q", p.GetAwaitedDamageTypeKey(), groupPiercing)
+	}
+	third, err := h.a.damage(t, h.a.caio, h.e, h.id, typedDamage(6))
+	if err != nil {
+		t.Fatalf("RollDamage(third) error = %v", err)
+	}
+	if smite := partRollOf(third.GetPendingDamage().GetPartRolls(), "divine-smite"); smite == nil || smite.GetSum() != 5 {
+		t.Errorf("the smite = %v after the roll that follows the undo, want the 5 the first roll left", smite)
+	}
+	if h.slotsUsed(t) != 1 {
+		t.Errorf("slots used = %d after the roll that follows the undo, want 1: the first roll paid for the smite", h.slotsUsed(t))
+	}
+}

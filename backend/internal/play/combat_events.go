@@ -768,7 +768,8 @@ type actionEvent struct {
 	Parts []partRoll `json:"parts,omitempty"`
 	// AwaitsSum is the damage type whose sum a removal of a part of a typed group left the damage waiting for
 	// (RemoveDamagePart), and PartLabel the name of the part taken out, for the line of the removal. The removal
-	// takes the damage roll back as an undo does: Undone and UndoneAlso name the events it took back.
+	// takes the damage roll back as an undo does: Undone and UndoneAlso name the events it took back. On the event of a damage
+	// roll it is the damage type whose sum the roll took, when the damage waited for it: the undo of the roll puts the wait back.
 	AwaitsSum string `json:"awaits_sum,omitempty"`
 	PartLabel string `json:"part_label,omitempty"`
 	// PartHidden says the part taken out is one the other players could not read in the roll line: they read "Outra fonte" for it.
