@@ -61,6 +61,9 @@ const (
 	// ChargesServiceUseConsumableProcedure is the fully-qualified name of the ChargesService's
 	// UseConsumable RPC.
 	ChargesServiceUseConsumableProcedure = "/meurpg.play.v1.ChargesService/UseConsumable"
+	// ChargesServiceListConsumableTargetsProcedure is the fully-qualified name of the ChargesService's
+	// ListConsumableTargets RPC.
+	ChargesServiceListConsumableTargetsProcedure = "/meurpg.play.v1.ChargesService/ListConsumableTargets"
 )
 
 // ChargesServiceClient is a client for the meurpg.play.v1.ChargesService service.
@@ -141,6 +144,15 @@ type ChargesServiceClient interface {
 	// a UUID or one reused for another request, and a roll the request does not carry; `failed_precondition` with
 	// NO_OPEN_SESSION, CharacterBlocked CHARACTER_DEAD and the EncounterBlocked reasons of an action in a combat.
 	UseConsumable(context.Context, *connect.Request[v1.UseConsumableRequest]) (*connect.Response[v1.UseConsumableResponse], error)
+	// ListConsumableTargets lists who the character may give a consumable to: in a running combat, the player's
+	// characters that are adjacent (5 feet) to the user's combatant and that the user sees (a hidden creature is never
+	// listed), with the distance; out of a combat, the other living characters of the party. The master reads it for the
+	// character it acts for, and the list is the one that character's player would get. Read only.
+	//
+	// Errors: `permission_denied` for a character that is not the caller's (a player); `not_found` for a character that
+	// is not there; `failed_precondition` with EncounterBlocked ITEM_GONE for an entry that is no longer on the sheet and
+	// CharacterBlocked CHARACTER_DEAD for a dead user.
+	ListConsumableTargets(context.Context, *connect.Request[v1.ListConsumableTargetsRequest]) (*connect.Response[v1.ListConsumableTargetsResponse], error)
 }
 
 // NewChargesServiceClient constructs a client for the meurpg.play.v1.ChargesService service. By
@@ -196,18 +208,25 @@ func NewChargesServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(chargesServiceMethods.ByName("UseConsumable")),
 			connect.WithClientOptions(opts...),
 		),
+		listConsumableTargets: connect.NewClient[v1.ListConsumableTargetsRequest, v1.ListConsumableTargetsResponse](
+			httpClient,
+			baseURL+ChargesServiceListConsumableTargetsProcedure,
+			connect.WithSchema(chargesServiceMethods.ByName("ListConsumableTargets")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // chargesServiceClient implements ChargesServiceClient.
 type chargesServiceClient struct {
-	spendCharges      *connect.Client[v1.SpendChargesRequest, v1.SpendChargesResponse]
-	rollLastCharge    *connect.Client[v1.RollLastChargeRequest, v1.RollLastChargeResponse]
-	setCharges        *connect.Client[v1.SetChargesRequest, v1.SetChargesResponse]
-	setAmmunition     *connect.Client[v1.SetAmmunitionRequest, v1.SetAmmunitionResponse]
-	recoverAmmunition *connect.Client[v1.RecoverAmmunitionRequest, v1.RecoverAmmunitionResponse]
-	dawn              *connect.Client[v1.DawnRequest, v1.DawnResponse]
-	useConsumable     *connect.Client[v1.UseConsumableRequest, v1.UseConsumableResponse]
+	spendCharges          *connect.Client[v1.SpendChargesRequest, v1.SpendChargesResponse]
+	rollLastCharge        *connect.Client[v1.RollLastChargeRequest, v1.RollLastChargeResponse]
+	setCharges            *connect.Client[v1.SetChargesRequest, v1.SetChargesResponse]
+	setAmmunition         *connect.Client[v1.SetAmmunitionRequest, v1.SetAmmunitionResponse]
+	recoverAmmunition     *connect.Client[v1.RecoverAmmunitionRequest, v1.RecoverAmmunitionResponse]
+	dawn                  *connect.Client[v1.DawnRequest, v1.DawnResponse]
+	useConsumable         *connect.Client[v1.UseConsumableRequest, v1.UseConsumableResponse]
+	listConsumableTargets *connect.Client[v1.ListConsumableTargetsRequest, v1.ListConsumableTargetsResponse]
 }
 
 // SpendCharges calls meurpg.play.v1.ChargesService.SpendCharges.
@@ -243,6 +262,11 @@ func (c *chargesServiceClient) Dawn(ctx context.Context, req *connect.Request[v1
 // UseConsumable calls meurpg.play.v1.ChargesService.UseConsumable.
 func (c *chargesServiceClient) UseConsumable(ctx context.Context, req *connect.Request[v1.UseConsumableRequest]) (*connect.Response[v1.UseConsumableResponse], error) {
 	return c.useConsumable.CallUnary(ctx, req)
+}
+
+// ListConsumableTargets calls meurpg.play.v1.ChargesService.ListConsumableTargets.
+func (c *chargesServiceClient) ListConsumableTargets(ctx context.Context, req *connect.Request[v1.ListConsumableTargetsRequest]) (*connect.Response[v1.ListConsumableTargetsResponse], error) {
+	return c.listConsumableTargets.CallUnary(ctx, req)
 }
 
 // ChargesServiceHandler is an implementation of the meurpg.play.v1.ChargesService service.
@@ -323,6 +347,15 @@ type ChargesServiceHandler interface {
 	// a UUID or one reused for another request, and a roll the request does not carry; `failed_precondition` with
 	// NO_OPEN_SESSION, CharacterBlocked CHARACTER_DEAD and the EncounterBlocked reasons of an action in a combat.
 	UseConsumable(context.Context, *connect.Request[v1.UseConsumableRequest]) (*connect.Response[v1.UseConsumableResponse], error)
+	// ListConsumableTargets lists who the character may give a consumable to: in a running combat, the player's
+	// characters that are adjacent (5 feet) to the user's combatant and that the user sees (a hidden creature is never
+	// listed), with the distance; out of a combat, the other living characters of the party. The master reads it for the
+	// character it acts for, and the list is the one that character's player would get. Read only.
+	//
+	// Errors: `permission_denied` for a character that is not the caller's (a player); `not_found` for a character that
+	// is not there; `failed_precondition` with EncounterBlocked ITEM_GONE for an entry that is no longer on the sheet and
+	// CharacterBlocked CHARACTER_DEAD for a dead user.
+	ListConsumableTargets(context.Context, *connect.Request[v1.ListConsumableTargetsRequest]) (*connect.Response[v1.ListConsumableTargetsResponse], error)
 }
 
 // NewChargesServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -374,6 +407,12 @@ func NewChargesServiceHandler(svc ChargesServiceHandler, opts ...connect.Handler
 		connect.WithSchema(chargesServiceMethods.ByName("UseConsumable")),
 		connect.WithHandlerOptions(opts...),
 	)
+	chargesServiceListConsumableTargetsHandler := connect.NewUnaryHandler(
+		ChargesServiceListConsumableTargetsProcedure,
+		svc.ListConsumableTargets,
+		connect.WithSchema(chargesServiceMethods.ByName("ListConsumableTargets")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/meurpg.play.v1.ChargesService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ChargesServiceSpendChargesProcedure:
@@ -390,6 +429,8 @@ func NewChargesServiceHandler(svc ChargesServiceHandler, opts ...connect.Handler
 			chargesServiceDawnHandler.ServeHTTP(w, r)
 		case ChargesServiceUseConsumableProcedure:
 			chargesServiceUseConsumableHandler.ServeHTTP(w, r)
+		case ChargesServiceListConsumableTargetsProcedure:
+			chargesServiceListConsumableTargetsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -425,4 +466,8 @@ func (UnimplementedChargesServiceHandler) Dawn(context.Context, *connect.Request
 
 func (UnimplementedChargesServiceHandler) UseConsumable(context.Context, *connect.Request[v1.UseConsumableRequest]) (*connect.Response[v1.UseConsumableResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.ChargesService.UseConsumable is not implemented"))
+}
+
+func (UnimplementedChargesServiceHandler) ListConsumableTargets(context.Context, *connect.Request[v1.ListConsumableTargetsRequest]) (*connect.Response[v1.ListConsumableTargetsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.ChargesService.ListConsumableTargets is not implemented"))
 }

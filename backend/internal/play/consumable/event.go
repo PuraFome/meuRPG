@@ -11,9 +11,10 @@ const (
 	OutcomeTextOnly   = "text_only"
 )
 
-// Used is the payload of consumable_used. The keys round, combatant_id and secret are the ones the
-// combat log reads from every event; the rest only the line of the use reads. It is for the master, the user's owner
-// and the receiver's owner alone (Secret).
+// Used is the payload of consumable_used. The keys round, combatant_id, target_id and secret are the ones the
+// combat log reads from every event; the rest only the line of the use reads. Outside a combat the event has no combat
+// and no line; in one the line names the item to the table, and its numbers are the master's, the user's owner's and the
+// receiver's owner's alone. Secret is never set.
 type Used struct {
 	Round  int32  `json:"round"`
 	Actor  string `json:"combatant_id,omitempty"`

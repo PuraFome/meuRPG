@@ -14,6 +14,7 @@ import (
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
 	"github.com/PuraFome/meuRPG/backend/internal/play/consumable"
@@ -80,10 +81,13 @@ func (s *Service) UseConsumable(ctx context.Context, req *connect.Request[playv1
 	return connect.NewResponse(consumable.Response(run.ev, run.target, run.text, run.vitals)), nil
 }
 
-// useConsumableTx is the transaction of UseConsumable (the session is locked): retry, who may, the combat, the spent unit,
-// the effect, the event and the hints.
+// useConsumableTx is the transaction of UseConsumable (the session is locked): who may, the retry, the combat, the spent
+// unit, the effect, the event and the hints.
 func (s *Service) useConsumableTx(ctx context.Context, tx pgx.Tx, h *hints, session playdb.GameSession, use consumableCall, run *consumableRun) error {
 	q := s.queries.WithTx(tx)
+	if _, err := s.mayUseConsumable(ctx, tx, use); err != nil { // the retry of a key is answered to who may use it only
+		return err
+	}
 	done, again, err := chargeEventByKey(ctx, q, session.ID, use.chargeCall, eventConsumableUsed)
 	if err != nil {
 		return err
@@ -91,10 +95,14 @@ func (s *Service) useConsumableTx(ctx context.Context, tx pgx.Tx, h *hints, sess
 	if again {
 		return s.consumableRetry(ctx, tx, h, done, use, run)
 	}
-	if err := s.canUseConsumable(ctx, tx, q, session.ID, use); err != nil {
+	fight, err := s.canUseConsumable(ctx, tx, q, h, session, use)
+	if err != nil {
 		return err
 	}
 	item, err := s.vitals.RemoveConsumable(ctx, tx, use.m.CampaignID, use.charText, use.req.GetEntryId())
+	if connect.CodeOf(err) == connect.CodeNotFound {
+		return errItemGone()
+	}
 	if err != nil {
 		return err
 	}
@@ -103,50 +111,74 @@ func (s *Service) useConsumableTx(ctx context.Context, tx pgx.Tx, h *hints, sess
 	if use.target != use.charText {
 		run.ev.Target = use.target
 	}
-	if err := s.applyConsumable(ctx, tx, q, session, use, run); err != nil {
+	ev := keyedEvent{sessionID: session.ID, kind: eventConsumableUsed, userID: use.m.UserID, characterID: &use.charText, key: use.keyText, hash: use.hash}
+	if fight != nil {
+		fight.name(&run.ev)
+		ev.encounterID = &fight.c.enc.ID
+	}
+	if err := s.applyConsumable(ctx, tx, q, session, use, fight, run); err != nil {
 		return err
 	}
-	if err := s.appendKeyedEvent(ctx, q, keyedEvent{
-		sessionID: session.ID, kind: eventConsumableUsed, userID: use.m.UserID, characterID: &use.charText, key: use.keyText, hash: use.hash,
-	}, run.ev); err != nil {
+	if err := s.appendKeyedEvent(ctx, q, ev, run.ev); err != nil {
 		return err
 	}
 	if run.vitals, err = s.receiverVitals(ctx, tx, use); err != nil {
 		return err
 	}
 	s.tellVitalsAfter(h, use.m.CampaignID, slices.Compact([]string{use.charText, use.target})...)
+	if run.ev.Outcome == consumable.OutcomeResistance {
+		h.tell(use.m.CampaignID, castsChangedEvent(false)) // the effects of the character changed
+	}
 	h.touch()
+	if fight != nil {
+		return fight.finish(ctx, s, h)
+	}
 	return nil
 }
 
-// canUseConsumable checks who may use it and on whom: the character's player or the master, a user and a receiver that are
-// alive. A user or receiver that fights in the running combat is refused: a use in a combat is the combat's own (the seam of
-// the combat's rules: it costs the action and a turn), and an effect of a combatant lives in the combat.
-func (s *Service) canUseConsumable(ctx context.Context, tx pgx.Tx, q *playdb.Queries, sessionID string, use consumableCall) error {
+// mayUseConsumable checks who asks: the character's player or the master. It says who plays the receiver of the use.
+func (s *Service) mayUseConsumable(ctx context.Context, tx pgx.Tx, use consumableCall) (receiverOwner string, err error) {
+	owner, _, _, err := s.vitals.ItemAccess(ctx, tx, use.m.CampaignID, use.charText)
+	if err != nil {
+		return "", err
+	}
+	if use.m.Role != authz.RoleMaster && (owner == "" || owner != use.m.UserID) {
+		return "", connect.NewError(connect.CodePermissionDenied, errors.New("only the character's player or the master may do this"))
+	}
+	if use.target == use.charText {
+		return owner, nil
+	}
+	receiverOwner, _, _, err = s.vitals.ItemAccess(ctx, tx, use.m.CampaignID, use.target)
+	return receiverOwner, err
+}
+
+// canUseConsumable checks that the user and the receiver are alive, that the receiver is a player's character, that the
+// user is not at 0 hit points (an unconscious creature does not act, a creature at 0 may still receive) and, in a running
+// combat, the combat's rules: it opens the combat the use happens in and spends the action (nil outside a combat).
+func (s *Service) canUseConsumable(ctx context.Context, tx pgx.Tx, q *playdb.Queries, h *hints, session playdb.GameSession, use consumableCall) (*consumableFight, error) {
 	if _, err := s.requireItemCharacter(ctx, tx, use.m, use.charText); err != nil {
-		return err
+		return nil, err
 	}
 	if use.target != use.charText {
-		_, dead, _, err := s.vitals.ItemAccess(ctx, tx, use.m.CampaignID, use.target)
+		owner, dead, _, err := s.vitals.ItemAccess(ctx, tx, use.m.CampaignID, use.target)
 		if err != nil {
-			return err
+			return nil, err
+		}
+		if owner == "" { // an NPC or a reserved character is no player's to be given a potion
+			return nil, errCharacterNotFound()
 		}
 		if dead {
-			return characterBlocked(charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_CHARACTER_DEAD, use.target, "the receiver is dead")
+			return nil, characterBlocked(charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_CHARACTER_DEAD, use.target, "the receiver is dead")
 		}
 	}
-	enc, cs, found, err := openCombatants(ctx, q, sessionID)
-	if err != nil || !found || enc.Status != statusActive {
-		return err
+	if err := s.mustNotBeDown(ctx, tx, use.m.CampaignID, playdb.Combatant{Kind: kindPlayer, CharacterID: use.charText}); err != nil {
+		return nil, err
 	}
-	if wearerIn(cs, use.charText) != nil || wearerIn(cs, use.target) != nil {
-		return chargesBlocked(playv1.ChargesBlockedReason_CHARGES_BLOCKED_REASON_COMBAT_RUNNING, "a character of the running combat uses its consumables in the combat", 0)
-	}
-	return nil
+	return s.openFight(ctx, tx, q, h, session, use)
 }
 
 // applyConsumable carries out what the item does to the receiver, by the content's potion table, and fills the event.
-func (s *Service) applyConsumable(ctx context.Context, tx pgx.Tx, q *playdb.Queries, session playdb.GameSession, use consumableCall, run *consumableRun) error {
+func (s *Service) applyConsumable(ctx context.Context, tx pgx.Tx, q *playdb.Queries, session playdb.GameSession, use consumableCall, fight *consumableFight, run *consumableRun) error {
 	content, err := s.roster.RulesContent(ctx, tx, use.m.CampaignID)
 	if err != nil {
 		return err
@@ -154,9 +186,12 @@ func (s *Service) applyConsumable(ctx context.Context, tx pgx.Tx, q *playdb.Quer
 	potion, ok := content.PotionEffect(run.ev.Item)
 	switch {
 	case ok && potion.Kind == rules.PotionHeal:
-		return s.healWithPotion(ctx, tx, q, session, use, potion, &run.ev)
+		return s.healWithPotion(ctx, tx, q, session, use, fight, potion, &run.ev)
 	case ok && potion.Kind == rules.PotionResistance:
 		run.ev.Outcome, run.ev.DamageType = consumable.OutcomeResistance, potion.DamageType
+		if fight != nil {
+			return fight.resist(ctx, s, potion, run.ev.Item)
+		}
 		return s.putPotionResistance(ctx, tx, q, session, use, potion, run.ev.Item)
 	}
 	run.ev.Outcome = consumable.OutcomeTextOnly
@@ -166,8 +201,9 @@ func (s *Service) applyConsumable(ctx context.Context, tx pgx.Tx, q *playdb.Quer
 }
 
 // healWithPotion rolls the potion's dice (the app's, or the faces typed from real dice by the table's rule, RN-18) and heals the
-// receiver up to the maximum.
-func (s *Service) healWithPotion(ctx context.Context, tx pgx.Tx, q *playdb.Queries, session playdb.GameSession, use consumableCall, potion rules.PotionEffect, ev *consumableUsedEvent) error {
+// receiver up to the maximum: in a combat with the combat's heal (a creature at 0 hit points gets up and its death saves
+// reset), else through the vitals. The session's lock holds every other write of the vitals back while it reads and writes.
+func (s *Service) healWithPotion(ctx context.Context, tx pgx.Tx, q *playdb.Queries, session playdb.GameSession, use consumableCall, fight *consumableFight, potion rules.PotionEffect, ev *consumableUsedEvent) error {
 	if err := s.mustRollThisWay(ctx, tx, use.m, rollInput{inApp: use.req.GetRollInApp()}); err != nil {
 		return err
 	}
@@ -178,20 +214,34 @@ func (s *Service) healWithPotion(ctx context.Context, tx pgx.Tx, q *playdb.Queri
 	if err != nil {
 		return err
 	}
-	before, err := s.vitals.GetVitalsTx(ctx, tx, use.m.CampaignID, use.target)
+	var healed int32
+	if fight != nil {
+		healed, err = fight.heal(ctx, s, total)
+	} else {
+		healed, err = s.healCharacter(ctx, tx, q, session, use, total)
+	}
 	if err != nil {
 		return err
+	}
+	ev.Outcome, ev.Dice, ev.Faces, ev.Total, ev.Healed, ev.Physical = consumable.OutcomeHealed, potion.Heal.Text(), faces, total, healed, !use.req.GetRollInApp()
+	return nil
+}
+
+// healCharacter gives the receiver the hit points of a heal outside a combat and says how many it regained.
+func (s *Service) healCharacter(ctx context.Context, tx pgx.Tx, q *playdb.Queries, session playdb.GameSession, use consumableCall, total int32) (int32, error) {
+	before, err := s.vitals.GetVitalsTx(ctx, tx, use.m.CampaignID, use.target)
+	if err != nil {
+		return 0, err
 	}
 	healed := consumable.Healed(before.GetHitPointsCurrent(), before.GetHitPointsMax(), total)
 	if healed > 0 {
 		now := before.GetHitPointsCurrent() + healed
 		req := &playv1.AdjustCharacterVitalsRequest{CampaignId: use.m.CampaignID, CharacterId: use.target, HitPointsCurrent: &now}
 		if _, _, err := s.changeVitals(ctx, q, tx, session.ID, use.m.CampaignID, use.target, req); err != nil {
-			return err
+			return 0, err
 		}
 	}
-	ev.Outcome, ev.Dice, ev.Faces, ev.Total, ev.Healed, ev.Physical = consumable.OutcomeHealed, potion.Heal.Text(), faces, total, healed, !use.req.GetRollInApp()
-	return nil
+	return healed, nil
 }
 
 // putPotionResistance gives the receiver the potion's resistance as an effect of the character outside a combat: one hour of
@@ -219,8 +269,16 @@ func (s *Service) putPotionResistance(ctx context.Context, tx pgx.Tx, q *playdb.
 	return nil
 }
 
-// receiverVitals are the receiver's vitals as they stand, none for a character that is no player's.
+// receiverVitals are the receiver's vitals as they stand, for the master and for the receiver's own player: a giver that
+// does not play the receiver is told what the use did (the hit points regained) and no more. None for a character that is
+// no player's.
 func (s *Service) receiverVitals(ctx context.Context, tx pgx.Tx, use consumableCall) ([]*playv1.CharacterVitals, error) {
+	if use.m.Role != authz.RoleMaster && use.target != use.charText {
+		owner, _, _, err := s.vitals.ItemAccess(ctx, tx, use.m.CampaignID, use.target)
+		if err != nil || owner != use.m.UserID {
+			return nil, err
+		}
+	}
 	v, err := s.vitals.GetVitalsTx(ctx, tx, use.m.CampaignID, use.target)
 	if connect.CodeOf(err) == connect.CodeNotFound {
 		return nil, nil

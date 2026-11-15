@@ -104,6 +104,16 @@ service ChargesService {
   // a UUID or one reused for another request, and a roll the request does not carry; `failed_precondition` with
   // NO_OPEN_SESSION, CharacterBlocked CHARACTER_DEAD and the EncounterBlocked reasons of an action in a combat.
   rpc UseConsumable(UseConsumableRequest) returns (UseConsumableResponse);
+
+  // ListConsumableTargets lists who the character may give a consumable to: in a running combat, the player's
+  // characters that are adjacent (5 feet) to the user's combatant and that the user sees (a hidden creature is never
+  // listed), with the distance; out of a combat, the other living characters of the party. The master reads it for the
+  // character it acts for, and the list is the one that character's player would get. Read only.
+  //
+  // Errors: `permission_denied` for a character that is not the caller's (a player); `not_found` for a character that
+  // is not there; `failed_precondition` with EncounterBlocked ITEM_GONE for an entry that is no longer on the sheet and
+  // CharacterBlocked CHARACTER_DEAD for a dead user.
+  rpc ListConsumableTargets(ListConsumableTargetsRequest) returns (ListConsumableTargetsResponse);
 }
 
 // ChargesBlockedReason is why a charges or ammunition call was refused with `failed_precondition`.
@@ -265,4 +275,36 @@ message UseConsumableResponse {
   string target_character_id = 11;
   // The vitals of the characters the use changed (the receiver).
   repeated CharacterVitals vitals = 12;
+}
+
+message ListConsumableTargetsRequest {
+  string campaign_id = 1;
+  // The character that holds the consumable (the user).
+  string character_id = 2;
+  // The id of the entry on the sheet (SheetMagicItem.id).
+  string entry_id = 3;
+}
+
+message ListConsumableTargetsResponse {
+  repeated ConsumableTarget targets = 1;
+}
+
+// ConsumableTarget is a character the consumable may be given to.
+message ConsumableTarget {
+  string character_id = 1;
+  string name = 2;
+  // The distance from the user's combatant, in feet; 0 when there is no running combat.
+  int32 distance_ft = 3;
+  ConsumableTargetState state = 4;
+  // Whether the character may receive it now (always true for a listed character today).
+  bool may_receive = 5;
+}
+
+// ConsumableTargetState is how a possible receiver stands, as every player at the table may see it.
+enum ConsumableTargetState {
+  CONSUMABLE_TARGET_STATE_UNSPECIFIED = 0;
+  // On its feet: above 0 hit points.
+  CONSUMABLE_TARGET_STATE_OK = 1;
+  // At 0 hit points (unconscious): it cannot act, and a potion given to it wakes it.
+  CONSUMABLE_TARGET_STATE_DOWN = 2;
 }

@@ -25,7 +25,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file meurpg/play/v1/charges.proto.
  */
 export const file_meurpg_play_v1_charges: GenFile = /*@__PURE__*/
-  fileDesc("ChxtZXVycGcvcGxheS92MS9jaGFyZ2VzLnByb3RvEg5tZXVycGcucGxheS52MSJWCg5DaGFyZ2VzQmxvY2tlZBI0CgZyZWFzb24YASABKA4yJC5tZXVycGcucGxheS52MS5DaGFyZ2VzQmxvY2tlZFJlYXNvbhIOCgZuZWVkZWQYAiABKAUiewoTU3BlbmRDaGFyZ2VzUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxjaGFyYWN0ZXJfaWQYAiABKAkSEAoIZW50cnlfaWQYAyABKAkSDgoGYW1vdW50GAQgASgFEhcKD2lkZW1wb3RlbmN5X2tleRgFIAEoCSJKChRTcGVuZENoYXJnZXNSZXNwb25zZRIyCgRpdGVtGAEgASgLMiQubWV1cnBnLmNoYXJhY3RlcnMudjEuU2hlZXRNYWdpY0l0ZW0iuwEKFVJvbGxMYXN0Q2hhcmdlUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxjaGFyYWN0ZXJfaWQYAiABKAkSEAoIZW50cnlfaWQYAyABKAkSFwoPaWRlbXBvdGVuY3lfa2V5GAQgASgJEhUKC3JvbGxfaW5fYXBwGAUgASgISAASEgoIZDIwX2ZhY2UYBiABKAVIABIZChF0eXBlZF9yZWdhaW5fZmFjZRgHIAEoBUIGCgRyb2xsIq4BChZSb2xsTGFzdENoYXJnZVJlc3BvbnNlEjIKBGl0ZW0YASABKAsyJC5tZXVycGcuY2hhcmFjdGVycy52MS5TaGVldE1hZ2ljSXRlbRILCgNkMjAYAiABKAUSEAoIcmVnYWluZWQYAyABKAUSLAoEbG9zdBgEIAEoDjIeLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLkl0ZW1Mb3NzEhMKC3JlZ2Fpbl9mYWNlGAUgASgFIq0BChFTZXRDaGFyZ2VzUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxjaGFyYWN0ZXJfaWQYAiABKAkSEAoIZW50cnlfaWQYAyABKAkSFAoMY2hhcmdlc19sZWZ0GAQgASgFEiwKBGxvc3QYBSABKA4yHi5tZXVycGcuY2hhcmFjdGVycy52MS5JdGVtTG9zcxIXCg9pZGVtcG90ZW5jeV9rZXkYBiABKAkiSAoSU2V0Q2hhcmdlc1Jlc3BvbnNlEjIKBGl0ZW0YASABKAsyJC5tZXVycGcuY2hhcmFjdGVycy52MS5TaGVldE1hZ2ljSXRlbSJlChRTZXRBbW11bml0aW9uUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxjaGFyYWN0ZXJfaWQYAiABKAkSEAoIYW1tb19rZXkYAyABKAkSEAoIcXVhbnRpdHkYBCABKAUiUgoVU2V0QW1tdW5pdGlvblJlc3BvbnNlEjkKCmFtbXVuaXRpb24YASABKAsyJS5tZXVycGcuY2hhcmFjdGVycy52MS5TaGVldEFtbXVuaXRpb24iXgoYUmVjb3ZlckFtbXVuaXRpb25SZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhQKDGNoYXJhY3Rlcl9pZBgCIAEoCRIXCg9pZGVtcG90ZW5jeV9rZXkYAyABKAkiVgoZUmVjb3ZlckFtbXVuaXRpb25SZXNwb25zZRI5CgphbW11bml0aW9uGAEgAygLMiUubWV1cnBnLmNoYXJhY3RlcnMudjEuU2hlZXRBbW11bml0aW9uIjsKC0Rhd25SZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhcKD2lkZW1wb3RlbmN5X2tleRgCIAEoCSI+CgxEYXduUmVzcG9uc2USLgoIcmVzdG9yZWQYASADKAsyHC5tZXVycGcucGxheS52MS5EYXduUmVzdG9yZWQiagoMRGF3blJlc3RvcmVkEhQKDGNoYXJhY3Rlcl9pZBgBIAEoCRIyCgRpdGVtGAIgASgLMiQubWV1cnBnLmNoYXJhY3RlcnMudjEuU2hlZXRNYWdpY0l0ZW0SEAoIcmVnYWluZWQYAyABKAUiswEKFFVzZUNvbnN1bWFibGVSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhQKDGNoYXJhY3Rlcl9pZBgCIAEoCRIQCghlbnRyeV9pZBgDIAEoCRIbChN0YXJnZXRfY2hhcmFjdGVyX2lkGAQgASgJEhcKD2lkZW1wb3RlbmN5X2tleRgFIAEoCRITCgtyb2xsX2luX2FwcBgGIAEoCBITCgt0eXBlZF9mYWNlcxgHIAMoBSLDAgoVVXNlQ29uc3VtYWJsZVJlc3BvbnNlEhAKCGVudHJ5X2lkGAEgASgJEhAKCGl0ZW1fa2V5GAIgASgJEhQKDGl0ZW1fbmFtZV9wdBgDIAEoCRI1CgdvdXRjb21lGAQgASgOMiQubWV1cnBnLnBsYXkudjEuQ29uc3VtYWJsZVVzZU91dGNvbWUSDAoEdGV4dBgFIAMoCRIRCglkaWNlX3RleHQYBiABKAkSDQoFZmFjZXMYByADKAUSEgoKcm9sbF90b3RhbBgIIAEoBRIOCgZoZWFsZWQYCSABKAUSFwoPZGFtYWdlX3R5cGVfa2V5GAogASgJEhsKE3RhcmdldF9jaGFyYWN0ZXJfaWQYCyABKAkSLwoGdml0YWxzGAwgAygLMh8ubWV1cnBnLnBsYXkudjEuQ2hhcmFjdGVyVml0YWxzKsYBChRDaGFyZ2VzQmxvY2tlZFJlYXNvbhImCiJDSEFSR0VTX0JMT0NLRURfUkVBU09OX1VOU1BFQ0lGSUVEEAASLQopQ0hBUkdFU19CTE9DS0VEX1JFQVNPTl9SRUdBSU5fRkFDRV9ORUVERUQQARIpCiVDSEFSR0VTX0JMT0NLRURfUkVBU09OX0NPTUJBVF9SVU5OSU5HEAISLAooQ0hBUkdFU19CTE9DS0VEX1JFQVNPTl9BTFJFQURZX1JFQ09WRVJFRBADMooFCg5DaGFyZ2VzU2VydmljZRJZCgxTcGVuZENoYXJnZXMSIy5tZXVycGcucGxheS52MS5TcGVuZENoYXJnZXNSZXF1ZXN0GiQubWV1cnBnLnBsYXkudjEuU3BlbmRDaGFyZ2VzUmVzcG9uc2USXwoOUm9sbExhc3RDaGFyZ2USJS5tZXVycGcucGxheS52MS5Sb2xsTGFzdENoYXJnZVJlcXVlc3QaJi5tZXVycGcucGxheS52MS5Sb2xsTGFzdENoYXJnZVJlc3BvbnNlElMKClNldENoYXJnZXMSIS5tZXVycGcucGxheS52MS5TZXRDaGFyZ2VzUmVxdWVzdBoiLm1ldXJwZy5wbGF5LnYxLlNldENoYXJnZXNSZXNwb25zZRJcCg1TZXRBbW11bml0aW9uEiQubWV1cnBnLnBsYXkudjEuU2V0QW1tdW5pdGlvblJlcXVlc3QaJS5tZXVycGcucGxheS52MS5TZXRBbW11bml0aW9uUmVzcG9uc2USaAoRUmVjb3ZlckFtbXVuaXRpb24SKC5tZXVycGcucGxheS52MS5SZWNvdmVyQW1tdW5pdGlvblJlcXVlc3QaKS5tZXVycGcucGxheS52MS5SZWNvdmVyQW1tdW5pdGlvblJlc3BvbnNlEkEKBERhd24SGy5tZXVycGcucGxheS52MS5EYXduUmVxdWVzdBocLm1ldXJwZy5wbGF5LnYxLkRhd25SZXNwb25zZRJcCg1Vc2VDb25zdW1hYmxlEiQubWV1cnBnLnBsYXkudjEuVXNlQ29uc3VtYWJsZVJlcXVlc3QaJS5tZXVycGcucGxheS52MS5Vc2VDb25zdW1hYmxlUmVzcG9uc2VCugEKEmNvbS5tZXVycGcucGxheS52MUIMQ2hhcmdlc1Byb3RvUAFaPGdpdGh1Yi5jb20vUHVyYUZvbWUvbWV1UlBHL2JhY2tlbmQvZ2VuL21ldXJwZy9wbGF5L3YxO3BsYXl2MaICA01QWKoCDk1ldXJwZy5QbGF5LlYxygIOTWV1cnBnXFBsYXlcVjHiAhpNZXVycGdcUGxheVxWMVxHUEJNZXRhZGF0YeoCEE1ldXJwZzo6UGxheTo6VjFiBnByb3RvMw", [file_meurpg_characters_v1_characters, file_meurpg_play_v1_combat, file_meurpg_play_v1_play]);
+  fileDesc("ChxtZXVycGcvcGxheS92MS9jaGFyZ2VzLnByb3RvEg5tZXVycGcucGxheS52MSJWCg5DaGFyZ2VzQmxvY2tlZBI0CgZyZWFzb24YASABKA4yJC5tZXVycGcucGxheS52MS5DaGFyZ2VzQmxvY2tlZFJlYXNvbhIOCgZuZWVkZWQYAiABKAUiewoTU3BlbmRDaGFyZ2VzUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxjaGFyYWN0ZXJfaWQYAiABKAkSEAoIZW50cnlfaWQYAyABKAkSDgoGYW1vdW50GAQgASgFEhcKD2lkZW1wb3RlbmN5X2tleRgFIAEoCSJKChRTcGVuZENoYXJnZXNSZXNwb25zZRIyCgRpdGVtGAEgASgLMiQubWV1cnBnLmNoYXJhY3RlcnMudjEuU2hlZXRNYWdpY0l0ZW0iuwEKFVJvbGxMYXN0Q2hhcmdlUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxjaGFyYWN0ZXJfaWQYAiABKAkSEAoIZW50cnlfaWQYAyABKAkSFwoPaWRlbXBvdGVuY3lfa2V5GAQgASgJEhUKC3JvbGxfaW5fYXBwGAUgASgISAASEgoIZDIwX2ZhY2UYBiABKAVIABIZChF0eXBlZF9yZWdhaW5fZmFjZRgHIAEoBUIGCgRyb2xsIq4BChZSb2xsTGFzdENoYXJnZVJlc3BvbnNlEjIKBGl0ZW0YASABKAsyJC5tZXVycGcuY2hhcmFjdGVycy52MS5TaGVldE1hZ2ljSXRlbRILCgNkMjAYAiABKAUSEAoIcmVnYWluZWQYAyABKAUSLAoEbG9zdBgEIAEoDjIeLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLkl0ZW1Mb3NzEhMKC3JlZ2Fpbl9mYWNlGAUgASgFIq0BChFTZXRDaGFyZ2VzUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxjaGFyYWN0ZXJfaWQYAiABKAkSEAoIZW50cnlfaWQYAyABKAkSFAoMY2hhcmdlc19sZWZ0GAQgASgFEiwKBGxvc3QYBSABKA4yHi5tZXVycGcuY2hhcmFjdGVycy52MS5JdGVtTG9zcxIXCg9pZGVtcG90ZW5jeV9rZXkYBiABKAkiSAoSU2V0Q2hhcmdlc1Jlc3BvbnNlEjIKBGl0ZW0YASABKAsyJC5tZXVycGcuY2hhcmFjdGVycy52MS5TaGVldE1hZ2ljSXRlbSJlChRTZXRBbW11bml0aW9uUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxjaGFyYWN0ZXJfaWQYAiABKAkSEAoIYW1tb19rZXkYAyABKAkSEAoIcXVhbnRpdHkYBCABKAUiUgoVU2V0QW1tdW5pdGlvblJlc3BvbnNlEjkKCmFtbXVuaXRpb24YASABKAsyJS5tZXVycGcuY2hhcmFjdGVycy52MS5TaGVldEFtbXVuaXRpb24iXgoYUmVjb3ZlckFtbXVuaXRpb25SZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhQKDGNoYXJhY3Rlcl9pZBgCIAEoCRIXCg9pZGVtcG90ZW5jeV9rZXkYAyABKAkiVgoZUmVjb3ZlckFtbXVuaXRpb25SZXNwb25zZRI5CgphbW11bml0aW9uGAEgAygLMiUubWV1cnBnLmNoYXJhY3RlcnMudjEuU2hlZXRBbW11bml0aW9uIjsKC0Rhd25SZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhcKD2lkZW1wb3RlbmN5X2tleRgCIAEoCSI+CgxEYXduUmVzcG9uc2USLgoIcmVzdG9yZWQYASADKAsyHC5tZXVycGcucGxheS52MS5EYXduUmVzdG9yZWQiagoMRGF3blJlc3RvcmVkEhQKDGNoYXJhY3Rlcl9pZBgBIAEoCRIyCgRpdGVtGAIgASgLMiQubWV1cnBnLmNoYXJhY3RlcnMudjEuU2hlZXRNYWdpY0l0ZW0SEAoIcmVnYWluZWQYAyABKAUiswEKFFVzZUNvbnN1bWFibGVSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhQKDGNoYXJhY3Rlcl9pZBgCIAEoCRIQCghlbnRyeV9pZBgDIAEoCRIbChN0YXJnZXRfY2hhcmFjdGVyX2lkGAQgASgJEhcKD2lkZW1wb3RlbmN5X2tleRgFIAEoCRITCgtyb2xsX2luX2FwcBgGIAEoCBITCgt0eXBlZF9mYWNlcxgHIAMoBSLDAgoVVXNlQ29uc3VtYWJsZVJlc3BvbnNlEhAKCGVudHJ5X2lkGAEgASgJEhAKCGl0ZW1fa2V5GAIgASgJEhQKDGl0ZW1fbmFtZV9wdBgDIAEoCRI1CgdvdXRjb21lGAQgASgOMiQubWV1cnBnLnBsYXkudjEuQ29uc3VtYWJsZVVzZU91dGNvbWUSDAoEdGV4dBgFIAMoCRIRCglkaWNlX3RleHQYBiABKAkSDQoFZmFjZXMYByADKAUSEgoKcm9sbF90b3RhbBgIIAEoBRIOCgZoZWFsZWQYCSABKAUSFwoPZGFtYWdlX3R5cGVfa2V5GAogASgJEhsKE3RhcmdldF9jaGFyYWN0ZXJfaWQYCyABKAkSLwoGdml0YWxzGAwgAygLMh8ubWV1cnBnLnBsYXkudjEuQ2hhcmFjdGVyVml0YWxzIlsKHExpc3RDb25zdW1hYmxlVGFyZ2V0c1JlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSFAoMY2hhcmFjdGVyX2lkGAIgASgJEhAKCGVudHJ5X2lkGAMgASgJIlIKHUxpc3RDb25zdW1hYmxlVGFyZ2V0c1Jlc3BvbnNlEjEKB3RhcmdldHMYASADKAsyIC5tZXVycGcucGxheS52MS5Db25zdW1hYmxlVGFyZ2V0IpYBChBDb25zdW1hYmxlVGFyZ2V0EhQKDGNoYXJhY3Rlcl9pZBgBIAEoCRIMCgRuYW1lGAIgASgJEhMKC2Rpc3RhbmNlX2Z0GAMgASgFEjQKBXN0YXRlGAQgASgOMiUubWV1cnBnLnBsYXkudjEuQ29uc3VtYWJsZVRhcmdldFN0YXRlEhMKC21heV9yZWNlaXZlGAUgASgIKsYBChRDaGFyZ2VzQmxvY2tlZFJlYXNvbhImCiJDSEFSR0VTX0JMT0NLRURfUkVBU09OX1VOU1BFQ0lGSUVEEAASLQopQ0hBUkdFU19CTE9DS0VEX1JFQVNPTl9SRUdBSU5fRkFDRV9ORUVERUQQARIpCiVDSEFSR0VTX0JMT0NLRURfUkVBU09OX0NPTUJBVF9SVU5OSU5HEAISLAooQ0hBUkdFU19CTE9DS0VEX1JFQVNPTl9BTFJFQURZX1JFQ09WRVJFRBADKoIBChVDb25zdW1hYmxlVGFyZ2V0U3RhdGUSJwojQ09OU1VNQUJMRV9UQVJHRVRfU1RBVEVfVU5TUEVDSUZJRUQQABIeChpDT05TVU1BQkxFX1RBUkdFVF9TVEFURV9PSxABEiAKHENPTlNVTUFCTEVfVEFSR0VUX1NUQVRFX0RPV04QAjKABgoOQ2hhcmdlc1NlcnZpY2USWQoMU3BlbmRDaGFyZ2VzEiMubWV1cnBnLnBsYXkudjEuU3BlbmRDaGFyZ2VzUmVxdWVzdBokLm1ldXJwZy5wbGF5LnYxLlNwZW5kQ2hhcmdlc1Jlc3BvbnNlEl8KDlJvbGxMYXN0Q2hhcmdlEiUubWV1cnBnLnBsYXkudjEuUm9sbExhc3RDaGFyZ2VSZXF1ZXN0GiYubWV1cnBnLnBsYXkudjEuUm9sbExhc3RDaGFyZ2VSZXNwb25zZRJTCgpTZXRDaGFyZ2VzEiEubWV1cnBnLnBsYXkudjEuU2V0Q2hhcmdlc1JlcXVlc3QaIi5tZXVycGcucGxheS52MS5TZXRDaGFyZ2VzUmVzcG9uc2USXAoNU2V0QW1tdW5pdGlvbhIkLm1ldXJwZy5wbGF5LnYxLlNldEFtbXVuaXRpb25SZXF1ZXN0GiUubWV1cnBnLnBsYXkudjEuU2V0QW1tdW5pdGlvblJlc3BvbnNlEmgKEVJlY292ZXJBbW11bml0aW9uEigubWV1cnBnLnBsYXkudjEuUmVjb3ZlckFtbXVuaXRpb25SZXF1ZXN0GikubWV1cnBnLnBsYXkudjEuUmVjb3ZlckFtbXVuaXRpb25SZXNwb25zZRJBCgREYXduEhsubWV1cnBnLnBsYXkudjEuRGF3blJlcXVlc3QaHC5tZXVycGcucGxheS52MS5EYXduUmVzcG9uc2USXAoNVXNlQ29uc3VtYWJsZRIkLm1ldXJwZy5wbGF5LnYxLlVzZUNvbnN1bWFibGVSZXF1ZXN0GiUubWV1cnBnLnBsYXkudjEuVXNlQ29uc3VtYWJsZVJlc3BvbnNlEnQKFUxpc3RDb25zdW1hYmxlVGFyZ2V0cxIsLm1ldXJwZy5wbGF5LnYxLkxpc3RDb25zdW1hYmxlVGFyZ2V0c1JlcXVlc3QaLS5tZXVycGcucGxheS52MS5MaXN0Q29uc3VtYWJsZVRhcmdldHNSZXNwb25zZUK6AQoSY29tLm1ldXJwZy5wbGF5LnYxQgxDaGFyZ2VzUHJvdG9QAVo8Z2l0aHViLmNvbS9QdXJhRm9tZS9tZXVSUEcvYmFja2VuZC9nZW4vbWV1cnBnL3BsYXkvdjE7cGxheXYxogIDTVBYqgIOTWV1cnBnLlBsYXkuVjHKAg5NZXVycGdcUGxheVxWMeICGk1ldXJwZ1xQbGF5XFYxXEdQQk1ldGFkYXRh6gIQTWV1cnBnOjpQbGF5OjpWMWIGcHJvdG8z", [file_meurpg_characters_v1_characters, file_meurpg_play_v1_combat, file_meurpg_play_v1_play]);
 
 /**
  * ChargesBlocked is the detail of ChargesService's `failed_precondition` for a rule of its own.
@@ -602,6 +602,97 @@ export const UseConsumableResponseSchema: GenMessage<UseConsumableResponse> = /*
   messageDesc(file_meurpg_play_v1_charges, 15);
 
 /**
+ * @generated from message meurpg.play.v1.ListConsumableTargetsRequest
+ */
+export type ListConsumableTargetsRequest = Message<"meurpg.play.v1.ListConsumableTargetsRequest"> & {
+  /**
+   * @generated from field: string campaign_id = 1;
+   */
+  campaignId: string;
+
+  /**
+   * The character that holds the consumable (the user).
+   *
+   * @generated from field: string character_id = 2;
+   */
+  characterId: string;
+
+  /**
+   * The id of the entry on the sheet (SheetMagicItem.id).
+   *
+   * @generated from field: string entry_id = 3;
+   */
+  entryId: string;
+};
+
+/**
+ * Describes the message meurpg.play.v1.ListConsumableTargetsRequest.
+ * Use `create(ListConsumableTargetsRequestSchema)` to create a new message.
+ */
+export const ListConsumableTargetsRequestSchema: GenMessage<ListConsumableTargetsRequest> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_charges, 16);
+
+/**
+ * @generated from message meurpg.play.v1.ListConsumableTargetsResponse
+ */
+export type ListConsumableTargetsResponse = Message<"meurpg.play.v1.ListConsumableTargetsResponse"> & {
+  /**
+   * @generated from field: repeated meurpg.play.v1.ConsumableTarget targets = 1;
+   */
+  targets: ConsumableTarget[];
+};
+
+/**
+ * Describes the message meurpg.play.v1.ListConsumableTargetsResponse.
+ * Use `create(ListConsumableTargetsResponseSchema)` to create a new message.
+ */
+export const ListConsumableTargetsResponseSchema: GenMessage<ListConsumableTargetsResponse> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_charges, 17);
+
+/**
+ * ConsumableTarget is a character the consumable may be given to.
+ *
+ * @generated from message meurpg.play.v1.ConsumableTarget
+ */
+export type ConsumableTarget = Message<"meurpg.play.v1.ConsumableTarget"> & {
+  /**
+   * @generated from field: string character_id = 1;
+   */
+  characterId: string;
+
+  /**
+   * @generated from field: string name = 2;
+   */
+  name: string;
+
+  /**
+   * The distance from the user's combatant, in feet; 0 when there is no running combat.
+   *
+   * @generated from field: int32 distance_ft = 3;
+   */
+  distanceFt: number;
+
+  /**
+   * @generated from field: meurpg.play.v1.ConsumableTargetState state = 4;
+   */
+  state: ConsumableTargetState;
+
+  /**
+   * Whether the character may receive it now (always true for a listed character today).
+   *
+   * @generated from field: bool may_receive = 5;
+   */
+  mayReceive: boolean;
+};
+
+/**
+ * Describes the message meurpg.play.v1.ConsumableTarget.
+ * Use `create(ConsumableTargetSchema)` to create a new message.
+ */
+export const ConsumableTargetSchema: GenMessage<ConsumableTarget> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_charges, 18);
+
+/**
  * ChargesBlockedReason is why a charges or ammunition call was refused with `failed_precondition`.
  *
  * @generated from enum meurpg.play.v1.ChargesBlockedReason
@@ -640,6 +731,38 @@ export enum ChargesBlockedReason {
  */
 export const ChargesBlockedReasonSchema: GenEnum<ChargesBlockedReason> = /*@__PURE__*/
   enumDesc(file_meurpg_play_v1_charges, 0);
+
+/**
+ * ConsumableTargetState is how a possible receiver stands, as every player at the table may see it.
+ *
+ * @generated from enum meurpg.play.v1.ConsumableTargetState
+ */
+export enum ConsumableTargetState {
+  /**
+   * @generated from enum value: CONSUMABLE_TARGET_STATE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * On its feet: above 0 hit points.
+   *
+   * @generated from enum value: CONSUMABLE_TARGET_STATE_OK = 1;
+   */
+  OK = 1,
+
+  /**
+   * At 0 hit points (unconscious): it cannot act, and a potion given to it wakes it.
+   *
+   * @generated from enum value: CONSUMABLE_TARGET_STATE_DOWN = 2;
+   */
+  DOWN = 2,
+}
+
+/**
+ * Describes the enum meurpg.play.v1.ConsumableTargetState.
+ */
+export const ConsumableTargetStateSchema: GenEnum<ConsumableTargetState> = /*@__PURE__*/
+  enumDesc(file_meurpg_play_v1_charges, 1);
 
 /**
  * ChargesService runs the charges of the magic items and the ammunition of a campaign's characters.
@@ -784,6 +907,23 @@ export const ChargesService: GenService<{
     methodKind: "unary";
     input: typeof UseConsumableRequestSchema;
     output: typeof UseConsumableResponseSchema;
+  },
+  /**
+   * ListConsumableTargets lists who the character may give a consumable to: in a running combat, the player's
+   * characters that are adjacent (5 feet) to the user's combatant and that the user sees (a hidden creature is never
+   * listed), with the distance; out of a combat, the other living characters of the party. The master reads it for the
+   * character it acts for, and the list is the one that character's player would get. Read only.
+   *
+   * Errors: `permission_denied` for a character that is not the caller's (a player); `not_found` for a character that
+   * is not there; `failed_precondition` with EncounterBlocked ITEM_GONE for an entry that is no longer on the sheet and
+   * CharacterBlocked CHARACTER_DEAD for a dead user.
+   *
+   * @generated from rpc meurpg.play.v1.ChargesService.ListConsumableTargets
+   */
+  listConsumableTargets: {
+    methodKind: "unary";
+    input: typeof ListConsumableTargetsRequestSchema;
+    output: typeof ListConsumableTargetsResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_meurpg_play_v1_charges, 0);

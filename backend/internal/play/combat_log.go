@@ -700,13 +700,14 @@ func itemUseLine(_ *logBuilder, e playdb.ListEncounterEventsRow, entry *logEntry
 	return true
 }
 
-// consumableUsedLine is the handler of consumable_used: the master's line and the lines of the user's and the receiver's owners.
+// consumableUsedLine is the handler of consumable_used: the table's line (the item), whose numbers fillConsumableUse leaves to the
+// master and the owners of the user and the receiver.
 func consumableUsedLine(_ *logBuilder, e playdb.ListEncounterEventsRow, entry *logEntry) bool {
 	var use consumableUsedEvent
 	if json.Unmarshal(e.Payload, &use) != nil {
 		return false
 	}
-	entry.kind, entry.masterOnly, entry.consumable = playv1.CombatLogKind_COMBAT_LOG_KIND_CONSUMABLE_USED, true, use
+	entry.kind, entry.consumable = playv1.CombatLogKind_COMBAT_LOG_KIND_CONSUMABLE_USED, use
 	return true
 }
 
@@ -1335,16 +1336,17 @@ func (e *logEntry) fillItemUse(_ *logViewing, out *playv1.CombatLogEntry) bool {
 	return true
 }
 
-// fillConsumableUse writes the line of a consumable used in the combat. The receiver is named to the master and to whoever owns it or
-// the user; a hidden receiver is nobody else's to read.
+// fillConsumableUse writes the line of a consumable used in the combat. The table reads who used which item and on whom; the
+// dice, the roll and the hit points regained are the master's and the owners' of the user and of the receiver (RN-10). A line whose
+// user or receiver is hidden never reaches another player (visibleToTable), so the receiver is never named past the fog.
 func (e *logEntry) fillConsumableUse(c *logViewing, out *playv1.CombatLogEntry) bool {
 	use := e.consumable
 	out.ConsumableUse = &playv1.ConsumableUseLogLine{
-		ItemNamePt: use.Name, Outcome: consumable.OutcomeOf(use.Outcome), DiceText: use.Dice, Faces: use.Faces, RollTotal: use.Total, Healed: use.Healed,
-		DamageTypeKey: use.DamageType, DamageTypeNamePt: c.names.contentName(c.ctx, use.DamageType), TargetLabel: c.target.Label,
+		ItemNamePt: use.Name, Outcome: consumable.OutcomeOf(use.Outcome), DamageTypeKey: use.DamageType,
+		DamageTypeNamePt: c.names.contentName(c.ctx, use.DamageType), TargetLabel: c.target.Label,
 	}
-	if !c.v.master && c.target.Hidden && !c.v.owns(c.target) {
-		out.TargetId, out.TargetLabel, out.ConsumableUse.TargetLabel = "", "", ""
+	if c.v.master || c.v.owns(c.actor) || c.v.owns(c.target) {
+		out.ConsumableUse.DiceText, out.ConsumableUse.Faces, out.ConsumableUse.RollTotal, out.ConsumableUse.Healed = use.Dice, use.Faces, use.Total, use.Healed
 	}
 	return true
 }

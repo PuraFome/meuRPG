@@ -9,6 +9,7 @@ import (
 	campaignsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/campaigns/v1"
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 )
 
 // Using a consumable outside a combat (ChargesService.UseConsumable): the unit is spent and the effect of the healing and
@@ -282,7 +283,7 @@ func TestUsingAConsumableIsRefused(t *testing.T) {
 	_, err = s.use(t, s.ana, s.pens, "item:bag-of-holding")
 	wantCode(t, "an item that is no consumable", err, connect.CodeInvalidArgument)
 	_, err = s.use(t, s.ana, s.pens, potionCommon, func(r *playv1.UseConsumableRequest) { r.EntryId = "m99" })
-	wantCode(t, "an entry that is not there", err, connect.CodeNotFound)
+	wantBlockedBy(t, "an entry that is not there", err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ITEM_GONE)
 	_, err = s.use(t, s.ana, s.pens, potionCommon, func(r *playv1.UseConsumableRequest) { r.CharacterId = newKey() })
 	wantCode(t, "a character that is not there", err, connect.CodeNotFound)
 	_, err = s.use(t, s.ana, s.pens, potionCommon, func(r *playv1.UseConsumableRequest) { r.TargetCharacterId = newKey() })
@@ -396,24 +397,6 @@ func TestUsingAConsumableWorksOnALockedSheet(t *testing.T) {
 	}
 }
 
-// A character that fights in the running combat uses its potion there (the combat's own rules): outside a combat is
-// the only place this call carries out.
-func TestAConsumableOfACombatantIsRefusedWhileTheCombatRuns(t *testing.T) {
-	t.Parallel()
-	s := newStocked(t, potionCommon)
-	s.start(t, plan{
-		npcs:     []*playv1.Participant{{CharacterId: s.goblin.GetId()}},
-		npcRolls: []int{3},
-		players:  map[string]int32{"Toren": 10, "Pensantus": 18, "Brisa": 1},
-		at:       map[string][2]int32{"Toren": {3, 3}, "Goblin": {4, 3}, "Pensantus": {10, 3}, "Brisa": {8, 8}},
-	})
-	_, err := s.use(t, s.ana, s.pens, potionCommon)
-	wantChargesBlocked(t, "a combatant's use", err, playv1.ChargesBlockedReason_CHARGES_BLOCKED_REASON_COMBAT_RUNNING)
-	if !s.holds(t, s.pens, potionCommon) {
-		t.Error("the refused use spent the potion")
-	}
-}
-
 // The receiver's player and the master hear of the change; another player hears nothing.
 func TestUsingAConsumableTellsTheOwnersAndTheMasterAlone(t *testing.T) {
 	t.Parallel()
@@ -438,5 +421,96 @@ func TestUsingAConsumableTellsTheOwnersAndTheMasterAlone(t *testing.T) {
 	}
 	if evs := bia.beforeMarker(t); len(evs) != 0 {
 		t.Errorf("another player received %v", evs)
+	}
+}
+
+// A second potion of the same resistance ends the first and starts its hour again, as a spell cast twice does.
+func TestASecondResistancePotionStartsTheHourAgain(t *testing.T) {
+	t.Parallel()
+	s := newStocked(t, potionFire, potionFire)
+	s.mustUse(t, s.ana, s.pens, potionFire)
+	s.advanceGameTimeKeyed(t, newKey(), 1000)
+	if seconds, _ := s.potionEffectSeconds(t, s.pens.GetId(), potionFire); seconds != 2600 {
+		t.Fatalf("after 1000 seconds the effect = %d, want 2600", seconds)
+	}
+	s.mustUse(t, s.ana, s.pens, potionFire)
+	if seconds, found := s.potionEffectSeconds(t, s.pens.GetId(), potionFire); !found || seconds != 3600 {
+		t.Errorf("the second potion left %d seconds, %v; want a new hour", seconds, found)
+	}
+	var rows int
+	if err := s.h.pool.QueryRow(t.Context(), `SELECT count(*) FROM character_effects WHERE character_id = $1 AND source_key = $2`, s.pens.GetId(), potionFire).Scan(&rows); err != nil || rows != 1 {
+		t.Errorf("the character has %d resistance rows, %v; want 1", rows, err)
+	}
+}
+
+func TestTheRetryOfAResistanceUseAnswersTheFirstAndAddsNothing(t *testing.T) {
+	t.Parallel()
+	s := newStocked(t, potionFire)
+	key, entry := newKey(), s.entryOf(t, s.pens, potionFire)
+	same := func(r *playv1.UseConsumableRequest) { r.IdempotencyKey, r.EntryId = key, entry }
+	first := s.mustUse(t, s.ana, s.pens, potionFire, same)
+	again := s.mustUse(t, s.ana, s.pens, potionFire, same)
+	if again.GetDamageTypeKey() != first.GetDamageTypeKey() || again.GetOutcome() != first.GetOutcome() || again.GetEntryId() != first.GetEntryId() {
+		t.Errorf("the retry answered %v after %v", again, first)
+	}
+	if n := s.countEvents(t, eventConsumableUsed); n != 1 {
+		t.Errorf("the session has %d consumable_used events, want 1", n)
+	}
+	if seconds, found := s.potionEffectSeconds(t, s.pens.GetId(), potionFire); !found || seconds != 3600 {
+		t.Errorf("the effect = %d, %v after the retry", seconds, found)
+	}
+}
+
+// The giver is told what the use did, not the receiver's sheet: its vitals go to the master and to the receiver's own
+// player (the retry too).
+func TestAGiverThatDoesNotPlayTheReceiverIsToldNoVitals(t *testing.T) {
+	t.Parallel()
+	s := newStocked(t, potionCommon, potionCommon)
+	s.hurt(t, s.toren, 1)
+	key, entry := newKey(), s.entryOf(t, s.pens, potionCommon)
+	same := func(r *playv1.UseConsumableRequest) { r.IdempotencyKey, r.EntryId, r.TargetCharacterId = key, entry, s.toren.GetId() }
+	first := s.mustUse(t, s.ana, s.pens, potionCommon, same)
+	again := s.mustUse(t, s.ana, s.pens, potionCommon, same)
+	for name, res := range map[string]*playv1.UseConsumableResponse{"the first answer": first, "the retry": again} {
+		if len(res.GetVitals()) != 0 || res.GetHealed() == 0 || res.GetTargetCharacterId() != s.toren.GetId() {
+			t.Errorf("%s = %v, want the healed amount and the receiver, no vitals", name, res)
+		}
+	}
+	s.hurt(t, s.toren, 1)
+	if res := s.mustUse(t, s.master, s.pens, potionCommon, giveTo(s.toren), func(r *playv1.UseConsumableRequest) { r.EntryId = s.entryOf(t, s.pens, potionCommon) }); len(res.GetVitals()) != 1 {
+		t.Errorf("the master's answer = %v, want the receiver's vitals", res)
+	}
+}
+
+// A creature at 0 hit points does not act (SRD: it is unconscious), but another creature may give it a potion that
+// wakes it.
+func TestAnUnconsciousCreatureCannotUseAPotionButMayReceiveOne(t *testing.T) {
+	t.Parallel()
+	s := newStocked(t, potionCommon)
+	s.hurt(t, s.pens, 0)
+	_, err := s.use(t, s.ana, s.pens, potionCommon)
+	wantBlockedBy(t, "the unconscious user", err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_COMBATANT_DOWN)
+	if !s.holds(t, s.pens, potionCommon) {
+		t.Fatal("the refused use spent the potion")
+	}
+	res := s.mustUse(t, s.caio, s.toren, potionCommon, giveTo(s.pens))
+	if res.GetHealed() == 0 || s.vitals(t, s.pens).GetHitPointsCurrent() == 0 {
+		t.Errorf("the potion did not wake Pensantus: %v", res)
+	}
+}
+
+// Only a player's character of the campaign receives a potion: not an NPC, not one of another campaign, not a stranger id.
+func TestAPotionIsGivenToAPlayersCharacterOfTheCampaignOnly(t *testing.T) {
+	t.Parallel()
+	s := newStocked(t, potionCommon)
+	other := s.h.newCampaign(s.master, "Outra", s.ana)
+	scores := &rulesv1.AbilityScores{Strength: 10, Dexterity: 10, Constitution: 10, Intelligence: 10, Wisdom: 10, Charisma: 10}
+	foreign := s.ana.hero(t, other, "Forasteira", "class:fighter", "race:human", 1, scores, nil, nil)
+	for name, id := range map[string]string{"an NPC": s.goblin.GetId(), "another campaign's": foreign.GetId(), "unknown": newKey()} {
+		_, err := s.use(t, s.ana, s.pens, potionCommon, func(r *playv1.UseConsumableRequest) { r.TargetCharacterId = id })
+		wantCode(t, "a potion given to "+name, err, connect.CodeNotFound)
+	}
+	if !s.holds(t, s.pens, potionCommon) {
+		t.Error("a refused gift spent the potion")
 	}
 }

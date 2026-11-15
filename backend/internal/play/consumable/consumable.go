@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 
+	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dice"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
@@ -81,4 +82,14 @@ func ResistanceJSON(p rules.PotionEffect) ([]byte, error) {
 		return nil, fmt.Errorf("encode the resistance: %w", err)
 	}
 	return body, nil
+}
+
+// Target is a possible receiver of a gift as the list says it: the character, how far it stands, and whether it is at 0
+// hit points. A listed character may receive.
+func Target(id, name string, distanceFt int32, down bool) *playv1.ConsumableTarget {
+	state := playv1.ConsumableTargetState_CONSUMABLE_TARGET_STATE_OK
+	if down {
+		state = playv1.ConsumableTargetState_CONSUMABLE_TARGET_STATE_DOWN
+	}
+	return &playv1.ConsumableTarget{CharacterId: id, Name: name, DistanceFt: distanceFt, State: state, MayReceive: true}
 }
