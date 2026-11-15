@@ -7741,8 +7741,10 @@ type ReadiedAction struct {
 	// A move: how far it may go, in feet (the speed when it was readied).
 	MoveFt int32 `protobuf:"varint,7,opt,name=move_ft,json=moveFt,proto3" json:"move_ft,omitempty"`
 	// The round it was readied in.
-	Round         int32         `protobuf:"varint,8,opt,name=round,proto3" json:"round,omitempty"`
-	Status        ReadiedStatus `protobuf:"varint,9,opt,name=status,proto3,enum=meurpg.play.v1.ReadiedStatus" json:"status,omitempty"`
+	Round  int32         `protobuf:"varint,8,opt,name=round,proto3" json:"round,omitempty"`
+	Status ReadiedStatus `protobuf:"varint,9,opt,name=status,proto3,enum=meurpg.play.v1.ReadiedStatus" json:"status,omitempty"`
+	// A spell: the slot level it was held with; 0 for a cantrip or another kind.
+	SlotLevel     int32 `protobuf:"varint,10,opt,name=slot_level,json=slotLevel,proto3" json:"slot_level,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -7838,6 +7840,13 @@ func (x *ReadiedAction) GetStatus() ReadiedStatus {
 		return x.Status
 	}
 	return ReadiedStatus_READIED_STATUS_UNSPECIFIED
+}
+
+func (x *ReadiedAction) GetSlotLevel() int32 {
+	if x != nil {
+		return x.SlotLevel
+	}
+	return 0
 }
 
 // LimitedAction is an action of a stat block with a limit and what the creature has left of it.
@@ -30233,7 +30242,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x1a_wild_shape_hit_points_maxB\x18\n" +
 	"\x16_initiative_treated_asB\f\n" +
 	"\n" +
-	"_parry_ask\"\xce\x02\n" +
+	"_parry_ask\"\xed\x02\n" +
 	"\rReadiedAction\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12!\n" +
 	"\ftrigger_text\x18\x02 \x01(\tR\vtriggerText\x12/\n" +
@@ -30244,7 +30253,10 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x13target_combatant_id\x18\x06 \x01(\tR\x11targetCombatantId\x12\x17\n" +
 	"\amove_ft\x18\a \x01(\x05R\x06moveFt\x12\x14\n" +
 	"\x05round\x18\b \x01(\x05R\x05round\x125\n" +
-	"\x06status\x18\t \x01(\x0e2\x1d.meurpg.play.v1.ReadiedStatusR\x06status\"\xf7\x01\n" +
+	"\x06status\x18\t \x01(\x0e2\x1d.meurpg.play.v1.ReadiedStatusR\x06status\x12\x1d\n" +
+	"\n" +
+	"slot_level\x18\n" +
+	" \x01(\x05R\tslotLevel\"\xf7\x01\n" +
 	"\rLimitedAction\x12\x1d\n" +
 	"\n" +
 	"action_key\x18\x01 \x01(\tR\tactionKey\x12\x12\n" +
