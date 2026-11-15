@@ -6935,6 +6935,13 @@ enum ReactionKind {
   // reaction left, or cannot react, falls at once and has no window. The rider's player and the master answer it; a creature's
   // is the master's.
   REACTION_KIND_DISMOUNT = 20;
+  // A reaction feature that declares a `use.trigger` (a table feature, FeatureService.UseFeature): an enemy started its
+  // turn within the reach, or moved to within it, and the owner may use the feature on it now, or not use it. The window
+  // is the owner's player's, the master's for a hidden creature (the player reads nothing). The reactor and the
+  // master read, in `trigger`, who it was (`actor_id`, `actor_label`), the feature (`action_key`, `action_name_pt`),
+  // the `distance_ft` and what happened (`feature_trigger`). AnswerReaction USE runs the feature as a reaction on that
+  // creature (or on `creature_ids`, which the feature's own targets check); PASS leaves everything unspent.
+  REACTION_KIND_FEATURE = 21;
 }
 
 enum ReactionWindowStatus {
@@ -7081,6 +7088,8 @@ message ReactionTrigger {
   // The saving throw of a Hellish Rebuke's aggressor (the master's roll) and its bonus.
   optional int32 save_dc = 18;
   optional int32 save_bonus = 19;
+  // A FEATURE window: what happened. Also sent to the reactor's player, who sees the creature (RN-10).
+  meurpg.rules.v1.FeatureTriggerKind feature_trigger = 20;
 }
 
 // SlotEffect is what a slot does to a Counterspell, read by the master.
@@ -7690,4 +7699,28 @@ message CombatLogFeatureUsed {
   int32 temp_hp = 5;
   // True: a lasting effect was put on the targets.
   bool effect_applied = 6;
+  // What the use cost of the turn, the resource's Portuguese name and the uses of it left after this one. Read by the master
+  // and the user's player; every other player reads UNSPECIFIED, "", 0 and 0 (the line is the plain one).
+  // `resource_name_pt` is empty when the use spent no resource of its own.
+  FeatureEconomy economy = 7;
+  string resource_name_pt = 8;
+  int32 resource_left = 9;
+  // The most uses there are (the resource's total, or the uses the scope allows), the same way `resource_left` counts.
+  // For a use limited by a scope only (Halo, 2 per combat), `resource_name_pt` is empty and these two come from the scope.
+  // A use with no limit leaves both 0.
+  int32 resource_max = 10;
+  // True: the master used the feature although the turn's economy was spent ("Usar mesmo assim"). Read by the master and the
+  // user's player, like the fields above; every other player and an older use read false.
+  bool overridden = 11;
+}
+
+// FeatureEconomy is the part of the turn a use of a feature cost, in the combat log.
+enum FeatureEconomy {
+  // The line does not say (an older use, or a reader that does not see the cost).
+  FEATURE_ECONOMY_UNSPECIFIED = 0;
+  FEATURE_ECONOMY_ACTION = 1;
+  FEATURE_ECONOMY_BONUS_ACTION = 2;
+  FEATURE_ECONOMY_REACTION = 3;
+  // The feature costs nothing of the turn (a free action, or movement).
+  FEATURE_ECONOMY_NONE = 4;
 }

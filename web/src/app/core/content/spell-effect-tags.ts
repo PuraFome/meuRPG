@@ -1,4 +1,5 @@
 import type { TableSpellEffect } from '../../../gen/meurpg/rules/v1/table_content_pb';
+import { conditionName } from '../combat/conditions';
 import { rangeMeters } from '../units';
 import {
   type AuraAffectsChoice,
@@ -117,7 +118,7 @@ export function effectReadItem(
   const d = effectToDraft(e);
   const parts = [
     ...(d.aura ? [auraTag(d.aura)] : []),
-    ...d.conditions.map(nameOf),
+    ...d.conditions.map((k) => conditionName(k) || nameOf(k)),
     ...d.rows.flatMap((r) => rowTags(r, nameOf)),
   ];
   if (parts.length === 0) {

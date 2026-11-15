@@ -16,7 +16,7 @@ import {
 import { draftToSpell, spellToDraft, withTarget } from './spell-draft';
 import { RANGE_OPTIONS, TARGET_OPTIONS, moreLabel, sizeLabel } from './spell-options';
 import { emptySpell } from './spell-types';
-import { previewRows, targetText } from './spell-preview';
+import { levelRow, previewRows, targetText } from './spell-preview';
 
 const lamina = () => ({
   ...emptySpell(),
@@ -220,6 +220,13 @@ describe('the spell editor form (E10-01 states 4, 4b)', () => {
       shape: TableAreaShape.SPHERE,
       sizeFt: 20,
     });
+  });
+
+  it('puts the level and the school first in what a player reads: "1º círculo, evocação", "Truque", and no school when there is none', () => {
+    const nameOf = (k: string) => catalog().nameOf(k);
+    expect(levelRow(lamina(), nameOf)).toEqual({ label: 'Nível', value: '1º círculo, evocação' });
+    expect(levelRow({ ...lamina(), level: 0 }, nameOf).value).toBe('Truque, evocação');
+    expect(levelRow({ ...lamina(), level: 3, schoolKey: '' }, nameOf).value).toBe('3º círculo');
   });
 
   it('writes "Como os jogadores veem" from the form, with the Alvo row', () => {

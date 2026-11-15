@@ -146,10 +146,12 @@ func (h *harness) buildFixture(master *user) *fixture {
 			RaceKey:    "race:human",
 			Classes:    []*charactersv1.ClassLevel{{ClassKey: "class:fighter", Level: 2}},
 			ArmorKey:   "equipment:chain-mail", WeaponKeys: []string{"equipment:longsword"},
+			MagicItems: []*charactersv1.SheetMagicItem{{Key: "item:hammer-of-thunderbolts"}, {Key: "item:figurine-of-wondrous-power-ivory-goats"}, {Key: "item:wand-of-fear"}},
 		}}},
 		Story: &charactersv1.CharacterStory{Backstory: "Veio do mar."},
 	})))
 	f.reserved = reserved.GetCharacter().GetId()
+	h.spendItems(f.reserved)
 	_ = must(master.characters.UpdateMasterNotes(ctx, connect.NewRequest(&charactersv1.UpdateMasterNotesRequest{CampaignId: cid, CharacterId: f.reserved, Notes: "Esconde um segredo."})))
 
 	// The document links a map, a character and an image.
@@ -260,4 +262,21 @@ func tableClass(name string) *rulesv1.TableClass {
 		c.Levels = append(c.Levels, row)
 	}
 	return c
+}
+
+// spendItems gives the reserved character's items the state play leaves them in: a hammer with 2 charges spent, goats that have
+// waited 3 dawns with every charge spent, a wand that waits for the d20 of its last charge, and 17 arrows (what a combat fired does not travel).
+func (h *harness) spendItems(characterID string) {
+	h.t.Helper()
+	ctx := h.t.Context()
+	for _, sql := range []string{
+		`INSERT INTO character_item_charges (character_id, entry_id, charges_used, lost, dawns_waited, last_roll_pending) VALUES ($1, 'm1', 2, '', 0, false)`,
+		`INSERT INTO character_item_charges (character_id, entry_id, charges_used, lost, dawns_waited, last_roll_pending) VALUES ($1, 'm2', 24, '', 3, false)`,
+		`INSERT INTO character_item_charges (character_id, entry_id, charges_used, lost, dawns_waited, last_roll_pending) VALUES ($1, 'm3', 7, '', 0, true)`,
+		`INSERT INTO character_ammunition (character_id, ammo_key, quantity) VALUES ($1, 'equipment:arrow', 17)`,
+	} {
+		if _, err := h.pool.Exec(ctx, sql, characterID); err != nil {
+			h.t.Fatalf("seed the items' state: %v", err)
+		}
+	}
 }

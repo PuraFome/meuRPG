@@ -14,6 +14,11 @@
 @if (effect().on || feature()) {
   @if (feature()) {
     <p class="line duration" role="note"><mat-icon aria-hidden="true">hourglass_empty</mat-icon><span class="duration__text">Vale <strong>em todo combate</strong>, enquanto quem leva a aura estiver de pé e consciente.</span></p>
+  } @else if (context().alsoHit) {
+  <p class="line summary" role="note">
+    <span>{{ context().where }}</span>
+    @for (t of summary(); track $index) { <span class="mr-tag mr-tag--success">{{ t }}</span> }
+  </p>
   } @else {
   <p class="line duration" role="note">
     <mat-icon aria-hidden="true">hourglass_empty</mat-icon>

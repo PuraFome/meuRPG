@@ -13,6 +13,7 @@ import type { ResourceTarget } from '../../../../../gen/meurpg/play/v1/combat_pb
 import { ActionEconomy, type ActionOption } from '../../../../../gen/meurpg/rules/v1/rules_pb';
 import { CombatClient } from '../../../../core/combat/combat-client';
 import { combatErrorMessage, encounterBlocked } from '../../../../core/combat/combat-errors';
+import { reasonText } from '../../../../core/combat/combat-options';
 import type { CombatState } from '../../../../core/combat/combat-state';
 import {
   asksTargets,
@@ -95,9 +96,14 @@ const ECONOMY_WORD: Readonly<Partial<Record<ActionEconomy, string>>> = {
             </p>
           </div>
         }
+        @if (overrideText(); as why) {
+          <p class="override" role="status">
+            <mat-icon aria-hidden="true">info</mat-icon>{{ why }}
+          </p>
+        }
         @if (choices().length > 0) {
           <fieldset class="choices">
-            <legend class="ask">Qual opção</legend>
+            <legend class="ask">{{ question() }}</legend>
             <div class="choices__grid">
               @for (c of choices(); track c.key) {
                 <button
@@ -168,7 +174,7 @@ const ECONOMY_WORD: Readonly<Partial<Record<ActionEconomy, string>>> = {
             [attr.aria-describedby]="missing() ? 'use-missing' : null"
             (click)="use()"
           >
-            {{ busy() ? 'Usando…' : doLabel() }}
+            {{ busy() ? 'Usando…' : overriding() ? 'Usar mesmo assim' : doLabel() }}
           </button>
         </div>
       </div>
@@ -184,6 +190,19 @@ export class UseFeatureSheet {
 
   protected readonly name = computed(() => this.data.option.action?.namePt ?? '');
   protected readonly choices = computed(() => this.data.option.choices);
+  /** The heading over the options: the feature's own question ("Qual forma"), else "Qual opção". */
+  protected readonly question = computed(() => this.data.option.useQuestionPt || 'Qual opção');
+  /** The master uses a feature whose part of the turn is spent: the server marked the row and lets the call through. */
+  protected readonly overriding = computed(
+    () => this.data.master && this.data.option.masterMayOverride,
+  );
+  protected readonly overrideText = computed(() => {
+    if (!this.overriding()) {
+      return '';
+    }
+    const why = reasonText(this.data.option.reason, true).replace(/\.$/, '');
+    return `${why ? `${why}. ` : ''}O mestre pode usar mesmo assim.`;
+  });
   protected readonly asksTargets = asksTargets(this.data.option);
   protected readonly many = this.data.option.targetMax > 1;
   protected readonly limit = targetLimitText(this.data.option, 'head');

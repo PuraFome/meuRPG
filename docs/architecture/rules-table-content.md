@@ -179,20 +179,22 @@ The action's economy, `resource` and `cost` apply as for any `grant_action`; `us
 | `limit_scope`, `limit_uses` | The uses allowed in a `turn`, `round` or `combat`: `limit_uses` is an Int formula, at least 1 when a literal. Each needs the other. Empty is no limit of this kind (the resource may still limit the action). |
 | `targets` | `min` 0 to 20, `max` from `min` to 20, `who` (`self`, `ally`, `enemy`, `any`; required when `max` is above 0) and `range_ft` 0 (no limit) to 300. `self` takes at most 1 target and no range; a range needs targets. Unset takes none: the user alone. |
 | `choices` | At most 8 options the player picks one of: `key` (1 to 40 of `a-z`, `0-9`, `_`; unique) and `text_pt` (1 to 80 characters). |
+| `choice_label` | The question over the `choices`, 1 to 80 characters ("Qual forma"); it needs `choices`. Empty: the app asks "Qual opção". `GetTurnOptions` carries it as `ActionOption.use_question_pt`. |
 | `applies.heal` | Dice, as the `heal` of a `grant_action` (`parseHealDice`), with no ability modifier. |
 | `applies.temp_hp` | Temporary hit points: an Int formula. |
 | `applies.effect`, `applies.effect_rounds` | A lasting effect on the targets (the user when there are none), checked as the effect of a table spell ([The lasting effect of a spell](#the-lasting-effect-of-a-spell)): conditions and modifiers, label and visibility. It has no spell, so its `applies` is empty or `all`, and it lasts `effect_rounds` (1 to 14,400; each needs the other). |
+| `trigger` | `kinds` (one or two of `enemy_starts_turn_within`, `enemy_moves_within`, once each) and `range_ft` (1 to 300): the moments that make the app ask the owner's player to use the feature, with a reaction window, without being asked for it. It needs the economy `reaction` on the action and no `choices`, because the window's answer carries none. A creature of the other side starts its turn within `range_ft` of the owner, or moves to a square within it from one outside it. Unset: the player uses the feature from the Usar sheet only. See [Reactions](play/reactions.md#the-feature-window). |
 
-A `use` that declares nothing is refused at `.use`.
+A `use` that declares nothing (a trigger counts) is refused at `.use`.
 A `use` stands alone: `UseFeature` spends the economy, the resource and what the use applies, so a `grant_action` with `use` and any of `spends_slot`, `gives_slot`, `cost_max`, `value_per_point`, `heal`, `temp_hp` (give them in `use.applies`) or, for a bonus action, a text that names a standard action (Dash, Disengage, Hide) is refused at `.use` with `bad_value`.
-Every refusal is at its field with `bad_value`, `limit` (more than 8 `choices`, at `.use.choices`) or `bad_formula` (a formula that does not compile): `.use.limit_scope`, `.use.limit_uses`, `.use.targets.min`, `.use.targets.max`, `.use.targets.who`, `.use.targets.range_ft`, `.use.choices[i].key`, `.use.choices[i].text_pt`, `.use.applies.heal`, `.use.applies.temp_hp`, `.use.applies.effect` (and `.effect.conditions[i]`, `.effect.modifiers[i]...`, `.effect.applies`), `.use.applies.effect_rounds`.
+Every refusal is at its field with `bad_value`, `limit` (more than 8 `choices`, at `.use.choices`) or `bad_formula` (a formula that does not compile): `.use.limit_scope`, `.use.limit_uses`, `.use.targets.min`, `.use.targets.max`, `.use.targets.who`, `.use.targets.range_ft`, `.use.choices[i].key`, `.use.choices[i].text_pt`, `.use.choice_label` (no choices, or more than 80 characters), `.use.applies.heal`, `.use.applies.temp_hp`, `.use.applies.effect` (and `.effect.conditions[i]`, `.effect.modifiers[i]...`, `.effect.applies`), `.use.applies.effect_rounds`, `.use.trigger` (the economy is not a reaction, or the feature has choices), `.use.trigger.kinds` (none, or more than two: `limit`), `.use.trigger.kinds[i]` (a moment the list does not have, or a repeated one: an unknown number from a newer client is refused here) and `.use.trigger.range_ft`.
 
 What `Derive` gives the runtime:
 
-- **`Action.Use`** (`ActionUse`) is nil for an action without `use`. Otherwise it carries `Scope` and `Uses` (`limit_uses` worked out with the character's formulas; 0 means none at this level), `Targets`, `Choices`, `Result` (`Heal` dice and `TempHP`, per target) and `HasEffect` with `EffectRounds`. A `limit_uses` or `temp_hp` formula that fails leaves the action out with an `Issue`, so it is never taken the old way.
+- **`Action.Use`** (`ActionUse`) is nil for an action without `use`. Otherwise it carries `Scope` and `Uses` (`limit_uses` worked out with the character's formulas; 0 means none at this level), `Targets`, `Choices`, `Result` (`Heal` dice and `TempHP`, per target), `HasEffect` with `EffectRounds` and the `Trigger` (kinds and reach, nil without one). A `limit_uses` or `temp_hp` formula that fails leaves the action out with an `Issue`, so it is never taken the old way.
 - **The effect** is `Content.FeatureUseEffect(action key)`, the `EffectDef` the content keeps under the feature's key (`Kind` `feature`, `Applies` `all`).
 - **`link.FeatureAction.Use`** (`link.FeatureUse`) copies the above for the play module (`characters.featureActionOf`).
-- **`ActionOption`** (`GetTurnOptions`) has `via_use_feature` true, `use_scope`, `target_min`, `target_max`, `target_who`, `target_range_ft` and `choices`.
+- **`ActionOption`** (`GetTurnOptions`) has `via_use_feature` true, `use_scope`, `target_min`, `target_max`, `target_who`, `target_range_ft`, `choices` and `use_question_pt`.
   Its `uses_left` and `enabled` for a scope limit are left to the play module: the uses spent in a turn, round or combat are the combatant's state, which the rules never read. The seam is `ActionUse.Left(spent)` (the uses allowed minus the ones spent in the scope; -1 without a limit), which play calls with what `combatants.feature_state` holds.
 
 Recharges: besides `short_rest`, `long_rest`, `dawn` and `none`, a resource may recharge as `initiative` (one use when the owner rolls initiative, only when none is left: `InitiativeRecovery`), `restore_one_on_short_rest` (one use on a short rest, all on a long rest) or `restore_one_on_long_rest` (one use on a long rest, none on a short one).
@@ -728,7 +730,7 @@ Its fields are the modifier's own:
 | `die` | The die: d4, d6, d8, d10 or d12 | `die`: any other number |
 | `dice` | The dice at the spell's own slot level, 1 to 10 | `dice`: out of range |
 | `per_slot_dice` | The dice added for each slot level above the spell's own, 0 to 5 | `per_slot_dice`: out of range |
-| `max_dice` | The most dice there are at any slot; required, from `dice` to 20 | `max_dice`: unset, below `dice` or above 20 |
+| `max_dice` | The most dice there are at any slot, from `dice` to 20; 0 is no limit | `max_dice`: below `dice` or above 20, or negative |
 | `damage_type` | An SRD damage type key; unset is the weapon's | `damage_type`: not an SRD damage type |
 | `save` | The ability (`str` to `cha`) of the target's saving throw against the hit | `save`: not an ability |
 | `on_fail_conditions` | SRD condition keys a failed save gives, each once, 1 to 8 | `on_fail_conditions`: a save with none, a list without a `save`, more than 8, an unknown or repeated key (at `[i]`) |
@@ -743,7 +745,7 @@ Its fields are the modifier's own:
   `condition_duration` `spell_end` needs concentration, a timed duration or until dispelled, refused at `condition_duration`.
   A spell has one `weapon_hit_damage`: a second is refused at its `kind` ("a spell has one next-hit effect").
 - **The dice per slot.**
-  At a slot the dice are `dice` plus `per_slot_dice` for each level above the spell's own, never more than `max_dice`.
+  At a slot the dice are `dice` plus `per_slot_dice` for each level above the spell's own, never more than `max_dice` when it has one (0 is no limit, so at most 50 dice at the 9th slot).
   A critical hit doubles them, a resistance takes the damage by type, and the save is the target's against the spell's DC.
   How the hit uses all of this is in [Attacks and damage](play/attacks-and-damage.md#a-spells-hit-effect).
 - **Tags.**

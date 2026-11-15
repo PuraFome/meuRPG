@@ -226,6 +226,19 @@ An item whose charges the SRD rolls has no row until the master sets them.
 **The maximum is not stored**: it comes from the catalog, and the server reads a count above it as an empty item.
 A character with no row for an entry has the item full.
 A save of the sheet deletes the rows of the entries it removed.
+A dawn writes the row of an item that regained charges or counted a dawn, and deletes the row of an item that is full again.
+The campaign package carries every column.
+
+## `character_ammunition`
+
+What a character holds of each kind of ammunition.
+The primary key is `(character_id, ammo_key)` and the character is `CASCADE`.
+`ammo_key` is the catalog key of the ammunition (`equipment:arrow`).
+A kind with no row is not counted, and a shot never creates a row.
+A row holds `quantity` (0 or more, `CHECK`), `spent_last_combat` (the pieces fired in the combat `last_encounter_id`, 0 or more, `CHECK`) and `recovered` (half of them were already taken back).
+`last_encounter_id` has no foreign key: the combat can be deleted while the count stays readable.
+A shot in another combat starts the count over before it spends the piece.
+A save of the sheet never touches the table.
 
 ## `character_ammunition`
 

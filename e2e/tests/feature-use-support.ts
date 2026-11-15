@@ -46,7 +46,7 @@ export function volleyFeatBody(namePt = 'Rajada de Teste'): Record<string, unkno
 }
 
 /** Once per turn, no creature but a choice of two words: the "Qual opção" buttons. */
-export function elementFeatBody(namePt = 'Elemento de Teste'): Record<string, unknown> {
+export function elementFeatBody(namePt = 'Elemento de Teste', choiceLabel = ''): Record<string, unknown> {
   return {
     namePt,
     descPt: ['Você escolhe um elemento, uma vez por turno.'],
@@ -57,6 +57,7 @@ export function elementFeatBody(namePt = 'Elemento de Teste'): Record<string, un
         use: {
           limitScope: 'USE_SCOPE_TURN',
           limitUses: '1',
+          ...(choiceLabel ? { choiceLabel } : {}),
           choices: [
             { key: 'fogo', textPt: 'Fogo' },
             { key: 'gelo', textPt: 'Gelo' },
@@ -120,3 +121,64 @@ export async function boxIn(page: Page, target: ReturnType<Page['locator']>): Pr
   expect(box, 'the element is drawn').not.toBeNull();
   return box!;
 }
+
+/**
+ * A reaction with a trigger (board 743-02): 2 uses per combat, one enemy up to 10 feet, asked when an enemy starts its turn or comes
+ * within 10 feet. The window opens for its player; "Usar" is the feature's own use as a reaction.
+ */
+export function haloFeatBody(namePt = 'Halo de esporos'): Record<string, unknown> {
+  return {
+    namePt,
+    descPt: ['Quando um inimigo chega perto de você ou começa a vez ali, você pode usar a reação.'],
+    effects: [
+      {
+        type: 'grant_action',
+        economy: 'reaction',
+        use: {
+          limitScope: 'USE_SCOPE_COMBAT',
+          limitUses: '2',
+          targets: {
+            min: 1,
+            max: 1,
+            who: 'FEATURE_TARGET_WHO_ENEMY',
+            rangeFt: 10,
+          },
+          trigger: {
+            kinds: ['FEATURE_TRIGGER_KIND_ENEMY_STARTS_TURN_WITHIN', 'FEATURE_TRIGGER_KIND_ENEMY_MOVES_WITHIN'],
+            rangeFt: 10,
+          },
+        },
+      },
+    ],
+  };
+}
+
+/** A bonus action that spends one of two uses of a rest resource of its own ("Chamados de Teste"): the log says the use and what is left. */
+export function chamadosFeatBody(namePt = 'Chamados de Teste'): Record<string, unknown> {
+  return {
+    namePt,
+    descPt: ['Você tem dois chamados por descanso curto.'],
+    effects: [
+      {
+        type: 'resource',
+        resource: 'chamados_de_teste',
+        max: '2',
+        recharge: 'short_rest',
+      },
+      {
+        type: 'grant_action',
+        economy: 'bonus_action',
+        resource: 'chamados_de_teste',
+        use: { applies: { tempHp: '1' } },
+      },
+    ],
+  };
+}
+
+/** Pensantus next to the Capitão (10 feet): the Capitão's turn, or a step to here, is what the Halo waits for. */
+export const haloSquares: Record<string, [number, number]> = {
+  Pensantus: [5, 5],
+  'Capitão Goblin': [7, 5],
+  'Goblin 1': [18, 12],
+  'Goblin 2': [19, 13],
+};
