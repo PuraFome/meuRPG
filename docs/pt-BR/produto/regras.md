@@ -135,6 +135,7 @@ O mestre também pode corrigir à mão, a qualquer momento da sessão, PV, PV te
   Um descanso curto nunca recarrega itens.
   Num amanhecer, um item que recupera cargas as recebe como a entrada dele diz (todas, ou os dados dele), até o máximo, e um item cheio fica como está.
   O app rola os dados de um amanhecer, também numa mesa de dados físicos, porque o mestre os rola pela mesa.
+  O mestre que rolou os dados na mesa corrige as cargas do item à mão, como a ficha permite.
   As estatuetas só contam o amanhecer enquanto não têm nenhuma carga, e recuperam todas no sétimo.
   Uma estatueta com carga sobrando não conta amanhecer.
   Um item perdido nunca recarrega, e um item que espera o d20 da última carga espera a rolagem primeiro.

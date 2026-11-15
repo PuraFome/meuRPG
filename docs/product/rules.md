@@ -145,6 +145,7 @@ The master can also correct hit points, temporary hit points, spell slots (and p
   A short rest never recharges items.
   At a dawn an item that regains charges gets them back as its entry says (all of them, or its dice), up to the maximum, and an item that is full is left as it is.
   The app rolls the dice of a dawn, also at a table of real dice, because the master rolls them for the table.
+  A master who rolled the dice at the table corrects the item's charges by hand, as the sheet allows.
   The figurines count the dawn only while they have no charge left, and regain them all on the seventh.
   A figurine with a charge left counts no dawn.
   An item that is lost never recharges, and an item that waits for the d20 of its last charge waits for the roll first.
