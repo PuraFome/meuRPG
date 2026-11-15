@@ -298,4 +298,9 @@ describe('Ready (#582): the name of a held action', () => {
       'Esquivar',
     );
   });
+
+  it('counts characters like the server (runes, not UTF-16 units): 200 emoji are allowed, 201 are not', () => {
+    expect(triggerState('😀'.repeat(200), false)).toEqual({ count: 200, error: '' });
+    expect(triggerState(` ${'😀'.repeat(201)} `, false).error).toBe('Até 200 caracteres.');
+  });
 });

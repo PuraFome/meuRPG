@@ -252,7 +252,7 @@ export function triggerState(
   text: string,
   touched: boolean,
 ): { readonly count: number; readonly error: string } {
-  const count = text.trim().length;
+  const count = [...text.trim()].length; // runes, as the server counts (utf8.RuneCount)
   if (count > READY_TRIGGER_MAX) {
     return { count, error: LONG_TRIGGER_TEXT };
   }
