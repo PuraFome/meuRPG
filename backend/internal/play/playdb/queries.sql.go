@@ -1872,7 +1872,12 @@ func (q *Queries) DeleteInspirationHold(ctx context.Context, id string) ([]Delet
 	var items []DeleteInspirationHoldRow
 	for rows.Next() {
 		var i DeleteInspirationHoldRow
-		if err := rows.Scan(&i.CampaignID, &i.CharacterID, &i.UnsettledFavor, &i.IdempotencyKey); err != nil {
+		if err := rows.Scan(
+			&i.CampaignID,
+			&i.CharacterID,
+			&i.UnsettledFavor,
+			&i.IdempotencyKey,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -1919,7 +1924,12 @@ func (q *Queries) DeleteInspirationHoldsOf(ctx context.Context, arg DeleteInspir
 	var items []DeleteInspirationHoldsOfRow
 	for rows.Next() {
 		var i DeleteInspirationHoldsOfRow
-		if err := rows.Scan(&i.CampaignID, &i.CharacterID, &i.UnsettledFavor, &i.IdempotencyKey); err != nil {
+		if err := rows.Scan(
+			&i.CampaignID,
+			&i.CharacterID,
+			&i.UnsettledFavor,
+			&i.IdempotencyKey,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -2077,7 +2087,12 @@ func (q *Queries) DeleteOrphanInspirationHolds(ctx context.Context, campaignID s
 	var items []DeleteOrphanInspirationHoldsRow
 	for rows.Next() {
 		var i DeleteOrphanInspirationHoldsRow
-		if err := rows.Scan(&i.CampaignID, &i.CharacterID, &i.UnsettledFavor, &i.IdempotencyKey); err != nil {
+		if err := rows.Scan(
+			&i.CampaignID,
+			&i.CharacterID,
+			&i.UnsettledFavor,
+			&i.IdempotencyKey,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
