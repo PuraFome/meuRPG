@@ -57,6 +57,11 @@ func (s *Service) reviveBondedSteed(ctx context.Context, q *charactersdb.Queries
 		}
 		return nil, wrap("read the bonded steed", err)
 	}
+	if row.CharacterCreature.DismissedAt != nil { // a dismissed steed comes back as one more live creature; a live one adds none
+		if err := checkCreatureRoom(ctx, q, link.Summon{CampaignID: sm.CampaignID, CharacterID: sm.CharacterID, Creatures: make([]link.CreatureSpec, 1)}); err != nil {
+			return nil, err
+		}
+	}
 	if _, err := q.ReviveBondedCreature(ctx, charactersdb.ReviveBondedCreatureParams{CampaignID: sm.CampaignID, ID: row.CharacterCreature.ID}); err != nil {
 		return nil, wrap("bring the steed back", err)
 	}
