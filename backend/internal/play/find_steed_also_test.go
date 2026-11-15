@@ -80,3 +80,18 @@ func TestFindSteedAlsoSteedSaysWhatItDidToTheSteed(t *testing.T) {
 		t.Error("the cast with also_steed has no note about the steed")
 	}
 }
+
+// TestFindSteedOptionsCarryTheTextOnlyRules: the telepathic bond, where the steed appears and its language are lines of the spell's options,
+// and no other summon spell has them.
+func TestFindSteedOptionsCarryTheTextOnlyRules(t *testing.T) {
+	t.Parallel()
+	a := newRiders(t)
+	for _, sp := range a.summonOptions(t, a.ana, a.pens).GetSpells() {
+		if sp.GetSpellKey() == findSteed && len(sp.GetNotes()) != 3 {
+			t.Errorf("Find Steed notes = %q, want the bond, the place it appears and the language", sp.GetNotes())
+		}
+		if sp.GetSpellKey() != findSteed && len(sp.GetNotes()) != 0 {
+			t.Errorf("%s has notes %q", sp.GetSpellKey(), sp.GetNotes())
+		}
+	}
+}
