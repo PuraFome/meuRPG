@@ -1198,12 +1198,16 @@ Um jogador lê só as próprias janelas, e os números do gatilho (um total de a
   Liberada, a magia tem efeito como reação e não gasta espaço de novo; a Contramágica ainda pode barrá-la.
   Os alvos e a divisão dos dardos são escolhidos ao liberar a magia, não ao preparar.
   A criatura nomeada ao preparar é só uma sugestão para a liberação.
-  Uma magia que pede um ponto ou uma direção no mapa, uma habilidade, um tipo de dano, as criaturas de uma invocação ou a volta de uma criatura morta à vida não pode ser liberada pela janela, e o Preparar a recusa.
-  Num combate com mapa, uma magia que deixa uma zona no mapa também não pode ser liberada pela janela, e o Preparar a recusa.
+  Uma magia que pede uma habilidade, um tipo de dano, as criaturas de uma invocação ou a volta de uma criatura morta à vida não pode ser liberada, e o Preparar a recusa.
+  Uma magia colocada no mapa (um ponto, uma direção, uma parede) ou que deixa uma zona nele é liberada no mapa enquanto a janela está aberta, lançando a magia ali, e não respondendo à janela.
   A magia se perde, com o espaço gasto, se a concentração acabar antes, se a criatura a deixar passar ou quando a ação preparada se perde.
   Esconder-se e Ajudar não podem ser guardados: têm chamadas próprias, que uma reação não executa.
   Correr e Desengajar também não: valem só para o turno da própria criatura.
   Um movimento não pode ser guardado num combate sem mapa.
+  Um movimento preparado vai até a velocidade que a criatura tem, e não até o deslocamento que o turno dela ainda tinha (SRD 5.1, Ready: o movimento da reação é de até a velocidade da criatura).
+  Um movimento preparado que não vai a lugar nenhum, parado antes do primeiro quadrado (uma criatura que o jogador não vê está no caminho), não é usado: a reação continua livre, a ação continua esperando e a janela dela continua aberta. A resposta diz que a caminhada parou antes do fim.
+  Um que para depois de pelo menos um quadrado ainda é o uso.
+  A caminhada do mestre com a ficha não é a liberação: é livre como sempre e deixa a janela como estava, a não ser que o mestre escolha liberar o movimento pelo jogador.
   Uma ação preparada não dispara durante o turno de quem a preparou.
   Num turno compartilhado, esse turno dura até quem preparou encerrar a própria parte.
   O SRD é omisso aqui: as criaturas empatadas agem uma depois da outra, e ele não tem turnos compartilhados.

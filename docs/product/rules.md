@@ -1198,12 +1198,16 @@ A player reads only their own windows, and the numbers of the trigger (an attack
   Released, the spell takes effect as a reaction and spends no slot again; Counterspell can still stop it.
   The targets and the split of the darts are chosen when the spell is released, not at Ready.
   The creature named at Ready is only a suggestion for the release.
-  A spell that asks a point or a direction on a map, an ability, a damage type, the creatures of a summon or a revival cannot be released by the window, and Ready refuses it.
-  In a combat with a map, a spell that lays a zone on it cannot be released by the window either, and Ready refuses it.
+  A spell that asks an ability, a damage type, the creatures of a summon or a revival cannot be released, and Ready refuses it.
+  A spell placed on the map (a point, a direction, a wall) or that lays a zone there is released on the map while the window is open, by casting the spell there, not by answering the window.
   The spell is lost, with its slot, if the concentration ends first, if the creature lets it pass, or when the readied action is lost.
   Hide and Help cannot be held: they have their own calls, which a reaction does not run.
   Dash and Disengage cannot be held either: they last only for the creature's own turn.
   A move cannot be held in a combat without a map.
+  A readied move is up to the combatant's speed, not the movement its turn had left (SRD 5.1, Ready: "move up to your speed").
+  A readied move that goes nowhere, stopped before its first square (a creature the player cannot see is in the way), is not used: the reaction stays free, the action keeps waiting and its window stays open. The reply says the walk stopped early.
+  One that is stopped after at least one square is still the use.
+  The master's own walk of the token is not the release: it is free as ever and leaves the window as it was, unless the master chooses to release the move for the player.
   A Ready cannot fire during the readier's own turn.
   In a shared turn, that turn lasts until the readier ends its own part.
   The SRD is silent here: its tied creatures act one after the other, and it has no shared turns.
