@@ -450,3 +450,18 @@ func TestAnUnrelatedEquipKeepsTheShieldIdleBanner(t *testing.T) {
 		mustSetEquipped(t, tb.owner, read(), other, true)
 	}
 }
+
+// A weapon the master switched off after the edit is still named to the owner, as an archived one is: the sheet has it.
+func TestTheShieldIdleNoticeNamesASwitchedOffWeaponToItsOwner(t *testing.T) {
+	t.Parallel()
+	tb := newIdleTable(t, versatile)
+	with := tb.owner.get(t, tb.campaign, tb.pc.GetId()).GetDerived().GetArmorClass()
+	tb.edit(t, twoHanded)
+	tb.master.setOff(t, tb.campaign, true, tb.weapon.GetKey())
+	want := []string{tb.sentence("Pensantus", with, with-2)}
+	for who, u := range map[string]*user{"the owner": tb.owner, "the master": tb.master} {
+		if got := tb.banner(u.get(t, tb.campaign, tb.pc.GetId())); !slices.Equal(got, want) {
+			t.Errorf("%s reads %q, want %q", who, got, want)
+		}
+	}
+}
