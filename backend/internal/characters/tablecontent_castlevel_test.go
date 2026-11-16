@@ -70,8 +70,9 @@ func TestMR025_ACastLevelRoundTripsThroughTheStoredRowAndThePack(t *testing.T) {
 	}
 }
 
-// Raising the level of a table spell above the cast level of a grant of it is refused, at the grant's field in the
-// feat that is left behind with a cast level below the spell's own; the spell keeps its level.
+// Editing a table spell to a level above the cast level of a feat's grant of it is refused, because that grant would be left
+// with a cast level below the spell's own. The violation points at the grant's cast_level field in the feat, and the spell
+// keeps its old level.
 func TestMR025_RaisingATableSpellAboveAGrantsCastLevelIsRefused(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
