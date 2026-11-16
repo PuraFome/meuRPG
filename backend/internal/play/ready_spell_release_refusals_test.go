@@ -159,6 +159,15 @@ func TestACounterspellOnAReadiedReleaseWithDartsCastsThemWhenItPasses(t *testing
 		r.Targets = []*playv1.SpellTarget{darts(a, t, "Toren", 3)}
 	})
 	wantCode(t, "Counterspell's window with targets", err, connect.CodeInvalidArgument)
+	_, err = a.answerReaction(t, a.ana, e, cw.GetId(), func(r *playv1.AnswerReactionRequest) {
+		useAnswer(3)(r)
+		r.Targets = []*playv1.SpellTarget{darts(a, t, "Toren", 3)}
+	})
+	wantCode(t, "a use of Counterspell's window with targets", err, connect.CodeInvalidArgument)
+	if a.windowOf(t, a.ana, playv1.ReactionKind_REACTION_KIND_COUNTERSPELL) == nil || a.slotsUsed(t, "Pensantus", 3) != 0 {
+		t.Errorf("after the refused use: Counterspell window open %v, 3rd-level slots used %d (want it open and 0)",
+			a.windowOf(t, a.ana, playv1.ReactionKind_REACTION_KIND_COUNTERSPELL) != nil, a.slotsUsed(t, "Pensantus", 3))
+	}
 	a.mustAnswer(t, a.ana, e, cw.GetId(), passAnswer)
 	got := map[string]int32{}
 	for _, tg := range a.castLine(t, e, magicMissileSpell).GetSpell().GetTargets() {
