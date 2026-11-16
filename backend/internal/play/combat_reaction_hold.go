@@ -205,7 +205,8 @@ type replayGuard struct {
 }
 
 // guardReplay opens the savepoint of a replay and keeps a copy of what the change holds in memory: the combat's own
-// state and the hints it gathered, so a refused replay leaves both as they were.
+// state and the hints it gathered, so a refused replay leaves both as they were. The copy is shallow: replay_guard_fields_test.go
+// names how each map, slice and pointer field of combatTx gets back whole, and fails when a new one is not named.
 func guardReplay(ctx context.Context, c *combatTx) (*replayGuard, error) {
 	sp, err := c.tx.Begin(ctx)
 	if err != nil {
