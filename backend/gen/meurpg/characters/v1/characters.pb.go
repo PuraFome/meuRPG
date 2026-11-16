@@ -4145,8 +4145,8 @@ func (x *SheetMagicItem) GetConsumable() *SheetConsumable {
 type SheetConsumable struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	Kind  ConsumableKind         `protobuf:"varint,1,opt,name=kind,proto3,enum=meurpg.characters.v1.ConsumableKind" json:"kind,omitempty"`
-	// Using it in a running combat costs the user's action (and needs the user's turn and a receiver within reach). False for
-	// everything but a potion, and always false outside a running combat's rules (a combat in setup has no turn).
+	// True for a potion: using it costs the user's action. It applies only in a running combat, which
+	// ListConsumableTargetsResponse.in_combat says; a combat in setup has no turn. False for everything but a potion.
 	CostsAction bool `protobuf:"varint,2,opt,name=costs_action,json=costsAction,proto3" json:"costs_action,omitempty"`
 	// The healing roll of the use, such as 2, 4, 2 for 2d4 + 2. All three are zero when the use rolls nothing.
 	HealDiceCount int32 `protobuf:"varint,3,opt,name=heal_dice_count,json=healDiceCount,proto3" json:"heal_dice_count,omitempty"`

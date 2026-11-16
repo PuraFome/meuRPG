@@ -38,6 +38,11 @@ func TestTheTargetsSayTheUserIsInARunningCombat(t *testing.T) {
 			t.Errorf("target %v has no state in a running combat", g)
 		}
 	}
+	for _, g := range f.targets(t, f.caio, f.toren, scrollFirst) { // a scroll is no action: it has no reach and no state
+		if g.GetState() != playv1.ConsumableTargetState_CONSUMABLE_TARGET_STATE_UNSPECIFIED {
+			t.Errorf("scroll target %v has a state", g)
+		}
+	}
 }
 
 // A combat in setup has no turn: in_combat is false, and so is it for a character that does not fight in the running combat.
@@ -58,6 +63,11 @@ func TestTheTargetsSayNoCombatInSetupAndForAUserWhoDoesNotFight(t *testing.T) {
 	for _, key := range []string{potionCommon, scrollFirst} {
 		if f.inCombat(t, f.caio, f.toren, key) {
 			t.Errorf("%s: in_combat is true for a combat in setup", key)
+		}
+	}
+	for _, g := range f.targets(t, f.caio, f.toren, potionCommon) { // the states are set when in_combat is true and the item is a potion
+		if g.GetState() != playv1.ConsumableTargetState_CONSUMABLE_TARGET_STATE_UNSPECIFIED {
+			t.Errorf("target %v has a state with in_combat false", g)
 		}
 	}
 	if f.get(t, f.master).GetStatus() != playv1.EncounterStatus_ENCOUNTER_STATUS_SETUP {

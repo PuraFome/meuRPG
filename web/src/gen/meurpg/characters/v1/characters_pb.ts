@@ -1326,8 +1326,8 @@ export type SheetConsumable = Message<"meurpg.characters.v1.SheetConsumable"> & 
   kind: ConsumableKind;
 
   /**
-   * Using it in a running combat costs the user's action (and needs the user's turn and a receiver within reach). False for
-   * everything but a potion, and always false outside a running combat's rules (a combat in setup has no turn).
+   * True for a potion: using it costs the user's action. It applies only in a running combat, which
+   * ListConsumableTargetsResponse.in_combat says; a combat in setup has no turn. False for everything but a potion.
    *
    * @generated from field: bool costs_action = 2;
    */

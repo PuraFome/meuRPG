@@ -1730,8 +1730,8 @@ enum ConsumableKind {
 // SheetConsumable is what using a consumable entry of the sheet does and costs, as the server's rules say it.
 message SheetConsumable {
   ConsumableKind kind = 1;
-  // Using it in a running combat costs the user's action (and needs the user's turn and a receiver within reach). False for
-  // everything but a potion, and always false outside a running combat's rules (a combat in setup has no turn).
+  // True for a potion: using it costs the user's action. It applies only in a running combat, which
+  // ListConsumableTargetsResponse.in_combat says; a combat in setup has no turn. False for everything but a potion.
   bool costs_action = 2;
   // The healing roll of the use, such as 2, 4, 2 for 2d4 + 2. All three are zero when the use rolls nothing.
   int32 heal_dice_count = 3;
