@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   AttunementRestriction,
+  ConsumableKind,
   FullSheetSchema,
   ItemBonusSchema,
   SheetMagicItemSchema,
@@ -111,6 +112,36 @@ describe('attunementOf, the consumables', () => {
     // The scroll's spell is not read until the scroll has a screen of its own.
     expect(Object.keys(a.entries[1])).not.toContain('spellNamePt');
   });
+
+  it('carries what the server says of a consumable, and none for an item that is not one', () => {
+    const a = attunementOf(
+      create(FullSheetSchema, {
+        magicItems: [
+          create(SheetMagicItemSchema, {
+            id: 'p',
+            consumable: {
+              kind: ConsumableKind.POTION,
+              costsAction: true,
+              healDiceCount: 2,
+              healDiceSides: 4,
+              healBonus: 2,
+            },
+          }),
+          create(SheetMagicItemSchema, {
+            id: 'o',
+            consumable: { kind: ConsumableKind.OIL },
+          }),
+          create(SheetMagicItemSchema, { id: 'r' }),
+        ],
+      }),
+    );
+    expect(a.entries.map((e) => e.consumable?.kind)).toEqual(['potion', 'oil', undefined]);
+    expect(a.entries[0].consumable).toEqual({
+      kind: 'potion',
+      costsAction: true,
+      heal: { count: 2, sides: 4, modifier: 2, text: '2d4 + 2' },
+    });
+  });
 });
 
 describe('magicEntryOf', () => {
@@ -188,7 +219,7 @@ describe('MagicCategories', () => {
     expect(cats.iconOf('item:nope')).toBe('diamond');
   });
 
-  it("says the category of an item, a variant's being its family's, and nothing for what it does not know", async () => {
+  it("draws the icon of the category of an item, a variant's being its family's, and the gem for what it does not know", async () => {
     TestBed.configureTestingModule({
       providers: [
         {
@@ -201,11 +232,11 @@ describe('MagicCategories', () => {
       ],
     });
     const cats = TestBed.inject(MagicCategories);
-    expect(cats.categoryOf('item:potion-healing')).toBe('');
+    expect(cats.iconOf('item:potion-healing')).toBe('diamond');
     await cats.load('c1');
-    expect(cats.categoryOf('item:potion-healing')).toBe('potion');
-    expect(cats.categoryOf('item:potion-healing-greater')).toBe('potion');
-    expect(cats.categoryOf('item:nope')).toBe('');
+    expect(cats.iconOf('item:potion-healing')).toBe('science');
+    expect(cats.iconOf('item:potion-healing-greater')).toBe('science');
+    expect(cats.iconOf('item:nope')).toBe('diamond');
   });
 
   it('keeps the gem on every row when the read fails, and tries again next time', async () => {

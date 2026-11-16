@@ -234,6 +234,7 @@ export class ConsumableUse {
           itemName: entry.namePt,
           kind,
           effectPt: entry.effectPt ?? '',
+          heal: entry.consumable?.heal ?? null,
           userName: vm.name,
           receiverName: target?.name ?? vm.name,
           gift: target !== null,

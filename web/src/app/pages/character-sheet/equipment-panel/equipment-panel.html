@@ -112,6 +112,12 @@
           <span class="magic__count">{{ magicItems().length }}</span>
         }
       </h3>
+      <!-- What the last use said sits at the top, as in the combat: the live region is on the page before the words come. -->
+      <div role="status">
+        @if (consumableResult(); as notice) {
+          <app-consumable-notice [notice]="notice" />
+        }
+      </div>
       @if (magicItems().length === 0) {
         <p class="mr-muted">Nenhum item mágico.</p>
       } @else {
@@ -265,11 +271,6 @@
           <p class="charges__result" [class.charges__result--good]="result.tone === 'good'" [class.charges__result--bad]="result.tone === 'bad'">
             <mat-icon aria-hidden="true">{{ result.tone === 'bad' ? 'error' : 'check_circle' }}</mat-icon>{{ result.text }}
           </p>
-        }
-      </div>
-      <div role="status">
-        @if (consumableResult(); as notice) {
-          <app-consumable-notice [notice]="notice" />
         }
       </div>
       @if (chargesError()) {

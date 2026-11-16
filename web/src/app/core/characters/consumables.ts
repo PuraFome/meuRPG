@@ -9,7 +9,7 @@ import { article } from '../format/article';
 import { upFirst } from '../format/text';
 import { metersText } from '../units';
 import type { AttunementEntryVm } from './attunement';
-import type { ConsumableKind, ConsumableVm } from './consumable-vm';
+import type { ConsumableKind, ConsumableVm, HealingDice } from './consumable-vm';
 
 /**
  * The consumables of a sheet (potions, oils, scrolls and the like): the rows that group identical ones, the words of the
@@ -346,6 +346,8 @@ export interface UseNoticeInput {
   readonly itemName: string;
   readonly kind: ConsumableKind;
   readonly effectPt: string;
+  /** The healing dice the server sent for the item: the notice writes them with their spaces and the sign of the number added. */
+  readonly heal: HealingDice | null;
   readonly userName: string;
   readonly receiverName: string;
   /** The item went to another character. */
@@ -441,7 +443,7 @@ export function useNotice(res: UseConsumableResponse, input: UseNoticeInput): Co
         icon: 'favorite',
         headline: `${input.receiverName} recebeu ${res.healed} PV${input.woke ? ' e acorda' : ''}.`,
         detail: joined(
-          `${res.diceText}: ${rollSum(res.faces, res.rollTotal)} = ${res.rollTotal}.`,
+          `${input.heal?.text ?? res.diceText}: ${rollSum(res.faces, res.rollTotal)} = ${res.rollTotal}.`,
           left,
         ),
         text: [],

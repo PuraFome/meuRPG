@@ -240,7 +240,7 @@
             }
           </app-fold>
         }
-        <p class="group__why items__rule"><mat-icon aria-hidden="true">info</mat-icon><span>Beber ou dar uma poção gasta a ação. Óleos e pergaminhos não gastam a ação: o mestre decide o tempo.</span></p>
+        <p class="group__why items__rule"><mat-icon aria-hidden="true">info</mat-icon><span>Beber ou dar uma poção gasta a ação. Um óleo ou um pergaminho é gasto e mostra o texto dele, sem turno e sem ação: o mestre decide o tempo.</span></p>
       </div>
     }
 
@@ -481,8 +481,8 @@
     [icon]="r.icon"
     [buttonLabel]="'Usar ' + r.namePt"
     [attr.data-item-row]="r.key"
-    [off]="!!locked()"
-    [reason]="locked()"
+    [off]="!!itemWhy(r)"
+    [reason]="itemWhy(r)"
     [busy]="busy()"
     (press)="useItem.emit(r.first)"
   />

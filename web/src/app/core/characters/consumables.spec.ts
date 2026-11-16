@@ -7,23 +7,33 @@ import {
 } from '../../../gen/meurpg/play/v1/charges_pb';
 import { ConsumableUseOutcome } from '../../../gen/meurpg/play/v1/combat_pb';
 import type { AttunementEntryVm } from './attunement';
+import type { ConsumableVm } from './consumable-vm';
 import {
+  canGive,
   combatItemRows,
-  consumableKind,
-  costsAction,
   effectIcon,
   effectLine,
-  healingDice,
-  isOil,
+  goneNotice,
   itemWords,
+  kindWords,
   leftWords,
   magicRows,
-  OILS,
   subtitleOf,
   targetRows,
   turnBlockOf,
+  useCost,
   useNotice,
 } from './consumables';
+
+const POTION: ConsumableVm = {
+  kind: 'potion',
+  costsAction: true,
+  heal: { count: 2, sides: 4, modifier: 2, text: '2d4 + 2' },
+};
+const RESISTANCE: ConsumableVm = { kind: 'potion', costsAction: true, heal: null };
+const OIL: ConsumableVm = { kind: 'oil', costsAction: false, heal: null };
+const SCROLL: ConsumableVm = { kind: 'scroll', costsAction: false, heal: null };
+const BEAD: ConsumableVm = { kind: 'other', costsAction: false, heal: null };
 
 const entry = (over: Partial<AttunementEntryVm> = {}): AttunementEntryVm => ({
   id: 'm1',
@@ -36,42 +46,30 @@ const entry = (over: Partial<AttunementEntryVm> = {}): AttunementEntryVm => ({
   restriction: 'none',
   sameItemAttuned: false,
   effectPt: 'Cura 2d4 + 2',
+  consumable: POTION,
   ...over,
-});
-
-const CATEGORY = new Map([
-  ['item:potion-of-healing', 'potion'],
-  ['item:potion-of-fire-resistance', 'potion'],
-  ['item:spell-scroll', 'scroll'],
-  ['item:ring-of-protection', 'ring'],
-]);
-const categoryOf = (key: string) => CATEGORY.get(key) ?? '';
-
-describe('consumableKind', () => {
-  it('knows the potions and the scrolls by the catalog category, and nothing else', () => {
-    expect(consumableKind('potion')).toBe('potion');
-    expect(consumableKind('scroll')).toBe('scroll');
-    expect(consumableKind('ring')).toBeNull();
-    expect(consumableKind('')).toBeNull();
-  });
 });
 
 describe('magicRows', () => {
   it('makes one row of the entries that share a key, at the first one, and sends the id of one of them', () => {
-    const rows = magicRows(
-      [
-        entry({ id: 'p1' }),
-        entry({ id: 'r1', key: 'item:ring-of-protection', namePt: 'Anel', effectPt: '' }),
-        entry({ id: 'p2' }),
-        entry({
-          id: 'f1',
-          key: 'item:potion-of-fire-resistance',
-          namePt: 'Poção de resistência',
-          effectPt: 'Resistência a fogo por 1 hora',
-        }),
-      ],
-      categoryOf,
-    );
+    const rows = magicRows([
+      entry({ id: 'p1' }),
+      entry({
+        id: 'r1',
+        key: 'item:ring-of-protection',
+        namePt: 'Anel',
+        effectPt: '',
+        consumable: undefined,
+      }),
+      entry({ id: 'p2' }),
+      entry({
+        id: 'f1',
+        key: 'item:potion-of-fire-resistance',
+        namePt: 'Poção de resistência',
+        effectPt: 'Resistência a fogo por 1 hora',
+        consumable: RESISTANCE,
+      }),
+    ]);
     expect(rows.map((r) => r.id)).toEqual([
       'consumable:item:potion-of-healing',
       'r1',
@@ -84,23 +82,30 @@ describe('magicRows', () => {
     expect(rows[1].type).toBe('item');
   });
 
-  it('draws a page for a scroll and a flask for a potion', () => {
-    const rows = magicRows(
-      [entry({ key: 'item:spell-scroll', namePt: 'Pergaminho de magia', effectPt: '' })],
-      categoryOf,
-    );
-    expect(rows[0].type === 'consumable' && rows[0].row.icon).toBe('description');
-    expect(rows[0].type === 'consumable' && rows[0].row.kind).toBe('scroll');
+  it('reads what is a consumable from the field the server filled, and nothing from the key or a catalog', () => {
+    const rows = magicRows([
+      entry({ id: 'a', key: 'item:potion-of-healing', consumable: undefined }),
+      entry({ id: 'b', key: 'item:unheard-of-dust', consumable: BEAD }),
+    ]);
+    expect(rows.map((r) => r.type)).toEqual(['item', 'consumable']);
+  });
+
+  it('draws a flask for a potion, a drop for an oil, a page for a scroll and a box for any other item', () => {
+    const icon = (consumable: ConsumableVm) => {
+      const [row] = magicRows([entry({ consumable })]);
+      return row.type === 'consumable' ? [row.row.kind, row.row.icon] : [];
+    };
+    expect(icon(POTION)).toEqual(['potion', 'science']);
+    expect(icon(OIL)).toEqual(['oil', 'water_drop']);
+    expect(icon(SCROLL)).toEqual(['scroll', 'description']);
+    expect(icon(BEAD)).toEqual(['other', 'inventory_2']);
   });
 
   it('keeps an item that is no consumable as the row it was, even with the same key twice', () => {
-    const rows = magicRows(
-      [
-        entry({ id: 'a', key: 'item:ring-of-protection', effectPt: '' }),
-        entry({ id: 'b', key: 'item:ring-of-protection', effectPt: '' }),
-      ],
-      categoryOf,
-    );
+    const rows = magicRows([
+      entry({ id: 'a', key: 'item:ring-of-protection', effectPt: '', consumable: undefined }),
+      entry({ id: 'b', key: 'item:ring-of-protection', effectPt: '', consumable: undefined }),
+    ]);
     expect(rows.map((r) => r.type)).toEqual(['item', 'item']);
   });
 });
@@ -111,62 +116,70 @@ describe('the effect line', () => {
     expect(effectLine('')).toBe('Só mostra o texto');
   });
 
-  it('draws a heart for a healing, a shield for a resistance and a book for the text alone', () => {
-    expect(effectIcon('Cura 2d4 + 2')).toBe('favorite');
-    expect(effectIcon('Resistência a fogo por 1 hora')).toBe('shield');
-    expect(effectIcon('')).toBe('menu_book');
+  it('draws a heart for a healing the server sent dice for, a shield for a resistance and a book for the text alone', () => {
+    expect(effectIcon('Cura 2d4 + 2', POTION)).toBe('favorite');
+    expect(effectIcon('Resistência a fogo por 1 hora', RESISTANCE)).toBe('shield');
+    expect(effectIcon('', OIL)).toBe('menu_book');
   });
 });
 
-describe('healingDice', () => {
-  it('reads the dice and the number added of a healing line', () => {
-    expect(healingDice('Cura 2d4 + 2')).toEqual({
-      count: 2,
-      sides: 4,
-      modifier: 2,
-      text: '2d4 + 2',
+describe('kindWords', () => {
+  it('says the oil is "o óleo", used and not drunk, and the potion is drunk', () => {
+    expect(kindWords('oil')).toMatchObject({
+      the: 'o óleo',
+      The: 'O óleo',
+      use: 'Usar',
+      goneLead: 'O óleo acabou.',
     });
-    expect(healingDice('Cura 10d4 + 20')).toEqual({
-      count: 10,
-      sides: 4,
-      modifier: 20,
-      text: '10d4 + 20',
-    });
+    expect(kindWords('potion')).toMatchObject({ the: 'a poção', use: 'Beber' });
+    expect(kindWords('scroll').the).toBe('o pergaminho');
+    expect(kindWords('other').the).toBe('o item');
   });
 
-  it('reads a healing with no number added', () => {
-    expect(healingDice('Cura 3d6')).toEqual({ count: 3, sides: 6, modifier: 0, text: '3d6' });
-  });
-
-  it('has no dice for the lines that are no healing', () => {
-    expect(healingDice('Resistência a fogo por 1 hora')).toBeNull();
-    expect(healingDice('')).toBeNull();
+  it('gives a potion and an oil to someone, and nothing else', () => {
+    expect(canGive('potion')).toBe(true);
+    expect(canGive('oil')).toBe(true);
+    expect(canGive('scroll')).toBe(false);
+    expect(canGive('other')).toBe(false);
   });
 });
 
 describe('combatItemRows', () => {
   const units = [
     entry({ id: 'p1' }),
-    entry({ id: 'r1', key: 'item:ring-of-protection', namePt: 'Anel', effectPt: '' }),
+    entry({
+      id: 'r1',
+      key: 'item:ring-of-protection',
+      namePt: 'Anel',
+      effectPt: '',
+      consumable: undefined,
+    }),
     entry({ id: 'p2' }),
     entry({
       id: 'f1',
       key: 'item:potion-of-fire-resistance',
       namePt: 'Poção de resistência',
       effectPt: 'Resistência a fogo por 1 hora',
+      consumable: RESISTANCE,
     }),
     entry({
       id: 'o1',
       key: 'item:oil-of-sharpness',
       namePt: 'Óleo de afiar',
       effectPt: '',
+      consumable: OIL,
     }),
-    entry({ id: 's1', key: 'item:spell-scroll', namePt: 'Pergaminho de magia', effectPt: '' }),
+    entry({
+      id: 's1',
+      key: 'item:spell-scroll',
+      namePt: 'Pergaminho de magia',
+      effectPt: '',
+      consumable: SCROLL,
+    }),
   ];
-  const cats = (key: string) => (key === 'item:oil-of-sharpness' ? 'potion' : categoryOf(key));
 
   it('lists the consumables only, one row for each key, with the id of one unit', () => {
-    const rows = combatItemRows(units, cats);
+    const rows = combatItemRows(units);
     expect(rows.map((r) => [r.key, r.count, r.first.id])).toEqual([
       ['item:potion-of-healing', 2, 'p1'],
       ['item:potion-of-fire-resistance', 1, 'f1'],
@@ -176,7 +189,7 @@ describe('combatItemRows', () => {
   });
 
   it('says what the item does in the line under the name, and leaves how many the group holds to its count', () => {
-    const rows = combatItemRows(units, cats);
+    const rows = combatItemRows(units);
     expect(rows.map((r) => r.detail)).toEqual([
       'cura 2d4 + 2',
       'resistência a fogo por 1 hora',
@@ -185,22 +198,29 @@ describe('combatItemRows', () => {
     ]);
   });
 
-  it('marks the Ação on every potion but the oils, and nothing on a scroll or an oil', () => {
-    const rows = combatItemRows(units, cats);
-    expect(rows.map((r) => r.economy)).toEqual(['action', 'action', null, null]);
+  it('marks the Ação where the server says the use costs it, and nothing on an oil or a scroll', () => {
+    expect(combatItemRows(units).map((r) => r.economy)).toEqual(['action', 'action', null, null]);
   });
 
-  it('draws a flask for a potion and a page for a scroll', () => {
-    expect(combatItemRows(units, cats).map((r) => r.icon)).toEqual([
+  it('marks the Ação from the field and not from the key: a potion the server says is free is free', () => {
+    const free = entry({
+      key: 'item:potion-of-healing',
+      consumable: { ...POTION, costsAction: false },
+    });
+    expect(combatItemRows([free])[0].economy).toBeNull();
+  });
+
+  it('draws the icon of the kind', () => {
+    expect(combatItemRows(units).map((r) => r.icon)).toEqual([
       'science',
       'science',
-      'science',
+      'water_drop',
       'description',
     ]);
   });
 
   it('is empty with no consumable, and so is the tab', () => {
-    expect(combatItemRows([units[1]], cats)).toEqual([]);
+    expect(combatItemRows([units[1]])).toEqual([]);
   });
 });
 
@@ -216,36 +236,6 @@ describe('turnBlockOf', () => {
 
   it('blocks nothing while the turn and the Action are there', () => {
     expect(turnBlockOf({ myTurn: true, actionUsed: false })).toBeNull();
-  });
-});
-
-describe('costsAction', () => {
-  it('is every potion in a combat, a text-only one included', () => {
-    expect(costsAction('potion', 'item:potion-of-healing')).toBe(true);
-    expect(costsAction('potion', 'item:potion-of-resistance-fire')).toBe(true);
-    expect(costsAction('potion', 'item:potion-of-climbing')).toBe(true);
-  });
-
-  it('is not an oil, which is spent as text and whose time the master judges', () => {
-    expect(costsAction('potion', 'item:oil-of-sharpness')).toBe(false);
-    expect(costsAction('potion', 'item:oil-of-etherealness')).toBe(false);
-    expect(costsAction('potion', 'item:oil-of-slipperiness')).toBe(false);
-  });
-
-  it('is not a scroll, which costs no turn and no action', () => {
-    expect(costsAction('scroll', 'item:spell-scroll-3rd')).toBe(false);
-  });
-});
-
-describe('isOil', () => {
-  it('names the oils of the SRD by key, in one place', () => {
-    expect(OILS).toEqual([
-      'item:oil-of-etherealness',
-      'item:oil-of-sharpness',
-      'item:oil-of-slipperiness',
-    ]);
-    expect(isOil('item:oil-of-sharpness')).toBe(true);
-    expect(isOil('item:potion-of-healing')).toBe(false);
   });
 });
 
@@ -303,7 +293,7 @@ describe('the words under the title', () => {
     ).toBe('Resta 1');
   });
 
-  it('keeps the cost when the sheet does not know whether there is a combat', () => {
+  it('says nothing of the cost while the sheet does not know whether there is a combat', () => {
     expect(
       subtitleOf({
         itemName: 'Poção de cura',
@@ -312,7 +302,78 @@ describe('the words under the title', () => {
         inCombat: null,
         costsAction: true,
       }),
-    ).toBe('Restam 3 · em combate, gasta a ação');
+    ).toBe('Restam 3');
+  });
+});
+
+describe('useCost', () => {
+  const base = {
+    kind: 'potion' as const,
+    costsAction: true,
+    inCombat: false as boolean | null,
+    blocked: false,
+    phase: 'choose' as const,
+    receiverName: '',
+    canGive: true,
+  };
+
+  it('says one case: out of a combat, the turn is not spent, and nothing of the action', () => {
+    const cost = useCost(base);
+    expect(cost).toEqual({
+      mark: false,
+      lead: 'Fora de combate: não gasta a vez.',
+      rest: ' “Dar a…” lista o grupo todo.',
+    });
+    expect(`${cost?.lead}${cost?.rest}`).not.toMatch(/gasta a (sua )?ação/);
+  });
+
+  it('says one case: in a combat the first choice leaves the cost to the subtitle, and the list says the action is spent', () => {
+    expect(useCost({ ...base, inCombat: true })).toBeNull();
+    expect(useCost({ ...base, inCombat: true, phase: 'give', receiverName: 'Brisa' })).toEqual({
+      mark: true,
+      lead: 'Gasta a sua ação.',
+      rest: ' A poção age em Brisa.',
+    });
+  });
+
+  it('says nothing of the cost while it is not known whether there is a combat', () => {
+    expect(useCost({ ...base, inCombat: null })).toBeNull();
+  });
+
+  it('says in the words of the oil that it acts on who receives it', () => {
+    expect(
+      useCost({
+        ...base,
+        kind: 'oil',
+        costsAction: false,
+        phase: 'give',
+        receiverName: 'Brisa',
+      }),
+    ).toEqual({
+      mark: false,
+      lead: 'Não gasta a ação: o mestre decide o tempo que isso leva.',
+      rest: ' O óleo age em Brisa.',
+    });
+  });
+
+  it('says an item that costs no action costs none, in a combat or not', () => {
+    for (const inCombat of [true, false, null]) {
+      expect(useCost({ ...base, kind: 'scroll', costsAction: false, inCombat })?.lead).toBe(
+        'Não gasta a ação: o mestre decide o tempo que isso leva.',
+      );
+    }
+  });
+
+  it('says nothing under a turn that is blocked', () => {
+    expect(useCost({ ...base, blocked: true, inCombat: true })).toBeNull();
+  });
+
+  it('says the receiver out of a combat does not spend the turn', () => {
+    expect(useCost({ ...base, phase: 'give', receiverName: 'Pensantus' })).toEqual({
+      mark: false,
+      lead: 'Fora de combate, não gasta a vez.',
+      rest: ' A poção age em Pensantus.',
+    });
   });
 });
 
@@ -361,11 +422,11 @@ describe('targetRows', () => {
     ]);
   });
 
-  it('leaves out who may not receive it', () => {
+  it('lists every receiver the server sent: it only sends who may receive', () => {
     const rows = targetRows([
       create(ConsumableTargetSchema, { characterId: 'x', name: 'Zé', mayReceive: false }),
     ]);
-    expect(rows).toEqual([]);
+    expect(rows.map((r) => r.id)).toEqual(['x']);
   });
 });
 
@@ -381,7 +442,9 @@ describe('useNotice', () => {
     });
   const base = {
     itemName: 'Poção de cura',
+    kind: 'potion' as const,
     effectPt: 'Cura 2d4 + 2',
+    heal: POTION.heal,
     userName: 'Tor',
     receiverName: 'Brisa',
     gift: true,
@@ -412,19 +475,31 @@ describe('useNotice', () => {
     );
   });
 
-  it('says the potion did nothing for who had all their hit points', () => {
+  it('says nothing is known of what is left when the read of the sheet is not on screen', () => {
+    const n = useNotice(healed(), { ...base, left: null });
+    expect(n.detail).toBe('2d4 + 2: 3 + 2 + 2 = 7.');
+  });
+
+  it('is a neutral notice with its own lead for who had all their hit points: no success, no dice', () => {
     const n = useNotice(healed({ healed: 0, faces: [1, 1], rollTotal: 4 }), {
       ...base,
       woke: false,
     });
-    expect(n.headline).toBe('Brisa já estava com os PV cheios: a poção não curou nada.');
-    expect(n.detail).toBe('2d4 + 2: 1 + 1 + 2 = 4. Resta 1 Poção de cura.');
+    expect(n).toEqual({
+      tone: 'neutral',
+      icon: 'info',
+      headline: 'Brisa já estava com os PV cheios.',
+      detail: 'Nada foi curado, mas a unidade foi gasta. Resta 1 Poção de cura.',
+      text: [],
+    });
+    expect(n.detail).not.toContain('=');
   });
 
   it('writes a number taken off the roll with its sign', () => {
     const n = useNotice(healed({ faces: [2], rollTotal: 1, healed: 1, diceText: '1d4-1' }), {
       ...base,
       effectPt: 'Cura 1d4 − 1',
+      heal: { count: 1, sides: 4, modifier: -1, text: '1d4 − 1' },
       woke: false,
     });
     expect(n.detail).toContain('1d4 − 1: 2 − 1 = 1.');
@@ -479,9 +554,9 @@ describe('useNotice', () => {
     });
   });
 
-  it('says an oil, filed with the potions, is used and not drunk, with the article of its name', () => {
+  it('says an oil is used and not drunk, with the article of its name', () => {
     const text = create(UseConsumableResponseSchema, { outcome: ConsumableUseOutcome.TEXT_ONLY });
-    const oil = { ...base, itemName: 'Óleo de precisão', effectPt: '' };
+    const oil = { ...base, itemName: 'Óleo de precisão', kind: 'oil' as const, effectPt: '' };
     expect(useNotice(text, { ...oil, gift: false, receiverName: 'Tor' }).headline).toBe(
       'Tor usou o Óleo de precisão.',
     );
@@ -501,6 +576,19 @@ describe('useNotice', () => {
   });
 });
 
+describe('goneNotice', () => {
+  it('is a neutral notice with the lead of the kind: "A poção acabou.", "O óleo acabou."', () => {
+    expect(goneNotice('potion')).toEqual({
+      tone: 'neutral',
+      icon: 'info',
+      headline: 'A poção acabou.',
+      detail: 'Essa poção já foi usada. A ficha foi atualizada.',
+      text: [],
+    });
+    expect(goneNotice('oil').headline).toBe('O óleo acabou.');
+  });
+});
+
 describe('itemWords', () => {
   it('says a potion is "uma" and drunk, whatever the kind the sheet filed it under', () => {
     expect(itemWords('Poção de cura')).toEqual({
@@ -508,6 +596,12 @@ describe('itemWords', () => {
       indefinite: 'uma Poção de cura',
       verb: 'bebeu',
     });
+  });
+
+  it('says a potion the sheet names after its kind is drunk, and an oil or a scroll is used, whatever the name', () => {
+    expect(itemWords('Elixir', 'potion').verb).toBe('bebeu');
+    expect(itemWords('Poção estranha', 'oil').verb).toBe('usou');
+    expect(itemWords('Poção estranha', 'other').verb).toBe('usou');
   });
 
   it('says anything else is used, with the article of its name', () => {

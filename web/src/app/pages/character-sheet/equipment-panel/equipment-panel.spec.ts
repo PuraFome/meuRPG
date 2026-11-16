@@ -6,6 +6,7 @@ import {
   MagicCategories,
   magicCategoryIcon,
 } from '../../../core/characters/attunement';
+import type { ConsumableVm } from '../../../core/characters/consumable-vm';
 import type { ConsumableNotice } from '../../../core/characters/consumables';
 import type { FullSheetVm } from '../character-sheet.types';
 import { ItemChargesVm } from '../../../core/characters/charges';
@@ -137,7 +138,6 @@ describe('EquipmentPanel, the magic items and the attunement', () => {
           provide: MagicCategories,
           useValue: {
             iconOf: (k: string) => magicCategoryIcon(CATEGORY_OF.get(k)),
-            categoryOf: (k: string) => CATEGORY_OF.get(k) ?? '',
           },
         },
       ],
@@ -750,6 +750,15 @@ const POTION_CATEGORY = new Map([
   ['item:wand', 'wand'],
 ]);
 
+const HEALING: ConsumableVm = {
+  kind: 'potion',
+  costsAction: true,
+  heal: { count: 2, sides: 4, modifier: 2, text: '2d4 + 2' },
+};
+const NO_DICE: ConsumableVm = { kind: 'potion', costsAction: true, heal: null };
+const SCROLL: ConsumableVm = { kind: 'scroll', costsAction: false, heal: null };
+const OIL: ConsumableVm = { kind: 'oil', costsAction: false, heal: null };
+
 const potion = (id: string, over: Partial<AttunementEntryVm> = {}) =>
   entry({
     id,
@@ -757,6 +766,7 @@ const potion = (id: string, over: Partial<AttunementEntryVm> = {}) =>
     namePt: 'Poção de cura',
     asks: false,
     effectPt: 'Cura 2d4 + 2',
+    consumable: HEALING,
     ...over,
   });
 
@@ -768,7 +778,6 @@ describe('EquipmentPanel, the potions and the scrolls', () => {
           provide: MagicCategories,
           useValue: {
             iconOf: (k: string) => magicCategoryIcon(POTION_CATEGORY.get(k)),
-            categoryOf: (k: string) => POTION_CATEGORY.get(k) ?? '',
           },
         },
       ],
@@ -793,7 +802,12 @@ describe('EquipmentPanel, the potions and the scrolls', () => {
     const { el } = render((h) =>
       h.sheet.set(
         sheetWith([
-          potion('s1', { key: 'item:spell-scroll', namePt: 'Pergaminho de magia', effectPt: '' }),
+          potion('s1', {
+            key: 'item:spell-scroll',
+            namePt: 'Pergaminho de magia',
+            effectPt: '',
+            consumable: SCROLL,
+          }),
         ]),
       ),
     );
@@ -808,6 +822,7 @@ describe('EquipmentPanel, the potions and the scrolls', () => {
             key: 'item:potion-of-climbing',
             namePt: 'Poção de escalada',
             effectPt: '',
+            consumable: NO_DICE,
           }),
         ]),
       ),
@@ -843,6 +858,7 @@ describe('EquipmentPanel, the potions and the scrolls', () => {
             key: 'item:potion-of-fire-resistance',
             namePt: 'Poção de resistência',
             effectPt: 'Resistência a fogo por 1 hora',
+            consumable: NO_DICE,
           }),
         ]),
       ),
@@ -895,7 +911,13 @@ describe('EquipmentPanel, the potions and the scrolls', () => {
   it('says on a locked sheet with scrolls only that using them keeps working, and not potions', () => {
     const { el } = render((h) =>
       h.sheet.set(
-        sheetWith([potion('s1', { key: 'item:spell-scroll', namePt: 'Pergaminho de magia' })]),
+        sheetWith([
+          potion('s1', {
+            key: 'item:spell-scroll',
+            namePt: 'Pergaminho de magia',
+            consumable: SCROLL,
+          }),
+        ]),
       ),
     );
     expect(plain(el.querySelector('.gear__lock'))).toContain(
@@ -909,7 +931,11 @@ describe('EquipmentPanel, the potions and the scrolls', () => {
       h.sheet.set(
         sheetWith([
           potion('p1'),
-          potion('s1', { key: 'item:spell-scroll', namePt: 'Pergaminho de magia' }),
+          potion('s1', {
+            key: 'item:spell-scroll',
+            namePt: 'Pergaminho de magia',
+            consumable: SCROLL,
+          }),
         ]),
       ),
     );
@@ -925,7 +951,11 @@ describe('EquipmentPanel, the potions and the scrolls', () => {
       namePt: 'Varinha',
       charges: { max: 7, left: 5, state: 'ready' },
     });
-    const scroll = potion('s1', { key: 'item:spell-scroll', namePt: 'Pergaminho de magia' });
+    const scroll = potion('s1', {
+      key: 'item:spell-scroll',
+      namePt: 'Pergaminho de magia',
+      consumable: SCROLL,
+    });
     const scrollAndWand = render((h) => h.sheet.set(sheetWith([scroll, wand])));
     expect(plain(scrollAndWand.el.querySelector('.gear__lock'))).toContain(
       'Travada: usar pergaminhos e cargas continua valendo; o resto, só o mestre muda.',
@@ -996,6 +1026,58 @@ describe('EquipmentPanel, the potions and the scrolls', () => {
     expect(plain(el.querySelector('.consumable__text'))).toBe(
       'Por 1 hora, você escala com o mesmo deslocamento.',
     );
+  });
+
+  it('draws a drop and the word of an oil on a locked sheet, which an oil is not a potion', () => {
+    const { el } = render((h) =>
+      h.sheet.set(
+        sheetWith([
+          potion('o1', {
+            key: 'item:oil-of-sharpness',
+            namePt: 'Óleo de afiar',
+            effectPt: '',
+            consumable: OIL,
+          }),
+        ]),
+      ),
+    );
+    expect(rowsOf(el)[0].querySelector('.magic-row__icon')?.textContent).toBe('water_drop');
+    expect(plain(el.querySelector('.gear__lock'))).toContain(
+      'Travada: usar óleos continua valendo; o resto, só o mestre muda.',
+    );
+    expect(plain(el.querySelector('.gear__lock'))).not.toContain('poções');
+  });
+
+  it('reads what is a consumable from the server field: a potion with none is a plain magic item', () => {
+    const { el } = render((h) => h.sheet.set(sheetWith([potion('p1', { consumable: undefined })])));
+    expect(rowsOf(el)).toHaveLength(0);
+    expect(el.querySelectorAll('.magic-row')).toHaveLength(1);
+  });
+
+  it('puts the notice of a use at the top of "Itens mágicos", before the rows', () => {
+    const { el } = render((h) => {
+      h.sheet.set(sheetWith([potion('p1')]));
+      h.consumableResult.set({
+        tone: 'good',
+        icon: 'favorite',
+        headline: 'Tor recebeu 7 PV.',
+        detail: '',
+        text: [],
+      });
+    });
+    const section = el.querySelector('section.magic')!;
+    const notice = section.querySelector('.consumable__result')!;
+    const rows = section.querySelector('.magic__rows')!;
+    expect(notice.compareDocumentPosition(rows) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(
+      section.querySelector('#magic-heading')!.compareDocumentPosition(notice) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it('keeps the live region of the notice on the page before the words come', () => {
+    const { el } = render((h) => h.sheet.set(sheetWith([potion('p1')])));
+    expect(el.querySelector('section.magic > [role=status]')).not.toBeNull();
   });
 
   it('leaves a magic item that is no consumable as the row it was', () => {

@@ -26,6 +26,7 @@ function clientWith(calls: Record<string, unknown[]>): ChargesClient {
     useConsumable: record('use', { entryId: 'e1', outcome: 1, healed: 7 }),
     listConsumableTargets: record('targets', {
       targets: [{ characterId: 'c2', name: 'Brisa', distanceFt: 5 }],
+      inCombat: true,
     }),
   };
   (client as unknown as { characters: unknown }).characters = {
@@ -191,8 +192,13 @@ describe('ChargesClient', () => {
   });
 
   it('lists who a consumable may be given to', async () => {
-    const targets = await clientWith(calls).listConsumableTargets('camp', 'c1', 'e1');
+    const list = await clientWith(calls).listConsumableTargets('camp', 'c1', 'e1');
     expect(calls['targets']).toEqual([{ campaignId: 'camp', characterId: 'c1', entryId: 'e1' }]);
-    expect(targets.map((t) => t.name)).toEqual(['Brisa']);
+    expect(list.targets.map((t) => t.name)).toEqual(['Brisa']);
+  });
+
+  it('says whether the character is in a running combat, as the targets read says it', async () => {
+    const list = await clientWith(calls).listConsumableTargets('camp', 'c1', 'e1');
+    expect(list.inCombat).toBe(true);
   });
 });

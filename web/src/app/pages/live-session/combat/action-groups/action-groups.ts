@@ -53,7 +53,7 @@ import {
   partByEconomy,
   partItems,
 } from '../../../../core/combat/action-tabs';
-import { cannotAct } from '../../../../core/combat/conditions';
+import { cannotAct, cannotActWhy } from '../../../../core/combat/conditions';
 import { spellSummary } from '../../../../core/combat/spell-summary';
 import {
   ESCAPE_DETAIL,
@@ -306,6 +306,14 @@ export class ActionGroups {
   protected readonly itemParts = computed(() =>
     partItems(this.items(), this.own(), this.spent(), this.spentWord()),
   );
+  /**
+   * Why an item row cannot be used: the page is locked, or the character cannot act (stunned, paralyzed...) and the item costs the
+   * Action. An item that costs none (an oil, a scroll) stays open. The row is disabled with its reason and opens no sheet.
+   */
+  protected itemWhy(row: CombatItemRowVm): string {
+    return this.locked() || (row.economy === 'action' ? cannotActWhy(this.own()) : '');
+  }
+
   /** The effects waiting for the caster's next weapon hit (#577), the card at the top of "Ataques". */
   protected readonly hitEffects = computed(() => hitCards(this.own(), this.combatants()));
   /** The one line above the weapon rows: only with dice and at least one weapon attack still on offer. */

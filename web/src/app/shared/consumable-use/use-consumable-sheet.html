@@ -39,7 +39,7 @@
   </div>
   @if (phase() === 'give') {
     <fieldset class="who">
-      <legend class="who__legend">{{ legend }}</legend>
+      <legend class="who__legend">{{ legend() }}</legend>
       @for (t of targets(); track t.id) {
         <label class="who__row" [class.who__row--on]="chosen() === t.id">
           <input

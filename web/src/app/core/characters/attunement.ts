@@ -250,11 +250,6 @@ export class MagicCategories {
     return magicCategoryIcon(this.byKey().get(key));
   }
 
-  /** The catalog category of the item with this key ("potion", "scroll"), or '' before it is read or for an item it does not list. */
-  categoryOf(key: string): string {
-    return this.byKey().get(key) ?? '';
-  }
-
   async load(campaignId: string): Promise<void> {
     if (this.loaded === campaignId) {
       return;

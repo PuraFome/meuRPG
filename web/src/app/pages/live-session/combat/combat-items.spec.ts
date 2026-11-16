@@ -4,7 +4,10 @@ import { TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
 
 import { DiceMode, DicePreference } from '../../../../gen/meurpg/campaigns/v1/campaigns_pb';
-import { SheetMagicItemSchema } from '../../../../gen/meurpg/characters/v1/characters_pb';
+import {
+  ConsumableKind,
+  SheetMagicItemSchema,
+} from '../../../../gen/meurpg/characters/v1/characters_pb';
 import { UseConsumableResponseSchema } from '../../../../gen/meurpg/play/v1/charges_pb';
 import { ConsumableUseOutcome } from '../../../../gen/meurpg/play/v1/combat_pb';
 import type { TurnBlock } from '../../../core/characters/consumables';
@@ -13,16 +16,22 @@ import type { UseConsumableData } from '../../../shared/consumable-use/use-consu
 import { CombatItems } from './combat-items';
 
 const potion = (id: string, key = 'item:potion-of-healing', namePt = 'Poção de cura') =>
-  create(SheetMagicItemSchema, { id, key, namePt, effectPt: 'Cura 2d4 + 2' });
-
-const CATEGORY: Record<string, string> = {
-  'item:potion-of-healing': 'potion',
-  'item:oil-of-sharpness': 'potion',
-};
+  create(SheetMagicItemSchema, {
+    id,
+    key,
+    namePt,
+    effectPt: 'Cura 2d4 + 2',
+    consumable: {
+      kind: ConsumableKind.POTION,
+      costsAction: true,
+      healDiceCount: 2,
+      healDiceSides: 4,
+      healBonus: 2,
+    },
+  });
 
 describe('CombatItems', () => {
   const client = { sheetOf: vi.fn(), useConsumable: vi.fn(), listConsumableTargets: vi.fn() };
-  const load = vi.fn();
   const focusItem = vi.fn();
   let opened: UseConsumableData | undefined;
   const characterId = signal('c1');
@@ -36,7 +45,6 @@ describe('CombatItems', () => {
       () =>
         new CombatItems({
           client: () => client as unknown as ChargesClient,
-          categories: { load, categoryOf: (k) => CATEGORY[k] ?? '' },
           campaignId: () => 'camp',
           characterId,
           name: () => 'Tor',
@@ -68,7 +76,6 @@ describe('CombatItems', () => {
     enabled.set(true);
     turnBlock.set(null);
     Object.values(client).forEach((f) => f.mockReset());
-    load.mockReset().mockResolvedValue(undefined);
     focusItem.mockReset();
     client.sheetOf.mockResolvedValue({
       magicItems: [
@@ -80,10 +87,9 @@ describe('CombatItems', () => {
     });
   });
 
-  it("reads the character's items and the catalog categories when it is the player's turn, and groups the consumables", async () => {
+  it("reads the character's items when it is the player's turn, and groups the consumables the server says are one", async () => {
     const items = build();
     await settle();
-    expect(load).toHaveBeenCalledWith('camp');
     expect(client.sheetOf).toHaveBeenCalledWith('camp', 'c1');
     expect(items.rows().map((r) => [r.namePt, r.count, r.economy])).toEqual([
       ['Poção de cura', 2, 'action'],
@@ -124,7 +130,7 @@ describe('CombatItems', () => {
     await vi.waitFor(() => expect(opened).toBeDefined());
     expect(opened).toMatchObject({
       itemName: 'Poção de cura',
-      itemKey: 'item:potion-of-healing',
+      kind: 'potion',
       left: 2,
       inCombat: true,
       actingFor: 'Tor',
@@ -173,7 +179,9 @@ describe('CombatItems', () => {
     client.sheetOf.mockResolvedValue({ magicItems: [potion('p2')], ammunition: [] });
     items.open(items.rows()[0].first);
     await vi.waitFor(() => expect(opened).toBeDefined());
-    expect(await opened!.use({ target: null, roll: { inApp: true } }, 'k1')).toBe('');
+    expect(await opened!.use({ target: null, roll: { inApp: true } }, 'k1')).toEqual({
+      refusal: null,
+    });
     expect(client.useConsumable).toHaveBeenCalledWith(
       'camp',
       'c1',
@@ -187,6 +195,23 @@ describe('CombatItems', () => {
       headline: 'Tor recebeu 7 PV.',
       detail: '2d4 + 2: 3 + 2 + 2 = 7. Resta 1 Poção de cura.',
     });
+  });
+
+  it('lists an item the server says is no consumable as none, whatever its key', async () => {
+    client.sheetOf.mockResolvedValue({
+      magicItems: [
+        potion('x', 'item:potion-of-healing', 'Poção sem campo'),
+        create(SheetMagicItemSchema, {
+          id: 'y',
+          key: 'item:potion-of-healing',
+          namePt: 'Sem consumível',
+        }),
+      ],
+      ammunition: [],
+    });
+    const items = build();
+    await settle();
+    expect(items.rows().map((r) => r.namePt)).toEqual(['Poção sem campo']);
   });
 
   it('forgets what the last use said', async () => {
