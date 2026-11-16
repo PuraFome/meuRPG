@@ -64,6 +64,11 @@ export interface FeatureDraft {
    * no field for it yet, and saving the feature must not drop it. Unset for anything else.
    */
   prerequisite?: TableFeature['prerequisite'];
+  /**
+   * The class levels at which the options of a class or subclass feature may be swapped at a level-up (#715), kept as the
+   * server wrote it: it is pack-only, the editor draws no control for it, and saving the feature must not drop it.
+   */
+  swapLevels?: TableFeature['swapLevels'];
 }
 
 export function emptyFeature(): FeatureDraft {
@@ -89,6 +94,7 @@ export function featureToDraft(f: TableFeature): FeatureDraft {
     options: f.options.map(featureToDraft),
     summon: f.summon ? summonToDraft(f.summon) : null,
     ...(f.prerequisite ? { prerequisite: f.prerequisite } : {}),
+    ...(f.swapLevels ? { swapLevels: f.swapLevels } : {}),
   };
 }
 
@@ -103,6 +109,7 @@ export function draftToFeature(f: FeatureDraft, menu: EffectMenuVm): FeatureInit
     ...optionsOf(f, menu),
     ...(f.summon ? { summon: draftToSummon(f.summon) } : {}),
     ...(f.prerequisite ? { prerequisite: f.prerequisite } : {}),
+    ...(f.swapLevels ? { swapLevels: f.swapLevels } : {}),
     effects: f.effects.map((e) => {
       const effect = draftToEffect(e, menu);
       // A note's own text is the reminder the sheet shows, and it says what the trait says: left empty (folded under

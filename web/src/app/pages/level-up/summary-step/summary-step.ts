@@ -26,7 +26,7 @@ import { LevelUpSession } from '../level-up-session';
           }
         </p>
       }
-      @if (s().draft.swap.summary(); as swap) {
+      @for (swap of s().draft.swap.summaries(); track swap) {
         <p class="feat">
           <strong>{{ swap }}</strong>
         </p>

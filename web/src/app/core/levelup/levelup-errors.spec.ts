@@ -147,6 +147,13 @@ describe('an option the master retired (RN-23, 10.1d)', () => {
     expect(f.message).toContain('troca de escolha');
   });
 
+  it('sends a refused swap of a table feature option to the Escolhas step', () => {
+    const f = describeLevelUpFailure(
+      refusedAt(LevelUpRefusalReason.SWAP_NOT_ALLOWED, 'choices.swap_feature_options'),
+    );
+    expect(f).toMatchObject({ kind: 'refusal', step: 'picks' });
+  });
+
   it('words the refusals of a feat and sends the player to the Habilidades step', () => {
     for (const reason of [
       LevelUpRefusalReason.FEAT,

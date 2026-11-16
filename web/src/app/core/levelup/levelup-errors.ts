@@ -56,6 +56,12 @@ export function refusalStep(reason: LevelUpRefusalReason, field = ''): StepKey |
   ) {
     return retiredChoiceStep(field);
   }
+  if (
+    reason === LevelUpRefusalReason.SWAP_NOT_ALLOWED &&
+    field.startsWith('choices.swap_feature')
+  ) {
+    return 'picks';
+  }
   return REFUSAL_STEPS[reason] ?? null;
 }
 

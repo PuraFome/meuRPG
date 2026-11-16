@@ -1,6 +1,7 @@
 import { create } from '@bufbuild/protobuf';
 
 import {
+  FeatureSwapLevelsSchema,
   OptionPrerequisiteSchema,
   TableBackgroundSchema,
   TableFeatureSchema,
@@ -300,6 +301,16 @@ describe('the option list of a feature (a table feature the player picks from)',
       classLevel: { classKey: 'class:fighter', level: 7 },
       requiresOptionKeys: ['feature:postura-garca@mesa'],
     });
+  });
+
+  it('keeps the levels a pack allows the swap of its options at, through a load and a save (#715)', () => {
+    const f = withOptions();
+    f.swapLevels = create(FeatureSwapLevelsSchema, { levels: [3, 7], everyLevel: false });
+    const sent = draftToFeature(featureToDraft(f), m);
+    expect(sent.swapLevels).toMatchObject({ levels: [3, 7], everyLevel: false });
+    f.swapLevels = create(FeatureSwapLevelsSchema, { everyLevel: true });
+    expect(draftToFeature(featureToDraft(f), m).swapLevels).toMatchObject({ everyLevel: true });
+    expect(draftToFeature(featureToDraft(withOptions()), m).swapLevels).toBeUndefined();
   });
 
   it('a feature with no options sends none (an absent repeated field is an empty list), and the paths include each option', () => {
