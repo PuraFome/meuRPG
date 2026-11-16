@@ -83,7 +83,7 @@ export interface ChipName {
     .chip {
       display: inline-flex;
       align-items: center;
-      gap: 2px;
+      gap: var(--mr-space-2);
       min-height: 46px;
       box-sizing: border-box;
       padding: 0 0 0 14px;
@@ -96,6 +96,8 @@ export interface ChipName {
 
     // The 44 px target of design.md, flush with the chip's edge.
     .chip__x {
+      // The chip's gap is 8 px; the cross stays 2 px from what comes before it.
+      margin-left: -6px;
       display: inline-flex;
       align-items: center;
       justify-content: center;

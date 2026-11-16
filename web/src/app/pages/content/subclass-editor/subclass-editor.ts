@@ -76,7 +76,6 @@ import type { EditorSaved } from '../spell-editor/spell-editor';
     CastingFields,
     ClassFeatures,
     FeaturePreview,
-    FeaturePreview,
     TableQuestion,
     EditorAlerts,
     EditorBar,
@@ -119,6 +118,10 @@ export class SubclassEditor {
   protected readonly nameMax = NAME_MAX;
   protected readonly draft = signal<SubclassDraft>(emptySubclass(''));
   protected readonly openFeature = signal('');
+  /** A feature is open: only then is there a "Como os jogadores veem" to read (no empty landmark before). */
+  protected readonly previewing = computed(() =>
+    this.draft().features.some((f) => f.id === this.openFeature()),
+  );
   protected readonly question = signal<CastingDraft | null>(null);
   protected readonly status = signal('');
 
