@@ -1519,7 +1519,7 @@ Another player reads neither who has it nor that it moved (RN-10).
 
 **Partly built.**
 Built: the server side for an artificer's own items: the records, the limit, the numbers on the sheet, attunement, the stream hint and the table's session events.
-Not built: the screens; an item of another character; the charges of an infused item; the end of an infusion when the level-up swaps the pick; the campaign package.
+Not built: the screens; an item of another character; the charges of an infused item; the end of an infusion when the level-up swaps the pick.
 This is the intended behaviour:
 
 An artificer (a class of the table's content) knows infusions, picked as options of its class feature, and puts them on items.
@@ -1541,18 +1541,18 @@ The list of pieces says, for each, the reason it cannot take it, in words.
 **The limit and the oldest ending.**
 The class feature gives how many infusions are in use at once, by class level.
 Putting one on at the limit ends one: the player may choose which, and without a choice it is the oldest.
-A text-only infusion, which the app does not calculate, counts as one and marks its item: "Só o texto: a mesa aplica."
+A text-only infusion, which the app does not calculate, counts as one; the screens will mark its item as text the table applies.
 Moving an infusion to another item begins its time again.
 
 **Numbers.**
-An infusion with a magic bonus follows the rules of the bonus of gear (RN-02): it counts for a piece that is equipped, a shield adds nothing behind a two-handed weapon, and an infusion that asks for attunement adds nothing until the item is attuned.
+An infusion with a magic bonus follows the rules of the bonus of gear (RN-02): it counts for a piece that is equipped, a shield adds nothing while a two-handed weapon is equipped, and an infusion that asks for attunement adds nothing until the item is attuned.
 The sheet names the infusion on the piece, on its attack and on its lines of modifiers.
 A manual bonus on the same piece wins: the infusion gives no number there, and a new manual bonus on a piece with an infusion is refused.
 A record that is not valid now (the class level, the feature, the piece or a prerequisite is gone) gives no number and takes no place of the limit.
 
 **Attunement.**
 An infusion that asks for it counts among the three items the character is attuned to (RN-02), as a magic item does, and the player attunes it in the window of a rest, as any item.
-When the owner puts it on, "Sintonizar agora" uses that window.
+When the owner puts it on, it can be attuned at once, inside that window.
 
 **What ends a record.**
 The player or the master ends it (it goes back to being the plain item).
@@ -1568,7 +1568,7 @@ The table's session keeps one event for each change while a session is open, and
 The combat's log, the highlights and the summary make no line of them, and no player reads them.
 The master's undo does not undo an infusion, and an infusion closes the undo chain.
 The master and the owner are told, with no content, that the infusions changed, and the combat that holds the artificer reads its turn again.
-A copy of the campaign (the package) brings no records: they end on import.
+A copy of the campaign (the package) brings no records: an imported character has none.
 
 ## Flows and states
 

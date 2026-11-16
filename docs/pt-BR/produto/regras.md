@@ -1519,7 +1519,7 @@ Outro jogador não lê quem a tem nem que ela mudou de mãos (RN-10).
 
 **Construída em parte.**
 Construído: o lado do servidor para os itens do próprio artífice: os registros, o limite, os números na ficha, a sintonização, o aviso da transmissão e os eventos da sessão da mesa.
-Não construído: as telas; um item de outro personagem; as cargas de um item infundido; o fim de uma infusão quando a subida de nível troca a escolha; o pacote da campanha.
+Não construído: as telas; um item de outro personagem; as cargas de um item infundido; o fim de uma infusão quando a subida de nível troca a escolha.
 Este é o comportamento pretendido:
 
 Um artífice (uma classe do conteúdo da mesa) conhece infusões, escolhidas como opções da característica da sua classe, e as põe em itens.
@@ -1541,18 +1541,18 @@ A lista de peças diz, para cada uma, o motivo de ela não poder recebê-la, em 
 **O limite e o fim da mais antiga.**
 A característica da classe diz quantas infusões ficam em uso ao mesmo tempo, por nível na classe.
 Pôr uma no limite encerra uma: o jogador pode escolher qual, e sem escolha é a mais antiga.
-Uma infusão só de texto, que o app não calcula, conta como uma e marca o item: "Só o texto: a mesa aplica."
+Uma infusão só de texto, que o app não calcula, conta como uma; as telas vão marcar o item como texto que a mesa aplica.
 Mudar uma infusão para outro item começa a contar o tempo de novo.
 
 **Números.**
-Uma infusão com bônus mágico segue as regras do bônus mágico do equipamento (RN-02): vale para uma peça equipada, um escudo não soma nada atrás de uma arma de duas mãos, e uma infusão que pede sintonização não soma nada até o item estar sintonizado.
+Uma infusão com bônus mágico segue as regras do bônus mágico do equipamento (RN-02): vale para uma peça equipada, um escudo não soma nada enquanto uma arma de duas mãos está equipada, e uma infusão que pede sintonização não soma nada até o item estar sintonizado.
 A ficha nomeia a infusão na peça, no ataque dela e nas linhas de modificadores.
 Um bônus manual na mesma peça vence: a infusão não dá número ali, e um bônus manual novo numa peça com infusão é recusado.
 Um registro que não vale agora (o nível na classe, a característica, a peça ou um pré-requisito sumiu) não dá número e não ocupa lugar do limite.
 
 **Sintonização.**
 Uma infusão que a pede conta entre os três itens a que o personagem está sintonizado (RN-02), como um item mágico, e o jogador a sintoniza na janela de um descanso, como qualquer item.
-Quando o dono a põe, "Sintonizar agora" usa essa janela.
+Ao pôr a infusão, quem a põe pode sintonizar na hora, dentro dessa janela.
 
 **O que encerra um registro.**
 O jogador ou o mestre o encerra (o item volta a ser o item comum).
@@ -1568,7 +1568,7 @@ A sessão da mesa guarda um evento para cada mudança enquanto há uma sessão a
 O registro do combate, os destaques e o resumo não fazem linha deles, e nenhum jogador os lê.
 O desfazer do mestre não desfaz uma infusão, e uma infusão fecha a cadeia do desfazer.
 O mestre e o dono são avisados, sem conteúdo, de que as infusões mudaram, e o combate que tem o artífice lê o turno de novo.
-Uma cópia da campanha (o pacote) não traz registros: eles terminam na importação.
+Uma cópia da campanha (o pacote) não traz registros: um personagem importado não tem nenhum.
 
 ## Fluxos e estados
 
