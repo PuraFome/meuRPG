@@ -189,6 +189,8 @@ func (s *Service) releaseHold(ctx context.Context, c *combatTx, h playdb.Reactio
 	}
 	c.replay = st
 	defer func() { c.replay = nil }()
+	// The replay runs in a savepoint: a refusal drops the action, and what it wrote before it met the refusal (the slot, the
+	// action, the damage of the rays it had rolled) goes with it. What the answers of the windows did stays.
 	g, err := guardReplay(ctx, c)
 	if err != nil {
 		return err
@@ -201,7 +203,7 @@ func (s *Service) releaseHold(ctx context.Context, c *combatTx, h playdb.Reactio
 type replayGuard struct {
 	sp     pgx.Tx
 	before combatTx
-	hints  hints
+	marked hintMark
 }
 
 // guardReplay opens the savepoint of a replay and keeps a copy of what the change holds in memory: the combat's own
@@ -214,7 +216,7 @@ func guardReplay(ctx context.Context, c *combatTx) (*replayGuard, error) {
 	}
 	g := &replayGuard{sp: sp, before: *c}
 	if c.hints != nil {
-		g.hints = *c.hints
+		g.marked = c.hints.mark()
 	}
 	return g, nil
 }
@@ -232,10 +234,10 @@ func (g *replayGuard) undo(ctx context.Context, c *combatTx) error {
 	if err := g.sp.Rollback(ctx); err != nil {
 		return fmt.Errorf("roll back a refused replay: %w", err)
 	}
-	if c.hints != nil {
-		*c.hints = g.hints
-	}
 	*c = g.before
+	if c.hints != nil {
+		c.hints.rewind(g.marked) // hints is a pointer: the restore above leaves what the replay told, and the streams would hear of writes rolled back
+	}
 	return nil
 }
 

@@ -14,7 +14,7 @@ import (
 var replayRestoredBy = map[string]string{
 	"tx":            "not changed by a replay: nothing assigns it after openTx, and the savepoint is the guard's own sp",
 	"q":             "not changed by a replay: nothing assigns it, and it holds no state of its own",
-	"hints":         "copied by guardReplay (*c.hints = g.hints): a replay only appends to it and sets its flags",
+	"hints":         "marked by guardReplay and rewound by undo (hints.rewind): a replay only appends to it and sets its flags",
 	"characterID":   "a replay assigns a new pointer and never writes through it: the copy and writeAmbient put the old one back",
 	"meta":          "applyMetamagic assigns a new castMeta (combat_cast.go) and nothing writes into the old one",
 	"sculpted":      "castFlow assigns a new map (combat_cast.go) and nothing writes into the old one",
