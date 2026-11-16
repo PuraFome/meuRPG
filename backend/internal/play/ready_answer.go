@@ -209,12 +209,9 @@ func releaseFieldsOf(msg *playv1.AnswerReactionRequest, row playdb.ReadiedAction
 		return connect.NewError(connect.CodeInvalidArgument, errors.New("pool_sum is for a spell that rolls a pool of dice"))
 	}
 	if kind == readiedAttack && len(msg.GetRayRolls()) > 0 {
-		return connect.NewError(connect.CodeInvalidArgument, errors.New("ray_rolls are for a spell with several rays"))
+		return connect.NewError(connect.CodeInvalidArgument, errors.New("ray_rolls are for a spell with several attack rolls (rays)"))
 	}
-	if msg.GetRoll() != nil && len(msg.GetRayRolls()) > 0 {
-		return connect.NewError(connect.CodeInvalidArgument, errors.New("ray_rolls take the place of roll_in_app, typed and pool_sum"))
-	}
-	return nil
+	return rayRollsAlone(len(msg.GetRayRolls()) > 0 && (msg.GetRoll() != nil || len(msg.GetD20Faces()) > 0), "roll_in_app, typed, pool_sum and d20_faces")
 }
 
 // targetsNotUsed refuses targets where the answer does not cast with them: only the use of a readied spell does.
