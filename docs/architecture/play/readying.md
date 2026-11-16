@@ -173,7 +173,7 @@ The code is `ready_spell.go`, `ready_spell_attack.go` and `ready_spell_lost.go`.
 `ReadyAction` with `kind` `SPELL` names the spell (`spell_key`) and the slot level (`slot_level`, 0 for a cantrip).
 It checks the spell as `CastSpell` does (`checkSpell`): a class spell the caster knows or prepared, a slot of that level, silence.
 Metamagic and spells granted by a feature are not offered: Ready reads no `granted_by`, so a row is always the caster's own spell.
-A release takes the source the row was readied with: one that names a grant (`granted_by`) is `invalid_argument`, writes nothing and spends no charge of the grant.
+A release is from the source the row was readied with, so one that names a grant (`granted_by`) is `invalid_argument`, writes nothing and spends no charge of the grant.
 The casting time must be exactly 1 action, else `READY_SPELL_TIME` (a reaction or a bonus action spell, a ritual is never cast in combat).
 A spell attack cantrip (Fire Bolt, Ray of Frost) is readied as a spell, with no slot (`checkSpellAttack`): its energy holds the concentration too.
 Its row has no `spell_cast_id` (`heldSpellAttackRow`), and its release is `RollAttack` as a reaction, as a readied attack's (`usedAs`).
@@ -220,7 +220,7 @@ A release that names a slot of another level than the held one is `invalid_argum
 The release is checked as a cast: a spell the caster no longer has prepared is refused, and can only be let pass.
 `CastSpell` is a release only off the caster's turn, for the spell its own open READIED window holds (`findReadied`, with `heldByWindow` matching the spell's key); any other cast is an ordinary one.
 Another combatant's window of the same spell, and an open window of another kind for the caster, are not its release.
-Metamagic or `granted_by` at the release is `invalid_argument`.
+Metamagic at the release is `invalid_argument`.
 A cast of another spell while the window is open is refused as a cast off the caster's turn (`NOT_YOUR_TURN`).
 A concentration spell keeps the concentration, now with its own key; another spell ends it.
 The cast waits for the windows any cast opens (Counterspell), with the READIED window open and `REACTION_PENDING` (`readiedHeld`).

@@ -31,7 +31,7 @@ func TestMR025_AReadiedCantripReleasedWithAGrantedByIsRefusedAndSpendsNoUse(t *t
 	e := a.readyForRelease(t, poisonSpray, 0, "Capitão Goblin")
 	a.mustFire(t, e, "Pensantus")
 	_, err = a.cast(t, a.ana, e, "Pensantus", poisonSpray, nil, a.at(t, "Capitão Goblin"), func(r *playv1.CastSpellRequest) { grantedCast(feat)(r); noCastRoll(r) })
-	wantRefusal(t, "release of a readied cantrip with granted_by", err, connect.CodeInvalidArgument, "a readied spell was cast at Ready: its release takes no Metamagic and no granted_by")
+	wantRefusal(t, "release of a readied cantrip with granted_by", err, connect.CodeInvalidArgument, "a readied spell is released from the source it was readied with: name no grant")
 	if used, _ := resourceUsed(a.vitals(t, a.pens), graceUses); used != 0 {
 		t.Errorf("uses of the grant after the refused release = %d, want 0", used)
 	}
