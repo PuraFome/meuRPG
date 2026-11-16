@@ -73,7 +73,7 @@
           } @else {
             Digite o que saiu em cada dado.
             @if (d.modifier !== 0) {
-              O {{ signedModifier }} o app soma.
+              O app soma {{ signedModifier }}.
             }
           }
         </span>
@@ -116,16 +116,14 @@
     </div>
   }
   <div class="why" aria-live="polite">
-    @if (phase() === 'choose') {
-      @if (blockedLine(); as b) {
-        <p class="none" [id]="whyId">
-          <mat-icon aria-hidden="true">block</mat-icon><span><strong>{{ b.lead }}</strong> {{ b.text }}</span>
-        </p>
-      } @else if (reasonText()) {
-        <p class="none" [id]="whyId">
-          <mat-icon aria-hidden="true">block</mat-icon>{{ reasonText() }}
-        </p>
-      }
+    @if (blockedLine(); as b) {
+      <p class="none" [id]="whyId">
+        <mat-icon aria-hidden="true">block</mat-icon><span><strong>{{ b.lead }}</strong> {{ b.text }}</span>
+      </p>
+    } @else if (phase() === 'choose' && reasonText()) {
+      <p class="none" [id]="whyId">
+        <mat-icon aria-hidden="true">block</mat-icon>{{ reasonText() }}
+      </p>
     }
   </div>
   @if (cost(); as c) {
@@ -188,8 +186,10 @@
         [class.go--wide]="inCombat() === true"
         [class.go--half]="inCombat() !== true"
         [class.go--off]="!canSend()"
+        [class.mr-button--off]="!!blocked()"
         [disabled]="!canSend()"
         disabledInteractive
+        [attr.aria-describedby]="blocked() ? whyId : null"
         (click)="send(receiver())"
       >
         <mat-icon aria-hidden="true">volunteer_activism</mat-icon>{{ busy() ? 'Usando...' : 'Dar a ' + receiverName() }}
@@ -199,8 +199,10 @@
           matButton="outlined"
           type="button"
           class="go--wide"
+          [class.mr-button--off]="!!blocked()"
           [disabled]="!canSend()"
           disabledInteractive
+          [attr.aria-describedby]="blocked() ? whyId : null"
           (click)="send(null)"
         >
           <mat-icon aria-hidden="true">{{ itemIcon }}</mat-icon>{{ selfWord() }}

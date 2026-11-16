@@ -77,11 +77,11 @@
 .dice {
   display: flex;
   flex-direction: column;
-  gap: var(--mr-space-2);
+  gap: var(--mr-space-3);
   margin: 0;
 }
-// The words at the left and the toggle at the right of the first line, in the same place whichever way the dice come: the words
-// are centred on the toggle's 44px, so one line or three, the toggle does not move.
+// The words at the left and the toggle at the right of the first line, in the same place whichever way the dice come: the toggle's
+// 44px target reaches over the gaps above and below the line (they are 16px), so one line or three, it stays on the first.
 .dice__line {
   display: flex;
   align-items: flex-start;
@@ -89,15 +89,18 @@
   gap: var(--mr-space-3);
   margin: 0;
   font-size: var(--mr-font-14);
+  line-height: 20px;
 }
 .dice__text {
   flex: 1 1 0;
   min-width: 0;
-  padding-block: var(--mr-space-3);
 }
 .dice__switch {
+  display: inline-flex;
   flex: none;
+  align-items: center;
   min-height: 44px;
+  margin-block: calc(var(--mr-space-3) * -1);
   padding: 0 var(--mr-space-1);
   border: 0;
   background: none;

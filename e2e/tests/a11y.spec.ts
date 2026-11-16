@@ -10415,7 +10415,7 @@ function encounterBlockedAnswer(reason: number) {
  * `screen` ends with the scheme and the width ("... (light, 1280px)") for the judge; the file name takes them once, from the page.
  * A sheet page opens on its header: `gearToTop` brings the equipment section to the top so the shot shows the rows (no dialog is open then).
  */
-async function expectConsumableScreen(page: Page, screen: string, options: { gearToTop?: boolean } = {}): Promise<void> {
+async function expectConsumableScreen(page: Page, screen: string, options: { gearToTop?: boolean; into?: Locator } = {}): Promise<void> {
   await expectScreenPasses(page, screen);
   const dir = process.env.E2E_SHOTS_DIR;
   if (!dir) {
@@ -10424,6 +10424,11 @@ async function expectConsumableScreen(page: Page, screen: string, options: { gea
   mkdirSync(dir, { recursive: true });
   if (options.gearToTop) {
     await page.getByRole('region', { name: 'Equipamento' }).evaluate((el) => el.scrollIntoView({ block: 'start' }));
+    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  }
+  if (options.into) {
+    // A line below the fold (the log's, the effect card) is brought to the middle of the screen so the shot shows it.
+    await options.into.first().evaluate((el) => el.scrollIntoView({ block: 'center' }));
     await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   }
   const width = page.viewportSize()?.width ?? 0;
@@ -10437,6 +10442,16 @@ async function expectConsumableScreen(page: Page, screen: string, options: { gea
     .replace(/^-|-$/g, '')
     .slice(0, 70);
   await page.screenshot({ path: join(dir, `565-${slug}-${width}-${dark ? 'dark' : 'light'}.png`) });
+}
+
+/** Puts a character back at its maximum hit points, as the master would correct them. */
+async function fullHitPointsRPC(master: Page, campaignId: string, characterId: string): Promise<void> {
+  const live = await callRPC(master, 'meurpg.play.v1.PlayService/GetLiveSession', { campaignId });
+  expect(live.ok(), await live.text()).toBeTruthy();
+  const vitals = ((await live.json()) as { vitals?: { characterId: string; hitPointsMax?: number }[] }).vitals ?? [];
+  const max = vitals.find((v) => v.characterId === characterId)?.hitPointsMax ?? 0;
+  expect(max).toBeGreaterThan(0);
+  await adjustVitalsRPC(master, campaignId, characterId, { hitPointsCurrent: max });
 }
 
 /**
@@ -10464,6 +10479,7 @@ async function scanConsumableScreens(browser: Browser, colorScheme: 'light' | 'd
         { key: 'item:potion-of-healing-common' },
         { key: 'item:potion-of-healing-common' },
         { key: 'item:potion-of-healing-greater' },
+        { key: 'item:potion-of-healing-superior' },
         { key: 'item:potion-of-resistance-fire' },
         { key: 'item:potion-of-climbing' },
         { key: 'item:ring-of-shooting-stars' },
@@ -10471,6 +10487,8 @@ async function scanConsumableScreens(browser: Browser, colorScheme: 'light' | 'd
     };
     const table = await tableForCombat(m, p, `Acessibilidade poções ${Date.now()}`, true, true, { build: toren, sheet });
     campaignId = table.campaignId;
+    // Toren is wounded: the first potion heals for real, and the sheet shows the heart and the sum.
+    await adjustVitalsRPC(m, campaignId, table.characterId, { hitPointsCurrent: 30 });
     const route = `/campaigns/${campaignId}/characters/${table.characterId}`;
     // The table lets the players choose and this player prefers the app: the dice first read "O app rola" and "Digitar os dados" is a choice made in the test.
     await setDiceModeRPC(m, campaignId, 'DICE_MODE_PLAYERS_CHOOSE');
@@ -10492,7 +10510,10 @@ async function scanConsumableScreens(browser: Browser, colorScheme: 'light' | 'd
     // The "Usar" sheet of the healing potion.
     await rowOf('item:potion-of-healing-common').getByRole('button', { name: 'Usar Poção de cura' }).click();
     const use = p.getByRole('dialog', { name: /^Usar / });
-    await expect(use.getByText('Restam 2 · em combate, gasta a ação', { exact: true })).toBeVisible();
+    // The sheet learns from the targets read that no combat is running: one line says the turn is not spent, and none says the Action is.
+    await expect(use.getByText('Restam 2', { exact: true })).toBeVisible();
+    await expect(use.getByText('Fora de combate: não gasta a vez.')).toBeVisible();
+    await expect(use.getByText('Gasta a sua ação')).toHaveCount(0);
     await expect(use.getByText('Cura 2d4 + 2')).toBeVisible();
     await expect(use.getByRole('button', { name: 'Beber' })).toBeVisible();
     await expectConsumableScreen(p, `Usar poção, o primeiro estado ${where}`);
@@ -10510,10 +10531,25 @@ async function scanConsumableScreens(browser: Browser, colorScheme: 'light' | 'd
     await use.getByRole('button', { name: 'Beber' }).click();
     await expect(use).toBeHidden();
     const notice = gear.locator('.consumable__result');
+    await expect(notice).toContainText('Toren recebeu 7 PV.');
     await expect(notice).toContainText('2d4 + 2: 3 + 2 + 2 = 7. Resta 1 Poção de cura.');
+    await expect(notice.locator('.consumable__result--good')).toHaveCount(0);
+    await expect(gear.locator('.consumable__result--good')).toHaveCount(1);
     // The focus goes back to the potion's "Usar".
     await expect(rowOf('item:potion-of-healing-common').getByRole('button', { name: 'Usar Poção de cura' })).toBeFocused();
     await expectConsumableScreen(p, `Ficha, a cura feita ${where}`, { gearToTop: true });
+
+    // At full hit points the potion is spent and heals nothing: a neutral notice with its own lead, no success box and no sum.
+    await fullHitPointsRPC(m, campaignId, table.characterId);
+    await rowOf('item:potion-of-healing-superior').getByRole('button', { name: /^Usar / }).click();
+    const full = p.getByRole('dialog', { name: /^Usar / });
+    await full.getByRole('button', { name: 'Beber' }).click();
+    await expect(full).toBeHidden();
+    await expect(gear.locator('.consumable__result')).toContainText('Toren já estava com os PV cheios.');
+    await expect(gear.locator('.consumable__result')).toContainText('Nada foi curado, mas a unidade foi gasta.');
+    await expect(gear.locator('.consumable__result--good')).toHaveCount(0);
+    await expect(gear.locator('.consumable__result mat-icon')).toHaveText('info');
+    await expectConsumableScreen(p, `Ficha, a poção bebida com os PV cheios ${where}`, { gearToTop: true });
 
     // A resistance: the sheet says it lands in "Seus efeitos"; the notice says who drank it.
     await rowOf('item:potion-of-resistance-fire').getByRole('button', { name: /^Usar / }).click();
@@ -10528,7 +10564,7 @@ async function scanConsumableScreens(browser: Browser, colorScheme: 'light' | 'd
     // A potion with no effect of its own: a neutral notice with the item's text. The sheet does not know of a combat, so its line says the potion costs the action in one.
     await rowOf('item:potion-of-climbing').getByRole('button', { name: /^Usar / }).click();
     const text = p.getByRole('dialog', { name: /^Usar / });
-    await expect(text.getByText('Resta 1 · em combate, gasta a ação', { exact: true })).toBeVisible();
+    await expect(text.getByText('Resta 1', { exact: true })).toBeVisible();
     await expectConsumableScreen(p, `Usar poção sem efeito no app ${where}`);
     await text.getByRole('button', { name: 'Beber' }).click();
     await expect(text).toBeHidden();
@@ -10542,7 +10578,9 @@ async function scanConsumableScreens(browser: Browser, colorScheme: 'light' | 'd
     await rowOf('item:potion-of-healing-greater').getByRole('button', { name: /^Usar / }).click();
     const failing = p.getByRole('dialog', { name: /^Usar / });
     await failing.getByRole('button', { name: 'Beber' }).click();
-    await expect(failing.getByRole('alert')).toContainText('Não deu para usar a poção. Nada foi gasto. Tente de novo.');
+    const unreachable = failing.getByRole('alert').filter({ hasText: 'Sem conexão.' });
+    await expect(unreachable).toContainText('Sem conexão. Não deu para usar a poção. Nada foi gasto.');
+    await expect(unreachable.getByRole('button', { name: 'Tente de novo' })).toBeVisible();
     await expectConsumableScreen(p, `Usar poção, o servidor não respondeu ${where}`);
     await p.unroute(useCall);
     await failing.getByRole('button', { name: 'Fechar' }).first().click();
@@ -10552,9 +10590,11 @@ async function scanConsumableScreens(browser: Browser, colorScheme: 'light' | 'd
     await openSessionPage(p, campaignId);
     await openSheetTab(p);
     await expect(p.getByRole('heading', { name: 'Seus efeitos' })).toBeVisible();
-    const resistance = p.getByRole('group', { name: 'Poção de resistência a dano de fogo' });
-    await expect(resistance).toContainText('Dura 1 hora');
-    await expectConsumableScreen(p, `Seus efeitos, a resistência da poção ${where}`);
+    // The card is the effect's own: its title, the potion it comes from with the whole length and the time left, and the chip.
+    const resistance = p.getByRole('group', { name: 'Resistência a fogo' });
+    await expect(resistance).toContainText('Poção de resistência a dano de fogo · por 1 hora · 1 h restantes');
+    await expect(resistance.getByRole('listitem')).toHaveText('Resistência: fogo');
+    await expectConsumableScreen(p, `Seus efeitos, a resistência da poção ${where}`, { into: resistance });
 
     // The master acts for the character: "Usar por <personagem>".
     await openLive(m, route);
@@ -10630,7 +10670,7 @@ async function scanConsumableCombatScreens(browser: Browser, colorScheme: 'light
     const oil = 'item:oil-of-sharpness';
     const climbing = 'item:potion-of-climbing';
     const table = await tableForCombat(m, p, `Acessibilidade poções no combate ${Date.now()}`, true, true, {
-      sheet: { ...pensantusAttacks, magicItems: [{ key: heal }, { key: heal }, { key: fire }, { key: oil }, { key: climbing }] },
+      sheet: { ...pensantusAttacks, magicItems: [{ key: heal }, { key: heal }, { key: heal }, { key: fire }, { key: oil }, { key: oil }, { key: climbing }] },
     });
     campaignId = table.campaignId;
     const brisaPlayer = await thirdPlayer(browser, { m, p, table, campaignId, done: async () => undefined } satisfies TrapTable, brisa, brisaSheet, { colorScheme, width });
@@ -10643,7 +10683,7 @@ async function scanConsumableCombatScreens(browser: Browser, colorScheme: 'light
     const begun = await beginAttackCombatRPC(m, table, { Pensantus: 20, Brisa: 15, 'Capitão Goblin': 10, 'Goblin 1': 5, 'Goblin 2': 4 });
     await adjustVitalsRPC(m, campaignId, brisaPlayer.characterId, { hitPointsCurrent: 0 });
 
-    // The master acts for Pensantus: "Usar por Pensantus".
+    // The master acts for Pensantus: "Usar por Pensantus", and the rows of the tab are the player's.
     await openSessionPage(m, campaignId);
     await m.getByRole('button', { name: 'Agir por Pensantus' }).click();
     const masterItems = await openActionTab(m, 'Itens');
@@ -10653,41 +10693,50 @@ async function scanConsumableCombatScreens(browser: Browser, colorScheme: 'light
     await expectConsumableScreen(m, `Combate, usar por Pensantus, visto pelo mestre ${where}`);
     await byMaster.getByRole('button', { name: 'Fechar' }).first().click();
     await expect(byMaster).toBeHidden();
+    await expect(masterItems.locator(`[data-item-row="${heal}"] .row__line`)).toHaveText('Ação · cura 2d4 + 2');
+    await expectConsumableScreen(m, `Combate, a aba Itens vista pelo mestre ${where}`);
+    // The master completes a "Usar por": the oil takes no action, so the turn stays Pensantus's and the notice is in the master's panel.
+    await masterItems.getByRole('button', { name: 'Usar Óleo de precisão' }).click();
+    const oilByMaster = m.getByRole('dialog', { name: /^Usar por / });
+    await oilByMaster.getByRole('button', { name: 'Usar', exact: true }).click();
+    await expect(oilByMaster).toBeHidden();
+    await expect(masterItems.locator('.consumable__result')).toContainText('Pensantus usou o Óleo de precisão.');
+    await expectConsumableScreen(m, `Combate, o mestre usou o óleo por Pensantus ${where}`);
     await m.getByRole('button', { name: 'Voltar ao mestre' }).click();
 
-    // The player's tab: after the class's and before "Outras", with the mark of the Ação on the potions only.
+    // The player's tab: after the class's and before "Outras", the item's icon, its name with the bold count, and one second line with the mark of the Ação (the oil has none).
     await openSessionPage(p, campaignId);
     const items = await openActionTab(p, 'Itens');
     const rowOf = (key: string) => items.locator(`[data-item-row="${key}"]`);
     await expect(rowOf(heal)).toContainText('Poção de cura');
-    await expect(rowOf(heal)).toContainText('×2');
-    await expect(rowOf(heal)).toContainText('Ação');
-    await expect(rowOf(climbing)).toContainText('Ação');
-    await expect(rowOf(oil)).not.toContainText('Ação');
+    await expect(rowOf(heal)).toContainText('×3');
+    await expect(rowOf(heal).locator('.row__line')).toHaveText('Ação · cura 2d4 + 2');
+    await expect(rowOf(climbing).locator('.row__line')).toContainText('Ação');
+    await expect(rowOf(oil).locator('.row__line')).not.toContainText('Ação');
+    await expect(rowOf(heal).locator('.row__icon')).toHaveText('science');
     await expectConsumableScreen(p, `Combate, a aba Itens na vez de Pensantus ${where}`);
 
-    // The list could not be read: its own sentence, never the words of the dice or of a receiver who left, and "Beber" stays.
+    // The list could not be read: its own sentence with a control that reads it again, never the words of the dice or of a receiver who left, and "Beber" stays.
     const listCall = '**/meurpg.play.v1.ChargesService/ListConsumableTargets';
     await p.route(listCall, (r) => r.fulfill({ status: 503, contentType: 'application/json', body: '{"code":"unavailable","message":"x"}' }));
     await rowOf(heal).getByRole('button', { name: 'Usar Poção de cura' }).click();
-    const listFailed = p.getByRole('dialog', { name: /^Usar / });
-    await expect(listFailed.getByRole('alert').locator('span')).toHaveText('Não deu para ver quem pode receber a poção. Tente de novo.');
-    await expect(listFailed.getByRole('button', { name: 'Beber' })).not.toHaveAttribute('aria-disabled', 'true');
+    const alone = p.getByRole('dialog', { name: /^Usar / });
+    const noList = alone.getByRole('alert').filter({ hasText: 'Sem a lista.' });
+    await expect(noList).toContainText('Sem a lista. Não deu para ver quem pode receber a poção.');
+    await expect(alone.getByRole('button', { name: 'Beber' })).not.toHaveAttribute('aria-disabled', 'true');
     // "Dar a…" is dashed (class and block icon, not only aria-disabled) and described by that error.
-    const failedGive = listFailed.getByRole('button', { name: 'Dar a…' });
+    const failedGive = alone.getByRole('button', { name: 'Dar a…' });
     await expect(failedGive).toHaveAttribute('aria-disabled', 'true');
     await expect(failedGive).toHaveClass(/mr-button--off/);
     await expect(failedGive.locator('mat-icon')).toHaveText('block');
-    await expect(failedGive).toHaveAccessibleDescription('Não deu para ver quem pode receber a poção. Tente de novo.');
+    await expect(failedGive).toHaveAccessibleDescription(/^Sem a lista\. Não deu para ver quem pode receber a poção\./);
     await expectConsumableScreen(p, `Combate, a lista de quem recebe não foi lida ${where}`);
     await p.unroute(listCall);
-    await listFailed.getByRole('button', { name: 'Fechar' }).first().click();
-    await expect(listFailed).toBeHidden();
 
-    // Nobody is at 1,5 m: "Dar a…" is dashed with a block icon and the line that says so, with no list; "Beber" stays filled.
-    await rowOf(heal).getByRole('button', { name: 'Usar Poção de cura' }).click();
-    const alone = p.getByRole('dialog', { name: /^Usar / });
-    await expect(alone.getByText('Restam 2 · em combate, gasta a ação', { exact: true })).toBeVisible();
+    // "Tente de novo" reads the list again: nobody is at 1,5 m, so "Dar a…" stays dashed with the line that says so, no list and no second reason; "Beber" stays filled.
+    await noList.getByRole('button', { name: 'Tente de novo' }).click();
+    await expect(noList).toHaveCount(0);
+    await expect(alone.getByText('Restam 3 · em combate, gasta a ação', { exact: true })).toBeVisible();
     await expect(alone.getByText('Ninguém a 1,5 m de você para receber a poção.')).toBeVisible();
     const aloneGive = alone.getByRole('button', { name: 'Dar a…' });
     await expect(aloneGive).toHaveAttribute('aria-disabled', 'true');
@@ -10701,13 +10750,18 @@ async function scanConsumableCombatScreens(browser: Browser, colorScheme: 'light
     await alone.getByRole('button', { name: 'Fechar' }).first().click();
     await expect(alone).toBeHidden();
 
-    // Brisa comes to Pensantus's side: the list says "A 1,5 m · Caída".
-    await combatRPC(m, 'MoveCombatant', { campaignId, encounterId: begun.id, combatantId: begun.combatants.find((c) => c.label === 'Brisa')!.id, col: 4, row: 7 });
+    // Brisa comes to Pensantus's side, and a goblin hides beside him: the server sends only who Pensantus sees, and the list does not say someone is missing.
+    const brisaId = begun.combatants.find((c) => c.label === 'Brisa')!.id;
+    const moveBrisa = (col: number, row: number) => combatRPC(m, 'MoveCombatant', { campaignId, encounterId: begun.id, combatantId: brisaId, col, row });
+    await moveBrisa(4, 7);
+    const hiddenGoblin = begun.combatants.find((c) => c.label === 'Goblin 1')!.id;
+    await combatRPC(m, 'MoveCombatant', { campaignId, encounterId: begun.id, combatantId: hiddenGoblin, col: 5, row: 8 });
+    await combatRPC(m, 'SetCombatantHidden', { campaignId, encounterId: begun.id, combatantId: hiddenGoblin, hidden: true });
 
     // "Usar": the sheet says a combat is running and that drinking costs the Action.
     await rowOf(heal).getByRole('button', { name: 'Usar Poção de cura' }).click();
     const use = p.getByRole('dialog', { name: /^Usar / });
-    await expect(use.getByText('Restam 2 · em combate, gasta a ação', { exact: true })).toBeVisible();
+    await expect(use.getByText('Restam 3 · em combate, gasta a ação', { exact: true })).toBeVisible();
     const liveGive = use.getByRole('button', { name: 'Dar a…' });
     await expect(liveGive).not.toHaveAttribute('aria-disabled', 'true');
     await expect(liveGive).not.toHaveClass(/mr-button--off/);
@@ -10718,6 +10772,7 @@ async function scanConsumableCombatScreens(browser: Browser, colorScheme: 'light
     // "Dar a…": Brisa, down, at 1,5 m; in a combat the buttons are "Dar a Brisa" and "Beber eu mesmo" and there is no way back.
     await use.getByRole('button', { name: 'Dar a…' }).click();
     await expect(use.getByRole('radio', { name: /Brisa/ })).toBeChecked();
+    await expect(use.getByRole('radio')).toHaveCount(1);
     await expect(use.getByRole('group', { name: 'Dar a quem está ao seu lado' })).toContainText('Caída');
     await expect(use.getByRole('button', { name: 'Dar a Brisa' })).toBeVisible();
     await expect(use.getByRole('button', { name: 'Beber eu mesmo' })).toBeVisible();
@@ -10727,93 +10782,168 @@ async function scanConsumableCombatScreens(browser: Browser, colorScheme: 'light
     await expect(use.locator('.cost app-economy-mark')).toBeVisible();
     await expect(use.locator('.cost')).toContainText('A poção age em Brisa.');
     await expectConsumableScreen(p, `Combate, dar a poção a Brisa ${where}`);
+    await expectConsumableScreen(p, `Combate, a lista sem a criatura escondida ao lado ${where}`);
 
-    // The server refuses in words, and the sheet keeps what it holds: Brisa left Pensantus's side, the potion was already used, Brisa died, the turn is not his.
+    // Brisa walks off for real: the server refuses, the sheet reads the list again, drops her and is back at its first choice with "Dar a…" dashed.
+    await moveBrisa(9, 7);
+    await use.getByRole('button', { name: 'Dar a Brisa' }).click();
+    const away = use.getByRole('alert').filter({ hasText: 'Longe demais.' });
+    await expect(away).toContainText('Longe demais. Brisa não está mais ao seu lado. Nada foi gasto.');
+    await expect(use.getByText('Ninguém a 1,5 m de você para receber a poção.')).toBeVisible();
+    await expect(use.getByRole('radio')).toHaveCount(0);
+    await expect(use.getByRole('button', { name: 'Dar a…' })).toHaveAttribute('aria-disabled', 'true');
+    await expectConsumableScreen(p, `Combate, a recusa TARGET_NOT_ADJACENT ${where}`);
+    await moveBrisa(4, 7);
+    await use.getByRole('button', { name: 'Fechar' }).first().click();
+    await expect(use).toBeHidden();
+
+    // A unit the sheet holds is taken out of the sheet by the master: the server says it is gone, the page reads the sheet again and the dialog goes on with a unit that is left.
+    await openLive(m, `/campaigns/${campaignId}/characters/${table.characterId}`);
+    const masterGear = m.getByRole('region', { name: 'Equipamento' });
+    await rowOf(heal).getByRole('button', { name: 'Usar Poção de cura' }).click();
+    const rebound = p.getByRole('dialog', { name: /^Usar / });
+    await rebound.getByRole('button', { name: 'Dar a…' }).click();
+    await expect(rebound.getByRole('radio', { name: /Brisa/ })).toBeChecked();
+    await masterGear.getByRole('button', { name: 'Remover item · Poção de cura', exact: true }).click();
+    const removing = m.getByRole('alertdialog', { name: 'Remover Poção de cura?' });
+    await removing.getByRole('button', { name: 'Remover' }).click();
+    await expect(removing).toBeHidden();
+    await openSessionPage(m, campaignId);
+    await rebound.getByRole('button', { name: 'Dar a Brisa' }).click();
+    const gone = rebound.getByRole('alert').filter({ hasText: 'A poção acabou.' });
+    await expect(gone).toContainText('A poção acabou. Essa poção já foi usada. A ficha foi atualizada.');
+    await expect(rebound.getByText('Restam 2 · em combate, gasta a ação', { exact: true })).toBeVisible();
+    await expectConsumableScreen(p, `Combate, a recusa ITEM_GONE ${where}`);
+
+    // The refusals the combat has for the turn and the Action: a ban line each, and nothing left to send. The server answers them to a sheet kept open past its turn; no screen offers the sheet blocked, as the tab is drawn on the turn only and a spent Action folds its rows.
     const useCall = '**/meurpg.play.v1.ChargesService/UseConsumable';
     const refusals: [string, number, string][] = [
-      ['TARGET_NOT_ADJACENT', 146, 'Brisa não está mais ao seu lado. Nada foi gasto.'],
-      ['ITEM_GONE', 147, 'Essa poção já foi usada. A ficha foi atualizada.'],
-      ['TARGET_DEAD', 69, 'Brisa já morreu: não dá para dar a poção a quem morreu. Nada foi gasto.'],
+      ['TARGET_DEAD', 69, 'Brisa morreu. Não dá para dar a poção a quem morreu. Nada foi gasto.'],
       ['NOT_YOUR_TURN', 10, 'Só na sua vez: beber ou dar gasta a ação.'],
-      ['ACTION_USED', 15, 'Você já usou a ação desta vez.'],
+      ['ACTION_USED', 15, 'Ação já usada. Você já usou a ação desta vez.'],
     ];
     for (const [name, number, words] of refusals) {
+      if (name !== 'TARGET_DEAD') {
+        await rebound.getByRole('button', { name: 'Fechar' }).first().click();
+        await expect(rebound).toBeHidden();
+        await rowOf(heal).getByRole('button', { name: 'Usar Poção de cura' }).click();
+        await rebound.getByRole('button', { name: 'Dar a…' }).click();
+      }
       await p.route(useCall, (r) => r.fulfill(encounterBlockedAnswer(number)));
-      await use.getByRole('button', { name: 'Dar a Brisa' }).click();
-      await expect(use.getByRole('alert').locator('span')).toHaveText(words);
-      await expect(use).toBeVisible();
+      await rebound.getByRole('button', { name: 'Dar a Brisa' }).click();
+      // A dead receiver is a red notice in the alert; the turn and the Action are the ban line under the choices, kept with the buttons off.
+      const shown = name === 'TARGET_DEAD' ? rebound.getByRole('alert').filter({ hasText: 'morreu' }) : rebound.locator('.why');
+      await expect(shown).toContainText(words);
+      if (name !== 'TARGET_DEAD') {
+        await expect(rebound.getByRole('button', { name: 'Dar a Brisa' })).toHaveAccessibleDescription(words);
+      }
       await expectConsumableScreen(p, `Combate, a recusa ${name} ${where}`);
       await p.unroute(useCall);
     }
+    await rebound.getByRole('button', { name: 'Fechar' }).first().click();
+    await expect(rebound).toBeHidden();
+    // The tab behind the dialog follows the re-read sheet: two units are left.
+    await expect(rowOf(heal)).toContainText('×2');
 
     // The table's app dice come first: the player types them.
-    await expect(use.getByText('O app rola 2d4 + 2 para Brisa.')).toBeVisible();
-    await use.getByRole('button', { name: 'Digitar os dados' }).click();
-    await use.getByLabel('Dado 1 (d4)').fill('3');
-    await use.getByLabel('Dado 2 (d4)').fill('2');
-    await use.getByRole('button', { name: 'Dar a Brisa' }).click();
-    await expect(use).toBeHidden();
+    await rowOf(heal).getByRole('button', { name: 'Usar Poção de cura' }).click();
+    const give = p.getByRole('dialog', { name: /^Usar / });
+    await give.getByRole('button', { name: 'Dar a…' }).click();
+    await expect(give.getByText('O app rola 2d4 + 2 para Brisa.')).toBeVisible();
+    await give.getByRole('button', { name: 'Digitar os dados' }).click();
+    await give.getByLabel('Dado 1 (d4)').fill('3');
+    await give.getByLabel('Dado 2 (d4)').fill('2');
+    await give.getByRole('button', { name: 'Dar a Brisa' }).click();
+    await expect(give).toBeHidden();
 
-    // The notice in the turn, and the Action spent: the potions fold to "Ação · Usada", the oil stays.
+    // The notice in the turn, and the Action spent: the potions fold to "Ação · Usada" (closed, with the count of its rows), the oil stays.
     const notice = items.locator('.consumable__result');
     await expect(notice).toContainText('Brisa recebeu 7 PV e acorda.');
     await expect(notice).toContainText('2d4 + 2: 3 + 2 + 2 = 7. Resta 1 Poção de cura.');
     await expect(rowOf(oil)).toBeVisible();
     await expect(rowOf(heal)).toHaveCount(0);
+    const spentLine = p.getByRole('button', { name: /^Ação · Usada/ });
+    await expect(spentLine).toHaveAttribute('aria-expanded', 'false');
+    await expect(spentLine).toContainText('3 itens');
     await expectConsumableScreen(p, `Combate, a cura dada e a ação usada ${where}`);
-    const spent = await openSpentGroup(p, 'Ação');
+    await spentLine.click();
+    await expect(spentLine).toHaveAttribute('aria-expanded', 'true');
+    const spent = p.locator(`#${await spentLine.getAttribute('aria-controls')}`);
     await expect(spent.locator(`[data-item-row="${heal}"]`)).toBeVisible();
+    // The rows look spent: the dashed button and the reason on the row; "Usar" opens no sheet with nothing to do.
+    const spentUse = spent.getByRole('button', { name: 'Usar Poção de cura' });
+    await expect(spentUse).toHaveAttribute('aria-disabled', 'true');
+    await expect(spentUse).toHaveClass(/mr-button--off/);
+    await expect(spentUse).toHaveAccessibleDescription('A ação desta vez já foi usada.');
+    await spentUse.click({ force: true });
+    await expect(p.getByRole('dialog')).toHaveCount(0);
     await expectConsumableScreen(p, `Combate, a linha Ação usada aberta ${where}`);
-
-    // A row folded under "Ação · Usada" opens the sheet with both buttons dashed and the line that says so, with nothing to send.
-    await spent.getByRole('button', { name: 'Usar Poção de cura' }).click();
-    const used = p.getByRole('dialog', { name: /^Usar / });
-    await expect(used.getByText('Você já usou a ação desta vez.')).toBeVisible();
-    // Both are dashed; "Dar a…" keeps the open hand (the block icon is for a list with nobody in it).
-    const usedGive = used.getByRole('button', { name: 'Dar a…' });
-    await expect(usedGive).toHaveAttribute('aria-disabled', 'true');
-    await expect(usedGive).toHaveClass(/mr-button--off/);
-    await expect(usedGive.locator('mat-icon')).toHaveText('volunteer_activism');
-    await expect(usedGive).toHaveAccessibleDescription('Você já usou a ação desta vez.');
-    await expect(used.getByRole('button', { name: 'Beber' })).toHaveAttribute('aria-disabled', 'true');
-    await expect(used.getByRole('button', { name: 'Beber' })).toHaveClass(/mr-button--off/);
-    await expect(used.getByText('Gasta a sua ação.')).toHaveCount(0);
-    await expectConsumableScreen(p, `Combate, a ação já usada, a poção dobrada ${where}`);
-    await used.getByRole('button', { name: 'Fechar' }).first().click();
-    await expect(used).toBeHidden();
 
     // The oil takes no action: the sheet says the master rules on the time, and the log line has no number.
     await rowOf(oil).getByRole('button', { name: /^Usar / }).click();
     const oilSheet = p.getByRole('dialog', { name: /^Usar / });
     await expect(oilSheet.getByText('Não gasta a ação: o mestre decide o tempo que isso leva.')).toBeVisible();
+    await expect(oilSheet.getByRole('button', { name: 'Usar', exact: true })).toBeVisible();
     await expectConsumableScreen(p, `Combate, usar o óleo, que não gasta a ação ${where}`);
     // The server lists the whole party for an oil, with no distance and no state: the sheet asks for anyone in the group, not for who is at the side.
     await oilSheet.getByRole('button', { name: 'Dar a…' }).click();
     await expect(oilSheet.getByRole('group', { name: 'Dar a alguém do grupo' })).toContainText('Brisa');
     await expect(oilSheet.getByRole('group', { name: 'Dar a alguém do grupo' })).not.toContainText('A 1,5');
     await expectConsumableScreen(p, `Combate, dar o óleo a alguém do grupo ${where}`);
-    await oilSheet.getByRole('button', { name: 'Beber eu mesmo' }).click();
+    await oilSheet.getByRole('button', { name: 'Usar eu mesmo' }).click();
     await expect(oilSheet).toBeHidden();
     await expect(notice).toContainText('Pensantus usou o Óleo de precisão.');
     await expectConsumableScreen(p, `Combate, o óleo usado ${where}`);
 
-    // The log: the numbers for the giver, the receiver and the master; the oil has none for anyone.
+    // The log: the numbers for the giver, the receiver and the master; the oil has none for anyone. The line is scrolled into view for the shot.
     const gift = 'Pensantus deu uma Poção de cura a Brisa: 7 PV (2d4 + 2: 3 + 2 + 2)';
     const ownerLog = await openCombatLog(p);
     await expect(ownerLog).toContainText(gift);
     await expect(ownerLog).toContainText('Pensantus usou um Óleo de precisão');
-    await expectConsumableScreen(p, `Combate, o registro com a poção, visto pelo dono ${where}`);
+    await expectConsumableScreen(p, `Combate, o registro com a poção, visto pelo dono ${where}`, { into: ownerLog.getByText(gift) });
 
     await openSessionPage(brisaPlayer.page, campaignId);
     const receiverLog = await openCombatLog(brisaPlayer.page);
     await expect(receiverLog).toContainText(gift);
-    await expectConsumableScreen(brisaPlayer.page, `Combate, o registro com a poção, visto por quem a recebeu ${where}`);
+    await expectConsumableScreen(brisaPlayer.page, `Combate, o registro com a poção, visto por quem a recebeu ${where}`, { into: receiverLog.getByText(gift) });
 
     await openSessionPage(m, campaignId);
     const mlog = await masterLog(m);
     await expect(mlog).toContainText(gift);
     await expect(mlog).toContainText('Pensantus usou um Óleo de precisão');
-    await expectConsumableScreen(m, `Combate, o registro com a poção, visto pelo mestre ${where}`);
+    await expectConsumableScreen(m, `Combate, o registro com a poção, visto pelo mestre ${where}`, { into: mlog.getByText(gift) });
+
+    // Out of the combat the list is the whole party, "Voltar" is the way back, and the one line says the turn is not spent (board 565-07 card 4).
+    await combatRPC(m, 'EndEncounter', { campaignId, encounterId: begun.id });
+    await openLive(p, `/campaigns/${campaignId}/characters/${table.characterId}`);
+    const sheetGear = p.getByRole('region', { name: 'Equipamento' });
+    await sheetGear.locator(`[data-consumable-row="${fire}"]`).getByRole('button', { name: /^Usar / }).click();
+    const outside = p.getByRole('dialog', { name: /^Usar / });
+    await outside.getByRole('button', { name: 'Dar a…' }).click();
+    await expect(outside.getByRole('group', { name: 'Dar a alguém do grupo' })).toContainText('Brisa');
+    await expect(outside.locator('.cost')).toContainText('Fora de combate, não gasta a vez. A poção age em Brisa.');
+    await expect(outside.getByRole('button', { name: 'Voltar' })).toBeVisible();
+    await expectConsumableScreen(p, `Fora do combate, a lista do grupo com Voltar ${where}`);
+    await outside.getByRole('button', { name: 'Voltar' }).click();
+    await expect(outside.getByRole('button', { name: 'Dar a…' })).toBeFocused();
+
+    // "Usando…" (board 07-5): the call is held, the sheet says it is using and offers nothing else; then the server is out and the notice comes back.
+    let release: () => void = () => undefined;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    await p.route(useCall, async (r) => {
+      await held;
+      await r.fulfill({ status: 503, contentType: 'application/json', body: '{"code":"unavailable","message":"x"}' });
+    });
+    await outside.getByRole('button', { name: 'Usar', exact: true }).click();
+    const using = outside.getByRole('button', { name: 'Usando...' });
+    await expect(using).toBeVisible();
+    await expect(using).toHaveAttribute('aria-disabled', 'true');
+    await expectConsumableScreen(p, `Fora do combate, usando ${where}`);
+    release();
+    await expect(outside.getByRole('alert').filter({ hasText: 'Sem conexão.' })).toBeVisible();
+    await p.unroute(useCall);
   } finally {
     await close();
     if (campaignId) {

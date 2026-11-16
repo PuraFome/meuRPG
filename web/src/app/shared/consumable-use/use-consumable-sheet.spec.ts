@@ -650,7 +650,7 @@ describe('UseConsumableSheet', () => {
         'Dado 1 (d4)',
         'Dado 2 (d4)',
       ]);
-      expect(flat(el.querySelector('.dice'))).toContain('O + 2 o app soma.');
+      expect(flat(el.querySelector('.dice'))).toContain('O app soma + 2.');
       for (const [i, v] of ['3', '2'].entries()) {
         fields[i].value = v;
         fields[i].dispatchEvent(new Event('input'));
