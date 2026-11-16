@@ -99,32 +99,63 @@ type activeEffect struct {
 }
 
 func derive(b Build, c *content) Derived {
+	d, _ := deriveRounds(b, c)
+	d.Notices = c.shieldIdleNotices(b, d)
+	return d
+}
+
+// deriveRounds is derive and the number of times it made the sheet: one for a sheet that loses nothing, and one more
+// for each pass that finds an entry lost.
+//
+// A character that loses a feat's prerequisite cannot use the feat until it has the prerequisite again (SRD 5.1,
+// Feats), and the same holds for an option. What the character has is judged with everything in place, and the sheet is
+// made again without the entries that no longer fit; the entries judged over that sheet may fit no more either (the
+// feat that gave the Strength another asks), so the judgement is repeated until nothing new is lost. An entry once lost
+// stays lost, so each pass loses at least one of the entries the sheet has and the repeat ends.
+func deriveRounds(b Build, c *content) (Derived, int) {
 	d := deriveWith(b, c, nil)
 	if len(b.Feats) == 0 && len(b.FeatureChoices) == 0 {
-		return d
+		return d, 1
 	}
-	// A character that loses a feat's prerequisite cannot use the feat until it has the
-	// prerequisite again (SRD 5.1, Feats). What the character has is judged with the
-	// feats in place, and the sheet is made again without the ones that no longer fit.
-	why := c.lostFeats(b, d)
-	for k, l := range c.lostOptions(b, d) {
-		if why == nil {
-			why = map[string]*LostPrerequisite{}
+	var lost map[string]*LostPrerequisite
+	rounds := 1
+	for range len(b.Feats) + len(b.FeatureChoices) + len(c.pickedChoiceFeats(b, ownedBy(b, d))) {
+		if !c.addNewlyLost(&lost, b, d) {
+			break
 		}
-		why[k] = l
+		d = deriveWith(b, c, lost)
+		rounds++
 	}
-	if len(why) == 0 {
-		return d
+	if len(lost) == 0 {
+		return d, rounds
 	}
-	out := deriveWith(b, c, why)
 	// What the character has is said over the sheet as it ends up, without the lost entries: the numbers the reader sees.
-	for i, is := range out.Issues {
+	for i, is := range d.Issues {
 		if is.Lost != nil {
-			out.Issues[i].Lost = c.retold(is.Lost, b, out)
-			out.Issues[i].Message = out.Issues[i].Lost.SentencePT("", false)
+			d.Issues[i].Lost = c.retold(is.Lost, b, d)
+			d.Issues[i].Message = d.Issues[i].Lost.SentencePT("", false)
 		}
 	}
-	return out
+	return d, rounds
+}
+
+// addNewlyLost judges the feats and the options of b over the sheet d and adds to *lost the ones not in it yet, each
+// with what it lacks on d. It says whether it added any.
+func (c *content) addNewlyLost(lost *map[string]*LostPrerequisite, b Build, d Derived) bool {
+	added := false
+	for _, judged := range []map[string]*LostPrerequisite{c.lostFeats(b, d), c.lostOptions(b, d)} {
+		for k, l := range judged {
+			if _, ok := (*lost)[k]; ok {
+				continue
+			}
+			if *lost == nil {
+				*lost = map[string]*LostPrerequisite{}
+			}
+			(*lost)[k] = l
+			added = true
+		}
+	}
+	return added
 }
 
 // deriveWith is derive with the feats and options in lost (by key) listed but not applied; each is told with what
@@ -744,6 +775,10 @@ func (col *collector) featureOption(field, key string, pickedNames map[string]bo
 		parent = x.offeredParent(key, col.owned)
 	}
 	if parent == "" || !col.owned[parent] {
+		if feat := x.lostOfferer(key, f); feat != "" {
+			col.lostOffered(field, key, f, feat, pickedNames)
+			return
+		}
 		col.optionNotOffered(field, key, f)
 		return
 	}
@@ -759,6 +794,28 @@ func (col *collector) featureOption(field, key string, pickedNames map[string]bo
 	}
 	col.feature(key, f.Name, parent, x.featureLevel(parent), f.Desc)
 	col.offeredBy(parent)
+}
+
+// lostOfferer is the lost feat (or option) whose choice offers the option key, or "": the pick is not one nothing offers,
+// its feat is there and does not apply.
+func (x *deriver) lostOfferer(key string, f *srd51.Feature) string {
+	for _, p := range append([]string{x.optionParent(key, f.Parent)}, x.c.offeredBy[key]...) {
+		if p != "" && x.inactiveFeats[p] {
+			return p
+		}
+	}
+	return ""
+}
+
+// lostOffered lists the option of a lost feat and says it is lost: it stays on the sheet, gives nothing, and reads as an
+// option that needs its feat (board 580-05).
+func (col *collector) lostOffered(field, key string, f *srd51.Feature, feat string, pickedNames map[string]bool) {
+	x := col.x
+	pickedNames[f.Name] = true
+	col.feature(key, f.Name, feat, 0, f.Desc)
+	col.offeredBy(feat)
+	x.lostIssue(IssueOptionPrerequisite, field, x.c.lostOffered(key, feat))
+	x.tieToOwners(&x.d.Issues[len(x.d.Issues)-1], key)
 }
 
 // offeredBy marks the feature just listed as an option of parent: its row reads "Opção de <parent>" (board 580-05).

@@ -584,7 +584,7 @@ func grantedSpellToProto(g rules.GrantedSpell) *rulesv1.GrantedSpell {
 	return &rulesv1.GrantedSpell{
 		Spell: spellToProto(g.Spell), SourceKey: g.Source, SourceNamePt: g.SourcePT,
 		AtWill: g.AtWill, Resource: g.Resource, AlsoWithSlot: g.AlsoWithSlot, RitualOnly: g.RitualOnly, CountsAsKnown: g.CountsAsKnown, NoMaterialComponents: g.NoMaterialComponents, UsesCost: i32(g.Cost),
-		Ability: string(g.Ability), AbilityPending: g.AbilityPending, AttackBonus: i32(g.AttackBonus), SaveDc: i32(g.SaveDC), FromLevel: i32(g.FromLevel),
+		Ability: string(g.Ability), AbilityPending: g.AbilityPending, AttackBonus: i32(g.AttackBonus), SaveDc: i32(g.SaveDC), FromLevel: i32(g.FromLevel), CastLevel: i32(g.CastLevel),
 	}
 }
 

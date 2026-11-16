@@ -293,7 +293,7 @@ func tableWeaponOf(te rules.TableEntry, b *rulesv1.TableWeapon) rules.TableWeapo
 	return rules.TableWeapon{
 		TableEntry: te, DescPT: b.GetDescPt(), Category: category, Ranged: b.GetRanged(), Damage: b.GetDamage(), DamageType: b.GetDamageType(),
 		TwoHandedDamage: b.GetTwoHandedDamage(), Properties: b.GetProperties(), NormalRangeFt: int(b.GetNormalRangeFt()), LongRangeFt: int(b.GetLongRangeFt()),
-		WeightOz: int(b.GetWeightOz()), PriceCP: int(b.GetPriceCp()),
+		WeightOz: int(b.GetWeightOz()), PriceCP: int(b.GetPriceCp()), TwoHandedSince: int(b.GetTwoHandedSinceRevision()),
 	}
 }
 
@@ -469,7 +469,7 @@ func tableEffectsOf(in []*rulesv1.TableEffect) []rules.Effect {
 			IgnoreCover: e.GetIgnoreCover(), RangeMultiplier: int(e.GetRangeMultiplier()), NoLongRangeDisadvantage: e.GetNoLongRangeDisadvantage(),
 			Except: e.GetExcept(), While: e.GetWhile(), OnlyProficient: e.GetOnlyProficient(),
 			Spell: e.GetSpell(), FromLevel: e.GetFromLevel(), Uses: e.GetUses(), AlsoWithSlot: e.GetAlsoWithSlot(), RitualOnly: e.GetRitualOnly(), CountsAsKnown: e.GetCountsAsKnown(),
-			NoMaterialComponents: e.GetNoMaterialComponents(), UsesCost: int(e.GetUsesCost()), Duration: e.GetDuration(), DailyChoice: e.GetDailyChoice(),
+			NoMaterialComponents: e.GetNoMaterialComponents(), UsesCost: int(e.GetUsesCost()), CastLevel: int(e.GetCastLevel()), Duration: e.GetDuration(), DailyChoice: e.GetDailyChoice(),
 			Cost: e.GetCost(), CostMax: e.GetCostMax(), ValuePerPoint: e.GetValuePerPoint(), Heal: e.GetHeal(), TempHP: e.GetTempHp(),
 			Event: e.GetEvent(), Restore: e.GetRestore(), HealPercentMax: int(e.GetHealPercentMax()),
 			StateName: e.GetStateName(), DurationRounds: e.GetDurationRounds(), EndsOn: e.GetEndsOn(),

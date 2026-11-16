@@ -78,7 +78,7 @@ export function wayCardsOf(s: CastingSpell): readonly ChoiceRow[] {
     picks.filter((p) => p.grant === null).map((p) => p.way),
   );
   return picks.map((p) =>
-    p.grant ? grantCard(p) : (own.find((r) => r.id === p.way) as ChoiceRow),
+    p.grant ? grantCard(p, s.spell?.level ?? 0) : (own.find((r) => r.id === p.way) as ChoiceRow),
   );
 }
 

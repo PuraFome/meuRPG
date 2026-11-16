@@ -1572,10 +1572,15 @@ type TableWeapon struct {
 	NormalRangeFt int32 `protobuf:"varint,9,opt,name=normal_range_ft,json=normalRangeFt,proto3" json:"normal_range_ft,omitempty"`
 	LongRangeFt   int32 `protobuf:"varint,10,opt,name=long_range_ft,json=longRangeFt,proto3" json:"long_range_ft,omitempty"`
 	// Weight in ounces (0 to 160000) and price in copper pieces (0 to 100000000). Notes only.
-	WeightOz      int32 `protobuf:"varint,11,opt,name=weight_oz,json=weightOz,proto3" json:"weight_oz,omitempty"`
-	PriceCp       int32 `protobuf:"varint,12,opt,name=price_cp,json=priceCp,proto3" json:"price_cp,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	WeightOz int32 `protobuf:"varint,11,opt,name=weight_oz,json=weightOz,proto3" json:"weight_oz,omitempty"`
+	PriceCp  int32 `protobuf:"varint,12,opt,name=price_cp,json=priceCp,proto3" json:"price_cp,omitempty"`
+	// The table revision at which the weapon last became two-handed (the property "weapon-property:two-handed" went on, or the
+	// weapon was made with it): the server's, set on every write and never read from a request. 0 when the weapon is not
+	// two-handed, or was before the server kept it. The sheet that carries the weapon is told "passou a exigir as duas mãos" only
+	// when this is newer than the revision the sheet fits (an edit of the damage tells nothing).
+	TwoHandedSinceRevision int32 `protobuf:"varint,13,opt,name=two_handed_since_revision,json=twoHandedSinceRevision,proto3" json:"two_handed_since_revision,omitempty"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *TableWeapon) Reset() {
@@ -1688,6 +1693,13 @@ func (x *TableWeapon) GetWeightOz() int32 {
 func (x *TableWeapon) GetPriceCp() int32 {
 	if x != nil {
 		return x.PriceCp
+	}
+	return 0
+}
+
+func (x *TableWeapon) GetTwoHandedSinceRevision() int32 {
+	if x != nil {
+		return x.TwoHandedSinceRevision
 	}
 	return 0
 }
@@ -1858,7 +1870,8 @@ type TableEffect struct {
 	// lets the character cast it with a spell slot too, `ritual_only` limits it to the
 	// ritual way (a spell with the ritual tag; not with also_with_slot) and
 	// `counts_as_known` lists it among the known spells without using any of the
-	// class's picks. A leveled spell cast through the grant is cast at its own level.
+	// class's picks. A leveled spell cast through the grant is cast at its own level, or at
+	// `cast_level` when that is set (see there).
 	// The material components are waived only when `no_material_components` is set, and
 	// only on the sheet and the cast sheet (the server never enforces components).
 	// `uses_cost` is how many uses of the resource each cast spends (0 and 1 are one);
@@ -2044,7 +2057,12 @@ type TableEffect struct {
 	Duration string `protobuf:"bytes,93,opt,name=duration,proto3" json:"duration,omitempty"`
 	// choice of a skill or a tool only: the player picks again after each rest of `duration`, apart from the sheet (a
 	// locked sheet takes the pick), and what is picked lasts until that rest. Required with `duration`.
-	DailyChoice   bool `protobuf:"varint,94,opt,name=daily_choice,json=dailyChoice,proto3" json:"daily_choice,omitempty"`
+	DailyChoice bool `protobuf:"varint,94,opt,name=daily_choice,json=dailyChoice,proto3" json:"daily_choice,omitempty"`
+	// granted_spell only: the level the grant casts the spell at, from the spell's own level to 9 (0:
+	// the spell's own level). The spell scales with that level (damage, healing, targets), and
+	// the cast spends no slot. A cast of the same spell with a slot (`also_with_slot`) uses the slot's
+	// level. Refused on a cantrip, with `ritual_only` and on any other effect type.
+	CastLevel     int32 `protobuf:"varint,95,opt,name=cast_level,json=castLevel,proto3" json:"cast_level,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2728,6 +2746,13 @@ func (x *TableEffect) GetDailyChoice() bool {
 		return x.DailyChoice
 	}
 	return false
+}
+
+func (x *TableEffect) GetCastLevel() int32 {
+	if x != nil {
+		return x.CastLevel
+	}
+	return 0
 }
 
 // TableFeature is a class or subclass feature, a race or subrace trait, or a
@@ -9472,7 +9497,7 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"\x13table_class_feature\x18\x13 \x01(\v2\".meurpg.rules.v1.TableClassFeatureH\x00R\x11tableClassFeature\x12G\n" +
 	"\x0etable_creature\x18\x14 \x01(\v2\x1e.meurpg.rules.v1.TableCreatureH\x00R\rtableCreature\x12A\n" +
 	"\ftable_weapon\x18\x15 \x01(\v2\x1c.meurpg.rules.v1.TableWeaponH\x00R\vtableWeaponB\x06\n" +
-	"\x04body\"\xa5\x03\n" +
+	"\x04body\"\xe0\x03\n" +
 	"\vTableWeapon\x12\x17\n" +
 	"\aname_pt\x18\x01 \x01(\tR\x06namePt\x12\x1f\n" +
 	"\adesc_pt\x18\x02 \x03(\tB\x06\x90\xb5\x18\x80\x80\x01R\x06descPt\x12;\n" +
@@ -9489,7 +9514,8 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"\rlong_range_ft\x18\n" +
 	" \x01(\x05R\vlongRangeFt\x12\x1b\n" +
 	"\tweight_oz\x18\v \x01(\x05R\bweightOz\x12\x19\n" +
-	"\bprice_cp\x18\f \x01(\x05R\apriceCp\"\x83\x16\n" +
+	"\bprice_cp\x18\f \x01(\x05R\apriceCp\x129\n" +
+	"\x19two_handed_since_revision\x18\r \x01(\x05R\x16twoHandedSinceRevision\"\xa2\x16\n" +
 	"\vTableEffect\x12\x12\n" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x12\x16\n" +
 	"\x06target\x18\x02 \x01(\tR\x06target\x12\x12\n" +
@@ -9599,7 +9625,9 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"\x0eattack_penalty\x18Y \x01(\x05R\rattackPenalty\x12+\n" +
 	"\x11weapon_properties\x18[ \x03(\tR\x10weaponProperties\x12\x1a\n" +
 	"\bduration\x18] \x01(\tR\bduration\x12!\n" +
-	"\fdaily_choice\x18^ \x01(\bR\vdailyChoiceJ\x04\bZ\x10[\"\x8f\x03\n" +
+	"\fdaily_choice\x18^ \x01(\bR\vdailyChoice\x12\x1d\n" +
+	"\n" +
+	"cast_level\x18_ \x01(\x05R\tcastLevelJ\x04\bZ\x10[\"\x8f\x03\n" +
 	"\fTableFeature\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x17\n" +
 	"\aname_pt\x18\x02 \x01(\tR\x06namePt\x12\x1f\n" +
