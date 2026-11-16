@@ -42,9 +42,13 @@ export abstract class CombatViewItemsDirective extends CombatViewPartsDirective 
   });
 
   private readonly turnOf = computed(() => this.encounter()?.currentCombatantId ?? '');
-  /** What a use said is not carried into the next turn. */
-  private readonly forgetOnTurn = effect(() => {
-    this.turnOf();
-    untracked(() => this.items.forgetNotice());
-  });
+
+  constructor() {
+    super();
+    // What a use said is not carried into the next turn.
+    effect(() => {
+      this.turnOf();
+      untracked(() => this.items.forgetNotice());
+    });
+  }
 }
