@@ -1,7 +1,6 @@
 package leaktest
 
 import (
-	"connectrpc.com/connect"
 	"slices"
 	"strings"
 	"testing"
@@ -138,11 +137,6 @@ func (p *choicesProbe) createEntry(t *testing.T, c *rulesv1.TableClass) *rulesv1
 		CampaignId: p.w.campaign, Body: &rulesv1.CreateTableEntryRequest_TableClass{TableClass: c},
 	}))
 	if err != nil {
-		for _, d := range err.(*connect.Error).Details() {
-			if v, e := d.Value(); e == nil {
-				t.Logf("detail: %v", v)
-			}
-		}
 		t.Fatalf("creating the class: %v", err)
 	}
 	return res.Msg.GetEntry()
