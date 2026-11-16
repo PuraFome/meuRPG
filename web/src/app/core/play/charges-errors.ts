@@ -142,12 +142,12 @@ export interface TurnBlockParts {
   readonly text: string;
 }
 
-/** The line of a turn that does not allow the use, the one the server's refusals say too: "Só na sua vez: beber ou dar gasta a ação.", "Ação já usada. Você já usou a ação desta vez.". */
+/** The line of a turn that does not allow the use, the one the server's refusals say too: "Só na sua vez. Beber ou dar gasta a ação.", "Ação já usada. Você já usou a ação desta vez.". */
 export function turnBlockParts(block: TurnBlock, actingFor: string | null): TurnBlockParts {
   return block === 'turn'
     ? {
-        lead: `Só na ${actingFor ? `vez de ${actingFor}` : 'sua vez'}:`,
-        text: 'beber ou dar gasta a ação.',
+        lead: `Só na ${actingFor ? `vez de ${actingFor}` : 'sua vez'}.`,
+        text: 'Beber ou dar gasta a ação.',
       }
     : { lead: 'Ação já usada.', text: `${actingFor ?? 'Você'} já usou a ação desta vez.` };
 }

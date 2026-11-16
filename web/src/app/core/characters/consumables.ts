@@ -235,7 +235,7 @@ export function subtitleOf(input: {
   return parts.join(' · ');
 }
 
-/** What the cost line of the "Usar" sheet says: the mark of the Ação and a bold lead where it spends it, an info icon where not. */
+/** What the line under the buttons of the "Usar" sheet says: an info icon, a lead where there is one (bold with the mark of the Ação where the item spends it) and the rest. */
 export interface UseCost {
   readonly mark: boolean;
   readonly lead: string;
@@ -275,8 +275,9 @@ export function useCost(input: {
     return null;
   }
   if (input.inCombat) {
-    // The subtitle already says it costs the action; the first choice adds only the reason a button is dashed.
-    return input.phase === 'give' ? { mark: true, lead: 'Gasta a sua ação.', rest: acts } : null;
+    // The cost is said once, in the subtitle ("em combate, gasta a ação"): the line under the list says only what the item does to the
+    // receiver, and the first choice adds only the reason a button is dashed.
+    return input.phase === 'give' && acts ? { mark: false, lead: '', rest: acts.trim() } : null;
   }
   return input.phase === 'give'
     ? { mark: false, lead: 'Fora de combate, não gasta a vez.', rest: acts }
@@ -369,8 +370,8 @@ function lowerFirst(text: string): string {
 
 /**
  * How the sheet and the log speak of an item by its name: "a Poção de cura", "uma Poção de cura", "bebeu". The catalog carries no
- * gender, so the article follows the name ("Poção…" is feminine). The verb follows the kind where it is known (the sheet: a
- * potion is drunk, any other item is used), and the name where it is not (the log line only has the name: "Poção…" is drunk).
+ * gender, so the article follows the name ("Poção…" is feminine). The verb follows the kind the server sent (a potion is drunk,
+ * any other item is used); with no kind it is "usou", never a guess from the name.
  */
 export function itemWords(
   name: string,
@@ -382,7 +383,7 @@ export function itemWords(
 } {
   const potion = /^poç(ão|ões)/i.test(name);
   const feminine = potion || article(name) === 'a';
-  const drunk = kind ? kind === 'potion' : potion;
+  const drunk = kind === 'potion';
   return {
     definite: `${feminine ? 'a' : 'o'} ${name}`,
     indefinite: `${feminine ? 'uma' : 'um'} ${name}`,

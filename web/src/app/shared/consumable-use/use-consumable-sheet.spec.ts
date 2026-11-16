@@ -18,7 +18,12 @@ const POTION: ConsumableVm = {
   costsAction: true,
   heal: { count: 2, sides: 4, modifier: 2, text: '2d4 + 2' },
 };
-const RESISTANCE: ConsumableVm = { kind: 'potion', costsAction: true, heal: null };
+const RESISTANCE: ConsumableVm = {
+  kind: 'potion',
+  costsAction: true,
+  heal: null,
+  lasting: { title: 'Resistência a fogo', length: 'por 1 hora' },
+};
 const OIL: ConsumableVm = { kind: 'oil', costsAction: false, heal: null };
 const SCROLL: ConsumableVm = { kind: 'scroll', costsAction: false, heal: null };
 
@@ -59,6 +64,7 @@ describe('UseConsumableSheet', () => {
   const use = vi.fn();
   const loadTargets = vi.fn();
   const close = vi.fn();
+  const reread = vi.fn();
   /** What the server's targets read says of the combat, unless a spec reads its own list. */
   let serverCombat = true;
 
@@ -69,6 +75,7 @@ describe('UseConsumableSheet', () => {
       .mockReset()
       .mockImplementation(() => Promise.resolve(read([BRISA, JABUTI], serverCombat)));
     close.mockReset();
+    reread.mockReset().mockResolvedValue({});
   });
 
   function render(over: Partial<UseConsumableData> = {}, phone = false) {
@@ -88,6 +95,7 @@ describe('UseConsumableSheet', () => {
       canType: true,
       preferApp: true,
       loadTargets,
+      reread,
       use,
       ...over,
       consumable,

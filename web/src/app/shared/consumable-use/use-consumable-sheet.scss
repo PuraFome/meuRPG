@@ -203,7 +203,7 @@
   color: var(--mr-ink);
 }
 // One footer for each breakpoint. A dialog (768px up) right-aligns its buttons at their own width, as board 565-05 draws it. The phone's
-// sheet (`foot--phone`) gives them the width: two equal halves, or one a line when a receiver is chosen in a combat (board 565-02).
+// sheet (`foot--phone`) gives them the width: two equal halves in every case (board 565-07-3a), one button alone a line.
 .foot {
   display: flex;
   flex-wrap: wrap;
@@ -213,8 +213,9 @@
 .foot button {
   min-height: 48px;
 }
-// The receiver's button is the first in the reading order, so the dialog sets it last: the primary action at the right edge.
-.foot--wide:not(.foot--phone) {
+// The receiver's button is the first in the reading order, so a footer with two ways to use it sets it last: the primary action at the
+// right edge, whatever the width.
+.foot--swap {
   flex-direction: row-reverse;
   justify-content: flex-start;
 }
@@ -228,13 +229,40 @@
 .give--off {
   cursor: default;
 }
-.go--off {
+.go--off:not(.go--busy) {
   opacity: 0.6;
   cursor: default;
 }
 // A dashed button (`mr-button--off`) says its reason in a line near it and keeps its own muted colours.
-.mr-button--off.go--off {
+.mr-button--off.go--off:not(.go--busy) {
   opacity: 1;
+}
+// Using: a plain muted button with a ring in place of the icon, never the dashed "cannot" one (the same as "Salvando…").
+.go--busy {
+  --mat-button-filled-disabled-container-color: var(--mr-ground);
+  --mat-button-filled-disabled-label-text-color: var(--mr-ink);
+  gap: var(--mr-space-2);
+}
+// A ring that turns: a plain element, since a spinner component in a button is an interactive control inside a control.
+.go__spin {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  box-sizing: border-box;
+  border: 2px solid currentColor;
+  border-inline-end-color: transparent;
+  border-radius: 50%;
+  animation: go-spin 0.8s linear infinite;
+}
+@keyframes go-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .go__spin {
+    animation-duration: 3s;
+  }
 }
 // A refusal that can be tried again has its button beside the words, and under them when the sheet is narrow.
 .refusal {
