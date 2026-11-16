@@ -417,6 +417,15 @@ jobs:
             -coverprofile="cover-$GROUP.out" \
             "${run_args[@]}" "${packages[@]}"
 
+      - name: Say why the test database stopped
+        # A test that cannot reach the database fails with a connection error and no cause. When a step of this job
+        # failed, this prints the container's state, the end of its log and the runner's memory
+        # (.github/scripts/database-evidence.sh).
+        if: ${{ failure() && steps.db.outputs.database != '' }}
+        env:
+          DATABASE: ${{ steps.db.outputs.database }}
+        run: ../.github/scripts/database-evidence.sh "$DATABASE"
+
       - name: Keep this group's coverage profile
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

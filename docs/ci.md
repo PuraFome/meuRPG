@@ -96,6 +96,12 @@ Two checks keep the list true (`.github/scripts/cockroach-only.sh`):
 - `check-list` runs in the job `go-db cockroach-only list` on PostgreSQL: every listed test must fail there.
   A test that passes on PostgreSQL does not need CockroachDB, and leaves the list.
 
+### When the test database stops
+
+A `go-db` job whose test database stops fails with connection errors in every later test, and the first failing line names the database ("cannot reach the database", "connection refused").
+The step "Say why the test database stopped" then runs `.github/scripts/database-evidence.sh`: it prints the container's state (exited or running, killed for memory or not, its exit code), the last lines of the database's own log, the runner's memory and disk, and the processes the kernel killed for memory.
+Read that step before anything else: a database that stopped is a red run with a cause to find, not a reason to run the job again.
+
 ### How the test database image reaches the jobs
 
 The `go-db` groups and the list check do not pull the database image themselves: registries refuse an anonymous pull once a runner pool has used its data limit ("Data limit exceeded"), and seventeen jobs pulling the same image multiply it.
