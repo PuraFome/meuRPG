@@ -174,7 +174,7 @@ The code is `ready_spell.go`, `ready_spell_attack.go` and `ready_spell_lost.go`.
 `ReadyAction` with `kind` `SPELL` names the spell (`spell_key`) and the slot level (`slot_level`, 0 for a cantrip).
 It checks the spell as `CastSpell` does (`checkSpell`): a class spell the caster knows or prepared, a slot of that level, silence.
 Metamagic and spells granted by a feature are not offered: Ready reads no `granted_by`, so a row is always the caster's own spell.
-A release takes the source the row was readied with: one that names a grant (`granted_by`) is `invalid_argument`, writes nothing and spends no charge of the grant.
+A release is from the source the row was readied with, so one that names a grant (`granted_by`) is `invalid_argument`, writes nothing and spends no charge of the grant.
 The casting time must be exactly 1 action, else `READY_SPELL_TIME` (a reaction or a bonus action spell, a ritual is never cast in combat).
 A spell attack cantrip (Fire Bolt, Ray of Frost) is readied as a spell, with no slot (`checkSpellAttack`): its energy holds the concentration too.
 Its row has no `spell_cast_id` (`heldSpellAttackRow`), and its release is `RollAttack` as a reaction, as a readied attack's (`usedAs`).

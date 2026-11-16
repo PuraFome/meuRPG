@@ -398,7 +398,7 @@ func (s *Service) previewSpell(ctx context.Context, m authz.Membership, msg *pla
 }
 
 // previewSlotLevel is the level a preview reads the spell at: the slot the request names, which must be a free one of the
-// caster's. A caster whose open READIED window holds the spell previews it at the slot it spent at Ready, and the
+// caster's, else the cast level of the grant, else the spell's own. A caster whose open READIED window holds the spell previews it at the slot it spent at Ready, and the
 // request's slot is not read.
 func (s *Service) previewSlotLevel(ctx context.Context, msg *playv1.PreviewSpellAreaRequest, caster playdb.Combatant, cast castable) (int, error) {
 	_, row, held, err := heldByWindow(ctx, s.queries, caster.EncounterID, caster.ID, msg.GetSpellKey())
@@ -412,10 +412,7 @@ func (s *Service) previewSlotLevel(ctx context.Context, msg *playv1.PreviewSpell
 	if err != nil {
 		return 0, err
 	}
-	if slot != nil {
-		return int(slot.Level), nil
-	}
-	return int(cast.level), nil
+	return cast.levelWith(slot), nil
 }
 
 // previewPlan places the area of a preview on the map as the viewer knows it.
@@ -546,11 +543,11 @@ func (s *Service) areaSpellOf(ctx context.Context, campaignID string, caster pla
 	return spellOfPlan(plan), nil
 }
 
-// slotLevelOf is the level a cast was made at, for reading the spell again: the
-// slot's, 0 for a cantrip.
+// slotLevelOf is the level a cast was made at, for reading the spell again: the slot's, else the cast level
+// of the grant it went through, else 0 (a cantrip, or a cast at the spell's own level).
 func slotLevelOf(ev actionEvent) int {
 	if ev.Slot == nil {
-		return 0
+		return int(ev.CastLevel)
 	}
 	return int(ev.Slot.Level)
 }

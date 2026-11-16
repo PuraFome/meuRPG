@@ -42,7 +42,7 @@ import {
   type OutsideCastRequest,
 } from '../../../core/casting/casting-client';
 import { castingErrorText } from '../../../core/casting/casting-errors';
-import { type SlotRow, slotRows } from '../../../core/combat/cast-flow';
+import { type SlotRow, castLevelOf, slotRows } from '../../../core/combat/cast-flow';
 import { ActionKey } from '../../../core/connect/idempotency';
 import { needsAbility } from '../../../core/effects/ability-choice';
 import { SheetFrame } from '../../../shared/sheet/sheet-frame/sheet-frame';
@@ -199,7 +199,15 @@ export class CastOutSheet {
     }
     return slotRows(s.spell?.level ?? 1, s.slots, []);
   });
-  protected readonly level = computed(() => this.slot()?.level ?? this.spell()?.spell?.level ?? 0);
+  /** The level the cast scales at: the slot's, else the one the grant casts at, else the spell's own. */
+  protected readonly level = computed(() => {
+    const pick = this.pick();
+    return castLevelOf(
+      this.slot(),
+      pick?.slot ? null : pick?.grant,
+      this.spell()?.spell?.level ?? 0,
+    );
+  });
   protected readonly rule = computed(() => {
     const s = this.spell();
     return s ? targetRuleOf(s, this.level(), this.data.master) : { kind: 'none' as const, max: 0 };
