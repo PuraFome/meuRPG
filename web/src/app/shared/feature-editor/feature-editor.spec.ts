@@ -487,8 +487,15 @@ describe('FeatureEditor (a trait, a feature)', () => {
       name: 'Truques de lâmina',
       options: [named('k1', 'Golpe do Corvo'), named('k2', 'Asa Partida'), named('', '')],
     });
+    const render = async () => {
+      fixture.detectChanges();
+      await fixture.whenStable();
+    };
+    // The label says which option: "Subir a opção Golpe do Corvo", or "Subir a opção 3" for one with no name.
     const arrow = (verb: 'Subir' | 'Descer', name: string) =>
-      el.querySelector<HTMLButtonElement>(`button[aria-label="${verb} ${name}"]`)!;
+      el.querySelector<HTMLButtonElement>(
+        `button[aria-label="${verb} a opção ${name.replace(/^Opção /, '')}"]`,
+      )!;
 
     it('draws up and down on each row, disabled at the ends, named by the option (or by its place when it has no name)', () => {
       setup(three(), { allowOptions: true, index: -1, count: 0 });
@@ -501,6 +508,47 @@ describe('FeatureEditor (a trait, a feature)', () => {
       expect(arrow('Subir', 'Golpe do Corvo').querySelector('mat-icon')?.textContent).toBe(
         'arrow_upward',
       );
+    });
+
+    it('draws the arrows and the "⋮" as the system\'s icon buttons, each saying which option it moves', () => {
+      setup(three(), { allowOptions: true, index: -1, count: 0 });
+      for (const label of [
+        'Subir a opção Asa Partida',
+        'Descer a opção Asa Partida',
+        'Mais ações da opção Asa Partida',
+        'Mais ações da opção 3',
+      ]) {
+        const b = el.querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`);
+        expect(b, label).not.toBeNull();
+        expect(b!.classList, label).toContain('mat-mdc-icon-button');
+      }
+    });
+
+    it('keeps "Precisa de ajuste" on the option that was refused when it moves (the refusals are by place, the row is the option)', async () => {
+      const refused = {
+        'table_race.traits[1].options[1].prerequisite.requires_option_keys': ['Sem motivo.'],
+      };
+      setup(three(), { allowOptions: true, index: -1, count: 0, issues: refused });
+      await render();
+      const sub = (n: number) =>
+        text(el.querySelectorAll('.opt')[n - 1].querySelector('.opt__sub')!);
+      expect(sub(2)).toContain('Precisa de ajuste');
+      expect(sub(1)).not.toContain('Precisa de ajuste');
+      arrow('Subir', 'Asa Partida').click();
+      fixture.componentRef.setInput('feature', emitted.at(-1));
+      await render();
+      expect(text(el.querySelectorAll('.opt')[0].querySelector('.opt__title')!)).toContain(
+        'Asa Partida',
+      );
+      expect(sub(1)).toContain('Precisa de ajuste');
+      expect(sub(2)).not.toContain('Precisa de ajuste');
+      // The open row is the refused one, and the field inside it still carries the refusal.
+      expect(el.querySelectorAll('.opt')[0].classList).toContain('opt--open');
+      arrow('Descer', 'Asa Partida').click();
+      fixture.componentRef.setInput('feature', emitted.at(-1));
+      await render();
+      expect(sub(2)).toContain('Precisa de ajuste');
+      expect(sub(1)).not.toContain('Precisa de ajuste');
     });
 
     it('draws no arrows for a feature with one option', () => {
@@ -631,7 +679,9 @@ describe('FeatureEditor (a trait, a feature)', () => {
       setup(list(), { allowOptions: true, allowAsks: true, index: -1, count: 0 });
       toggle(2).click();
       await render();
-      el.querySelector<HTMLButtonElement>('button[aria-label="Subir Asa Partida"]')!.click();
+      el.querySelector<HTMLButtonElement>(
+        'button[aria-label="Subir a opção Asa Partida"]',
+      )!.click();
       fixture.componentRef.setInput('feature', emitted.at(-1));
       await render();
       expect(toggle(1).getAttribute('aria-expanded')).toBe('true');
@@ -684,14 +734,25 @@ describe('FeatureEditor (a trait, a feature)', () => {
       const sub = (n: number) => text(rows()[n - 1].querySelector('.opt__sub')!).trim();
       // The row with a line: the dot separates the line from the tag.
       expect(sub(1)).toBe('Soma o dado · errorPrecisa de ajuste');
+      // The dot is not a piece of the tag: it stays with the line (joined to its last word by a no-break space, so a wrap never
+      // starts a line with it) and the tag begins after it.
+      const dot = rows()[0].querySelector('.opt__sub > .opt__dot')!;
+      expect(dot).not.toBeNull();
+      expect(dot.textContent).toBe('\u00a0·');
+      expect(dot.previousSibling?.textContent).toBe('Soma o dado');
+      expect(dot.nextElementSibling?.classList).toContain('opt__bad');
+      expect(rows()[0].querySelector('.opt__bad')?.textContent).not.toContain('·');
       // The row without one: the tag stands alone, with nothing to separate it from.
       expect(sub(2)).toBe('errorPrecisa de ajuste');
+      expect(rows()[1].querySelector('.opt__dot')).toBeNull();
     });
 
     it('takes an option away from the "⋮" menu of its row and puts the focus on the next row', async () => {
       setup(list(), { allowOptions: true, allowAsks: true, index: -1, count: 0 });
       rows()[0]
-        .querySelector<HTMLButtonElement>('button[aria-label="Mais ações de Golpe do Corvo"]')!
+        .querySelector<HTMLButtonElement>(
+          'button[aria-label="Mais ações da opção Golpe do Corvo"]',
+        )!
         .click();
       await render();
       document.querySelector<HTMLButtonElement>('.mat-mdc-menu-panel [role="menuitem"]')!.click();
