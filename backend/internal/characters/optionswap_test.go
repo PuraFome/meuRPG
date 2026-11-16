@@ -38,6 +38,11 @@ func posturesFeature(swap *rulesv1.FeatureSwapLevels) *rulesv1.TableFeature {
 	for _, n := range postureNames {
 		f.Options = append(f.Options, &rulesv1.TableFeature{NamePt: n, DescPt: []string{n + "."}})
 	}
+	// The Heron has a resource of its own and a stance.
+	f.Options[0].Effects = []*rulesv1.TableEffect{
+		{Type: "resource", Resource: "garca", Max: "2", Recharge: "long_rest"},
+		{Type: "state", StateName: "garca", DurationRounds: "10", EndsOn: []string{"dismiss"}, Resource: "garca", Economy: "bonus_action"},
+	}
 	f.Options[len(f.Options)-1].Prerequisite = &rulesv1.OptionPrerequisite{ClassLevel: &rulesv1.OptionClassLevel{ClassKey: "class:fighter", Level: 20}}
 	return f
 }
