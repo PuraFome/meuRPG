@@ -7555,6 +7555,9 @@ message AnswerReactionRequest {
   oneof roll {
     bool roll_in_app = 8;
     int32 typed = 9;
+    // READIED, a readied spell that rolls a pool of dice (Sleep, Color Spray), released at a table with
+    // physical dice: the sum of the pool, as CastSpellRequest.pool_sum.
+    int32 pool_sum = 17;
   }
   string idempotency_key = 10;
   // A maneuver reduction (ManeuverReducePrompt.options[].key): the one the player uses. Needed
@@ -7564,6 +7567,17 @@ message AnswerReactionRequest {
   // Scorching Ray), as CastSpellRequest.targets. It replaces creature_ids; the two
   // together are `invalid_argument`. The server checks them as CastSpell does.
   repeated SpellTarget targets = 14;
+  // READIED: the physical d20s of the held attack or spell attack the release rolls (one face for a
+  // normal roll, the pair for advantage or disadvantage, 1 to 20 each), as RollAttackRequest.d20_faces and
+  // CastSpellRequest.d20_faces. Instead of the `roll` oneof: with roll_in_app, typed or pool_sum it is
+  // `invalid_argument`. Copied one to one into the request the release builds, which checks it as it does.
+  repeated int32 d20_faces = 18;
+  // READIED: the mode of the release's d20 instead of the server's suggestion, with the reason, as
+  // RollAttackRequest.roll_mode and mode_reason (CastSpellRequest's too). Copied one to one into the request the
+  // release builds. `invalid_argument` on an answer that rolls no d20 of its own.
+  RollMode roll_mode = 19;
+  string mode_reason = 20;
+  // Field numbers 12, 13, 15 and 16 are held by the orchestrator's number ledger.
 }
 
 // MarkReactionRollingRequest marks a window as being rolled.
