@@ -70,8 +70,13 @@ CREATE INDEX IF NOT EXISTS favor_refund_prompts_character_idx ON favor_refund_pr
 
 -- The held roll that spent the Inspiration remembers the prompt that spend opened (NULL when it opened none: the spend added something over
 -- everything the roller could not read), so that dropping the hold closes that prompt and no other. A prompt gone leaves the hold with none.
-ALTER TABLE inspiration_holds ADD COLUMN IF NOT EXISTS favor_prompt_id UUID NULL REFERENCES favor_refund_prompts (id) ON DELETE SET NULL;
-CREATE INDEX IF NOT EXISTS inspiration_holds_favor_prompt_idx ON inspiration_holds (favor_prompt_id) WHERE favor_prompt_id IS NOT NULL;
+-- The partial index that serves it is in its own migration (add_inspiration_holds_favor_prompt_index).
+-- The foreign key is named and dropped first, so the migration can run twice (an inline REFERENCES on ADD COLUMN IF NOT EXISTS adds a second
+-- constraint on the rerun in CockroachDB).
+ALTER TABLE inspiration_holds ADD COLUMN IF NOT EXISTS favor_prompt_id UUID NULL;
+ALTER TABLE inspiration_holds DROP CONSTRAINT IF EXISTS inspiration_holds_favor_prompt_id_fkey;
+ALTER TABLE inspiration_holds ADD CONSTRAINT inspiration_holds_favor_prompt_id_fkey
+    FOREIGN KEY (favor_prompt_id) REFERENCES favor_refund_prompts (id) ON DELETE SET NULL;
 
 -- The events of the pass and of the refund: the ask, the pass (favor_passed, already there since 00332), the refusal, the
 -- cancel, the prompt, the refund and the prompt left as it was.
@@ -86,6 +91,7 @@ INSERT INTO session_event_kinds (kind) VALUES
 ON CONFLICT (kind) DO NOTHING;
 
 -- +goose Down
+ALTER TABLE inspiration_holds DROP CONSTRAINT IF EXISTS inspiration_holds_favor_prompt_id_fkey;
 ALTER TABLE inspiration_holds DROP COLUMN IF EXISTS favor_prompt_id;
 DELETE FROM session_events WHERE kind IN ('favor_pass_asked', 'favor_pass_refused', 'favor_pass_canceled', 'favor_refund_prompted', 'favor_refunded', 'favor_refund_kept');
 DELETE FROM session_event_kinds WHERE kind IN ('favor_pass_asked', 'favor_pass_refused', 'favor_pass_canceled', 'favor_refund_prompted', 'favor_refunded', 'favor_refund_kept');

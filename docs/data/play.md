@@ -187,6 +187,7 @@ erDiagram
     characters ||--o{ inspiration_holds : "character_id"
     combatants |o--o{ inspiration_holds : "combatant_id"
     encounters |o--o{ inspiration_holds : "encounter_id"
+    favor_refund_prompts |o--o{ inspiration_holds : "favor_prompt_id"
     campaigns ||--o{ revivify_requests : "campaign_id"
     characters ||--o{ revivify_requests : "caster_character_id"
     game_sessions ||--o{ revivify_requests : "game_session_id"
@@ -366,7 +367,7 @@ The index `character_favor_campaign_idx` serves the list of a campaign's holders
 Both foreign keys cascade.
 Only a player character gets a row: the server refuses an NPC, a reserved character and any id that is not a player character of the campaign.
 The grant is the session event `favor_granted`, keyed by the request's idempotency key.
-`inspiration_holds.favor_spent` is a column on held rolls, and `inspiration_holds.favor_prompt_id` the refund prompt that spend opened (null when it opened none; the foreign key sets it null when the prompt is deleted, and a partial index serves that).
+`inspiration_holds.favor_spent` is a column on held rolls, and `inspiration_holds.favor_prompt_id` the refund prompt that spend opened (null when it opened none; the foreign key sets it null when the prompt is deleted, and the partial index `inspiration_holds_favor_prompt_idx`, in its own migration, serves that).
 
 ## `favor_passes` and `favor_refund_prompts`
 
