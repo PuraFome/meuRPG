@@ -132,6 +132,13 @@ func TestMR025_ALongCastWhoseGrantIsGoneIsRefusedAtTheFinish(t *testing.T) {
 			if c := a.castByID(t, a.master, id); c.GetStatus() != playv1.OutsideCastStatus_OUTSIDE_CAST_STATUS_CASTING {
 				t.Errorf("cast after the refused finish = %v, want it still being cast", c.GetStatus())
 			}
+			// The player can still give the casting up.
+			if err := a.interrupt(t, a.bia, id); err != nil {
+				t.Fatalf("abandon after the refused finish: %v", err)
+			}
+			if c := a.castByID(t, a.master, id); c.GetStatus() != playv1.OutsideCastStatus_OUTSIDE_CAST_STATUS_FAILED {
+				t.Errorf("cast after the abandon = %v, want it failed", c.GetStatus())
+			}
 		})
 	}
 }
