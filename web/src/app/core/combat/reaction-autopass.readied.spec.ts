@@ -29,7 +29,10 @@ describe("the master's clock of a readied window (#857)", () => {
   it('switches to the one wait of 120 s counted from the server mark, not from when this screen saw it', () => {
     const clock = new AutoPassClock();
     clock.sync([readied()], T0);
-    clock.sync([readied({ rolling: true, waitBeganAt: timestampFromMs(T0 + 10 * MS) })], T0 + 12 * MS);
+    clock.sync(
+      [readied({ rolling: true, waitBeganAt: timestampFromMs(T0 + 10 * MS) })],
+      T0 + 12 * MS,
+    );
     expect(clock.secondsLeft('w1', T0 + 12 * MS)).toBe(118);
     expect(clock.secondsLeft('w1', T0 + 22 * MS)).toBe(108);
   });

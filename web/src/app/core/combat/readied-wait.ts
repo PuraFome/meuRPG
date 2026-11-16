@@ -58,7 +58,10 @@ export function masterRowWait(
   seconds: number | undefined,
 ): { readonly onMap: boolean; readonly text: string } {
   const lead = onMap ? 'No mapa' : `Esperando ${reactor}`;
-  return { onMap, text: seconds === undefined ? lead : `${lead} · passa sozinho em ${clockText(seconds)}` };
+  return {
+    onMap,
+    text: seconds === undefined ? lead : `${lead} · passa sozinho em ${clockText(seconds)}`,
+  };
 }
 
 /** The master's band above the order, in one line. */
