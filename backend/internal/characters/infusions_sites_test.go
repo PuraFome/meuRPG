@@ -56,6 +56,7 @@ var infusionSites = map[string]string{
 	"Service.checkLevelUpDue":     "none: it reads the total level and the XP of the next one",
 	"Service.learnableLists":      "none: it reads the spell lists of the classes",
 	"Service.endRestPicks":        "none: it reads the daily choices",
+	"Service.endGivenUpOptions":   "none: it reads the sources of the resources and states a level-up's given-up options defined, and no infusion defines one",
 	"mayNeedRestState":            "none: it reads whether a rest binds a choice",
 	"withDailyPick":               "none: it reads the daily choices",
 	"Service.refreshKnownIssues":  "none: the issues of a sheet come from its keys, and no infusion raises one",
