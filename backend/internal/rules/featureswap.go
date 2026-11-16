@@ -3,6 +3,7 @@ package rules
 import (
 	"fmt"
 	"slices"
+	"strconv"
 
 	"github.com/PuraFome/meuRPG/backend/internal/rules/srd51"
 )
@@ -165,4 +166,32 @@ func unmatchedRemovals(gone []string, groups []SwapGroup) []string {
 		take(g, map[string]bool{})
 	}
 	return slices.DeleteFunc(slices.Clone(gone), func(k string) bool { _, ok := owner[k]; return ok })
+}
+
+// withSwapLine is the text of the table feature key, at class level level, with the line that says at which levels one of its
+// options can be swapped; the text of a feature that allows no swap is the master's own.
+func (c *content) withSwapLine(key string, level int, desc []string) []string {
+	s, ok := c.featureSwaps[key]
+	if !ok {
+		return desc
+	}
+	return slices.Concat(desc, []string{swapLinePT(s, level)})
+}
+
+// swapLinePT says, in Portuguese, when a player may swap an option of a feature that is at class level from.
+func swapLinePT(s FeatureSwapLevels, from int) string {
+	var when string
+	switch levels := slices.Sorted(slices.Values(s.Levels)); {
+	case s.EveryLevel:
+		when = fmt.Sprintf("em todos os níveis da classe a partir do nível %d", from)
+	case len(levels) == 1:
+		when = fmt.Sprintf("no nível %d da classe", levels[0])
+	default:
+		names := make([]string, len(levels))
+		for i, n := range levels {
+			names[i] = strconv.Itoa(n)
+		}
+		when = "nos níveis " + joinList(names) + " da classe"
+	}
+	return "Troca de opção: " + when + ", ao subir de nível, você pode trocar uma opção escolhida aqui por outra da mesma lista."
 }
