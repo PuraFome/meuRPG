@@ -126,11 +126,12 @@
   gap: var(--mr-space-1);
   color: var(--mr-danger-ink);
   font-size: var(--mr-font-13);
+  // A line of its own height, so the icon sits by the middle of the first line however many lines follow.
+  line-height: 18px;
 }
 .dice__err .mat-icon {
   flex: none;
-  // The first line of the words is taller than the icon: its middle sits 1.5px lower.
-  margin-top: 1.5px;
+  margin-top: 2px;
   width: var(--mr-font-14);
   height: var(--mr-font-14);
   font-size: var(--mr-font-14);
