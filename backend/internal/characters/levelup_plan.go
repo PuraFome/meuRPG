@@ -326,7 +326,7 @@ func checkPlannedLevel(t levelUpTarget, plan *levelUpPlan) error {
 	if plan.refusal != nil {
 		return nil
 	}
-	err := rules.CheckLevelUp(t.build, buildOf(plan.sheet), t.content)
+	err := rules.CheckLevelUp(t.build, t.buildOf(plan.sheet), t.content)
 	if err == nil {
 		return nil
 	}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"uuid"
 
+	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
 )
 
@@ -90,4 +91,28 @@ func (s *Service) setInfusionAttuned(ctx context.Context, q *charactersdb.Querie
 		return false, wrap("set the attunement of an infusion", err)
 	}
 	return n > 0, nil
+}
+
+// endInfusionsOfGoneGear ends, with item_gone, the live gear records of the holder whose piece the sheet no longer lists:
+// the armor, the shield or a weapon taken off the sheet. A piece moved between equipped and carried is still listed, so
+// its record stays. It runs in the transaction of the write that changed the sheet, after that write locked the holder's
+// row. A sheet that is not a full one lists no gear and has no records to end.
+func (s *Service) endInfusionsOfGoneGear(ctx context.Context, q *charactersdb.Queries, campaignID, holderID string, next *charactersv1.FullSheet) error {
+	if next == nil {
+		return nil
+	}
+	live, err := q.ListLiveInfusionsOfHolder(ctx, holderID)
+	if err != nil {
+		return wrap("read the infusions of a holder", err)
+	}
+	build := buildOf(next)
+	for _, r := range live {
+		if r.ItemKind != infusionItemGear || build.ListsGear(r.ItemKey) {
+			continue
+		}
+		if _, err := s.endInfusion(ctx, q, campaignID, r.ID, infusionEndedItemGone); err != nil {
+			return err
+		}
+	}
+	return nil
 }

@@ -149,6 +149,9 @@ func (s *Service) saveSheetIn(ctx context.Context, tx pgx.Tx, u *sheetSave, t se
 	if err := dropRemovedItemCharges(ctx, q, u.id, u.sheet.GetFull()); err != nil {
 		return row, err
 	}
+	if err := s.endInfusionsOfGoneGear(ctx, q, u.m.CampaignID, u.id, u.sheet.GetFull()); err != nil {
+		return row, err
+	}
 	t.Touch() // the sheet changed, for the master and the table alike: the number moves once
 	return row, s.tellGearChange(ctx, tx, u.m.CampaignID, u.id, stored.GetFull(), u.sheet.GetFull(), t)
 }
@@ -197,7 +200,12 @@ func (s *Service) checkSheetSave(ctx context.Context, tx pgx.Tx, u *sheetSave, c
 	if err != nil {
 		return nil, err
 	}
-	if err := refuseSheetChanges(u.content, u.m, current, stored, u.sheet); err != nil {
+	// The character is locked: the records read here are the ones the save changes against.
+	infusions, err := s.holderInfusions(ctx, s.queries.WithTx(tx), current.ID)
+	if err != nil {
+		return nil, err
+	}
+	if err := refuseSheetChanges(u.content, u.m, current, stored, u.sheet, infusions); err != nil {
 		return nil, err
 	}
 	return stored, nil
@@ -205,7 +213,7 @@ func (s *Service) checkSheetSave(ctx context.Context, tx pgx.Tx, u *sheetSave, c
 
 // refuseSheetChanges refuses what a save may not change from the stored sheet, in the
 // order the client is answered, and carries over what the server keeps.
-func refuseSheetChanges(content *rules.Content, m authz.Membership, current charactersdb.Character, stored, sheet *charactersv1.CharacterSheet) error {
+func refuseSheetChanges(content *rules.Content, m authz.Membership, current charactersdb.Character, stored, sheet *charactersv1.CharacterSheet, infusions []rules.InfusionRecord) error {
 	if err := refuseNewChoices(content, m, current.ID, stored.GetFull(), sheet.GetFull()); err != nil {
 		return err
 	}
@@ -220,7 +228,7 @@ func refuseSheetChanges(content *rules.Content, m authz.Membership, current char
 	if err := refuseFeatChange(m, stored.GetFull(), sheet.GetFull()); err != nil {
 		return err
 	}
-	if err := refuseInfusedBonus(content, stored.GetFull(), sheet.GetFull()); err != nil {
+	if err := refuseInfusedBonus(content, stored.GetFull(), sheet.GetFull(), infusions); err != nil {
 		return err
 	}
 	// The ability origin is the server's: kept from the stored sheet, and a
@@ -240,13 +248,15 @@ func refuseSheetChanges(content *rules.Content, m authz.Membership, current char
 }
 
 // refuseInfusedBonus refuses a manual magic bonus that the save adds or changes on a piece an infusion gives its bonus.
-// A pair the stored sheet already has is left alone, so the sheet keeps saving. The builds carry the infusion records
-// once the loader sets Build.Infusions; without them nothing is infused.
-func refuseInfusedBonus(content *rules.Content, stored, sheet *charactersv1.FullSheet) error {
+// A pair the stored sheet already has is left alone, so the sheet keeps saving. Both builds carry the live infusion
+// records of the character.
+func refuseInfusedBonus(content *rules.Content, stored, sheet *charactersv1.FullSheet, infusions []rules.InfusionRecord) error {
 	if sheet == nil {
 		return nil
 	}
-	err := rules.CheckManualBonuses(buildOf(stored), buildOf(sheet), content)
+	before, after := buildOf(stored), buildOf(sheet)
+	before.Infusions, after.Infusions = infusions, infusions
+	err := rules.CheckManualBonuses(before, after, content)
 	if ve, ok := errors.AsType[*rules.ValidationError](err); ok {
 		return invalidArgument(&fieldError{field: "sheet." + ve.Field, err: errors.New(ve.Message)})
 	}

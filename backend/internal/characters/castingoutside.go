@@ -209,7 +209,11 @@ func (s *Service) MageArmorAC(ctx context.Context, tx pgx.Tx, campaignID, charac
 	if err != nil {
 		return link.MageArmor{}, s.dbError(ctx, "read rules content", err)
 	}
-	return mageArmorOf(buildWithStates(full, stateKeysOf(rows[0].ActiveStates)), content), nil
+	build, err := s.infusedBuild(ctx, s.queriesIn(tx), rows[0].ID, full, stateKeysOf(rows[0].ActiveStates))
+	if err != nil {
+		return link.MageArmor{}, s.dbError(ctx, "read the infusions of a character for Mage Armor", err)
+	}
+	return mageArmorOf(build, content), nil
 }
 
 // mageArmorOf is what Mage Armor does to the sheet b: nothing while it wears armor, else

@@ -74,6 +74,12 @@
                     "type": "choice",
                     "choice": "feature",
                     "count": 3
+                  },
+                  {
+                    "type": "resource",
+                    "resource": "itens_infundidos",
+                    "max": "3",
+                    "recharge": "none"
                   }
                 ],
                 "options": [

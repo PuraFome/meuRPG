@@ -190,10 +190,37 @@ It is idempotent by state: asking for the state the piece has changes nothing.
 The answer is the carried keys and the revision, not the sheet: a screen reads the sheet again. `DerivedSheet.gear` lists every piece (equipped or carried) with its Portuguese name, whether it is two-handed and the armor class the sheet would have with that piece's state flipped (`armor_class_if_toggled`, derived by the server with the flipped state; 0 when it is not previewed, as for Mage Armor); the browser never computes an armor class. A carried piece therefore never leaves the list.
 Inside the transaction and before the write it asks play (`ReviewHost.EquipInCombat`) what a running combat charges ([Combat](play/combat.md#equipping-and-stowing-gear)).
 
+## Infusions on the sheet
+
+A record of an infusion names the character whose gear it sits on as its holder.
+The live records of a holder are `rules.Build.Infusions`, read by `holderInfusions` (`infusions_load.go`).
+Every read or check that derives a number an infusion changes builds with them.
+They are the sheet a client reads, the preview of a sheet, the save check, the attunement count, the level-up plan, preview and apply, the combat's armor class and attacks, and Mage Armor.
+A build that reads no such number builds without them.
+`infusions_sites_test.go` lists every build of a sheet in the package and says which it is, so a new one has to say.
+A write reads the records after it locked the character's row.
+`FullSheet.infusions` lists one `SheetInfusion` per live record on every read, valid or not, the oldest first (`since`, then the id).
+Each row has the record, the infusion's name, the piece's or the object's name, whether the app computes it, whether it is valid now, the bonus it gives at the class level and what it asks of attunement.
+A text only record and an object record are rows too.
+The server fills the list and a save ignores it.
+A host feature with the typed infusion limit shows no `resource` effect of its own in `Derived.Resources`: the live count against the limit is the one count the sheet shows.
+A feature with no limit rule keeps its resource.
+
+A save that takes a gear key off the sheet ends the live records on it with the reason `item_gone`.
+The records are ended in the transaction of the save, whoever holds the piece: the artificer's own sheet or another character's.
+Moving a piece between equipped and carried keeps the piece listed, so its record stays.
+No other writer takes a key off `armor_key`, `weapon_keys` or `shield`: equipping, the level-up, the choices, the daily choices, attunement, the XP award and the removal of a consumable leave them alone.
+The campaign package brings no records.
+
 ## Attunement
 
 Two kinds of entry can be attuned: a magic item of `FullSheet.magic_items` and a +N piece of `FullSheet.item_bonuses` that names a catalog item (`ItemBonus.item_key`).
 A valid infusion record that asks for attunement counts toward the maximum when it is attuned, as an attuned magic item does (`rules.AttunedCount`).
+The record is a third kind of entry, listed by `entriesOf` after the magic items: its id is `infusion:<record id>`, and `SetAttunement` names it like any other.
+Only a live record that names the character as holder and whose infusion asks for attunement is an entry.
+A record whose infusion asks none, an ended record, a record of another holder and an id that names no record are unknown entries: `invalid_argument` on `entry_id`.
+The window and the limit of three are the ones of every entry, and the count loads the records.
+The record's `attuned` is written through the store in the transaction of the sheet's write, so the revision moves and the reply lists the record attuned.
 A `SheetMagicItem` has a key, `attuned`, an `id`, and, filled by the server on every read, `requires_attunement`, `restriction_pt`, `restriction`, `same_item_attuned` and `name_pt`.
 At most 20 magic items; two copies of one item are two entries.
 The entry id is unique on the sheet: a magic item's is `m<n>`, given by the server to a new entry and kept on every save, and a +N piece's is `bonus:<key>`.

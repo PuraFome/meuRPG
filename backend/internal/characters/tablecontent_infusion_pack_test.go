@@ -42,7 +42,12 @@ func loadInfusionPack(t testing.TB) *rulesv1.TableContentPack {
 // infusionContent is the engine's content with the fixture's class on top of the SRD.
 func infusionContent(t testing.TB) *rules.Content {
 	t.Helper()
-	pack := loadInfusionPack(t)
+	return contentOfPack(t, loadInfusionPack(t))
+}
+
+// contentOfPack is the engine's content with the pack's entries on top of the SRD.
+func contentOfPack(t testing.TB, pack *rulesv1.TableContentPack) *rules.Content {
+	t.Helper()
 	var rows []entryRow
 	for _, e := range pack.GetEntries() {
 		body, ok := bodyMessage(e).(tableBody)

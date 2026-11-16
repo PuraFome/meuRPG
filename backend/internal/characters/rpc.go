@@ -533,7 +533,11 @@ func (s *Service) character(ctx context.Context, content *rules.Content, row cha
 		}
 		displayName = displayNames[*row.PlayerUserID]
 	}
-	c, err := s.characterToProto(content, row, m, displayName)
+	infusions, err := s.holderInfusions(ctx, s.queries, row.ID)
+	if err != nil {
+		return nil, err
+	}
+	c, err := s.characterToProto(content, row, m, displayName, infusions)
 	if err != nil {
 		return nil, err
 	}
