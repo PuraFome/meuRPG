@@ -20,6 +20,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/names"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/sessiontell"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
+	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
@@ -43,15 +44,54 @@ type infusionResult struct {
 	revision int32 // the infuser's sheet revision after the write (or as it stands, for an answer that wrote nothing)
 }
 
-// infusionsChanged is the one call the three writes make after their change. It raises the infuser's revision, so a
-// sheet that is open (and an editor that holds the old number) reads again, and tells the session the screens changed.
-func (s *Service) infusionsChanged(ctx context.Context, q *charactersdb.Queries, t sessiontell.Tell, campaignID string, current charactersdb.Character) (charactersdb.Character, error) {
-	row, err := q.TouchCharacterRevision(ctx, charactersdb.TouchCharacterRevisionParams{CampaignID: campaignID, ID: current.ID, Now: s.now()})
+// infusionsChanged is the one call the three writes make after their change, with everything the write changed (the records
+// that ended first, then the one infused or moved): one call for a write, so play writes its events in the order they happened
+// and tells the streams once. It raises the infuser's revision, so a sheet that is open (and an editor that holds the old
+// number) reads again, tells play, and tells the master and the owner that the infusions changed.
+func (s *Service) infusionsChanged(ctx context.Context, tx pgx.Tx, t sessiontell.Tell, m authz.Membership, current charactersdb.Character, changes []link.InfusionChange) (charactersdb.Character, error) {
+	q := s.queries.WithTx(tx)
+	row, err := q.TouchCharacterRevision(ctx, charactersdb.TouchCharacterRevisionParams{CampaignID: m.CampaignID, ID: current.ID, Now: s.now()})
 	if err != nil {
 		return current, wrap("raise the revision of an infuser", err)
 	}
 	t.Touch()
-	return row, nil
+	return row, s.reportInfusions(ctx, tx, t, m.CampaignID, m.UserID, row, changes)
+}
+
+// reportInfusions tells play what a write changed in the records, in the transaction of the write (play writes the session
+// event of each change when the campaign has an open session; play may refuse, and the write rolls back), and tells the
+// master and the owner of each character the records name (the artificer, and the holder when it is another character) that
+// its infusions changed once the transaction commits. It tells nothing for a write that changed nothing.
+func (s *Service) reportInfusions(ctx context.Context, tx pgx.Tx, t sessiontell.Tell, campaignID, actorUserID string, current charactersdb.Character, changes []link.InfusionChange) error {
+	if len(changes) == 0 {
+		return nil
+	}
+	if s.reviewHost != nil {
+		if err := s.reviewHost.InfusionChanged(ctx, tx, campaignID, actorUserID, changes, t); err != nil {
+			return err
+		}
+	}
+	q := s.queries.WithTx(tx)
+	var ids []string
+	for _, c := range changes {
+		ids = append(ids, c.ArtificerID, c.HolderID)
+	}
+	slices.Sort(ids)
+	for _, id := range slices.Compact(ids) {
+		owner := conv.OrZero(current.PlayerUserID)
+		if id != current.ID {
+			other, err := q.GetCharacter(ctx, charactersdb.GetCharacterParams{CampaignID: campaignID, ID: id})
+			if errors.Is(err, pgx.ErrNoRows) {
+				continue
+			}
+			if err != nil {
+				return wrap("read the owner of an infusion's character", err)
+			}
+			owner = conv.OrZero(other.PlayerUserID)
+		}
+		t.CharacterEvent(owner, id, hintInfusionsChanged)
+	}
+	return nil
 }
 
 // checkInfuser refuses what every write refuses of the locked infuser, in this order: a dead character, a stale revision.
@@ -161,7 +201,7 @@ func (s *Service) InfuseItem(
 // infuseIn is the transaction of InfuseItem: the infuser locked, the replay of the key answered, the infusion checked
 // (known, not in use, the item taken or not, the limit), the records changed and the attunement made.
 func (s *Service) infuseIn(ctx context.Context, tx pgx.Tx, content *rules.Content, m authz.Membership, msg *charactersv1.InfuseItemRequest, key string, t sessiontell.Tell) (infusionResult, error) {
-	w := infusionTx{q: s.queries.WithTx(tx), content: content, m: m, t: t, key: key, hash: idem.Hash(msg)}
+	w := infusionTx{tx: tx, q: s.queries.WithTx(tx), content: content, m: m, t: t, key: key, hash: idem.Hash(msg)}
 	current, replay, err := s.openInfusionWrite(ctx, w, msg.GetCharacterId(), msg.GetRevision())
 	if err != nil || replay != nil {
 		return orEmpty(replay), err
@@ -174,7 +214,8 @@ func (s *Service) infuseIn(ctx context.Context, tx pgx.Tx, content *rules.Conten
 	if err != nil {
 		return infusionResult{}, err
 	}
-	if err := s.endForInfusion(ctx, w, plan.taken, plan.ends); err != nil {
+	changes, err := s.endForInfusion(ctx, w, plan.taken, plan.ends)
+	if err != nil {
 		return infusionResult{}, err
 	}
 	rec, err := s.insertInfusion(ctx, w.q, newInfusion{
@@ -189,12 +230,13 @@ func (s *Service) infuseIn(ctx context.Context, tx pgx.Tx, content *rules.Conten
 			return infusionResult{}, err
 		}
 	}
-	return s.closeInfusionWrite(ctx, w, current, rec.ID, firstOf(plan.ends))
+	return s.closeInfusionWrite(ctx, w, current, rec.ID, firstOf(plan.ends), append(changes, recordChange(link.InfusionInfused, rec)))
 }
 
 // infusionTx is what a write works on: the queries of its transaction, the content, the caller, what it tells, and the
 // idempotency key of the request with its hash.
 type infusionTx struct {
+	tx      pgx.Tx
 	q       *charactersdb.Queries
 	content *rules.Content
 	m       authz.Membership
@@ -238,25 +280,30 @@ func (s *Service) openInfusionWrite(ctx context.Context, w infusionTx, character
 }
 
 // endForInfusion ends the records a write gives up: the ones on the item that are not valid now (`taken`) and the one a new
-// infusion replaces (`replaced`).
-func (s *Service) endForInfusion(ctx context.Context, w infusionTx, taken, replaced []string) error {
-	for _, id := range taken {
-		if _, err := s.endInfusion(ctx, w.q, w.m.CampaignID, id, infusionEndedTaken); err != nil {
-			return err
+// infusion replaces (`replaced`). It returns what ended, in that order, for the write to tell play.
+func (s *Service) endForInfusion(ctx context.Context, w infusionTx, taken, replaced []string) ([]link.InfusionChange, error) {
+	var ended []link.InfusionChange
+	for _, end := range []struct {
+		ids    []string
+		reason string
+	}{{taken, infusionEndedTaken}, {replaced, infusionEndedReplaced}} {
+		for _, id := range end.ids {
+			rec, ok, err := s.endInfusion(ctx, w.q, w.m.CampaignID, id, end.reason)
+			if err != nil {
+				return nil, err
+			}
+			if ok {
+				ended = append(ended, endedChange(rec, end.reason))
+			}
 		}
 	}
-	for _, id := range replaced {
-		if _, err := s.endInfusion(ctx, w.q, w.m.CampaignID, id, infusionEndedReplaced); err != nil {
-			return err
-		}
-	}
-	return nil
+	return ended, nil
 }
 
 // closeInfusionWrite is what every write that changed a record ends with: the seam, the answer kept under the key, and the
 // infusion as the sheet reads it now.
-func (s *Service) closeInfusionWrite(ctx context.Context, w infusionTx, current charactersdb.Character, recordID, endedID string) (infusionResult, error) {
-	row, err := s.infusionsChanged(ctx, w.q, w.t, w.m.CampaignID, current)
+func (s *Service) closeInfusionWrite(ctx context.Context, w infusionTx, current charactersdb.Character, recordID, endedID string, changes []link.InfusionChange) (infusionResult, error) {
+	row, err := s.infusionsChanged(ctx, w.tx, w.t, w.m, current, changes)
 	if err != nil {
 		return infusionResult{}, err
 	}
@@ -594,7 +641,7 @@ func (s *Service) liveRecordRow(ctx context.Context, q *charactersdb.Queries, cu
 
 // moveIn is the transaction of MoveInfusion.
 func (s *Service) moveIn(ctx context.Context, tx pgx.Tx, content *rules.Content, m authz.Membership, msg *charactersv1.MoveInfusionRequest, key string, t sessiontell.Tell) (infusionResult, error) {
-	w := infusionTx{q: s.queries.WithTx(tx), content: content, m: m, t: t, key: key, hash: idem.Hash(msg)}
+	w := infusionTx{tx: tx, q: s.queries.WithTx(tx), content: content, m: m, t: t, key: key, hash: idem.Hash(msg)}
 	current, replay, err := s.openInfusionWrite(ctx, w, msg.GetCharacterId(), msg.GetRevision())
 	if err != nil || replay != nil {
 		return orEmpty(replay), err
@@ -623,17 +670,20 @@ func (s *Service) moveIn(ctx context.Context, tx pgx.Tx, content *rules.Content,
 		infusion, err := s.infusionAnswerOf(ctx, w.q, v, rec.ID) // already there: nothing moves
 		return infusionResult{infusion: infusion, revision: current.Revision}, err
 	}
-	if err := s.endForInfusion(ctx, w, taken, nil); err != nil {
+	changes, err := s.endForInfusion(ctx, w, taken, nil)
+	if err != nil {
 		return infusionResult{}, err
 	}
-	kind := infusionItemGear
+	kind, itemKey := infusionItemGear, choice.gearKey
 	if choice.object() {
-		kind = infusionItemObject
+		kind, itemKey = infusionItemObject, objectItemKey(rec.ID)
 	}
 	if _, err := s.moveInfusion(ctx, w.q, m.CampaignID, rec.ID, kind, choice.gearKey, choice.objectName); err != nil {
 		return infusionResult{}, err
 	}
-	return s.closeInfusionWrite(ctx, w, current, rec.ID, "")
+	moved := recordChange(link.InfusionMoved, rec)
+	moved.ItemKind, moved.ItemKey = kind, itemKey
+	return s.closeInfusionWrite(ctx, w, current, rec.ID, "", append(changes, moved))
 }
 
 // EndInfusion implements charactersv1connect.InfusionServiceHandler.
@@ -687,9 +737,10 @@ func (s *Service) endIn(ctx context.Context, tx pgx.Tx, m authz.Membership, msg 
 	if err != nil {
 		return endedInfusion{}, err
 	}
-	if _, err := s.endInfusion(ctx, q, m.CampaignID, rec.ID, infusionEndedEnded); err != nil {
+	ended, _, err := s.endInfusion(ctx, q, m.CampaignID, rec.ID, infusionEndedEnded)
+	if err != nil {
 		return endedInfusion{}, err
 	}
-	row, err := s.infusionsChanged(ctx, q, t, m.CampaignID, current)
+	row, err := s.infusionsChanged(ctx, tx, t, m, current, []link.InfusionChange{endedChange(ended, infusionEndedEnded)})
 	return endedInfusion{id: rec.ID, revision: row.Revision}, err
 }

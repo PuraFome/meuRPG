@@ -55,7 +55,7 @@ Related pages: [Table content](characters-table-content.md) (live content, switc
 | `SetGallery` | `Gallery` | Which images are in a campaign's gallery (NPC portraits), from `maps`. |
 | `SetLive` | `Live` | The session stream: `PublishXPChanged`, `PublishVitalsChanged`, `PublishContentChanged`, implemented by `play`. |
 | `SetCreatureHost` | `CreatureHost` | The combat that holds a character's creatures, from `play`. |
-| `SetReviewHost` | `ReviewHost` | The streams a review or revival is told on, the combat a revived character returns to, `GearChanged` and `ArmorWorn` (Mage Armor follows the equipped armor and shield), and `EquipInCombat` (the combat's cost for a gear change), from `play`. |
+| `SetReviewHost` | `ReviewHost` | The streams a review or revival is told on, the combat a revived character returns to, `GearChanged` and `ArmorWorn` (Mage Armor follows the equipped armor and shield), `EquipInCombat` (the combat's cost for a gear change) and `InfusionChanged` (the session events and the combat of an infusion change), from `play`. |
 | `SetLevelUps` | `LevelUps` | Whether a character can level up (RN-12), from `progression`. |
 | `SetCampaignNames` | `CampaignNames` | The campaign's name for an exported content pack (optional). |
 | `Config.Dice` | `DiceRules` | The campaign's dice setting (RN-18), from `campaigns`. |
@@ -312,6 +312,15 @@ Every write that changes a record calls `infusionsChanged` (`infusions_write.go`
 It raises the artificer's `revision`, so an editor that holds the old one is told and an open sheet reads again.
 It tells the session through `Touch`.
 It is the one seam the three writes share after their change.
+
+The seam also tells play, through `ReviewHost.InfusionChanged`, once for the whole write.
+The call carries the list of what changed, in the order it happened: the records that ended (`taken`, `replaced`) first, then the one infused or moved.
+One call for the write, and not one for each record, so play writes its events in that order and tells its streams once.
+A change holds ids and keys only: the record, the artificer, the holder, the infusion's key, the item and why a record ended.
+Play may refuse, and then the whole write rolls back.
+A retry that finds its key stored calls nothing.
+The sheet save does the same for the records of a piece that left the sheet (`item_gone`), in the save's own transaction.
+After the call the seam tells the master and the owner of each character the changes name that its infusions changed (`character_infusions_changed`, a hint with the character's id and nothing else).
 
 ## Attunement
 

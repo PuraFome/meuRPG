@@ -163,7 +163,7 @@ func TestSetAttunementRefusesWhatIsNoEntryOfTheCharacter(t *testing.T) {
 	_, err = it.attuneEntry(it.master, friendNow, cloakEntry, true)
 	wantEditorRefusal(t, "the artificer's record on another sheet", err, unknown)
 
-	ended, err := it.h.svc.endInfusion(t.Context(), it.h.svc.queries, it.campaign, cloak.ID, infusionEndedEnded)
+	_, ended, err := it.h.svc.endInfusion(t.Context(), it.h.svc.queries, it.campaign, cloak.ID, infusionEndedEnded)
 	if err != nil || !ended {
 		t.Fatalf("endInfusion() = %v, %v", ended, err)
 	}

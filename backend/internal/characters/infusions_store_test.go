@@ -67,7 +67,7 @@ func TestInfusionStoreInsertAndLists(t *testing.T) {
 		t.Errorf("count = %d, %v; want 2", n, err)
 	}
 	// An ended record leaves the live lists and the count.
-	if ok, err := tb.h.svc.endInfusion(t.Context(), tb.h.svc.queries, tb.campaign, first.ID, infusionEndedReplaced); err != nil || !ok {
+	if _, ok, err := tb.h.svc.endInfusion(t.Context(), tb.h.svc.queries, tb.campaign, first.ID, infusionEndedReplaced); err != nil || !ok {
 		t.Fatalf("endInfusion() = %v, %v; want true", ok, err)
 	}
 	held, err := tb.h.svc.queries.ListLiveInfusionsOfHolder(t.Context(), tb.artif)
@@ -122,7 +122,7 @@ func TestInfusionStoreEndOnlyALiveRecord(t *testing.T) {
 	t.Parallel()
 	tb := newInfusionTable(t)
 	rec := tb.insert(t, tb.artif, "equipment:shield")
-	ok, err := tb.h.svc.endInfusion(t.Context(), tb.h.svc.queries, tb.campaign, rec.ID, infusionEndedEnded)
+	_, ok, err := tb.h.svc.endInfusion(t.Context(), tb.h.svc.queries, tb.campaign, rec.ID, infusionEndedEnded)
 	if err != nil || !ok {
 		t.Fatalf("first end = %v, %v; want true", ok, err)
 	}
@@ -131,7 +131,7 @@ func TestInfusionStoreEndOnlyALiveRecord(t *testing.T) {
 		t.Fatalf("the ended record = %+v, want an end time and the reason", ended)
 	}
 	tb.h.clock.Advance(time.Hour)
-	ok, err = tb.h.svc.endInfusion(t.Context(), tb.h.svc.queries, tb.campaign, rec.ID, infusionEndedItemGone)
+	_, ok, err = tb.h.svc.endInfusion(t.Context(), tb.h.svc.queries, tb.campaign, rec.ID, infusionEndedItemGone)
 	if err != nil || ok {
 		t.Errorf("second end = %v, %v; want false, nil", ok, err)
 	}
@@ -163,7 +163,7 @@ func TestInfusionStoreMoveOnlyALiveRecord(t *testing.T) {
 	if back := tb.get(t, rec.ID); back.ItemKind != infusionItemGear || back.ItemKey != "equipment:chain-mail" || back.ObjectName != "" {
 		t.Errorf("the record moved back to gear = %+v", back)
 	}
-	if _, err := tb.h.svc.endInfusion(t.Context(), tb.h.svc.queries, tb.campaign, rec.ID, infusionEndedEnded); err != nil {
+	if _, _, err := tb.h.svc.endInfusion(t.Context(), tb.h.svc.queries, tb.campaign, rec.ID, infusionEndedEnded); err != nil {
 		t.Fatal(err)
 	}
 	ok, err = tb.h.svc.moveInfusion(t.Context(), tb.h.svc.queries, tb.campaign, rec.ID, infusionItemGear, "equipment:shield", "")
@@ -194,7 +194,7 @@ func TestInfusionOtherCampaignTouchesNothing(t *testing.T) {
 	rec := tb.insert(t, tb.artif, "equipment:shield")
 	other := "00000000-0000-4000-8000-0000000000aa"
 	q := tb.h.svc.queries
-	if ok, err := tb.h.svc.endInfusion(t.Context(), q, other, rec.ID, infusionEndedEnded); err != nil || ok {
+	if _, ok, err := tb.h.svc.endInfusion(t.Context(), q, other, rec.ID, infusionEndedEnded); err != nil || ok {
 		t.Errorf("end from another campaign = %v, %v; want false, nil", ok, err)
 	}
 	if ok, err := tb.h.svc.moveInfusion(t.Context(), q, other, rec.ID, infusionItemGear, "equipment:chain-mail", ""); err != nil || ok {
@@ -222,7 +222,7 @@ func TestInfusionStoreSetAttuned(t *testing.T) {
 	if !got.Attuned {
 		t.Error("the record is not attuned")
 	}
-	if _, err := tb.h.svc.endInfusion(t.Context(), tb.h.svc.queries, tb.campaign, rec.ID, infusionEndedEnded); err != nil {
+	if _, _, err := tb.h.svc.endInfusion(t.Context(), tb.h.svc.queries, tb.campaign, rec.ID, infusionEndedEnded); err != nil {
 		t.Fatal(err)
 	}
 	if ok, err := tb.h.svc.setInfusionAttuned(t.Context(), tb.h.svc.queries, tb.campaign, rec.ID, false); err != nil || ok {
@@ -243,7 +243,7 @@ func TestInfusionOneLiveRecordForAnItem(t *testing.T) {
 	}
 	// The same item of another holder is another record.
 	tb.insert(t, tb.friend, "equipment:shield")
-	if _, err := tb.h.svc.endInfusion(t.Context(), tb.h.svc.queries, tb.campaign, first.ID, infusionEndedTaken); err != nil {
+	if _, _, err := tb.h.svc.endInfusion(t.Context(), tb.h.svc.queries, tb.campaign, first.ID, infusionEndedTaken); err != nil {
 		t.Fatal(err)
 	}
 	tb.insert(t, tb.artif, "equipment:shield")

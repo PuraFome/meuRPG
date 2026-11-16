@@ -25,7 +25,7 @@ type infusedPlay struct {
 
 func newInfusedPlay(t *testing.T) *infusedPlay {
 	t.Helper()
-	ip := &infusedPlay{infusedTable: newInfusedTable(t), spy: &hostSpy{}}
+	ip := &infusedPlay{infusedTable: newInfusedTableWith(t, func(f *charactersv1.FullSheet) { f.WeaponKeys = []string{infusionMace, infusedDagger} }), spy: &hostSpy{}}
 	ip.h.svc.SetReviewHost(ip.spy)
 	return ip
 }
@@ -86,13 +86,13 @@ func TestInfusionWritesTellPlayOnceWithWhatChanged(t *testing.T) {
 
 	// Moved: one change, with the item it went to.
 	ip.h.clock.Advance(time.Minute)
-	if _, err := ip.move(ip.dona, first, infusionLeather, ""); err != nil {
+	if _, err := ip.move(ip.dona, first, infusedDagger, ""); err != nil {
 		t.Fatal(err)
 	}
 	got = ip.calls()
 	want = []link.InfusionChange{{
 		Kind: link.InfusionMoved, RecordID: first, ArtificerID: id, HolderID: id, InfusionKey: infusionKeyBlade,
-		ItemKind: infusionItemGear, ItemKey: infusionLeather,
+		ItemKind: infusionItemGear, ItemKey: infusedDagger,
 	}}
 	if len(got) != 1 || !slices.Equal(got[0], want) {
 		t.Errorf("moving told play %v, want one call with %v", got, want)
@@ -104,7 +104,7 @@ func TestInfusionWritesTellPlayOnceWithWhatChanged(t *testing.T) {
 	got = ip.calls()
 	want = []link.InfusionChange{{
 		Kind: link.InfusionEnded, RecordID: first, ArtificerID: id, HolderID: id, InfusionKey: infusionKeyBlade,
-		ItemKind: infusionItemGear, ItemKey: infusionLeather, EndedReason: infusionEndedEnded,
+		ItemKind: infusionItemGear, ItemKey: infusedDagger, EndedReason: infusionEndedEnded,
 	}}
 	if len(got) != 1 || !slices.Equal(got[0], want) {
 		t.Errorf("ending told play %v, want one call with %v", got, want)
@@ -148,7 +148,7 @@ func TestInfusionOverTheLimitTellsPlayOneCallWithBothChanges(t *testing.T) {
 func TestInfusionOverAStaleRecordTellsPlayItEnded(t *testing.T) {
 	t.Parallel()
 	ip := newInfusedPlay(t)
-	stale := ip.infuse(t, infusionKeyBlade, infusedDagger) // the dagger is not on the sheet
+	stale := ip.infuse(t, infusionKeyBlade, "equipment:club") // the club is not on the sheet
 	ip.h.clock.Advance(time.Minute)
 	res := ip.mustInfuseOn(t, infusionKeyBlade, infusionMace)
 	got := ip.calls()
@@ -161,8 +161,7 @@ func TestInfusionOverAStaleRecordTellsPlayItEnded(t *testing.T) {
 // Moving onto the item of a record that is not valid now ends that record, in the same call as the move.
 func TestMoveOverAStaleRecordTellsPlayItEnded(t *testing.T) {
 	t.Parallel()
-	ip := &infusedPlay{infusedTable: newInfusedTableWith(t, func(f *charactersv1.FullSheet) { f.WeaponKeys = []string{infusionMace, infusedDagger} }), spy: &hostSpy{}}
-	ip.h.svc.SetReviewHost(ip.spy)
+	ip := newInfusedPlay(t)
 	moving := ip.mustInfuseOn(t, infusionKeyBlade, infusionMace).GetInfusion().GetId()
 	stale, err := ip.h.svc.insertInfusion(t.Context(), ip.h.svc.queries, newInfusion{
 		CampaignID: ip.campaign, ArtificerID: ip.pc.GetId(), HolderID: ip.pc.GetId(), InfusionKey: "feature:no-longer-there", ItemKind: infusionItemGear, GearKey: infusedDagger,

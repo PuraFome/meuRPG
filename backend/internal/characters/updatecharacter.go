@@ -152,7 +152,11 @@ func (s *Service) saveSheetIn(ctx context.Context, tx pgx.Tx, u *sheetSave, t se
 	if err := dropRemovedItemCharges(ctx, q, u.id, u.sheet.GetFull()); err != nil {
 		return row, err
 	}
-	if err := s.endInfusionsOfGoneGear(ctx, q, u.m.CampaignID, u.infusions, u.sheet.GetFull()); err != nil {
+	gone, err := s.endInfusionsOfGoneGear(ctx, q, u.m.CampaignID, u.infusions, u.sheet.GetFull())
+	if err != nil {
+		return row, err
+	}
+	if err := s.reportInfusions(ctx, tx, t, u.m.CampaignID, u.m.UserID, row, gone); err != nil {
 		return row, err
 	}
 	t.Touch() // the sheet changed, for the master and the table alike: the number moves once
