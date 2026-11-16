@@ -79,10 +79,12 @@ export interface ChipName {
           <mat-menu #addMenu="matMenu" class="pick-menu">
             @for (o of available(); track o.value) {
               <button type="button" mat-menu-item [disabled]="o.disabled" (click)="added.emit(o.value)">
-                <span class="pick-menu__name">{{ chipLabel(o) }}</span>
-                @if (originOf(o); as origin) {
-                  <span class="mr-tag mr-tag--compact">{{ origin }}</span>
-                }
+                <span class="pick-menu__row">
+                  <span class="pick-menu__name">{{ chipLabel(o) }}</span>
+                  @if (originOf(o); as origin) {
+                    <span class="mr-tag mr-tag--compact">{{ origin }}</span>
+                  }
+                </span>
               </button>
             }
           </mat-menu>
@@ -218,6 +220,20 @@ export interface ChipName {
         height: 20px;
         font-size: var(--mr-font-20);
       }
+    }
+
+    // A choice of the menu: the name, and its origin at the right edge with a gap that never closes.
+    .pick-menu__row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--mr-space-3);
+      width: 100%;
+    }
+
+    .pick-menu__name {
+      min-width: 0;
+      overflow-wrap: anywhere;
     }
 
     .pick__add {
