@@ -96,9 +96,9 @@ func TestAHeldSpellsTargetsAndItsAnswerKeepTheHiddenNPCApart(t *testing.T) {
 		_, err := p.combat.AnswerReaction(ctx, rq(req))
 		return err
 	}
-	picked, nowhere := answer(w.caio, window, hidden.GetId()), answer(w.caio, window, newKey())
-	if picked == nil || nowhere == nil || picked.Error() != nowhere.Error() || connect.CodeOf(picked) != connect.CodeOf(nowhere) {
-		t.Errorf("a pick of the hidden NPC = %v, a pick of an id that is nowhere = %v; want the same refusal", picked, nowhere)
+	picked, nowhere := answer(w.caio, window, hidden.GetId()), answer(w.caio, window, newKey()) // newKey is a UUID, as a combatant's id is
+	if picked == nil || nowhere == nil || picked.Error() != nowhere.Error() || connect.CodeOf(picked) != connect.CodeNotFound || connect.CodeOf(nowhere) != connect.CodeNotFound {
+		t.Errorf("a pick of the hidden NPC = %v, a pick of an id that is nowhere = %v; want the same refusal, not_found", picked, nowhere)
 	}
 	none, with, without := answer(w.ana, newKey(), w.combatant(w.pens).GetId()), answer(w.ana, window, w.combatant(w.pens).GetId()), answer(w.ana, window)
 	if none == nil || with == nil || without == nil || with.Error() != none.Error() || without.Error() != none.Error() || connect.CodeOf(with) != connect.CodeOf(none) {
