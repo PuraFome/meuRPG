@@ -223,5 +223,11 @@ describe('LevelUpSwap and SwapPicker', () => {
         ?.textContent,
     ).toContain('(troca escolhida)');
     expect(swap.featurePicks()).toHaveLength(1);
+    // The board's chip is plain: a group whose swap is chosen but is not the open one carries no mark of "on" (no check).
+    expect(
+      Array.from(el.querySelectorAll('label'))
+        .find((l) => l.textContent?.includes('Infusões'))
+        ?.classList.contains('opt--on'),
+    ).toBe(false);
   });
 });

@@ -23,7 +23,7 @@ import type { LevelUpSwap } from '../../../core/levelup/levelup-swap';
           Não trocar
         </label>
         @for (g of swap().groups(); track g.group) {
-          <label class="opt" [class.opt--on]="swap().groupKey() === g.group" [class.opt--done]="swap().isWhole(g.group)">
+          <label class="opt" [class.opt--on]="swap().groupKey() === g.group">
             <input type="radio" name="swap-group" class="opt__input" [checked]="swap().groupKey() === g.group" (change)="swap().setGroup(g.group)" />
             {{ g.namePt }}
             @if (swap().isWhole(g.group)) {
@@ -95,8 +95,7 @@ import type { LevelUpSwap } from '../../../core/levelup/levelup-swap';
       font-weight: 700;
       cursor: pointer;
 
-      &--on::before,
-      &--done::before {
+      &--on::before {
         content: '✓';
         margin-right: var(--mr-space-2);
       }
