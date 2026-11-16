@@ -135,6 +135,8 @@ type levelUpPlan struct {
 	// record is what ListLevelUps keeps: the choices, with the hit points
 	// value the level took.
 	record *charactersv1.LevelUpChoices
+	// applied are the choices the new sheet was made from.
+	applied rules.LevelUpChoices
 	// toLevel is the character's total level after the level-up.
 	toLevel int
 }
@@ -299,7 +301,8 @@ func (s *Service) typedHitPoints(ctx context.Context, tx pgx.Tx, m authz.Members
 // planLevelUpSheet writes the new Build onto a copy of the stored sheet and
 // checks it as any sheet is checked.
 func planLevelUpSheet(t levelUpTarget, choices *charactersv1.LevelUpChoices, hp rules.LevelUpHitPoints, plan *levelUpPlan) error {
-	after, err := rules.ApplyLevelUp(t.build, levelUpChoicesFromProto(t.classKey, choices, hp), t.content)
+	plan.applied = levelUpChoicesFromProto(t.classKey, choices, hp)
+	after, err := rules.ApplyLevelUp(t.build, plan.applied, t.content)
 	if err != nil {
 		return levelUpRulesError(err)
 	}
@@ -337,7 +340,7 @@ func checkPlannedLevel(t levelUpTarget, plan *levelUpPlan) error {
 	if plan.refusal != nil {
 		return nil
 	}
-	err := rules.CheckLevelUp(t.build, buildOf(plan.sheet), t.content)
+	err := rules.CheckLevelUpOf(t.build, buildOf(plan.sheet), plan.applied, t.content)
 	if err == nil {
 		return nil
 	}

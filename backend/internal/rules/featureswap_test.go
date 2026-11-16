@@ -481,3 +481,29 @@ func TestTheSheetTextOfAFeatureSaysAtWhichLevelsAnOptionCanBeSwapped(t *testing.
 		t.Errorf("a feature with no swap levels reads %q, want the master's text alone", desc)
 	}
 }
+
+// A pick the new sheet lost is excused only by the swap the request sent for it, and the invocation field takes a pick out
+// only for a warlock's invocation.
+func TestARemovalIsExcusedOnlyByTheSwapSentForIt(t *testing.T) {
+	t.Parallel()
+	c := withOverlay(t, swapPostureOverlay("class:fighter", FeatureSwapLevels{Levels: []int{5}}, FeatureSwapLevels{}))
+	at4 := postureFighter(t, c, 4)
+	ch := satisfy(t, c, at4, "class:fighter", postureSubclass)
+	ch.SwapInvocation = postureHeron
+	ch.FeatureChoices = []string{postureCrow}
+	after := mustApply(t, c, at4, ch)
+	if !slices.Contains(after.FeatureChoices, postureHeron) {
+		t.Errorf("the invocation field took %s out of a fighter's picks: %v", postureHeron, after.FeatureChoices)
+	}
+
+	// A sheet that shows the swap but was not made from one sent is refused; with the swap sent it is accepted.
+	ch = satisfy(t, c, at4, "class:fighter", postureSubclass)
+	ch.FeatureSwaps = []PickSwap{{Group: postureFeature, From: postureHeron, To: postureCrow}}
+	swapped := mustApply(t, c, at4, ch)
+	ch.FeatureSwaps = nil
+	wantRefusal(t, CheckLevelUpOf(at4, swapped, ch, c), LevelUpReasonFeatureChoice, "full.feature_choice_keys")
+	ch.FeatureSwaps = []PickSwap{{Group: postureFeature, From: postureHeron, To: postureCrow}}
+	if err := CheckLevelUpOf(at4, swapped, ch, c); err != nil {
+		t.Errorf("the swap that was sent: %v", err)
+	}
+}

@@ -1071,7 +1071,7 @@ func applyPicks(after *Build, ch LevelUpChoices, c *content) {
 	for _, s := range ch.FeatureSwaps {
 		applyFeatureSwap(after, s)
 	}
-	if ch.SwapInvocation != "" {
+	if ch.SwapInvocation != "" && ch.Class == classWarlock && c.isInvocation(ch.SwapInvocation) {
 		after.FeatureChoices = slices.DeleteFunc(after.FeatureChoices, func(k string) bool { return k == ch.SwapInvocation })
 	}
 	after.FeatureChoices = append(after.FeatureChoices, ch.LateChoices...)
@@ -1127,13 +1127,42 @@ func applyHitPoints(after, before Build, ch LevelUpChoices, idx int, c *content)
 // ends with a problem the old one did not have (a spell off the class list,
 // too many prepared spells) is refused as LevelUpReasonSheetIssue.
 func CheckLevelUp(before, after Build, c *Content) error {
-	if err := checkLevelUp(before, after, c.c); err != nil {
+	if err := checkLevelUp(before, after, sentSwaps{}, c.c); err != nil {
 		return err
 	}
 	return nil
 }
 
-func checkLevelUp(before, after Build, c *content) *LevelUpError {
+// CheckLevelUpOf is CheckLevelUp for a sheet that ApplyLevelUp made from the choices ch: a pick the new sheet lost is
+// excused only by a swap of a table feature's options that ch sent for it (or by the warlock's invocation swap), not
+// by one the offer merely allows.
+func CheckLevelUpOf(before, after Build, ch LevelUpChoices, c *Content) error {
+	if err := checkLevelUp(before, after, sentSwaps{known: true, swaps: ch.FeatureSwaps}, c.c); err != nil {
+		return err
+	}
+	return nil
+}
+
+// sentSwaps are the swaps of a table feature's options a request sent. Without known, the check does not know what was
+// sent and takes any swap the offer allows.
+type sentSwaps struct {
+	known bool
+	swaps []PickSwap
+}
+
+// groups are the feature groups of the offer that removals may be excused by.
+func (s sentSwaps) groups(offered []SwapGroup) []SwapGroup {
+	if !s.known {
+		return offered
+	}
+	var out []SwapGroup
+	for _, sw := range s.swaps {
+		out = append(out, SwapGroup{Group: sw.Group, Picks: []NamedKey{{Key: sw.From}}})
+	}
+	return out
+}
+
+func checkLevelUp(before, after Build, sent sentSwaps, c *content) *LevelUpError {
 	// One class, one level. A class added at level 1 is checked as if the
 	// character had it at level 0.
 	ext, tools, newClass, lerr := checkNewClass(before, after, c)
@@ -1175,7 +1204,7 @@ func checkLevelUp(before, after Build, c *content) *LevelUpError {
 	// subclass's, which are not in the options' top level while it is due.
 	offer, _ := levelUpOptionsWith(before, idx, classKey, c, sub)
 	swap, swapped := swapOf(before, after, offer)
-	swaps := levelSwaps{pick: swap, picked: swapped, features: offer.FeatureSwaps}
+	swaps := levelSwaps{pick: swap, picked: swapped, features: sent.groups(offer.FeatureSwaps)}
 	offOwnList, lerr := checkSpells(before, after, offer, offer.SpellList, swapped && swap.Group == SwapGroupCantrip, c)
 	if lerr != nil {
 		return lerr
