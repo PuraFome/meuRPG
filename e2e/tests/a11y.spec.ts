@@ -10754,12 +10754,14 @@ async function scanConsumableCombatScreens(browser: Browser, colorScheme: 'light
 
     // Brisa comes to Pensantus's side, and a goblin hides beside him: the server sends only who Pensantus sees, and the list does not say someone is missing.
     const brisaId = begun.combatants.find((c) => c.label === 'Brisa')!.id;
-    const moveBrisa = (col: number, row: number) => combatRPC(m, 'MoveCombatant', { campaignId, encounterId: begun.id, combatantId: brisaId, col, row });
-    await moveBrisa(4, 7);
+    const squareOfBrisa = (col: number, row: number) => ({ campaignId, encounterId: begun.id, combatantId: brisaId, col, row });
+    await combatRPC(m, 'MoveCombatant', squareOfBrisa(4, 7));
     const hiddenGoblin = begun.combatants.find((c) => c.label === 'Goblin 1')!.id;
     await combatRPC(m, 'MoveCombatant', { campaignId, encounterId: begun.id, combatantId: hiddenGoblin, col: 5, row: 8 });
-    const hidden = await combatRPC(m, 'SetCombatantHidden', { campaignId, encounterId: begun.id, combatantId: hiddenGoblin, hidden: true });
-    await waitForEncounterRevision(p, hidden);
+    await combatRPC(m, 'SetCombatantHidden', { campaignId, encounterId: begun.id, combatantId: hiddenGoblin, hidden: true });
+    // The player's copy of a combat with a hidden creature counts only what the player sees, so no revision of it can be waited for: the page reads the combat again.
+    await openSessionPage(p, campaignId);
+    await openActionTab(p, 'Itens');
 
     // "Usar": the sheet says a combat is running and that drinking costs the Action.
     await rowOf(heal).getByRole('button', { name: 'Usar Poção de cura' }).click();
@@ -10787,7 +10789,7 @@ async function scanConsumableCombatScreens(browser: Browser, colorScheme: 'light
     await expectConsumableScreen(p, `Combate, dar a poção a Brisa ${where}`);
 
     // Brisa walks off for real: the server refuses, the sheet reads the list again, drops her and is back at its first choice with "Dar a…" dashed.
-    await waitForEncounterRevision(p, await moveBrisa(9, 7));
+    await combatRPC(m, 'MoveCombatant', squareOfBrisa(9, 7));
     await use.getByRole('button', { name: 'Dar a Brisa' }).click();
     const away = use.getByRole('alert').filter({ hasText: 'Longe demais.' });
     await expect(away).toContainText('Longe demais. Brisa não está mais ao seu lado. Nada foi gasto.');
@@ -10795,7 +10797,7 @@ async function scanConsumableCombatScreens(browser: Browser, colorScheme: 'light
     await expect(use.getByRole('radio')).toHaveCount(0);
     await expect(use.getByRole('button', { name: 'Dar a…' })).toHaveAttribute('aria-disabled', 'true');
     await expectConsumableScreen(p, `Combate, a recusa TARGET_NOT_ADJACENT ${where}`);
-    await waitForEncounterRevision(p, await moveBrisa(4, 7));
+    await combatRPC(m, 'MoveCombatant', squareOfBrisa(4, 7));
     await use.getByRole('button', { name: 'Fechar' }).first().click();
     await expect(use).toBeHidden();
 
@@ -10961,11 +10963,8 @@ async function scanConsumableCombatScreens(browser: Browser, colorScheme: 'light
       await passTurnsTo(m, campaignId, 'Brisa');
       const rolled = await combatRPC(m, 'RollDeathSave', { campaignId, encounterId: second.id, combatantId: brisaSecond, d20Face: 5 });
       const brisaNow = rolled.combatants.find((c) => c.id === brisaSecond)!;
-      if (save < 3) {
-        expect(brisaNow.deathFailures ?? 0, `the failures after save ${save}`).toBe(save);
-      } else {
-        expect(brisaNow.state, 'Brisa after three failed saves').toBe('COMBATANT_STATE_DEAD');
-      }
+      // The third failure leaves her "Morrendo" for the master, who has not confirmed the death: the combat already refuses her as a receiver.
+      expect(save < 3 ? (brisaNow.deathFailures ?? 0) : brisaNow.state, `Brisa after save ${save}`).toBe(save < 3 ? save : 'COMBATANT_STATE_DYING');
       await passTurnsToAndWait(m, campaignId, 'Pensantus', p);
     }
     await dying.getByRole('button', { name: 'Dar a Brisa' }).click();
