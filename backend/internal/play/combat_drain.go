@@ -12,9 +12,11 @@ import (
 // drainSpell is the spell whose damage heals its caster by half of it.
 const drainSpell = "spell:vampiric-touch"
 
-// drainHeal heals the caster of a drain spell by half the damage the spell dealt (rounded down), up to the maximum, and
-// writes the heal as a line of the log, before the event of the damage. It answers the caster's vitals when it is a
-// player's character. A damage that is no drain spell's, or that is too small to heal, does nothing.
+// drainHeal heals the caster of a drain spell by half the damage dealt.
+// The half rounds down and the heal stops at the maximum.
+// The heal is a line of the log, written just before the event of the damage.
+// It answers the caster's vitals when the caster is a player's character.
+// A damage of another spell, or one too small to heal, does nothing.
 func (s *Service) drainHeal(ctx context.Context, c *combatTx, p playdb.PendingDamage, caster, target playdb.Combatant, dealt int32) (*playv1.CharacterVitals, error) {
 	if p.AttackKey != drainSpell || p.Healing || dealt/2 <= 0 {
 		return nil, nil

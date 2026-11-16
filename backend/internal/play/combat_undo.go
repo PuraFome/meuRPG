@@ -637,17 +637,15 @@ func concentrationEndOf(row playdb.ListRecentSessionEventsRow, group string) (ev
 	return ev, ev.Reaction != nil && ev.Reaction.Kind == concentrationEnd && ev.Reaction.Group == group
 }
 
-// takeBackDrain takes back the heal a drain spell's damage gave its caster, written just before the damage's own event
-// (and after the concentration it ended, if any): the caster's hit points are as they were, and its line goes.
+// takeBackDrain takes back the heal a drain spell's damage gave its caster.
+// The heal is found by its link to the pending damage, whatever else the landing wrote.
+// The caster's hit points are as they were, and the line goes.
 func (s *Service) takeBackDrain(ctx context.Context, c *combatTx, run *undoRun, recent []playdb.ListRecentSessionEventsRow, last playdb.ListRecentSessionEventsRow, pending string) error {
 	at := slices.IndexFunc(recent, func(e playdb.ListRecentSessionEventsRow) bool { return e.ID == last.ID })
 	for _, older := range recent[at+1:] {
-		if _, ok := concentrationEndOf(older, pending); ok {
-			continue
-		}
 		pe, ok := drainOf(older, pending)
 		if !ok {
-			break
+			continue
 		}
 		cs, err := listCombatants(ctx, c)
 		if err != nil {
@@ -671,7 +669,7 @@ func drainOf(row playdb.ListRecentSessionEventsRow, pending string) (ev actionEv
 	if err != nil {
 		return ev, false
 	}
-	return ev, ev.DrainOf == pending && ev.Before != nil
+	return ev, pending != "" && ev.DrainOf == pending && ev.Before != nil
 }
 
 // takeBackFiring takes a firing written as several events back whole.

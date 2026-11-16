@@ -1,12 +1,15 @@
 package play
 
 import (
+	"strings"
 	"testing"
 
 	"connectrpc.com/connect"
+	"google.golang.org/protobuf/proto"
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 )
 
 // The spells the SRD aims at another creature though the database gives them range Self (Vampiric Touch,
@@ -44,18 +47,31 @@ func (a *armed) takesWith(t *testing.T, e *playv1.Encounter, caster, spell strin
 	return res
 }
 
-// drainHealOf is the log line of a spell that healed its caster: the entry of the actor and the spell with the
-// healing damage, as the viewer reads it. Nil when the log has none.
-func (a *armed) drainHealOf(t *testing.T, u *user, e *playv1.Encounter, caster, spell string) *playv1.CombatLogDamage {
+// drainLines are the log lines of a spell that healed its caster, as the viewer reads them.
+func (a *armed) drainLines(t *testing.T, u *user, e *playv1.Encounter, caster, spell string) []*playv1.CombatLogEntry {
 	t.Helper()
+	var out []*playv1.CombatLogEntry
 	for _, round := range a.log(t, u, e).GetRounds() {
 		for _, en := range round.GetEntries() {
-			if en.GetKey() == spell && en.GetKind() == playv1.CombatLogKind_COMBAT_LOG_KIND_ACTION && en.GetActorId() == a.id(t, caster) && en.GetDamage().GetHealing() {
-				return en.GetDamage()
+			if en.GetKey() == spell && en.GetKind() == playv1.CombatLogKind_COMBAT_LOG_KIND_ACTION && en.GetActorId() == a.id(t, caster) {
+				out = append(out, en)
 			}
 		}
 	}
-	return nil
+	return out
+}
+
+// drainHealOf is the healing damage of the one log line of the heal. Nil when the log has none.
+func (a *armed) drainHealOf(t *testing.T, u *user, e *playv1.Encounter, caster, spell string) *playv1.CombatLogDamage {
+	t.Helper()
+	lines := a.drainLines(t, u, e, caster, spell)
+	if len(lines) > 1 {
+		t.Fatalf("the log has %d lines of the heal, want at most 1", len(lines))
+	}
+	if len(lines) == 0 || !lines[0].GetDamage().GetHealing() {
+		return nil
+	}
+	return lines[0].GetDamage()
 }
 
 // TestSRDVampiricTouchReach: a player's Vampiric Touch takes one creature within reach, never the caster.
@@ -188,6 +204,103 @@ func TestSRDVampiricTouchHeals(t *testing.T) {
 		if got := a.vitals(t, a.pens).GetHitPointsCurrent(); got != 10 {
 			t.Errorf("Mago has %d hit points after the undo, want 10", got)
 		}
+		if n := len(a.drainLines(t, a.master, e, "Mago", vampiricTouch)); n != 0 {
+			t.Errorf("the log keeps %d lines of the heal after the undo, want none", n)
+		}
+	})
+}
+
+// TestSRDVampiricTouchHealGuards: the heal needs damage that landed, and its line follows who may read it.
+func TestSRDVampiricTouchHealGuards(t *testing.T) {
+	t.Parallel()
+	near := map[string][2]int32{"Capitão Goblin": {2, 4}, "Goblin 1": {14, 8}, "Goblin 2": {13, 8}}
+	t.Run("a miss heals nothing", func(t *testing.T) {
+		t.Parallel()
+		a := newSrdParty(t)
+		e := a.rangeFight(t, "Mago", near)
+		a.correct(t, a.pens, hpIs(10))
+		miss := func(r *playv1.CastSpellRequest) { r.Roll = &playv1.CastSpellRequest_D20Face{D20Face: 1} }
+		res := a.mustCast(t, a.ana, e, "Mago", vampiricTouch, slotOfLevel(3), a.at(t, "Capitão Goblin"), miss).GetCast()
+		if res.GetTargets()[0].GetPendingDamageId() != "" {
+			t.Fatalf("a natural 1 opened damage: %v", res.GetTargets()[0])
+		}
+		if got := a.vitals(t, a.pens).GetHitPointsCurrent(); got != 10 {
+			t.Errorf("Mago has %d hit points, want 10", got)
+		}
+		if n := len(a.drainLines(t, a.master, e, "Mago", vampiricTouch)); n != 0 {
+			t.Errorf("the log has %d lines of a heal, want none", n)
+		}
+	})
+	t.Run("a creature already down heals nothing", func(t *testing.T) {
+		t.Parallel()
+		a := newSrdParty(t)
+		e := a.rangeFight(t, "Mago", near)
+		a.correct(t, a.pens, hpIs(10))
+		id := a.takesWith(t, e, "Mago", vampiricTouch, slotOfLevel(3), []string{"Capitão Goblin"}).GetTargets()[0].GetPendingDamageId()
+		if _, err := a.adjustHP(t, e, "Capitão Goblin", damageHP(500)); err != nil {
+			t.Fatalf("AdjustCombatantHitPoints() error = %v", err)
+		}
+		a.h.roller.queue(3, 3, 3)
+		a.mustDamage(t, a.ana, e, id, inAppDamage)
+		if got := a.vitals(t, a.pens).GetHitPointsCurrent(); got != 10 {
+			t.Errorf("Mago has %d hit points, want 10", got)
+		}
+		if n := len(a.drainLines(t, a.master, e, "Mago", vampiricTouch)); n != 0 {
+			t.Errorf("the log has %d lines of a heal, want none", n)
+		}
+	})
+	t.Run("a character already at 0 heals nothing when the master applies", func(t *testing.T) {
+		t.Parallel()
+		a := newSrdParty(t)
+		e := a.rangeFight(t, "Mago", map[string][2]int32{"Druida": {2, 4}, "Goblin 1": {14, 8}, "Goblin 2": {13, 8}, "Capitão Goblin": {12, 8}})
+		a.correct(t, a.pens, hpIs(10))
+		id := a.takesWith(t, e, "Mago", vampiricTouch, slotOfLevel(3), []string{"Druida"}).GetTargets()[0].GetPendingDamageId()
+		a.h.roller.queue(3, 3, 3)
+		a.mustDamage(t, a.ana, e, id, inAppDamage)
+		a.correct(t, a.toren, hpIs(0))
+		if _, err := a.settle(t, a.master, e, id, true); err != nil {
+			t.Fatalf("ApplyPendingDamage() error = %v", err)
+		}
+		if got := a.vitals(t, a.pens).GetHitPointsCurrent(); got != 10 {
+			t.Errorf("Mago has %d hit points, want 10", got)
+		}
+		if n := len(a.drainLines(t, a.master, e, "Mago", vampiricTouch)); n != 0 {
+			t.Errorf("the log has %d lines of a heal, want none", n)
+		}
+	})
+	t.Run("one line, with the numbers for the master and the caster's player only", func(t *testing.T) {
+		t.Parallel()
+		a := newSrdParty(t)
+		e, _ := a.drainCast(t, 10, 3, 3, 3)
+		for who, want := range map[*user]bool{a.master: true, a.ana: true, a.bia: false} {
+			lines := a.drainLines(t, who, e, "Mago", vampiricTouch)
+			if len(lines) != 1 {
+				t.Fatalf("a viewer reads %d lines of the heal, want 1", len(lines))
+			}
+			if got := lines[0].GetDamage() != nil; got != want {
+				t.Errorf("numbers shown = %v, want %v", got, want)
+			}
+		}
+	})
+	t.Run("a hidden target keeps the line from the other players", func(t *testing.T) {
+		t.Parallel()
+		a := newSrdParty(t)
+		e := a.rangeFight(t, "Mago", near)
+		id := a.takesWith(t, e, "Mago", vampiricTouch, slotOfLevel(3), []string{"Capitão Goblin"}).GetTargets()[0].GetPendingDamageId()
+		if _, err := a.master.combat.SetCombatantHidden(t.Context(), connect.NewRequest(&playv1.SetCombatantHiddenRequest{
+			CampaignId: a.campaignID, EncounterId: e.GetId(), CombatantId: a.id(t, "Capitão Goblin"), IdempotencyKey: newKey(), Hidden: true,
+		})); err != nil {
+			t.Fatalf("SetCombatantHidden() error = %v", err)
+		}
+		a.correct(t, a.pens, hpIs(10))
+		a.h.roller.queue(3, 3, 3)
+		a.mustDamage(t, a.master, e, id, inAppDamage)
+		if n := len(a.drainLines(t, a.master, e, "Mago", vampiricTouch)); n != 1 {
+			t.Errorf("the master reads %d lines of the heal, want 1", n)
+		}
+		if n := len(a.drainLines(t, a.bia, e, "Mago", vampiricTouch)); n != 0 {
+			t.Errorf("another player reads %d lines of the heal, want none", n)
+		}
 	})
 }
 
@@ -264,4 +377,122 @@ func TestSRDSpellsWithNoAttackAtTheCast(t *testing.T) {
 			}
 		})
 	}
+}
+
+// monsterNextTo adds a monster of the SRD to the combat and puts it at the square; it answers its label.
+func (a *armed) monsterNextTo(t *testing.T, e *playv1.Encounter, creature string, sq [2]int32) string {
+	t.Helper()
+	a.h.roller.queue(1)
+	res := a.mustAddMonsters(t, e, func(r *playv1.AddMonstersRequest) {
+		r.CreatureKey, r.Count, r.Hidden = creature, 1, new(false)
+	})
+	id := res.GetCombatantIds()[0]
+	if _, err := a.master.combat.MoveCombatant(t.Context(), connect.NewRequest(&playv1.MoveCombatantRequest{
+		CampaignId: a.campaignID, EncounterId: e.GetId(), CombatantId: id, IdempotencyKey: newKey(), Col: sq[0], Row: sq[1],
+	})); err != nil {
+		t.Fatalf("MoveCombatant(%s) error = %v", creature, err)
+	}
+	for _, c := range res.GetEncounter().GetCombatants() {
+		if c.GetId() == id {
+			return c.GetLabel()
+		}
+	}
+	t.Fatalf("%s is not in the combat", creature)
+	return ""
+}
+
+// noModifierWords fails when what a player receives says that a target resists, is vulnerable or is immune.
+func noModifierWords(t *testing.T, who string, payloads ...proto.Message) {
+	t.Helper()
+	for _, p := range payloads {
+		text := strings.ToLower(asJSON(t, p))
+		for _, word := range []string{"imune", "imunidade", "resist", "vulnerá", "vulnera"} {
+			if strings.Contains(text, word) {
+				t.Errorf("what %s receives says %q: %s", who, word, text)
+			}
+		}
+	}
+}
+
+// TestSRDVampiricTouchHealFollowsTheModifiers: the heal is half the damage after the target's resistance,
+// vulnerability or immunity, and no player reads which of them the target has.
+func TestSRDVampiricTouchHealFollowsTheModifiers(t *testing.T) {
+	t.Parallel()
+	far := map[string][2]int32{"Capitão Goblin": {14, 8}, "Goblin 1": {14, 7}, "Goblin 2": {13, 8}}
+	// 3 + 3 + 3 is 9 necrotic as rolled: a resistant target takes 4 (heal 2), a vulnerable one 18 (heal 9).
+	t.Run("a resistant target", func(t *testing.T) {
+		t.Parallel()
+		a := newSrdParty(t)
+		e := a.rangeFight(t, "Mago", far)
+		wight := a.monsterNextTo(t, e, "monster:wight", [2]int32{2, 4})
+		a.correct(t, a.pens, hpIs(10))
+		id := a.takesWith(t, e, "Mago", vampiricTouch, slotOfLevel(3), []string{wight}).GetTargets()[0].GetPendingDamageId()
+		a.h.roller.queue(3, 3, 3)
+		dmg := a.mustDamage(t, a.ana, e, id, inAppDamage).GetPendingDamage()
+		if dmg.GetAmount() != 9 {
+			t.Errorf("the damage the player reads = %d, want it as rolled (9)", dmg.GetAmount())
+		}
+		if got := a.vitals(t, a.pens).GetHitPointsCurrent(); got != 12 {
+			t.Errorf("Mago has %d hit points, want 10 + 2 (half of 4)", got)
+		}
+		if line := a.drainHealOf(t, a.master, e, "Mago", vampiricTouch); line.GetAmount() != 2 {
+			t.Errorf("the log line of the heal = %v, want 2 hit points", line)
+		}
+		noModifierWords(t, "Mago's player", a.log(t, a.ana, e), a.get(t, a.ana))
+		noModifierWords(t, "another player", a.log(t, a.bia, e), a.get(t, a.bia))
+	})
+	t.Run("an immune target", func(t *testing.T) {
+		t.Parallel()
+		a := newSrdParty(t)
+		e := a.rangeFight(t, "Mago", far)
+		ghost := a.monsterNextTo(t, e, "monster:ghost", [2]int32{2, 4})
+		a.correct(t, a.pens, hpIs(10))
+		id := a.takesWith(t, e, "Mago", vampiricTouch, slotOfLevel(3), []string{ghost}).GetTargets()[0].GetPendingDamageId()
+		a.h.roller.queue(3, 3, 3)
+		a.mustDamage(t, a.ana, e, id, inAppDamage)
+		if got := a.vitals(t, a.pens).GetHitPointsCurrent(); got != 10 {
+			t.Errorf("Mago has %d hit points, want 10", got)
+		}
+		for _, who := range []*user{a.master, a.ana, a.bia} {
+			if n := len(a.drainLines(t, who, e, "Mago", vampiricTouch)); n != 0 {
+				t.Errorf("a viewer reads %d lines of a heal, want none", n)
+			}
+		}
+		noModifierWords(t, "Mago's player", a.log(t, a.ana, e), a.get(t, a.ana))
+		noModifierWords(t, "another player", a.log(t, a.bia, e), a.get(t, a.bia))
+	})
+	t.Run("a vulnerable character", func(t *testing.T) {
+		t.Parallel()
+		a := newSrdParty(t)
+		res, err := a.master.table.CreateTableEntry(t.Context(), connect.NewRequest(&rulesv1.CreateTableEntryRequest{
+			CampaignId: a.campaignID, Body: &rulesv1.CreateTableEntryRequest_TableFeat{TableFeat: &rulesv1.TableFeat{
+				NamePt: "Carne podre", DescPt: []string{"Um talento da mesa."},
+				Effects: []*rulesv1.TableEffect{{Type: "resistance", Kind: "vulnerable", DamageTypes: []string{"damage-type:necrotic"}}},
+			}},
+		}))
+		if err != nil {
+			t.Fatalf("CreateTableEntry() error = %v", err)
+		}
+		cur := a.master.character(t, a.toren)
+		sheet := cur.GetSheet()
+		sheet.GetFull().FeatKeys = []string{res.Msg.GetEntry().GetKey()}
+		if _, err := a.master.characters.UpdateCharacter(t.Context(), connect.NewRequest(&charactersv1.UpdateCharacterRequest{
+			CampaignId: a.campaignID, CharacterId: cur.GetId(), Revision: cur.GetRevision(), Name: cur.GetName(), Sheet: sheet,
+		})); err != nil {
+			t.Fatalf("UpdateCharacter(Druida) error = %v", err)
+		}
+		e := a.rangeFight(t, "Mago", map[string][2]int32{"Druida": {2, 4}, "Goblin 1": {14, 8}, "Goblin 2": {13, 8}, "Capitão Goblin": {12, 8}})
+		a.correct(t, a.pens, hpIs(10))
+		id := a.takesWith(t, e, "Mago", vampiricTouch, slotOfLevel(3), []string{"Druida"}).GetTargets()[0].GetPendingDamageId()
+		a.h.roller.queue(3, 3, 3)
+		a.mustDamage(t, a.ana, e, id, inAppDamage)
+		if _, err := a.settle(t, a.master, e, id, true); err != nil {
+			t.Fatalf("ApplyPendingDamage() error = %v", err)
+		}
+		if got := a.vitals(t, a.pens).GetHitPointsCurrent(); got != 19 {
+			t.Errorf("Mago has %d hit points, want 10 + 9 (half of 18)", got)
+		}
+		noModifierWords(t, "Mago's player", a.log(t, a.ana, e), a.get(t, a.ana))
+		noModifierWords(t, "another player", a.log(t, a.bia, e), a.get(t, a.bia))
+	})
 }

@@ -237,6 +237,8 @@ func (c *content) correctSpell(name string, corr spellCorrection, s *srd51.Spell
 	return correctSpellChoice(name, corr, s)
 }
 
+// correctSpellRange writes the range of a correction.
+// A range the app reads as special is refused.
 func correctSpellRange(name string, corr spellCorrection, s *srd51.Spell) error {
 	if corr.Range == "" {
 		return nil

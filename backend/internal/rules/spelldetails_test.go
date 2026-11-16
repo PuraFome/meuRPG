@@ -277,9 +277,8 @@ func TestSpellsWithoutTheirDamageInTheSnapshot(t *testing.T) {
 	}
 }
 
-// TestSelfRangeSpellsAimedAtOthers: a spell the snapshot gives range Self whose
-// attack or save is aimed at another creature has the SRD's range, and the ones
-// whose attack comes on later turns carry no attack at the cast.
+// TestSelfRangeSpellsAimedAtOthers: a spell aimed at another creature has the SRD's range, not Self.
+// A spell whose attack comes on later turns carries no attack at the cast.
 func TestSelfRangeSpellsAimedAtOthers(t *testing.T) {
 	t.Parallel()
 	c := loadForTest(t)
