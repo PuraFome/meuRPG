@@ -209,6 +209,25 @@ A piece that is carried adds nothing, a shield behind a two-handed weapon adds n
 The combat reads the attack lines and the armor class of the same derivation.
 The bonus belongs to the key: two weapons with one key are one row and share it, so a plain and a +1 copy of one weapon cannot be told apart.
 
+### Infusion records in the derivation
+
+`rules.Build.Infusions` holds the live infusion records of the character as holder; the loader fills it and the sheet never stores it.
+A record is valid when the content knows its infusion key, the host feature has its limit rule, the character has the host feature and the key is among its `feature_choice_keys`.
+The host feature is on the class (and subclass) the content gives it, and the class level for the bonus and the limit is the character's level in that class.
+An item bonus record on a key that already has a manual bonus is not valid: the manual bonus stands and the record gives no number.
+A record that is not valid gives no number and no name, takes no slot of the limit, and still has its row in `Derived.Infusions` with the reason in `ReasonPT`.
+`ITEM_BONUS` on a gear key becomes an `ItemBonus` of that key inside the deriver, at `BonusAt(class level)`, so the armor class, the attack lines, `weaponMarks` and `Derived.ItemModifiers` read the one path a manual bonus takes.
+The bonus follows the manual rules: a carried piece adds nothing, and an infusion that asks for attunement adds nothing until the record is attuned.
+The bonus of a key applies to every copy of the key.
+`SPELL_FOCUS_BONUS` adds the bonus to `Spellcasting.AttackBonus`, so the spell attack lines carry it, and lists a line with the target `spell_attack`; the best focus that counts is the one that applies.
+A focus does not change the numbers of its own weapon.
+`REPEATING_AMMUNITION` leaves the weapon's attack without an ammunition key and keeps its improvised melee line.
+`RETURNING`, `RESISTANCE_LABEL` and `NONE` change no number; the resistance label's damage type is the record's parameter.
+The infusion's name is on the gear entry of its piece, on the attack of its weapon, and on each item modifier line of the record with `infusion_id`.
+`Derived.InfusionHosts` has, for each host feature of the character, the live limit at the class level and how many valid records use it.
+`rules.AttunedCount` counts a valid record that asks for attunement and is attuned like an attuned magic item; `MaxAttunements` stays the one place for the maximum.
+A manual `item_bonuses` entry on a gear key that a valid item bonus record infuses is refused at the entry's `key`.
+
 ## Table options
 
 `TABLE_CONTENT_KIND_OPTION` (`option` rows of `campaign_content`, key `option:<set>:<slug>@mesa`) is an option the master adds to one of the SRD's option sets: an Eldritch Invocation, a Metamagic option, a fighting style, a Pact Boon, a Hunter's Prey, Defensive Tactics, Multiattack or Superior Hunter's Defense, or, in the set `table_feature`, an option of a table feature's option list (`table_option.offered_by` is that feature's key).

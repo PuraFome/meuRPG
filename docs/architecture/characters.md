@@ -193,6 +193,7 @@ Inside the transaction and before the write it asks play (`ReviewHost.EquipInCom
 ## Attunement
 
 Two kinds of entry can be attuned: a magic item of `FullSheet.magic_items` and a +N piece of `FullSheet.item_bonuses` that names a catalog item (`ItemBonus.item_key`).
+A valid infusion record that asks for attunement counts toward the maximum when it is attuned, as an attuned magic item does (`rules.AttunedCount`).
 A `SheetMagicItem` has a key, `attuned`, an `id`, and, filled by the server on every read, `requires_attunement`, `restriction_pt`, `restriction`, `same_item_attuned` and `name_pt`.
 At most 20 magic items; two copies of one item are two entries.
 The entry id is unique on the sheet: a magic item's is `m<n>`, given by the server to a new entry and kept on every save, and a +N piece's is `bonus:<key>`.

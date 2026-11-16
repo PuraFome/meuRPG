@@ -288,7 +288,7 @@ func (s *Service) attuneIn(ctx context.Context, tx pgx.Tx, content *rules.Conten
 	if target.attuned() == in.attuned {
 		return current, false, nil // already as asked: nothing changes, and no window is spent
 	}
-	if err := s.checkAttunement(ctx, q, m, current, in, checkFacts{met: met, attuned: rules.AttunedCount(build), copyAttuned: copyAttuned(entries, target)}); err != nil {
+	if err := s.checkAttunement(ctx, q, m, current, in, checkFacts{met: met, attuned: rules.AttunedCount(build, content), copyAttuned: copyAttuned(entries, target)}); err != nil {
 		return current, false, err
 	}
 	target.set(in.attuned)

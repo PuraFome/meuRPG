@@ -79,6 +79,16 @@ type deriver struct {
 	// appliedTagged are the tagged modifiers the engine applied to an attack, so
 	// no Hint repeats them.
 	appliedTagged map[*Effect]bool
+
+	// original is the Build as it came, before equip (infusion.go); lines are its infusion records read against the
+	// content. infused names the gear key of each valid gear record, bonusFrom holds the ones that became an item bonus,
+	// and foci are the valid spell focus records: focusBonus is the best one that counts.
+	original   Build
+	lines      []infusionLine
+	infused    map[string]infusionLine
+	bonusFrom  map[string]infusionLine
+	foci       []infusionLine
+	focusBonus int
 }
 
 type ownedClass struct {
@@ -140,7 +150,9 @@ func deriveWith(b Build, c *content, lost map[string]*LostPrerequisite) Derived 
 	}
 	x := &deriver{b: b, c: c, d: d, proficient: map[string]bool{}, conditions: map[*Effect]bool{}, appliedTagged: map[*Effect]bool{}, inactiveFeats: inactive, lost: lost}
 
+	x.original, x.lines = b, c.infusionLines(b, true)
 	x.equip()
+	x.applyInfusions()
 	x.resolve()
 	x.resolveArmor()
 	x.names()
@@ -162,6 +174,7 @@ func deriveWith(b Build, c *content, lost map[string]*LostPrerequisite) Derived 
 	x.rangedAttacks()
 	x.attacks()
 	x.itemModifiers()
+	x.infusionStatuses()
 	x.resourcesAndActions()
 	x.effectHints()
 	x.choiceEffects()

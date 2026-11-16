@@ -7,6 +7,7 @@ import "fmt"
 // Magic armor and a magic shield add theirs to the armor class.
 // The bonus stands apart from proficiency and ability scores.
 // A carried piece adds nothing, and neither does one that asks for attunement while the character has none.
+// An infusion with a bonus gives it the same way: the record becomes a bonus of its piece, and the piece takes no manual one.
 // The bonus of a weapon key applies to every copy of that key.
 
 // MaxItemBonus is the largest magic bonus of a piece.
@@ -55,7 +56,8 @@ func (x *deriver) listsBonus(key string) bool {
 	return ok && eq.Weapon != nil
 }
 
-// itemModifiers fills Derived.ItemModifiers.
+// itemModifiers fills Derived.ItemModifiers: the bonuses in order (an infusion's after the manual ones), then the
+// spell focus lines.
 func (x *deriver) itemModifiers() {
 	for _, ib := range x.b.ItemBonuses {
 		if !x.listsBonus(ib.Key) {
@@ -65,27 +67,36 @@ func (x *deriver) itemModifiers() {
 		if name == "" {
 			name = ib.Key
 		}
-		reason, on := "", ib.counts()
-		switch {
-		case x.b.IsCarried(ib.Key):
-			reason, on = "Carregado, não equipado.", false
-		case ib.Key == shieldKey && x.b.Shield && !x.shieldWielded():
-			reason, on = "Uma arma de duas mãos equipada deixa o escudo parado.", false
-		case !ib.counts() && ib.Bonus > 0:
-			reason = "Pede sintonização."
-		}
-		add := func(target string) {
-			x.d.ItemModifiers = append(x.d.ItemModifiers, ItemModifier{
-				Target: target, Value: ib.Bonus, SourceKey: ib.Key, SourceNamePT: name, Counts: on, ReasonPT: reason,
-			})
+		reason, on := x.bonusReason(ib)
+		m := ItemModifier{Value: ib.Bonus, SourceKey: ib.Key, SourceNamePT: name, Counts: on, ReasonPT: reason}
+		if l, ok := x.bonusFrom[ib.Key]; ok {
+			m.InfusionNamePT, m.InfusionID = x.infusionNamePT(l.rec.InfusionKey), l.rec.ID
 		}
 		if ib.Key == shieldKey || ib.Key == x.sheetArmor {
-			add("ac")
+			m.Target = "ac"
+			x.d.ItemModifiers = append(x.d.ItemModifiers, m)
 			continue
 		}
-		add("attack:" + ib.Key)
-		add("damage:" + ib.Key)
+		for _, target := range []string{"attack:", "damage:"} {
+			m.Target = target + ib.Key
+			x.d.ItemModifiers = append(x.d.ItemModifiers, m)
+		}
 	}
+	x.d.ItemModifiers = append(x.d.ItemModifiers, x.focusLines()...)
+}
+
+// bonusReason says whether the bonus counts now and, when it does not, why.
+func (x *deriver) bonusReason(ib ItemBonus) (reason string, on bool) {
+	on = ib.counts()
+	switch {
+	case x.b.IsCarried(ib.Key):
+		return "Carregado, não equipado.", false
+	case ib.Key == shieldKey && x.b.Shield && !x.shieldWielded():
+		return "Uma arma de duas mãos equipada deixa o escudo parado.", false
+	case !on && ib.Bonus > 0:
+		return "Pede sintonização.", false
+	}
+	return "", on
 }
 
 // checkItemBonuses checks the bonuses on the gear: at most MaxCarried, each on a piece of the sheet, none twice, each
@@ -102,6 +113,8 @@ func checkItemBonuses(b *Build, c *content) error {
 			return invalid(f+".key", "is not the sheet's armor, its shield or one of its weapons")
 		case seen[ib.Key]:
 			return invalid(f+".key", "repeats an entry")
+		case c.infusesBonusOf(*b, ib.Key):
+			return invalid(f+".key", "is a piece an infusion gives its magic bonus: end the infusion to mark one by hand")
 		case ib.Bonus < 1 || ib.Bonus > MaxItemBonus:
 			return invalid(f+".bonus", "must be from 1 to %d", MaxItemBonus)
 		case ib.ItemKey != "" && !fitsCatalogItem(b, c, ib):
