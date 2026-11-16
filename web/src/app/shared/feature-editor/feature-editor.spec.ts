@@ -663,6 +663,31 @@ describe('FeatureEditor (a trait, a feature)', () => {
       expect(text(toggle(3))).toContain('Precisa de ajuste');
     });
 
+    it('draws no "·" before "Precisa de ajuste" when the row has no line of its own (580-03)', async () => {
+      const nameless = (): FeatureDraft => ({
+        ...emptyFeature(),
+        name: 'Truques de lâmina',
+        options: [opt('k1', 'Golpe do Corvo', 'Soma o dado.'), opt('k2', 'Asa Partida')],
+      });
+      setup(nameless(), {
+        allowOptions: true,
+        allowAsks: false,
+        oneOf: true,
+        index: -1,
+        count: 0,
+        issues: {
+          'table_race.traits[1].options[0].name_pt': ['Falta o nome.'],
+          'table_race.traits[1].options[1].name_pt': ['Falta o nome.'],
+        },
+      });
+      await render();
+      const sub = (n: number) => text(rows()[n - 1].querySelector('.opt__sub')!).trim();
+      // The row with a line: the dot separates the line from the tag.
+      expect(sub(1)).toBe('Soma o dado · errorPrecisa de ajuste');
+      // The row without one: the tag stands alone, with nothing to separate it from.
+      expect(sub(2)).toBe('errorPrecisa de ajuste');
+    });
+
     it('takes an option away from the "⋮" menu of its row and puts the focus on the next row', async () => {
       setup(list(), { allowOptions: true, allowAsks: true, index: -1, count: 0 });
       rows()[0]
