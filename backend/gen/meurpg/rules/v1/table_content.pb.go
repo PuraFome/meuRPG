@@ -9610,9 +9610,9 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"\fprerequisite\x18\a \x01(\v2#.meurpg.rules.v1.OptionPrerequisiteR\fprerequisite\x12C\n" +
 	"\vswap_levels\x18\n" +
 	" \x01(\v2\".meurpg.rules.v1.FeatureSwapLevelsR\n" +
-	"swapLevels\"L\n" +
-	"\x11FeatureSwapLevels\x12\x16\n" +
-	"\x06levels\x18\x01 \x03(\x05R\x06levels\x12\x1f\n" +
+	"swapLevels\"R\n" +
+	"\x11FeatureSwapLevels\x12\x1c\n" +
+	"\x06levels\x18\x01 \x03(\x05B\x04\x88\xb5\x18\x14R\x06levels\x12\x1f\n" +
 	"\vevery_level\x18\x02 \x01(\bR\n" +
 	"everyLevel\"\xfd\x01\n" +
 	"\tTableFeat\x12\x17\n" +

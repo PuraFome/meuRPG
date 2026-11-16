@@ -553,7 +553,7 @@ message TableFeature {
 // another option of the pool, as part of the level-up (TableFeature.swap_levels).
 message FeatureSwapLevels {
   // The class levels (1 to 20, each at most once) at which a swap is allowed. Not set together with `every_level`.
-  repeated int32 levels = 1;
+  repeated int32 levels = 1 [(meurpg.options.v1.max_items) = 20];
   // True for every class level from the feature's own level on. Not set together with `levels`.
   bool every_level = 2;
 }
