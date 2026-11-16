@@ -183,3 +183,89 @@ func TestNpcCheckRefusalsGiveGenderToNobody(t *testing.T) {
 		}
 	}
 }
+
+// TestNpcCheckRolledWhileAnotherIsHeldSettlesTheFirstAsASkip: the master rolls a second check while the first still waits for its bards:
+// the first settles as a skip at its own d20 (its resolved event is written, its asks close), the bard that was asked and the master are
+// told the question is gone, the second is held and GetNpcCheck reads the second, not the first whose resolved event came later. The
+// retry of the key of either roll replays it and settles nothing.
+func TestNpcCheckRolledWhileAnotherIsHeldSettlesTheFirstAsASkip(t *testing.T) {
+	t.Parallel()
+	n := newNpcTable(t, charactersv1.CuttingWordsAsk_CUTTING_WORDS_ASK_ALL)
+	keyA, keyB := newKey(), newKey()
+	a, err := n.rollWith(t, 15, true, keyA)
+	if err != nil || !a.GetHeld() {
+		t.Fatalf("the first RollNpcCheck() = %v, %v; want a held check", a, err)
+	}
+	if retry, err := n.rollWith(t, 15, true, keyA); err != nil || !proto.Equal(retry.GetCheck(), a.GetCheck()) || n.resolvedCount(t) != 0 {
+		t.Fatalf("the retry of the first roll = %v, %v (%d resolved); want the same read and nothing settled", retry, err, n.resolvedCount(t))
+	}
+	first := n.firstAsked(a)
+	master, bard, elsewhere := listen(t, n.h, n.campaignID, n.master.id, true), listen(t, n.h, n.campaignID, first.id, false), listen(t, n.h, n.campaignID, n.caio.id, false)
+	b, err := n.rollWith(t, 9, true, keyB)
+	if err != nil || !b.GetHeld() || b.GetCheck().GetHoldId() == a.GetCheck().GetHoldId() {
+		t.Fatalf("the second RollNpcCheck() = %v, %v; want another held check", b, err)
+	}
+	if row, ok := n.hold(t, a.GetCheck().GetHoldId()); !ok || !row.answered {
+		t.Errorf("the first hold = %+v, %v; want it settled", row, ok)
+	}
+	if got := n.resolvedEvents(t); len(got) != 1 || got[0] != (resolvedEvent{actor: n.master.id, character: n.npcID, total: 15, skipped: true}) {
+		t.Errorf("the resolved events = %+v, want one skip of the first check at its own 15", got)
+	}
+	if got := n.mustLatest(t); got.GetHoldId() != b.GetCheck().GetHoldId() || got.GetSettled() || got.GetD20().GetFaces()[0] != 9 {
+		t.Errorf("GetNpcCheck() = %v, want the second check, waiting", got)
+	}
+	if got := n.listHeldRolls(t, n.master); len(got) != 1 || got[0].GetHoldId() != b.GetCheck().GetHoldId() {
+		t.Errorf("the master reads %v, want the second check alone", got)
+	}
+	_, err = n.pass(first, a.GetCheck().GetHoldId(), newKey())
+	wantCode(t, "the bard answers the first check", err, connect.CodeFailedPrecondition)
+	for who, h := range map[string]heardBy{"the master": master, "the bard asked": bard} {
+		heard := false
+		for _, ev := range h.heard(t, n.h) {
+			heard = heard || ev.GetHeldRollsChanged() != nil
+		}
+		if !heard {
+			t.Errorf("%s heard no held rolls change", who)
+		}
+	}
+	for _, ev := range elsewhere.heard(t, n.h) {
+		if ev.GetHeldRollsChanged() != nil {
+			t.Errorf("a player that was not asked heard the held rolls change")
+		}
+	}
+	if retry, err := n.rollWith(t, 9, true, keyB); err != nil || !proto.Equal(retry.GetCheck(), b.GetCheck()) || n.resolvedCount(t) != 1 {
+		t.Errorf("the retry of the second roll = %v, %v (%d resolved); want the same read and nothing more settled", retry, err, n.resolvedCount(t))
+	}
+	if again, err := n.rollWith(t, 15, true, keyA); err != nil || again.GetHeld() || !again.GetCheck().GetSettled() || again.GetCheck().GetTotal() != 15 {
+		t.Errorf("the retry of the first roll after the second = %v, %v; want it as it settled", again, err)
+	}
+}
+
+// TestGetNpcCheckReadsTheLatestRolledCheckNotTheLatestEvent: the check that was rolled last is the one GetNpcCheck reads, even when an
+// earlier check's resolved event has a higher seq (a settle written after the next roll, as it happens with two checks held at once).
+func TestGetNpcCheckReadsTheLatestRolledCheckNotTheLatestEvent(t *testing.T) {
+	t.Parallel()
+	n := newNpcTable(t, charactersv1.CuttingWordsAsk_CUTTING_WORDS_ASK_ALL)
+	a, err := n.roll(t, 15, true)
+	if err != nil || !a.GetHeld() {
+		t.Fatalf("the first RollNpcCheck() = %v, %v; want a held check", a, err)
+	}
+	b, err := n.roll(t, 9, true)
+	if err != nil || !b.GetHeld() {
+		t.Fatalf("the second RollNpcCheck() = %v, %v; want a held check", b, err)
+	}
+	// The first check's resolved event now comes after the second's roll.
+	if _, err := n.h.pool.Exec(t.Context(), `UPDATE session_events SET seq = seq + 1000 WHERE kind = 'npc_check_resolved'`); err != nil {
+		t.Fatalf("move the resolved event: %v", err)
+	}
+	if got := n.mustLatest(t); got.GetHoldId() != b.GetCheck().GetHoldId() || got.GetSettled() || got.GetD20().GetFaces()[0] != 9 {
+		t.Errorf("GetNpcCheck() = %v, want the second check, waiting", got)
+	}
+	c, err := n.roll(t, 12, false)
+	if err != nil || c.GetHeld() {
+		t.Fatalf("the third RollNpcCheck() = %v, %v; want a check settled at once", c, err)
+	}
+	if got := n.mustLatest(t); got.GetHoldId() != "" || !got.GetSettled() || got.GetTotal() != 12 {
+		t.Errorf("GetNpcCheck() after a check settled at once = %v, want that check: a settled 12 with no hold", got)
+	}
+}

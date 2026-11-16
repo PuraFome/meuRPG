@@ -54,9 +54,15 @@ func newNpcTable(t *testing.T, ask charactersv1.CuttingWordsAsk) *npcTable {
 
 func (n *npcTable) roll(t *testing.T, face int32, sees bool) (*playv1.RollNpcCheckResponse, error) {
 	t.Helper()
+	return n.rollWith(t, face, sees, newKey())
+}
+
+// rollWith is roll under the given key.
+func (n *npcTable) rollWith(t *testing.T, face int32, sees bool, key string) (*playv1.RollNpcCheckResponse, error) {
+	t.Helper()
 	res, err := n.master.play.RollNpcCheck(t.Context(), connect.NewRequest(&playv1.RollNpcCheckRequest{
 		CampaignId: n.campaignID, Npc: &playv1.RollNpcCheckRequest_NpcCharacterId{NpcCharacterId: n.npcID}, CheckKey: deception,
-		Roll: &playv1.RollNpcCheckRequest_D20Face{D20Face: face}, BardSees: sees, IdempotencyKey: newKey(),
+		Roll: &playv1.RollNpcCheckRequest_D20Face{D20Face: face}, BardSees: sees, IdempotencyKey: key,
 	}))
 	if err != nil {
 		return nil, err

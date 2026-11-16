@@ -79,13 +79,15 @@ func (q *Queries) CloseNpcCheckAsks(ctx context.Context, arg CloseNpcCheckAsksPa
 
 const getLatestNpcCheckEvent = `-- name: GetLatestNpcCheckEvent :one
 SELECT id, game_session_id, seq, kind, actor_user_id, character_id, payload, idempotency_key, created_at, encounter_id, idempotency_hash FROM session_events
-WHERE game_session_id = $1 AND kind IN ('npc_check_held', 'npc_check_resolved')
+WHERE game_session_id = $1
+  AND (kind = 'npc_check_held' OR (kind = 'npc_check_resolved' AND coalesce(payload->>'hold_id', '') = ''))
 ORDER BY seq DESC
 LIMIT 1
 `
 
-// The event of the latest NPC check of the session, held or resolved: the master's read of the check answers with it until the next
-// check is rolled (GetNpcCheck).
+// The event of the check rolled last in the session, held or settled at once: the master's read of the check answers with it until the
+// next check is rolled (GetNpcCheck). The roll of a check is its npc_check_held event, or the npc_check_resolved of a check that never
+// had a hold; the resolved event of a held check is no roll (it may come after the next roll's event), the hold tells how it stands.
 func (q *Queries) GetLatestNpcCheckEvent(ctx context.Context, gameSessionID string) (SessionEvent, error) {
 	row := q.db.QueryRow(ctx, getLatestNpcCheckEvent, gameSessionID)
 	var i SessionEvent

@@ -213,6 +213,15 @@ func (c *npcCheckCall) run(ctx context.Context, tx pgx.Tx, h *hints, session pla
 	if err != nil {
 		return err
 	}
+	tc, err := s.openTx(ctx, combatTx{tx: tx, q: q, session: session, now: s.now(), characterID: &npc.ID, hash: c.hash})
+	if err != nil {
+		return err
+	}
+	// A check still held for the bards ends where the next one is rolled: the master has one question at a time (a retry of a key
+	// replayed above and never gets here).
+	if err := s.settleOpenNpcChecks(ctx, tc, h, false); err != nil {
+		return err
+	}
 	opt, err := s.npcCheckNumbers(ctx, tx, c.m.CampaignID, npc, c.req.GetCheckKey())
 	if err != nil {
 		return err
@@ -227,10 +236,6 @@ func (c *npcCheckCall) run(ctx context.Context, tx pgx.Tx, h *hints, session pla
 	}
 	ev.Total = ev.D20 + ev.Modifier
 	bards, err := s.npcCheckBards(ctx, tx, q, session, npc, c.req.GetBardSees(), c.sight)
-	if err != nil {
-		return err
-	}
-	tc, err := s.openTx(ctx, combatTx{tx: tx, q: q, session: session, now: s.now(), characterID: &npc.ID, hash: c.hash})
 	if err != nil {
 		return err
 	}

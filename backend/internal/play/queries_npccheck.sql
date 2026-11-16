@@ -36,9 +36,11 @@ WHERE hold_id = $1 AND state = 'asked';
 SELECT * FROM inspiration_holds WHERE campaign_id = $1 AND kind = 'npc_check' AND answer_key IS NULL ORDER BY created_at, id;
 
 -- name: GetLatestNpcCheckEvent :one
--- The event of the latest NPC check of the session, held or resolved: the master's read of the check answers with it until the next
--- check is rolled (GetNpcCheck).
+-- The event of the check rolled last in the session, held or settled at once: the master's read of the check answers with it until the
+-- next check is rolled (GetNpcCheck). The roll of a check is its npc_check_held event, or the npc_check_resolved of a check that never
+-- had a hold; the resolved event of a held check is no roll (it may come after the next roll's event), the hold tells how it stands.
 SELECT * FROM session_events
-WHERE game_session_id = $1 AND kind IN ('npc_check_held', 'npc_check_resolved')
+WHERE game_session_id = $1
+  AND (kind = 'npc_check_held' OR (kind = 'npc_check_resolved' AND coalesce(payload->>'hold_id', '') = ''))
 ORDER BY seq DESC
 LIMIT 1;
