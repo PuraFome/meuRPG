@@ -1,5 +1,8 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
+import { create } from '@bufbuild/protobuf';
+
+import { TableContentKind, TableEntrySchema } from '../../../../gen/meurpg/rules/v1/table_content_pb';
 import { catalog } from '../../../core/content/content-testing';
 import { menu } from '../../../core/content/content-testing-menu';
 import { emptyEffect } from '../../../core/content/effect-draft';
@@ -85,6 +88,60 @@ describe('"Como os jogadores veem" for the open feature (#580, board 580-03)', (
     fixture.detectChanges();
     expect(text()).toContain('Pede Paladino 9.');
     expect(text()).not.toContain('Golpe do Corvo. Soma o dado ao dano. Pede');
+  });
+
+  describe('reads what a player reads: a class, pact, spell or option that is off or archived is not named (#580)', () => {
+    const entry = (key: string, kind: TableContentKind, over: { off?: boolean; archived?: boolean }) =>
+      create(TableEntrySchema, { key, kind, namePt: key, ...over });
+    const asking = (): FeatureDraft => {
+      const f = feature();
+      f.options[1] = withAsks(f.options[1], {
+        classKey: 'class:paladin',
+        classLevel: '7',
+        requiresPact: 'feature:pacto-da-lamina',
+        requiresSpell: 'spell:light',
+        requiresOptions: ['feature:golpe@mesa', 'feature:oculta@mesa'],
+      });
+      return f;
+    };
+
+    it('names every key while all of them are on', () => {
+      setup(asking());
+      fixture.componentRef.setInput('entries', []);
+      fixture.detectChanges();
+      expect(text()).toContain('Pede Paladino 7');
+      expect(text()).toContain('Golpe do Corvo');
+    });
+
+    it('drops the class that is off, the pact that is archived, the spell that is off and the option that is archived', () => {
+      setup(asking());
+      fixture.componentRef.setInput('entries', [
+        entry('class:paladin', TableContentKind.CLASS, { off: true }),
+        entry('feature:pacto-da-lamina', TableContentKind.OPTION, { archived: true }),
+        entry('spell:light', TableContentKind.SPELL, { off: true }),
+        entry('feature:oculta@mesa', TableContentKind.OPTION, { archived: true }),
+      ]);
+      fixture.detectChanges();
+      expect(text()).toContain('Asa Partida. Soma o dado ao ataque. Pede Golpe do Corvo.');
+      expect(text()).not.toContain('Paladino');
+      expect(text()).not.toContain('pacto-da-lamina');
+      expect(text()).not.toContain('spell:light');
+      expect(text()).not.toContain('oculta');
+    });
+
+    it('says nothing of what an option asks when every key it asks for is hidden', () => {
+      setup(asking());
+      fixture.componentRef.setInput('entries', [
+        entry('class:paladin', TableContentKind.CLASS, { archived: true }),
+        entry('feature:pacto-da-lamina', TableContentKind.OPTION, { off: true }),
+        entry('spell:light', TableContentKind.SPELL, { archived: true }),
+        entry('feature:oculta@mesa', TableContentKind.OPTION, { off: true }),
+        entry('feature:golpe@mesa', TableContentKind.OPTION, { off: true }),
+      ]);
+      fixture.detectChanges();
+      expect(text()).toContain('Asa Partida. Soma o dado ao ataque.');
+      expect(text()).not.toContain('Pede');
+    });
   });
 
   it('calls a feature with no name "Nova característica"', () => {
