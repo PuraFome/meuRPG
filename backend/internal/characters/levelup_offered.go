@@ -11,7 +11,8 @@ import (
 
 // offeredChoices are the keys a level-up offers the player the character: the options of the features of the level (the
 // class's, the subclasses the player may pick, the choices an earlier level left open and the new level's), and the options a
-// swap may take. It is what GetLevelUpOptions lists after hideFromPlayer.
+// swap may take: what GetLevelUpOptions lists after hideFromPlayer. It also holds, to place a pick of an option, the options the
+// sheet has and the invocations a warlock may take in the place of one, which that list leaves out.
 type offeredChoices struct {
 	options map[string]bool
 	swaps   map[string]bool
