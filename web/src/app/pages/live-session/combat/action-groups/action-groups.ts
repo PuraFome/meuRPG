@@ -25,7 +25,6 @@ import type { AttunementEntryVm } from '../../../../core/characters/attunement';
 import type { CombatItemRowVm, ConsumableNotice } from '../../../../core/characters/consumables';
 import { AMMUNITION } from '../../../../core/combat/ammunition-line';
 import {
-  attackDetail,
   throwNote,
   attackName,
   attackMarksOf,
@@ -92,6 +91,7 @@ import {
   tabStrip,
   slotRowsOf,
   specialAttack,
+  attackLines,
 } from './action-groups-text';
 import { offersWeaponAttack } from './weapon-offer';
 
@@ -445,7 +445,7 @@ export class ActionGroups {
   protected readonly attackMarks = attackMarksOf;
   /** The counting magic bonus the server says is in an attack's numbers. */
   protected readonly bonusOf = magicBonusOf;
-  protected readonly attackDetail = (a: Parameters<typeof attackDetail>[0]) => attackDetail(a);
+  protected readonly lines = attackLines;
   protected readonly reasonText = reasonText;
   protected readonly castRef = castRefOf;
   protected readonly state = (used: boolean): string =>

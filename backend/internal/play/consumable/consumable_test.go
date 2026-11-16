@@ -78,7 +78,7 @@ func TestLineTellsTheNumbersOnlyToWhoMayRead(t *testing.T) {
 }
 
 // Standing is the word the order of the combat gives a player: a death the master confirmed is on no list, three failed death
-// saves read as down to a player and are left out of the master's list, and 0 hit points are down.
+// saves keep a player's character listed and leave it out of the master's list, and 0 hit points are down.
 func TestStandingFollowsTheStateWordOfThePlayer(t *testing.T) {
 	t.Parallel()
 	vitals := func(hp int32) *playv1.CharacterVitals {
@@ -91,16 +91,18 @@ func TestStandingFollowsTheStateWordOfThePlayer(t *testing.T) {
 		hp               int32
 		listed, wantDown bool
 	}{
-		"on its feet":                        {hp: 5, listed: true},
-		"on its feet, for the master":        {hp: 5, master: true, listed: true},
-		"at 0 hit points":                    {hp: 0, listed: true, wantDown: true},
-		"two failed saves":                   {hp: 0, failures: 2, listed: true, wantDown: true},
-		"three failed saves, for a player":   {hp: 0, failures: 3, listed: true, wantDown: true},
-		"three failed saves, for the master": {hp: 0, failures: 3, master: true},
-		"a death the master confirmed":       {hp: 0, failures: 3, gone: true},
-		"a death confirmed, for the master":  {hp: 0, gone: true, master: true},
-		"no vitals, no confirmed death":      {hp: 0, listed: true, wantDown: true},
-		"a character with no maximum is up":  {listed: true},
+		"on its feet":                                           {hp: 5, listed: true},
+		"on its feet, for the master":                           {hp: 5, master: true, listed: true},
+		"at 0 hit points":                                       {hp: 0, listed: true, wantDown: true},
+		"two failed saves":                                      {hp: 0, failures: 2, listed: true, wantDown: true},
+		"three failed saves, for a player":                      {hp: 0, failures: 3, listed: true, wantDown: true},
+		"three failed saves, for the master":                    {hp: 0, failures: 3, master: true},
+		"a death the master confirmed":                          {hp: 0, failures: 3, gone: true},
+		"a death confirmed, for the master":                     {hp: 0, gone: true, master: true},
+		"three failed saves above 0 hit points, for a player":   {hp: 5, failures: 3, listed: true},
+		"three failed saves above 0 hit points, for the master": {hp: 5, failures: 3, master: true},
+		"no confirmed death, at 0 hit points":                   {hp: 0, listed: true, wantDown: true},
+		"a character with no maximum is up":                     {listed: true},
 	} {
 		v := vitals(tc.hp)
 		if name == "a character with no maximum is up" {
