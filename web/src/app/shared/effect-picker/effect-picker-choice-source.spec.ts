@@ -160,6 +160,13 @@ describe('EffectPicker: where the options of a choice come from', () => {
       expect(field('set')).toBeNull();
     });
 
+    it('stays in view, unfolded, with no feature picked', () => {
+      setup(feature());
+      const select = field('from_feature') as HTMLSelectElement;
+      expect(select).not.toBeNull();
+      expect(text(select.closest('.frow')!)).toContain('Vazio: a escolha usa a lista ou as opções desta característica.');
+    });
+
     it('is not offered where the features have no such source, unless a key is stored', () => {
       setup(feature(), { offer: false });
       open();

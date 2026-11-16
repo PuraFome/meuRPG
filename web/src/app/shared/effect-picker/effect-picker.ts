@@ -212,6 +212,7 @@ export class EffectPicker {
         f.alwaysShown ||
         neverFolded(this.effect().type, f.name) ||
         f.name === 'filter' ||
+        f.name === 'from_feature' ||
         f.name === 'only_proficient' ||
         f.name === 'cap' ||
         this.filled(f) ||
