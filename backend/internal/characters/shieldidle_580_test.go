@@ -82,7 +82,7 @@ func (tb *idleTable) banner(c *charactersv1.Character) []string {
 }
 
 func (tb *idleTable) sentence(name string, with, without int32) string {
-	return fmt.Sprintf("Machado de Lenhador passou a exigir as duas mãos. Com Machado de Lenhador em uso, o escudo de %s não conta na CA (CA %d → %d).", name, with, without)
+	return fmt.Sprintf("A arma Machado de Lenhador passou a exigir as duas mãos. Com ela em uso, o escudo de %s não conta na CA (CA %d → %d).", name, with, without)
 }
 
 func issueCodes(c *charactersv1.Character) []string {
@@ -236,7 +236,7 @@ func TestTheShieldIdleNoticeRefusesNothingAndGoesWhenTheGearMoves(t *testing.T) 
 	if leveled.GetSheet().GetFull().GetClasses()[0].GetLevel() != 4 {
 		t.Fatalf("the level-up left the sheet at %v", leveled.GetSheet().GetFull().GetClasses())
 	}
-	if got := tb.banner(read()); len(got) != 1 || !strings.HasPrefix(got[0], "Machado de Lenhador passou a exigir as duas mãos. Com Machado de Lenhador em uso, o escudo de Pensantus não conta na CA (CA ") {
+	if got := tb.banner(read()); len(got) != 1 || !strings.HasPrefix(got[0], "A arma Machado de Lenhador passou a exigir as duas mãos. Com ela em uso, o escudo de Pensantus não conta na CA (CA ") {
 		t.Errorf("after the level-up: %q, want the notice to stay", got)
 	}
 
@@ -246,6 +246,29 @@ func TestTheShieldIdleNoticeRefusesNothingAndGoesWhenTheGearMoves(t *testing.T) 
 			t.Errorf("after stowing %s: %q, want the notice gone", key, got)
 		}
 		mustSetEquipped(t, tb.owner, read(), key, true)
+	}
+}
+
+// A notice that ended does not come back when the owner takes the shield or the weapon up again: it told of a change and
+// the owner has seen it.
+func TestAnEndedShieldIdleNoticeDoesNotComeBackWhenTheGearIsTakenUpAgain(t *testing.T) {
+	t.Parallel()
+	tb := newIdleTable(t, versatile)
+	with := tb.owner.get(t, tb.campaign, tb.pc.GetId()).GetDerived().GetArmorClass()
+	tb.edit(t, twoHanded)
+	read := func() *charactersv1.Character { return tb.owner.get(t, tb.campaign, tb.pc.GetId()) }
+	if got, want := tb.banner(read()), []string{tb.sentence("Pensantus", with, with-2)}; !slices.Equal(got, want) {
+		t.Fatalf("the banner before the owner moves anything = %q, want %q", got, want)
+	}
+	for _, key := range []string{rules.ShieldKey, tb.weapon.GetKey()} {
+		mustSetEquipped(t, tb.owner, read(), key, false)
+		if got := tb.banner(read()); got != nil {
+			t.Errorf("after stowing %s: %q, want the notice gone", key, got)
+		}
+		mustSetEquipped(t, tb.owner, read(), key, true)
+		if got := tb.banner(read()); got != nil {
+			t.Errorf("after taking %s up again: %q, want the notice to stay gone", key, got)
+		}
 	}
 }
 
@@ -323,7 +346,7 @@ func TestASheetSavedBeforeTheNoticeIsToldOnlyTheEditThatTurnsTwoHandedOn(t *test
 	}
 	for who, u := range map[string]*user{"the owner": tb.owner, "the master": tb.master} {
 		got := u.get(t, tb.campaign, tb.pc.GetId())
-		if msgs := bannerOf(got, second.GetKey()); len(msgs) != 1 || !strings.HasPrefix(msgs[0], "Martelo de Ferreiro passou a exigir as duas mãos. Com Martelo de Ferreiro em uso, o escudo de Pensantus não conta na CA (CA ") {
+		if msgs := bannerOf(got, second.GetKey()); len(msgs) != 1 || !strings.HasPrefix(msgs[0], "A arma Martelo de Ferreiro passou a exigir as duas mãos. Com ela em uso, o escudo de Pensantus não conta na CA (CA ") {
 			t.Errorf("%s reads %q for the second weapon, want the notice", who, msgs)
 		}
 		if msgs := tb.banner(got); msgs != nil {

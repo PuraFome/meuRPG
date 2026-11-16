@@ -71,8 +71,8 @@ func TestTheShieldIdleSentenceIsTheBoardsPerReader(t *testing.T) {
 	cases := []struct {
 		name, character, want string
 	}{
-		{"a named character", "Tor", "Maça de Guerra passou a exigir as duas mãos. Com Maça de Guerra em uso, o escudo de Tor não conta na CA (CA %d → %d)."},
-		{"nobody named", "", "Maça de Guerra passou a exigir as duas mãos. Com Maça de Guerra em uso, o escudo do personagem não conta na CA (CA %d → %d)."},
+		{"a named character", "Tor", "A arma Maça de Guerra passou a exigir as duas mãos. Com ela em uso, o escudo de Tor não conta na CA (CA %d → %d)."},
+		{"nobody named", "", "A arma Maça de Guerra passou a exigir as duas mãos. Com ela em uso, o escudo do personagem não conta na CA (CA %d → %d)."},
 	}
 	for _, tc := range cases {
 		if got, want := n.Idle.SentencePT(tc.character), fmt.Sprintf(tc.want, with, without); got != want {
@@ -80,42 +80,21 @@ func TestTheShieldIdleSentenceIsTheBoardsPerReader(t *testing.T) {
 		}
 	}
 	if got, want := (ShieldIdle{Key: "weapon:x", WeaponPT: "Machado de Lenhador", ACWith: 18, ACWithout: 16}).SentencePT("Tor"),
-		"Machado de Lenhador passou a exigir as duas mãos. Com Machado de Lenhador em uso, o escudo de Tor não conta na CA (CA 18 → 16)."; got != want {
+		"A arma Machado de Lenhador passou a exigir as duas mãos. Com ela em uso, o escudo de Tor não conta na CA (CA 18 → 16)."; got != want {
 		t.Errorf("sentence = %q, want the board's %q", got, want)
 	}
 }
 
-// The weapon's name stands alone: no article and no pronoun for it, whatever the name, since the table gives no gender.
-func TestTheShieldIdleSentenceNeverGuessesAGender(t *testing.T) {
+// The weapon is named after the noun "arma", which settles gender and number for any name; "ela" is that noun, so
+// nothing is derived from the name.
+func TestTheShieldIdleSentenceNamesTheWeaponAfterTheNoun(t *testing.T) {
 	t.Parallel()
-	for _, name := range []string{"Foice Longa", "Rede de Pesca", "Besta Leve", "Tridente", "Cajado", "Florete Fino", "Maça"} {
+	for _, name := range []string{"Foice Longa", "Rede de Pesca", "Besta Leve", "Tridente", "Cajado", "Luvas de Ferro", "Machado de Lenhador"} {
 		got := (ShieldIdle{WeaponPT: name, ACWith: 18, ACWithout: 16}).SentencePT("Tor")
-		want := name + " passou a exigir as duas mãos. Com " + name + " em uso, o escudo de Tor não conta na CA (CA 18 → 16)."
+		want := "A arma " + name + " passou a exigir as duas mãos. Com ela em uso, o escudo de Tor não conta na CA (CA 18 → 16)."
 		if got != want {
 			t.Errorf("%s: sentence = %q, want %q", name, got, want)
 		}
-		for _, guess := range []string{" ela ", " ele ", " equipada", " equipado", "O " + name, "A " + name, "agora"} {
-			if strings.Contains(got, guess) {
-				t.Errorf("%s: sentence %q holds %q, a guess at the weapon's gender", name, got, guess)
-			}
-		}
-	}
-}
-
-// The numbers are told only when they differ: with the same armor class before and after, the sentence says the shield
-// does not count and gives no parenthesis.
-func TestTheShieldIdleSentenceGivesNoNumbersWhenTheyAreEqual(t *testing.T) {
-	t.Parallel()
-	equal := ShieldIdle{WeaponPT: "Machado de Lenhador", ACWith: 16, ACWithout: 16}
-	if got, want := equal.SentencePT("Tor"), "Machado de Lenhador passou a exigir as duas mãos. Com Machado de Lenhador em uso, o escudo de Tor não conta na CA."; got != want {
-		t.Errorf("equal: sentence = %q, want %q", got, want)
-	}
-	if got, want := equal.SentencePT(""), "Machado de Lenhador passou a exigir as duas mãos. Com Machado de Lenhador em uso, o escudo do personagem não conta na CA."; got != want {
-		t.Errorf("equal, nobody named: sentence = %q, want %q", got, want)
-	}
-	differ := ShieldIdle{WeaponPT: "Machado de Lenhador", ACWith: 18, ACWithout: 16}
-	if got := differ.SentencePT("Tor"); !strings.HasSuffix(got, "não conta na CA (CA 18 → 16).") {
-		t.Errorf("different: sentence = %q, want the numbers", got)
 	}
 }
 
@@ -198,19 +177,40 @@ func TestTheShieldIdleNoticeBlocksNothing(t *testing.T) {
 	}
 }
 
-func TestTheShieldIdleNumbersStowEveryTwoHandedWeaponTheSrdOnesToo(t *testing.T) {
+// The notice is raised only when this weapon's change is what moves the armor class: with an SRD two-handed weapon
+// equipped as well, stowing the table weapon alone leaves the shield idle and the armor class where it is.
+func TestNoShieldIdleNoticeWhenAnotherTwoHandedWeaponKeepsTheShieldIdle(t *testing.T) {
 	t.Parallel()
 	c := shieldIdleContent(t)
 	b := withShieldOn(ruleSheet(12, 14, "equipment:greatsword", wHeavy))
-	d := Derive(b, c)
+	if d := Derive(b, c); !d.ShieldIdle || len(d.Notices) != 0 {
+		t.Errorf("shield idle %v, notices %+v, want the idle shield and no notice: the greatsword alone keeps it idle", d.ShieldIdle, d.Notices)
+	}
+	alone := withShieldOn(ruleSheet(12, 14, wHeavy))
+	d := Derive(alone, c)
 	n, ok := noticeOf(d, IssueShieldIdle)
-	if !ok || n.Idle == nil {
+	if !ok || n.Idle == nil || n.Idle.ACWith != d.ArmorClass+2 || n.Idle.ACWithout != d.ArmorClass {
+		t.Errorf("the table weapon alone: notices %+v, want the notice with the shield's 2 more", d.Notices)
+	}
+}
+
+// A weapon whose name is plural reads right: the noun "arma" and "ela" settle it.
+func TestTheShieldIdleSentenceOfAPluralNamedWeaponReadsRight(t *testing.T) {
+	t.Parallel()
+	const gloves = "weapon:luvas-de-ferro" + tableSuffix
+	ws := append(ruleWeapons(), TableWeapon{TableEntry: TableEntry{Key: gloves, NamePT: "Luvas de Ferro"}, Category: "martial", Damage: "1d4", DamageType: "damage-type:bludgeoning", Properties: []string{"weapon-property:two-handed"}})
+	for i := range ws {
+		ws[i].Revision = 1
+	}
+	c := withOverlay(t, Overlay{Revision: 1, Weapons: ws})
+	d := Derive(withShieldOn(ruleSheet(12, 14, gloves)), c)
+	n, ok := noticeOf(d, IssueShieldIdle)
+	if !ok {
 		t.Fatalf("notices = %+v, want the one shield_idle", d.Notices)
 	}
-	bare := b
-	bare.Weapons = []string{}
-	if want := Derive(bare, c).ArmorClass; n.Idle.ACWith != want || n.Idle.ACWithout != d.ArmorClass || n.Idle.ACWith != n.Idle.ACWithout+2 {
-		t.Errorf("AC with %d and without %d, want %d and %d (the shield counts once both two-handed weapons are stowed)", n.Idle.ACWith, n.Idle.ACWithout, want, d.ArmorClass)
+	want := fmt.Sprintf("A arma Luvas de Ferro passou a exigir as duas mãos. Com ela em uso, o escudo de Tor não conta na CA (CA %d → %d).", d.ArmorClass+2, d.ArmorClass)
+	if got := n.Idle.SentencePT("Tor"); got != want {
+		t.Errorf("sentence = %q, want %q", got, want)
 	}
 }
 
