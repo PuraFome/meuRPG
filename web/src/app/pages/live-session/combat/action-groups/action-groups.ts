@@ -53,6 +53,7 @@ import {
   partByEconomy,
   partItems,
 } from '../../../../core/combat/action-tabs';
+import { castLevelOf } from '../../../../core/combat/cast-flow';
 import { cannotAct } from '../../../../core/combat/conditions';
 import { spellSummary } from '../../../../core/combat/spell-summary';
 import {
@@ -471,7 +472,8 @@ export class ActionGroups {
 
   /** The line under a spell's name. */
   protected spellLine(s: SpellOption): string {
-    return spellLine(s, spellSummary(this.details().get(s.spell?.key ?? '')));
+    const level = castLevelOf(null, s.grant, s.spell?.level ?? 0);
+    return spellLine(s, spellSummary(this.details().get(s.spell?.key ?? ''), '', level));
   }
 
   /** The name a spell goes by on screen and in an accessible name. */

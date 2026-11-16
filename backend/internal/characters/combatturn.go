@@ -480,7 +480,7 @@ func turnOptionsToProto(o combat.TurnOptions) *rulesv1.TurnOptions {
 		if g := sp.Grant; g != nil {
 			so.Grant = &rulesv1.SpellGrantOption{
 				SourceKey: g.Source, SourceNamePt: g.SourcePT, AtWill: g.AtWill, Resource: g.Resource, UsesLeft: i32(g.UsesLeft),
-				UsesCost: i32(g.Cost), NoMaterialComponents: g.NoMaterialComponents,
+				UsesCost: i32(g.Cost), NoMaterialComponents: g.NoMaterialComponents, CastLevel: i32(g.CastLevel),
 				AlsoWithSlot: g.AlsoWithSlot, Ability: string(g.Ability), AttackBonus: i32(g.AttackBonus), SaveDc: i32(g.SaveDC),
 			}
 		}

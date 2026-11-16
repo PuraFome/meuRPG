@@ -159,8 +159,21 @@ The slot, targets and dice are checked by the server alone: `invalid_argument` c
 
 - **Granted spells.** A spell a `granted_spell` effect gives ([Table content](../rules-table-content.md#granted-spells)) is one more way to cast it: `GetCastOptions` lists each grant on the spell (`CastingSpell.grants`: source, uses left, ability, attack bonus and DC), and a spell the character has from a grant alone is listed too.
   `granted_by` names the grant: the cast takes no slot (a slot only when the grant has `also_with_slot`, and then no use), spends one use of the grant's resource unless it is `at_will` (`NO_USES` when none is left), and reads the spell with the grant's casting ability.
+  A cast with no slot has the grant's `cast_level` (`CastingGrant.cast_level`, `SpellGrantOption.cast_level`), the spell's own level when the grant sets none: the dice, the healing and the targets the spell scales with follow it.
+  A cast with a slot has the slot's level.
+  In a combat the dice of a cast through a grant are those at its `cast_level`, rolled in the app or physically.
+  Outside a combat the server rolls and heals at the `cast_level`, and the cast sheet shows the spell's own dice (`CastingSpell.roll_dice`, the dice at the spell's own level).
+  The undo of a cast through a grant gives back no slot.
+  A retried cast answers with the area at the cast level.
+  `SpellTargets` lists one entry per enabled cast option of a spell, in the order of the options.
+  The entry of a grant is the n-th entry of its spell key, n being the place of the grant among the enabled options of that key.
+  It lists `max_targets`, the darts and the area at the grant's cast level, and a client counts `targets_per_level` from that level.
+  The outside cast row has `slot_level` 0 for a cast with no slot.
   A ritual-only grant takes `as_ritual`.
-  The use is spent when the cast starts, also for a long casting; the end of a long casting through a grant reads the sheet again for the way the row says.
+  The use is spent when the cast starts, also for a long casting.
+  The cast keeps the source of the grant it started through (`spell_casts.grant_source`), and the end of a long casting reads that grant again from the sheet: its cast level and its numbers.
+  If that grant is no longer on the sheet, the end is refused and the casting stays open; the player can abandon it.
+  Abandoning a long casting through a grant gives back nothing: the use spent at the start stays spent.
   In a combat the same grant is a turn option (`SpellOption.grant`) and `CastSpellRequest.granted_by` picks it; the undo gives the use back.
 - **One cast, two steps when it takes time.** An action, bonus action or reaction takes effect at once.
   A spell of a minute or more, and every ritual (casting time plus 10 minutes, no slot, no higher level: SRD 5.1 "Rituals"), starts in `casting`: nothing is spent and the caster concentrates on the casting from the start.
@@ -170,8 +183,12 @@ The slot, targets and dice are checked by the server alone: `invalid_argument` c
   The unique partial indexes make it a fact of the table: one `casting` row and one concentrating row per caster.
   Casting a second concentration spell ends the first and the creatures it summoned (`ended_cast_ids`, `dismissed_creature_ids`).
 - **Rituals follow the class.** `rules/casting.go` allows a ritual to a bard (spells known), a cleric or druid (prepared) and a wizard (the spellbook).
-  The warlock's Pact of the Chain casts only Find Familiar that way.
-  The Book of Ancient Secrets invocation is not implemented.
+  The warlock's Pact of the Chain casts Find Familiar that way without knowing it.
+  The Book of Ancient Secrets adds the two spells picked in its choice.
+  Those carry `CharacterSpell.FromBook`: known, not prepared, outside the class's numbers.
+  The warlock spells known with the ritual tag carry `CharacterSpell.WarlockList`.
+  That is the character's warlock list, the patron's expanded list included.
+  `Derived.SpellStanding` is the one place that answers it: the cast menu, the cast plan and `GetSummonOptions` read it, so a slot cast of a book spell is refused as not the caster's.
 - **A combat that starts does not cancel a long cast.** The combatant carries the concentration (`spell_casts.carried_encounter_id`, given back when the combat ends), the caster spends the action each turn, and the cast can be confirmed only outside combat (`IN_COMBAT`).
   `combatants.mage_armor_ac` copies Mage Armor's armor class when a combat starts or the character joins.
 

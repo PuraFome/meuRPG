@@ -72,7 +72,7 @@ The rules side (`ChangedSince`, `Issue.Keys`, the sentences) is in [Table conten
 This is what the server stores and shows:
 
 - Each sheet stores, inside its own document and written by `checkSheet` (create, edit and level-up; what the client sends is ignored), the content revision (`FullSheet.content_revision`), the notices it already had (`known_issues`, each by its identity, `Issue.ID`: code, field and exact sentence, and for a lost feat or option the code, the list its pick is in and the entry's key, with no sentence) and, for a still-flagged entry, the revision at which the sheet was up to date with it (`content_baselines`). Only the campaign's master receives `known_issues`; `content_baselines` is sent to every reader of the sheet, as it holds only keys of entries the sheet itself uses, which its owner reads, and nothing in the web reads it.
-- On every read, `Content.ChangedSince` lists the table entries the sheet uses that changed later, and the server shows for each changed entry only the new notices whose keys include it: `DerivedSheet.changed_content` (the key, the name, the field, the revisions, the date of the change and the exact sentences) and a `table_content_changed` `Issue` per entry.
+- On every read, `Content.ChangedSince` lists the table entries the sheet uses that changed later, and the server shows for each changed entry only the new notices whose keys include it: `DerivedSheet.changed_content` (the key, the name, the field, the revisions, the date of the change, the exact sentences and, in `codes`, the code of the issue each sentence comes from: one per sentence, in the same order, built in `addChangedContent`) and a `table_content_changed` `Issue` per entry. The web tells the shield line apart by the code at its place (`shield_idle`), for each line and never by its words.
 - The notice disappears by itself when nothing remains tied to it; a change that left no new notice on that sheet shows nothing; there is no "dismiss".
 - Saving the sheet does not clear it: on saving, the notices that were flagged and still stand stay out of `known_issues` and the entry stores the base revision in `content_baselines`, so the next read flags them again; only fixing what the notice says clears it.
 - It is a notice, never a `Validate` error.
@@ -87,6 +87,9 @@ This is what the server stores and shows:
   `LevelUpCharacter` and `PreviewLevelUp` refuse with `LEVEL_UP_REFUSAL_REASON_ARCHIVED_CHOICE`.
 - The same for a switched-off key (or a child of a switched-off class or race), but only for a player: `SWITCHED_OFF_CONTENT` and `LEVEL_UP_REFUSAL_REASON_SWITCHED_OFF_CHOICE`.
   The master is not refused: the switch hides the option from players, not from any sheet the master edits.
+- The keys of a sheet include the spell of a scoped pick (`choiceKey=spell:key`), so a pick of a spell counts as the sheet using it.
+  A ritual held in the book that stops being a ritual is an issue at its pick (`spell_level`).
+  Its owner reads the notice of changed content for it.
 - A sheet that already uses the key keeps working (`Derive`, `Validate`, names, level-up), and an unrelated edit is never refused.
 - A sheet with an `@mesa` key does not change campaign: `CheckSheetCanMove` (`failed_precondition`, `TABLE_CONTENT_STAYS`, with the first key) exists for it.
   Nothing calls it yet, since characters are not copied between campaigns; whoever builds that must call it before writing.
@@ -290,7 +293,13 @@ The vitals keeper has `GiveSpellSlot`, `SpendSpellSlot` and their undos; a slot 
 ## Rerolls, minimums and the critical range
 
 `tableEffectsOf` maps the proto fields `rolls` and `at_most` of `TableEffect` to the effect, and `damage_type` and `value` to a `roll_minimum`; `resource`, `cost`, `when` and `text_pt` are the fields the other effects already use.
-A `granted_spell` also maps `uses_cost` and `no_material_components` (`tableEffectsOf`), and `GrantedSpell`, `CastingGrant` and `SpellGrantOption` carry both (`uses_cost`, 0 for an at-will grant, and `no_material_components`) from `rules.GrantedSpell.Cost` and `NoMaterialComponents`: the sheet words the cost ("Gasta 2 usos de ...") and the "Sem material" tag, and the cast sheet shows "gasta 2" in the grant line and drops the "M" of the component line behind its "?". Both are display: the server spends the cost and enforces no component.
+A `granted_spell` also maps `uses_cost`, `no_material_components` and `cast_level` (`tableEffectsOf`).
+`GrantedSpell`, `CastingGrant` and `SpellGrantOption` carry them from `rules.GrantedSpell` (`Cost`, `NoMaterialComponents`, `CastLevel`) as `uses_cost` (0 for an at-will grant), `no_material_components` and `cast_level`.
+The sheet words the cost ("Gasta 2 usos de ...") and the "Sem material" tag.
+The cast sheet shows "gasta 2" in the grant line and drops the "M" of the component line behind its "?".
+The cost and the waived material are display: the server spends the cost and enforces no component.
+`cast_level` is the level the server casts the spell at with no slot: the spell's own when the effect sets none, 0 for a cantrip.
+A cast with a slot has the slot's level.
 A `modifier` on `critical_range` uses `target`, `mode` (`set`), `value` and `applies` (the scope: `weapon`, `spell` or `both`).
 All three are on the effect menu ([reroll](rules-table-content.md#reroll), [roll minimum](rules-table-content.md#roll-minimum), [critical range](rules-table-content.md#critical-range)).
 `GetEffectMenu` returns the entries of `reroll` and `roll_minimum` with their fields and the list `roll_applies`, the field `applies` of `modifier` with the list `critical_scopes`, and the target `critical_range` among the modifier targets.
