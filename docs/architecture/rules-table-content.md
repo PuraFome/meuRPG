@@ -73,7 +73,7 @@ A table feature has effects of these types only; anything else is `forbidden_eff
 | `granted_spell` | See [Granted spells](#granted-spells). |
 | `extra_damage` | See [Extra damage](#extra-damage). May carry `while`. |
 | `power_attack` | See [Power attack](#power-attack). |
-| `choice` | Picks among SRD options (a key the SRD has) or, for kind `feature`, among the option list of a table feature. Kinds: `skill`, `expertise`, `cantrip`, `spell`, `language`, `tool`, `feature`, `feat`, and, in a feat only, `ability` and `damage_type` (see [Feat options and picks](#feat-options-and-picks)). A `feature` choice never asks for more than the options it lists. |
+| `choice` | Picks among SRD options (a key the SRD has) or, for kind `feature`, among the option list of a table feature. Kinds: `skill`, `expertise`, `cantrip`, `spell`, `language`, `tool`, `feature`, `feat`, and, in a feat only, `ability` and `damage_type` (see [Feat options and picks](#feat-options-and-picks)). A `feature` choice never asks for more than the options it lists. A `tool` choice may carry `filter.proficiency_kinds` (`weapon`, `tool`, `other`, each once, at most 3) in place of `from`, and offers every catalog proficiency of those kinds, computed at read time; its `from` may name proficiencies of those kinds too. A `feature` choice may carry `from_feature`, the key of a class or subclass feature with options (never an option, itself, the invocations or a feature that offers another's options), and offers that feature's options; at read time the pool leaves out options of an entry the table switched off or archived (unless the sheet holds it), and a pick naming one is reported as an unknown key. `filter` and `from_feature` are refused together with `from`, `set` and each other. |
 | `ability_increase` | Feats only. `count` different abilities from `from`, `value` 1 or 2; at most one per feat. The sheet keeps the result in `ExtraAbilityBonuses`. |
 | `ambush` | See [Ambush](#ambush). |
 | `reroll` | See [Reroll](#reroll). |
@@ -98,6 +98,7 @@ Each option is a trait with a server-made key (`trait:<stem>--<option name>@mesa
 The pick is stored with the sheet's choices and checked against the options; one outside them is reported as not offered.
 A trait with options takes no `choice` of kind `feature` (refused at `.effects[i].choice`, `bad_value`).
 The character picks one option, never more.
+A feature may offer another feature's options with `from_feature` instead: it carries no options of its own, the option keys stay the source feature's, and the content records which feature each option belongs to (`optionSource`), which read time uses to leave out the options of an entry the table keeps out.
 Refused, each at its field: options on a background feature, nested options, options on a class or subclass feature with no `choice` of features, a repeated option name or `from` key, a `from` key of another entry's list, a `choice` inside an option, more options than the limit.
 
 **Feat options and picks.**
