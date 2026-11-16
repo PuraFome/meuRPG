@@ -1071,7 +1071,7 @@ func applyPicks(after *Build, ch LevelUpChoices, c *content) {
 	for _, s := range ch.FeatureSwaps {
 		applyFeatureSwap(after, s)
 	}
-	if ch.SwapInvocation != "" && ch.Class == classWarlock && c.isInvocation(ch.SwapInvocation) {
+	if ch.SwapInvocation != "" && ch.Class == classWarlock {
 		after.FeatureChoices = slices.DeleteFunc(after.FeatureChoices, func(k string) bool { return k == ch.SwapInvocation })
 	}
 	after.FeatureChoices = append(after.FeatureChoices, ch.LateChoices...)
