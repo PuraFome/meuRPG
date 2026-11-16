@@ -132,6 +132,9 @@ func (s *Service) answerReadied(ctx context.Context, m authz.Membership, in answ
 	if err != nil {
 		return nil, true, s.dbError(ctx, "read the readied action", err)
 	}
+	if usedAs(row) != readiedSpell && len(msg.GetTargets()) > 0 { // not released as a cast
+		return nil, true, badTargets(targetsNotUsed)
+	}
 	switch row.Kind {
 	case readiedAttack:
 		out, err := s.useReadiedAttack(ctx, m, in, msg, w, row)
@@ -168,6 +171,9 @@ func (s *Service) mayAnswerReadied(ctx context.Context, m authz.Membership, encI
 	}
 	return nil
 }
+
+// targetsNotUsed refuses targets where the answer does not cast with them: only the use of a readied spell does.
+const targetsNotUsed = "targets are for the use of a readied spell"
 
 // answerReadiedWrite runs an answer of a READIED window in its own change of the kind, and answers as AnswerReaction does.
 func (s *Service) answerReadiedWrite(ctx context.Context, m authz.Membership, in answerInput, msg *playv1.AnswerReactionRequest, kind string,
