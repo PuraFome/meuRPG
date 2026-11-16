@@ -107,14 +107,18 @@ describe('ClassEditor', () => {
       row().click();
       await settle(fixture, 3);
     }
-    expect(preview()?.querySelector('section')).toBeNull();
+    // No feature open: no landmark either, so a screen reader finds no empty "Como os jogadores veem".
+    expect(preview()).toBeNull();
+    expect(el.querySelector('aside[aria-label="Como os jogadores veem"]')).toBeNull();
     row().click();
     await settle(fixture, 3);
     expect(text(preview()!)).toContain('Como os jogadores veem');
     expect(text(preview()!)).toContain('Vigília');
+    expect(el.querySelectorAll('aside[aria-label="Como os jogadores veem"]').length).toBe(1);
     row().click();
     await settle(fixture, 3);
-    expect(preview()?.querySelector('section')).toBeNull();
+    expect(preview()).toBeNull();
+    expect(el.querySelector('aside[aria-label="Como os jogadores veem"]')).toBeNull();
   });
 
   it('draws the class of the artboard from the entry: the basics, the skills pressed, the table from the server', () => {

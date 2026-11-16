@@ -287,7 +287,8 @@ describe('SubclassEditor', () => {
   it('shows "Como os jogadores veem" beside the form for the open feature, and nothing while all are closed (#580, board 580-03)', async () => {
     const { fixture, el } = setup();
     const side = () => el.querySelector<HTMLElement>('aside[aria-label="Como os jogadores veem"]');
-    expect(side()?.querySelector('app-feature-preview section')).toBeNull();
+    // No feature open: the column keeps the players' switch but is not called "Como os jogadores veem".
+    expect(side()).toBeNull();
     click(el, 'Traço arcano');
     await settle(fixture, 3);
     expect(text(side()!.querySelector('app-feature-preview')!)).toContain('Traço arcano');
@@ -296,7 +297,7 @@ describe('SubclassEditor', () => {
     expect(side()!.querySelector('app-players-switch')).not.toBeNull();
     click(el, 'Traço arcano');
     await settle(fixture, 3);
-    expect(side()?.querySelector('app-feature-preview section')).toBeNull();
+    expect(side()).toBeNull();
   });
 
   it('does not save a number that is no whole number in a closed feature: it opens that feature and lands on the field', async () => {
