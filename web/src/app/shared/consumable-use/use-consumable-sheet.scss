@@ -129,6 +129,8 @@
 }
 .dice__err .mat-icon {
   flex: none;
+  // The first line of the words is taller than the icon: its middle sits 1.5px lower.
+  margin-top: 1.5px;
   width: var(--mr-font-14);
   height: var(--mr-font-14);
   font-size: var(--mr-font-14);
@@ -151,18 +153,21 @@
   gap: var(--mr-space-2);
   margin: 0;
   font-size: var(--mr-font-14);
+  // A line of its own height, so the icon and the mark sit by the middle of the first line however many lines follow.
+  line-height: 20px;
 }
 .cost .mat-icon {
   flex: none;
   width: var(--mr-font-18);
   height: var(--mr-font-18);
+  margin-top: 1px;
   font-size: var(--mr-font-18);
 }
 // The mark of the Ação (the same circle as the turn's) sits in the 18 px column the info icon takes.
 .cost app-economy-mark {
   flex: none;
   box-sizing: content-box;
-  padding: 2px calc((var(--mr-font-18) - var(--mr-font-14)) / 2);
+  padding: 3px calc((var(--mr-font-18) - var(--mr-font-14)) / 2);
   font-size: var(--mr-font-14);
 }
 .cost strong {

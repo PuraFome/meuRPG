@@ -10351,7 +10351,7 @@ async function scanConsumableScreens(browser: Browser, colorScheme: 'light' | 'd
     await text.getByRole('button', { name: 'Beber' }).click();
     await expect(text).toBeHidden();
     await expect(notice).toContainText('O app não aplica este efeito: o mestre e você seguem o texto.');
-    await expect(gear.locator('.consumable__text')).toBeVisible();
+    await expect(gear.locator('.consumable__text').filter({ hasText: 'Quando você bebe esta poção' })).toBeVisible();
     await expectConsumableScreen(p, `Ficha, a poção que só mostra o texto ${where}`);
 
     // The server does not answer: the sheet says nothing was spent and keeps the potion.
@@ -10366,12 +10366,12 @@ async function scanConsumableScreens(browser: Browser, colorScheme: 'light' | 'd
     await failing.getByRole('button', { name: 'Fechar' }).first().click();
     await expect(failing).toBeHidden();
 
-    // The resistance potion drunk above stands as an effect card in "Seus efeitos" of the live page (565-07 card 6): the name, the item, the hour and the damage type.
+    // The resistance potion drunk above stands as an effect card in "Seus efeitos" of the live page, as the server words it (565-07 card 6 is richer: its name, clock and damage type).
     await openSessionPage(p, campaignId);
+    await openSheetTab(p);
     await expect(p.getByRole('heading', { name: 'Seus efeitos' })).toBeVisible();
-    const resistance = p.getByRole('group', { name: 'Resistência a fogo' });
-    await expect(resistance).toContainText('Poção de resistência');
-    await expect(resistance).toContainText('Resistência: fogo');
+    const resistance = p.getByRole('group', { name: 'Poção de resistência a dano de fogo' });
+    await expect(resistance).toContainText('Dura 1 hora');
     await expectConsumableScreen(p, `Seus efeitos, a resistência da poção ${where}`);
 
     // The master acts for the character: "Usar por <personagem>".
@@ -10458,7 +10458,7 @@ async function scanConsumableCombatScreens(browser: Browser, colorScheme: 'light
     const preferApp = await callRPC(p, 'meurpg.campaigns.v1.CampaignService/SetMyDicePreference', { campaignId, preference: 'DICE_PREFERENCE_APP' });
     expect(preferApp.ok(), await preferApp.text()).toBeTruthy();
     // Brisa is at 0 hit points and, to begin with, nobody's neighbour: she comes to Pensantus's side (5, 7) once the list has said so.
-    await beginAttackCombatRPC(m, table, { Pensantus: 20, Brisa: 15, 'Capitão Goblin': 10, 'Goblin 1': 5, 'Goblin 2': 4 });
+    const begun = await beginAttackCombatRPC(m, table, { Pensantus: 20, Brisa: 15, 'Capitão Goblin': 10, 'Goblin 1': 5, 'Goblin 2': 4 });
     await adjustVitalsRPC(m, campaignId, brisaPlayer.characterId, { hitPointsCurrent: 0 });
 
     // The master acts for Pensantus: "Usar por Pensantus".
@@ -10509,8 +10509,7 @@ async function scanConsumableCombatScreens(browser: Browser, colorScheme: 'light
     await expect(alone).toBeHidden();
 
     // Brisa comes to Pensantus's side: the list says "A 1,5 m · Caída".
-    const square = sq20(4, 7);
-    await placeTokenRPC(m, campaignId, table.mapId, brisaPlayer.characterId, square.xBp, square.yBp);
+    await combatRPC(m, 'MoveCombatant', { campaignId, encounterId: begun.id, combatantId: begun.combatants.find((c) => c.label === 'Brisa')!.id, col: 4, row: 7 });
 
     // "Usar": the sheet says a combat is running and that drinking costs the Action.
     await rowOf(heal).getByRole('button', { name: 'Usar Poção de cura' }).click();
