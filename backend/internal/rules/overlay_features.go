@@ -47,6 +47,9 @@ func (b *overlayBuilder) addFeature(f *TableFeature, k featureKind, path string)
 	if err := b.checkFeatureHead(f, k.prefix, path); err != nil {
 		return err
 	}
+	if !f.SwapLevels.IsZero() && k.prefix != featureKeyPrefix {
+		return ovErr(f.Key, "only a class or subclass feature can allow a swap of its options").at(path+".swap_levels", ReasonValue)
+	}
 	if !f.Prerequisite.IsZero() {
 		return ovErr(f.Key, "only an option has a prerequisite").at(path+".prerequisite", ReasonValue)
 	}
@@ -64,6 +67,9 @@ func (b *overlayBuilder) addFeature(f *TableFeature, k featureKind, path string)
 	switch k.prefix {
 	case featureKeyPrefix:
 		if err := b.writeFeature(f, k, effects, path); err != nil {
+			return err
+		}
+		if err := b.addSwapLevels(f, path); err != nil {
 			return err
 		}
 	case traitKeyPrefix:
@@ -240,6 +246,9 @@ func checkOptionShape(o *TableFeature, at string) error {
 	}
 	if o.Summon != nil {
 		return ovErr(o.Key, "an option does not summon: the summon is its feature's").at(at+".summon", ReasonValue)
+	}
+	if !o.SwapLevels.IsZero() {
+		return ovErr(o.Key, "an option does not allow a swap: the swap levels are its feature's").at(at+".swap_levels", ReasonValue)
 	}
 	return nil
 }

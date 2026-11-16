@@ -458,6 +458,8 @@ func levelUpOptionsWith(b Build, idx int, classKey string, c *content, sub *srd5
 		}
 	}
 
+	o.FeatureSwaps = c.featureSwapGroups(b, classKey, sub, newLevel, newClass)
+
 	// Features the level adds, by name; and the ones the guided flow does not
 	// cover, which the master adds in the editor.
 	o.NewFeatures = newClassFeatures(dBefore, dBare, classKey)
@@ -1066,6 +1068,9 @@ func applyPicks(after *Build, ch LevelUpChoices, c *content) {
 	after.SpellsKnown = append(after.SpellsKnown, ch.Spells...)
 	after.SpellsPrepared = append(after.SpellsPrepared, ch.Prepared...)
 	applySwap(after, ch.Swap)
+	for _, s := range ch.FeatureSwaps {
+		applyFeatureSwap(after, s)
+	}
 	if ch.SwapInvocation != "" {
 		after.FeatureChoices = slices.DeleteFunc(after.FeatureChoices, func(k string) bool { return k == ch.SwapInvocation })
 	}
@@ -1170,6 +1175,7 @@ func checkLevelUp(before, after Build, c *content) *LevelUpError {
 	// subclass's, which are not in the options' top level while it is due.
 	offer, _ := levelUpOptionsWith(before, idx, classKey, c, sub)
 	swap, swapped := swapOf(before, after, offer)
+	swaps := levelSwaps{pick: swap, picked: swapped, features: offer.FeatureSwaps}
 	offOwnList, lerr := checkSpells(before, after, offer, offer.SpellList, swapped && swap.Group == SwapGroupCantrip, c)
 	if lerr != nil {
 		return lerr
@@ -1177,7 +1183,7 @@ func checkLevelUp(before, after Build, c *content) *LevelUpError {
 	gains := c.levelGains(classKey, sub, newLevel)
 
 	// Options, skills and expertise.
-	if lerr := checkLevelUpChoices(before, after, classKey, swap, swapped, c); lerr != nil {
+	if lerr := checkLevelUpChoices(before, after, classKey, swaps, c); lerr != nil {
 		return lerr
 	}
 	if lerr := c.checkLevelUpSkills(before, after, mc, gains); lerr != nil {
@@ -1316,8 +1322,8 @@ func checkNewIssues(dBefore, dAfter Derived, offOwnList map[string]bool) *LevelU
 // warlock swaps (SRD 5.1, Warlock, Eldritch Invocations: "when you gain a level in
 // this class, you can choose one of the invocations you know and replace it with
 // another invocation that you could learn at that level").
-func checkLevelUpChoices(before, after Build, classKey string, swap PickSwap, swapped bool, c *content) *LevelUpError {
-	if lerr := checkRemovedChoices(before, after, classKey, swap, swapped, c); lerr != nil {
+func checkLevelUpChoices(before, after Build, classKey string, swaps levelSwaps, c *content) *LevelUpError {
+	if lerr := checkRemovedChoices(before, after, classKey, swaps, c); lerr != nil {
 		return lerr
 	}
 	for k, v := range before.FeatureChoiceText {
@@ -1331,15 +1337,29 @@ func checkLevelUpChoices(before, after Build, classKey string, swap PickSwap, sw
 // levelUpChoicesField is the sheet field of the choice engine's picks.
 const levelUpChoicesField = "full.feature_choice_keys"
 
-// checkRemovedChoices refuses a pick of before that after lost, but for one
-// Eldritch Invocation a warlock swaps.
-func checkRemovedChoices(before, after Build, classKey string, swap PickSwap, swapped bool, c *content) *LevelUpError {
+// levelSwaps are the swaps a level may make, as the offer lists them: the one pick the table's rule swaps (swapOf finds it
+// on the new sheet) and the groups of the table features' options, each of which takes in one removal.
+type levelSwaps struct {
+	pick     PickSwap
+	picked   bool
+	features []SwapGroup
+}
+
+// excuses says the swap of the table's rule gives up the pick k.
+func (s levelSwaps) excuses(k string) bool {
+	return s.picked && s.pick.Group != SwapGroupCantrip && s.pick.From == k
+}
+
+// checkRemovedChoices refuses a pick of before that after lost, but for the one the table's rule swaps, one for each
+// group of a table feature's options and one Eldritch Invocation a warlock swaps.
+func checkRemovedChoices(before, after Build, classKey string, swaps levelSwaps, c *content) *LevelUpError {
 	var gone []string
 	for _, k := range before.FeatureChoices {
-		if !slices.Contains(after.FeatureChoices, k) && (!swapped || swap.Group == SwapGroupCantrip || swap.From != k) {
+		if !slices.Contains(after.FeatureChoices, k) && !swaps.excuses(k) {
 			gone = append(gone, k)
 		}
 	}
+	gone = unmatchedRemovals(gone, swaps.features)
 	if len(gone) > 1 || (len(gone) == 1 && (classKey != classWarlock || !c.isInvocation(gone[0]))) {
 		return refuse(levelUpChoicesField, LevelUpReasonFeatureChoice, "an option was removed")
 	}
