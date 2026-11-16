@@ -626,7 +626,16 @@ func (f *castFlow) checkPool(ctx context.Context) error {
 	if hp == nil || (hp.Kind != rules.SpellKindHPPool && hp.Kind != rules.SpellKindTempHP) {
 		return nil
 	}
-	return f.s.mustRollPool(ctx, f.c.tx, f.m, f.call.in, f.call.rolled)
+	if err := f.s.mustRollPool(ctx, f.c.tx, f.m, f.call.in, f.call.rolled); err != nil {
+		return err
+	}
+	if f.call.in.inApp {
+		return nil
+	}
+	// The sum is checked against the dice the spell rolls at this slot before any window can hold the cast: a replay
+	// would meet it only after the windows were answered.
+	_, err := physicalPool(hp.Pool, f.call.in.typed)
+	return err
 }
 
 // readModes reads the combat for the d20 rolls of the cast.

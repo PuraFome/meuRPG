@@ -27332,7 +27332,7 @@ type AnswerReactionRequest struct {
 	// d20s of each, as CastSpellRequest.ray_rolls (one entry per attack roll, in the order of the targets and of the rays each
 	// target takes). Copied one to one into the request the release builds, which checks it as it does. `invalid_argument` on a
 	// pass, on another kind of window, or on a row that is not a spell.
-	RayRolls      []*RayRoll `protobuf:"bytes,21,rep,name=ray_rolls,json=rayRolls,proto3" json:"ray_rolls,omitempty"` // Field numbers 12, 13, 15 and 16 are held by the orchestrator's number ledger.
+	RayRolls      []*RayRoll `protobuf:"bytes,21,rep,name=ray_rolls,json=rayRolls,proto3" json:"ray_rolls,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
