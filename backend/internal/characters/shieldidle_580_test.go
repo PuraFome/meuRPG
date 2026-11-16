@@ -399,3 +399,54 @@ func TestTheShieldTrainingIssueGoesWhileTheShieldIsIdle(t *testing.T) {
 		t.Errorf("pending issues after = %v, want no shield training issue while the shield is idle", issueCodes(after))
 	}
 }
+
+// withSecondWeapon puts another table weapon (one-handed, no two-handed property) on the sheet next to the first one and
+// the shield, and saves it as the master.
+func (tb *idleTable) withSecondWeapon(t *testing.T, name string) string {
+	t.Helper()
+	second := tb.master.addEntry(t, tb.campaign, testWeapon(name))
+	current := tb.master.get(t, tb.campaign, tb.pc.GetId())
+	current, err := tb.master.update(t, current, current.GetName(), current.GetSheet()) // fits the table with the second weapon
+	if err != nil {
+		t.Fatal(err)
+	}
+	sheet := proto.CloneOf(current.GetSheet())
+	sheet.GetFull().WeaponKeys = append(sheet.GetFull().WeaponKeys, second.GetKey())
+	if _, err := tb.master.update(t, current, current.GetName(), sheet); err != nil {
+		t.Fatal(err)
+	}
+	return second.GetKey()
+}
+
+// The notice that was flagged stays until the owner stows the shield or the weapon it names: stowing or taking up another
+// weapon changes nothing it says.
+func TestAnUnrelatedEquipKeepsTheShieldIdleBanner(t *testing.T) {
+	t.Parallel()
+	tb := newIdleTable(t, versatile)
+	other := tb.withSecondWeapon(t, "Adaga de Mesa")
+	with := tb.owner.get(t, tb.campaign, tb.pc.GetId()).GetDerived().GetArmorClass()
+	tb.edit(t, twoHanded)
+	read := func() *charactersv1.Character { return tb.owner.get(t, tb.campaign, tb.pc.GetId()) }
+	want := []string{tb.sentence("Pensantus", with, with-2)}
+	if got := tb.banner(read()); !slices.Equal(got, want) {
+		t.Fatalf("the banner before any equip = %q, want %q", got, want)
+	}
+
+	mustSetEquipped(t, tb.owner, read(), other, false)
+	if got := tb.banner(read()); !slices.Equal(got, want) {
+		t.Errorf("after stowing another weapon: %q, want the notice to stay: %q", got, want)
+	}
+	mustSetEquipped(t, tb.owner, read(), other, true)
+	if got := tb.banner(read()); !slices.Equal(got, want) {
+		t.Errorf("after taking it up again: %q, want the notice to stay: %q", got, want)
+	}
+	for _, key := range []string{rules.ShieldKey, tb.weapon.GetKey()} {
+		mustSetEquipped(t, tb.owner, read(), other, false)
+		mustSetEquipped(t, tb.owner, read(), key, false)
+		if got := tb.banner(read()); got != nil {
+			t.Errorf("after stowing %s: %q, want the notice gone", key, got)
+		}
+		mustSetEquipped(t, tb.owner, read(), key, true)
+		mustSetEquipped(t, tb.owner, read(), other, true)
+	}
+}
