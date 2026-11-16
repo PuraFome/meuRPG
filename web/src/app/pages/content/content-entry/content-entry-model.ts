@@ -29,6 +29,7 @@ import { readEntry } from '../../../core/content/content-read';
 import type { EntryRead, NameOf } from '../../../core/content/content-read-parts';
 import { optionSummary } from '../../../core/content/feat-options';
 import { featureToDraft } from '../../../core/content/feature-draft';
+import { offeringFeatures, offeringLabel } from '../../../core/content/offering-features';
 import { parentViewOf } from '../../../core/content/subrace-traits';
 import type { EffectMenuVm } from '../../../core/content/effect-draft';
 import { openSheet } from '../../../shared/sheet/sheet-host';
@@ -262,6 +263,11 @@ export function wireMenu(
   if (menu && catalog) {
     menu.classNamePt = (key) => catalog.nameOf(key);
     menu.featOptions = featChoices(entries);
+    menu.tableFeatures = offeringFeatures(entries).map((f) => ({
+      key: f.key,
+      namePt: offeringLabel(f),
+      count: f.options.length,
+    }));
   }
 }
 

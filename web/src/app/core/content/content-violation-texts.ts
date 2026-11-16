@@ -280,6 +280,24 @@ export const FIELD_TEXTS: readonly { shape: RegExp; reason?: string; text: strin
   // reroll and roll_minimum (rolleffects.go): their own fields.
   { shape: /\.effects\[\]\.rolls$/, text: 'Marque ao menos uma jogada.' },
   { shape: /\.effects\[\]\.at_most$/, text: 'A face vai de 1 a 20.' },
+  // A choice that offers every proficiency of some kinds, or the options of another feature: rules/choicefilter.go, choicefeature.go.
+  {
+    shape: /\.effects\[\]\.filter$/,
+    text: 'Os tipos de proficiência valem só numa escolha de ferramentas, no lugar da lista. Escolha uma origem só.',
+  },
+  {
+    shape: /\.effects\[\]\.filter\.proficiency_kinds$/,
+    text: 'Marque ao menos um tipo, sem repetir: armas, ferramentas ou veículos e kits.',
+  },
+  {
+    shape: /\.effects\[\]\.from_feature$/,
+    reason: 'dangling_reference',
+    text: 'Esta característica não existe, não tem opções ou já oferece as de outra. Escolha outra.',
+  },
+  {
+    shape: /\.effects\[\]\.from_feature$/,
+    text: 'As opções de outra característica valem só numa escolha de características de classe ou subclasse, no lugar da lista. Escolha uma origem só.',
+  },
   // A table option for an SRD option set (MR-025): the paths and reasons of backend/internal/rules/overlay_option.go.
   {
     shape: /^table_option\.set$/,
