@@ -24,8 +24,8 @@ import { MoveSaves } from '../../../core/maps/move-saves';
 import { metersFixed } from '../../../core/units';
 import type { Reach, TokenDrop } from '../../../shared/combat-map/combat-map';
 import type { JumpRequest } from './move-page/move-page';
-import { jumpCall, walkCall } from './move-jump';
-import { MoveReleaseFlow } from './move-release-flow';
+import { jumpCall, stoppedText, walkCall } from './move-jump';
+import { MoveReleaseFlow, RELEASE_BLOCKED_TEXT } from './move-release-flow';
 
 /** What `MoveFlow` reads from the screen it serves. */
 export interface MoveFlowContext {
@@ -66,6 +66,8 @@ export class MoveFlow {
   readonly moveError = signal('');
   /** "Você parou antes: algo bloqueou o caminho.": what the last move said when it stopped short. */
   readonly moveNote = signal('');
+  /** The last move was a readied release that stopped before its first square: nothing was spent, and the release stays open. */
+  private blocked = false;
   /** The last move stopped before a locked door: the "Mover" page stays open and says so (RN-26). */
   readonly lockedDoor = signal(false);
   /** The master's "Movimento forçado" box: it is for one drag, and goes off when the drag is taken. */
@@ -272,7 +274,10 @@ export class MoveFlow {
               `${c.label} foi mov${article(c.label) === 'a' ? 'ida' : 'ido'} à força. Ninguém recebeu oferta de ataque de oportunidade.`,
             );
           }
-          this.sayStopped(res);
+          const said = stoppedText(res);
+          if (said) {
+            calls.error.set(said);
+          }
         },
         failed: (saved, err) => {
           if (legendary) {
@@ -328,21 +333,6 @@ export class MoveFlow {
     this.overDrag = null;
   }
 
-  /** What stopped the master's drag short, in the page's notice. */
-  private sayStopped(res: MoveResult): void {
-    if (res.lockedDoor) {
-      // The master walks through closed doors but a locked one stops them too (RN-26).
-      this.ctx.calls.error.set(
-        'Uma porta trancada parou o movimento. Destranque a porta (toque nela no mapa) e mova de novo.',
-      );
-    } else if (res.stoppedEarly) {
-      // A barred or secret door stops it too: the token stands where it stopped.
-      this.ctx.calls.error.set(
-        'Uma grade levadiça ou uma porta secreta parou o movimento. Abra a porta (toque nela no mapa) e mova de novo.',
-      );
-    }
-  }
-
   /** "Mover para cá" on the "Mover" page. */
   async confirmMove(to: Square): Promise<void> {
     const own = this.mover();
@@ -395,6 +385,12 @@ export class MoveFlow {
   }
 
   private afterMove(ok: boolean): void {
+    if (ok && this.blocked) {
+      // A readied move that stopped before its first square is not used (the server keeps the window open): the page stays, so the player
+      // picks another square or lets it pass.
+      this.moveError.set(RELEASE_BLOCKED_TEXT);
+      return;
+    }
     if (ok && this.lockedDoor()) {
       // A locked door stopped the move: the page stays, with the notice (E10-05 9). The token already stands where it stopped.
       return;
@@ -420,12 +416,15 @@ export class MoveFlow {
     calls.error.set('');
     this.moveNote.set('');
     this.lockedDoor.set(false);
+    this.blocked = false;
+    const from = this.mover();
     try {
       const res = await call(e);
       this.ctx.state().apply(res.encounter);
+      this.blocked = this.release.blocked(res, from, this.mover());
       if (res.lockedDoor) {
         this.lockedDoor.set(true);
-      } else if (res.stoppedEarly) {
+      } else if (res.stoppedEarly && !this.blocked) {
         // Never what stopped it: the player did not see it.
         this.moveNote.set('Você parou antes: algo bloqueou o caminho.');
       }

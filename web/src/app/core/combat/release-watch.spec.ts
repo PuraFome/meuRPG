@@ -106,7 +106,7 @@ describe('a release watching its window (#857, #856; 857-09 cards 1 and 7)', () 
 
   it('says it passed by itself in 2 minutes when the clock ran out before the window went', () => {
     const { watch, open } = setup();
-    vi.setSystemTime(T0 + 121 * MS);
+    vi.advanceTimersByTime(109 * MS);
     open([], { readied: undefined }, 2);
     expect(watch.view()).toEqual({ lead: 'Passou sozinho:', rest: 'você não respondeu em 2 min.' });
   });
@@ -124,5 +124,51 @@ describe('a release watching its window (#857, #856; 857-09 cards 1 and 7)', () 
     open([], { readied: undefined }, 3);
     expect(watch.view()?.lead).toBe('O mestre desfez o gatilho:');
     expect(watch.view()?.rest).toBe('a Bola de Fogo continua preparada.');
+  });
+
+  it('does not restamp a window it already read: the same read seen again at +48 s still has 60 s left', () => {
+    const { state, watch, open } = setup();
+    const again = win({ rolling: true, waitBeganAt: timestampFromMs(T0), waitedMs: 60_000n });
+    open([again], {}, 2);
+    expect(watch.secondsLeft()).toBe(60);
+    vi.advanceTimersByTime(48 * MS);
+    // The combat is read again with the same window object: its stamp stays, the 48 s count.
+    state.apply(
+      encounter({
+        revision: 3,
+        combatants: [combatant({ id: 'pen', label: 'Pensantus', readied: row() })],
+        reactionWindows: [again],
+      }),
+    );
+    TestBed.tick();
+    expect(watch.secondsLeft()).toBe(12);
+  });
+
+  it('counts a window read again with the same waited_ms from its own read, not from the first', () => {
+    const { watch, open } = setup();
+    open([win({ rolling: true, waitBeganAt: timestampFromMs(T0), waitedMs: 60_000n })], {}, 2);
+    vi.advanceTimersByTime(48 * MS);
+    open([win({ rolling: true, waitBeganAt: timestampFromMs(T0), waitedMs: 60_000n })], {}, 3);
+    expect(watch.secondsLeft()).toBe(60);
+  });
+
+  it("counts from waited_ms when the window's wait_began_at is an hour off the device clock", () => {
+    const { watch, open } = setup();
+    open(
+      [win({ rolling: true, waitBeganAt: timestampFromMs(T0 - 3_600_000), waitedMs: 30_000n })],
+      {},
+      2,
+    );
+    expect(watch.secondsLeft()).toBe(90);
+    vi.advanceTimersByTime(10 * MS);
+    expect(watch.secondsLeft()).toBe(80);
+  });
+
+  it('keeps the 120 s on a monotonic clock: a wall-clock jump of +1 h mid-wait does not pass the window', () => {
+    const { watch } = setup();
+    vi.advanceTimersByTime(8 * MS);
+    vi.setSystemTime(T0 + 12 * MS + 8 * MS + 3_600_000);
+    vi.advanceTimersByTime(MS);
+    expect(watch.secondsLeft()).toBe(99);
   });
 });

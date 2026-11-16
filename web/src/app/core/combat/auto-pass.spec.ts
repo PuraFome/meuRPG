@@ -1,6 +1,7 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Code, ConnectError } from '@connectrpc/connect';
+import { timestampFromMs } from '@bufbuild/protobuf/wkt';
 import { vi } from 'vitest';
 
 import { CombatantKind, type Encounter, ReactionKind } from '../../../gen/meurpg/play/v1/combat_pb';
@@ -118,6 +119,27 @@ describe('MasterAutoPass', () => {
     api.answerReaction.mockRejectedValueOnce(new TypeError('network'));
     await vi.advanceTimersByTimeAsync(31_000);
     expect(api.answerReaction).toHaveBeenCalledTimes(2);
+  });
+
+  it('counts the readied 120 s on a monotonic clock: a wall-clock jump of +1 h mid-wait does not pass the window', async () => {
+    const t0 = Date.parse('2026-10-16T12:00:00Z');
+    const held = reactionWindow({
+      id: 'r1',
+      kind: ReactionKind.READIED,
+      reactorId: 't',
+      reactorIsPlayer: true,
+      answerNow: true,
+      rolling: true,
+      waitBeganAt: timestampFromMs(t0),
+      waitedMs: 10_000n,
+    } as never);
+    const { pass, api } = setup({ enc: withWindows({ reactionWindows: [held] }) });
+    expect(pass.windowsLeft()).toEqual({ r1: 110 });
+    await vi.advanceTimersByTimeAsync(5000);
+    vi.setSystemTime(t0 + 3_600_000);
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(pass.windowsLeft()).toEqual({ r1: 100 });
+    expect(api.answerReaction).not.toHaveBeenCalled();
   });
 
   it('stops the timer with the screen', () => {

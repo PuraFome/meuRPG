@@ -1207,7 +1207,7 @@ Um jogador lê só as próprias janelas, e os números do gatilho (um total de a
   Correr e Desengajar também não: valem só para o turno da própria criatura.
   Um movimento não pode ser guardado num combate sem mapa.
   Um movimento preparado vai até a velocidade que a criatura tem, e não até o deslocamento que o turno dela ainda tinha (SRD 5.1, Ready: o movimento da reação é de até a velocidade da criatura).
-  Um movimento preparado que não vai a lugar nenhum, parado antes do primeiro quadrado (uma criatura que o jogador não vê está no caminho), não é usado: a reação continua livre, a ação continua esperando e a janela dela continua aberta, e o jogador lê "Algo bloqueia o caminho".
+  Um movimento preparado que não vai a lugar nenhum, parado antes do primeiro quadrado (uma criatura que o jogador não vê está no caminho), não é usado: a reação continua livre, a ação continua esperando e a janela dela continua aberta, e a página Mover continua aberta, com "Algo bloqueia o caminho: nada foi gasto. Escolha outro quadrado.", para escolher outro quadrado ou deixar passar.
   Um que para depois de pelo menos um quadrado ainda é o uso.
   A caminhada do mestre com a ficha não é a liberação: é livre como sempre e deixa a janela como estava, a não ser que o mestre escolha liberar o movimento pelo jogador.
   Uma ação preparada não dispara durante o turno de quem a preparou.

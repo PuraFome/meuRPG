@@ -6,6 +6,7 @@ import {
   ReadiedKind,
 } from '../../../../gen/meurpg/play/v1/combat_pb';
 import type { CombatClient } from '../../../core/combat/combat-client';
+import type { MoveResult } from '../../../core/combat/combat-client-types';
 import type { CombatState } from '../../../core/combat/combat-state';
 import { currentCombatant, isPlayer } from '../../../core/combat/combat-view';
 import { type MoveRelease, moveReleaseView } from '../../../core/combat/move-release';
@@ -13,6 +14,10 @@ import { readiedOfWindow } from '../../../core/combat/reaction-readied';
 import { ReleaseMark } from '../../../core/combat/release-mark';
 import { turnOfText } from '../../../core/combat/release-text';
 import { ReleaseWatch } from '../../../core/combat/release-watch';
+
+/** What the Mover page of a release says when the walk stopped before its first square (588-10 card 4's words, for a release). */
+export const RELEASE_BLOCKED_TEXT =
+  'Algo bloqueia o caminho: nada foi gasto. Escolha outro quadrado.';
 
 /** What `MoveReleaseFlow` reads from the screen it serves. */
 export interface MoveReleaseContext {
@@ -98,6 +103,18 @@ export class MoveReleaseFlow {
     this.current.set(release);
     void this.mark?.enter();
     return release;
+  }
+
+  /** The walk of the release stopped early with the readier still on its square: nothing is spent, the window stays open (the server's rule). */
+  blocked(res: MoveResult, before: Combatant | null, after: Combatant | null): boolean {
+    return (
+      !!this.current() &&
+      !res.lockedDoor &&
+      res.stoppedEarly &&
+      !!before &&
+      before.col === after?.col &&
+      before.row === after.row
+    );
   }
 
   /** The window went away under the page. */

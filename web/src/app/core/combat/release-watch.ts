@@ -30,11 +30,14 @@ const TICK_MS = 1000;
  */
 export class ReleaseWatch {
   private readonly now = signal(Date.now());
+  /** The monotonic clock (`performance.now()`) of the 120 s: a step of the wall clock mid-wait does not move it. */
+  private readonly mono = signal(performance.now());
   private readonly seenAt = Date.now();
   private last: ReactionWindow | undefined;
-  /** When `last` was read: the 120 s count from the server's `waited_ms` of that read plus the time since (#857). */
-  private readAt = this.seenAt;
+  /** When `last` was read, on the monotonic clock: the 120 s count from the server's `waited_ms` of that read plus the time since (#857). */
+  private readAt = this.mono();
   private readonly goneAt = signal<number | null>(null);
+  private readonly goneMono = signal(0);
   private readonly frozen = signal<GoneView | null>(null);
 
   /** The window as the combat has it now. */
@@ -49,6 +52,7 @@ export class ReleaseWatch {
       this.seenAt,
       this.goneAt() ?? this.now(),
       this.readAt,
+      this.goneAt() === null ? this.mono() : this.goneMono(),
     ),
   );
   /** The player opened the map while the window was open: its wait is the 120 s, not the 30 s. */
@@ -62,7 +66,10 @@ export class ReleaseWatch {
     /** Told the window on every change while it is open (the player's mark reads a reopen from it). */
     private readonly onWindow?: (w: ReactionWindow) => void,
   ) {
-    const timer = setInterval(() => this.now.set(Date.now()), TICK_MS);
+    const timer = setInterval(() => {
+      this.now.set(Date.now());
+      this.mono.set(performance.now());
+    }, TICK_MS);
     inject(DestroyRef).onDestroy(() => clearInterval(timer));
     const first = this.window();
     if (first) {
@@ -79,8 +86,9 @@ export class ReleaseWatch {
     if (this.last !== w) {
       this.last = w;
       // The clock of the redraws catches up to the read, so the time since it is never negative.
-      this.readAt = Date.now();
-      this.now.set(this.readAt);
+      this.readAt = performance.now();
+      this.mono.set(this.readAt);
+      this.now.set(Date.now());
     }
     this.waitedOnMap.set(waitBeganMs(w) !== null);
     this.onWindow?.(w);
@@ -91,6 +99,8 @@ export class ReleaseWatch {
       return;
     }
     const at = Date.now();
+    const mono = performance.now();
+    this.goneMono.set(mono);
     this.goneAt.set(at);
     const who = e.combatants.find((c) => c.id === this.ids.reactorId);
     const held = who?.readied;
@@ -101,7 +111,8 @@ export class ReleaseWatch {
         stillWaiting: held?.id === this.ids.readiedId && held.status === ReadiedStatus.WAITING,
         reactionUsed: who?.reactionUsed ?? false,
         down: who?.state === CombatantState.DOWN,
-        timedOut: !!this.last && readiedSecondsLeft(this.last, this.seenAt, at, this.readAt) === 0,
+        timedOut:
+          !!this.last && readiedSecondsLeft(this.last, this.seenAt, at, this.readAt, mono) === 0,
         afterMap: this.waitedOnMap(),
       }),
     );

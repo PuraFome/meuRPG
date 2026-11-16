@@ -32,8 +32,8 @@ function clamp(seconds: number, max: number): number {
 /**
  * The seconds left before a readied window passes by itself (rounded up, held between 0 and the wait). Once the player marked the
  * map, the 120 s count from the wait the server says has run (`ReactionWindow.waited_ms`, worked out with its own clock) plus the
- * time since this screen read the window (`readAt`, a stamp of the same clock as `now`): the device's clock is never set against
- * `wait_began_at`, so a screen with a wrong clock counts right. Before the mark it is the 30 s of the window from when this
+ * time since this screen read the window, on a monotonic clock (`readAt` and `mono`, from `performance.now()`): neither the device's clock
+ * set against `wait_began_at` nor a step of the wall clock mid-wait moves the 120 s. Before the mark it is the 30 s of the window from when this
  * screen first saw it (`seenAt`).
  */
 export function readiedSecondsLeft(
@@ -41,9 +41,10 @@ export function readiedSecondsLeft(
   seenAt: number,
   now: number,
   readAt: number,
+  mono: number,
 ): number {
   if (waitBeganMs(w) !== null) {
-    const waited = Number(w.waitedMs) + (now - readAt);
+    const waited = Number(w.waitedMs) + (mono - readAt);
     return clamp(Math.ceil(MAP_WAIT_SECONDS - waited / MS_PER_SECOND), MAP_WAIT_SECONDS);
   }
   return clamp(Math.ceil(AUTO_PASS_SECONDS - (now - seenAt) / MS_PER_SECOND), AUTO_PASS_SECONDS);

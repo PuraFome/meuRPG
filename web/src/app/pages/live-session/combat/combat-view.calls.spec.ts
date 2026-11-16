@@ -1493,7 +1493,11 @@ describe('CombatView calls: the master releases a readied move (#857)', () => {
         triggerText: 'Quando o goblin passar pela porta',
       }),
     });
-  const mountReleasable = () => {
+  const mountReleasable = (
+    master = true,
+    reply: (e: Encounter) => Encounter = (e) => e,
+    stoppedEarly = false,
+  ) => {
     const e = encounter({
       mode: EncounterMode.GRID,
       currentCombatantId: 'g',
@@ -1510,9 +1514,9 @@ describe('CombatView calls: the master releases a readied move (#857)', () => {
     });
     return mountCombatView({
       enc: e,
-      master: true,
+      master,
       api: {
-        move: () => ({ encounter: e, stoppedEarly: false, lockedDoor: false, provoked: false }),
+        move: () => ({ encounter: reply(e), stoppedEarly, lockedDoor: false, provoked: false }),
       },
     });
   };
@@ -1533,6 +1537,39 @@ describe('CombatView calls: the master releases a readied move (#857)', () => {
       '',
       true,
     ]);
+  });
+
+  it("the player's own release of a readied move is a plain walk, with no release_readied", async () => {
+    const { view, callsOf } = mountReleasable(false);
+    view.moves.openRelease('w1');
+    await view.moves.confirmMove({ col: 4, row: 2 });
+    expect(callsOf('move')[0].args).toEqual(['c', 'enc', 't', 4, 2]);
+  });
+
+  it('a release that stopped on its own square stays open and says what blocks, spending nothing', async () => {
+    const { view, state } = mountReleasable(true, (e) => e, true);
+    state.moving.set(true);
+    view.moves.openRelease('w1');
+    await view.moves.confirmMove({ col: 4, row: 2 });
+    expect(view.moves.moveError()).toBe(
+      'Algo bloqueia o caminho: nada foi gasto. Escolha outro quadrado.',
+    );
+    expect(view.moves.moveNote()).toBe('');
+    expect(view.moves.release.current()).not.toBeNull();
+    expect(state.moving()).toBe(true);
+  });
+
+  it('a release that stopped after some squares is the use: the page closes with the note', async () => {
+    const moved = (e: Encounter) =>
+      encounter({ ...e, combatants: [{ ...readier(), col: 2, row: 1 } as Combatant, goblin()] });
+    const { view, state } = mountReleasable(true, moved, true);
+    state.moving.set(true);
+    view.moves.openRelease('w1');
+    await view.moves.confirmMove({ col: 4, row: 2 });
+    expect(view.moves.moveError()).toBe('');
+    expect(view.moves.moveNote()).toBe('Você parou antes: algo bloqueou o caminho.');
+    expect(view.moves.release.current()).toBeNull();
+    expect(state.moving()).toBe(false);
   });
 
   it("the master's ordinary drag of the readier stays a plain walk", async () => {

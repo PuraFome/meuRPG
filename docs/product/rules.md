@@ -1207,7 +1207,7 @@ A player reads only their own windows, and the numbers of the trigger (an attack
   Dash and Disengage cannot be held either: they last only for the creature's own turn.
   A move cannot be held in a combat without a map.
   A readied move is up to the combatant's speed, not the movement its turn had left (SRD 5.1, Ready: "move up to your speed").
-  A readied move that goes nowhere, stopped before its first square (a creature the player cannot see is in the way), is not used: the reaction stays free, the action keeps waiting and its window stays open, and the player is told "Algo bloqueia o caminho".
+  A readied move that goes nowhere, stopped before its first square (a creature the player cannot see is in the way), is not used: the reaction stays free, the action keeps waiting and its window stays open, and the Mover page stays open on the player's screen (and the master's) with "Algo bloqueia o caminho: nada foi gasto. Escolha outro quadrado.", so the player can choose another square or let it pass.
   One that is stopped after at least one square is still the use.
   The master's own walk of the token is not the release: it is free as ever and leaves the window as it was, unless the master chooses to release the move for the player.
   A Ready cannot fire during the readier's own turn.

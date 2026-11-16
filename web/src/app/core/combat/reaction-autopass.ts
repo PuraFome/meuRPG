@@ -79,8 +79,8 @@ export class AutoPassClock {
   /** When this screen first saw each window marked as being rolled: the longer wait counts from here. */
   private readonly rollingSince = new Map<string, number>();
   /**
-   * The readied windows as the screen last read them, with the time of that read: their wait is the server's (`waited_ms` as read,
-   * plus the time since), not this screen's clock set against `wait_began_at` (#857).
+   * The readied windows as the screen last read them, with the time of that read on the monotonic clock (`performance.now()`): their
+   * wait is the server's (`waited_ms` as read, plus the time since), not the device's clock set against `wait_began_at` (#857).
    */
   private readonly readied = new Map<
     string,
@@ -88,8 +88,8 @@ export class AutoPassClock {
   >();
   private readonly sent = new Set<string>();
 
-  /** Looks at the open windows at `now` (ms): forgets the gone ones, starts the clock of the new ones. */
-  sync(windows: readonly ReactionWindow[], now: number): void {
+  /** Looks at the open windows at `now` (ms; `mono` is the monotonic stamp of the same moment): forgets the gone ones, starts the clock of the new ones. */
+  sync(windows: readonly ReactionWindow[], now: number, mono: number = now): void {
     const waiting = windows.filter(autoPasses);
     this.syncIds(
       waiting.map((w) => w.id),
@@ -105,7 +105,7 @@ export class AutoPassClock {
       if (w.kind === ReactionKind.READIED) {
         // The same read seen again keeps its stamp; a new read (a new object, with its own `waited_ms`) takes this one.
         if (this.readied.get(w.id)?.w !== w) {
-          this.readied.set(w.id, { w, readAt: now });
+          this.readied.set(w.id, { w, readAt: mono });
         }
       } else if (w.rolling && !this.rollingSince.has(w.id)) {
         this.rollingSince.set(w.id, now);
@@ -130,7 +130,7 @@ export class AutoPassClock {
   }
 
   /** The seconds left of a window (rounded up, never below 0), or `null` for one with no clock. */
-  secondsLeft(windowId: string, now: number): number | null {
+  secondsLeft(windowId: string, now: number, mono: number = now): number | null {
     const since = this.seen.get(windowId);
     if (since === undefined) {
       return null;
@@ -138,7 +138,7 @@ export class AutoPassClock {
     // A readied window: the 30 s, then the one wait of 2 minutes the server dates from the player's first entry on the map.
     const held = this.readied.get(windowId);
     if (held) {
-      return readiedSecondsLeft(held.w, since, now, held.readAt);
+      return readiedSecondsLeft(held.w, since, now, held.readAt, mono);
     }
     // A window its player is rolling waits longer, counted from when this screen saw the mark (never shorter than
     // what was left: the 30 s may be nearly up when the mark arrives).
@@ -158,9 +158,9 @@ export class AutoPassClock {
   }
 
   /** The windows whose 30 s are up and were not passed yet: each is returned once. */
-  due(now: number): string[] {
+  due(now: number, mono: number = now): string[] {
     const ids = [...this.seen.keys()].filter(
-      (id) => !this.sent.has(id) && this.secondsLeft(id, now) === 0,
+      (id) => !this.sent.has(id) && this.secondsLeft(id, now, mono) === 0,
     );
     for (const id of ids) {
       this.sent.add(id);
@@ -174,8 +174,8 @@ export class AutoPassClock {
   }
 
   /** The least seconds left among the windows with a clock, or `null` when none. */
-  soonest(now: number): number | null {
-    const left = [...this.seen.keys()].map((id) => this.secondsLeft(id, now) ?? Infinity);
+  soonest(now: number, mono: number = now): number | null {
+    const left = [...this.seen.keys()].map((id) => this.secondsLeft(id, now, mono) ?? Infinity);
     return left.length === 0 ? null : Math.min(...left);
   }
 }

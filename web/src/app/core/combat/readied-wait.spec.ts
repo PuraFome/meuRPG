@@ -34,39 +34,39 @@ describe('the wait of a readied window (#857)', () => {
     const w = win({ waitBeganAt: timestampFromMs(T0), waitedMs: 5000n, rolling: true });
     expect(waitBeganMs(w)).toBe(T0);
     // read at 1000 (5 s of the wait had run), 12 s later: 17 s have run.
-    expect(readiedSecondsLeft(w, 0, 1000 + 12 * MS, 1000)).toBe(103);
+    expect(readiedSecondsLeft(w, 0, 1000 + 12 * MS, 1000, 1000 + 12 * MS)).toBe(103);
   });
 
   it("counts the wait with the server's waited_ms and the time since the read, never with this device's clock against wait_began_at", () => {
     // This device's clock is an hour ahead of the server's: wait_began_at is an hour in the past for it.
     const w = win({ waitBeganAt: timestampFromMs(T0), waitedMs: 30_000n, rolling: true });
     const readAt = T0 + 3_600_000;
-    expect(readiedSecondsLeft(w, readAt, readAt, readAt)).toBe(90);
-    expect(readiedSecondsLeft(w, readAt, readAt + 10 * MS, readAt)).toBe(80);
+    expect(readiedSecondsLeft(w, readAt, readAt, readAt, readAt)).toBe(90);
+    expect(readiedSecondsLeft(w, readAt, readAt + 10 * MS, readAt, readAt + 10 * MS)).toBe(80);
   });
 
   it('goes on counting from the same start when the player is back (rolling cleared) and never restarts', () => {
     const marked = win({ waitBeganAt: timestampFromMs(T0), waitedMs: 40_000n, rolling: true });
     const back = win({ waitBeganAt: timestampFromMs(T0), waitedMs: 40_000n, rolling: false });
-    expect(readiedSecondsLeft(marked, 0, 8 * MS, 0)).toBe(72);
-    expect(readiedSecondsLeft(back, 0, 8 * MS, 0)).toBe(72);
+    expect(readiedSecondsLeft(marked, 0, 8 * MS, 0, 8 * MS)).toBe(72);
+    expect(readiedSecondsLeft(back, 0, 8 * MS, 0, 8 * MS)).toBe(72);
   });
 
   it('is the 30 s of the window, counted from when it was first seen, before any mark', () => {
     const w = win();
     expect(waitBeganMs(w)).toBeNull();
-    expect(readiedSecondsLeft(w, T0, T0 + 6 * MS, T0 + 20 * MS)).toBe(24);
+    expect(readiedSecondsLeft(w, T0, T0 + 6 * MS, T0 + 20 * MS, T0 + 6 * MS)).toBe(24);
   });
 
   it('never goes below 0 and never above 120', () => {
     const w = win({ waitBeganAt: timestampFromMs(T0), waitedMs: 1000n });
-    expect(readiedSecondsLeft(w, 0, 500 * MS, 0)).toBe(0);
-    expect(readiedSecondsLeft(w, 0, -30 * MS, 0)).toBe(120);
+    expect(readiedSecondsLeft(w, 0, 500 * MS, 0, 500 * MS)).toBe(0);
+    expect(readiedSecondsLeft(w, 0, -30 * MS, 0, -30 * MS)).toBe(120);
   });
 
   it('rounds the seconds up, as the other clocks do', () => {
     const w = win({ waitBeganAt: timestampFromMs(T0), waitedMs: 0n });
-    expect(readiedSecondsLeft(w, 0, 12_400, 0)).toBe(108);
+    expect(readiedSecondsLeft(w, 0, 12_400, 0, 12_400)).toBe(108);
   });
 
   it('is said to the player in the window with the running count (857-09 card 8)', () => {

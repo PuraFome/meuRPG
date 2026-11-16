@@ -63,3 +63,15 @@ export function walkCall(
       )
     : api.moves.move(campaignId, e.id, own.id, to.col, to.row);
 }
+
+/** What stopped the master's drag short, in the page's notice; `''` when nothing did. */
+export function stoppedText(res: MoveResult): string {
+  if (res.lockedDoor) {
+    // The master walks through closed doors but a locked one stops them too (RN-26).
+    return 'Uma porta trancada parou o movimento. Destranque a porta (toque nela no mapa) e mova de novo.';
+  }
+  // A barred or secret door stops it too: the token stands where it stopped.
+  return res.stoppedEarly
+    ? 'Uma grade levadiça ou uma porta secreta parou o movimento. Abra a porta (toque nela no mapa) e mova de novo.'
+    : '';
+}
