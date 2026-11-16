@@ -722,7 +722,7 @@ type keyedEvent struct {
 	sessionID, kind, userID, key string
 	characterID                  *string
 	hash                         *string
-	// encounterID is the combat the event belongs to, when it is one of its lines (favor events written in a combat).
+	// encounterID ties the event to a combat, whose log and undo chain read it.
 	encounterID *string
 }
 
