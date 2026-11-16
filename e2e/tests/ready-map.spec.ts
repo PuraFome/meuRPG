@@ -1,11 +1,9 @@
 import { expect } from '@playwright/test';
 import { test } from './diagnostics';
-import { combatRPC, getEncounterRPC } from './combat-support';
-import { waitForEncounterRevision } from './revision-support';
-import { callRPC } from './support';
+import { getEncounterRPC } from './combat-support';
 import { openSessionPage } from './live-session-support';
 import { tapSquare } from './move-support';
-import { fireReadied, masterQueue, moveWindow, placeFireball, readyMapTable, releaseSheet, releaseTexts, spellWindow } from './ready-map-support';
+import { fireReadied, masterQueue, moveWindow, placeFireball, readyMapTable, releaseSheet, releaseTexts, spellWindow, undoFire } from './ready-map-support';
 import { readiedOf } from './ready-support';
 
 /**
@@ -189,21 +187,14 @@ test('o mestre move por Pensantus: o rodapé da página de movimento e a volta p
 
 test('o mestre desfaz o gatilho com o mapa aberto: a folha diz que a Bola de Fogo continua preparada e sai com "Voltar à sessão"', { tag: ['@RN-31', '@RN-22'] }, async ({ browser }) => {
   test.setTimeout(300_000);
-  const { m, p, campaignId, encounter, done } = await readyMapTable(browser, 'Gatilho desfeito', 'fireball');
+  const { m, p, campaignId, done } = await readyMapTable(browser, 'Gatilho desfeito', 'fireball');
   try {
     await fireReadied(m);
     await spellWindow(p).getByTestId('release-to-map').click();
     const sheet = releaseSheet(p);
     await expect(sheet).toBeVisible();
 
-    // The master's own call: the server names the fire as the last action (`undoable_event_id`) and takes the window back, the row waiting
-    // again. The log has no line for a fire whose window is open (the window tells it), so the log's "Desfazer última ação" has no row to show.
-    const log = await callRPC(m, 'meurpg.play.v1.CombatService/ListCombatLog', { campaignId, encounterId: encounter.id });
-    expect(log.ok(), await log.text()).toBeTruthy();
-    const fired = (await log.json()).undoableEventId as string;
-    expect(fired).toBeTruthy();
-    const undone = await combatRPC(m, 'UndoLastAction', { campaignId, encounterId: encounter.id, expectedEventId: fired });
-    await waitForEncounterRevision(m, undone);
+    await undoFire(m, campaignId);
 
     const gone = sheet.getByTestId('release-gone');
     await expect(gone).toContainText(releaseTexts.undone);

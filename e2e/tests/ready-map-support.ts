@@ -1,10 +1,10 @@
 import { expect, type Browser, type BrowserContext, type Locator, type Page } from '@playwright/test';
-import { beginAttackCombatRPC, passTurnsToAndWait, pensantusCasting, tableForCombat, type Encounter } from './combat-support';
+import { beginAttackCombatRPC, combatRPC, getEncounterRPC, passTurnsToAndWait, pensantusCasting, tableForCombat, type Encounter } from './combat-support';
 import { featShotScale } from './feat-options-support';
 import { endOpenSessionRPC, openSessionPage } from './live-session-support';
 import { goblinTrigger, readyAttackRPC, readyRPC, readySpellRPC } from './ready-support';
 import { waitForEncounterRevision } from './revision-support';
-import { newSignedInContext, pensantus } from './support';
+import { callRPC, newSignedInContext, pensantus } from './support';
 
 /**
  * Support of the screens that release a readied spell or move on the map (#857, #856, boards 857-01 to 857-09): a table where Pensantus
@@ -114,6 +114,20 @@ export async function fireReadied(m: Page): Promise<void> {
   await button.click();
 }
 
+/**
+ * The master undoes the fire with the server's own call: it names the fire as the last action (`undoable_event_id` of `ListCombatLog`)
+ * and takes the window back, the readied row waiting again. The log has no line for a fire whose window is open (the window tells it), so
+ * the log's "Desfazer última ação" has no row to show for it: the screen has no button for this undo, only the call.
+ */
+export async function undoFire(m: Page, campaignId: string): Promise<void> {
+  const { id } = await getEncounterRPC(m, campaignId);
+  const log = await callRPC(m, 'meurpg.play.v1.CombatService/ListCombatLog', { campaignId, encounterId: id });
+  expect(log.ok(), await log.text()).toBeTruthy();
+  const fired = (await log.json()).undoableEventId as string;
+  expect(fired).toBeTruthy();
+  await waitForEncounterRevision(m, await combatRPC(m, 'UndoLastAction', { campaignId, encounterId: id, expectedEventId: fired }));
+}
+
 /** The window of the held Bola de Fogo on the player's page, once the master fired. */
 export function spellWindow(p: Page): Locator {
   return p.getByRole('alertdialog', { name: releaseTexts.spellDialog });
@@ -129,7 +143,7 @@ export function releaseSheet(page: Page, master = false): Locator {
   return page.getByRole('dialog', { name: master ? 'Soltar Bola de Fogo por Pensantus' : releaseTexts.spellDialog });
 }
 
-/** The master's row of the readied window in the queue. */
+/** The master's row of the readied window in the queue: it stays in the "rest" part however long the window waits (it is never a late question). */
 export function masterQueue(m: Page): Locator {
   return m.locator('app-reaction-queue[part="rest"]');
 }

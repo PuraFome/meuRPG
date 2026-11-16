@@ -98,7 +98,7 @@ import {
 } from './table-sheet-support';
 import { masterLog, openCombatPanel, openMap, openOrderRow, openTurn } from './combat-layout';
 import { waitForEncounterRevision } from './revision-support';
-import { fireReadied, masterQueue, moveWindow, placeFireball, readyMapTable, releaseSheet, releaseTexts, spellWindow } from './ready-map-support';
+import { fireReadied, masterQueue, moveWindow, placeFireball, readyMapTable, releaseSheet, releaseTexts, spellWindow, undoFire } from './ready-map-support';
 import { goblinTrigger, openReadySheet, pensantusReadyKit, readyAttackRPC, readyRPC, readySpellRPC, shootReady, summonOffText } from './ready-support';
 import { WIDTHS, beginVrockFight, pagesFor, shoot, useCreatureActionRPC, viewportOf } from './recharge-support';
 import { chooseRow, openTvPanel, rollForTableRPC, tvRoute } from './table-screen-support';
@@ -15518,9 +15518,7 @@ async function scanReadyMapScreens(browser: Browser, colorScheme: 'light' | 'dar
     await shoot(p, 'mover-jogador');
 
     // The master undoes the trigger with the page open: the page says so and leaves with "Voltar à sessão".
-    await openCombatPanel(m, 'Registro');
-    await m.getByRole('button', { name: 'Desfazer última ação' }).first().click();
-    await m.getByRole('button', { name: 'Desfazer', exact: true }).click();
+    await undoFire(m, campaignId);
     await expect(p.getByTestId('release-gone')).toContainText('O mestre desfez o gatilho');
     await expectScreenPasses(p, `Soltar, a página de movimento depois que o mestre desfez o gatilho ${where}`);
     await shoot(p, 'mover-desfeito');
