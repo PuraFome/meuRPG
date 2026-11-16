@@ -425,3 +425,7 @@ The damage dice are not a held roll: the app rolls them again by itself ([Attack
   Each line appears only where the server sent the faces and the `*_source_name`.
   The live stream (`WatchGameSession`) carries none of the messages that get `*_source_name`.
   Its events are hints, so the web reads the names from the unary responses only.
+
+### The NPC check outside a combat
+
+`HeldRollKind.NPC_CHECK` is not a question the master answers for the roller: `app-held-rolls-panel` filters it out of "Perguntas pendentes", and the master reads it as the card of `app-npc-check-master` (`GetNpcCheck`, read again on every `heldRollsTick` and after a reload; `RollNpcCheck` and `SkipNpcCheckAsks` answer with the check). The bard's question is a cutting-words offer: `NpcCutHost` reads `ListHeldRolls` on each hint and `CuttingFlow` (`core/npc-check/cutting-flow.ts`) keeps where the bard is (asking, result, passed, skipped by the master, answered too late); the answer goes through `AnswerHeldRoll` with the `cutting_words` arm. See [Live session](../../design/session.md#cutting-words-outside-a-combat).
