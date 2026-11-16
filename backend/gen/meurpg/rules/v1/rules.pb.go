@@ -7410,6 +7410,7 @@ type Feature struct {
 	OptionOfPt string `protobuf:"bytes,10,opt,name=option_of_pt,json=optionOfPt,proto3" json:"option_of_pt,omitempty"`
 	// The key of that feature, trait or feat (the sheet puts the option under the row with this key: two features can
 	// have the same name, as the Fighter's and the Paladin's "Estilo de Luta"); empty for every other feature.
+	// Every reader of the sheet receives it, as every reader already receives that feature's own key in `features`.
 	OptionOfKey   string `protobuf:"bytes,11,opt,name=option_of_key,json=optionOfKey,proto3" json:"option_of_key,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

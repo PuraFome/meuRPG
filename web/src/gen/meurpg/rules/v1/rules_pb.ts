@@ -3273,6 +3273,7 @@ export type Feature = Message<"meurpg.rules.v1.Feature"> & {
   /**
    * The key of that feature, trait or feat (the sheet puts the option under the row with this key: two features can
    * have the same name, as the Fighter's and the Paladin's "Estilo de Luta"); empty for every other feature.
+   * Every reader of the sheet receives it, as every reader already receives that feature's own key in `features`.
    *
    * @generated from field: string option_of_key = 11;
    */
