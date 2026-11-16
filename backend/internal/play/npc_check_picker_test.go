@@ -13,10 +13,10 @@ import (
 // map measures the creature against a bard (so the checkbox "Os bardos veem a criatura e ela os ouve" is not asked), and whether the
 // creature is hidden from the players (so the checkbox starts unticked).
 
-// mapWith makes the table's map the session's current one and returns its id.
-func (n *npcTable) mapWith(t *testing.T) string {
+// mapWith makes a map of the table, with that many columns of grid (none: a map with no grid), the session's current one and returns its id.
+func (n *npcTable) mapWith(t *testing.T, columns int) string {
 	t.Helper()
-	mapID := n.h.newMap(n.campaignID, gridColumns)
+	mapID := n.h.newMap(n.campaignID, columns)
 	if _, err := n.master.play.SetCurrentMap(t.Context(), connect.NewRequest(&playv1.SetCurrentMapRequest{CampaignId: n.campaignID, MapId: mapID})); err != nil {
 		t.Fatalf("SetCurrentMap() error = %v", err)
 	}
@@ -47,39 +47,44 @@ func (n *npcTable) candidate(t *testing.T, characterID string) *playv1.NpcCheckC
 }
 
 // TestNpcCheckPickerSaysWhetherTheMapMeasures: a creature is measured by the map when its token and the token of a bard that would be
-// asked are both on the session's current map; with only the stage, only a token of the creature, a bard that would not be asked, or a
+// asked are both on the grid of the session's current map; with only the stage, only a token of the creature, a bard that would not be asked, or a
 // creature of the bestiary, the checkbox decides.
 func TestNpcCheckPickerSaysWhetherTheMapMeasures(t *testing.T) {
 	t.Parallel()
 	for name, tc := range map[string]struct {
-		ask    charactersv1.CuttingWordsAsk
-		tokens func(n *npcTable, mapID string)
-		stage  bool
-		want   bool
+		ask     charactersv1.CuttingWordsAsk
+		columns int // the map's grid, none for a map with no grid
+		tokens  func(n *npcTable, mapID string)
+		stage   bool
+		want    bool
 	}{
-		"both tokens on the map": {charactersv1.CuttingWordsAsk_CUTTING_WORDS_ASK_ALL, func(n *npcTable, m string) {
+		"both tokens on the map": {charactersv1.CuttingWordsAsk_CUTTING_WORDS_ASK_ALL, gridColumns, func(n *npcTable, m string) {
 			n.h.placeToken(m, n.bri.GetId(), 250, 250)
 			n.h.placeToken(m, n.npcID, 1750, 250)
 		}, false, true},
-		"the token of a bard that is not asked": {charactersv1.CuttingWordsAsk_CUTTING_WORDS_ASK_ONLY_ATTACKS, func(n *npcTable, m string) {
+		"the token of a bard that is not asked": {charactersv1.CuttingWordsAsk_CUTTING_WORDS_ASK_ONLY_ATTACKS, gridColumns, func(n *npcTable, m string) {
 			n.h.placeToken(m, n.bri.GetId(), 250, 250)
 			n.h.placeToken(m, n.npcID, 1750, 250)
 		}, false, false},
-		"the token of a character that is no bard": {charactersv1.CuttingWordsAsk_CUTTING_WORDS_ASK_ALL, func(n *npcTable, m string) {
+		"the token of a character that is no bard": {charactersv1.CuttingWordsAsk_CUTTING_WORDS_ASK_ALL, gridColumns, func(n *npcTable, m string) {
 			n.h.placeToken(m, n.toren.GetId(), 250, 250)
 			n.h.placeToken(m, n.npcID, 1750, 250)
 		}, false, false},
-		"no token of a bard": {charactersv1.CuttingWordsAsk_CUTTING_WORDS_ASK_ALL, func(n *npcTable, m string) {
+		"no token of a bard": {charactersv1.CuttingWordsAsk_CUTTING_WORDS_ASK_ALL, gridColumns, func(n *npcTable, m string) {
 			n.h.placeToken(m, n.npcID, 1750, 250)
 		}, false, false},
-		"no token of the creature, on the stage": {charactersv1.CuttingWordsAsk_CUTTING_WORDS_ASK_ALL, func(n *npcTable, m string) {
+		"both tokens on a map with no grid": {charactersv1.CuttingWordsAsk_CUTTING_WORDS_ASK_ALL, 0, func(n *npcTable, m string) {
+			n.h.placeToken(m, n.bri.GetId(), 250, 250)
+			n.h.placeToken(m, n.npcID, 1750, 250)
+		}, false, false},
+		"no token of the creature, on the stage": {charactersv1.CuttingWordsAsk_CUTTING_WORDS_ASK_ALL, gridColumns, func(n *npcTable, m string) {
 			n.h.placeToken(m, n.bri.GetId(), 250, 250)
 		}, true, false},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			n := newNpcTable(t, tc.ask)
-			tc.tokens(n, n.mapWith(t))
+			tc.tokens(n, n.mapWith(t, tc.columns))
 			if tc.stage {
 				n.putOnStage(t, false)
 			}
@@ -122,7 +127,7 @@ func TestNpcCheckPickerMarksTheCreaturesHiddenFromThePlayers(t *testing.T) {
 	t.Run("hidden token", func(t *testing.T) {
 		t.Parallel()
 		n := newNpcTable(t, charactersv1.CuttingWordsAsk_CUTTING_WORDS_ASK_ALL)
-		mapID := n.mapWith(t)
+		mapID := n.mapWith(t, gridColumns)
 		n.h.placeToken(mapID, n.npcID, 1750, 250)
 		n.hideToken(t, mapID, n.npcID)
 		if c := n.candidate(t, n.npcID); c == nil || !c.GetHidden() {
@@ -139,7 +144,7 @@ func TestNpcCheckPickerMarksTheCreaturesHiddenFromThePlayers(t *testing.T) {
 			t.Parallel()
 			n := newNpcTable(t, charactersv1.CuttingWordsAsk_CUTTING_WORDS_ASK_ALL)
 			n.putOnStage(t, tc.stage)
-			mapID := n.mapWith(t)
+			mapID := n.mapWith(t, gridColumns)
 			n.h.placeToken(mapID, n.npcID, 1750, 250)
 			if tc.token {
 				n.hideToken(t, mapID, n.npcID)
@@ -165,7 +170,7 @@ func TestNpcCheckPickerMarksTheCreaturesHiddenFromThePlayers(t *testing.T) {
 func TestNpcCheckOfACreatureHiddenOnTheMapAsksNoBard(t *testing.T) {
 	t.Parallel()
 	n := newNpcTable(t, charactersv1.CuttingWordsAsk_CUTTING_WORDS_ASK_ALL)
-	mapID := n.mapWith(t)
+	mapID := n.mapWith(t, gridColumns)
 	n.h.placeToken(mapID, n.bri.GetId(), 250, 250)
 	n.h.placeToken(mapID, n.lia.GetId(), 250, 750)
 	n.h.placeToken(mapID, n.npcID, 750, 250)
@@ -205,10 +210,7 @@ func TestNpcCheckOfACreatureHiddenOnTheMapAsksNoBardWithNoTokenOfTheirs(t *testi
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			n := newNpcTable(t, charactersv1.CuttingWordsAsk_CUTTING_WORDS_ASK_ALL)
-			mapID := n.h.newMap(n.campaignID, tc.columns)
-			if _, err := n.master.play.SetCurrentMap(t.Context(), connect.NewRequest(&playv1.SetCurrentMapRequest{CampaignId: n.campaignID, MapId: mapID})); err != nil {
-				t.Fatalf("SetCurrentMap() error = %v", err)
-			}
+			mapID := n.mapWith(t, tc.columns)
 			n.h.placeToken(mapID, n.npcID, 1750, 250)
 			if tc.bards {
 				n.h.placeToken(mapID, n.bri.GetId(), 250, 250)
