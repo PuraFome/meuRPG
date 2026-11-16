@@ -121,6 +121,13 @@ const (
 	ListSkills             = "skills"
 	ListLanguages          = "languages"
 	ListTools              = "tools"
+	// ListProficiencyKinds are the kinds a filter of a choice of tools names, and ListWeaponProficiencies,
+	// ListToolProficiencies and ListOtherProficiencies the proficiencies of each kind, so the editor counts what a filter
+	// matches with no other call.
+	ListProficiencyKinds    = "proficiency_kinds"
+	ListWeaponProficiencies = "weapon_proficiencies"
+	ListToolProficiencies   = "tool_proficiencies"
+	ListOtherProficiencies  = "other_proficiencies"
 	ListTagPrefixes        = "tag_prefixes"
 	ListAbilities          = "abilities"
 	ListIncreaseAmounts    = "ability_increase_amounts"
@@ -429,6 +436,8 @@ var menuTypes = []MenuType{
 		{Name: "choice", Required: true, Kind: "choice", List: ListChoiceKinds},
 		{Name: "count", Required: true, Kind: "number", Min: 1, Max: MaxChoiceCount},
 		{Name: "from", Kind: "choices"},
+		{Name: "filter", Kind: "choice_filter", List: ListProficiencyKinds},
+		{Name: "from_feature", Kind: "feature_ref"},
 		{Name: "name", Kind: "text"},
 		{Name: "set", Kind: "choice", List: ListFeatOptionSets},
 		{Name: "daily_choice", Kind: "yes_no"},
@@ -745,6 +754,10 @@ func (c *content) menuLists() []MenuList {
 		{Name: ListSkills, Values: skills},
 		{Name: ListLanguages, Values: languages},
 		{Name: ListTools, Values: tools},
+		{Name: ListProficiencyKinds, Values: namedMenu(filterKinds, func(k string) string { return proficiencyKindNames[k] })},
+		{Name: ListWeaponProficiencies, Values: c.menuProficienciesOfKind(filterKindWeapon)},
+		{Name: ListToolProficiencies, Values: c.menuProficienciesOfKind(filterKindTool)},
+		{Name: ListOtherProficiencies, Values: c.menuProficienciesOfKind(filterKindOther)},
 		{Name: ListTagPrefixes, Values: tagPrefixes},
 		{Name: ListAbilities, Values: abilityValues},
 		{Name: ListIncreaseAmounts, Values: []MenuValue{{Key: "1", NamePT: "+1"}, {Key: "2", NamePT: "+2"}}},

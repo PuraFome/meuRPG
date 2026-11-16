@@ -667,7 +667,7 @@ var ownFields = map[string][]string{
 	"roll_mode":    {"roll", "targets", "against_condition", "while"},
 	"sense":        {"sense", "range_ft"},
 	"resource":     {"resource", "max", "recharge"},
-	"choice":       {"choice", "count", "from", "name", "set", "daily_choice", "duration"},
+	"choice":       {"choice", "count", "from", "name", "set", "daily_choice", "duration", "filter", "from_feature"},
 	"extra_attack": {"count"},
 	// A grant_action may cost several uses of its resource, let the player choose how many,
 	// and heal or give temporary hit points; an on_event is the owner's hook on an event.
@@ -826,6 +826,8 @@ var effectFields = []effectField{
 	{"flag", func(e *Effect) bool { return e.Flag != "" }, func(e *Effect) { e.Flag = "" }},
 	{"use", func(e *Effect) bool { return e.Use != nil }, func(e *Effect) { e.Use = nil }},
 	{"aura", func(e *Effect) bool { return e.Aura != nil }, func(e *Effect) { e.Aura = nil }},
+	{"filter", func(e *Effect) bool { return e.Filter != nil }, func(e *Effect) { e.Filter = nil }},
+	{"from_feature", func(e *Effect) bool { return e.FromFeature != "" }, func(e *Effect) { e.FromFeature = "" }},
 }
 
 // effectFieldClear is how to clear each of effectFields, by name.
