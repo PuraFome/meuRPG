@@ -1197,6 +1197,7 @@ A player reads only their own windows, and the numbers of the trigger (an attack
   A cantrip with an attack roll is held this way too.
   Released, the spell takes effect as a reaction and spends no slot again; Counterspell can still stop it.
   The targets and the split of the darts are chosen when the spell is released, not at Ready.
+  At a table with physical dice, a readied action released from the window takes the faces typed, as on the player's turn: the d20 (the pair for advantage or disadvantage) of an attack, and the sum of the dice of a spell that rolls a pool (Sleep, Color Spray).
   The creature named at Ready is only a suggestion for the release.
   A spell that asks an ability, a damage type, the creatures of a summon or a revival cannot be released, and Ready refuses it.
   A spell placed on the map (a point, a direction, a wall) or that lays a zone there is released on the map while the window is open, by casting the spell there, not by answering the window.
