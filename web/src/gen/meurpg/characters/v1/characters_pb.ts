@@ -951,13 +951,17 @@ export type FullSheet = Message<"meurpg.characters.v1.FullSheet"> & {
   contentRevision: number;
 
   /**
-   * The issues the sheet had when it was last saved ("code|field|message" of each,
-   * sorted), set by the server and ignored from the client: what "A classe mudou"
+   * The issues the sheet had when it was last saved (the identity of each, sorted:
+   * "code|field|message", or "code|<list>|lost:<entry key>" for a feat or an option that
+   * lost its prerequisite, whose sentence changes with the reader and the character, and
+   * whose pick's place in <list> ("full.feat_keys", "full.feature_choice_keys") changes with the picks before it),
+   * set by the server and ignored from the client: what "A classe mudou"
    * compares against, so an issue the sheet already had is never blamed on a change.
    * An issue that was flagged and still stands is left out, so a save never clears
    * it; only fixing what it says does.
    * The server computes it again on every save (checkFullSheet in backend/internal/characters/sheet.go).
-   * The editor sends back what it read (web/src/app/pages/character-editor/character-editor-sheet-map.ts:211-232).
+   * Only the campaign's master receives it; any other reader gets it empty. The editor sends back what it read
+   * (web/src/app/pages/character-editor/character-editor-sheet-map.ts:211-232), which the server ignores.
    * The request limit is 1000 items, the table's most entries (backend/internal/rules/overlay.go).
    *
    * @generated from field: repeated string known_issues = 30;
@@ -970,7 +974,10 @@ export type FullSheet = Message<"meurpg.characters.v1.FullSheet"> & {
    * fit it at. Set by the server and ignored from the client; an entry not here
    * uses `content_revision`.
    * The server clears it on every save and sets it again from the stored sheet (checkFullSheet in backend/internal/characters/sheet.go).
-   * The editor sends back what it read (web/src/app/pages/character-editor/character-editor-sheet-map.ts:211-232).
+   * Every reader receives it as stored: its keys are entries the sheet itself uses (the keys of its build and the
+   * class features of its classes), which the owner reads, and nothing in the web reads it, so no reader is told
+   * anything it was not already. Only known_issues is the master's alone. The editor sends back what it read
+   * (web/src/app/pages/character-editor/character-editor-sheet-map.ts:211-232), which the server ignores.
    * The request limit is 1000 entries, the table's most entries (backend/internal/rules/overlay.go).
    *
    * @generated from field: map<string, int32> content_baselines = 31;
