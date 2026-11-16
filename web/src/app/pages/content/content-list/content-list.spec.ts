@@ -185,12 +185,15 @@ describe('ContentList', () => {
     const scrolled = vi.fn();
     const proto = HTMLElement.prototype;
     let wide = true;
+    let previousScrollIntoView: typeof Element.prototype.scrollIntoView;
 
     beforeEach(() => {
       wide = true;
       scrolled.mockReset();
-      // The mock of Element.prototype that test-setup.ts gives every test: the strip's scrolls are told to `scrolled`.
-      vi.mocked(Element.prototype.scrollIntoView).mockImplementation(function (
+      // A mock of its own on Element.prototype (not the one of test-setup.ts, which `--coverage` does not renew per test):
+      // the strip's scrolls are told to `scrolled`, and the previous value is back after the test.
+      previousScrollIntoView = Element.prototype.scrollIntoView;
+      Element.prototype.scrollIntoView = vi.fn(function (
         this: Element,
         arg?: boolean | ScrollIntoViewOptions,
       ) {
@@ -204,6 +207,7 @@ describe('ContentList', () => {
       }
     });
     afterEach(() => {
+      Element.prototype.scrollIntoView = previousScrollIntoView;
       for (const k of ['scrollWidth', 'clientWidth']) {
         delete (proto as unknown as Record<string, unknown>)[k];
       }

@@ -1,3 +1,4 @@
+import type { Mock } from 'vitest';
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { MatSelect, MatSelectModule } from '@angular/material/select';
@@ -13,6 +14,21 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 class Host {}
 
 describe('OpenDown', () => {
+  // The spec asserts on a mock of its own: the one test-setup.ts gives every test is not renewed per test under
+  // `--coverage` (the setup file runs once per worker), so it may hold the calls of earlier spec files.
+  let scrollIntoView: Mock<Element['scrollIntoView']>;
+  let previousScrollIntoView: typeof Element.prototype.scrollIntoView;
+
+  beforeEach(() => {
+    previousScrollIntoView = Element.prototype.scrollIntoView;
+    scrollIntoView = vi.fn<Element['scrollIntoView']>();
+    Element.prototype.scrollIntoView = scrollIntoView;
+  });
+
+  afterEach(() => {
+    Element.prototype.scrollIntoView = previousScrollIntoView;
+  });
+
   function setup(selectBottom: number) {
     const fixture = TestBed.createComponent(Host);
     fixture.detectChanges();
@@ -34,16 +50,15 @@ describe('OpenDown', () => {
 
   it('brings the field to the middle of the screen, at once and before the list opens, when the room below is short', () => {
     vi.stubGlobal('innerHeight', 900);
-    const { select } = setup(800);
+    const { select, field } = setup(800);
     let openWhenScrolled: boolean | undefined;
-    vi.mocked(Element.prototype.scrollIntoView).mockImplementation(() => {
+    scrollIntoView.mockImplementation(() => {
       openWhenScrolled = select.panelOpen;
     });
     select.open();
-    expect(vi.mocked(Element.prototype.scrollIntoView)).toHaveBeenCalledWith({
-      block: 'center',
-      behavior: 'instant',
-    });
+    expect(scrollIntoView).toHaveBeenCalledTimes(1);
+    expect(scrollIntoView).toHaveBeenCalledWith({ block: 'center', behavior: 'instant' });
+    expect(scrollIntoView.mock.contexts[0]).toBe(field);
     expect(openWhenScrolled).toBe(false);
     expect(select.panelOpen).toBe(true);
   });
@@ -53,6 +68,6 @@ describe('OpenDown', () => {
     const { select } = setup(200);
     select.open();
     expect(select.panelOpen).toBe(true);
-    expect(Element.prototype.scrollIntoView).not.toHaveBeenCalled();
+    expect(scrollIntoView).not.toHaveBeenCalled();
   });
 });
