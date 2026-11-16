@@ -1,6 +1,7 @@
 package play
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -113,16 +114,9 @@ type castable struct {
 	grant *rulesv1.SpellGrantOption
 }
 
-// levelWith is the level the spell is cast at: the slot's, else the cast level of the grant it goes through
-// (the spell's own when the grant sets none), else the spell's own.
+// levelWith is the level the spell is cast at: the slot's, else the cast level of its grant, else its own.
 func (c castable) levelWith(slot *slotRef) int {
-	switch {
-	case slot != nil:
-		return int(slot.Level)
-	case c.grant.GetCastLevel() > 0:
-		return int(c.grant.GetCastLevel())
-	}
-	return int(c.level)
+	return cmp.Or(int(castSlotLevel(slot)), int(c.grant.GetCastLevel()), int(c.level))
 }
 
 // castableOf finds the spell among the options. invalid_argument when the
@@ -195,7 +189,7 @@ func slotOf(in *playv1.SpellSlot, c castable) (*slotRef, error) {
 		return nil, nil
 	}
 	if c.grant != nil {
-		// A granted spell is cast at its own level with no slot; a slot only if the grant allows it.
+		// A granted spell is cast with no slot, at its grant's cast level; a slot only if the grant allows it.
 		if in == nil {
 			return nil, nil
 		}

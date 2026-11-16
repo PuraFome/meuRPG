@@ -657,10 +657,10 @@ func (s *Service) planCast(ctx context.Context, c *combatTx, m authz.Membership,
 	return plan, err
 }
 
-// planGranted plans a cast through a granted_spell effect. The spell is cast at the grant's cast level
-// (its own level when the grant sets none) with no slot, spending a use of the grant's resource unless
-// it is at will; with a slot it is the grant's only if it allows one, and nothing is spent but the slot. A grant that is only for
-// rituals casts as a ritual and nothing else.
+// planGranted plans a cast through a granted_spell effect. The spell is cast at the grant's cast level (its own
+// when it sets none) with no slot, spending a use of the grant's resource unless it is at will; with a slot it is
+// the grant's only if it allows one, and nothing is spent but the slot. A grant that is only for rituals casts as
+// a ritual and nothing else.
 func (s *Service) planGranted(ctx context.Context, c *combatTx, m authz.Membership, plan castPlan, source string, in *playv1.SpellSlot) (castPlan, error) {
 	i := slices.IndexFunc(plan.osp.Grants, func(g link.OutsideGrant) bool { return g.Source == source })
 	if i < 0 {
@@ -672,7 +672,7 @@ func (s *Service) planGranted(ctx context.Context, c *combatTx, m authz.Membersh
 		return plan, err
 	}
 	level := plan.osp.Spell.Level
-	readAt := grantLevel(grant, level)
+	readAt := grant.LevelOr(level)
 	if in != nil && !plan.ritual { // a slot casts it at the slot's level
 		readAt = int(in.GetLevel())
 	}
@@ -697,15 +697,6 @@ func (s *Service) planGranted(ctx context.Context, c *combatTx, m authz.Membersh
 		return plan, errCasting(playv1.CastingBlockedReason_CASTING_BLOCKED_REASON_NO_USES, "the grant has no use left")
 	}
 	return plan, nil
-}
-
-// grantLevel is the level a cast of the spell through the grant has with no slot: the grant's cast level, the
-// spell's own level when the grant sets none.
-func grantLevel(grant link.OutsideGrant, own int) int {
-	if grant.CastLevel > 0 {
-		return grant.CastLevel
-	}
-	return own
 }
 
 // checkGrantMode refuses a cast the grant does not allow: a summoning spell (except a feature's summon, which only
@@ -775,7 +766,6 @@ func (p *castPlan) planSlotted(in *playv1.SpellSlot) error {
 // number; a spell that reaches only the caster takes the caster by itself.
 func (s *Service) checkCastTargets(_ context.Context, _ *combatTx, m authz.Membership, plan castPlan) error {
 	sp := plan.osp.Spell
-	level := levelOf(plan)
 	switch {
 	case plan.osp.Effect == link.EffectSummon && !plan.osp.NPC:
 		if len(plan.g.targets) > 0 {
@@ -789,7 +779,7 @@ func (s *Service) checkCastTargets(_ context.Context, _ *combatTx, m authz.Membe
 		if !sp.Area && len(plan.g.targets) == 0 && plan.osp.Effect != link.EffectNarrated {
 			return badCast("this spell needs a target")
 		}
-		if limit := maxTargetsOf(sp, level); limit > 0 && len(plan.g.targets) > limit && m.Role != authz.RoleMaster {
+		if limit := maxTargetsOf(sp, levelOf(plan)); limit > 0 && len(plan.g.targets) > limit && m.Role != authz.RoleMaster {
 			return badCast(fmt.Sprintf("this spell takes at most %d targets with this slot", limit))
 		}
 	}

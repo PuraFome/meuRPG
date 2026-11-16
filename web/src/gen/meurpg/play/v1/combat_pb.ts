@@ -8062,8 +8062,8 @@ export type CastSpellRequest = Message<"meurpg.play.v1.CastSpellRequest"> & {
   /**
    * The trait, feat or feature whose granted_spell effect casts the spell (the
    * `grant.source_key` of the turn option): the cast takes no slot, spends a use of the
-   * grant's resource unless it is at will, the spell is cast at its own level and the spell
-   * attack and the save DC are the grant's. With a `slot` it casts through the slot instead
+   * grant's resource unless it is at will, the spell is cast at the grant's `cast_level` (its own level
+   * when that is 0) and the spell attack and the save DC are the grant's. With a `slot` it casts through the slot instead
    * (when the grant allows it). Empty for a spell of the character's classes.
    *
    * @generated from field: string granted_by = 33;

@@ -98,6 +98,15 @@ type OutsideGrant struct {
 	CastLevel        int // the level a cast with no slot has (0 for a cantrip): see combat.SpellGrant
 }
 
+// LevelOr is the level a cast of the spell through the grant has with no slot: the grant's cast level, or own
+// (the spell's level) when the grant sets none or there is no grant (a nil g).
+func (g *OutsideGrant) LevelOr(own int) int {
+	if g == nil {
+		return own
+	}
+	return max(g.CastLevel, own)
+}
+
 // MageArmor is what Mage Armor would do for a character: Wears says it wears armor (the
 // spell asks for a creature that does not), AC the armor class it would have with the
 // spell on it. Applies is false for a character with no sheet to work it out from (an
