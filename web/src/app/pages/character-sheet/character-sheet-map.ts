@@ -220,7 +220,6 @@ function scoresVm(derived: GenDerivedSheet) {
 }
 
 function grantedSpellVm(g: GenDerivedSheet['grantedSpells'][number], derived: GenDerivedSheet) {
-  const resource = derived.resources.find((r) => r.key === g.resource);
   return {
     key: g.spell?.key ?? '',
     namePt: g.spell?.namePt ?? '',
@@ -228,12 +227,13 @@ function grantedSpellVm(g: GenDerivedSheet['grantedSpells'][number], derived: Ge
     sourcePt: g.sourceNamePt,
     atWill: g.atWill,
     resource: g.resource,
-    resourceNamePt: resource?.namePt ?? g.resource,
+    resourceNamePt: derived.resources.find((r) => r.key === g.resource)?.namePt ?? g.resource,
     alsoWithSlot: g.alsoWithSlot,
     ritualOnly: g.ritualOnly,
     countsAsKnown: g.countsAsKnown,
     noMaterialComponents: g.noMaterialComponents,
     usesCost: g.usesCost,
+    castLevel: g.castLevel,
     ability: g.abilityPending || g.ability === '' ? null : (g.ability as AbilityKey),
     abilityPending: g.abilityPending,
     saveDc: g.saveDc,

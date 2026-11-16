@@ -52,13 +52,33 @@ describe('the reference of a spell the character can cast', () => {
 
 describe('the line of a granted spell', () => {
   it('says the source and the uses', () => {
-    expect(grantLine(granted.grant!)).toBe('Graça de teste · 2 usos');
-    expect(grantLine(create(SpellGrantOptionSchema, { sourceNamePt: 'Dom', atWill: true }))).toBe(
-      'Dom · À vontade',
-    );
+    expect(grantLine(granted.grant!, 1)).toBe('Graça de teste · 2 usos');
+    expect(
+      grantLine(create(SpellGrantOptionSchema, { sourceNamePt: 'Dom', atWill: true }), 1),
+    ).toBe('Dom · À vontade');
     expect(spellLine(granted)).toBe('Graça de teste · 2 usos');
     expect(
-      grantLine(create(SpellGrantOptionSchema, { sourceNamePt: 'Dom', usesLeft: 3, usesCost: 2 })),
+      grantLine(
+        create(SpellGrantOptionSchema, { sourceNamePt: 'Dom', usesLeft: 3, usesCost: 2 }),
+        1,
+      ),
     ).toBe('Dom · gasta 2 · 3 usos');
+  });
+
+  it('says the level it is cast at only when above the spell’s own', () => {
+    const at = (castLevel: number, level = 1) =>
+      grantLine(
+        create(SpellGrantOptionSchema, { sourceNamePt: 'Legado', usesLeft: 1, castLevel }),
+        level,
+      );
+    expect(at(2)).toBe('Legado · 1 uso · no 2º\u00a0nível');
+    expect(at(1)).toBe('Legado · 1 uso');
+    expect(at(0, 0)).toBe('Legado · 1 uso');
+    const atWill = create(SpellGrantOptionSchema, {
+      sourceNamePt: 'Legado',
+      atWill: true,
+      castLevel: 3,
+    });
+    expect(grantLine(atWill, 1)).toBe('Legado · À vontade · no 3º\u00a0nível');
   });
 });

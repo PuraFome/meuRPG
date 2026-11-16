@@ -22,6 +22,7 @@ import { effectivePreference } from '../../../../core/campaigns/dice-labels';
 import type { SlotRow } from '../../../../core/combat/cast-flow';
 import { CombatClient } from '../../../../core/combat/combat-client';
 import { SpellCatalog } from '../../../../core/combat/spell-catalog';
+import type { SpellGrantOption } from '../../../../../gen/meurpg/rules/v1/rules_pb';
 import { grantLine } from '../../../../core/combat/combat-options';
 import { castLabel } from '../../../../core/resources/metamagic';
 import { ResourceClient } from '../../../../core/resources/resources-client';
@@ -141,7 +142,7 @@ export class CastSheet {
   protected readonly preferApp =
     effectivePreference(this.data.diceMode, this.data.preference) === DicePreference.APP;
   protected readonly Placement = AreaPlacement;
-  protected readonly grantLine = grantLine;
+  protected readonly grantLine = (g: SpellGrantOption) => grantLine(g, this.data.level);
   protected readonly d20Fields = D20_FIELDS;
 
   protected readonly s = new CastState(this.data);
