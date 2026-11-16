@@ -107,10 +107,14 @@ const lostIDPrefix = "lost:"
 // sentence. A lost prerequisite is told apart by the entry's key in the sentence's place, and by the name of the
 // list its pick is in without the pick's place: the sentence says what the character has now and what the reader may
 // see, and the place moves when a swap or a rule takes an earlier pick out, while the issue is the same one. The sheet
-// stores these (known issues), so a stored lost prerequisite holds no sentence and no name.
+// stores these (known issues), so a stored lost prerequisite holds no sentence and no name. An issue that has a sentence of its
+// own for the master (Named) is told apart by that one, which is the one an earlier sheet stored.
 func (is Issue) ID() string {
 	if is.Lost != nil {
 		return is.Code + "|" + listOf(is.Field) + "|" + lostIDPrefix + is.Lost.Key
+	}
+	if is.Named != "" {
+		return is.Code + "|" + is.Field + "|" + is.Named // the sentence that names the entry, whichever sentence the reader gets
 	}
 	return is.Code + "|" + is.Field + "|" + is.Message
 }
