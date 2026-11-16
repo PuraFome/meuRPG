@@ -6,6 +6,7 @@ import {
   changeIntro,
   changeSheetTitle,
   changeTitle,
+  isShieldNotice,
 } from './changed-content-format';
 import { ChangedContentNotice } from './changed-content';
 import { nextTurn } from '../../../../test-settle';
@@ -18,6 +19,7 @@ const change = (over: Partial<ChangedContentVm> = {}): ChangedContentVm => ({
   namePt: 'Guardião do Vale',
   changedAt: new Date(2026, 9, 5, 14, 0),
   messages: [SENTENCE],
+  codes: ['skill_count'],
   ...over,
 });
 
@@ -105,6 +107,7 @@ describe('ChangedContentNotice', () => {
         namePt: 'Machado de Lenhador',
         changedAt: new Date(2026, 10, 14, 9, 0),
         messages: [sentence],
+        codes: ['shield_idle'],
       }),
     ]);
     const notice = el.querySelector('.mr-notice--warning')!;
@@ -127,6 +130,7 @@ describe('ChangedContentNotice', () => {
         messages: [
           'Machado de Lenhador passou a exigir as duas mãos. Com Machado de Lenhador em uso, o escudo de Tor não conta na CA (CA 18 → 16).',
         ],
+        codes: ['shield_idle'],
       });
     const WHO =
       'Quem ajusta: o dono da ficha, guardando o escudo ou a arma. O aviso some quando um dos dois deixa de estar em uso.';
@@ -156,6 +160,31 @@ describe('ChangedContentNotice', () => {
         expect(sheet.textContent).not.toContain('voltam a combinar');
         await closeSheet();
       }
+    });
+
+    it('is told by the code alone: the same words with another code, or with no code, are a plain sentence', async () => {
+      const words = shield().messages;
+      for (const codes of [['skill_count'], [], ['shield_idle', 'skill_count']]) {
+        const vm = shield();
+        const edited: ChangedContentVm = {
+          ...vm,
+          messages: codes.length === 2 ? [...words, 'Outra frase.'] : words,
+          codes,
+        };
+        expect(isShieldNotice(edited)).toBe(codes.length === 2);
+      }
+      const sheet = await openSheet(false, { ...shield(), codes: [] });
+      expect(sheet.textContent).not.toContain('Quem ajusta: o dono da ficha');
+      expect(sheet.textContent).toContain('Quem ajusta: o mestre, na ficha.');
+      await closeSheet();
+    });
+
+    it('shows plain sentences and no notice when the codes are fewer than the sentences (an older answer)', () => {
+      const two = { ...shield(), messages: ['a', 'b'], codes: ['shield_idle'] };
+      expect(isShieldNotice(two)).toBe(false);
+      expect(isShieldNotice({ ...two, codes: [] })).toBe(false);
+      expect(isShieldNotice({ ...two, codes: ['shield_idle', 'skill_count'] })).toBe(true);
+      expect(isShieldNotice({ ...two, codes: ['skill_count', 'skill_count'] })).toBe(false);
     });
 
     it('keeps the old sentences for every other notice', async () => {

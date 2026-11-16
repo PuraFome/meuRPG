@@ -197,6 +197,9 @@ export interface ChangedContentVm {
   /** When the entry last changed. */
   readonly changedAt: Date | null;
   readonly messages: readonly string[];
+  /** The code of the issue each sentence comes from, one per sentence in the same order (`ChangedContent.codes`); empty or
+   * shorter than `messages` for an answer from before the field. */
+  readonly codes: readonly string[];
 }
 
 /** A situational reminder the numbers above cannot express, such as

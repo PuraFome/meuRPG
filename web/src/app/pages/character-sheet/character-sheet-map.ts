@@ -253,6 +253,7 @@ function notesVm(derived: GenDerivedSheet) {
       namePt: c.namePt,
       changedAt: dateOf(c.changedAt),
       messages: [...c.messages],
+      codes: [...c.codes],
     })),
     hints: derived.hints.map((h) => ({ sourceKey: h.sourceKey, text: h.text })),
   };

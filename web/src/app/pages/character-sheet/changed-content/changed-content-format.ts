@@ -59,12 +59,15 @@ export function changeAnnouncement(change: ChangedContentVm): string {
   return `${changeTitle(change).replace(/\.$/, '')}: ${n} ${n === 1 ? 'aviso' : 'avisos'}.`;
 }
 
+/** The code of the notice that a table weapon now takes both hands (`rules` package: `IssueShieldIdle`). */
+const SHIELD_IDLE = 'shield_idle';
+
 /**
- * The notice of a table weapon that now takes both hands, so the equipped shield does not count (580-16): a changed weapon
- * whose sentence says it. The sheet's owner ends it by stowing the shield or the weapon; it does not wait for the numbers.
+ * The notice of a table weapon that now takes both hands, so the equipped shield does not count (580-16): a changed entry
+ * with a sentence of the code `shield_idle`. The sheet's owner ends it by stowing the shield or the weapon; it does not
+ * wait for the numbers. Told by the code the server sends with each sentence (`ChangedContent.codes`), never by its words:
+ * an answer with no codes, or fewer than sentences (an older server), shows plain sentences and no notice.
  */
 export function isShieldNotice(change: ChangedContentVm): boolean {
-  return (
-    change.key.startsWith('weapon:') && change.messages.some((m) => m.includes('as duas mãos'))
-  );
+  return change.codes.length >= change.messages.length && change.codes.includes(SHIELD_IDLE);
 }
