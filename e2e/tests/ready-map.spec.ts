@@ -222,7 +222,7 @@ test('o mestre arrasta Pensantus com o movimento preparado na janela: é um pass
     await expect.poll(async () => (await getEncounterRPC(m, campaignId)).combatants.find((c) => c.label === 'Pensantus')?.col).toBe((before.col ?? 0) + 2);
     const after = await getEncounterRPC(m, campaignId);
     expect(after.reactionWindows ?? []).toHaveLength(1);
-    expect(after.combatants.find((c) => c.label === 'Pensantus')?.reactionUsed).toBe(false);
+    expect(after.combatants.find((c) => c.label === 'Pensantus')?.reactionUsed ?? false).toBe(false);
     await expect(moveWindow(p)).toBeVisible();
   } finally {
     await done();
