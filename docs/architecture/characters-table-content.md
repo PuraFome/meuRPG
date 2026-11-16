@@ -87,6 +87,9 @@ This is what the server stores and shows:
   `LevelUpCharacter` and `PreviewLevelUp` refuse with `LEVEL_UP_REFUSAL_REASON_ARCHIVED_CHOICE`.
 - The same for a switched-off key (or a child of a switched-off class or race), but only for a player: `SWITCHED_OFF_CONTENT` and `LEVEL_UP_REFUSAL_REASON_SWITCHED_OFF_CHOICE`.
   The master is not refused: the switch hides the option from players, not from any sheet the master edits.
+- The keys of a sheet include the spell of a scoped pick (`choiceKey=spell:key`), so a pick of a spell counts as the sheet using it.
+  A ritual held in the book that stops being a ritual is an issue at its pick (`spell_level`).
+  Its owner reads the notice of changed content for it.
 - A sheet that already uses the key keeps working (`Derive`, `Validate`, names, level-up), and an unrelated edit is never refused.
 - A sheet with an `@mesa` key does not change campaign: `CheckSheetCanMove` (`failed_precondition`, `TABLE_CONTENT_STAYS`, with the first key) exists for it.
   Nothing calls it yet, since characters are not copied between campaigns; whoever builds that must call it before writing.
