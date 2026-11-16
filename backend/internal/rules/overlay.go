@@ -864,6 +864,11 @@ func (c *content) isSwitchable(key string) bool {
 	return false
 }
 
+// isPickedKey says the value of a scoped pick is a content key of the sheet: a feat or a spell.
+func isPickedKey(v string) bool {
+	return strings.HasPrefix(v, "feat:") || strings.HasPrefix(v, "spell:")
+}
+
 func buildKeys(b Build, want func(string) bool) []string {
 	seen := map[string]bool{}
 	add := func(keys ...string) {
@@ -882,8 +887,8 @@ func buildKeys(b Build, want func(string) bool) []string {
 	add(b.SpellsPrepared...)
 	add(b.FeatureChoices...)
 	for _, k := range b.FeatureChoices {
-		if _, v, ok := SplitScopedChoice(k); ok && strings.HasPrefix(v, "feat:") {
-			add(v) // a feat picked through a choice is a feat of the sheet
+		if _, v, ok := SplitScopedChoice(k); ok && isPickedKey(v) {
+			add(v) // a feat or a spell picked through a choice is a key of the sheet
 		}
 	}
 	add(b.Feats...)
@@ -943,7 +948,7 @@ func BuildKeys(b Build) []KeyField {
 	}
 	for i, k := range b.FeatureChoices {
 		add(k, fmt.Sprintf("full.feature_choice_keys[%d]", i))
-		if _, v, ok := SplitScopedChoice(k); ok && strings.HasPrefix(v, "feat:") {
+		if _, v, ok := SplitScopedChoice(k); ok && isPickedKey(v) {
 			add(v, fmt.Sprintf("full.feature_choice_keys[%d]", i))
 		}
 	}
