@@ -80,40 +80,45 @@ func (s *Service) keepNpcChecks(ctx context.Context, campaignID string) error {
 		return err
 	})
 	if err != nil || !due {
-		return wrapKeep(s, ctx, err)
+		return s.keepError(ctx, err)
 	}
 	err = s.txOpenOr(ctx, campaignID, func() error { return errNoCheckToKeep }, func(tx pgx.Tx, h *hints, session playdb.GameSession) error {
-		q := s.queries.WithTx(tx)
-		holds, err := q.ListOpenNpcCheckHolds(ctx, campaignID)
-		if err != nil {
-			return fmt.Errorf("list the checks held for the bards: %w", err)
-		}
-		view, err := s.npcCheckViewOf(ctx, tx, session)
-		if err != nil {
-			return err
-		}
-		tc, err := s.openTx(ctx, combatTx{tx: tx, q: q, session: session, now: s.now()})
-		if err != nil {
-			return err
-		}
-		for _, hold := range holds {
-			if hold.CreatedAt.Before(session.StartedAt) {
-				continue
-			}
-			if err := s.keepNpcCheck(ctx, tc, h, view, hold); err != nil {
-				return err
-			}
-		}
-		return nil
+		return s.keepNpcChecksIn(ctx, tx, h, session)
 	})
 	if errors.Is(err, errNoCheckToKeep) {
 		return nil
 	}
-	return wrapKeep(s, ctx, err)
+	return s.keepError(ctx, err)
 }
 
-// wrapKeep is the error of keepNpcChecks as the paths that call it answer it.
-func wrapKeep(s *Service, ctx context.Context, err error) error {
+// keepNpcChecksIn makes the moves every check of the session needs, in the transaction of the keep.
+func (s *Service) keepNpcChecksIn(ctx context.Context, tx pgx.Tx, h *hints, session playdb.GameSession) error {
+	q := s.queries.WithTx(tx)
+	holds, err := q.ListOpenNpcCheckHolds(ctx, session.CampaignID)
+	if err != nil {
+		return fmt.Errorf("list the checks held for the bards: %w", err)
+	}
+	view, err := s.npcCheckViewOf(ctx, tx, session)
+	if err != nil {
+		return err
+	}
+	tc, err := s.openTx(ctx, combatTx{tx: tx, q: q, session: session, now: s.now()})
+	if err != nil {
+		return err
+	}
+	for _, hold := range holds {
+		if hold.CreatedAt.Before(session.StartedAt) {
+			continue
+		}
+		if err := s.keepNpcCheck(ctx, tc, h, view, hold); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// keepError is the error of keepNpcChecks as the paths that call it answer it.
+func (s *Service) keepError(ctx context.Context, err error) error {
 	if err == nil {
 		return nil
 	}

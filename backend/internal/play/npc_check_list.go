@@ -52,6 +52,12 @@ func (l *heldList) npcCheckOffer(ctx context.Context, h heldRoll) (*playv1.HeldR
 		offer.Question = &playv1.HeldRollOffer_CuttingWords{CuttingWords: &playv1.CuttingWordsQuestion{Asks: ev.withAsks(asks, false).read(s, false).GetAsks()}}
 		return offer, nil
 	}
+	return l.playerNpcCheckOffer(ctx, h, session, ev, asks, offer)
+}
+
+// playerNpcCheckOffer is the question the caller reads when they are not the master: only the bard asked now, if it is their own.
+func (l *heldList) playerNpcCheckOffer(ctx context.Context, h heldRoll, session playdb.GameSession, ev npcCheckEvent, asks []playdb.NpcCheckAsk, offer *playv1.HeldRollOffer) (*playv1.HeldRollOffer, error) {
+	s := l.s
 	cur := cutting.Current(askStates(asks))
 	if cur < 0 {
 		return nil, nil

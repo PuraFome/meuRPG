@@ -303,14 +303,8 @@ func (a *npcAnswer) run(ctx context.Context, holdID string) (*playv1.CuttingWord
 	if k := asks[mine]; k.AnswerKey != nil && *k.AnswerKey == a.key {
 		return a.answered(ctx, k)
 	}
-	if other, err := a.q.GetNpcCheckAskByAnswerKey(ctx, playdb.GetNpcCheckAskByAnswerKeyParams{CampaignID: a.m.CampaignID, AnswerKey: &a.key}); err == nil && other.ID != "" {
-		return nil, errKeyReused()
-	}
-	// The last answer settles the check under its own key, as the resolved event's: a key some event of the session holds is a reused key.
-	if _, err := a.q.GetSessionEventByIdempotencyKey(ctx, playdb.GetSessionEventByIdempotencyKeyParams{GameSessionID: a.session.ID, IdempotencyKey: &a.key}); err == nil {
-		return nil, errKeyReused()
-	} else if !errors.Is(err, pgx.ErrNoRows) {
-		return nil, fmt.Errorf("find the event of this idempotency key: %w", err)
+	if err := a.requireFreshKey(ctx); err != nil {
+		return nil, err
 	}
 	if asks[mine].State != askAsked || hold.AnswerKey != nil {
 		return nil, errAnsweredAlready()
@@ -322,6 +316,22 @@ func (a *npcAnswer) run(ctx context.Context, holdID string) (*playv1.CuttingWord
 		return nil, err
 	}
 	return a.write(ctx, hold, asks, mine, who.ID)
+}
+
+// requireFreshKey refuses a key another answer of the campaign holds, and the key of any event of the session: the last answer settles
+// the check under its own key, as the resolved event's, so such a key is a reused key.
+func (a *npcAnswer) requireFreshKey(ctx context.Context) error {
+	if other, err := a.q.GetNpcCheckAskByAnswerKey(ctx, playdb.GetNpcCheckAskByAnswerKeyParams{CampaignID: a.m.CampaignID, AnswerKey: &a.key}); err == nil && other.ID != "" {
+		return errKeyReused()
+	}
+	_, err := a.q.GetSessionEventByIdempotencyKey(ctx, playdb.GetSessionEventByIdempotencyKeyParams{GameSessionID: a.session.ID, IdempotencyKey: &a.key})
+	switch {
+	case err == nil:
+		return errKeyReused()
+	case !errors.Is(err, pgx.ErrNoRows):
+		return fmt.Errorf("find the event of this idempotency key: %w", err)
+	}
+	return nil
 }
 
 // write spends what the answer spends, stores it and settles the check when it was the last question.
