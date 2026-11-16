@@ -456,6 +456,9 @@ func (b *overlayBuilder) checkChoiceEffect(site effectSite, e *Effect) error {
 	if err := checkChoiceFilter(site, e); err != nil {
 		return err
 	}
+	if e.FromFeature != "" {
+		return b.checkFromFeature(site, e)
+	}
 	if err := b.checkChoiceList(site, e); err != nil {
 		return err
 	}

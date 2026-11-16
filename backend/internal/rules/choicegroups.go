@@ -456,7 +456,9 @@ func (cb *choiceBuilder) labelOf(g *groupBuild, ch *Choice) string {
 // picks of its pool.
 func (cb *choiceBuilder) optionChoice(g *groupBuild, featureKey string, choose int, options []string) *optionEntry {
 	title := choiceTitle(cb.c, featureKey)
-	ch := cb.addChoice(g, &Choice{Key: featureKey, FeatureKey: featureKey, Kind: ChoiceKindOptions, TitlePT: title, Picks: choose, plain: true})
+	options = cb.c.visibleOptions(cb.b, options)
+	// A pool with no option left asks nothing of the sheet: no pick could answer it.
+	ch := cb.addChoice(g, &Choice{Key: featureKey, FeatureKey: featureKey, Kind: ChoiceKindOptions, TitlePT: title, Picks: choose, plain: true, Advisory: len(options) == 0})
 	cb.order++
 	e := &optionEntry{choice: ch, choose: choose, options: options, level: g.Level, order: cb.order}
 	cb.entries = append(cb.entries, e)

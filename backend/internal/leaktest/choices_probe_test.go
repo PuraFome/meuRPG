@@ -1,6 +1,7 @@
 package leaktest
 
 import (
+	"connectrpc.com/connect"
 	"slices"
 	"strings"
 	"testing"
@@ -122,4 +123,27 @@ func optionsOf(res *charactersv1.PreviewChoicesResponse, suffix string) []string
 // sameAnswer says the two answers are one, but for the key each names.
 func sameAnswer(a reply, keyA string, b reply, keyB string) bool {
 	return a.status == b.status && strings.ReplaceAll(string(a.body), keyA, "K") == strings.ReplaceAll(string(b.body), keyB, "K")
+}
+
+// createClassShowing is createClass that says why the table refuses the class.
+func (p *choicesProbe) createClassShowing(t *testing.T, c *rulesv1.TableClass) string {
+	t.Helper()
+	return p.createEntry(t, c).GetKey()
+}
+
+// createEntry creates the class and gives the entry.
+func (p *choicesProbe) createEntry(t *testing.T, c *rulesv1.TableClass) *rulesv1.TableEntry {
+	t.Helper()
+	res, err := p.w.master.table.CreateTableEntry(t.Context(), rq(&rulesv1.CreateTableEntryRequest{
+		CampaignId: p.w.campaign, Body: &rulesv1.CreateTableEntryRequest_TableClass{TableClass: c},
+	}))
+	if err != nil {
+		for _, d := range err.(*connect.Error).Details() {
+			if v, e := d.Value(); e == nil {
+				t.Logf("detail: %v", v)
+			}
+		}
+		t.Fatalf("creating the class: %v", err)
+	}
+	return res.Msg.GetEntry()
 }

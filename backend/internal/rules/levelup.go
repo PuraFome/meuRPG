@@ -927,7 +927,7 @@ func (c *content) namedChoices(b Build, due []dueChoice) []LevelUpFeatureChoice 
 	}
 	for _, d := range due {
 		fc := LevelUpFeatureChoice{Feature: NamedKey{Key: d.feature, NamePT: c.namePT(d.feature)}, Subclass: d.subclass, Choose: d.choose}
-		for _, o := range d.options {
+		for _, o := range c.visibleOptions(b, d.options) {
 			if f := c.features[o]; f != nil && taken[f.Name] {
 				continue
 			}

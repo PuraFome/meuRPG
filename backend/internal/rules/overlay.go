@@ -1196,6 +1196,7 @@ func (b *overlayBuilder) build(o Overlay) error {
 		return err
 	}
 	b.offerFeatSets()
+	b.offerFromFeatures()
 	if err := b.compileEffects(); err != nil {
 		return err
 	}
@@ -1489,6 +1490,7 @@ func (c *content) cloneForOverlay() *content {
 	n.namesEN = maps.Clone(c.namesEN)
 	n.listFrom = map[string]string{}
 	n.offeredBy = map[string][]string{}
+	n.fromFeature, n.optionSource = map[string]string{}, map[string]string{}
 	n.archived = map[string]bool{}
 	n.off = map[string]bool{}
 	n.entryRevision = map[string]int{}

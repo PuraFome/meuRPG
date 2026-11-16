@@ -73,3 +73,76 @@ func firstChoiceKey(res *charactersv1.PreviewChoicesResponse, suffix string) str
 	}
 	return ""
 }
+
+// The pool of a choice that offers the options of another feature is the same for every reader, and holds no option of an
+// entry the table switched off or archived; a pick naming one of those gets the answer of a key that does not exist.
+func TestAChoiceOfTheOptionsOfAFeatureOffersNoOptionOfAnEntryTheTableKeepsOut(t *testing.T) {
+	for _, how := range []string{"switched off", "archived"} {
+		t.Run(how, func(t *testing.T) {
+			p := newChoicesProbe(t)
+			w := p.w
+			source := tableClass("Escola das Marés", &rulesv1.TableFeature{
+				NamePt: "Marés", DescPt: []string{"Texto de teste."},
+				Effects: []*rulesv1.TableEffect{{Type: "choice", Choice: "feature", Count: 1}},
+				Options: []*rulesv1.TableFeature{{NamePt: "Maré Baixa", DescPt: []string{"Texto de teste."}}, {NamePt: "Maré Alta", DescPt: []string{"Texto de teste."}}},
+			})
+			made := p.createEntry(t, source)
+			feature := made.GetTableClass().GetLevels()[0].GetFeatures()[0]
+			var options []string
+			for _, o := range feature.GetOptions() {
+				options = append(options, o.GetKey())
+			}
+			slices.Sort(options)
+			if len(options) != 2 {
+				t.Fatalf("the source feature has %d options, want 2", len(options))
+			}
+			asking := p.createClassShowing(t, tableClass("Cantor das Marés", &rulesv1.TableFeature{
+				NamePt: "Eco das marés", DescPt: []string{"Texto de teste."},
+				Effects: []*rulesv1.TableEffect{{Type: "choice", Choice: "feature", Count: 1, FromFeature: feature.GetKey()}},
+			}))
+
+			// Before the table keeps the entry out, every member reads the two options.
+			var key string
+			for _, who := range p.readers() {
+				if !who.member {
+					continue
+				}
+				res := choicesOf(t, p.preview(who, sheet(asking, 1)))
+				key = firstChoiceKey(res, "--eco-das-mares@mesa")
+				if got := optionsOf(res, "--eco-das-mares@mesa"); !slices.Equal(got, options) {
+					t.Fatalf("%s: the pool is %v, want %v\n%s", who.name, got, options, shorten(p.preview(who, sheet(asking, 1)).body))
+				}
+			}
+			if how == "archived" {
+				must(w.master.table.ArchiveTableEntry(t.Context(), rq(&rulesv1.ArchiveTableEntryRequest{CampaignId: w.campaign, Key: made.GetKey()})))
+			} else {
+				must(w.master.table.SetOptionSwitches(t.Context(), rq(&rulesv1.SetOptionSwitchesRequest{CampaignId: w.campaign, Switches: []*rulesv1.OptionSwitch{{Key: made.GetKey(), Off: true}}})))
+			}
+
+			const missing = "feature:nenhuma--opcao@mesa"
+			for _, who := range p.readers() {
+				t.Run(who.name, func(t *testing.T) {
+					plain := p.preview(who, sheet(asking, 1))
+					if who.member != plain.ok() {
+						t.Fatalf("HTTP %d for the plain sheet, want a read only for a member", plain.status)
+					}
+					if !who.member {
+						return
+					}
+					for _, o := range options {
+						if strings.Contains(string(plain.body), o) {
+							t.Errorf("the answer names the option %s of an entry the table keeps out", o)
+						}
+					}
+					for _, o := range options {
+						named := p.preview(who, sheet(asking, 1, key+"="+o))
+						absent := p.preview(who, sheet(asking, 1, key+"="+missing))
+						if !sameAnswer(named, o, absent, missing) {
+							t.Errorf("the pick of %s: HTTP %d %s\nthe pick of a key that does not exist: HTTP %d %s", o, named.status, shorten(named.body), absent.status, shorten(absent.body))
+						}
+					}
+				})
+			}
+		})
+	}
+}

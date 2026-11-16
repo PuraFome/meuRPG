@@ -279,7 +279,8 @@ func validateChoices(b *Build, c *content) error {
 			return invalid("full.feature_choice_text", "has a key that is no choice's or a text over %d characters", MaxChoiceTextLength)
 		}
 	}
-	if err := checkKeys(c, "full.feature_choice_keys", b.FeatureChoices, MaxListLength, isChoicePick); err != nil {
+	picks := func(c *content, k string) bool { return isChoicePick(c, k) && !c.optionHidden(*b, k) }
+	if err := checkKeys(c, "full.feature_choice_keys", b.FeatureChoices, MaxListLength, picks); err != nil {
 		return err
 	}
 	return checkKeys(c, "full.feat_keys", b.Feats, MaxListLength, isFeat)
