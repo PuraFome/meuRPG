@@ -54,21 +54,28 @@ func TestAReadiedReleaseRefusesWhatTheCastRefusesAndKeepsItsWindowOpen(t *testin
 		target string
 		darts  int32
 		master bool
+		// farCol moves the target to that column of its row, on a map widened to 40 columns (the 20 of the fight reach at most 95 ft,
+		// short of Magic Missile's 120 ft): column 26 is 125 ft from Pensantus. 0 leaves it where the fight put it.
+		farCol int32
 		check  func(t *testing.T, err error)
 	}{
-		{"a dart on a creature that fell", magicMissileSpell, 1, "Capitão Goblin", "Capitão Goblin", 3, false, func(t *testing.T, err error) {
+		{"a dart on a creature that fell", magicMissileSpell, 1, "Capitão Goblin", "Capitão Goblin", 3, false, 0, func(t *testing.T, err error) {
 			t.Helper()
 			wantBlockedBy(t, "a dart on a fallen goblin", err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_TARGET_DEFEATED)
 		}},
-		{"a target out of range", holdPerson, 2, "", "Goblin 1", 0, false, func(t *testing.T, err error) {
+		{"a target out of range", holdPerson, 2, "", "Goblin 1", 0, false, 0, func(t *testing.T, err error) {
 			t.Helper()
 			wantCode(t, "Hold Person on a target 90 ft away", err, connect.CodeFailedPrecondition)
 		}},
-		{"a creature the players do not see", magicMissileSpell, 1, "", "Goblin 2", 3, false, func(t *testing.T, err error) {
+		{"a dart on a target out of range", magicMissileSpell, 1, "", "Goblin 1", 3, false, 26, func(t *testing.T, err error) {
+			t.Helper()
+			wantBlockedBy(t, "a dart on a target 125 ft away", err, blockedOutOfReach)
+		}},
+		{"a creature the players do not see", magicMissileSpell, 1, "", "Goblin 2", 3, false, 0, func(t *testing.T, err error) {
 			t.Helper()
 			wantCode(t, "a hidden target", err, connect.CodeNotFound)
 		}},
-		{"a creature the players do not see, answered by the master", magicMissileSpell, 1, "", "Goblin 2", 3, true, func(t *testing.T, err error) {
+		{"a creature the players do not see, answered by the master", magicMissileSpell, 1, "", "Goblin 2", 3, true, 0, func(t *testing.T, err error) {
 			t.Helper()
 			wantCode(t, "a hidden target answered by the master", err, connect.CodeNotFound)
 		}},
@@ -79,6 +86,10 @@ func TestAReadiedReleaseRefusesWhatTheCastRefusesAndKeepsItsWindowOpen(t *testin
 			a := newCasters(t)
 			e, w := a.releaseOf(t, tc.spell, tc.slot)
 			slots := a.slotsUsed(t, "Pensantus", tc.slot)
+			if tc.farCol != 0 {
+				a.execSQL(t, `UPDATE encounters SET grid_columns = 40`)
+				a.execSQL(t, `UPDATE combatants SET grid_col = $2 WHERE id = $1`, a.id(t, tc.target), tc.farCol)
+			}
 			if tc.defeat != "" {
 				a.execSQL(t, `UPDATE combatants SET defeated = true WHERE id = $1`, a.id(t, tc.defeat))
 			}
@@ -214,5 +225,29 @@ func TestTheMastersListOfAHeldSpellHoldsWhatTheReleaseAccepts(t *testing.T) {
 	player, master := a.heldTargetsOf(t, a.ana, e, "Pensantus", holdPerson), a.heldTargetsOf(t, a.master, e, "Pensantus", holdPerson)
 	if len(player) == 0 || !slices.Equal(player, master) || slices.Contains(master, hidden) {
 		t.Errorf("held Hold Person's targets: the player's %v, the master's %v; want the same creatures and not the hidden goblin %s", player, master, hidden)
+	}
+}
+
+// The master answers for the readier's player and releases the held spell with targets that player could pick: it resolves as
+// the player's answer does. The darts are dealt (a damage waits for each target), the row is fired, the window closed and the
+// reaction of the readier spent, not the master's.
+func TestTheMasterReleasesAHeldSpellWithTheTargetsThePlayerCouldPick(t *testing.T) {
+	t.Parallel()
+	a := newCasters(t)
+	e, w := a.releaseOf(t, magicMissileSpell, 1)
+	slots := a.slotsUsed(t, "Pensantus", 1)
+	res := a.mustAnswer(t, a.master, e, w.GetId(), withTargets(darts(a, t, "Capitão Goblin", 2), darts(a, t, "Goblin 1", 1)))
+	if !res.GetResult().GetUsed() || !res.GetResult().GetByMaster() {
+		t.Fatalf("the master's release = %v, want used by the master", res.GetResult())
+	}
+	got := map[string]int32{}
+	for _, tg := range a.castLine(t, e, magicMissileSpell).GetSpell().GetTargets() {
+		got[tg.GetTargetId()] += tg.GetDarts()
+	}
+	pens := byLabel(t, a.get(t, a.master), "Pensantus")
+	if got[a.id(t, "Capitão Goblin")] != 2 || got[a.id(t, "Goblin 1")] != 1 || a.pendingCount(t) != 2 || a.readiedStatus(t, "Pensantus") != readiedFired ||
+		a.readiedOpen(t, "Pensantus") || !pens.GetReactionUsed() || a.slotsUsed(t, "Pensantus", 1) != slots {
+		t.Errorf("after the master's release: darts %v (want 2 on the Capitão, 1 on Goblin 1), damages waiting %d (want 2), rows %q, window open %v, reaction used %v, slots %d (want %d)",
+			got, a.pendingCount(t), a.readiedStatus(t, "Pensantus"), a.readiedOpen(t, "Pensantus"), pens.GetReactionUsed(), a.slotsUsed(t, "Pensantus", 1), slots)
 	}
 }
