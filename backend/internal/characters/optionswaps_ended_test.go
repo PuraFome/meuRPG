@@ -25,6 +25,7 @@ func TestAnOptionGivenUpEndsOnlyTheStatesAndResourcesNothingElseDefines(t *testi
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			_, states := endedByGivingUp(before, tc.after, []string{"feature:heron"})
 			if !slices.Equal(states, tc.want) {
 				t.Errorf("ended states = %v, want %v", states, tc.want)

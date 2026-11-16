@@ -355,6 +355,7 @@ func TestALevelUpOfANonWarlockRefusesAnInvocationSwap(t *testing.T) {
 	keys["a key the sheet holds"] = b.FeatureChoices[0]
 	for name, key := range keys {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			swap := ch
 			swap.SwapInvocation = key
 			after := mustApply(t, c, b, swap)

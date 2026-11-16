@@ -294,7 +294,7 @@ func TestALevelUpAnswersAnyKeyItDoesNotOfferAsAKeyThatDoesNotExist(t *testing.T)
 		}},
 	}
 	for owner, values := range keys.scoped {
-		owner, withOwner := owner, strings.HasPrefix(owner, bookKey)
+		withOwner := strings.HasPrefix(owner, bookKey)
 		asks = append(asks, levelUpAsk{name: "a pick of the choice " + owner, field: "choices.feature_choice_keys", keys: values, nowhere: noSpell, choices: func(v string) *charactersv1.LevelUpChoices {
 			c := base()
 			c.FeatureChoiceKeys = []string{owner + "=" + v}
@@ -302,12 +302,12 @@ func TestALevelUpAnswersAnyKeyItDoesNotOfferAsAKeyThatDoesNotExist(t *testing.T)
 				c.FeatureChoiceKeys = append([]string{bookKey}, c.FeatureChoiceKeys...)
 			}
 			return c
-		}})
-		asks = append(asks, levelUpAsk{name: "a late pick of the choice " + owner, field: "choices.late_choice_keys", keys: values, nowhere: noSpell, choices: func(v string) *charactersv1.LevelUpChoices {
-			c := base()
-			c.LateChoiceKeys = []string{owner + "=" + v}
-			return c
-		}})
+		}},
+			levelUpAsk{name: "a late pick of the choice " + owner, field: "choices.late_choice_keys", keys: values, nowhere: noSpell, choices: func(v string) *charactersv1.LevelUpChoices {
+				c := base()
+				c.LateChoiceKeys = []string{owner + "=" + v}
+				return c
+			}})
 	}
 	callers := []struct {
 		name   string

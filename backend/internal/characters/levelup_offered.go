@@ -206,7 +206,7 @@ func (o offeredChoices) offersKey(k string, swapsInvocation bool) bool {
 		return true
 	}
 	owner, _, _ := strings.Cut(choiceKey, "#")
-	if !o.options[owner] && !o.owned[owner] && !(swapsInvocation && o.invocations[owner]) {
+	if !o.options[owner] && !o.owned[owner] && (!swapsInvocation || !o.invocations[owner]) {
 		return false
 	}
 	return !o.scoped || o.values[k]
