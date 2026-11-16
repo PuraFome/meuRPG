@@ -70,7 +70,7 @@ Where a behaviour came from a product answer, the [archive](../archive/decisions
 | [MR-055](#mr-055-answer-a-creatures-rider) | Combat | MVP |
 | [MR-056](#mr-056-show-the-table-on-a-screen) | Session | MVP |
 | [MR-057](#mr-057-turn-the-sun-on-in-a-combat) | Combat | MVP |
-| [MR-058](#mr-058-infuse-an-item) | Character | MVP |
+| [MR-059](#mr-059-infuse-an-item) | Character | MVP |
 | [MR-002](#mr-002-generate-an-invite) | Campaign | MVP (prerequisite) |
 | [MR-005](#mr-005-create-npcs) | Character | MVP (prerequisite) |
 | [MR-007](#mr-007-import-a-sheet-from-pdf) | Character | Later |
@@ -1825,7 +1825,7 @@ See [Architecture](../architecture/campaign-package.md).
 - [MR-042](#mr-042-bestiary), [RN-29](rules.md#rn-29-monsters-in-combat).
 
 
-### MR-058: Infuse an item
+### MR-059: Infuse an item
 
 **As an** artificer's player (or the master, for that character), **I want** to put an infusion I know on an item, move it and end it, **so that** the sheet shows the item with its infusion and the numbers it gives.
 

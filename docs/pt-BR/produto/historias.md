@@ -70,7 +70,7 @@ Quando um comportamento veio de uma resposta do produto, o [arquivo](../../archi
 | [MR-055](#mr-055-responder-ao-efeito-extra-de-uma-criatura) | Combate | MVP |
 | [MR-056](#mr-056-mostrar-a-mesa-em-uma-tela) | Sessão | MVP |
 | [MR-057](#mr-057-ligar-o-sol-num-combate) | Combate | MVP |
-| [MR-058](#mr-058-infundir-um-item) | Personagem | MVP |
+| [MR-059](#mr-059-infundir-um-item) | Personagem | MVP |
 | [MR-002](#mr-002-gerar-convite) | Campanha | MVP (pré-requisito) |
 | [MR-005](#mr-005-criar-npcs) | Personagem | MVP (pré-requisito) |
 | [MR-007](#mr-007-importar-ficha-em-pdf) | Personagem | Depois |
@@ -1824,7 +1824,7 @@ Ver [Arquitetura](../../architecture/campaign-package.md).
 - [MR-042](#mr-042-bestiário), [RN-29](regras.md#rn-29-monstros-no-combate).
 
 
-### MR-058: Infundir um item
+### MR-059: Infundir um item
 
 **Como** jogador de um artífice (ou o mestre, por esse personagem), **quero** pôr numa peça uma infusão que conheço, mudá-la de peça e encerrá-la, **para que** a ficha mostre o item com a infusão e os números que ela dá.
 
