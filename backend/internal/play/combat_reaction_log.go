@@ -91,10 +91,10 @@ var reactionLiners = map[reaction.Kind]reactionLiner{
 
 // reactionLine is the line for the viewer, and whether it names the reactor.
 func (e *logEntry) reactionLine(ctx context.Context, v combatViewer, byID map[string]playdb.Combatant, names *keyNames) (string, bool) {
-	re := e.ev.Reaction
-	if re == nil {
+	if e.ev.Reaction == nil {
 		return "", false
 	}
+	re := e.reactionFor(v)
 	f := e.reactionFacts(ctx, re, v, byID, names)
 	if re.Kind == reactionHeldDropped {
 		return f.heldDropped()
@@ -240,6 +240,9 @@ func (f *reactionFacts) cuttingWords() (string, bool) {
 	if f.seesOther && f.other.Label != "" {
 		actorText = " de " + f.other.Label
 	}
+	if f.v.master && re.Asked { // the roll waits for its roller's answer: nothing of it is known yet
+		return fmt.Sprintf("%s usou Palavras de Interrupção: d%d (%d) subtraído %s%s (aguardando a rolagem).%s", f.who, re.DieSides, re.Die, kindText, actorText, f.by), true
+	}
 	if f.v.master {
 		tail := ""
 		if re.Roll == "attack" || re.Roll == "" {
@@ -248,7 +251,7 @@ func (f *reactionFacts) cuttingWords() (string, bool) {
 		return fmt.Sprintf("%s usou Palavras de Interrupção: d%d (%d) subtraído %s%s: %d → %d%s.%s", f.who, re.DieSides, re.Die, kindText, actorText, re.Before, re.After, tail, f.by), true
 	}
 	verb := "diminuiu"
-	if re.Roll == "attack" || re.Roll == "" {
+	if !re.Asked && (re.Roll == "attack" || re.Roll == "") { // a roll that waits for its roller's answer is no more than "diminuiu" to a player
 		verb = "errou"
 		if re.Outcome == outcomeHit || re.Outcome == outcomeCrit {
 			verb = "ainda acertou"
