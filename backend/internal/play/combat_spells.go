@@ -516,7 +516,7 @@ func (s *Service) spellAttack(ctx context.Context, c *combatTx, m authz.Membersh
 	}
 	d20 := step.Roll
 	modes.attack[target.ID] = rolled.truth.Shown
-	made.Favor, made.FavorRoll, made.FavorLost = modes.favor.Used, modes.favor.Key, modes.favor.Lost
+	made.Favor, made.FavorPrompt, made.FavorLost = modes.favor.Used, modes.favor.Prompt, modes.favor.Lost
 	if err := s.spendSpellAttackRoll(ctx, c, caster, target, modes, made); err != nil {
 		return err
 	}

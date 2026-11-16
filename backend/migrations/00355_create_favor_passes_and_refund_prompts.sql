@@ -19,10 +19,10 @@
 --   - status: 'open' until the master answers; 'returned' (the Inspiration was given back), 'kept' (it stays spent: the master
 --     chose so, or the session ended without an answer).
 --   - answer_key is the idempotency key of the answer.
---   - roll_key is the idempotency key the spend was made under, that is the request's: the roll's event is stamped with it (favor_roll) and
---     so is its held roll (the hold keeps the request's key), because the key the event is written under is not always the request's
---     (a reaction window's replay writes none, and the answer to a die's question writes its own). The roll's undo and the forgetting of
---     its held roll close the prompt as 'kept', because the Inspiration went back with them.
+--   - a prompt is found by its id, never by a key: two prompts of one character can share the key of the request that spent (a held roll is
+--     forgotten and the client sends its key again, which spends afresh). The roll's event is stamped with the id (favor_prompt) and so is
+--     its held roll (inspiration_holds.favor_prompt_id, below). The roll's undo and the forgetting of its held roll close the prompt as
+--     'kept', because the Inspiration went back with them; a roll whose spend opened no prompt carries none, and gives back unconditionally.
 -- The rows go with the campaign, the session and the character.
 --
 -- Production is live: the migration only adds, and every statement may run twice.
@@ -60,7 +60,6 @@ CREATE TABLE IF NOT EXISTS favor_refund_prompts (
     answer_key TEXT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     answered_at TIMESTAMPTZ NULL,
-    roll_key TEXT NOT NULL DEFAULT '',
     CONSTRAINT favor_refund_prompts_status_valid CHECK (status IN ('open', 'returned', 'kept')),
     CONSTRAINT favor_refund_prompts_answered_valid CHECK ((status = 'open') = (answered_at IS NULL)),
     CONSTRAINT favor_refund_prompts_answer_key_unique UNIQUE (campaign_id, answer_key)
@@ -68,7 +67,11 @@ CREATE TABLE IF NOT EXISTS favor_refund_prompts (
 CREATE INDEX IF NOT EXISTS favor_refund_prompts_campaign_open_idx ON favor_refund_prompts (campaign_id, created_at) WHERE status = 'open';
 CREATE INDEX IF NOT EXISTS favor_refund_prompts_session_idx ON favor_refund_prompts (game_session_id);
 CREATE INDEX IF NOT EXISTS favor_refund_prompts_character_idx ON favor_refund_prompts (character_id);
-CREATE INDEX IF NOT EXISTS favor_refund_prompts_roll_idx ON favor_refund_prompts (campaign_id, character_id, roll_key) WHERE status = 'open';
+
+-- The held roll that spent the Inspiration remembers the prompt that spend opened (NULL when it opened none: the spend added something over
+-- everything the roller could not read), so that dropping the hold closes that prompt and no other. A prompt gone leaves the hold with none.
+ALTER TABLE inspiration_holds ADD COLUMN IF NOT EXISTS favor_prompt_id UUID NULL REFERENCES favor_refund_prompts (id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS inspiration_holds_favor_prompt_idx ON inspiration_holds (favor_prompt_id) WHERE favor_prompt_id IS NOT NULL;
 
 -- The events of the pass and of the refund: the ask, the pass (favor_passed, already there since 00332), the refusal, the
 -- cancel, the prompt, the refund and the prompt left as it was.
@@ -83,6 +86,7 @@ INSERT INTO session_event_kinds (kind) VALUES
 ON CONFLICT (kind) DO NOTHING;
 
 -- +goose Down
+ALTER TABLE inspiration_holds DROP COLUMN IF EXISTS favor_prompt_id;
 DELETE FROM session_events WHERE kind IN ('favor_pass_asked', 'favor_pass_refused', 'favor_pass_canceled', 'favor_refund_prompted', 'favor_refunded', 'favor_refund_kept');
 DELETE FROM session_event_kinds WHERE kind IN ('favor_pass_asked', 'favor_pass_refused', 'favor_pass_canceled', 'favor_refund_prompted', 'favor_refunded', 'favor_refund_kept');
 DROP TABLE IF EXISTS favor_refund_prompts;

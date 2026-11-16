@@ -70,7 +70,7 @@ func (s *Service) holdSpellAttack(
 	if err != nil {
 		return nil, err
 	}
-	spec.FavorSpent = modes.favor.Used
+	spec.FavorSpent, spec.FavorPrompt = modes.favor.Used, modes.favor.Prompt
 	choice, err := s.chooseMode(ctx, c, modes.v, caster, target, sp.Key, truth.Mode, ask)
 	if err != nil {
 		return nil, err

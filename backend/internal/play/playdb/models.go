@@ -320,7 +320,6 @@ type FavorRefundPrompt struct {
 	AnswerKey     *string
 	CreatedAt     time.Time
 	AnsweredAt    *time.Time
-	RollKey       string
 }
 
 type GameSession struct {
@@ -438,6 +437,7 @@ type InspirationHold struct {
 	RerollTo             *int32
 	CountedBy            string
 	FavorSpent           bool
+	FavorPromptID        *string
 }
 
 type OpportunityOffer struct {

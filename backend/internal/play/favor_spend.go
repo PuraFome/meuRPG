@@ -63,10 +63,10 @@ type favorUse struct {
 	Seen combat.RollMode
 	// Used says the Inspiration counts on this roll: it was spent now, or by the held roll a retry or an answer belongs to.
 	Used bool
-	// Key is the key the spend was made under, which the refund prompt of the spend keeps (roll_key): the request's, or the one of the hold a
-	// retry or an answer belongs to (the hold keeps the request's key whatever key the roll is written under). The roll's event stamps it
-	// (actionEvent.FavorRoll), so its undo finds the prompt by what the event says and not by the key it happens to be written under.
-	Key string
+	// Prompt is the id of the refund prompt the spend opened (empty when it opened none): the one a spend in this call opened, or the one of
+	// the hold a retry or an answer belongs to (the hold remembers it). The roll's event stamps it (actionEvent.FavorPrompt), so its undo
+	// finds that prompt and no other: not by a key, which two spends of one character can share, and not by the key the event is written under.
+	Prompt string
 	// Spent says it was spent in this call, so a hold the roll makes must remember it (favor_spent).
 	Spent bool
 	// Lost says why the spend the replay of a held roll asked for was not made (a favorLost* value): the roll is made without it, nothing
@@ -149,7 +149,8 @@ func (s *Service) useFavor(ctx context.Context, env gateEnv, a favorAsk) (favorU
 	if err != nil || use.Refund == nil {
 		return use, err
 	}
-	return use, s.openRefundPrompt(ctx, env, a, use.Refund)
+	use.Prompt, err = s.openRefundPrompt(ctx, env, a, use.Refund)
+	return use, err
 }
 
 // owedBeforeTheSpend gives the roller the Inspiration its stale holds still owe, before the roll tries to spend it. A hold whose question
@@ -191,7 +192,7 @@ func favorHoldOf(ctx context.Context, env gateEnv, a favorAsk) (h heldRoll, foun
 func heldFavor(a favorAsk, h heldRoll, answer bool) (favorUse, error) {
 	switch {
 	case h.FavorSpent:
-		return favorUse{Mode: favorMode(a.Sources), Used: true, Key: h.Key}, nil
+		return favorUse{Mode: favorMode(a.Sources), Used: true, Prompt: h.FavorPrompt}, nil
 	case a.Want && !answer:
 		return favorUse{}, favorBlocked(playv1.FavorBlockedReason_FAVOR_BLOCKED_REASON_AFTER_THE_ROLL, "the d20 was already rolled")
 	}
@@ -233,7 +234,7 @@ func spendFavor(ctx context.Context, q *playdb.Queries, a favorAsk) (favorUse, e
 	if err != nil {
 		return favorUse{}, fmt.Errorf("spend the character's inspiration: %w", err)
 	}
-	use := favorUse{Mode: favorMode(a.Sources), Seen: favorMode(seen), Used: true, Spent: true, Key: a.Key}
+	use := favorUse{Mode: favorMode(a.Sources), Seen: favorMode(seen), Used: true, Spent: true}
 	if favorMode(a.Sources) == combat.Resolve(a.Sources) { // visibly it added something, but not over every source
 		use.Refund = &refundAsk{Hidden: slices.DeleteFunc(slices.Clone(a.Sources), func(src combat.Source) bool { return a.Hide == nil || !a.Hide(src) })}
 	}
@@ -335,7 +336,7 @@ func (u *undoer) favorBack(ctx context.Context, who playdb.Combatant, ev actionE
 	if !ev.Favor || who.CharacterID == "" {
 		return nil
 	}
-	return favorBackOfRoll(ctx, u.c.q, u.c.session.CampaignID, who.CharacterID, ev.FavorRoll)
+	return favorBackOfRoll(ctx, u.c.q, u.c.session.CampaignID, who.CharacterID, ev.FavorPrompt)
 }
 
 // withFavor is the attack roll's mode with the Inspiration counted: the source joins the list the roller reads, and the mode

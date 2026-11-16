@@ -21,44 +21,45 @@ import (
 
 // favorGiveBackIf gives the Inspiration back when it was spent on a held roll that is dropped before it was answered: no roll event
 // exists for that spend, so nothing else would put it back. A hold that was answered, or that spent nothing, gives nothing. The refund
-// prompt that roll opened closes as kept: the Inspiration is back, so there is nothing left to give. The hold's own key is the key the spend was
-// made under (rollKey), which is the prompt's roll_key.
-func favorGiveBackIf(ctx context.Context, q *playdb.Queries, unsettled bool, campaignID, characterID, rollKey string) error {
+// prompt that spend opened (promptID, which the hold remembers: nil when the spend opened none) closes as kept: the Inspiration is back, so
+// there is nothing left to give.
+func favorGiveBackIf(ctx context.Context, q *playdb.Queries, unsettled bool, campaignID, characterID string, promptID *string) error {
 	if !unsettled || characterID == "" {
 		return nil
 	}
-	return favorBackOfRoll(ctx, q, campaignID, characterID, rollKey)
+	return favorBackOfRoll(ctx, q, campaignID, characterID, deref(promptID))
 }
 
 // favorBackOfRoll gives the Inspiration a roll spent back when the roll is gone (its undo, a held roll forgotten) and closes as kept
-// the roller's refund prompt of that roll. When the master already answered that prompt "Devolver", the Inspiration was given back once:
-// it is not given again (the character may have passed it away or spent it since), and the prompt keeps its answer. key is the one the spend was
-// made under, which the prompt keeps (roll_key): a hold's own key, or the FavorRoll the roll's event is stamped with, never the key the event
-// happens to be written under.
-func favorBackOfRoll(ctx context.Context, q *playdb.Queries, campaignID, characterID, key string) error {
-	if key != "" {
-		returned, err := q.FavorRefundReturnedForRoll(ctx, playdb.FavorRefundReturnedForRollParams{CampaignID: campaignID, CharacterID: characterID, RollKey: key})
-		if err != nil {
+// the refund prompt of that spend. When the master already answered that prompt "Devolver", the Inspiration was given back once: it is not
+// given again (the character may have passed it away or spent it since), and the prompt keeps its answer. promptID is the prompt the spend
+// opened, which the roll's event or its hold remembers (never found by a key, which two spends can share); empty when the spend opened none,
+// and then there is nothing to read or to close and the give-back is unconditional.
+func favorBackOfRoll(ctx context.Context, q *playdb.Queries, campaignID, characterID, promptID string) error {
+	if promptID != "" {
+		prompt, err := q.GetFavorRefundPrompt(ctx, playdb.GetFavorRefundPromptParams{ID: promptID, CampaignID: campaignID})
+		switch {
+		case errors.Is(err, pgx.ErrNoRows): // the prompt is gone: there is no answer to honor
+		case err != nil:
 			return fmt.Errorf("read the refund of the roll: %w", err)
-		}
-		if returned {
+		case prompt.Status == refundReturned:
 			return nil
 		}
 	}
 	if err := favorGiveBack(ctx, q, campaignID, characterID); err != nil {
 		return err
 	}
-	return keepRefundOfRoll(ctx, q, campaignID, characterID, key)
+	return keepRefundOfRoll(ctx, q, campaignID, promptID)
 }
 
-// keepRefundOfRoll closes as kept the roller's refund prompt of a roll that is gone: the Inspiration went back with the roll, so the master's
+// keepRefundOfRoll closes as kept the refund prompt of a roll that is gone: the Inspiration went back with the roll, so the master's
 // question has no spend left to refund. No event is written for it: the roll's own undo is the record, and the transaction that drops the
-// roll moves the session's number. A group check's members share the roll key, so only the roller's own prompt closes.
-func keepRefundOfRoll(ctx context.Context, q *playdb.Queries, campaignID, characterID, key string) error {
-	if key == "" {
+// roll moves the session's number. Only that prompt closes, so another roll's of the same character, even under the same key, stays.
+func keepRefundOfRoll(ctx context.Context, q *playdb.Queries, campaignID, promptID string) error {
+	if promptID == "" {
 		return nil
 	}
-	if _, err := q.CloseFavorRefundPromptsOfRoll(ctx, playdb.CloseFavorRefundPromptsOfRollParams{CampaignID: campaignID, RollKey: key, CharacterID: characterID}); err != nil {
+	if _, err := q.KeepFavorRefundPrompt(ctx, playdb.KeepFavorRefundPromptParams{ID: promptID, CampaignID: campaignID}); err != nil {
 		return fmt.Errorf("keep the refund question of the roll: %w", err)
 	}
 	return nil
@@ -86,7 +87,7 @@ func forgetHoldsOf(ctx context.Context, q *playdb.Queries, owner holdOwner) erro
 		return fmt.Errorf("delete the held rolls: %w", err)
 	}
 	for _, r := range rows {
-		if err := favorGiveBackIf(ctx, q, r.UnsettledFavor, r.CampaignID, r.CharacterID, r.IdempotencyKey); err != nil {
+		if err := favorGiveBackIf(ctx, q, r.UnsettledFavor, r.CampaignID, r.CharacterID, r.FavorPromptID); err != nil {
 			return err
 		}
 	}
@@ -112,7 +113,7 @@ func forgetHold(ctx context.Context, q *playdb.Queries, id string) error {
 		return fmt.Errorf("delete the held roll: %w", err)
 	}
 	for _, r := range rows {
-		if err := favorGiveBackIf(ctx, q, r.UnsettledFavor, r.CampaignID, r.CharacterID, r.IdempotencyKey); err != nil {
+		if err := favorGiveBackIf(ctx, q, r.UnsettledFavor, r.CampaignID, r.CharacterID, r.FavorPromptID); err != nil {
 			return err
 		}
 	}
@@ -209,7 +210,7 @@ func forgetOrphanHolds(ctx context.Context, q *playdb.Queries, campaignID string
 		return fmt.Errorf("forget the rolls that waited for a die that ran out: %w", err)
 	}
 	for _, r := range rows {
-		if err := favorGiveBackIf(ctx, q, r.UnsettledFavor, r.CampaignID, r.CharacterID, r.IdempotencyKey); err != nil {
+		if err := favorGiveBackIf(ctx, q, r.UnsettledFavor, r.CampaignID, r.CharacterID, r.FavorPromptID); err != nil {
 			return err
 		}
 	}

@@ -367,7 +367,7 @@ func (s *Service) askSearchGate(ctx context.Context, ts *trapSearch, r *searchTu
 	}
 	step, err := s.heldGate(ctx, env, rollSpec{
 		Kind: heldTrapSearch, Key: ts.key, Request: ts.req, Roller: roller,
-		In: held, Modifier: r.bonus, Mode: r.cm.Mode, Floor: r.floor, Lucky: r.opt.Lucky, MayAsk: true, FavorSpent: r.favor.Used,
+		In: held, Modifier: r.bonus, Mode: r.cm.Mode, Floor: r.floor, Lucky: r.opt.Lucky, MayAsk: true, FavorSpent: r.favor.Used, FavorPrompt: r.favor.Prompt,
 	})
 	if err != nil {
 		return false, err

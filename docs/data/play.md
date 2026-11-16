@@ -120,7 +120,6 @@ erDiagram
         jsonb hidden_sources
         text status
         text answer_key
-        text roll_key
     }
     inspiration_holds {
         uuid id PK
@@ -128,6 +127,7 @@ erDiagram
         uuid character_id FK
         uuid combatant_id FK
         uuid encounter_id FK
+        uuid favor_prompt_id FK
     }
     trap_damages {
         uuid id PK
@@ -366,7 +366,7 @@ The index `character_favor_campaign_idx` serves the list of a campaign's holders
 Both foreign keys cascade.
 Only a player character gets a row: the server refuses an NPC, a reserved character and any id that is not a player character of the campaign.
 The grant is the session event `favor_granted`, keyed by the request's idempotency key.
-`inspiration_holds.favor_spent` is a column on held rolls.
+`inspiration_holds.favor_spent` is a column on held rolls, and `inspiration_holds.favor_prompt_id` the refund prompt that spend opened (null when it opened none; the foreign key sets it null when the prompt is deleted, and a partial index serves that).
 
 ## `favor_passes` and `favor_refund_prompts`
 
@@ -381,7 +381,7 @@ All four foreign keys cascade.
 `character_id` is the roller, `roll_label_pt` the roll's name as the log reads it, and `hidden_sources` a JSON list of the sources of advantage the roller could not read.
 `status` is `open`, `returned` (the Inspiration was given back) or `kept`; `answered_at` is set when it is not open.
 `answer_key` is the idempotency key of the answer, unique in the campaign.
-`roll_key` is the idempotency key the spend was made under, which is the request's. The roll's event is stamped with it (`favor_roll` in the payload) and its held roll keeps it as its own key, because the key the event is written under is not always the request's: a reaction window's replay writes none, and the answer to a die's or a Lucky question writes its own. The roll's undo and the forgetting of its held roll close the open prompt of that key and that character as `kept` (an index on the open ones).
+A prompt is found by its id and never by a key, because two prompts of one character can share the key of the request that spent (a held roll is forgotten and the client sends its key again, which spends afresh). The roll's event is stamped with the id (`favor_prompt` in the payload) and its held roll keeps it (`inspiration_holds.favor_prompt_id`). The roll's undo and the forgetting of its held roll close that prompt, and only if it is open, as `kept`; a roll whose spend opened no prompt carries none.
 The session's end closes every open prompt of it as `kept`.
 The foreign keys cascade.
 A favor event written in a running combat also has `session_events.encounter_id` set and the round, the combatants and the audience in its payload, which is how the combat's log and undo read it.

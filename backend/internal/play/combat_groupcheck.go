@@ -567,7 +567,7 @@ func (s *Service) gatedMemberRoll(ctx context.Context, q *playdb.Queries, tx pgx
 	step, err := s.heldGate(ctx, s.outsideGate(tx, q, gh.h), rollSpec{
 		Kind: heldGroupCheck, Key: gh.key, Request: gh.raw, Roller: heldRoller{CampaignID: gh.m.CampaignID, CharacterID: spec.characterID, UserID: gh.m.UserID},
 		In: rollInput{inApp: spec.in.inApp, typedFaces: spec.in.faces}, Modifier: spec.bonus, Mode: spec.mode.Mode, Floor: spec.floor, Lucky: spec.lucky, MayAsk: true,
-		Stroke: groupStrokeRule(spec.check), FavorSpent: spec.favor.Used,
+		Stroke: groupStrokeRule(spec.check), FavorSpent: spec.favor.Used, FavorPrompt: spec.favor.Prompt,
 	})
 	if err != nil {
 		return contestRoll{}, false, false, err

@@ -237,7 +237,7 @@ func TestForgottenWindowHeldRollNeverGivesBackAReturnedRefund(t *testing.T) {
 
 // zoneSaveRefund is the spend of a catch's save at the cast of a wall of fire over a hidden advantage: the master reads its prompt. The save's
 // event is written under the key of the request that rolled it, the key the spend was made under, so no path writes it without one: the helper
-// nulls the key by SQL, to show that the undo of the cast finds the prompt by what the event itself says (its favor_roll) and not by its key.
+// nulls the key by SQL, to show that the undo of the cast finds the prompt by what the event itself says (its favor_prompt) and not by its key.
 func zoneSaveRefund(t *testing.T) (*favorFight, *playv1.FavorRefundPrompt) {
 	t.Helper()
 	c := wallCave(t)

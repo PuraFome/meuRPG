@@ -47,11 +47,12 @@ type hiddenSourceJSON struct {
 }
 
 // openRefundPrompt opens the master's question, in the roll's transaction: the row, the event (favor_refund_prompted, the master's) and
-// the master's hint. It moves no number by itself: the roll's write moves it.
-func (s *Service) openRefundPrompt(ctx context.Context, env gateEnv, a favorAsk, r *refundAsk) error {
+// the master's hint. It returns the prompt's id, which the roll's event and its hold remember. It moves no number by itself: the roll's write
+// moves it.
+func (s *Service) openRefundPrompt(ctx context.Context, env gateEnv, a favorAsk, r *refundAsk) (string, error) {
 	open, err := env.q.GetOpenGameSession(ctx, a.CampaignID)
 	if err != nil {
-		return fmt.Errorf("find the open session: %w", err)
+		return "", fmt.Errorf("find the open session: %w", err)
 	}
 	hidden := make([]hiddenSourceJSON, 0, len(r.Hidden))
 	for _, src := range r.Hidden {
@@ -59,19 +60,19 @@ func (s *Service) openRefundPrompt(ctx context.Context, env gateEnv, a favorAsk,
 	}
 	body, err := json.Marshal(hidden)
 	if err != nil {
-		return fmt.Errorf("encode the hidden sources: %w", err)
+		return "", fmt.Errorf("encode the hidden sources: %w", err)
 	}
 	prompt, err := env.q.InsertFavorRefundPrompt(ctx, playdb.InsertFavorRefundPromptParams{
-		CampaignID: a.CampaignID, GameSessionID: open.ID, CharacterID: a.CharacterID, RollLabelPt: refundLabels[a.Kind], HiddenSources: body, RollKey: a.Key,
+		CampaignID: a.CampaignID, GameSessionID: open.ID, CharacterID: a.CharacterID, RollLabelPt: refundLabels[a.Kind], HiddenSources: body,
 	})
 	if err != nil {
-		return fmt.Errorf("open the refund prompt: %w", err)
+		return "", fmt.Errorf("open the refund prompt: %w", err)
 	}
 	if err := s.writeRefundEvent(ctx, env.q, open.ID, nil, eventFavorRefundPrompted, prompt, nil); err != nil {
-		return err
+		return "", err
 	}
 	s.tellRefundMaster(ctx, env.tx, env.h, a.CampaignID, a.CharacterID)
-	return nil
+	return prompt.ID, nil
 }
 
 // tellRefundMaster moves the session's number and tells the master alone, with the roller's vitals hint, to read GetFavor again: a prompt

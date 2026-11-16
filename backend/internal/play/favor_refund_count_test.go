@@ -47,23 +47,21 @@ func (f *favorFight) dropTheHold(t *testing.T, holdID string) {
 	}
 }
 
-// otherPromptOfTheRoll opens, by SQL, the prompt another member of the same group check has for the roll of the prompt. It is by SQL because
-// no request can make two prompts of one roll key: a request rolls for one character (RollGroupCheck for the caller's own, which
-// myCharacter reads as the one living character a player may own, characters_one_living_player_character; RollForPlayer for the one named,
-// and it never spends: favorOnMember returns at byMaster), and the key of another member is refused as used for another change (groupReplay
-// compares the actor). So this guards the character filter of CloseFavorRefundPromptsOfRoll against a row the API cannot make; the real
-// members of a group check are driven in favor_groupcheck_refund_test.go.
+// otherPromptOfTheRoll opens, by SQL, a prompt of another member of the same group check for the same label, which the roll's own prompt must
+// leave open when it closes. It is by SQL because the other member's spend is another roll with a prompt of its own, which the API makes
+// only by a request of that member (favor_groupcheck_refund_test.go drives the real members of a group check); this guards that closing a
+// roll's prompt (by its id) never reaches the prompts of the other characters.
 func (f *favorFight) otherPromptOfTheRoll(t *testing.T, of *playv1.FavorRefundPrompt, characterID string) string {
 	t.Helper()
 	var id string
-	if err := f.h.pool.QueryRow(t.Context(), `INSERT INTO favor_refund_prompts (campaign_id, game_session_id, character_id, roll_label_pt, roll_key)
-		SELECT campaign_id, game_session_id, $2, roll_label_pt, roll_key FROM favor_refund_prompts WHERE id = $1 RETURNING id`, of.GetId(), characterID).Scan(&id); err != nil {
+	if err := f.h.pool.QueryRow(t.Context(), `INSERT INTO favor_refund_prompts (campaign_id, game_session_id, character_id, roll_label_pt)
+		SELECT campaign_id, game_session_id, $2, roll_label_pt FROM favor_refund_prompts WHERE id = $1 RETURNING id`, of.GetId(), characterID).Scan(&id); err != nil {
 		t.Fatalf("open the other member's prompt: %v", err)
 	}
 	return id
 }
 
-// The held roll of a group check is forgotten: Toren's prompt closes, and Pensantus's, for the same roll key, stays open.
+// The held roll of a group check is forgotten: Toren's prompt closes, and Pensantus's, of the same kind of roll, stays open.
 func TestForgettingARollKeepsOnlyItsRollersPrompt(t *testing.T) {
 	t.Parallel()
 	f, holdID, p := heldRefundFight(t)
