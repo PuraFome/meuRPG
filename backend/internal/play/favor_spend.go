@@ -45,6 +45,10 @@ type favorAsk struct {
 	// Replay says the roll is the replay of one a reaction window held: an Inspiration that can no longer be spent then (gone, or adding
 	// nothing) does not refuse the roll, which would drop it with no reason; the roll is made without it and says so (favorUse.Lost).
 	Replay bool
+	// Asked and AskedRequest are the request's roll_mode and roll_mode_request_id, for the paths that ask a mode (an attack, a spell attack): a
+	// replay judges them before it spends (favorAgainstBeforeSpend), because its refusal drops the held roll and keeps the transaction.
+	Asked        playv1.RollMode
+	AskedRequest string
 	// Check only validates: a roll a reaction window holds is refused as the spend would refuse it, and nothing is taken (the
 	// replay is the roll that spends). The Inspiration must be there at that time, and the replay answers for it later.
 	Check bool
@@ -214,6 +218,11 @@ func spendFavor(ctx context.Context, q *playdb.Queries, a favorAsk) (favorUse, e
 	if a.Check {
 		return checkFavor(ctx, q, a, seen)
 	}
+	if a.Replay {
+		if err := favorAgainstBeforeSpend(ctx, q, a, seen); err != nil {
+			return favorUse{}, err
+		}
+	}
 	_, err := q.SpendCharacterFavor(ctx, playdb.SpendCharacterFavorParams{CharacterID: a.CharacterID, CampaignID: a.CampaignID})
 	if errors.Is(err, pgx.ErrNoRows) {
 		if a.Replay {
@@ -293,6 +302,21 @@ func favorAgainst(fv favorUse, want playv1.RollMode, requestID string) error {
 		return nil
 	}
 	return connect.NewError(connect.CodeInvalidArgument, errors.New("spend_favor gives a better mode than the roll_mode asked: leave the Inspiration for another roll"))
+}
+
+// favorAgainstBeforeSpend is favorAgainst for the replay of a held roll, judged before the Inspiration is taken. The refusal of a replay drops
+// the held roll and the transaction keeps what the replay did (settleReplay): a spend made first would be lost with the roll, so the mode the
+// player asked is refused while the row is still there. A character that has none now is not refused: the spend below says so, and the
+// roll is made without it.
+func favorAgainstBeforeSpend(ctx context.Context, q *playdb.Queries, a favorAsk, seen []combat.Source) error {
+	has, err := q.HasCharacterFavor(ctx, playdb.HasCharacterFavorParams{CharacterID: a.CharacterID, CampaignID: a.CampaignID})
+	if err != nil {
+		return fmt.Errorf("read the character's inspiration: %w", err)
+	}
+	if !has {
+		return nil
+	}
+	return favorAgainst(favorUse{Spent: true, Seen: favorMode(seen)}, a.Asked, a.AskedRequest)
 }
 
 // favorGiveBack puts the Inspiration a roll spent back, for the undo of that roll. It is idempotent: a character that has it

@@ -663,6 +663,7 @@ func (f *attackFlow) favorAsk() favorAsk {
 	return favorAsk{
 		Want: f.req.GetSpendFavor(), CampaignID: f.m.CampaignID, CharacterID: f.attacker.CharacterID, Own: ownsCharacter(f.v, f.attacker),
 		Key: f.call.key, Kind: heldWeaponAttack, Sources: f.truth.Sources, Hide: f.truth.Hide, Rolls: true,
+		Asked: f.req.GetRollMode(), AskedRequest: f.req.GetRollModeRequestId(),
 	}
 }
 

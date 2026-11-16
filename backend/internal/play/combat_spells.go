@@ -470,6 +470,7 @@ func (s *Service) spellAttackTruth(ctx context.Context, c *combatTx, modes *spel
 	fv, err := s.useFavor(ctx, s.inspirationGate(c), favorAsk{
 		Want: modes.spend, CampaignID: c.session.CampaignID, CharacterID: caster.CharacterID, Own: ownsCharacter(modes.v, caster),
 		Key: modes.key, Kind: heldSpellAttack, Sources: truth.Sources, Hide: truth.Hide, Rolls: true, Check: check,
+		Asked: modes.ask.want, AskedRequest: modes.ask.requestID,
 	})
 	if err != nil {
 		return truth, err
