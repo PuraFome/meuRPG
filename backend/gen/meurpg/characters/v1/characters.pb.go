@@ -3480,9 +3480,9 @@ type FullSheet struct {
 	// A short rest was taken since the last long rest: a proficiency that lasts until a short rest is spent (TableEffect.duration).
 	// Only a rest writes it.
 	ShortRested bool `protobuf:"varint,47,opt,name=short_rested,json=shortRested,proto3" json:"short_rested,omitempty"`
-	// The infusions this character carries on its gear and the ones it put on gear or objects. Today nothing fills it:
-	// the server will fill it on every read, and a save ignores it and never stores it. Only the character's owner and
-	// the master read it.
+	// The infusions this character carries on its gear and the ones it put on gear or objects, the ones that ended not
+	// included. The server fills it on every read, and a save ignores it and never stores it. Only the character's owner
+	// and the master read it.
 	Infusions     []*SheetInfusion `protobuf:"bytes,48,rep,name=infusions,proto3" json:"infusions,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -3865,7 +3865,8 @@ type SheetInfusion struct {
 	InfusionKey string `protobuf:"bytes,2,opt,name=infusion_key,json=infusionKey,proto3" json:"infusion_key,omitempty"`
 	// The infusion's name in Portuguese.
 	NamePt string `protobuf:"bytes,3,opt,name=name_pt,json=namePt,proto3" json:"name_pt,omitempty"`
-	// The character whose gear carries the infusion: the infuser itself or another character.
+	// The character whose gear carries the infusion. In this version only the infuser is accepted, so it is always the
+	// infuser itself.
 	HolderCharacterId string `protobuf:"bytes,4,opt,name=holder_character_id,json=holderCharacterId,proto3" json:"holder_character_id,omitempty"`
 	// What the infusion is on: a piece of the holder's sheet, or a named object.
 	ItemKind InfusionItemKind `protobuf:"varint,5,opt,name=item_kind,json=itemKind,proto3,enum=meurpg.characters.v1.InfusionItemKind" json:"item_kind,omitempty"`
@@ -3877,7 +3878,8 @@ type SheetInfusion struct {
 	ItemNamePt string `protobuf:"bytes,8,opt,name=item_name_pt,json=itemNamePt,proto3" json:"item_name_pt,omitempty"`
 	// The damage type key the holder picked, for a resistance infusion; empty otherwise.
 	Parameter string `protobuf:"bytes,9,opt,name=parameter,proto3" json:"parameter,omitempty"`
-	// When the infusion was put on.
+	// When the infusion was put on, or last moved: InfuseItem sets it and MoveInfusion sets it again. The oldest valid
+	// infusion of a holder is the first to end or to give way at the limit.
 	Since *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=since,proto3" json:"since,omitempty"`
 	// The holder is attuned to the piece.
 	Attuned bool `protobuf:"varint,11,opt,name=attuned,proto3" json:"attuned,omitempty"`
@@ -3885,8 +3887,11 @@ type SheetInfusion struct {
 	RequiresAttunement bool `protobuf:"varint,12,opt,name=requires_attunement,json=requiresAttunement,proto3" json:"requires_attunement,omitempty"`
 	// True when the app gives the infusion's numbers; false means text only.
 	Computed bool `protobuf:"varint,13,opt,name=computed,proto3" json:"computed,omitempty"`
-	// False when the sheet no longer knows the infusion (the content changed or the class was lost): it gives no numbers and
-	// takes no slot.
+	// False when the infusion gives no numbers and takes no slot. The reasons: the content no longer has the infusion, the
+	// sheet no longer has the feature that holds it or no longer knows it, the infusion lost a prerequisite, the piece is
+	// no longer on the sheet, the piece has a manual magic bonus, the record is of another artificer, an older valid
+	// infusion is on the same piece, or the character is over the limit (the oldest records give way, and none of them
+	// ends by itself).
 	ValidNow bool `protobuf:"varint,14,opt,name=valid_now,json=validNow,proto3" json:"valid_now,omitempty"`
 	// The bonus the infusion gives now, 0 when it gives none.
 	Bonus         int32 `protobuf:"varint,15,opt,name=bonus,proto3" json:"bonus,omitempty"`

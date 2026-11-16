@@ -58,24 +58,17 @@ func TestInfusionStoreInsertAndLists(t *testing.T) {
 	if first.EndedAt != nil || first.EndedReason != nil || first.Attuned || first.ObjectName != "" || first.Parameter != "" {
 		t.Errorf("a new record = %+v, want a live one with the defaults", first)
 	}
-	live, err := tb.h.svc.queries.ListLiveInfusionsOfArtificer(t.Context(), tb.artif)
+	live, err := tb.h.svc.queries.ListLiveInfusionsOfHolder(t.Context(), tb.artif)
 	if err != nil || len(live) != 2 || live[0].ID != first.ID || live[1].ID != second.ID {
-		t.Fatalf("live of the artificer = %v, %v; want the first then the second", live, err)
+		t.Fatalf("live of the holder = %v, %v; want the first then the second", live, err)
 	}
-	n, err := tb.h.svc.queries.CountLiveInfusionsOfArtificer(t.Context(), tb.artif)
-	if err != nil || n != 2 {
-		t.Errorf("count = %d, %v; want 2", n, err)
-	}
-	// An ended record leaves the live lists and the count.
+	// An ended record leaves the live list.
 	if _, ok, err := tb.h.svc.endInfusion(t.Context(), tb.h.svc.queries, tb.campaign, first.ID, infusionEndedReplaced); err != nil || !ok {
 		t.Fatalf("endInfusion() = %v, %v; want true", ok, err)
 	}
 	held, err := tb.h.svc.queries.ListLiveInfusionsOfHolder(t.Context(), tb.artif)
 	if err != nil || len(held) != 1 || held[0].ID != second.ID {
 		t.Errorf("live of the holder = %v, %v; want only the second", held, err)
-	}
-	if n, _ := tb.h.svc.queries.CountLiveInfusionsOfArtificer(t.Context(), tb.artif); n != 1 {
-		t.Errorf("count after an end = %d, want 1", n)
 	}
 	if other, _ := tb.h.svc.queries.ListLiveInfusionsOfHolder(t.Context(), tb.friend); len(other) != 0 {
 		t.Errorf("live of another holder = %v, want none", other)
@@ -93,7 +86,7 @@ func TestInfusionStoreListOrdersBySinceThenID(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	live, err := tb.h.svc.queries.ListLiveInfusionsOfArtificer(t.Context(), tb.artif)
+	live, err := tb.h.svc.queries.ListLiveInfusionsOfHolder(t.Context(), tb.artif)
 	if err != nil || len(live) != 2 || live[0].ID != ids[1] || live[1].ID != ids[0] {
 		t.Errorf("same since: order = %v, %v; want the lower id first", live, err)
 	}
@@ -258,8 +251,8 @@ func TestInfusionRecordsGoWithTheCharacter(t *testing.T) {
 	if _, err := tb.h.pool.Exec(t.Context(), `DELETE FROM characters WHERE id = $1`, tb.friend); err != nil {
 		t.Fatal(err)
 	}
-	if n, _ := tb.h.svc.queries.CountLiveInfusionsOfArtificer(t.Context(), tb.artif); n != 1 {
-		t.Errorf("after deleting the holder: %d records, want 1", n)
+	if left, _ := tb.h.svc.queries.ListLiveInfusionsOfHolder(t.Context(), tb.artif); len(left) != 1 {
+		t.Errorf("after deleting the holder: %d records, want 1", len(left))
 	}
 	if _, err := tb.h.pool.Exec(t.Context(), `DELETE FROM characters WHERE id = $1`, tb.artif); err != nil {
 		t.Fatal(err)

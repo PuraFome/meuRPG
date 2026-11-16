@@ -130,7 +130,7 @@ func (it *infusedTable) twoDaggers(t *testing.T) {
 
 func liveRecords(t *testing.T, it *infusedTable) []string {
 	t.Helper()
-	rows, err := it.h.svc.queries.ListLiveInfusionsOfArtificer(t.Context(), it.pc.GetId())
+	rows, err := it.h.svc.queries.ListLiveInfusionsOfHolder(t.Context(), it.pc.GetId())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -739,6 +739,70 @@ func TestInfuseItemIsIdempotent(t *testing.T) {
 	other.ItemKey, other.IdempotencyKey = infusionShieldGear, key
 	_, err = call(other)
 	wantCode(t, "the same key for another infusion", err, connect.CodeInvalidArgument)
+}
+
+// secondArtificer makes a second artificer of the table, Caio's, with the same picks as the first.
+func (it *infusedTable) secondArtificer(t *testing.T) *charactersv1.Character {
+	t.Helper()
+	sheet := choiceSheet("race:human", "", infusionClassKey, "", 6,
+		infusionKeyBlade, infusionKeyPlate, infusionKeyAsh, infusionKeyFalse, infusionKeyHouse)
+	sheet.GetFull().WeaponKeys = []string{infusionMace}
+	sheet.GetFull().ArmorKey = infusionLeather
+	sheet.GetFull().SkillProficiencyKeys = []string{"skill:arcana", "skill:history"}
+	return it.caio.create(t, it.campaign, charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, "Brisa", sheet)
+}
+
+// The same key used at the same moment for two characters of one campaign: one call wins, the other is answered as a key used
+// for another change, never as an internal error.
+func TestInfuseItemTheSameKeyForTwoCharactersAtOnce(t *testing.T) {
+	t.Parallel()
+	dbtest.PoolSize(t, 6)
+	it := newInfusedTable(t)
+	other := it.secondArtificer(t)
+	key := uuid.New().String()
+	var wg sync.WaitGroup
+	errs := make([]error, 2)
+	for i, c := range []struct {
+		u  *user
+		id string
+	}{{it.dona, it.pc.GetId()}, {it.caio, other.GetId()}} {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			req := &charactersv1.InfuseItemRequest{CampaignId: it.campaign, CharacterId: c.id, HolderCharacterId: c.id, InfusionKey: infusionKeyBlade, ItemKey: infusionMace, IdempotencyKey: key}
+			_, errs[i] = c.u.infusions.InfuseItem(t.Context(), connect.NewRequest(req))
+		}()
+	}
+	wg.Wait()
+	ok := 0
+	for _, err := range errs {
+		switch {
+		case err == nil:
+			ok++
+		case connect.CodeOf(err) != connect.CodeInvalidArgument || !strings.Contains(err.Error(), "idempotency_key was used for another change"):
+			t.Errorf("the second call with the key failed with %v, want the refusal of a reused key", err)
+		}
+	}
+	if ok != 1 {
+		t.Errorf("%d of two calls with one key succeeded (%v), want exactly one", ok, errs)
+	}
+}
+
+// The answer kept under a key that another call kept first (the row is there when this one writes) is the refusal of a reused key.
+func TestKeepInfusionRequestOfAKeyKeptMeanwhile(t *testing.T) {
+	t.Parallel()
+	it := newInfusedTable(t)
+	rec := it.infuse(t, infusionKeyBlade, infusionMace)
+	key := uuid.New().String()
+	hash := "first"
+	if err := it.h.svc.keepInfusionRequest(t.Context(), it.h.svc.queries, it.campaign, key, &hash, rec.ID, ""); err != nil {
+		t.Fatal(err)
+	}
+	hash = "second"
+	err := it.h.svc.keepInfusionRequest(t.Context(), it.h.svc.queries, it.campaign, key, &hash, rec.ID, "")
+	if connect.CodeOf(err) != connect.CodeInvalidArgument || !strings.Contains(err.Error(), "idempotency_key was used for another change") {
+		t.Errorf("keepInfusionRequest() = %v, want the refusal of a reused key", err)
+	}
 }
 
 // Two infusions that would both pass the limit cannot both succeed: each locks the artificer's row before it counts, so the

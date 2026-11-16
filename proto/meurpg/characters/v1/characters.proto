@@ -1637,9 +1637,9 @@ message FullSheet {
   // A short rest was taken since the last long rest: a proficiency that lasts until a short rest is spent (TableEffect.duration).
   // Only a rest writes it.
   bool short_rested = 47;
-  // The infusions this character carries on its gear and the ones it put on gear or objects. Today nothing fills it:
-  // the server will fill it on every read, and a save ignores it and never stores it. Only the character's owner and
-  // the master read it.
+  // The infusions this character carries on its gear and the ones it put on gear or objects, the ones that ended not
+  // included. The server fills it on every read, and a save ignores it and never stores it. Only the character's owner
+  // and the master read it.
   repeated SheetInfusion infusions = 48;
 }
 
@@ -1651,7 +1651,8 @@ message SheetInfusion {
   string infusion_key = 2;
   // The infusion's name in Portuguese.
   string name_pt = 3;
-  // The character whose gear carries the infusion: the infuser itself or another character.
+  // The character whose gear carries the infusion. In this version only the infuser is accepted, so it is always the
+  // infuser itself.
   string holder_character_id = 4;
   // What the infusion is on: a piece of the holder's sheet, or a named object.
   InfusionItemKind item_kind = 5;
@@ -1663,7 +1664,8 @@ message SheetInfusion {
   string item_name_pt = 8;
   // The damage type key the holder picked, for a resistance infusion; empty otherwise.
   string parameter = 9;
-  // When the infusion was put on.
+  // When the infusion was put on, or last moved: InfuseItem sets it and MoveInfusion sets it again. The oldest valid
+  // infusion of a holder is the first to end or to give way at the limit.
   google.protobuf.Timestamp since = 10;
   // The holder is attuned to the piece.
   bool attuned = 11;
@@ -1671,8 +1673,11 @@ message SheetInfusion {
   bool requires_attunement = 12;
   // True when the app gives the infusion's numbers; false means text only.
   bool computed = 13;
-  // False when the sheet no longer knows the infusion (the content changed or the class was lost): it gives no numbers and
-  // takes no slot.
+  // False when the infusion gives no numbers and takes no slot. The reasons: the content no longer has the infusion, the
+  // sheet no longer has the feature that holds it or no longer knows it, the infusion lost a prerequisite, the piece is
+  // no longer on the sheet, the piece has a manual magic bonus, the record is of another artificer, an older valid
+  // infusion is on the same piece, or the character is over the limit (the oldest records give way, and none of them
+  // ends by itself).
   bool valid_now = 14;
   // The bonus the infusion gives now, 0 when it gives none.
   int32 bonus = 15;

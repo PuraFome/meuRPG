@@ -62,8 +62,8 @@ type InfusionServiceClient interface {
 	ListCharacterInfusions(context.Context, *connect.Request[v1.ListCharacterInfusionsRequest]) (*connect.Response[v1.ListCharacterInfusionsResponse], error)
 	// ListInfusionTargets lists the pieces of the holder's sheet an infusion can go on, each with the reason it cannot
 	// when it cannot. An infusion that goes on an object (any object, or a spellcasting focus) also gets one row with an
-	// empty `item_key` and no reason: the object the player names in InfuseItem. The list does not ask whether the
-	// character knows the infusion (InfuseItem does), and a key that is no infusion lists nothing. The character's player
+	// empty `item_key` and no reason: the object the player names in InfuseItem. An infusion the character does not
+	// know, whatever the reason, is answered as a key that is no infusion: the same code and an empty list. The character's player
 	// and the master.
 	ListInfusionTargets(context.Context, *connect.Request[v1.ListInfusionTargetsRequest]) (*connect.Response[v1.ListInfusionTargetsResponse], error)
 	// InfuseItem puts a known infusion on a piece of the holder's gear, or on an object it names. When the character
@@ -181,8 +181,8 @@ type InfusionServiceHandler interface {
 	ListCharacterInfusions(context.Context, *connect.Request[v1.ListCharacterInfusionsRequest]) (*connect.Response[v1.ListCharacterInfusionsResponse], error)
 	// ListInfusionTargets lists the pieces of the holder's sheet an infusion can go on, each with the reason it cannot
 	// when it cannot. An infusion that goes on an object (any object, or a spellcasting focus) also gets one row with an
-	// empty `item_key` and no reason: the object the player names in InfuseItem. The list does not ask whether the
-	// character knows the infusion (InfuseItem does), and a key that is no infusion lists nothing. The character's player
+	// empty `item_key` and no reason: the object the player names in InfuseItem. An infusion the character does not
+	// know, whatever the reason, is answered as a key that is no infusion: the same code and an empty list. The character's player
 	// and the master.
 	ListInfusionTargets(context.Context, *connect.Request[v1.ListInfusionTargetsRequest]) (*connect.Response[v1.ListInfusionTargetsResponse], error)
 	// InfuseItem puts a known infusion on a piece of the holder's gear, or on an object it names. When the character

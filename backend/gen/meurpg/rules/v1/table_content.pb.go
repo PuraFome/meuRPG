@@ -230,7 +230,7 @@ const (
 	InfusionEffect_INFUSION_EFFECT_NONE InfusionEffect = 1
 	// A bonus to the attack and damage rolls of a weapon, or to the armor class of armor or a shield.
 	InfusionEffect_INFUSION_EFFECT_ITEM_BONUS InfusionEffect = 2
-	// A bonus to the spell attack rolls and the save DC of spells cast through the object.
+	// A bonus to the spell attack rolls of spells cast through the object. The save DC does not change.
 	InfusionEffect_INFUSION_EFFECT_SPELL_FOCUS_BONUS InfusionEffect = 3
 	// A weapon of ammunition that makes its own ammunition (it needs no pieces).
 	InfusionEffect_INFUSION_EFFECT_REPEATING_AMMUNITION InfusionEffect = 4

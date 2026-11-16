@@ -254,18 +254,6 @@ func (q *Queries) CountLiveCreaturesOfCharacter(ctx context.Context, arg CountLi
 	return column_1, err
 }
 
-const countLiveInfusionsOfArtificer = `-- name: CountLiveInfusionsOfArtificer :one
-SELECT count(*) FROM character_infusions
-WHERE artificer_character_id = $1::UUID AND ended_at IS NULL
-`
-
-func (q *Queries) CountLiveInfusionsOfArtificer(ctx context.Context, artificerCharacterID string) (int64, error) {
-	row := q.db.QueryRow(ctx, countLiveInfusionsOfArtificer, artificerCharacterID)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
-}
-
 const deleteAbilityRolls = `-- name: DeleteAbilityRolls :exec
 DELETE FROM character_ability_rolls
 WHERE campaign_id = $1::UUID AND user_id = $2::UUID
@@ -1083,6 +1071,40 @@ func (q *Queries) GetCharacterForUpdate(ctx context.Context, arg GetCharacterFor
 		&i.ReviveKey,
 		&i.ReviveHash,
 		&i.ActiveStates,
+	)
+	return i, err
+}
+
+const getCharacterInfusion = `-- name: GetCharacterInfusion :one
+SELECT id, campaign_id, artificer_character_id, holder_character_id, infusion_key, item_kind, item_key, object_name, parameter, attuned, since, ended_at, ended_reason, materialises_id, created_at FROM character_infusions
+WHERE campaign_id = $1::UUID AND id = $2::UUID
+`
+
+type GetCharacterInfusionParams struct {
+	CampaignID string
+	ID         string
+}
+
+// A record of the campaign, live or ended.
+func (q *Queries) GetCharacterInfusion(ctx context.Context, arg GetCharacterInfusionParams) (CharacterInfusion, error) {
+	row := q.db.QueryRow(ctx, getCharacterInfusion, arg.CampaignID, arg.ID)
+	var i CharacterInfusion
+	err := row.Scan(
+		&i.ID,
+		&i.CampaignID,
+		&i.ArtificerCharacterID,
+		&i.HolderCharacterID,
+		&i.InfusionKey,
+		&i.ItemKind,
+		&i.ItemKey,
+		&i.ObjectName,
+		&i.Parameter,
+		&i.Attuned,
+		&i.Since,
+		&i.EndedAt,
+		&i.EndedReason,
+		&i.MaterialisesID,
+		&i.CreatedAt,
 	)
 	return i, err
 }
@@ -3217,49 +3239,6 @@ func (q *Queries) ListLiveFamiliars(ctx context.Context, arg ListLiveFamiliarsPa
 			&i.CharacterCreature.CreatureType,
 			&i.CharacterCreature.Bonded,
 			&i.PlayerUserID,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const listLiveInfusionsOfArtificer = `-- name: ListLiveInfusionsOfArtificer :many
-SELECT id, campaign_id, artificer_character_id, holder_character_id, infusion_key, item_kind, item_key, object_name, parameter, attuned, since, ended_at, ended_reason, materialises_id, created_at FROM character_infusions
-WHERE artificer_character_id = $1::UUID AND ended_at IS NULL
-ORDER BY since, id
-`
-
-// The live records of an artificer, the oldest first.
-func (q *Queries) ListLiveInfusionsOfArtificer(ctx context.Context, artificerCharacterID string) ([]CharacterInfusion, error) {
-	rows, err := q.db.Query(ctx, listLiveInfusionsOfArtificer, artificerCharacterID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []CharacterInfusion
-	for rows.Next() {
-		var i CharacterInfusion
-		if err := rows.Scan(
-			&i.ID,
-			&i.CampaignID,
-			&i.ArtificerCharacterID,
-			&i.HolderCharacterID,
-			&i.InfusionKey,
-			&i.ItemKind,
-			&i.ItemKey,
-			&i.ObjectName,
-			&i.Parameter,
-			&i.Attuned,
-			&i.Since,
-			&i.EndedAt,
-			&i.EndedReason,
-			&i.MaterialisesID,
-			&i.CreatedAt,
 		); err != nil {
 			return nil, err
 		}

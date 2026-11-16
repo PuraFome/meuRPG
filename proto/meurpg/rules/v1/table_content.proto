@@ -632,7 +632,7 @@ enum InfusionEffect {
   INFUSION_EFFECT_NONE = 1;
   // A bonus to the attack and damage rolls of a weapon, or to the armor class of armor or a shield.
   INFUSION_EFFECT_ITEM_BONUS = 2;
-  // A bonus to the spell attack rolls and the save DC of spells cast through the object.
+  // A bonus to the spell attack rolls of spells cast through the object. The save DC does not change.
   INFUSION_EFFECT_SPELL_FOCUS_BONUS = 3;
   // A weapon of ammunition that makes its own ammunition (it needs no pieces).
   INFUSION_EFFECT_REPEATING_AMMUNITION = 4;

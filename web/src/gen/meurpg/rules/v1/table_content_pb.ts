@@ -5314,7 +5314,7 @@ export enum InfusionEffect {
   ITEM_BONUS = 2,
 
   /**
-   * A bonus to the spell attack rolls and the save DC of spells cast through the object.
+   * A bonus to the spell attack rolls of spells cast through the object. The save DC does not change.
    *
    * @generated from enum value: INFUSION_EFFECT_SPELL_FOCUS_BONUS = 3;
    */

@@ -3,6 +3,7 @@ package leaktest
 import (
 	"bytes"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -44,6 +45,11 @@ const (
 	kindInfusionName   = "infusion-name"
 	kindInfusionSeal   = "infusion-seal-name"
 	kindInfusionObject = "infusion-object-name"
+	kindInfusionKey    = "infusion-key"
+	kindInfusionBonus  = "infusion-bonus"
+
+	// bladeBonus is what the blade gives Toren at his level in the copy of the pack the test imports.
+	bladeBonus = 2
 )
 
 // artificerPackWith is the fixture pack with the names of two of its infusions replaced.
@@ -54,6 +60,11 @@ func artificerPackWith(bladeName, sealName string) *rulesv1.TableContentPack {
 	}
 	data = bytes.ReplaceAll(data, []byte(packBladeName), []byte(bladeName))
 	data = bytes.ReplaceAll(data, []byte(packSealName), []byte(sealName))
+	// The pack's bonuses are 1 and 2: a 1 or a 2 turns up in numeric fields everywhere, so the copy gives 2 and 3 (the table's
+	// largest), and the blade reads 2 at the artificer's level. The canary of that number is searched in the fields named
+	// magic_bonus only (see importArtificer's caller), where nothing else of this table holds a 2.
+	data = bytes.ReplaceAll(data, []byte(`"bonus": 2`), []byte(`"bonus": 3`))
+	data = bytes.ReplaceAll(data, []byte(`"bonus": 1`), []byte(`"bonus": 2`))
 	pack := &rulesv1.TableContentPack{}
 	if err := (protojson.UnmarshalOptions{DiscardUnknown: true}).Unmarshal(data, pack); err != nil {
 		panic(err)
@@ -105,6 +116,12 @@ func newInfusedTable(t *testing.T) *infusedTable {
 		it.bladeName = w.secrets.marker(kindInfusionName, w.caio)
 		it.sealName = w.secrets.marker(kindInfusionSeal, w.caio)
 		it.objectName = w.secrets.marker(kindInfusionObject, w.caio)
+		// The keys of the infusions Toren keeps, and the bonus the blade gives, are the owner's and the master's. A key is the
+		// whole text of the option's key, which no other answer holds. The bonus is a small number, so it is searched only in
+		// the fields named magic_bonus (the counting +N of an attack), never in the JSON text and never in a total.
+		w.secrets.add(&canary{needle: infusionBlade, kind: kindInfusionKey, readers: names([]*person{w.caio})})
+		w.secrets.add(&canary{needle: infusionSeal, kind: kindInfusionKey, readers: names([]*person{w.caio})})
+		w.secrets.add(&canary{needle: strconv.Itoa(bladeBonus), kind: kindInfusionBonus, numeric: true, value: bladeBonus, fields: []string{"magic_bonus"}, readers: names([]*person{w.caio})})
 		w.importArtificer(it.bladeName, it.sealName)
 		w.toren = must(w.caio.characters.UpdateCharacter(w.t.Context(), rq(&charactersv1.UpdateCharacterRequest{
 			CampaignId: w.campaign, CharacterId: w.toren.GetId(), Revision: w.toren.GetRevision(), Name: w.toren.GetName(), Sheet: w.artificerSheet(dagger, shortbow),
@@ -130,6 +147,12 @@ func (it *infusedTable) buildInfusionRows() {
 		sheet(charactersv1connect.InfusionServiceListCharacterInfusionsProcedure, func(w *world) proto.Message {
 			return &charactersv1.ListCharacterInfusionsRequest{CampaignId: w.campaign, CharacterId: w.toren.GetId()}
 		}),
+		read{
+			procedure: playv1connect.CastingServiceGetCastOptionsProcedure, label: "Toren", allow: onlyCaio, why: "a player reads their own character's options: the spell attack of the artificer is the owner's and the master's",
+			req: func(w *world) proto.Message {
+				return &playv1.GetCastOptionsRequest{CampaignId: w.campaign, CharacterId: w.toren.GetId()}
+			},
+		},
 		read{
 			procedure: charactersv1connect.CharacterServiceListCharactersProcedure, allow: membersAndPending, why: "the party's list: it names the characters, not their infusions",
 			req: func(w *world) proto.Message { return &charactersv1.ListCharactersRequest{CampaignId: w.campaign} },

@@ -18,7 +18,7 @@ import (
 // allowed marks a call that must succeed in the authorization matrix.
 const allowed connect.Code = 0
 
-// TestAuthorizationMatrix calls every CharacterService and ContentService
+// TestAuthorizationMatrix calls every CharacterService, ContentService, TableContentService and InfusionService
 // method as each kind of caller and checks who gets in (ADR-0011, and the
 // table in docs/architecture/README.md):
 //
@@ -54,6 +54,9 @@ func TestAuthorizationMatrix(t *testing.T) {
 	// Two reserved characters (MR-049): the rows of the claim links and of "Excluir".
 	reserved := master.reservedByMaster(t, campaign, "Reservado")
 	toDelete := master.reservedByMaster(t, campaign, "Para apagar")
+	// A second campaign with a character of its own, for the rows that name ids of two campaigns in one request.
+	elsewhere := h.newCampaign(master, "Outra campanha", owner)
+	elsewherePC := owner.createPensantus(t, elsewhere)
 
 	// fresh reads a character's current revision as the master, so every
 	// caller's write is judged on its permission, not on a stale revision.
@@ -545,6 +548,46 @@ func TestAuthorizationMatrix(t *testing.T) {
 			return err
 		}, [6]connect.Code{allowed, connect.CodePermissionDenied, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
 
+		// The infusions (InfusionService): the master and the owner reach the rule (the sheet knows no infusion, so the writes are
+		// told so); another player, a stranger and a pending member are told the character is not there.
+		{"ListCharacterInfusions", "", nil, func(ctx context.Context, u *user) error {
+			_, err := u.infusions.ListCharacterInfusions(ctx, connect.NewRequest(&charactersv1.ListCharacterInfusionsRequest{CampaignId: campaign, CharacterId: pc.GetId()}))
+			return err
+		}, [6]connect.Code{allowed, allowed, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+		{"ListInfusionTargets", "", nil, func(ctx context.Context, u *user) error {
+			_, err := u.infusions.ListInfusionTargets(ctx, connect.NewRequest(&charactersv1.ListInfusionTargetsRequest{CampaignId: campaign, CharacterId: pc.GetId(), InfusionKey: "feature:nada", HolderCharacterId: pc.GetId()}))
+			return err
+		}, [6]connect.Code{allowed, allowed, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+		{"InfuseItem", "", nil, func(ctx context.Context, u *user) error {
+			_, err := u.infusions.InfuseItem(ctx, connect.NewRequest(&charactersv1.InfuseItemRequest{
+				CampaignId: campaign, CharacterId: pc.GetId(), HolderCharacterId: pc.GetId(), InfusionKey: "feature:nada", ItemKey: "equipment:quarterstaff",
+			}))
+			return err
+		}, [6]connect.Code{connect.CodeFailedPrecondition, connect.CodeFailedPrecondition, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+		{"MoveInfusion", "", nil, func(ctx context.Context, u *user) error {
+			_, err := u.infusions.MoveInfusion(ctx, connect.NewRequest(&charactersv1.MoveInfusionRequest{
+				CampaignId: campaign, CharacterId: pc.GetId(), InfusionId: uuid.New().String(), ItemKey: "equipment:quarterstaff",
+			}))
+			return err
+		}, [6]connect.Code{connect.CodeFailedPrecondition, connect.CodeFailedPrecondition, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+		{"EndInfusion", "", nil, func(ctx context.Context, u *user) error {
+			_, err := u.infusions.EndInfusion(ctx, connect.NewRequest(&charactersv1.EndInfusionRequest{CampaignId: campaign, CharacterId: pc.GetId(), InfusionId: uuid.New().String()}))
+			return err
+		}, [6]connect.Code{connect.CodeFailedPrecondition, connect.CodeFailedPrecondition, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+		// Ids of two campaigns in one request: the character of another campaign is not in this one, for every caller, the master
+		// included; and a holder that is not the infuser is refused as the request's shape, before the character is looked up, so
+		// every member of the campaign gets the same answer, and it says nothing about either character.
+		{"ListCharacterInfusions", "a character of another campaign", nil, func(ctx context.Context, u *user) error {
+			_, err := u.infusions.ListCharacterInfusions(ctx, connect.NewRequest(&charactersv1.ListCharacterInfusionsRequest{CampaignId: campaign, CharacterId: elsewherePC.GetId()}))
+			return err
+		}, [6]connect.Code{connect.CodeNotFound, connect.CodeNotFound, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+		{"InfuseItem", "a holder of another campaign", nil, func(ctx context.Context, u *user) error {
+			_, err := u.infusions.InfuseItem(ctx, connect.NewRequest(&charactersv1.InfuseItemRequest{
+				CampaignId: campaign, CharacterId: pc.GetId(), HolderCharacterId: elsewherePC.GetId(), InfusionKey: "feature:nada", ItemKey: "equipment:quarterstaff",
+			}))
+			return err
+		}, [6]connect.Code{connect.CodeInvalidArgument, connect.CodeInvalidArgument, connect.CodeInvalidArgument, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+
 		// Last, because it changes the owner's character for good.
 		{"MarkCharacterDead", "", nil, func(ctx context.Context, u *user) error {
 			_, err := u.api.MarkCharacterDead(ctx, connect.NewRequest(&charactersv1.MarkCharacterDeadRequest{CampaignId: campaign, CharacterId: pc.GetId()}))
@@ -560,7 +603,7 @@ func TestAuthorizationMatrix(t *testing.T) {
 		}, [6]connect.Code{allowed, connect.CodePermissionDenied, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
 	}
 
-	// Every method of both services must be in the table, so a new RPC
+	// Every method of every service must be in the table, so a new RPC
 	// cannot ship without its authorization test.
 	covered := map[string]bool{}
 	for _, r := range rows {
@@ -570,6 +613,7 @@ func TestAuthorizationMatrix(t *testing.T) {
 		charactersv1.File_meurpg_characters_v1_characters_proto.Services().ByName("CharacterService"),
 		rulesv1.File_meurpg_rules_v1_rules_proto.Services().ByName("ContentService"),
 		rulesv1.File_meurpg_rules_v1_table_content_proto.Services().ByName("TableContentService"),
+		charactersv1.File_meurpg_characters_v1_infusions_proto.Services().ByName("InfusionService"),
 	} {
 		for i := range service.Methods().Len() {
 			if name := string(service.Methods().Get(i).Name()); !covered[name] {

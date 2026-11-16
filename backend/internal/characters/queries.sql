@@ -1099,27 +1099,22 @@ VALUES (
 )
 RETURNING *;
 
+-- name: GetCharacterInfusion :one
+-- A record of the campaign, live or ended.
+SELECT * FROM character_infusions
+WHERE campaign_id = sqlc.arg(campaign_id)::UUID AND id = sqlc.arg(id)::UUID;
+
 -- name: GetCharacterInfusionForUpdate :one
 -- A record of the campaign, live or ended, locking its row until the transaction ends.
 SELECT * FROM character_infusions
 WHERE campaign_id = sqlc.arg(campaign_id)::UUID AND id = sqlc.arg(id)::UUID
 FOR UPDATE;
 
--- name: ListLiveInfusionsOfArtificer :many
--- The live records of an artificer, the oldest first.
-SELECT * FROM character_infusions
-WHERE artificer_character_id = sqlc.arg(artificer_character_id)::UUID AND ended_at IS NULL
-ORDER BY since, id;
-
 -- name: ListLiveInfusionsOfHolder :many
 -- The live records on the items of a holder's sheet.
 SELECT * FROM character_infusions
 WHERE holder_character_id = sqlc.arg(holder_character_id)::UUID AND ended_at IS NULL
 ORDER BY since, id;
-
--- name: CountLiveInfusionsOfArtificer :one
-SELECT count(*) FROM character_infusions
-WHERE artificer_character_id = sqlc.arg(artificer_character_id)::UUID AND ended_at IS NULL;
 
 -- name: EndCharacterInfusion :one
 -- Ends a record that is live and returns it as it was; no row means it was not live.

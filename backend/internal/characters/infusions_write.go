@@ -15,6 +15,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/names"
@@ -130,6 +131,9 @@ func (s *Service) infusionReplay(ctx context.Context, q *charactersdb.Queries, c
 	return stored, true, nil
 }
 
+// infusionRequestKey is the primary key of the answers kept under an idempotency key.
+const infusionRequestKey = "character_infusion_requests_pkey"
+
 // keepInfusionRequest keeps the answer under the key, in the transaction of the write.
 func (s *Service) keepInfusionRequest(ctx context.Context, q *charactersdb.Queries, campaignID, key string, hash *string, infusionID, endedID string) error {
 	if key == "" {
@@ -142,6 +146,9 @@ func (s *Service) keepInfusionRequest(ctx context.Context, q *charactersdb.Queri
 	if err := q.InsertCharacterInfusionRequest(ctx, charactersdb.InsertCharacterInfusionRequestParams{
 		CampaignID: campaignID, IdempotencyKey: key, RequestHash: *hash, InfusionID: infusionID, EndedInfusionID: ended, CreatedAt: s.now(),
 	}); err != nil {
+		if db.IsUniqueViolation(err, infusionRequestKey) {
+			return idem.ErrReused() // another call kept an answer under the key since the replay was read: the key is taken
+		}
 		return wrap("keep the answer of an idempotency key", err)
 	}
 	return nil
@@ -575,7 +582,7 @@ func (s *Service) infusionAnswerOf(ctx context.Context, q *charactersdb.Queries,
 			return si, nil
 		}
 	}
-	r, err := q.GetCharacterInfusionForUpdate(ctx, charactersdb.GetCharacterInfusionForUpdateParams{CampaignID: conv.OrZero(v.row.CampaignID), ID: id})
+	r, err := q.GetCharacterInfusion(ctx, charactersdb.GetCharacterInfusionParams{CampaignID: conv.OrZero(v.row.CampaignID), ID: id})
 	if err != nil {
 		return nil, wrap("read an infusion", err)
 	}

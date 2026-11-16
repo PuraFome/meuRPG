@@ -329,7 +329,6 @@ It orders the live records of an artificer, the oldest first.
 `materialises_id` links to the item or creature an infusion made, and nothing writes it yet.
 A record that ends is kept: `ended_at` and `ended_reason` (`ended`, `replaced`, `swapped`, `item_gone`, `taken`; both set or both `NULL`, `CHECK`).
 A unique partial index allows one live record for each `(holder_character_id, item_key)`.
-A partial index on `(artificer_character_id, since, id)` serves the live records of an artificer.
 Plain indexes on the campaign and on each character serve the cascades.
 The record cascades with the campaign and with each of the two characters.
 The campaign package does not carry it: an imported character comes with no infusions.
@@ -344,6 +343,7 @@ A retry with the same key and the same request returns that answer and writes no
 The row holds ids and a hash, no text.
 A plain index on `infusion_id` serves the cascade.
 The row cascades with the campaign and with its record.
+Nothing sweeps it, as nothing sweeps `campaign_content_imports` or the create keys of the other tables: a row is one small answer of ids and a hash, and it goes with its campaign or its record.
 
 ## Table content
 

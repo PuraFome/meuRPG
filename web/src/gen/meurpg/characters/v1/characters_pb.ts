@@ -1108,9 +1108,9 @@ export type FullSheet = Message<"meurpg.characters.v1.FullSheet"> & {
   shortRested: boolean;
 
   /**
-   * The infusions this character carries on its gear and the ones it put on gear or objects. Today nothing fills it:
-   * the server will fill it on every read, and a save ignores it and never stores it. Only the character's owner and
-   * the master read it.
+   * The infusions this character carries on its gear and the ones it put on gear or objects, the ones that ended not
+   * included. The server fills it on every read, and a save ignores it and never stores it. Only the character's owner
+   * and the master read it.
    *
    * @generated from field: repeated meurpg.characters.v1.SheetInfusion infusions = 48;
    */
@@ -1152,7 +1152,8 @@ export type SheetInfusion = Message<"meurpg.characters.v1.SheetInfusion"> & {
   namePt: string;
 
   /**
-   * The character whose gear carries the infusion: the infuser itself or another character.
+   * The character whose gear carries the infusion. In this version only the infuser is accepted, so it is always the
+   * infuser itself.
    *
    * @generated from field: string holder_character_id = 4;
    */
@@ -1194,7 +1195,8 @@ export type SheetInfusion = Message<"meurpg.characters.v1.SheetInfusion"> & {
   parameter: string;
 
   /**
-   * When the infusion was put on.
+   * When the infusion was put on, or last moved: InfuseItem sets it and MoveInfusion sets it again. The oldest valid
+   * infusion of a holder is the first to end or to give way at the limit.
    *
    * @generated from field: google.protobuf.Timestamp since = 10;
    */
@@ -1222,8 +1224,11 @@ export type SheetInfusion = Message<"meurpg.characters.v1.SheetInfusion"> & {
   computed: boolean;
 
   /**
-   * False when the sheet no longer knows the infusion (the content changed or the class was lost): it gives no numbers and
-   * takes no slot.
+   * False when the infusion gives no numbers and takes no slot. The reasons: the content no longer has the infusion, the
+   * sheet no longer has the feature that holds it or no longer knows it, the infusion lost a prerequisite, the piece is
+   * no longer on the sheet, the piece has a manual magic bonus, the record is of another artificer, an older valid
+   * infusion is on the same piece, or the character is over the limit (the oldest records give way, and none of them
+   * ends by itself).
    *
    * @generated from field: bool valid_now = 14;
    */
