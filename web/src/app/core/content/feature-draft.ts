@@ -71,6 +71,7 @@ export interface FeatureDraft {
    * server wrote it: it is pack-only, the editor draws no control for it, and saving the feature must not drop it.
    */
   swapLevels?: TableFeature['swapLevels'];
+  /**
    * The infusion data of an option of a feature that has an infusion rule, and the rule on the feature that has the options: the
    * editor draws no field for either, so each is kept as the server wrote it and saving the feature must not drop it.
    */
