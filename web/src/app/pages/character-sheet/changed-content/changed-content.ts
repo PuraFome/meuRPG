@@ -63,7 +63,6 @@ import { openChangedContent } from './changed-content-sheet';
 
     .change__open {
       width: 100%;
-      margin-top: var(--mr-space-2);
 
       @media (min-width: 600px) {
         width: auto;

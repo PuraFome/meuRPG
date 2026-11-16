@@ -116,7 +116,7 @@ describe('ChangedContentNotice', () => {
     ]);
     // The board has 8 px between the last line and the button, the gap of the column and nothing more.
     const open = notice.querySelector<HTMLElement>('.change__open')!;
-    expect(['', '0px']).toContain(getComputedStyle(open).marginTop);
+    expect(['', '0', '0px']).toContain(getComputedStyle(open).marginTop);
   });
 
   it('shows nothing when nothing changed', () => {
