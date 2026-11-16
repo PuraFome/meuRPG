@@ -48,3 +48,28 @@ func TestTheChoiceTypeAsksForAFilterAndAFeature(t *testing.T) {
 		t.Errorf("proficiency_kinds = %v, want weapon, tool, other", kinds)
 	}
 }
+
+// The list a choice of tools may name holds the tools, vehicles and kits and the weapons; the list of tools stays as it was,
+// as a background's tools read it.
+func TestTheMenuListsTheProficienciesAToolChoiceMayName(t *testing.T) {
+	t.Parallel()
+	c := loadForTest(t)
+	m := c.EffectMenu()
+	got, tools := valueKeys(menuList(t, m, ListToolChoices)), valueKeys(menuList(t, m, ListTools))
+	var want []string
+	for k, p := range c.c.proficiencies {
+		if slices.Contains(filterKinds, p.Kind) {
+			want = append(want, k)
+		}
+	}
+	slices.Sort(want)
+	slices.Sort(got)
+	if !slices.Equal(got, want) {
+		t.Errorf("tool_choices has %d keys, want the %d proficiencies of the kinds weapon, tool and other", len(got), len(want))
+	}
+	for _, k := range tools {
+		if c.c.proficiencies[k].Kind == filterKindWeapon {
+			t.Errorf("the list of tools names the weapon %s", k)
+		}
+	}
+}
