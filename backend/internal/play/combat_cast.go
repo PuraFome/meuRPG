@@ -643,6 +643,9 @@ func (f *castFlow) holdForWindow(ctx context.Context) (bool, error) {
 	if f.sp.FeatureSummon {
 		return false, nil // a feature's summon is no spell to counter
 	}
+	if err := f.heldBlocked(ctx); err != nil {
+		return false, err
+	}
 	if err := f.checkFavorHeld(ctx); err != nil { // the replay would refuse it: refuse it now, before anything is held
 		return false, err
 	}
@@ -657,12 +660,28 @@ func (f *castFlow) holdForWindow(ctx context.Context) (bool, error) {
 	return false, nil
 }
 
+// heldBlocked refuses a spell attack that may be asked about while a question of the caster waits, before a window can hold it: the
+// replay would be refused by the open question and the cast dropped when the windows were answered, as a weapon attack is refused
+// at once (attackFlow.holdForWindow).
+func (f *castFlow) heldBlocked(ctx context.Context) error {
+	if !spellMayAsk(f.caster, f.m, f.sp, f.targs) {
+		return nil
+	}
+	return f.s.heldBlocked(ctx, combatGate(f.c), rollSpec{
+		Kind: heldSpellAttack, Key: f.call.key, Window: f.c.replay != nil, Lucky: f.out.modes.traits.Lucky,
+		Roller: heldRoller{CampaignID: f.m.CampaignID, CharacterID: f.caster.CharacterID, UserID: f.m.UserID},
+	})
+}
+
 // holdForDie asks the player of a spell attack against one target, when the character holds a Bardic
 // Inspiration die or is a halfling: the d20 is rolled now (and kept, for the die, or for the Lucky question
 // of a 1), before anything is spent, and the player decides before the result is told (inspiration_held.go).
-// The answer runs the cast again with the d20 already rolled. A cast that waited for a reaction window is not
-// asked.
+// The answer runs the cast again with the d20 already rolled. A cast that waited for a reaction window is asked when the
+// window's replay reaches this point, and its question is the window's own (inspiration_held.go).
 func (f *castFlow) holdForDie(ctx context.Context) error {
+	if f.c.replay != nil && f.c.replay.countered {
+		return nil // a countered cast rolls nothing: it is written as countered (settleCountered), and an answer would cast it again
+	}
 	var err error
 	f.out.asked, err = f.s.holdSpellAttack(ctx, f.c, f.m, f.req, f.call.key, f.caster, rayCombatants(f.sp, f.targets, f.targs), f.sp, f.call.in, f.out.modes, f.strokeArmor(ctx))
 	return err
