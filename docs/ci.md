@@ -100,7 +100,7 @@ Two checks keep the list true (`.github/scripts/cockroach-only.sh`):
 
 A `go-db` job whose test database stops fails with connection errors in every later test, and the first failing line names the database ("cannot reach the database", "connection refused").
 The step "Say how the test database ended" then runs `.github/scripts/database-evidence.sh`: it prints the container's state (exited or running, killed for memory or not, its exit code) and memory, the runner's memory and disk, the last lines of the database's own log, and the processes the kernel killed for memory.
-After a job that passed, the same step prints the container's state and memory alone: compare a part that passed with one that failed to see how much room it had.
+After a job that passed, the same step prints the container's state and memory and how full CockroachDB's in-memory store is: compare a part that passed with one that failed to see how much room it had.
 Read that step before anything else: a database that stopped is a red run with a cause to find, not a reason to run the job again.
 
 ### How the test database image reaches the jobs

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Prints the state of the test database of a `go-db` job. After a job that passed (`brief`) it prints one group: the
-# container's state and memory and the runner's memory, so a run that passed shows how much room it had. After a step
+# container's state and memory, the runner's memory and how full CockroachDB's store is, so a run that passed shows how
+# much room it had. After a step
 # failed it also prints the end of the database's log, the runner's disk and the kernel's memory kills, so a test that
 # could not reach the database explains itself in the job's log (docs/ci.md, "When the test database stops").
 # Usage: database-evidence.sh <cockroach|postgres> [brief]   (the container name start-cockroach.sh or start-postgres.sh gave)
@@ -14,6 +15,12 @@ echo "::group::The test database container ($name)"
 docker inspect --format 'status={{.State.Status}} oom_killed={{.State.OOMKilled}} exit_code={{.State.ExitCode}} started={{.State.StartedAt}} finished={{.State.FinishedAt}}' "$name" 2>&1 || true
 docker stats --no-stream --format 'memory={{.MemUsage}} cpu={{.CPUPerc}}' "$name" 2>&1 || true
 free -m 2>&1 || true
+if [ "$name" = cockroach ]; then
+  # The store is in memory with a fixed size (start-cockroach.sh): how full it is, counting what dropped test
+  # databases still hold until the garbage collection takes them.
+  docker exec cockroach cockroach sql --insecure --host=localhost:26257 --format=tsv \
+    -e "SELECT store_id, (capacity/1048576)::INT AS store_capacity_mib, (used/1048576)::INT AS store_used_mib, (available/1048576)::INT AS store_available_mib FROM crdb_internal.kv_store_status" 2>&1 || true
+fi
 echo "::endgroup::"
 if [ "$brief" = brief ]; then exit 0; fi
 
