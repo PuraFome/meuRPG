@@ -445,3 +445,39 @@ func TestSwapLevelsOfAFeatureWithOptionsAreAccepted(t *testing.T) {
 		t.Errorf("the refusal of level 99 = %v, want it to say 1 to 20", err)
 	}
 }
+
+// The sheet's text of a feature that allows a swap ends with one line that says at which levels, and a feature that allows none keeps
+// the master's text as it is.
+func TestTheSheetTextOfAFeatureSaysAtWhichLevelsAnOptionCanBeSwapped(t *testing.T) {
+	t.Parallel()
+	last := func(c *Content, picks ...string) (desc, descPT []string) {
+		for _, f := range Derive(postureBuild(7, picks...), c).Features {
+			if f.Key == postureFeature {
+				return f.Description, f.DescriptionPT
+			}
+		}
+		t.Fatalf("the sheet has no %s", postureFeature)
+		return nil, nil
+	}
+	picks := []string{postureHeron, postureBull, postureWolf, postureCrow, postureBear}
+	for _, tc := range []struct {
+		name string
+		swap FeatureSwapLevels
+		want string
+	}{
+		{"one level", FeatureSwapLevels{Levels: []int{5}}, "Troca de opção: no nível 5 da classe, ao subir de nível, você pode trocar uma opção escolhida aqui por outra da mesma lista."},
+		{"two levels, unordered", FeatureSwapLevels{Levels: []int{8, 5}}, "Troca de opção: nos níveis 5 e 8 da classe, ao subir de nível, você pode trocar uma opção escolhida aqui por outra da mesma lista."},
+		{"three levels", FeatureSwapLevels{Levels: []int{5, 8, 12}}, "Troca de opção: nos níveis 5, 8 e 12 da classe, ao subir de nível, você pode trocar uma opção escolhida aqui por outra da mesma lista."},
+		{"every level", FeatureSwapLevels{EveryLevel: true}, "Troca de opção: em todos os níveis da classe a partir do nível 3, ao subir de nível, você pode trocar uma opção escolhida aqui por outra da mesma lista."},
+	} {
+		c := withOverlay(t, swapPostureOverlay("class:fighter", tc.swap, FeatureSwapLevels{}))
+		desc, descPT := last(c, picks...)
+		if len(desc) != 2 || desc[1] != tc.want || !slices.Equal(desc, descPT) {
+			t.Errorf("%s: text = %q (pt %q), want the master's paragraph and %q", tc.name, desc, descPT, tc.want)
+		}
+	}
+	plain := withOverlay(t, swapPostureOverlay("class:fighter", FeatureSwapLevels{}, FeatureSwapLevels{}))
+	if desc, _ := last(plain, picks...); len(desc) != 1 {
+		t.Errorf("a feature with no swap levels reads %q, want the master's text alone", desc)
+	}
+}
