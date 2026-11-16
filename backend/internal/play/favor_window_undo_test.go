@@ -3,6 +3,8 @@ package play
 import (
 	"testing"
 
+	"connectrpc.com/connect"
+
 	campaignsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/campaigns/v1"
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
@@ -12,9 +14,11 @@ import (
 // request's key; the roll is written later, by the player's answer to the die's question or to Lucky's, under the answer's own key. The undo
 // of that roll, and the forgetting of the question, must still find the prompt of the spend.
 //
-// A roll the replay writes at once is never undone: the master's answer of the window is written after it and closes the undo chain
-// (chainAction), so only the roll that waited for a question is the last action. A held spell attack asks no question in its replay
-// (inspiration_held.go), so the weapon attack is the one roll that reaches the undo this way.
+// A roll the replay writes at once is not undone either, but for one answer: the master's answer of the window is written after it and
+// closes the undo chain (chainAction), so only the roll that waited for a question is the last action. The exception is a Protection that was
+// used: its answer is skipped by the chain (chainProtection), so the roll its replay wrote at once, with no key, is the last action and its
+// undo reaches the prompt by what the event says (protectedRefund, below). A held spell attack asks no question in its replay
+// (inspiration_held.go), so the weapon attack is the one roll that reaches the undo these ways.
 
 // windowQuestion is what the replay of the attack asks the player before the roll is written.
 type windowQuestion int
@@ -289,5 +293,101 @@ func TestUndoOfTheCastNeverGivesBackAReturnedRefundOfAZoneSave(t *testing.T) {
 	}
 	if n := f.rows(t); n != 0 {
 		t.Errorf("character_favor has %d rows after the undo of the cast, want 0: the Inspiração was returned once already", n)
+	}
+}
+
+// protectedRefund is Toren's attack, a spend over a hidden advantage, with a shield-bearer of the master's next to the target: the attack waits
+// for the Protection window, the master uses it, and the replay (the roll with the disadvantage) spends the Inspiração and opens the prompt.
+// The Protection's own answer is written beside the roll and never closes the undo chain (chainProtection), so unlike the answer of the
+// other windows it leaves the replayed roll as the combat's last action, and that roll is written with no key.
+func protectedRefund(t *testing.T) (*favorFight, *playv1.FavorRefundPrompt) {
+	t.Helper()
+	a := newCasters(t)
+	guard, err := a.master.characters.CreateCharacter(t.Context(), connect.NewRequest(&charactersv1.CreateCharacterRequest{
+		CampaignId: a.campaignID, Kind: charactersv1.CharacterKind_CHARACTER_KIND_BOSS, Name: "Guardião", Sheet: protector().sheet(),
+	}))
+	if err != nil {
+		t.Fatalf("CreateCharacter(Guardião) error = %v", err)
+	}
+	e := a.start(t, plan{
+		npcs:     []*playv1.Participant{{CharacterId: a.goblin.GetId()}, {CharacterId: guard.Msg.GetCharacter().GetId()}},
+		npcRolls: []int{3, 2},
+		players:  map[string]int32{"Toren": 18, "Pensantus": 10, "Brisa": 1},
+		reveal:   []string{"Goblin", "Guardião"},
+		at:       map[string][2]int32{"Toren": {3, 3}, "Goblin": {4, 3}, "Guardião": {5, 4}, "Pensantus": {10, 3}, "Brisa": {4, 9}},
+	})
+	f := favorFightOf(t, a, e)
+	f.give(t, a.toren)
+	f.hiddenEffect(t, "Toren", false, "["+attackAdv+"]")
+	held, err := favorPaths[0].send(t, f, a.caio, newKey(), true, nil)
+	if err != nil || !held.heldByWindow {
+		t.Fatalf("the spend on an attack the Guardião may protect against = %+v, %v, want it held for the window", held, err)
+	}
+	w := a.windowOf(t, a.master, playv1.ReactionKind_REACTION_KIND_PROTECTION)
+	if w == nil {
+		t.Fatalf("the master has no Protection window: %v", a.windows(t, a.master))
+	}
+	a.h.roller.queue(15)
+	a.mustAnswer(t, a.master, f.e, w.GetId(), useAnswer(0))
+	prompts := f.prompts(t, f.master)
+	if len(prompts) != 1 || f.favorHolds(t) {
+		t.Fatalf("the master reads %d prompts and the Inspiração is there %v, want one prompt and it spent", len(prompts), f.favorHolds(t))
+	}
+	var keyless int
+	if err := f.h.pool.QueryRow(t.Context(), `SELECT count(*) FROM session_events WHERE kind = $1 AND game_session_id = $2 AND idempotency_key IS NULL`, eventAttackRolled, f.sessionID).Scan(&keyless); err != nil || keyless != 1 {
+		t.Fatalf("the replay wrote %d keyless rolls (%v), want the one the undo reads", keyless, err)
+	}
+	return f, prompts[0]
+}
+
+// A Protection that was used does not close the chain, so the replayed roll (no key) is the last action: the "Devolver" that came before is
+// found by what the event says, and the undo gives nothing back.
+func TestUndoOfAProtectedRollNeverGivesBackAReturnedRefund(t *testing.T) {
+	t.Parallel()
+	f, p := protectedRefund(t)
+	if _, err := f.answerRefund(f.master, p.GetId(), true, newKey()); err != nil {
+		t.Fatalf("AnswerFavorRefund(Devolver) error = %v", err)
+	}
+	f.execSQL(t, `DELETE FROM character_favor WHERE character_id = $1`, f.toren.GetId()) // spent again, on another roll
+	id := f.log(t, f.master, f.e).GetUndoableEventId()
+	if id == "" {
+		t.Fatal("the protected roll is not the last action of the combat")
+	}
+	if err := f.undo(t, f.master, f.e, id); err != nil {
+		t.Fatalf("UndoLastAction(the roll) error = %v", err)
+	}
+	if n := f.rows(t); n != 0 {
+		t.Errorf("character_favor has %d rows after the undo of the roll, want 0: the Inspiração was returned once already", n)
+	}
+	if status := f.promptStatus(t, p.GetId()); status != "returned" {
+		t.Errorf("the prompt is %q, want returned", status)
+	}
+}
+
+// The roll is undone first: the Inspiração is back and the prompt closes as kept, so a "Devolver" that comes after the next spend is refused.
+func TestUndoOfAProtectedRollKeepsItsRefundPrompt(t *testing.T) {
+	t.Parallel()
+	f, p := protectedRefund(t)
+	id := f.log(t, f.master, f.e).GetUndoableEventId()
+	if id == "" {
+		t.Fatal("the protected roll is not the last action of the combat")
+	}
+	if err := f.undo(t, f.master, f.e, id); err != nil {
+		t.Fatalf("UndoLastAction(the roll) error = %v", err)
+	}
+	if !f.favorHolds(t) {
+		t.Fatal("the undo of the roll did not give the Inspiração back")
+	}
+	if status := f.promptStatus(t, p.GetId()); status != "kept" {
+		t.Errorf("the prompt of the undone roll is %q, want kept", status)
+	}
+	if got := f.prompts(t, f.master); len(got) != 0 {
+		t.Errorf("the master still reads %v after the roll was undone, want no prompt", got)
+	}
+	f.execSQL(t, `DELETE FROM character_favor WHERE character_id = $1`, f.toren.GetId())
+	_, err := f.answerRefund(f.master, p.GetId(), true, newKey())
+	wantFavorBlocked(t, "a Devolver to the prompt of an undone roll", err, blockedPassClosed)
+	if n := f.rows(t); n != 0 {
+		t.Errorf("character_favor has %d rows, want 0: no second Inspiração", n)
 	}
 }
