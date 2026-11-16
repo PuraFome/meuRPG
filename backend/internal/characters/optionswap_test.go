@@ -92,6 +92,12 @@ type swapFixture struct {
 // class level level with the XP for the next level: Defense, three postures and, with the dodges, the short dodge.
 func newSwapFixture(t *testing.T, level, xp int32, postures, dodge *rulesv1.FeatureSwapLevels) *swapFixture {
 	t.Helper()
+	return newSwapFixtureWith(t, level, xp, postures, dodge)
+}
+
+// newSwapFixtureWith is newSwapFixture for a character that has the classes in others too, after the fighter.
+func newSwapFixtureWith(t *testing.T, level, xp int32, postures, dodge *rulesv1.FeatureSwapLevels, others ...*charactersv1.ClassLevel) *swapFixture {
+	t.Helper()
 	f := &swapFixture{levelUpTable: newLevelUpTable(t, 900)}
 	features := []*rulesv1.TableFeature{posturesFeature(postures)}
 	if dodge != nil {
@@ -119,7 +125,7 @@ func newSwapFixture(t *testing.T, level, xp int32, postures, dodge *rulesv1.Feat
 			Name: "Batedor de torre", SkillKeys: []string{"skill:perception", "skill:survival"}, ProficiencyKeys: []string{"proficiency:thieves-tools", "language:elvish"},
 			FeatureName: "Olho no horizonte", FeatureText: "Você sempre acha o ponto mais alto de um lugar.", Equipment: "Uma luneta, um rolo de corda e 10 PO.",
 		}},
-		Classes:              []*charactersv1.ClassLevel{{ClassKey: "class:fighter", Level: level, Subclass: &charactersv1.ClassLevel_SubclassKey{SubclassKey: f.entry.GetKey()}}},
+		Classes:              append([]*charactersv1.ClassLevel{{ClassKey: "class:fighter", Level: level, Subclass: &charactersv1.ClassLevel_SubclassKey{SubclassKey: f.entry.GetKey()}}}, others...),
 		Languages:            []string{"Anão"},
 		SkillProficiencyKeys: []string{"skill:athletics", "skill:history"},
 		FeatureChoiceKeys:    picks,

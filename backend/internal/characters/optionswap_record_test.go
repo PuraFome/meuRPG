@@ -1,14 +1,20 @@
 package characters
 
 import (
+	"context"
+	"errors"
+	"slices"
 	"strings"
 	"testing"
 
+	"connectrpc.com/connect"
 	"github.com/jackc/pgx/v5"
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/sessiontell"
 )
 
 // A pick of a feature group is given up through the swap of the feature's options and the record, not through the
@@ -97,5 +103,100 @@ func TestAnOptionGivenUpTakesItsUsedCountsAndStatesWithIt(t *testing.T) {
 	}
 	if res, states := f.stored(t); strings.Contains(res, "garca") || strings.Contains(states, state) {
 		t.Errorf("after taking it back: resources %s, states %s, want it fresh", res, states)
+	}
+}
+
+// writingSpy is a module that writes through the transaction it is given, then answers err.
+type writingSpy struct{ err error }
+
+func (s writingSpy) OptionsGivenUp(ctx context.Context, tx pgx.Tx, _, characterID string, _ []OptionSwap, _ sessiontell.Tell) error {
+	if _, err := tx.Exec(ctx, `UPDATE characters SET name = 'Escrito pelo módulo' WHERE id = $1`, characterID); err != nil {
+		return err
+	}
+	return s.err
+}
+
+// The transaction the module gets is the level-up's own: what it writes through it is saved with the level, and is gone when the
+// module answers with an error.
+func TestTheModuleWritesInTheLevelUpsOwnTransaction(t *testing.T) {
+	t.Parallel()
+	f := newSwapFixture(t, 4, 6500, swapAt(5), nil)
+	swapped := f.choices(false)
+	swapped.SwapFeatureOptions = []*charactersv1.LevelUpPickSwap{featureSwap(f.postures.GetKey(), f.heron, f.crow)}
+	nameOf := func() string {
+		var name string
+		if err := f.h.pool.QueryRow(t.Context(), `SELECT name FROM characters WHERE id = $1`, f.fighter.GetId()).Scan(&name); err != nil {
+			t.Fatalf("read the name: %v", err)
+		}
+		return name
+	}
+
+	f.h.svc.SetOptionSwaps(writingSpy{err: errors.New("the module is down")})
+	if _, err := f.levelUp(f.other, f.fighter, swapped); err == nil {
+		t.Fatal("the level-up went through though the module refused")
+	}
+	if got := nameOf(); got != "Ícaro" {
+		t.Errorf("name = %q after the module's error, want the write rolled back with the level", got)
+	}
+	f.h.svc.SetOptionSwaps(writingSpy{})
+	if _, err := f.levelUp(f.other, f.fighter, swapped); err != nil {
+		t.Fatalf("level-up: %v", err)
+	}
+	if got := nameOf(); got != "Escrito pelo módulo" {
+		t.Errorf("name = %q after the level, want the module's write saved with it", got)
+	}
+}
+
+// The swap levels are the class's own: a fighter of class level 4 that has a barbarian level too (total level 5) is offered the
+// swap of a feature that allows it at class level 5, not at total level 6, and the module hears the total level the record holds.
+func TestTheSwapLevelsFollowTheClassLevelNotTheTotal(t *testing.T) {
+	t.Parallel()
+	barbarian := &charactersv1.ClassLevel{ClassKey: "class:barbarian", Level: 1}
+	notYet := newSwapFixtureWith(t, 4, 14000, swapAt(6), nil, barbarian)
+	if o := notYet.fighterOptions(t); len(o.GetSwapGroups()) != 0 {
+		t.Errorf("fighter 5 of total level 6 offers %v with a swap at class level 6, want none", o.GetSwapGroups())
+	}
+	f := newSwapFixtureWith(t, 4, 14000, swapAt(5), nil, barbarian)
+	spy := &optionSwapSpy{}
+	f.h.svc.SetOptionSwaps(spy)
+	if o := f.fighterOptions(t); groupOf(o, f.postures.GetKey()) == nil || o.GetTotalToLevel() != 6 {
+		t.Fatalf("offer = %v (total to level %d), want the Postures group at class level 5", o.GetSwapGroups(), o.GetTotalToLevel())
+	}
+	ch := f.choices(false)
+	ch.SwapFeatureOptions = []*charactersv1.LevelUpPickSwap{featureSwap(f.postures.GetKey(), f.heron, f.crow)}
+	if _, err := f.levelUp(f.other, f.fighter, ch); err != nil {
+		t.Fatalf("level-up: %v", err)
+	}
+	if len(spy.calls) != 1 || len(spy.calls[0].swaps) != 1 || spy.calls[0].swaps[0].ToLevel != 6 || spy.calls[0].swaps[0].ClassKey != "class:fighter" {
+		t.Errorf("heard %+v, want the fighter's swap at total level 6", spy.calls)
+	}
+}
+
+// The pool of a swap holds the options of the feature the master left on: one the master archived, or switched off for the players,
+// is never offered, and a swap that takes it is refused as one the level does not allow.
+func TestTheSwapPoolHoldsNoArchivedOrSwitchedOffOption(t *testing.T) {
+	t.Parallel()
+	f := newSwapFixture(t, 4, 6500, swapAt(5), nil)
+	option := func(name string) string {
+		return f.master.addEntry(t, f.campaign, &rulesv1.TableOption{
+			NamePt: name, Set: "table_feature", OfferedBy: f.postures.GetKey(), DescPt: []string{name + "."},
+		}).GetKey()
+	}
+	live, archived, off := option("Postura da Garra"), option("Postura antiga"), option("Postura desligada")
+	if _, err := f.master.table.ArchiveTableEntry(t.Context(), connect.NewRequest(&rulesv1.ArchiveTableEntryRequest{CampaignId: f.campaign, Key: archived})); err != nil {
+		t.Fatalf("ArchiveTableEntry() error = %v", err)
+	}
+	f.master.setOff(t, f.campaign, true, off)
+
+	pool := groupKeys(groupOf(f.fighterOptions(t), f.postures.GetKey()).GetPool())
+	if !slices.Contains(pool, live) || slices.Contains(pool, archived) || slices.Contains(pool, off) {
+		t.Errorf("pool = %v, want the live option and neither the archived nor the switched off one", pool)
+	}
+	for name, key := range map[string]string{"archived": archived, "switched off": off} {
+		ch := f.choices(false)
+		ch.SwapFeatureOptions = []*charactersv1.LevelUpPickSwap{featureSwap(f.postures.GetKey(), f.heron, key)}
+		if r := f.swapRefusal(t, ch); r.GetReason() != charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_SWAP_NOT_ALLOWED {
+			t.Errorf("a swap that takes the %s option: refusal = %v, want swap_not_allowed", name, r)
+		}
 	}
 }

@@ -63,7 +63,7 @@ The overlay refuses it (`addSwapLevels`, `featureswap.go`, `bad_value`) at `.swa
 The pool is the feature's options plus the options of the entry's other owned features that share an option with it, transitively (`poolOptionsOf`, over `groupPools`), without the picks the sheet has and without archived or switched-off options.
 The permission is the feature's own data: it does not depend on `PickSwapAllowed` or on an Ability Score Improvement at the level, and `LevelUpChoices.Swap` and the cantrip swap work at the same level.
 `LevelUpChoices.FeatureSwaps` (`[]PickSwap`) gives up `From` for `To`: at most one per group, `From` values distinct, `To` values distinct, each one of the offer's, else the swap is refused (`SWAP_NOT_ALLOWED`).
-`ApplyLevelUp` replaces the pick in place (the choice engine deals the picks in order); `CheckLevelUp` lets exactly the offered removals through (`unmatchedRemovals`) and judges the new pick on the sheet after the level (prerequisite, no repeat).
+`ApplyLevelUp` replaces the pick in place (the choice engine deals the picks in order); `CheckLevelUp` lets exactly the offered removals through (`unmatchedRemovals`), and `CheckLevelUpOf`, which the level-up calls with the choices the sheet was made from, only the removals a sent swap names (`sentSwaps`); `applyPicks` takes a pick out through `SwapInvocation` only for a Warlock's invocation and judges the new pick on the sheet after the level (prerequisite, no repeat).
 A history record is never rewritten.
 The sheet text of a feature with `swap_levels` carries one more paragraph, "Troca de opção: ...", saying at which class levels a pick may be swapped (`withSwapLine`, in both `Description` and `DescriptionPT`).
 

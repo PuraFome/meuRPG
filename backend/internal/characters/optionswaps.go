@@ -33,11 +33,16 @@ type OptionSwap struct {
 type OptionSwaps interface {
 	// OptionsGivenUp is called by LevelUpCharacter, in the level-up's own transaction tx (the one that holds the
 	// character's row and the session's funnel), right after the new sheet and the level-up's record are
-	// written and before the transaction commits, once for each level-up that swaps at least one option of a table
+	// written and before the transaction commits, once in each run of the transaction of a level-up that swaps at least one option of a table
 	// feature, with every swap of that level in swaps (never empty). It is not called for a preview, for a level-up
 	// that is refused, or for a level without such a swap. The character is campaignID's characterID; what the
 	// streams are told goes through t, once the transaction committed. An error aborts the level-up: nothing
 	// of it is saved and the caller gets the error.
+	//
+	// The transaction can run again, so the hook may be called more than once for one level-up, and it must do nothing outside
+	// tx. The character's own tables are not the hook's: the level-up itself, in the same transaction and before the hook, clears the
+	// used counts of the resources the given-up option defined and ends the states it started, so an option taken again later starts
+	// fresh; what other modules keep for the option is for the hook to clear.
 	OptionsGivenUp(ctx context.Context, tx pgx.Tx, campaignID, characterID string, swaps []OptionSwap, t sessiontell.Tell) error
 }
 

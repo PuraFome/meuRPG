@@ -507,3 +507,25 @@ func TestARemovalIsExcusedOnlyByTheSwapSentForIt(t *testing.T) {
 		t.Errorf("the swap that was sent: %v", err)
 	}
 }
+
+// A swap that gives up an option another pick of the sheet asks for is refused: the pick that is left without its
+// prerequisite is the level's problem, not one the sheet already had.
+func TestASwapCannotGiveUpTheOptionAnotherPickAsksFor(t *testing.T) {
+	t.Parallel()
+	c := withOverlay(t, swapPostureOverlay("class:fighter", FeatureSwapLevels{Levels: []int{8}}, FeatureSwapLevels{}))
+	at7 := postureFighter(t, c, 7)
+	// The sheet holds the Ox in the place of the Bull: it asks for the Heron, which the sheet has.
+	at7.FeatureChoices = slices.Clone(at7.FeatureChoices)
+	if i := slices.Index(at7.FeatureChoices, postureBull); i >= 0 {
+		at7.FeatureChoices[i] = postureOx
+	} else {
+		t.Fatalf("picks = %v, want the Bull among them", at7.FeatureChoices)
+	}
+	ch := satisfy(t, c, at7, "class:fighter", postureSubclass)
+	ch.FeatureSwaps = []PickSwap{{Group: postureFeature, From: postureHeron, To: postureHawk}}
+	wantRefusal(t, CheckLevelUpOf(at7, mustApply(t, c, at7, ch), ch, c), LevelUpReasonFeatureChoice, "full.feature_choice_keys")
+	ch.FeatureSwaps = []PickSwap{{Group: postureFeature, From: postureWolf, To: postureHawk}}
+	if err := CheckLevelUpOf(at7, mustApply(t, c, at7, ch), ch, c); err != nil {
+		t.Errorf("a swap that leaves the Heron: %v", err)
+	}
+}
