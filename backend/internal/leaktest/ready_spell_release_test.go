@@ -3,6 +3,7 @@ package leaktest
 import (
 	"slices"
 	"testing"
+	"time"
 
 	"connectrpc.com/connect"
 	"google.golang.org/protobuf/proto"
@@ -101,9 +102,10 @@ func TestTheMarkedWindowOfAHeldSpellIsTheOwnersAndTheMasters(t *testing.T) {
 	if began = w.waitBeganOf(w.master); began == nil {
 		t.Fatal("the master reads no beginning of the wait after the first mark")
 	}
+	w.clock.advance(5 * time.Second) // the wait has run: waitedMs is not 0, and is in their reads
 	readsOf("while Toren's player is marked as rolling", true)
 	for _, p := range []*person{w.master, w.caio} { // the positive controls: both fields are in their reads
-		w.readsHoldAll(t, p, "while Toren's player is marked as rolling", `"rolling"`, `"waitBeganAt"`)
+		w.readsHoldAll(t, p, "while Toren's player is marked as rolling", `"rolling"`, `"waitBeganAt"`, `"waitedMs"`)
 	}
 	got, unknown := w.markRolling(w.ana, id, false), w.markRolling(w.ana, newKey(), false)
 	if got.ok() || got.status != unknown.status || normalizeRead(string(got.body)) != normalizeRead(string(unknown.body)) {

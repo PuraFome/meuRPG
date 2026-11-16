@@ -2,6 +2,7 @@ package leaktest
 
 import (
 	"testing"
+	"time"
 
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -71,9 +72,10 @@ func TestAReadiedMovesWindowAndReleaseAreTheOwnersAndTheMasters(t *testing.T) {
 	if began = w.waitBeganOf(w.master); began == nil {
 		t.Fatal("the master reads no beginning of the wait after the first mark")
 	}
+	w.clock.advance(5 * time.Second) // the wait has run: waitedMs is not 0, and is in their reads
 	readsOf("while Toren's player is on the map", true)
 	for _, p := range []*person{w.master, w.caio} { // the positive controls: both fields are in their reads
-		w.readsHoldAll(t, p, "while Toren's player is on the map", `"rolling"`, `"waitBeganAt"`)
+		w.readsHoldAll(t, p, "while Toren's player is on the map", `"rolling"`, `"waitBeganAt"`, `"waitedMs"`)
 	}
 	if r := w.markRolling(w.caio, id, true); !r.ok() {
 		t.Fatalf("Caio's clear = %d %s", r.status, r.body)
@@ -110,4 +112,46 @@ func TestAReadiedMovesWindowAndReleaseAreTheOwnersAndTheMasters(t *testing.T) {
 	}
 	w.inspectPlayers(t, w.ana, w.pending)
 	w.readScreen(t, "after Toren's readied move", w.tvReader(), nil)
+}
+
+// The master releases the readied move of a hidden NPC (release_readied): the MOVED line it writes is a hidden NPC's, so no
+// player reads it, as no player reads any move of a hidden creature; nor the window, the fired line or the new square. The
+// master's reads are the positive controls.
+func TestAHiddenNPCsReadiedMoveLeavesNoLineForThePlayers(t *testing.T) {
+	w := newWorld(t)
+	hidden := w.combatant(w.hiddenNPC)
+	w.onTurnOf(hidden.GetId())
+	trigger := w.secrets.marker("readied-hidden-move-trigger")
+	rowID := w.combatantOf(must(w.master.ready.ReadyAction(t.Context(), rq(&playv1.ReadyActionRequest{
+		CampaignId: w.campaign, EncounterId: w.encounter.GetId(), CombatantId: hidden.GetId(), IdempotencyKey: newKey(),
+		TriggerText: trigger, Kind: playv1.ReadiedKind_READIED_KIND_MOVE,
+	}))).GetEncounter(), w.hiddenNPC.GetId()).GetReadied().GetId()
+	w.endTurnOf(hidden)
+	must(w.master.ready.FireReadied(t.Context(), rq(&playv1.FireReadiedRequest{CampaignId: w.campaign, EncounterId: w.encounter.GetId(), ReadiedId: rowID, IdempotencyKey: newKey()})))
+	from := w.combatant(w.hiddenNPC)
+	moved := w.master.call(playv1connect.CombatServiceMoveCombatantProcedure, &playv1.MoveCombatantRequest{
+		CampaignId: w.campaign, EncounterId: w.encounter.GetId(), CombatantId: hidden.GetId(), IdempotencyKey: newKey(), Col: from.GetCol() - 1, Row: from.GetRow(), ReleaseReadied: true,
+	})
+	if !moved.ok() {
+		t.Fatalf("the master's release of the hidden NPC's readied move: status %d %s", moved.status, moved.body)
+	}
+	if after := w.combatantOf(w.master.currentEncounter(w), w.hiddenNPC.GetId()); after.GetCol() == from.GetCol() && after.GetRow() == from.GetRow() {
+		t.Fatalf("the hidden NPC did not move from (%d,%d)", from.GetCol(), from.GetRow())
+	}
+	if n := movedLinesOf(w.logOfPerson(w.master), hidden.GetId()); n != 1 { // the positive control
+		t.Errorf("the master reads %d moved lines of the hidden NPC, want 1", n)
+	}
+	if !w.readsHold(w.master, trigger) {
+		t.Error("the master's reads hold no trigger: the canary is unreachable")
+	}
+	for _, p := range []*person{w.ana, w.caio} {
+		if n := movedLinesOf(w.logOfPerson(p), hidden.GetId()); n != 0 {
+			t.Errorf("%s reads %d moved lines of the hidden NPC, want none", p.name, n)
+		}
+		if lines, _ := readiedKindLinesOf(w.logOfPerson(p), hidden.GetId(), playv1.CombatLogKind_COMBAT_LOG_KIND_READIED_FIRED); lines != 0 {
+			t.Errorf("%s reads %d fired lines of the hidden NPC, want none", p.name, lines)
+		}
+	}
+	w.inspectPlayers(t, w.ana, w.caio, w.pending)
+	w.readScreen(t, "after the hidden NPC's readied move", w.tvReader(), nil)
 }
