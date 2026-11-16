@@ -243,12 +243,19 @@ func IdentitiesOf(stored []string, issues []Issue) []string {
 	return out
 }
 
-// retold is the lost prerequisite said over the sheet d: the same conditions, with what the character has there.
+// retold is the lost prerequisite said over the sheet d, the one the character ends up with: each condition the entry
+// lacks there, with what the character has. An entry lost in an earlier pass may lack more on d than when it was lost (the
+// score a lost feat gave), and what it lacked then and meets now is not said. The conditions it was lost for are kept when
+// d meets all of them, as it stays lost.
 func (c *content) retold(l *LostPrerequisite, b Build, d Derived) *LostPrerequisite {
 	if l.offeredBy != "" {
 		return c.lostOffered(l.Key, l.offeredBy)
 	}
-	return c.lost(l.Key, l.Option, l.unmet, b, d)
+	unmet := c.unmetOf(l.Key, l.Option, b, d)
+	if len(unmet) == 0 {
+		unmet = l.unmet
+	}
+	return c.lost(l.Key, l.Option, unmet, b, d)
 }
 
 // lostCondition says one missing condition and what the character has of it.
