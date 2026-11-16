@@ -148,6 +148,20 @@ describe('NpcCheckSheet', () => {
     expect(state.card()?.title).toBe('Capitão bandido · Enganação');
   });
 
+  it('says "Rolando…" while the roll is on the way, dashed, and rolls once', async () => {
+    let finish: (v: unknown) => void = () => undefined;
+    const { flush, choose, button, roll } = setup({ roll: () => new Promise((resolve) => (finish = resolve)) });
+    await flush();
+    await choose('Capitão bandido');
+    button('Rolar Enganação do Capitão bandido')?.click();
+    await flush();
+    expect(button('Rolando…')?.getAttribute('aria-disabled')).toBe('true');
+    expect(button('Cancelar')?.getAttribute('aria-disabled') ?? button('Cancelar')?.hasAttribute('disabled')).toBeTruthy();
+    expect(roll).toHaveBeenCalledTimes(1);
+    finish(npcCheckRead());
+    await flush();
+  });
+
   it('rolls with the typed d20 only from 1 to 20', async () => {
     const { el, flush, choose, button, roll, text } = setup();
     await flush();

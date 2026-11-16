@@ -19,7 +19,7 @@
       matButton
       type="button"
       class="sa__group"
-      [class.sa__group--off]="npc.combatOpen()"
+      [class.mr-button--off]="npc.combatOpen()"
       [attr.aria-disabled]="npc.combatOpen() ? 'true' : null"
       (click)="!npc.combatOpen() && npc.ask()"
     >

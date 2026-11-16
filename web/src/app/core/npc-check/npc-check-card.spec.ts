@@ -1,5 +1,5 @@
 import { NpcCheckAskState } from '../../../gen/meurpg/play/v1/combat_pb';
-import { cardOf, nobodyText } from './npc-check-card';
+import { cardOf, nobodyReasonOf, nobodyText } from './npc-check-card';
 import { ask, npcCheckRead } from './npc-check-testing';
 
 const { WAITING, CUT, PASSED, CLOSED } = NpcCheckAskState;
@@ -144,5 +144,12 @@ describe('cardOf', () => {
     const read = npcCheckRead({ holdId: '', settled: true, total: 16, asks: [] });
     expect(cardOf(read, 'hidden').nobodyText).toBe(nobodyText('hidden'));
     expect(cardOf(read).nobodyText).toBe(nobodyText('unknown'));
+  });
+
+  it('reads the reason from one mapping, which says "unknown" until the server sends the enum', () => {
+    expect(nobodyReasonOf(npcCheckRead({ settled: true, asks: [] }))).toBe('unknown');
+    expect(cardOf(npcCheckRead({ settled: true, asks: [] }), 'hidden').nobodyText).toBe(
+      'Ninguém foi perguntado: o token da criatura está escondido no mapa.',
+    );
   });
 });

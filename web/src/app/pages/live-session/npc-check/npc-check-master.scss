@@ -12,11 +12,6 @@
 .entry {
   align-self: flex-start;
   min-height: 44px;
-
-  &--off {
-    border: 1px dashed var(--mr-control-line);
-    color: var(--mr-ink-muted);
-  }
 }
 
 .combat {

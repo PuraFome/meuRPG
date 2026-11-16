@@ -3,7 +3,7 @@
     matButton
     type="button"
     class="entry"
-    [class.entry--off]="launcher.combatOpen()"
+    [class.mr-button--off]="launcher.combatOpen()"
     [attr.aria-disabled]="launcher.combatOpen() ? 'true' : null"
     (click)="open()"
   >

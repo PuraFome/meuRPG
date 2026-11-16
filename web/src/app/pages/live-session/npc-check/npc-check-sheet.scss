@@ -19,6 +19,11 @@
   min-width: 0;
 }
 
+// The select's label sits half above its box: with no heading over it, the column leaves room so the scrolling body does not clip it.
+.col--test {
+  padding-top: 8px;
+}
+
 .col__head {
   margin: 0;
   font-size: var(--mr-font-16);
@@ -56,16 +61,10 @@
   }
 }
 
-.again {
-  min-height: 44px;
-  padding: 0 4px;
-  border: 0;
-  background: none;
-  color: inherit;
-  font: inherit;
-  font-weight: 700;
-  text-decoration: underline;
-  cursor: pointer;
+.read-error {
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .foot {

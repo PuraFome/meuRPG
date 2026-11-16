@@ -50,12 +50,6 @@
 
 .sa__group {
   min-height: 44px;
-
-  // A combat is open: the entry stays in its place and says why (the line is the card's host's).
-  &--off {
-    border: 1px dashed var(--mr-control-line);
-    color: var(--mr-ink-muted);
-  }
 }
 
 // The amber "N rolagens novas", on the header and on the action it belongs to.

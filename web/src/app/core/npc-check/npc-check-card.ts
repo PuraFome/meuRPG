@@ -55,6 +55,15 @@ const NOBODY_TEXTS: Readonly<Record<NobodyReason, string>> = {
   unseen: 'Ninguém foi perguntado: nenhum bardo vê a criatura.',
 };
 
+/**
+ * The one place that turns what the server says into a reason. The server will add a master-only enum to `GetNpcCheck` (no bard can cut,
+ * the token is hidden, the creature cannot be charmed, nobody sees it); until it does every check reads `unknown`, and this mapping is
+ * what changes.
+ */
+export function nobodyReasonOf(_read: NpcCheckRead): NobodyReason {
+  return 'unknown';
+}
+
 /** The sentence under a check that settled with nobody asked. */
 export function nobodyText(reason: NobodyReason): string {
   return NOBODY_TEXTS[reason];
@@ -105,7 +114,7 @@ function rowOf(read: NpcCheckRead, index: number, firstWaiting: number): AskRowV
 }
 
 /** The card the master reads for the check the server holds or settled (`GetNpcCheck`, `RollNpcCheck`, `SkipNpcCheckAsks`). */
-export function cardOf(read: NpcCheckRead, reason: NobodyReason = 'unknown'): NpcCardVm {
+export function cardOf(read: NpcCheckRead, reason: NobodyReason = nobodyReasonOf(read)): NpcCardVm {
   const total = read.d20?.total ?? 0;
   const cutters = read.asks.filter((a) => a.state === NpcCheckAskState.CUT);
   const cutSoFar = cutters.reduce((sum, a) => sum + a.face, 0);
