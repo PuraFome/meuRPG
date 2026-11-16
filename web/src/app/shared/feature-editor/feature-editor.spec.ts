@@ -551,6 +551,35 @@ describe('FeatureEditor (a trait, a feature)', () => {
       expect(sub(1)).not.toContain('Precisa de ajuste');
     });
 
+    it('puts the refusals of a new save at the places it names, so the field it focuses is where the option now is', async () => {
+      const path = 'table_race.traits[1].options[1].prerequisite.requires_option_keys';
+      setup(three(), {
+        allowOptions: true,
+        index: -1,
+        count: 0,
+        issues: { [path]: ['Sem motivo.'] },
+      });
+      await render();
+      arrow('Subir', 'Asa Partida').click();
+      fixture.componentRef.setInput('feature', emitted.at(-1));
+      await render();
+      // A new save names its refusals by the places the options have now: the option at place 2 (Golpe do Corvo, after the move).
+      fixture.componentRef.setInput('issuesOf', (p: string) =>
+        p === path ? ['Outra recusa.'] : [],
+      );
+      await render();
+      const sub = (n: number) =>
+        text(el.querySelectorAll('.opt')[n - 1].querySelector('.opt__sub')!);
+      expect(sub(2)).toContain('Precisa de ajuste');
+      expect(sub(1)).not.toContain('Precisa de ajuste');
+      expect(el.querySelectorAll('.opt')[1].classList).toContain('opt--open');
+      expect(
+        el
+          .querySelectorAll('.opt')[1]
+          .querySelector(`[data-field^="${path.replace(/\.[^.]+$/, '')}"]`),
+      ).not.toBeNull();
+    });
+
     it('draws no arrows for a feature with one option', () => {
       setup(
         { ...three(), options: [named('k1', 'Golpe')] },
