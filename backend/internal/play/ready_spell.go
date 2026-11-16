@@ -14,6 +14,7 @@ import (
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
+	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/reaction"
 )
@@ -75,12 +76,18 @@ func (f *readyFlow) checkReadyReleasable(cf *castFlow) func(context.Context) err
 	}
 }
 
+// laysZoneOnMap says casting the spell lays a zone on the map: it keeps one and the combat has a map. Ready and the
+// answer of its window both read it, so the two refuse the same spells.
+func laysZoneOnMap(sp link.Spell, enc playdb.Encounter) bool {
+	_, keepsZone := zoneDefOfSpell(sp)
+	return keepsZone && !isTheatre(enc)
+}
+
 // unreleasable names what the spell asks that the window's answer cannot carry, "" when it asks nothing of the kind.
 func (f *castFlow) unreleasable(ctx context.Context) (string, error) {
 	sp := f.sp
-	_, keepsZone := zoneDefOfSpell(sp)
 	switch placement := placementOf(sp); {
-	case keepsZone && !isTheatre(f.c.enc):
+	case laysZoneOnMap(sp, f.c.enc):
 		return "a zone to lay on the map", nil
 	case sp.Summon:
 		return "the creatures of a summon", nil

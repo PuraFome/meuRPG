@@ -184,6 +184,36 @@ func TestAReadiedAreaReleasedWithNoTargetsIsNotAimedAtTheCreatureNamedAtReady(t 
 	}
 }
 
+// A readied spell that lays a zone on a map (Web, Grease, a table spell with a zone) is refused by the answer too: it
+// carries no point, so the release would spend the reaction and lay nothing. The row is written by hand, as above.
+func TestAReadiedZoneOnAMapIsNotReleasedByTheAnswer(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct{ name, spell string }{
+		{"Web", webSpell},
+		{"Grease", greaseKey},
+		{"a table spell with a zone", tableSphereZone},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			a := newTableReadier(t)
+			e := a.castersFight(t, 1)
+			a.mustReady(t, a.ana, a.readySpell(t, e, readyZoneCaster, tableCasterBall, 1, ""))
+			a.execSQL(t, `UPDATE readied_actions SET action_key = $1 WHERE status = 'waiting'`, tc.spell)
+			e = a.mustEndTurn(t, a.master, e)
+			w := a.mustFire(t, e, readyZoneCaster)
+			events := a.events(t)
+			_, err := a.answerReaction(t, a.ana, e, w.GetId(), useSpellAnswer)
+			wantCode(t, tc.name+" answered", err, connect.CodeInvalidArgument)
+			if got, want := err.Error(), "invalid_argument: this spell lays a zone on the map, which the answer cannot place"; got != want {
+				t.Fatalf("%s answered: error = %q, want %q", tc.name, got, want)
+			}
+			if !a.readiedOpen(t, readyZoneCaster) || a.readiedStatus(t, readyZoneCaster) != readiedWaiting || a.events(t) != events {
+				t.Errorf("the refused answer left the window open %v, rows %q, events %d -> %d", a.readiedOpen(t, readyZoneCaster), a.readiedStatus(t, readyZoneCaster), events, a.events(t))
+			}
+		})
+	}
+}
+
 // A readied Sleep on a map is placed at a point, which the answer never carries (CastSpell does): the answer is
 // refused, with targets or without, and the window stays open. The targets are never dropped for the creatures in the area.
 // The row is one written before Ready refused such spells (READY_SPELL_NOT_RELEASABLE): an open combat in production can

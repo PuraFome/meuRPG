@@ -182,7 +182,7 @@ The Ready sheet offers the spells the window releases with darts, creatures or n
 It shows with a reason, and does not offer, a spell that asks the caster an ability (Enhance Ability), the creatures of a summon (Conjure Animals) or a damage type (Flame Strike): the answer carries no `ability_key`, `summon` or `damage_type_key`.
 The sheet reads them as the cast sheet does: `needsAbility`, the summon options of the character and the `damage_choice` of the spell's details.
 The server refuses the same spells at Ready, so a client that does not offer them is not the only guard.
-The sheet fails open: a read that fails leaves the spell offered. A revival (Revivify) is told by nothing the web reads, so only the server refuses it, and the sheet shows the sentence of `READY_SPELL_NOT_RELEASABLE`.
+The sheet fails open: a read that fails leaves the spell offered. A revival (Revivify) is told by nothing the web reads, and a spell that lays a zone on a map is still offered by the sheet, so only the server refuses both; the answer of the window refuses a zone spell too (`laysZoneOnMap`, shared with Ready) for a row written before that refusal. The sheet shows the sentence of `READY_SPELL_NOT_RELEASABLE`.
 While the row waits, `GetTurnOptions.spell_targets` of its readier also lists the targets of the held spell (`heldEntry`), with the darts of its slot, so the window can show them.
 It does so only off the readier's turn, where the window opens and no ordinary entry is listed: on the turn a second action (Action Surge) could list the same spell twice, with nothing to tell the entries apart.
 A held spell attack lists none.
