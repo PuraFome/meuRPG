@@ -40,8 +40,13 @@ const (
 	// An infusion of the table's class that Toren did not pick.
 	infusionFocus = "feature:class-engenhista-de-li-6d59b9--diapasao-interno@mesa"
 
-	// The names the pack gives the blade, the seal and the focus, which the test swaps for markers.
-	packBladeName, packSealName, packFocusName = "Gume Vivo", "Selo de Casa", "Diapasão Interno"
+	// The names the pack gives the blade, the plate, the seal and the focus, which the test swaps for markers.
+	packBladeName, packPlateName, packSealName, packFocusName = "Gume Vivo", "Couraça de Pétalas", "Selo de Casa", "Diapasão Interno"
+
+	// The armor Toren wears, which carries the plate, and the armor class the plate adds at his level in the copy of the pack
+	// the test imports: 3, the largest bonus a piece gives, which the copy gives the plate only (the blade gives 2).
+	torenArmor = "equipment:leather-armor"
+	plateBonus = 3
 
 	// The spell the casting copy of the artificer attacks with, and what its attack adds up to: the proficiency bonus (3) and
 	// the Intelligence modifier (3) at level 6, and the focus (2 in the copy of the pack).
@@ -50,6 +55,8 @@ const (
 	kindInfusionFocus           = "infusion-focus-name"
 
 	kindInfusionName   = "infusion-name"
+	kindInfusionPlate  = "infusion-plate-name"
+	kindInfusionAC     = "infusion-armor-class"
 	kindInfusionSeal   = "infusion-seal-name"
 	kindInfusionObject = "infusion-object-name"
 	kindInfusionKey    = "infusion-key"
@@ -81,13 +88,33 @@ func castingPack(data []byte) []byte {
 	return out
 }
 
-// artificerPackWith is the fixture pack with the names of three of its infusions replaced; casts gives the class a casting.
-func artificerPackWith(bladeName, sealName, focusName string, casts bool) *rulesv1.TableContentPack {
+// plateBonuses gives the plate of the pack its own bonus, plateBonus at the levels of the test: the armor class it adds is a
+// number no other infusion of the table gives, so it can be searched.
+func plateBonuses(node any) {
+	switch n := node.(type) {
+	case map[string]any:
+		if n["key"] == infusionPlate {
+			n["infusion"].(map[string]any)["bonusSteps"] = []any{map[string]any{"classLevel": 2, "bonus": plateBonus}}
+			return
+		}
+		for _, v := range n {
+			plateBonuses(v)
+		}
+	case []any:
+		for _, v := range n {
+			plateBonuses(v)
+		}
+	}
+}
+
+// artificerPackWith is the fixture pack with the names of four of its infusions replaced; casts gives the class a casting.
+func artificerPackWith(bladeName, plateName, sealName, focusName string, casts bool) *rulesv1.TableContentPack {
 	data, err := os.ReadFile(artificerPack)
 	if err != nil {
 		panic(err)
 	}
 	data = bytes.ReplaceAll(data, []byte(packBladeName), []byte(bladeName))
+	data = bytes.ReplaceAll(data, []byte(packPlateName), []byte(plateName))
 	data = bytes.ReplaceAll(data, []byte(packSealName), []byte(sealName))
 	data = bytes.ReplaceAll(data, []byte(packFocusName), []byte(focusName))
 	// The pack's bonuses are 1 and 2: a 1 or a 2 turns up in numeric fields everywhere, so the copy gives 2 and 3 (the table's
@@ -95,6 +122,15 @@ func artificerPackWith(bladeName, sealName, focusName string, casts bool) *rules
 	// magic_bonus only (see importArtificer's caller), where nothing else of this table holds a 2.
 	data = bytes.ReplaceAll(data, []byte(`"bonus": 2`), []byte(`"bonus": 3`))
 	data = bytes.ReplaceAll(data, []byte(`"bonus": 1`), []byte(`"bonus": 2`))
+	var tree map[string]any
+	if err := json.Unmarshal(data, &tree); err != nil {
+		panic(err)
+	}
+	plateBonuses(tree)
+	data, err = json.Marshal(tree)
+	if err != nil {
+		panic(err)
+	}
 	if casts {
 		data = castingPack(data)
 	}
@@ -105,10 +141,11 @@ func artificerPackWith(bladeName, sealName, focusName string, casts bool) *rules
 	return pack
 }
 
-// importArtificer gives the table the artificer class, with the names of the blade, the seal and the focus as the markers given.
-func (w *world) importArtificer(bladeName, sealName, focusName string, casts bool) {
+// importArtificer gives the table the artificer class, with the names of the blade, the plate, the seal and the focus as the
+// markers given.
+func (w *world) importArtificer(bladeName, plateName, sealName, focusName string, casts bool) {
 	must(w.master.table.ImportTableContent(w.t.Context(), rq(&rulesv1.ImportTableContentRequest{
-		CampaignId: w.campaign, Pack: artificerPackWith(bladeName, sealName, focusName, casts), Mode: rulesv1.TableImportMode_TABLE_IMPORT_MODE_APPLY, IdempotencyKey: newKey(),
+		CampaignId: w.campaign, Pack: artificerPackWith(bladeName, plateName, sealName, focusName, casts), Mode: rulesv1.TableImportMode_TABLE_IMPORT_MODE_APPLY, IdempotencyKey: newKey(),
 	})))
 }
 
@@ -117,6 +154,7 @@ func (w *world) artificerSheet(casts bool, weapons ...string) *charactersv1.Char
 	sheet := w.fullSheet(artificerClass, "race:human", 6)
 	full := sheet.GetFull()
 	full.WeaponKeys = weapons
+	full.ArmorKey = torenArmor
 	full.SkillProficiencyKeys = []string{"skill:arcana", "skill:history"}
 	full.FeatureChoiceKeys = []string{infusionBlade, infusionPlate, infusionAsh, infusionFalse, infusionSeal}
 	if casts {
@@ -139,8 +177,8 @@ func (w *world) infuse(p *person, characterID, infusionKey, itemKey, object stri
 // infusedTable is the table of the attack rolls with Toren as the artificer.
 type infusedTable struct {
 	*rollsTable
-	bladeName, sealName, objectName string
-	blade, seal                     *charactersv1.SheetInfusion
+	bladeName, plateName, sealName, objectName string
+	blade, plate, seal                         *charactersv1.SheetInfusion
 	// focusName and focus are the focus of the casting table: an object Toren casts through, attuned.
 	focusName, focusObject string
 	focus                  *charactersv1.SheetInfusion
@@ -161,6 +199,10 @@ func newInfusedTableWith(t *testing.T, casts bool) *infusedTable {
 		it.rollsTable = rt
 		w := rt.world
 		it.bladeName = w.secrets.marker(kindInfusionName, w.caio)
+		it.plateName = packPlateName // the plate has a marker only on the table that wears it (the casting table keeps four records)
+		if !casts {
+			it.plateName = w.secrets.marker(kindInfusionPlate, w.caio)
+		}
 		it.sealName = w.secrets.marker(kindInfusionSeal, w.caio)
 		it.objectName = w.secrets.marker(kindInfusionObject, w.caio)
 		// The keys of the infusions Toren keeps, and the bonus the blade gives, are the owner's and the master's. A key is the
@@ -169,16 +211,24 @@ func newInfusedTableWith(t *testing.T, casts bool) *infusedTable {
 		w.secrets.add(&canary{needle: infusionBlade, kind: kindInfusionKey, readers: names([]*person{w.caio})})
 		w.secrets.add(&canary{needle: infusionSeal, kind: kindInfusionKey, readers: names([]*person{w.caio})})
 		w.secrets.add(&canary{needle: strconv.Itoa(bladeBonus), kind: kindInfusionBonus, numeric: true, value: bladeBonus, fields: []string{"magic_bonus"}, readers: names([]*person{w.caio})})
+		if !casts { // the plate is the armor class: the number is searched in the modifier lines (value), where only it gives 3
+			w.secrets.add(&canary{needle: infusionPlate, kind: kindInfusionKey, readers: names([]*person{w.caio})})
+			w.secrets.add(&canary{needle: strconv.Itoa(plateBonus), kind: kindInfusionAC, numeric: true, value: plateBonus, fields: []string{"value"}, readers: names([]*person{w.caio})})
+		}
 		it.focusName = packFocusName // the focus has a marker only on the casting table
 		if casts {
 			it.focusName = w.secrets.marker(kindInfusionFocus, w.caio)
 		}
-		w.importArtificer(it.bladeName, it.sealName, it.focusName, casts)
+		w.importArtificer(it.bladeName, it.plateName, it.sealName, it.focusName, casts)
 		w.toren = must(w.caio.characters.UpdateCharacter(w.t.Context(), rq(&charactersv1.UpdateCharacterRequest{
 			CampaignId: w.campaign, CharacterId: w.toren.GetId(), Revision: w.toren.GetRevision(), Name: w.toren.GetName(), Sheet: w.artificerSheet(casts, dagger, shortbow),
 		}))).GetCharacter()
 		it.blade = w.infuse(w.caio, w.toren.GetId(), infusionBlade, dagger, "")
 		it.seal = w.infuse(w.caio, w.toren.GetId(), infusionSeal, "", it.objectName)
+		if !casts {
+			it.plate = w.infuse(w.caio, w.toren.GetId(), infusionPlate, torenArmor, "")
+			w.secrets.id("infusion-plate-record", it.plate.GetId(), w.caio)
+		}
 		w.secrets.id("infusion-record", it.blade.GetId(), w.caio)
 		w.secrets.id("infusion-seal-record", it.seal.GetId(), w.caio)
 		if casts {
@@ -319,8 +369,8 @@ func TestAnInfusionIsTheOwnersAndTheMastersAlone(t *testing.T) {
 	must(m.infusions.EndInfusion(ctx, rq(&charactersv1.EndInfusionRequest{CampaignId: w.campaign, CharacterId: w.toren.GetId(), InfusionId: it.seal.GetId()})))
 	it.ask(t, "the seal ended")
 
-	// The session wrote its events: two infused, one moved and two ended. No read lists them to anyone.
-	for kind, want := range map[string]int{"infusion_infused": 2, "infusion_moved": 1, "infusion_ended": 2} {
+	// The session wrote its events: three infused, one moved and two ended (the plate stays on the armor). No read lists them to anyone.
+	for kind, want := range map[string]int{"infusion_infused": 3, "infusion_moved": 1, "infusion_ended": 2} {
 		if got := it.sessionEvents(kind); got != want {
 			t.Errorf("the session holds %d events of kind %s, want %d", got, kind, want)
 		}

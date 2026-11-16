@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"slices"
 	"strings"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/jackc/pgx/v5"
@@ -345,7 +346,10 @@ type infusionPlan struct {
 }
 
 // planInfuse checks an InfuseItem request against the sheet and its records, in the order the caller is answered: the
-// infusion is known and not in use, the record to end is the infuser's and live, the parameter, the item, the limit.
+// infusion is known and not in use, the record to end is one the character holds, the parameter, the item, the limit.
+// A write never pushes a valid record out silently: with the limit full the one record that gives way is a record that
+// counts, which ends with its event; naming a record that does not count, or infusing a piece that carries one over the
+// limit, is refused, since ending such a record frees no place.
 func (v infusionView) planInfuse(msg *charactersv1.InfuseItemRequest) (infusionPlan, error) {
 	info, ok := v.knownData(msg.GetInfusionKey())
 	if !ok {
@@ -355,7 +359,7 @@ func (v infusionView) planInfuse(msg *charactersv1.InfuseItemRequest) (infusionP
 	if err != nil {
 		return infusionPlan{}, err
 	}
-	if endID := msg.GetEndInfusionId(); endID != "" && v.liveRecord(endID) == nil {
+	if endID := msg.GetEndInfusionId(); endID != "" && v.heldRecord(endID) == nil {
 		return infusionPlan{}, errInfusionBlocked(charactersv1.InfusionBlockedReason_INFUSION_BLOCKED_REASON_ITEM_CHANGED)
 	}
 	if err := checkParameter(info, msg.GetParameter()); err != nil {
@@ -378,7 +382,7 @@ func (v infusionView) planInfuse(msg *charactersv1.InfuseItemRequest) (infusionP
 	if msg.GetAttuneNow() && !info.RequiresAttunement {
 		return infusionPlan{}, invalidArgument(fieldErr("attune_now", "is for an infusion that asks for attunement"))
 	}
-	plan.ends, err = v.replaced(msg.GetInfusionKey(), msg.GetEndInfusionId())
+	plan.ends, err = v.makeRoom(msg.GetInfusionKey(), msg.GetEndInfusionId(), here, taken)
 	plan.taken = slices.DeleteFunc(plan.taken, func(id string) bool { return slices.Contains(plan.ends, id) || id == here })
 	if here != "" {
 		plan.ends = append([]string{here}, slices.DeleteFunc(plan.ends, func(id string) bool { return id == here })...)
@@ -386,8 +390,24 @@ func (v infusionView) planInfuse(msg *charactersv1.InfuseItemRequest) (infusionP
 	return plan, err
 }
 
-// validOnPiece is the id when it names a valid record, or one the limit pushed out, that sits on the gear piece of the choice,
-// "" otherwise.
+// makeRoom says which valid record ends for a new infusion of the key, and refuses what would push a valid record out with no
+// event: with the limit full, a piece that carries a record over the limit of the host (here, or one of the records on it that
+// are not valid now, taken) is refused, named or not, and so is a named record that does not count (see replaced). A named
+// record on the piece that is not valid for another reason ends `taken` named or not: the name asks for nothing more.
+func (v infusionView) makeRoom(infusionKey, named, here string, taken []string) ([]string, error) {
+	host := v.content.InfusionHost(infusionKey)
+	if v.hostFull(host) && v.anyOverLimit(host, append([]string{here}, taken...)) {
+		return nil, errInfusionBlocked(charactersv1.InfusionBlockedReason_INFUSION_BLOCKED_REASON_ITEM_CHANGED)
+	}
+	if slices.Contains(taken, named) {
+		named = ""
+	}
+	return v.replaced(infusionKey, named)
+}
+
+// validOnPiece is the id when it names a valid record, or one the limit pushed out (only a host with a place free can hold
+// one of another host, since a record is over the limit only while its host is full), that sits on the gear piece of the
+// choice, "" otherwise.
 func (v infusionView) validOnPiece(id string, c infusionChoice) string {
 	if id == "" || c.object() {
 		return ""
@@ -423,19 +443,15 @@ func addOnce(ids []string, id string) []string {
 	return append(ids, id)
 }
 
-// replaced says which valid record ends to make room for a new infusion of the host: none under the limit; at it, the one the
-// caller named (a valid record of the same feature, or one the limit pushed out, which frees no place but ends as replaced),
-// else the oldest valid one (since, then id). The derivation never counts more valid records than the limit, so one makes
-// room; a record the limit pushed out stays live and ends by no write of its own unless the caller names it. A host
-// with no limit has no room to make: the character does not know the infusion.
+// replaced says which valid record ends to make room for a new infusion of the host: none under the limit, where a name asks
+// for nothing; at it, the one the caller named, which must count (a valid record of the same feature: one the limit pushed
+// out frees no place, and ending it would push the oldest valid record out with no event), else the oldest valid one (since,
+// then id). The derivation never counts more valid records than the limit, so one makes room; a record the limit pushed out
+// stays live and ends by no write of its own (the player ends it with EndInfusion). A host with no limit has no room to make:
+// the character does not know the infusion.
 func (v infusionView) replaced(infusionKey, named string) ([]string, error) {
 	host := v.content.InfusionHost(infusionKey)
-	var limit, used int
-	for _, h := range v.derived.InfusionHosts {
-		if h.HostKey == host {
-			limit, used = h.Limit, h.Used
-		}
-	}
+	limit, used := v.hostUse(host)
 	if used < limit {
 		return nil, nil
 	}
@@ -456,10 +472,36 @@ func (v infusionView) replaced(infusionKey, named string) ([]string, error) {
 	return nil, nil
 }
 
-// endableOf says whether the record is a valid one of the host, or one the host's limit pushed out.
+// hostUse is the limit of the host at the character's level and how many valid records it holds.
+func (v infusionView) hostUse(host string) (limit, used int) {
+	for _, h := range v.derived.InfusionHosts {
+		if h.HostKey == host {
+			limit, used = h.Limit, h.Used
+		}
+	}
+	return limit, used
+}
+
+// hostFull says the host's limit is full (or there is none): a new infusion of the host makes one valid record give way.
+func (v infusionView) hostFull(host string) bool {
+	limit, used := v.hostUse(host)
+	return used >= limit
+}
+
+// anyOverLimit says one of the records is over the limit of the host.
+func (v infusionView) anyOverLimit(host string, ids []string) bool {
+	for _, st := range v.derived.Infusions {
+		if st.OverLimit && st.HostKey == host && slices.Contains(ids, st.ID) {
+			return true
+		}
+	}
+	return false
+}
+
+// endableOf says whether the record is a valid one of the host: the only kind whose ending frees a place.
 func (v infusionView) endableOf(host, id string) bool {
 	for _, st := range v.derived.Infusions {
-		if st.ID == id && (st.Valid || st.OverLimit) && st.HostKey == host {
+		if st.ID == id && st.Valid && st.HostKey == host {
 			return true
 		}
 	}
@@ -476,10 +518,11 @@ func (v infusionView) liveOf(infusionKey string) *rules.InfusionRecord {
 	return nil
 }
 
-// liveRecord is the live record of the infuser with the id, nil when there is none.
-func (v infusionView) liveRecord(id string) *rules.InfusionRecord {
+// heldRecord is the live record the character holds with the id, nil when there is none: another character's, another
+// campaign's or an ended one is not there, and the answer does not say which.
+func (v infusionView) heldRecord(id string) *rules.InfusionRecord {
 	for i := range v.records {
-		if v.records[i].ID == id && v.records[i].ArtificerID == v.row.ID {
+		if v.records[i].ID == id {
 			return &v.records[i]
 		}
 	}
@@ -636,6 +679,38 @@ func (s *Service) MoveInfusion(
 	return connect.NewResponse(&charactersv1.MoveInfusionResponse{Infusion: done.infusion, Revision: done.revision}), nil
 }
 
+// moveKeepsValid says the move leaves every other valid record valid. A move starts the record's time again, so a record that
+// is not valid now (one the limit pushed out, one whose piece left the sheet, one that lost its place on a piece) may count
+// after it, as the newest; with the limit full the oldest valid record would then go over the limit with no event. It
+// reads the sheet as it will be after the move: the record on its new item with the time of the move, the records on the
+// new piece that end with it gone. A record that cannot count after the move (the pick or the prerequisite lost, another
+// artificer's) is refused before, as an infusion the character does not know, or leaves the valid ones as they are.
+func (v infusionView) moveKeepsValid(rec charactersdb.CharacterInfusion, c infusionChoice, ended []string, at time.Time) bool {
+	after := slices.DeleteFunc(slices.Clone(v.records), func(r rules.InfusionRecord) bool { return slices.Contains(ended, r.ID) })
+	for i := range after {
+		if after[i].ID != rec.ID {
+			continue
+		}
+		after[i].ItemKind, after[i].ItemKey, after[i].ObjectName = infusionItemGear, c.gearKey, ""
+		if c.object() {
+			after[i].ItemKind, after[i].ItemKey, after[i].ObjectName = infusionItemObject, objectItemKey(rec.ID), c.objectName
+		}
+		after[i].Attuned, after[i].Since = false, at
+	}
+	b := v.build
+	b.Infusions = after
+	now := map[string]bool{}
+	for _, st := range rules.Derive(b, v.content).Infusions {
+		now[st.ID] = st.Valid
+	}
+	for _, st := range v.derived.Infusions {
+		if st.Valid && st.ID != rec.ID && !now[st.ID] {
+			return false
+		}
+	}
+	return true
+}
+
 // liveRecordRow reads the record the request names, locked, and refuses it with ITEM_CHANGED when it is not a live record of
 // the infuser's.
 func (s *Service) liveRecordRow(ctx context.Context, q *charactersdb.Queries, current charactersdb.Character, rawID string) (charactersdb.CharacterInfusion, error) {
@@ -687,6 +762,9 @@ func (s *Service) moveIn(ctx context.Context, tx pgx.Tx, content *rules.Content,
 	if !choice.object() && rec.ItemKind == infusionItemGear && rec.ItemKey == choice.gearKey {
 		infusion, err := s.infusionAnswerOf(ctx, w.q, v, rec.ID) // already there: nothing moves
 		return infusionResult{infusion: infusion, revision: current.Revision}, err
+	}
+	if !v.moveKeepsValid(rec, choice, taken, s.now()) {
+		return infusionResult{}, errInfusionBlocked(charactersv1.InfusionBlockedReason_INFUSION_BLOCKED_REASON_ITEM_CHANGED)
 	}
 	changes, err := s.endForInfusion(ctx, w, taken, nil)
 	if err != nil {

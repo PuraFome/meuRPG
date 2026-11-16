@@ -1040,59 +1040,6 @@ func TestInfuseItemAfterTheLimitFellEndsOneValidRecord(t *testing.T) {
 	wantInfusionRefusal(t, "a host with no limit", err, notKnown)
 }
 
-// overLimitTable is a table whose limit fell: three valid records and a fourth, the oldest, that gave way. It returns the
-// oldest record's id.
-func overLimitTable(t *testing.T) (*infusedTable, string) {
-	t.Helper()
-	it := newInfusedTable(t)
-	first := it.mustInfuseOn(t, infusionKeyBlade, infusionMace).GetInfusion().GetId()
-	it.h.clock.Advance(time.Minute)
-	it.mustInfuseOn(t, infusionKeyFalse, infusionShieldGear)
-	it.h.clock.Advance(time.Minute)
-	if _, err := it.infuseObject(t, infusionKeyHouse, "Lanterna"); err != nil {
-		t.Fatal(err)
-	}
-	it.h.clock.Advance(time.Minute)
-	if _, err := it.h.svc.insertInfusion(t.Context(), it.h.svc.queries, newInfusion{
-		CampaignID: it.campaign, ArtificerID: it.pc.GetId(), HolderID: it.pc.GetId(), InfusionKey: infusionKeyAsh,
-		ItemKind: infusionItemObject, ObjectName: "Capa velha", Parameter: damageFire,
-	}); err != nil {
-		t.Fatal(err)
-	}
-	if c, _ := it.list(t, it.dona); c.GetUsed() != 3 || len(c.GetActive()) != 4 {
-		t.Fatalf("used = %d with %d live, want 3 used and 4 live to start", c.GetUsed(), len(c.GetActive()))
-	}
-	it.h.clock.Advance(time.Minute)
-	return it, first
-}
-
-// A record over the limit that the caller names ends with `replaced` at a full host, on another piece or on the very piece of
-// the new infusion.
-func TestInfuseItemNamingARecordOverTheLimitEndsItReplaced(t *testing.T) {
-	t.Parallel()
-	for _, tc := range []struct{ name, infusion, item string }{
-		{"another piece", infusionKeyPlate, infusionLeather},
-		{"the same piece", infusionKeyBlade, infusionMace},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-			it, first := overLimitTable(t)
-			req := it.infuseReq(tc.infusion)
-			req.ItemKey, req.EndInfusionId = tc.item, first
-			res, err := it.dona.infusions.InfuseItem(t.Context(), connect.NewRequest(req))
-			if err != nil || res.Msg.GetEndedInfusionId() != first {
-				t.Fatalf("InfuseItem = %v, %v, want the record over the limit, %s, ended", res, err, first)
-			}
-			if endedReason(t, it, first) != "replaced" {
-				t.Errorf("the record over the limit ended %q, want replaced", endedReason(t, it, first))
-			}
-			if c, _ := it.list(t, it.dona); c.GetUsed() != 3 || len(c.GetActive()) != 4 {
-				t.Errorf("used = %d with %d live, want 3 and 4: the new record took the freed place of none", c.GetUsed(), len(c.GetActive()))
-			}
-		})
-	}
-}
-
 // view is the infuser's sheet as a write reads it.
 func (it *infusedTable) view(t *testing.T) infusionView {
 	t.Helper()

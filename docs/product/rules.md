@@ -1544,8 +1544,16 @@ The list of pieces says, for each, the reason it cannot take it, in words.
 
 **The limit and the oldest ending.**
 The class feature gives how many infusions are in use at once, by class level.
-Putting one on at the limit ends one: the player may choose which, and without a choice it is the oldest.
+Putting one on at the limit ends one: the player may choose which (one that counts), and without a choice it is the oldest.
 Putting one on a piece that already has one, and choosing that record to end, replaces it, at the limit or not.
+A write never pushes a valid record out in silence: after putting an infusion on or moving one, every record that was valid is still valid, except the one the call ends.
+With the limit full, the record to end must be one that counts toward the limit.
+Choosing one that is over the limit is refused and nothing changes, because ending it frees no place; the player ends it on its own, which frees no place either.
+With the limit full, putting an infusion on a piece that holds a record over the limit is refused, whether a record is chosen or not, for the same reason.
+With the limit full, moving a record that is not valid now, and would count after the move, is refused: the move begins its time again, so it would become the newest and the oldest valid record would give way with no ending.
+That covers a record over the limit and one whose piece left the sheet.
+With a place free, the same record moves.
+Choosing the record that is on the piece being infused, when it is not valid for another reason (a prerequisite lost, another artificer's), asks for nothing more: it ends as it ends when none is chosen, and the oldest valid record gives way with its ending.
 The sheet never applies more infusions than the limit: when more are valid (the master restored a pick, a prerequisite came back, or a level was taken off), the oldest give way, say "acima do limite", give no number and take no attunement place.
 Nothing ends by itself: the record stays, for the owner or the master to end or keep.
 A text-only infusion, which the app does not calculate, counts as one; the screens will mark its item as text the table applies.

@@ -70,21 +70,28 @@ type InfusionServiceClient interface {
 	// already keeps as many infusions as the limit allows, `end_infusion_id` names the one that ends in the same call.
 	// The character's player and the master.
 	//
-	// At its limit, the oldest valid infusion of the same feature ends (since, then id) when none is named, and as many
-	// of the oldest as the limit needs when a named one is not enough (normally one). A live record of the same
+	// At its limit, the oldest valid infusion of the same feature ends (since, then id) when none is named. A write
+	// never pushes a valid record out with no event: at the limit `end_infusion_id` must name a record that counts toward
+	// the limit, and one that is over the limit is refused with ITEM_CHANGED, since ending it frees no place (EndInfusion
+	// ends it). A piece that carries a record over the limit is refused the same way at the limit, named or not. A named
+	// record on the piece that is not valid for another reason ends with the piece's others, as when none is named. A live record of the same
 	// infusion that the sheet no longer counts ends with it, so what ListCharacterInfusions offers as known can be put on. `attune_now` attunes in
 	// the same call, with the checks of SetAttunement: a refusal of those refuses the whole call and writes nothing.
 	// A retry with the same `idempotency_key` and the same request returns the first answer and writes nothing again.
 	//
 	// Errors: `failed_precondition` with InfusionBlocked: INFUSION_NOT_KNOWN (also for a feature with no limit),
-	// ITEM_ALREADY_INFUSED, ITEM_NOT_ACCEPTED, ITEM_CHANGED (the infusion is in use, or `end_infusion_id` is not a valid
-	// infusion of the character's); with CharacterBlocked: CHARACTER_DEAD and the ATTUNEMENT_* reasons;
+	// ITEM_ALREADY_INFUSED, ITEM_NOT_ACCEPTED, ITEM_CHANGED (the infusion is in use, `end_infusion_id` is not a live record
+	// of the character's, or the limit is full and the record to end is over it or the piece carries one over it); with CharacterBlocked: CHARACTER_DEAD and the ATTUNEMENT_* reasons;
 	// `invalid_argument` for a parameter the infusion does not take, an object name that is empty, over 40 characters or
 	// has control or hidden characters, or another holder; `aborted` for a stale `revision`.
 	InfuseItem(context.Context, *connect.Request[v1.InfuseItemRequest]) (*connect.Response[v1.InfuseItemResponse], error)
 	// MoveInfusion moves a live infusion to another piece of the holder, or to an object it names, with the checks of
 	// InfuseItem on the item. The time of the infusion begins again and the attunement is cleared.
 	// The character's player and the master.
+	//
+	// A move never pushes a valid record out with no event: it begins the time of the infusion again, so a record that is
+	// not valid now (over the limit, or whose piece left the sheet) may count after it and make the oldest valid one give
+	// way. At a full limit such a move is refused with ITEM_CHANGED and nothing changes; with a place free it moves.
 	//
 	// Errors: `failed_precondition` with InfusionBlocked: ITEM_CHANGED (the infusion is not live, or not the character's),
 	// INFUSION_NOT_KNOWN, ITEM_NOT_ACCEPTED, ITEM_ALREADY_INFUSED; with CharacterBlocked: CHARACTER_DEAD;
@@ -189,21 +196,28 @@ type InfusionServiceHandler interface {
 	// already keeps as many infusions as the limit allows, `end_infusion_id` names the one that ends in the same call.
 	// The character's player and the master.
 	//
-	// At its limit, the oldest valid infusion of the same feature ends (since, then id) when none is named, and as many
-	// of the oldest as the limit needs when a named one is not enough (normally one). A live record of the same
+	// At its limit, the oldest valid infusion of the same feature ends (since, then id) when none is named. A write
+	// never pushes a valid record out with no event: at the limit `end_infusion_id` must name a record that counts toward
+	// the limit, and one that is over the limit is refused with ITEM_CHANGED, since ending it frees no place (EndInfusion
+	// ends it). A piece that carries a record over the limit is refused the same way at the limit, named or not. A named
+	// record on the piece that is not valid for another reason ends with the piece's others, as when none is named. A live record of the same
 	// infusion that the sheet no longer counts ends with it, so what ListCharacterInfusions offers as known can be put on. `attune_now` attunes in
 	// the same call, with the checks of SetAttunement: a refusal of those refuses the whole call and writes nothing.
 	// A retry with the same `idempotency_key` and the same request returns the first answer and writes nothing again.
 	//
 	// Errors: `failed_precondition` with InfusionBlocked: INFUSION_NOT_KNOWN (also for a feature with no limit),
-	// ITEM_ALREADY_INFUSED, ITEM_NOT_ACCEPTED, ITEM_CHANGED (the infusion is in use, or `end_infusion_id` is not a valid
-	// infusion of the character's); with CharacterBlocked: CHARACTER_DEAD and the ATTUNEMENT_* reasons;
+	// ITEM_ALREADY_INFUSED, ITEM_NOT_ACCEPTED, ITEM_CHANGED (the infusion is in use, `end_infusion_id` is not a live record
+	// of the character's, or the limit is full and the record to end is over it or the piece carries one over it); with CharacterBlocked: CHARACTER_DEAD and the ATTUNEMENT_* reasons;
 	// `invalid_argument` for a parameter the infusion does not take, an object name that is empty, over 40 characters or
 	// has control or hidden characters, or another holder; `aborted` for a stale `revision`.
 	InfuseItem(context.Context, *connect.Request[v1.InfuseItemRequest]) (*connect.Response[v1.InfuseItemResponse], error)
 	// MoveInfusion moves a live infusion to another piece of the holder, or to an object it names, with the checks of
 	// InfuseItem on the item. The time of the infusion begins again and the attunement is cleared.
 	// The character's player and the master.
+	//
+	// A move never pushes a valid record out with no event: it begins the time of the infusion again, so a record that is
+	// not valid now (over the limit, or whose piece left the sheet) may count after it and make the oldest valid one give
+	// way. At a full limit such a move is refused with ITEM_CHANGED and nothing changes; with a place free it moves.
 	//
 	// Errors: `failed_precondition` with InfusionBlocked: ITEM_CHANGED (the infusion is not live, or not the character's),
 	// INFUSION_NOT_KNOWN, ITEM_NOT_ACCEPTED, ITEM_ALREADY_INFUSED; with CharacterBlocked: CHARACTER_DEAD;

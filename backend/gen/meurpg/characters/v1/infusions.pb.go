@@ -643,7 +643,8 @@ type InfuseItemRequest struct {
 	Parameter string `protobuf:"bytes,7,opt,name=parameter,proto3" json:"parameter,omitempty"`
 	// The holder attunes to the piece in the same call (the infusion asks for attunement).
 	AttuneNow bool `protobuf:"varint,8,opt,name=attune_now,json=attuneNow,proto3" json:"attune_now,omitempty"`
-	// The live infusion that ends in the same call, to make room under the limit; empty for none.
+	// The live infusion that ends in the same call, to make room at the limit; empty for none. At a full limit it must be
+	// one that counts toward the limit: one that is over the limit is refused with ITEM_CHANGED and nothing changes.
 	EndInfusionId string `protobuf:"bytes,9,opt,name=end_infusion_id,json=endInfusionId,proto3" json:"end_infusion_id,omitempty"`
 	// A UUID the app makes once for the action: a retry with the same key does it once.
 	IdempotencyKey string `protobuf:"bytes,10,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`

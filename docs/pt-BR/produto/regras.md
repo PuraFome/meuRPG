@@ -1544,8 +1544,16 @@ A lista de peças diz, para cada uma, o motivo de ela não poder recebê-la, em 
 
 **O limite e o fim da mais antiga.**
 A característica da classe diz quantas infusões ficam em uso ao mesmo tempo, por nível na classe.
-Pôr uma no limite encerra uma: o jogador pode escolher qual, e sem escolha é a mais antiga.
+Pôr uma no limite encerra uma: o jogador pode escolher qual (uma que conta no limite), e sem escolha é a mais antiga.
 Pôr uma numa peça que já tem uma, escolhendo esse registro para encerrar, a substitui, no limite ou não.
+Uma escrita nunca tira um registro válido em silêncio: depois de pôr uma infusão ou mudar uma de peça, todo registro que valia continua valendo, menos o que o pedido encerra.
+Com o limite cheio, o registro a encerrar precisa ser um que conta no limite.
+Escolher um que está acima do limite é recusado e nada muda, porque encerrá-lo não libera lugar; o jogador o encerra sozinho, o que também não libera lugar.
+Com o limite cheio, pôr uma infusão numa peça que tem um registro acima do limite é recusado, com ou sem registro escolhido, pelo mesmo motivo.
+Com o limite cheio, mudar de peça um registro que não vale agora e passaria a contar depois da mudança é recusado: a mudança começa o tempo de novo, ele viraria o mais novo e o registro válido mais antigo cederia sem ser encerrado.
+Isso vale para um registro acima do limite e para um cuja peça saiu da ficha.
+Com um lugar livre, o mesmo registro muda de peça.
+Escolher o registro que está na peça que recebe a infusão, quando ele não vale por outro motivo (um pré-requisito perdido, ou de outro artífice), não pede nada a mais: ele termina como termina quando nenhum é escolhido, e o registro válido mais antigo cede com o seu encerramento.
 A ficha nunca aplica mais infusões do que o limite: quando mais registros valem (o mestre devolveu uma escolha, um pré-requisito voltou, ou um nível foi tirado), os mais antigos cedem, dizem "acima do limite", não dão número e não ocupam lugar de sintonização.
 Nada termina sozinho: o registro fica, para o dono ou o mestre encerrar ou manter.
 Uma infusão só de texto, que o app não calcula, conta como uma; as telas vão marcar o item como texto que a mesa aplica.

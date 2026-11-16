@@ -276,7 +276,7 @@ The refusals of a rule are `failed_precondition` with an `InfusionBlocked` detai
 
 `InfuseItem` checks, in this order:
 - `INFUSION_NOT_KNOWN`: the key is not a known infusion (not picked, no host feature, the content lost it, a prerequisite lost).
-- `ITEM_CHANGED`: the infusion has a live valid record, or `end_infusion_id` is not a valid live record of this artificer.
+- `ITEM_CHANGED`: the infusion has a live valid record, or `end_infusion_id` is not a live record the character holds.
 - `invalid_argument` on `parameter`: a resistance infusion takes one of its damage types, any other takes none.
 - `invalid_argument` on `object_name_pt`: a name cleaned as the app's names are (1 to 40 characters, one line, no control, hidden or bidi characters, NFC), and never together with an `item_key`.
 - `ITEM_NOT_ACCEPTED`: the piece is of the wrong kind, already magical or not on the sheet, or an object is named for an infusion that takes none.
@@ -291,8 +291,13 @@ The record named in `end_infusion_id` that sits on the piece being infused ends 
 At the limit of the infusion's host feature (valid records of that host equal to it), one valid record ends with `replaced`.
 It is the record named in `end_infusion_id`, or the oldest valid one of that host (`since`, then id).
 A record the limit pushed out is not chosen by the write.
-A record the limit pushed out that `end_infusion_id` names ends with `replaced`, on the piece being infused or on another.
+A write never pushes a valid record out with no event: the record that gives way is one that counts, and it ends with its event.
+At the limit, `end_infusion_id` must name a record that counts toward the host's limit, or `ITEM_CHANGED`: ending a record over the limit frees no place.
+At the limit, a piece that carries a record over the limit of the host refuses the call with `ITEM_CHANGED`, named or not.
+A record over the limit exists only while its host is full (ending a valid one makes it count again), so under the limit the two rules never meet.
+The record named in `end_infusion_id` that sits on the piece and is not valid for another reason (a lost prerequisite, another artificer's) is ended with `taken`, as when none is named, so the named and the unnamed call answer the same.
 A named record elsewhere, under the limit, is left alone.
+`end_infusion_id` is found among the records the character holds, so an id of another character or another campaign is `ITEM_CHANGED`, the answer of an id that does not exist.
 A host with no limit has no room to make, and the call is `INFUSION_NOT_KNOWN`.
 `ended_infusion_id` is the first record that ended.
 The new record is written by the store, which makes its id in Go.
@@ -304,6 +309,10 @@ A refusal of it refuses the whole call, and the transaction writes nothing.
 `MoveInfusion` needs a live record of this artificer (`ITEM_CHANGED` otherwise) of an infusion the character still knows.
 It checks the new item as `InfuseItem` does: `ITEM_NOT_ACCEPTED`, `ITEM_ALREADY_INFUSED` and `invalid_argument` on `object_name_pt`.
 The record's `since` begins again and its attunement is cleared.
+The move is derived before it is written (`moveKeepsValid`): the record on its new item with the new `since`, the records on the piece that end with it gone.
+If a record that is valid now would not be valid after it, the call is `ITEM_CHANGED` and writes nothing.
+That is the oldest valid record giving way at a full limit, for a record over the limit or one whose piece left the sheet.
+Under the limit the same move goes through.
 A move to the piece it is on changes nothing.
 
 `EndInfusion` needs a live record of this artificer (`ITEM_CHANGED` otherwise) and ends it with `ended`.

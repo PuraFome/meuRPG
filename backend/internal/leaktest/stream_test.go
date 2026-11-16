@@ -409,7 +409,7 @@ func (w *world) streamScript() {
 
 	// -- an infusion on the gear of the character the master keeps for a player to claim: nobody owns it, so the hint
 	// goes to the master alone, as a hint with no content (the owner's own hint is in TestAnInfusionIsTheOwnersAndTheMastersAlone)
-	w.importArtificer(packBladeName, packSealName, packFocusName, false)
+	w.importArtificer(packBladeName, packPlateName, packSealName, packFocusName, false)
 	w.reserved = must(m.characters.UpdateCharacter(ctx, rq(&charactersv1.UpdateCharacterRequest{
 		CampaignId: w.campaign, CharacterId: w.reserved.GetId(), Revision: w.reserved.GetRevision(), Name: w.reserved.GetName(), Sheet: w.artificerSheet(false, dagger),
 	}))).GetCharacter()

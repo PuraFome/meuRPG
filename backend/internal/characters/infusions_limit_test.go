@@ -147,17 +147,24 @@ func TestALoweredLimitMakesTheOldestGiveWay(t *testing.T) {
 }
 
 // A write at the limit judges by the same reading: the record over the limit is not one of the valid, so one valid record
-// ends, the oldest, and the record on the same piece that is not valid ends with `taken`.
+// ends, the oldest, and the new infusion takes its place. A piece that carries the record over the limit is refused (ending
+// that record frees no place): the player ends it first, with EndInfusion.
 func TestAnInfusionAtTheLimitAgreesWithTheDerivation(t *testing.T) {
 	t.Parallel()
 	it := newInfusedTable(t)
 	cloak, blade, shield, lantern := it.keepFour(t)
+	_, err := it.infuseOn(t, it.dona, infusionKeyPlate, infusionLeather)
+	wantInfusionRefusal(t, "InfuseItem on the piece of the record over the limit", err, itemChangedR)
+	it.mustEnd(t, cloak.ID) // the player ends the record over the limit: it frees no place
+	if c, _ := it.list(t, it.dona); c.GetUsed() != 3 || c.GetLimit() != 3 {
+		t.Fatalf("used %d of %d after ending the record over the limit, want 3 of 3", c.GetUsed(), c.GetLimit())
+	}
 	res, err := it.infuseOn(t, it.dona, infusionKeyPlate, infusionLeather)
 	if err != nil || res.GetEndedInfusionId() != blade.ID {
 		t.Fatalf("InfuseItem = %v, %v, want the oldest valid record, the blade, ended", res, err)
 	}
-	if endedReason(t, it, blade.ID) != "replaced" || endedReason(t, it, cloak.ID) != "taken" {
-		t.Errorf("reasons: blade %q, cloak %q, want replaced and taken", endedReason(t, it, blade.ID), endedReason(t, it, cloak.ID))
+	if endedReason(t, it, blade.ID) != "replaced" || endedReason(t, it, cloak.ID) != "ended" {
+		t.Errorf("reasons: blade %q, cloak %q, want replaced and ended", endedReason(t, it, blade.ID), endedReason(t, it, cloak.ID))
 	}
 	if endedReason(t, it, shield.ID) != "" || endedReason(t, it, lantern.ID) != "" {
 		t.Error("a newer record ended")

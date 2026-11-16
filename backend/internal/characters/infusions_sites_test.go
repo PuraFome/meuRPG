@@ -29,6 +29,7 @@ var infusionSites = map[string]string{
 	"Service.infusionViewOf":         "loads: the records of the character the infusion call works on",
 	"infusionView.checkItem":         "given: the view's build carries the records",
 	"infusionView.targets":           "given: the view's build carries the records",
+	"infusionView.moveKeepsValid":    "given: the view's build carries the records; the move is applied to them",
 	"knownInfusionKeys":              "none: it derives a build of its own whose only records are the probes it makes",
 	"askOfEntry":                     "given: attuneIn passes the build with the records",
 	"entryStands":                    "given: attuneIn passes the build with the records",
