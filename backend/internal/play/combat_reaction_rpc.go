@@ -216,9 +216,16 @@ func (s *Service) MarkReactionRolling(
 		return nil, s.dbError(ctx, "mark a reaction as being rolled", err)
 	}
 	out, err := s.finish(ctx, m, res, func(ctx context.Context, d *encounterData) {
-		if changed {
-			s.sayOf(ctx)(m.CampaignID, live.Event{Audience: live.Audience{Master: true, UserID: m.UserID}, Message: encounterChangedMessage(d.enc)})
+		if !changed {
+			return
 		}
+		say, msg := s.sayOf(ctx), encounterChangedMessage(d.enc)
+		mine := msg // the reactor's player reads the blind copy on a fog map, as every player does
+		if blind := s.playersHintOf(ctx, m.CampaignID, d.enc); blind != nil {
+			mine = blind
+		}
+		say(m.CampaignID, live.Event{Audience: live.Audience{Master: true}, Message: msg})
+		say(m.CampaignID, live.Event{Audience: live.Audience{UserID: m.UserID}, Message: mine})
 	})
 	if err != nil {
 		return nil, err

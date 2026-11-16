@@ -103,3 +103,42 @@ func TestAMarkThatChangesNothingTellsNothingAndOneThatDoesTellsTwo(t *testing.T)
 		}
 	}
 }
+
+// On a fog map the players read the encounter's hint blind (revision 0): a player who read the real revision could count the
+// moves in the dark. The reactor's player is told of a mark as every player is, so a mark tells the master the real number and
+// the reactor's player none.
+func TestAMarkOnAFogMapTellsTheReactorsPlayerTheBlindHint(t *testing.T) {
+	t.Parallel()
+	f := newFogCave(t)
+	f.fightInSeparateTurns(t)
+	e := f.passTo(t, f.get(t, f.master), "Pensantus")
+	f.mustReady(t, f.ana, f.readySpell(t, e, "Pensantus", magicMissileSpell, 1, ""))
+	e = f.mustEndTurn(t, f.master, e)
+	w := f.mustFire(t, e, "Pensantus")
+	master, ana := listen(t, f.h, f.campaignID, f.master.id, true), listen(t, f.h, f.campaignID, f.ana.id, false)
+	master.heard(t, f.h)
+	ana.heard(t, f.h)
+	if err := f.markRolling(t, f.ana, e, w.GetId()); err != nil {
+		t.Fatalf("the mark: %v", err)
+	}
+	revisionOf := func(who string, h heardBy) int32 {
+		t.Helper()
+		var got []int32
+		for _, m := range h.heard(t, f.h) {
+			if c := m.GetEncounterChanged(); c != nil {
+				got = append(got, c.GetRevision())
+			}
+		}
+		if len(got) != 1 {
+			t.Fatalf("%s heard %d encounter hints, want 1", who, len(got))
+		}
+		return got[0]
+	}
+	real := f.get(t, f.master).GetRevision()
+	if got := revisionOf("the master", master); got != real || real == 0 {
+		t.Errorf("the master's hint carries revision %d, want the real %d (not 0)", got, real)
+	}
+	if got := revisionOf("the reactor's player", ana); got != 0 {
+		t.Errorf("the reactor's player's hint carries revision %d on a fog map, want 0 (blind)", got)
+	}
+}
