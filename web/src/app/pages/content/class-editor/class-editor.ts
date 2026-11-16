@@ -152,10 +152,6 @@ export class ClassEditor {
   protected readonly nameMax = NAME_MAX;
   protected readonly draft = signal<ClassDraft>(emptyClass(emptyDefaults()));
   protected readonly openFeature = signal('');
-  /** The feature that is open, as the preview of "Como os jogadores veem" reads it. */
-  protected readonly openDraft = computed(
-    () => this.draft().features.find((f) => f.id === this.openFeature())?.feature ?? null,
-  );
   protected readonly question = signal<TableAsk | null>(null);
   protected readonly allCircles = signal(false);
   protected readonly status = signal('');

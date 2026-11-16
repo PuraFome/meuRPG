@@ -31,10 +31,15 @@ describe('"Como os jogadores veem" for the open feature (#580, board 580-03)', (
   });
   const text = () => (fixture.nativeElement.textContent as string).replace(/\s+/g, ' ');
 
+  function setFeature(f: FeatureDraft | null): void {
+    fixture.componentRef.setInput('features', f ? [{ id: 'f1', level: 1, feature: f }] : []);
+    fixture.componentRef.setInput('openId', f ? 'f1' : '');
+  }
+
   function setup(f: FeatureDraft | null): void {
     TestBed.resetTestingModule();
     fixture = TestBed.createComponent(FeaturePreview);
-    fixture.componentRef.setInput('feature', f);
+    setFeature(f);
     fixture.componentRef.setInput('menu', menu());
     fixture.componentRef.setInput('catalog', catalog());
     fixture.detectChanges();
@@ -76,7 +81,7 @@ describe('"Como os jogadores veem" for the open feature (#580, board 580-03)', (
       classLevel: '9',
       requiresOptions: [],
     });
-    fixture.componentRef.setInput('feature', f);
+    setFeature(f);
     fixture.detectChanges();
     expect(text()).toContain('Pede Paladino 9.');
     expect(text()).not.toContain('Golpe do Corvo. Soma o dado ao dano. Pede');

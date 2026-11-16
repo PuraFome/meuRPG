@@ -119,10 +119,6 @@ export class SubclassEditor {
   protected readonly nameMax = NAME_MAX;
   protected readonly draft = signal<SubclassDraft>(emptySubclass(''));
   protected readonly openFeature = signal('');
-  /** The feature that is open, as the preview of "Como os jogadores veem" reads it. */
-  protected readonly openDraft = computed(
-    () => this.draft().features.find((f) => f.id === this.openFeature())?.feature ?? null,
-  );
   protected readonly question = signal<CastingDraft | null>(null);
   protected readonly status = signal('');
 

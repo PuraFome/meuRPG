@@ -190,7 +190,7 @@
     </section>
 
     <aside aria-label="Como os jogadores veem">
-      <app-feature-preview [feature]="openDraft()" [menu]="menu()" [catalog]="catalog()" [entries]="entries()" />
+      <app-feature-preview [features]="d.features" [openId]="openFeature()" [menu]="menu()" [catalog]="catalog()" [entries]="entries()" />
     </aside>
 
     <section class="mr-panel block" id="sec-subclasses" tabindex="-1" aria-labelledby="sub-t">

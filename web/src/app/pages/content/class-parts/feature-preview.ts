@@ -1,4 +1,4 @@
-import { Component, computed, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { create } from '@bufbuild/protobuf';
 import { MatIconModule } from '@angular/material/icon';
 
@@ -11,6 +11,7 @@ import type { CatalogVm } from '../../../core/content/catalog';
 import { featChoiceRows } from '../../../core/content/content-read-feat';
 import { type EntryRead as Read, featureItem } from '../../../core/content/content-read-parts';
 import type { EffectMenuVm } from '../../../core/content/effect-draft';
+import type { LevelFeature } from '../../../core/content/class-draft';
 import { type FeatureDraft, draftToFeature } from '../../../core/content/feature-draft';
 import { requirableOptions } from '../../../core/content/requirable-options';
 import { EntryRead } from '../entry-read/entry-read';
@@ -22,6 +23,7 @@ import { EntryRead } from '../entry-read/entry-read';
  * is not here, and the sentence of what an option asks is the one `optionAsksPhrase` words for every reader.
  */
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-feature-preview',
   imports: [EntryRead, MatIconModule],
   template: `
@@ -68,12 +70,16 @@ import { EntryRead } from '../entry-read/entry-read';
   `,
 })
 export class FeaturePreview {
-  /** The open feature, or null while every feature is closed (nothing is drawn). */
-  readonly feature = input<FeatureDraft | null>(null);
+  /** The features of the class or subclass and the id of the open one: while every feature is closed nothing is drawn. */
+  readonly features = input<readonly LevelFeature[]>([]);
+  readonly openId = input('');
   readonly menu = input.required<EffectMenuVm>();
   readonly catalog = input<CatalogVm | null>(null);
   readonly entries = input<readonly TableEntry[]>([]);
 
+  protected readonly feature = computed<FeatureDraft | null>(
+    () => this.features().find((f) => f.id === this.openId())?.feature ?? null,
+  );
   protected readonly read = computed<Read>(() => {
     const f = this.feature();
     if (!f) {
