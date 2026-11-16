@@ -124,8 +124,6 @@ func TestAReplayRefusedAfterTheSpendGivesTheInspiracaoBack(t *testing.T) {
 			if got := f.seq(t); got != before+1 {
 				t.Errorf("hint_seq moved from %d to %d, want one step for the answer", before, got)
 			}
-			// Nobody is told about a roll that did not happen: the master hears the window closing and the log; nothing of a roll,
-			// of vitals or of the Inspiração.
 			// Nobody is told about a roll that did not happen: the master hears the window closing, the combat and its log; the roller's
 			// player hears nothing of the roll.
 			want := []string{kCombatLog, kEncounter, kWindowClosed}

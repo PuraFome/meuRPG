@@ -18,7 +18,7 @@ var replayRestoredBy = map[string]string{
 	"characterID":   "a replay assigns a new pointer and never writes through it: the copy and writeAmbient put the old one back",
 	"meta":          "applyMetamagic assigns a new castMeta (combat_cast.go) and nothing writes into the old one",
 	"sculpted":      "castFlow assigns a new map (combat_cast.go) and nothing writes into the old one",
-	"svc":           "not changed by a replay: only New and the Set* calls assign its fields",
+	"svc":           "not changed by a replay: the service's own state (its seams, hub and caches) is not written by a combat change",
 	"told":          "append only during a replay: the restored header hides what it added",
 	"sight":         "its maps memoize a read of what the replay does not write (combat sight, maps/fogcombat.go): a refusal leaves what a fresh read gives",
 	"unseated":      "append only during a replay (keepUnseated sets it nil): the restored header gives the riders back",
@@ -38,6 +38,10 @@ var replayRestoredBy = map[string]string{
 	"pushed":        "append only during a replay (settleReplay adds to it after the guard is kept): the restored header hides what it added",
 	"tellIDs":       "append only during a replay (tellActorVitals sorts it in place, but only after the guard is kept)",
 	"answered":      "append only during a replay: the restored header hides what it added",
+	"session":       "a struct value: a replay never writes through its pointers or into its slices",
+	"enc":           "a struct value: a replay assigns a whole new Encounter and never writes through its pointers or into SunlightSquares",
+	"now":           "a time.Time value: nothing writes through its location",
+	"rules":         "a struct value: a replay never writes into Reminders",
 }
 
 // A field of combatTx that a shallow copy does not give back whole must say how a refused replay restores it.
@@ -46,17 +50,35 @@ func TestEveryReferenceFieldOfCombatTxSaysHowAReplayRestoresIt(t *testing.T) {
 	shared := []reflect.Kind{reflect.Map, reflect.Slice, reflect.Pointer, reflect.Interface, reflect.Func, reflect.Chan}
 	holds := map[string]bool{}
 	for f := range typ.Fields() {
-		if !slices.Contains(shared, f.Type.Kind()) {
+		if !holdsReference(f.Type, shared) {
 			continue
 		}
 		holds[f.Name] = true
 		if replayRestoredBy[f.Name] == "" {
-			t.Errorf("combatTx.%s is a %s, which the shallow copy in guardReplay shares with the replay: decide how a refused replay restores it (clone it in guardReplay, or show that the replay only appends to it or never writes it) and add it to replayRestoredBy in replay_guard_fields_test.go", f.Name, f.Type.Kind())
+			t.Errorf("combatTx.%s is (or holds) a %s, which the shallow copy in guardReplay shares with the replay: decide how a refused replay restores it (clone it in guardReplay, or show that the replay only appends to it or never writes it) and add it to replayRestoredBy in replay_guard_fields_test.go", f.Name, f.Type.Kind())
 		}
 	}
 	for _, name := range slices.Sorted(maps.Keys(replayRestoredBy)) {
 		if !holds[name] {
-			t.Errorf("replayRestoredBy names %q, which is no longer a map, slice, pointer, interface, func or chan field of combatTx: take it out", name)
+			t.Errorf("replayRestoredBy names %q, which is no longer a field of combatTx that is or holds a map, slice, pointer, interface, func or chan: take it out", name)
 		}
 	}
+}
+
+// holdsReference says whether a value of t shares state with its copy: t is one of the shared kinds, or a struct or array
+// that holds one.
+func holdsReference(t reflect.Type, shared []reflect.Kind) bool {
+	switch {
+	case slices.Contains(shared, t.Kind()):
+		return true
+	case t.Kind() == reflect.Array:
+		return holdsReference(t.Elem(), shared)
+	case t.Kind() == reflect.Struct:
+		for f := range t.Fields() {
+			if holdsReference(f.Type, shared) {
+				return true
+			}
+		}
+	}
+	return false
 }
