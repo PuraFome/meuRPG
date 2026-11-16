@@ -32,15 +32,27 @@ describe('OpenDown', () => {
     );
   });
 
-  it('brings the field to the middle of the screen when the room below is short, and leaves it when there is room', () => {
+  it('brings the field to the middle of the screen, at once and before the list opens, when the room below is short', () => {
     vi.stubGlobal('innerHeight', 900);
-    const near = setup(800);
-    near.select.openedChange.emit(true);
-    expect(vi.mocked(Element.prototype.scrollIntoView)).toHaveBeenCalledWith({ block: 'center' });
+    const { select } = setup(800);
+    let openWhenScrolled: boolean | undefined;
+    vi.mocked(Element.prototype.scrollIntoView).mockImplementation(() => {
+      openWhenScrolled = select.panelOpen;
+    });
+    select.open();
+    expect(vi.mocked(Element.prototype.scrollIntoView)).toHaveBeenCalledWith({
+      block: 'center',
+      behavior: 'instant',
+    });
+    expect(openWhenScrolled).toBe(false);
+    expect(select.panelOpen).toBe(true);
+  });
 
-    vi.mocked(Element.prototype.scrollIntoView).mockClear();
-    const far = setup(200);
-    far.select.openedChange.emit(true);
+  it('leaves the page where it is when there is room below the field', () => {
+    vi.stubGlobal('innerHeight', 900);
+    const { select } = setup(200);
+    select.open();
+    expect(select.panelOpen).toBe(true);
     expect(Element.prototype.scrollIntoView).not.toHaveBeenCalled();
   });
 });
