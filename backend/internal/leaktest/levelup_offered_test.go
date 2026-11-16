@@ -181,6 +181,18 @@ func (w *world) warlockOfTheTome() {
 	w.pens = must(w.master.characters.GetCharacter(ctx, rq(&charactersv1.GetCharacterRequest{CampaignId: w.campaign, CharacterId: w.pens.GetId()}))).GetCharacter()
 }
 
+// bookLeftOpen levels the warlock up with the Book of Ancient Secrets and without its rituals, and gives the table one more
+// milestone: the next level is left with the two rituals as a late choice.
+func (w *world) bookLeftOpen() {
+	ctx := w.t.Context()
+	hp := &charactersv1.LevelUpHitPoints{Method: charactersv1.LevelUpHitPointsMethod_LEVEL_UP_HIT_POINTS_METHOD_AVERAGE}
+	choices := &charactersv1.LevelUpChoices{ClassKey: "class:warlock", HitPoints: hp, KnownSpellKeys: []string{"spell:hold-person"}, FeatureChoiceKeys: []string{bookKey}}
+	must(w.ana.characters.LevelUpCharacter(ctx, rq(&charactersv1.LevelUpCharacterRequest{CampaignId: w.campaign, CharacterId: w.pens.GetId(), Revision: w.pens.GetRevision(), Choices: choices})))
+	ms := must(w.master.xp.AddMilestone(ctx, rq(&progressionv1.AddMilestoneRequest{CampaignId: w.campaign, Text: "Marco do livro"}))).GetMilestone()
+	must(w.master.xp.MarkMilestoneReached(ctx, rq(&progressionv1.MarkMilestoneReachedRequest{CampaignId: w.campaign, MilestoneId: ms.GetId(), CharacterIds: []string{w.pens.GetId()}, IdempotencyKey: newKey()})))
+	w.pens = must(w.master.characters.GetCharacter(ctx, rq(&charactersv1.GetCharacterRequest{CampaignId: w.campaign, CharacterId: w.pens.GetId()}))).GetCharacter()
+}
+
 // holdBackKeys makes the keys of offerKeys: the table entries that are switched off, retired, offered by a feature that is,
 // another table's, and one that is visible and not offered.
 func (w *world) holdBackKeys() offerKeys {
@@ -262,6 +274,8 @@ type levelUpAsk struct {
 	choices     func(key string) *charactersv1.LevelUpChoices
 	keys        map[string]string
 	nowhere     string
+	// offered and also are the two keys the level offers the player for a late choice (empty when it offers none for the ask).
+	offered, also string
 }
 
 // A level-up answers every key it does not offer, whatever way the table holds the key back, with what it answers a key that
@@ -271,6 +285,7 @@ type levelUpAsk struct {
 func TestALevelUpAnswersAnyKeyItDoesNotOfferAsAKeyThatDoesNotExist(t *testing.T) {
 	w := newWorld(t)
 	w.warlockOfTheTome()
+	w.bookLeftOpen()
 	keys := w.holdBackKeys()
 	hp := &charactersv1.LevelUpHitPoints{Method: charactersv1.LevelUpHitPointsMethod_LEVEL_UP_HIT_POINTS_METHOD_AVERAGE}
 	base := func() *charactersv1.LevelUpChoices {
@@ -282,7 +297,7 @@ func TestALevelUpAnswersAnyKeyItDoesNotOfferAsAKeyThatDoesNotExist(t *testing.T)
 			c.FeatureChoiceKeys = []string{k}
 			return c
 		}},
-		{name: "a late pick", field: "choices.late_choice_keys", keys: keys.plain, nowhere: keys.nowhere, choices: func(k string) *charactersv1.LevelUpChoices {
+		{name: "a late pick", field: "choices.late_choice_keys", offered: bookOwner + "=spell:alarm", also: bookOwner + "=spell:comprehend-languages", keys: keys.plain, nowhere: keys.nowhere, choices: func(k string) *charactersv1.LevelUpChoices {
 			c := base()
 			c.LateChoiceKeys = []string{k}
 			return c
@@ -295,6 +310,10 @@ func TestALevelUpAnswersAnyKeyItDoesNotOfferAsAKeyThatDoesNotExist(t *testing.T)
 	}
 	for owner, values := range keys.scoped {
 		withOwner := strings.HasPrefix(owner, bookKey)
+		offered, also := "", ""
+		if owner == bookOwner {
+			offered, also = "spell:alarm", "spell:comprehend-languages"
+		}
 		asks = append(asks, levelUpAsk{name: "a pick of the choice " + owner, field: "choices.feature_choice_keys", keys: values, nowhere: noSpell, choices: func(v string) *charactersv1.LevelUpChoices {
 			c := base()
 			c.FeatureChoiceKeys = []string{owner + "=" + v}
@@ -303,7 +322,7 @@ func TestALevelUpAnswersAnyKeyItDoesNotOfferAsAKeyThatDoesNotExist(t *testing.T)
 			}
 			return c
 		}},
-			levelUpAsk{name: "a late pick of the choice " + owner, field: "choices.late_choice_keys", keys: values, nowhere: noSpell, choices: func(v string) *charactersv1.LevelUpChoices {
+			levelUpAsk{name: "a late pick of the choice " + owner, field: "choices.late_choice_keys", offered: offered, also: also, keys: values, nowhere: noSpell, choices: func(v string) *charactersv1.LevelUpChoices {
 				c := base()
 				c.LateChoiceKeys = []string{owner + "=" + v}
 				return c
@@ -326,6 +345,16 @@ func TestALevelUpAnswersAnyKeyItDoesNotOfferAsAKeyThatDoesNotExist(t *testing.T)
 	for procedure, request := range procedures {
 		for _, who := range callers {
 			for _, ask := range asks {
+				if ask.offered != "" && who.reaches && procedure == charactersv1connect.CharacterServicePreviewLevelUpProcedure {
+					// The positive control: the world has a late choice open, and the player's call with the keys it offers is accepted.
+					c := ask.choices(ask.offered)
+					c.LateChoiceKeys = append(c.LateChoiceKeys, ask.choices(ask.also).LateChoiceKeys...)
+					c.KnownSpellKeys = []string{"spell:fear"}
+					got := who.person.call(procedure, request(c))
+					if !got.ok() || strings.Contains(string(got.body), ask.field) || !strings.Contains(string(got.body), `"after"`) {
+						t.Fatalf("%s, %s, %s: the keys the level offers are answered HTTP %d %s, want them accepted with a sheet of afterwards", procedure, who.name, ask.name, got.status, shorten(got.body))
+					}
+				}
 				control := who.person.call(procedure, request(ask.choices(ask.nowhere)))
 				switch {
 				case who.reaches && procedure == charactersv1connect.CharacterServicePreviewLevelUpProcedure:
