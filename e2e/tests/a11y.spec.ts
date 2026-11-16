@@ -19,6 +19,7 @@ import { addClueRPC, cartClues, cartHooks, createNoteRPC } from './notes-support
 import { createCapitaoRPC, createMiraRPC, playedCombatRPC, putOnStageRPC, uploadPortrait } from './stage-support';
 import { printRoute, tableForPrinting } from './print-support';
 import { tableWithOpenChoices } from './choices-support';
+import { optionRowsTable } from './option-rows-support';
 import { classCard, passClassStep, tableForLevelUp, toren as levelUpToren } from './levelup-support';
 import { aurora, auroraSheet, beginPlacedCombatRPC, nael, naelSheet, orla, orlaSheet, spendForRestRPC } from './rests-support';
 import { castSheet, choiceCard, openCastOf, pickChoice, pickSlotRadio, pickTargetOf, tableForCasting } from './casting-support';
@@ -15809,6 +15810,7 @@ async function scanOptionAsks(browser: Browser, colorScheme: 'light' | 'dark', w
     await open(m, entryRoute(campaignId, subclass));
     await m.getByRole('button', { name: /Truques de lâmina/ }).first().click();
     const option = m.getByRole('group', { name: 'Opção 2' });
+    await option.getByRole('button', { name: /Opção 2 · Asa Partida/ }).click();
     await expect(option.getByLabel('Nome da opção')).toHaveValue('Asa Partida');
     const add = option.getByRole('button', { name: 'Adicionar pré-requisito' });
     await add.scrollIntoViewIfNeeded();
@@ -15818,8 +15820,8 @@ async function scanOptionAsks(browser: Browser, colorScheme: 'light' | 'dark', w
     await expect(add, `"Adicionar pré-requisito" é uma ação de texto ${where}`).not.toHaveClass(/mat-mdc-outlined-button/);
     expect(await add.evaluate((el) => getComputedStyle(el).borderTopWidth), `sem contorno em "Adicionar pré-requisito" ${where}`).toBe('0px');
     await expect(option.getByRole('button', { name: 'Remover opção' }), `"Remover opção" só no menu ${where}`).toHaveCount(0);
-    // The accent frame of the open feature is the only outline near the edge: the option card inside it keeps none of its own.
-    expect(await option.evaluate((el) => getComputedStyle(el.querySelector('.feature') ?? el).borderRightColor), `o cartão da opção sem contorno ${where}`).toBe('rgba(0, 0, 0, 0)');
+    // The accent frame is the open option's head alone; its fields (the nested editor) keep no outline of their own.
+    expect(await option.evaluate((el) => getComputedStyle(el.querySelector('app-feature-editor .feature') ?? el).borderRightWidth), `os campos da opção sem contorno ${where}`).toBe('0px');
     await m.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
     await expectScreenPasses(m, `Editor de subclasse, a opção que pede nível e opção ${where}`);
 
@@ -15843,6 +15845,148 @@ test('a opção de uma característica que pede nível e opção passa no axe e 
 test('a opção de uma característica que pede nível e opção passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-025', '@RN-23'] }, async ({ browser }) => {
   test.setTimeout(240_000);
   await scanOptionAsks(browser, 'light', 1280);
+});
+
+// The option rows of a subclass feature (#580, board 580-03): closed rows with a summary line and two arrows, one open at a time with the
+// accent frame on its head alone (the feature has the grey frame), its fields 36 px in, "Outras opções" offering the saved siblings
+// with their "Opção N", the hint that a new option waits for the save, and a refusal of the server on the field of the pick.
+async function scanOptionRows(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport: { width, height: 900 } });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport: { width, height: 900 } });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  try {
+    await Promise.all([m.goto('/'), p.goto('/')]);
+    const table = await optionRowsTable(m, p, `Acessibilidade linhas de opção ${Date.now()}`);
+    await open(m, entryRoute(table.campaignId, table.subclass));
+    await m.getByRole('button', { name: /Truques de lâmina/ }).first().click();
+    const rows = m.locator('section.options > [role="group"]');
+    await expect(rows).toHaveCount(5);
+    const toggle = (n: number) => rows.nth(n - 1).getByRole('button', { expanded: false }).or(rows.nth(n - 1).getByRole('button', { expanded: true })).first();
+    const colour = (css: string) => m.evaluate((c) => { const e = document.createElement('i'); e.style.color = c; document.body.append(e); const v = getComputedStyle(e).color; e.remove(); return v; }, css);
+    const accent = await colour('var(--mr-accent)');
+    const line = await colour('var(--mr-line)');
+
+    // Closed: one row each, a summary line, the arrows disabled at the ends, 12 px between rows.
+    for (let n = 1; n <= 5; n++) {
+      await expect(toggle(n), `a linha ${n} começa fechada ${where}`).toHaveAttribute('aria-expanded', 'false');
+    }
+    await expect(rows.nth(0)).toContainText('Opção 1 · Golpe do Corvo');
+    await expect(rows.nth(0)).toContainText('Soma o dado de manobra ao dano · não pede nada');
+    await expect(rows.nth(1)).toContainText('Soma o dado ao ataque · pede Guerreiro 7 e Golpe do Corvo');
+    await expect(rows.nth(2)).toContainText('pede Guerreiro 10');
+    await expect(m.getByRole('button', { name: 'Subir Golpe do Corvo' })).toBeDisabled();
+    await expect(m.getByRole('button', { name: 'Descer Grito do Bando' })).toBeDisabled();
+    await expect(m.getByRole('button', { name: 'Subir Asa Partida' })).toBeEnabled();
+    await expect(m.getByRole('button', { name: 'Descer Asa Partida' })).toBeEnabled();
+    const closed = await m.evaluate(() => {
+      const heads = [...document.querySelectorAll('section.options > [role="group"] .opt__head')].map((h) => h.getBoundingClientRect());
+      const arrow = document.querySelector('button[aria-label="Subir Asa Partida"]')!.getBoundingClientRect();
+      const box = document.querySelector('app-class-features .item--open')!;
+      const style = getComputedStyle(box);
+      return { heights: heads.map((h) => h.height), gaps: heads.slice(1).map((h, i) => h.top - heads[i].bottom), arrow: [arrow.width, arrow.height], frame: style.borderTopColor, frameWidth: style.borderTopWidth, bg: style.backgroundColor, head: getComputedStyle(document.querySelector('.opt__head')!).backgroundColor };
+    });
+    for (const h of closed.heights) expect(h, `cada linha fechada tem de 56 a 60 px ${where}`).toBeGreaterThanOrEqual(56);
+    for (const h of closed.heights) expect(h).toBeLessThanOrEqual(60);
+    for (const g of closed.gaps) expect(g, `12 px entre as linhas ${where}`).toBeCloseTo(12, 0);
+    expect(closed.arrow, `as setas têm 44 px ${where}`).toEqual([44, 44]);
+    expect(closed.frame, `a característica aberta tem a moldura cinza, não a de destaque ${where}`).toBe(line);
+    expect(closed.frame).not.toBe(accent);
+    expect(closed.frameWidth).toBe('1px');
+    expect(closed.head, `a linha usa a cor da superfície, a característica a do fundo ${where}`).not.toBe(closed.bg);
+    await m.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+    await expectScreenPasses(m, `Editor de subclasse, as opções fechadas ${where}`);
+
+    // One open: the accent frame on its head alone, the fields 36 px in, the others closed.
+    await toggle(2).click();
+    await expect(toggle(2)).toHaveAttribute('aria-expanded', 'true');
+    await toggle(3).click();
+    await expect(toggle(2), `uma linha aberta por vez ${where}`).toHaveAttribute('aria-expanded', 'false');
+    await expect(toggle(3)).toHaveAttribute('aria-expanded', 'true');
+    await expect(toggle(3), 'o foco fica no botão da linha').toBeFocused();
+    const open3 = await m.evaluate(() => {
+      const box = document.querySelector('app-class-features .item--open')!;
+      const accentBorders = [...box.querySelectorAll('*')].filter((e) => { const s = getComputedStyle(e); return s.borderTopWidth !== '0px' && s.borderTopStyle !== 'none' && s.borderTopColor === getComputedStyle(document.querySelector('.opt--open .opt__head')!).borderTopColor; });
+      const head = document.querySelector('.opt--open .opt__head')!;
+      const body = document.querySelector('.opt--open .opt__body app-text-field')!;
+      const hs = getComputedStyle(head);
+      return { frame: [hs.borderTopColor, hs.borderTopWidth, hs.boxShadow], count: accentBorders.length, indent: body.getBoundingClientRect().left - head.getBoundingClientRect().left, bodyOutside: !head.contains(body) };
+    });
+    expect(open3.frame[0], `a linha aberta tem o contorno de destaque ${where}`).toBe(accent);
+    expect(open3.frame[2], 'com a segunda linha de 1 px por dentro (2 px no total)').toContain('inset');
+    expect(open3.count, `só a linha aberta tem o contorno de destaque ${where}`).toBe(1);
+    expect(open3.indent, `os campos entram 36 px, fora da moldura ${where}`).toBeCloseTo(36, 0);
+    expect(open3.bodyOutside).toBe(true);
+
+    // "Outras opções" offers the saved siblings with their place, never the option itself, and says a new option waits for the save.
+    const row3 = rows.nth(2);
+    await row3.getByRole('button', { name: 'Adicionar pré-requisito' }).click();
+    await m.getByRole('menuitem', { name: /Outras opções/ }).click();
+    const choices = row3.locator('app-pick-list select option');
+    await expect(choices.filter({ hasText: 'Golpe do Corvo · Opção 1' })).toHaveCount(1);
+    await expect(choices.filter({ hasText: 'Asa Partida · Opção 2' })).toHaveCount(1);
+    await expect(choices.filter({ hasText: /^Bico de Ferro/ }), `nunca a própria opção ${where}`).toHaveCount(0);
+    await expect(row3).toContainText('Nunca a própria opção.');
+    await expect(row3).not.toContainText('depois de salvar a característica');
+    await row3.locator('app-pick-list select').selectOption({ label: 'Golpe do Corvo · Opção 1' });
+    await expect(row3.locator('app-pick-list .chip', { hasText: 'Golpe do Corvo' }).locator('.mr-tag')).toHaveText('Opção 1');
+    await m.getByRole('button', { name: 'Adicionar uma opção' }).click();
+    await expect(rows).toHaveCount(6);
+    await expect(toggle(6), 'a opção nova abre').toHaveAttribute('aria-expanded', 'true');
+    await expect(rows.nth(5).getByLabel('Nome da opção'), 'e leva o foco no nome').toBeFocused();
+    await toggle(3).click();
+    await expect(row3).toContainText('Uma opção nova só pode ser pedida depois de salvar a característica.');
+    await expect(row3).toContainText('Nunca a própria opção.');
+    await m.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+    await expectScreenPasses(m, `Editor de subclasse, "Outras opções" com a opção irmã ${where}`);
+
+    // "Como os jogadores veem": the open feature, with the muted "Pede" line of each option.
+    const side = m.getByRole('complementary', { name: 'Como os jogadores veem' });
+    await expect(side).toContainText('Truques de lâmina');
+    await expect(side).toContainText('3 de 5 opções');
+    await expect(side.getByText('Pede Guerreiro 7 e Golpe do Corvo.')).toBeVisible();
+    await expect(side.getByText('Pede Guerreiro 10 e Golpe do Corvo.'), 'o preview segue o que se digita').toBeVisible();
+    const asks = await side.locator('.asks').first().evaluate((el) => ({ color: getComputedStyle(el).color, text: getComputedStyle(el.parentElement!).color }));
+    expect(asks.color, `a linha "Pede" é apagada ${where}`).not.toBe(asks.text);
+
+    // The arrows move an option with its key, and the focus stays on the arrow.
+    await m.getByRole('button', { name: 'Descer Golpe do Corvo' }).click();
+    await expect(rows.nth(0)).toContainText('Opção 1 · Asa Partida');
+    await expect(m.getByRole('button', { name: 'Descer Golpe do Corvo' }), `o foco fica na seta ${where}`).toBeFocused();
+    await m.getByRole('button', { name: 'Subir Golpe do Corvo' }).click();
+    await expect(rows.nth(0)).toContainText('Opção 1 · Golpe do Corvo');
+
+    // The server's refusal (two options waiting for each other) lands at the field of the pick, in an open row marked in its summary.
+    await toggle(6).click();
+    await m.getByRole('button', { name: 'Mais ações de Opção 6' }).click();
+    await m.getByRole('menuitem', { name: 'Remover opção' }).click();
+    await expect(rows).toHaveCount(5);
+    await toggle(1).click();
+    await rows.nth(0).getByRole('button', { name: 'Adicionar pré-requisito' }).click();
+    await m.getByRole('menuitem', { name: /Outras opções/ }).click();
+    await rows.nth(0).locator('app-pick-list select').selectOption({ label: 'Asa Partida · Opção 2' });
+    await m.getByRole('button', { name: 'Salvar subclasse' }).click();
+    const refused = m.locator('[data-field$=".prerequisite.requires_option_keys"]').locator('xpath=following-sibling::*[1]');
+    await expect(rows.locator('.opt__bad').first(), `a linha com a recusa é marcada ${where}`).toBeVisible();
+    const marked = rows.filter({ has: m.locator('.opt__bad') }).first();
+    await expect(marked.locator('app-ask-rows app-pick-list ~ app-field-note, app-ask-rows app-field-note').first(), `a recusa fica no campo de "Outras opções" ${where}`).toContainText('Este valor não é aceito.');
+    expect(await refused.count()).toBeGreaterThan(0);
+    await m.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+    await expectScreenPasses(m, `Editor de subclasse, a recusa no campo de "Outras opções" ${where}`);
+  } finally {
+    await Promise.all([master.close(), player.close()]);
+  }
+}
+
+test('as opções de uma característica são linhas fechadas, uma aberta por vez, com irmãs em "Outras opções", no tema claro, no desktop', { tag: ['@a11y', '@MR-025', '@RN-23'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  await scanOptionRows(browser, 'light', 1280);
+});
+
+test('as opções de uma característica são linhas fechadas, uma aberta por vez, com irmãs em "Outras opções", no tema escuro, no tablet', { tag: ['@a11y', '@MR-025', '@RN-23'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  await scanOptionRows(browser, 'dark', 768);
 });
 
 // The weapons list of the sheet editor (#580, board 580-16, state 4): the table's group first with its book icon, a rule between the
