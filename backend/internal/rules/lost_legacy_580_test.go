@@ -1,6 +1,9 @@
 package rules
 
-import "testing"
+import (
+	"slices"
+	"testing"
+)
 
 // Preflight #580, round 2: a row stored in the old wording ("O personagem não cumpre mais o pré-requisito de <nome>:
 // ...", as main stored it) is the same issue whatever the entry is called now, and wherever its pick stands.
@@ -31,5 +34,55 @@ func TestARowInTheOldWordingIsTheLostIssueWhateverTheEntryIsCalledNow(t *testing
 		if got := KnownIssues([]string{tc.stored}, []Issue{tc.is})[0]; got != tc.want {
 			t.Errorf("%s: KnownIssues([%q]) = %v, want %v", tc.name, tc.stored, got, tc.want)
 		}
+	}
+}
+
+const oldStart = "O personagem não cumpre mais o pré-requisito de "
+
+func lostOf(code, field, key, name string) Issue {
+	return Issue{Code: code, Field: field, Lost: &LostPrerequisite{Key: key, EntryPT: name, Option: code == IssueOptionPrerequisite}}
+}
+
+// A stored row in the old wording holds one issue: it is taken by the entry it names, then by a renamed entry of the
+// list, and never covers a second lost entry of the list.
+func TestARowInTheOldWordingIsTakenOnce(t *testing.T) {
+	t.Parallel()
+	a := lostOf(IssueOptionPrerequisite, "full.feature_choice_keys[0]", "feature:a@mesa", "Alfa")
+	b := lostOf(IssueOptionPrerequisite, "full.feature_choice_keys[1]", "feature:b@mesa", "Beta")
+	rowOf := func(index, name string) string {
+		return IssueOptionPrerequisite + "|full.feature_choice_keys[" + index + "]|" + oldStart + name + ": precisa de nível 5 de Guerreiro."
+	}
+	cases := []struct {
+		name   string
+		stored []string
+		issues []Issue
+		want   []bool
+	}{
+		{"the row of A and a second lost B", []string{rowOf("0", "Alfa")}, []Issue{a, b}, []bool{true, false}},
+		{"the row of B, listed after A", []string{rowOf("1", "Beta")}, []Issue{a, b}, []bool{false, true}},
+		{"the exact name wins over the order", []string{rowOf("0", "Beta")}, []Issue{a, b}, []bool{false, true}},
+		{"A renamed: its row covers A and not B, by its place", []string{rowOf("0", "Nome antigo")}, []Issue{a, b}, []bool{true, false}},
+		{"A renamed and its pick moved: the row covers the first one", []string{rowOf("5", "Nome antigo")}, []Issue{a, b}, []bool{true, false}},
+		{"two rows, two lost entries", []string{rowOf("0", "Alfa"), rowOf("1", "Antigo")}, []Issue{a, b}, []bool{true, true}},
+		{"one row of A, A twice-named by a stored identity too", []string{rowOf("0", "Alfa"), a.ID()}, []Issue{a, b}, []bool{true, false}},
+	}
+	for _, tc := range cases {
+		got := KnownIssues(tc.stored, tc.issues)
+		if !slices.Equal(got, tc.want) {
+			t.Errorf("%s: known = %v, want %v", tc.name, got, tc.want)
+		}
+	}
+	// The same for feats, in the list of the sheet's own feats and in the picks of a choice (stored without a place).
+	fa := lostOf(IssueFeatPrerequisite, "full.feat_keys[0]", "feat:a@mesa", "Alfa")
+	fb := lostOf(IssueFeatPrerequisite, "full.feat_keys[1]", "feat:b@mesa", "Beta")
+	row := IssueFeatPrerequisite + "|full.feat_keys[0]|" + oldStart + "Alfa: o talento só vale de novo quando cumprir."
+	if got := KnownIssues([]string{row}, []Issue{fa, fb}); !slices.Equal(got, []bool{true, false}) {
+		t.Errorf("feats: known = %v, want [true false]", got)
+	}
+	ca := lostOf(IssueFeatPrerequisite, "full.feature_choice_keys[1]", "feat:a@mesa", "Alfa")
+	cb := lostOf(IssueFeatPrerequisite, "full.feature_choice_keys[3]", "feat:b@mesa", "Beta")
+	row = IssueFeatPrerequisite + "|full.feature_choice_keys|" + oldStart + "Beta: o talento só vale de novo quando cumprir."
+	if got := KnownIssues([]string{row}, []Issue{ca, cb}); !slices.Equal(got, []bool{false, true}) {
+		t.Errorf("feats taken through a choice: known = %v, want [false true]", got)
 	}
 }
