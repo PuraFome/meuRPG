@@ -129,7 +129,7 @@
                     "key": "feature:class-engenhista-de-li-6d59b9--diapasao-interno@mesa",
                     "namePt": "Diapasão Interno",
                     "descPt": [
-                      "Um objeto de conjuração passa a guiar melhor as magias: os ataques e as Classes de Dificuldade de magia somam um valor que cresce com o nível."
+                      "Um objeto de conjuração passa a guiar melhor as magias: o ataque de magia soma um valor que cresce com o nível."
                     ],
                     "infusion": {
                       "accepts": "INFUSION_ACCEPTS_SPELLCASTING_FOCUS",

@@ -2,6 +2,7 @@ package leaktest
 
 import (
 	"bytes"
+	"encoding/json"
 	"os"
 	"strconv"
 	"strings"
@@ -39,8 +40,14 @@ const (
 	// An infusion of the table's class that Toren did not pick.
 	infusionFocus = "feature:class-engenhista-de-li-6d59b9--diapasao-interno@mesa"
 
-	// The names the pack gives the blade and the seal, which the test swaps for markers.
-	packBladeName, packSealName = "Gume Vivo", "Selo de Casa"
+	// The names the pack gives the blade, the seal and the focus, which the test swaps for markers.
+	packBladeName, packSealName, packFocusName = "Gume Vivo", "Selo de Casa", "Diapasão Interno"
+
+	// The spell the casting copy of the artificer attacks with, and what its attack adds up to: the proficiency bonus (3) and
+	// the Intelligence modifier (3) at level 6, and the focus (2 in the copy of the pack).
+	focusCantrip                = "spell:fire-bolt"
+	spellAttackBase, focusBonus = 6, 2
+	kindInfusionFocus           = "infusion-focus-name"
 
 	kindInfusionName   = "infusion-name"
 	kindInfusionSeal   = "infusion-seal-name"
@@ -52,19 +59,45 @@ const (
 	bladeBonus = 2
 )
 
-// artificerPackWith is the fixture pack with the names of two of its infusions replaced.
-func artificerPackWith(bladeName, sealName string) *rulesv1.TableContentPack {
+// castingPack gives the class of the pack a casting: a half caster with the Intelligence, who knows a cantrip and the spells
+// of the SRD the test names, with the columns of its rows filled for the 20 levels.
+func castingPack(data []byte) []byte {
+	var pack map[string]any
+	if err := json.Unmarshal(data, &pack); err != nil {
+		panic(err)
+	}
+	class := pack["entries"].([]any)[0].(map[string]any)["tableClass"].(map[string]any)
+	class["casting"] = map[string]any{
+		"kind": "half", "startLevel": 1, "ability": "ABILITY_INTELLIGENCE", "preparation": "known", "srdSpellKeys": []string{focusCantrip, "spell:cure-wounds"},
+	}
+	for _, row := range class["levels"].([]any) {
+		r := row.(map[string]any)
+		r["cantripsKnown"], r["spellsKnown"], r["slots"] = 2, 3, []int{4, 3, 0, 0, 0, 0, 0, 0, 0}
+	}
+	out, err := json.Marshal(pack)
+	if err != nil {
+		panic(err)
+	}
+	return out
+}
+
+// artificerPackWith is the fixture pack with the names of three of its infusions replaced; casts gives the class a casting.
+func artificerPackWith(bladeName, sealName, focusName string, casts bool) *rulesv1.TableContentPack {
 	data, err := os.ReadFile(artificerPack)
 	if err != nil {
 		panic(err)
 	}
 	data = bytes.ReplaceAll(data, []byte(packBladeName), []byte(bladeName))
 	data = bytes.ReplaceAll(data, []byte(packSealName), []byte(sealName))
+	data = bytes.ReplaceAll(data, []byte(packFocusName), []byte(focusName))
 	// The pack's bonuses are 1 and 2: a 1 or a 2 turns up in numeric fields everywhere, so the copy gives 2 and 3 (the table's
 	// largest), and the blade reads 2 at the artificer's level. The canary of that number is searched in the fields named
 	// magic_bonus only (see importArtificer's caller), where nothing else of this table holds a 2.
 	data = bytes.ReplaceAll(data, []byte(`"bonus": 2`), []byte(`"bonus": 3`))
 	data = bytes.ReplaceAll(data, []byte(`"bonus": 1`), []byte(`"bonus": 2`))
+	if casts {
+		data = castingPack(data)
+	}
 	pack := &rulesv1.TableContentPack{}
 	if err := (protojson.UnmarshalOptions{DiscardUnknown: true}).Unmarshal(data, pack); err != nil {
 		panic(err)
@@ -72,20 +105,25 @@ func artificerPackWith(bladeName, sealName string) *rulesv1.TableContentPack {
 	return pack
 }
 
-// importArtificer gives the table the artificer class, with the names of the blade and the seal as the markers given.
-func (w *world) importArtificer(bladeName, sealName string) {
+// importArtificer gives the table the artificer class, with the names of the blade, the seal and the focus as the markers given.
+func (w *world) importArtificer(bladeName, sealName, focusName string, casts bool) {
 	must(w.master.table.ImportTableContent(w.t.Context(), rq(&rulesv1.ImportTableContentRequest{
-		CampaignId: w.campaign, Pack: artificerPackWith(bladeName, sealName), Mode: rulesv1.TableImportMode_TABLE_IMPORT_MODE_APPLY, IdempotencyKey: newKey(),
+		CampaignId: w.campaign, Pack: artificerPackWith(bladeName, sealName, focusName, casts), Mode: rulesv1.TableImportMode_TABLE_IMPORT_MODE_APPLY, IdempotencyKey: newKey(),
 	})))
 }
 
 // artificerSheet is the sheet of an artificer of level 6 who knows five infusions and carries the weapons.
-func (w *world) artificerSheet(weapons ...string) *charactersv1.CharacterSheet {
+func (w *world) artificerSheet(casts bool, weapons ...string) *charactersv1.CharacterSheet {
 	sheet := w.fullSheet(artificerClass, "race:human", 6)
 	full := sheet.GetFull()
 	full.WeaponKeys = weapons
 	full.SkillProficiencyKeys = []string{"skill:arcana", "skill:history"}
 	full.FeatureChoiceKeys = []string{infusionBlade, infusionPlate, infusionAsh, infusionFalse, infusionSeal}
+	if casts {
+		full.FeatureChoiceKeys = []string{infusionBlade, infusionPlate, infusionSeal, infusionFalse, infusionFocus}
+		full.CantripKeys = []string{focusCantrip}
+		full.KnownSpellKeys, full.PreparedSpellKeys = []string{"spell:cure-wounds"}, []string{"spell:cure-wounds"}
+	}
 	return sheet
 }
 
@@ -103,11 +141,20 @@ type infusedTable struct {
 	*rollsTable
 	bladeName, sealName, objectName string
 	blade, seal                     *charactersv1.SheetInfusion
+	// focusName and focus are the focus of the casting table: an object Toren casts through, attuned.
+	focusName, focusObject string
+	focus                  *charactersv1.SheetInfusion
 }
 
 // newInfusedTable builds the table: the class is the table's content, Toren is the artificer and his dagger and an object
 // carry the blade and the seal. The names and the records are canaries the owner may read.
 func newInfusedTable(t *testing.T) *infusedTable {
+	t.Helper()
+	return newInfusedTableWith(t, false)
+}
+
+// newInfusedTableWith is newInfusedTable; with casts, Toren's class casts and a focus he is attuned to is the third record.
+func newInfusedTableWith(t *testing.T, casts bool) *infusedTable {
 	t.Helper()
 	it := &infusedTable{}
 	it.rollsTable = newRollsTableWith(t, func(rt *rollsTable) {
@@ -122,14 +169,28 @@ func newInfusedTable(t *testing.T) *infusedTable {
 		w.secrets.add(&canary{needle: infusionBlade, kind: kindInfusionKey, readers: names([]*person{w.caio})})
 		w.secrets.add(&canary{needle: infusionSeal, kind: kindInfusionKey, readers: names([]*person{w.caio})})
 		w.secrets.add(&canary{needle: strconv.Itoa(bladeBonus), kind: kindInfusionBonus, numeric: true, value: bladeBonus, fields: []string{"magic_bonus"}, readers: names([]*person{w.caio})})
-		w.importArtificer(it.bladeName, it.sealName)
+		it.focusName = packFocusName // the focus has a marker only on the casting table
+		if casts {
+			it.focusName = w.secrets.marker(kindInfusionFocus, w.caio)
+		}
+		w.importArtificer(it.bladeName, it.sealName, it.focusName, casts)
 		w.toren = must(w.caio.characters.UpdateCharacter(w.t.Context(), rq(&charactersv1.UpdateCharacterRequest{
-			CampaignId: w.campaign, CharacterId: w.toren.GetId(), Revision: w.toren.GetRevision(), Name: w.toren.GetName(), Sheet: w.artificerSheet(dagger, shortbow),
+			CampaignId: w.campaign, CharacterId: w.toren.GetId(), Revision: w.toren.GetRevision(), Name: w.toren.GetName(), Sheet: w.artificerSheet(casts, dagger, shortbow),
 		}))).GetCharacter()
 		it.blade = w.infuse(w.caio, w.toren.GetId(), infusionBlade, dagger, "")
 		it.seal = w.infuse(w.caio, w.toren.GetId(), infusionSeal, "", it.objectName)
 		w.secrets.id("infusion-record", it.blade.GetId(), w.caio)
 		w.secrets.id("infusion-seal-record", it.seal.GetId(), w.caio)
+		if casts {
+			it.focusObject = w.secrets.marker(kindInfusionObject, w.caio)
+			w.secrets.add(&canary{needle: infusionFocus, kind: kindInfusionKey, readers: names([]*person{w.caio})})
+			res := must(w.master.infusions.InfuseItem(w.t.Context(), rq(&charactersv1.InfuseItemRequest{ // the master has no rest to wait for
+				CampaignId: w.campaign, CharacterId: w.toren.GetId(), InfusionKey: infusionFocus, HolderCharacterId: w.toren.GetId(),
+				ObjectNamePt: it.focusObject, AttuneNow: true, IdempotencyKey: newKey(),
+			})))
+			it.focus = res.GetInfusion()
+			w.secrets.id("infusion-focus-record", it.focus.GetId(), w.caio)
+		}
 	})
 	return it
 }
@@ -341,4 +402,98 @@ func TestInfusionTargetsOfAnInfusionTheCharacterDoesNotKnowAnswerAsAMissingKey(t
 			t.Errorf("%s: the answer for an infusion the character does not know is %s, want the answer for a missing key, %s", p.name, got, missing)
 		}
 	}
+}
+
+// cantripAttack is the line of the cantrip in the options of Toren's turn, as p reads them; nil when p reads none.
+func (it *infusedTable) cantripAttack(p *person) *rulesv1.Attack {
+	res, err := p.combat.GetTurnOptions(it.t.Context(), rq(&playv1.GetTurnOptionsRequest{CampaignId: it.campaign, EncounterId: it.encounter.GetId(), CombatantId: it.ids[labelToren]}))
+	if err != nil {
+		return nil
+	}
+	for _, a := range res.Msg.GetOptions().GetAttacks() {
+		if a.GetAttack().GetKey() == focusCantrip {
+			return a.GetAttack()
+		}
+	}
+	return nil
+}
+
+// The focus an artificer casts through adds to the spell attack: the owner and the master read the sum, and no other player
+// reads the infusion, its object, its key or the number, in the party's reads, the combat, its log after the spell attack
+// or the stream.
+func TestTheSpellAttackOfAnInfusedArtificerIsTheOwnersAndTheMastersAlone(t *testing.T) {
+	it := newInfusedTableWith(t, true)
+	w, m, caio, ana := it.world, it.master, it.caio, it.ana
+	it.buildInfusionRows()
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("the table: %v", r)
+		}
+	}()
+	watchers := map[*person]*streamWatcher{m: w.watchStream(m), ana: w.watchStream(ana), caio: w.watchStream(caio)}
+	it.toTurn(labelToren)
+	it.ask(t, "the focus is attuned")
+
+	// The positive control: the owner and the master read the spell attack with the focus in it.
+	for _, p := range []*person{caio, m} {
+		if a := it.cantripAttack(p); a == nil || a.GetAttackBonus() != spellAttackBase+focusBonus {
+			t.Fatalf("%s reads the spell attack as %v, want a bonus of %d (the %d of the focus included)", p.name, a, spellAttackBase+focusBonus, focusBonus)
+		}
+	}
+	// Ana reads nothing of Toren's turn, or at least no spell attack with the focus's number in it.
+	if a := it.cantripAttack(ana); a != nil {
+		t.Errorf("Ana reads the spell attack of Toren: %v", a)
+	}
+
+	hit := it.mustAttack(caio, labelToren, focusCantrip, "Esqueleto", []int32{17, 17}, nil)
+	it.keepReply(t, caio, "the spell attack", hit)
+	if hit.GetPendingDamage() == nil {
+		t.Fatalf("the spell attack = %v, want a hit", hit.GetRoll())
+	}
+	it.damage(caio, hit.GetPendingDamage().GetId(), func(r *playv1.RollDamageRequest) {
+		r.ExtrasChosen, r.Roll = true, &playv1.RollDamageRequest_TypedSum{TypedSum: 5}
+	})
+	it.ask(t, "the spell attack hit")
+	if line := it.attackLine(m, labelToren, "Esqueleto"); line == nil {
+		t.Fatal("the master reads no line of the spell attack in the log")
+	}
+	for _, needle := range []string{it.focusName, it.focusObject, infusionFocus} {
+		if log := protojson.Format(it.logOf(ana)); strings.Contains(log, needle) {
+			t.Errorf("Ana reads %q in the log after the spell attack", needle)
+		}
+	}
+	it.endTurn(caio)
+
+	// The focus ends: the number is gone for the owner and the master.
+	must(m.infusions.EndInfusion(t.Context(), rq(&charactersv1.EndInfusionRequest{CampaignId: w.campaign, CharacterId: w.toren.GetId(), InfusionId: it.focus.GetId()})))
+	it.toTurn(labelToren)
+	it.ask(t, "the focus ended")
+	for _, p := range []*person{caio, m} {
+		if a := it.cantripAttack(p); a == nil || a.GetAttackBonus() != spellAttackBase {
+			t.Errorf("%s reads the spell attack as %v after the focus ended, want %d", p.name, a, spellAttackBase)
+		}
+	}
+	must(m.combat.EndEncounter(t.Context(), rq(&playv1.EndEncounterRequest{CampaignId: w.campaign, EncounterId: it.encounter.GetId(), IdempotencyKey: newKey()})))
+	must(m.play.EndGameSession(t.Context(), rq(&playv1.EndGameSessionRequest{CampaignId: w.campaign, GameSessionId: w.session})))
+	for p, sw := range watchers {
+		select {
+		case <-sw.done:
+		case <-time.After(30 * time.Second):
+			t.Fatalf("%s's stream did not end with the session", p.name)
+		}
+		for _, ev := range sw.events {
+			body, err := protojson.Marshal(ev)
+			if err != nil {
+				t.Fatalf("marshal an event: %v", err)
+			}
+			it.got.keep(p, reply{status: 200, body: body, msg: ev})
+			if p == m {
+				continue
+			}
+			for _, f := range w.inspect(p, reply{status: 200, body: body, msg: ev}, nil) {
+				t.Errorf("%s: event %s: %s\n\tevent: %s", p.name, eventCase(ev), f, shorten(body))
+			}
+		}
+	}
+	t.Run("canaries are reachable", func(t *testing.T) { checkCanariesAreReachable(t, w, it.got) })
 }

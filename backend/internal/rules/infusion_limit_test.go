@@ -213,3 +213,35 @@ func TestASwitchedOffOptionStillInfuses(t *testing.T) {
 		t.Errorf("the sword = %+v, want +1", a)
 	}
 }
+
+// The check of a manual bonus reads the limit as the sheet does: a legacy piece with a manual bonus and an item bonus infusion
+// is not valid on the sheet, so it takes no place of the limit, and the record under test is not pushed out by it.
+func TestAManualBonusIsRefusedOnAPieceWhoseInfusionTheLimitKeepsOnTheSheet(t *testing.T) {
+	t.Parallel()
+	c := withOverlay(t, infusionRulesOverlay())
+	b := infBuild(5, infGume, infTexto) // level 5 allows 2
+	b.Weapons = []string{infSword, infAxe}
+	b.Infusions = []InfusionRecord{
+		infAt("axe", infGume, infAxe, 0),
+		infAt("sword", infGume, infSword, 1), // the legacy piece: a manual bonus stands on it
+		func() InfusionRecord {
+			r := infObject("lamp", infTexto, "Lanterna")
+			r.Since = infStart.AddDate(0, 0, 2)
+			return r
+		}(),
+	}
+	b.ItemBonuses = []ItemBonus{{Key: infSword, Bonus: 1}}
+	d := Derive(b, c)
+	if s := infStatus(t, d, "sword"); s.Valid || s.ReasonPT != reasonInfusionManual {
+		t.Fatalf("the sword's record = %+v, want not valid: the manual bonus stands", s)
+	}
+	if s := infStatus(t, d, "axe"); !s.Valid {
+		t.Fatalf("the axe's record = %+v, want valid on the sheet", s)
+	}
+	stored := b
+	b.ItemBonuses = []ItemBonus{{Key: infSword, Bonus: 1}, {Key: infAxe, Bonus: 1}}
+	var ve *ValidationError
+	if err := CheckManualBonuses(stored, b, c); !errors.As(err, &ve) || ve.Field != "full.item_bonuses[1].key" {
+		t.Errorf("the manual bonuses: %v, want a refusal at the axe, whose infusion the sheet keeps", err)
+	}
+}

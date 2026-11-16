@@ -221,10 +221,12 @@ func (c *content) infusionHostLevel(b Build, host string) (int, bool) {
 	return level, true
 }
 
-// infusesBonusOf says a valid record with an item bonus sits on the gear key, whatever manual bonus the key has: the
-// key takes no manual bonus.
+// infusesBonusOf says a record with an item bonus would be valid on the gear key if the key had no manual bonus: the key
+// takes no manual bonus. The records are read as the sheet reads them (a manual bonus on another piece stands, so that
+// piece's record takes no place of the limit), with the manual bonus of the key under test left out.
 func (c *content) infusesBonusOf(b Build, key string) bool {
-	for _, l := range c.readInfusions(b, false) {
+	b.ItemBonuses = slices.DeleteFunc(slices.Clone(b.ItemBonuses), func(ib ItemBonus) bool { return ib.Key == key })
+	for _, l := range c.readInfusions(b, true) {
 		if l.valid && l.gear() && l.rec.ItemKey == key && l.in.Effect == InfusionEffectItemBonus {
 			return true
 		}

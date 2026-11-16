@@ -379,19 +379,21 @@ func (v infusionView) planInfuse(msg *charactersv1.InfuseItemRequest) (infusionP
 		return infusionPlan{}, invalidArgument(fieldErr("attune_now", "is for an infusion that asks for attunement"))
 	}
 	plan.ends, err = v.replaced(msg.GetInfusionKey(), msg.GetEndInfusionId())
+	plan.taken = slices.DeleteFunc(plan.taken, func(id string) bool { return slices.Contains(plan.ends, id) || id == here })
 	if here != "" {
 		plan.ends = append([]string{here}, slices.DeleteFunc(plan.ends, func(id string) bool { return id == here })...)
 	}
 	return plan, err
 }
 
-// validOnPiece is the id when it names a valid record that sits on the gear piece of the choice, "" otherwise.
+// validOnPiece is the id when it names a valid record, or one the limit pushed out, that sits on the gear piece of the choice,
+// "" otherwise.
 func (v infusionView) validOnPiece(id string, c infusionChoice) string {
 	if id == "" || c.object() {
 		return ""
 	}
 	for _, st := range v.derived.Infusions {
-		if st.ID == id && st.Valid && st.ItemKind == rules.InfusionItemGear && st.ItemKey == c.gearKey {
+		if st.ID == id && (st.Valid || st.OverLimit) && st.ItemKind == rules.InfusionItemGear && st.ItemKey == c.gearKey {
 			return id
 		}
 	}
@@ -422,8 +424,9 @@ func addOnce(ids []string, id string) []string {
 }
 
 // replaced says which valid record ends to make room for a new infusion of the host: none under the limit; at it, the one the
-// caller named (a valid record of the same feature), else the oldest (since, then id). The derivation never counts more valid
-// records than the limit, so one makes room; a record the limit pushed out stays live and ends by no write of its own. A host
+// caller named (a valid record of the same feature, or one the limit pushed out, which frees no place but ends as replaced),
+// else the oldest valid one (since, then id). The derivation never counts more valid records than the limit, so one makes
+// room; a record the limit pushed out stays live and ends by no write of its own unless the caller names it. A host
 // with no limit has no room to make: the character does not know the infusion.
 func (v infusionView) replaced(infusionKey, named string) ([]string, error) {
 	host := v.content.InfusionHost(infusionKey)
@@ -440,7 +443,7 @@ func (v infusionView) replaced(infusionKey, named string) ([]string, error) {
 		return nil, errInfusionBlocked(charactersv1.InfusionBlockedReason_INFUSION_BLOCKED_REASON_INFUSION_NOT_KNOWN)
 	}
 	if named != "" {
-		if !v.validOf(host, named) {
+		if !v.endableOf(host, named) {
 			return nil, errInfusionBlocked(charactersv1.InfusionBlockedReason_INFUSION_BLOCKED_REASON_ITEM_CHANGED)
 		}
 		return []string{named}, nil
@@ -453,10 +456,10 @@ func (v infusionView) replaced(infusionKey, named string) ([]string, error) {
 	return nil, nil
 }
 
-// validOf says whether the record is a valid one of the host.
-func (v infusionView) validOf(host, id string) bool {
+// endableOf says whether the record is a valid one of the host, or one the host's limit pushed out.
+func (v infusionView) endableOf(host, id string) bool {
 	for _, st := range v.derived.Infusions {
-		if st.ID == id && st.Valid && st.HostKey == host {
+		if st.ID == id && (st.Valid || st.OverLimit) && st.HostKey == host {
 			return true
 		}
 	}

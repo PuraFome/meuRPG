@@ -259,7 +259,7 @@ Its gear rows are `WRONG_KIND`.
 One more row has an empty `item_key`, no reason and the kind word "objeto".
 That row means "another object, by name", and the player names it in `InfuseItem`.
 A key that is no infusion of the content lists nothing.
-The list does not ask whether the character knows the infusion; the writes do.
+The list and the writes share one knowledge check.
 
 ### Writes
 
@@ -285,11 +285,13 @@ The refusals of a rule are `failed_precondition` with an `InfusionBlocked` detai
 
 A live record of the same infusion that is not valid now does not refuse the call.
 It ends with `taken`, so what the list offers as known can be put on.
+A record the limit pushed out is one of them.
 A live record on the piece that is not valid now ends with `taken` too.
 The record named in `end_infusion_id` that sits on the piece being infused ends with `replaced`, whether the limit is full or not, and the new record goes on the piece.
 At the limit of the infusion's host feature (valid records of that host equal to it), one valid record ends with `replaced`.
 It is the record named in `end_infusion_id`, or the oldest valid one of that host (`since`, then id).
-A record the limit pushed out is not one of them.
+A record the limit pushed out is not chosen by the write.
+A record the limit pushed out that `end_infusion_id` names ends with `replaced`, on the piece being infused or on another.
 A named record elsewhere, under the limit, is left alone.
 A host with no limit has no room to make, and the call is `INFUSION_NOT_KNOWN`.
 `ended_infusion_id` is the first record that ended.
