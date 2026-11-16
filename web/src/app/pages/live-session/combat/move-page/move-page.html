@@ -14,10 +14,12 @@
       <p class="move__lead">Quadrados de 1,5 m. Role de lado para ver o resto do mapa.</p>
     } @else {
       <h1 class="mr-page-title move__title">{{ title() }}</h1>
-      @if (release(); as r) {
-        <app-release-band [band]="r.band" />
+      @if (!goneView()) {
+        @if (release(); as r) {
+          <app-release-band [band]="r.band" />
+        }
+        <p class="move__lead">{{ lead() }}</p>
       }
-      <p class="move__lead">{{ lead() }}</p>
       @if (jumps() && !release()) {
         <app-segmented class="move__seg" label="Como se mover" [segments]="modes" [value]="mode()" (choose)="setMode($event)" />
         @if (jumping()) {
@@ -26,7 +28,7 @@
       }
     }
 
-    @if (!soloHeight()) {
+    @if (!soloHeight() && !goneView()) {
       <div class="move__map">
         <div #scroller class="move__scroll">
           <app-combat-map
@@ -113,6 +115,7 @@
             <p><b>{{ g.lead }}</b> {{ g.rest }}</p>
           </div>
         }
+        @if (!goneView()) {
         @if (jumping() && jumps(); as limits) {
           <app-jump-panel [limits]="limits" [kind]="kind()" [height]="height()" [atMin]="atMin()" [atMax]="atMax()" (step)="step($event)" />
         }
@@ -157,6 +160,7 @@
         }
         @if (wide() && !soloHeight()) {
           <app-move-adjust (nudge)="nudge($event)" />
+        }
         }
       </div>
     }

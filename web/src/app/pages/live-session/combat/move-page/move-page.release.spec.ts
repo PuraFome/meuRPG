@@ -138,6 +138,15 @@ describe('MovePage: a readied move released off the readier’s turn (#856, boar
       'A janela fechou. Você não se moveu, e a reação continua livre.',
     );
     expect(button('Mover para cá')).toBeUndefined();
+    // The map, the move text and the range notice go away with the window.
+    expect(el.querySelector('app-combat-map')).toBeNull();
+    expect(el.querySelector('.move__lead')).toBeNull();
+    expect(el.querySelector('[data-testid=release-note]')).toBeNull();
+    expect(el.querySelector('[data-testid=release-band]')).toBeNull();
+    expect(plain(el.textContent)).not.toContain('Não deu para ler o alcance');
+    expect(
+      Array.from(el.querySelectorAll('.move__foot button')).map((x) => plain(x.textContent)),
+    ).toEqual(['Voltar à sessão']);
     button('Voltar à sessão')!.click();
     expect(backed).toHaveBeenCalled();
   });
