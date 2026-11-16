@@ -12,6 +12,7 @@ import { type Attack, DisabledReasonCode } from '../../../../../gen/meurpg/rules
 import { isHit, outcomeWord } from '../../../../core/combat/attack-flow';
 import { attackName, reasonText } from '../../../../core/combat/combat-options';
 import { rollFormula } from '../../../../core/combat/combat-dice';
+import { targetsOfOption } from '../../../../core/combat/cast-ref';
 import { article } from '../../../../core/combat/combat-log';
 import { coverText } from '../../../../core/combat/cover';
 import { restamText } from '../../../../core/combat/theatre';
@@ -52,7 +53,7 @@ export function areaSpellsOf(
     return [];
   }
   return (options.options.spells ?? []).flatMap((s) => {
-    const t = (options.spellTargets ?? []).find((x) => x.spellKey === s.spell?.key);
+    const t = targetsOfOption(options.options?.spells ?? [], options.spellTargets ?? [], s);
     return s.spell && s.enabled && t && t.placement !== AreaPlacement.UNSPECIFIED
       ? [{ key: s.spell.key, name: s.spell.namePt || s.spell.name }]
       : [];

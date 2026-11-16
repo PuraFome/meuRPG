@@ -542,13 +542,16 @@ describe('the level a cast scales at', () => {
     expect(castLevelOf(null, null, 1)).toBe(1);
   });
 
-  it('gives the targets of the grant’s level, and the slot’s when a slot is used', () => {
-    const table = create(SpellTargetsSchema, {
-      spellKey: 'spell:x',
-      maxTargets: 3,
-      targetsPerLevel: 3,
-    });
-    expect(targetRule(table, 'me', 1, castLevelOf(null, { castLevel: 2 }, 1)).max).toBe(6);
-    expect(targetRule(table, 'me', 1, castLevelOf({ level: 4 }, { castLevel: 2 }, 1)).max).toBe(10);
+  it('counts the targets from the level the entry was listed at', () => {
+    // The server lists Bless's grant entry at its cast level 2 (4 targets), and the class entry at the spell's own level.
+    const bless = (maxTargets: number) =>
+      create(SpellTargetsSchema, { spellKey: 'spell:bless', maxTargets, targetsPerLevel: 1 });
+    const grantEntry = bless(4);
+    const classEntry = bless(3);
+    expect(targetRule(grantEntry, 'me', 2, castLevelOf(null, { castLevel: 2 }, 1)).max).toBe(4);
+    expect(
+      targetRule(grantEntry, 'me', 2, castLevelOf({ level: 3 }, { castLevel: 2 }, 1)).max,
+    ).toBe(5);
+    expect(targetRule(classEntry, 'me', 1, castLevelOf({ level: 2 }, null, 1)).max).toBe(4);
   });
 });

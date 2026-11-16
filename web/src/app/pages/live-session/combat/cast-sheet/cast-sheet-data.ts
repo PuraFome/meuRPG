@@ -15,7 +15,12 @@ import {
   type TurnOptions,
 } from '../../../../../gen/meurpg/rules/v1/rules_pb';
 import { defaultSlot, slotRows } from '../../../../core/combat/cast-flow';
-import { optionOfRef, splitCastRef } from '../../../../core/combat/cast-ref';
+import {
+  optionOfRef,
+  splitCastRef,
+  targetsOfOption,
+  targetsOfRef,
+} from '../../../../core/combat/cast-ref';
 import type { CombatState } from '../../../../core/combat/combat-state';
 import type { VitalsVm } from '../../../../core/play/live-session.types';
 import { SORCERY_POINTS_RESOURCE, poolOf } from '../../../../core/resources/pools';
@@ -126,7 +131,9 @@ export function castSheetData(req: CastSheetRequest): CastSheetData {
     ...spellFacts(spell),
     ...optionFacts(spell, cantrip),
     ...casterFacts(req.vitals),
-    targets: spellTargets.find((t) => t.spellKey === key),
+    targets: spell
+      ? targetsOfOption(options.spells, spellTargets, spell)
+      : spellTargets.find((t) => t.spellKey === key), // a save cantrip lists under its attack's key
     ...shieldOf(options.spells),
     attackBonus:
       spell?.grant?.attackBonus ??
@@ -158,8 +165,8 @@ export function castAriaLabel(name: string, resume: boolean): string {
 
 /** A spell of the options with its targets, its level and its Portuguese name; `null` when the options lack it. */
 export function areaSpellOf(turn: GetTurnOptionsResponse | null | undefined, key: string) {
-  const spell = turn?.options?.spells.find((s) => s.spell?.key === key);
-  const targets = turn?.spellTargets.find((t) => t.spellKey === key);
+  const spell = optionOfRef(turn?.options?.spells ?? [], key);
+  const targets = targetsOfRef(turn?.options?.spells ?? [], turn?.spellTargets ?? [], key);
   if (!spell?.spell || !targets) {
     return null;
   }

@@ -14,6 +14,7 @@ import {
   type TurnOptions,
 } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { joinDots, tight } from '../format/text';
+import { targetsOfOption } from './cast-ref';
 import type { ReadyArgs } from './combat-client-ready';
 import { circleLabel } from './combat-grid';
 import {
@@ -214,8 +215,7 @@ function spellBlocked(o: SpellOption): string {
  * the spell (`spell_targets`); with no entry (an attack cantrip, which is released as an attack) nothing is known against it. A spell
  * that targets only the caster has `max_targets` 0 like an area in a combat with no map, so it is off too.
  */
-function releaseBlocked(all: readonly SpellTargets[], key: string): string {
-  const t = all.find((x) => x.spellKey === key);
+function releaseBlocked(t: SpellTargets | undefined): string {
   if (!t) {
     return '';
   }
@@ -251,7 +251,7 @@ export function readySpellRows(
         rangeText(o.attack!),
       ]),
     ),
-    blocked: releaseBlocked(spellTargets, o.attack?.key ?? ''),
+    blocked: releaseBlocked(spellTargets.find((x) => x.spellKey === o.attack?.key)),
     level: 0,
     slots: [],
     spell: true,
@@ -264,7 +264,8 @@ export function readySpellRows(
         id: o.spell?.key ?? '',
         title: o.spell?.namePt || o.spell?.name || '',
         sub: spellSub(o, level, summaries),
-        blocked: spellBlocked(o) || releaseBlocked(spellTargets, o.spell?.key ?? ''),
+        blocked:
+          spellBlocked(o) || releaseBlocked(targetsOfOption(options.spells, spellTargets, o)),
         level,
         slots: level > 0 ? slotsOf(o) : [],
         spell: true,

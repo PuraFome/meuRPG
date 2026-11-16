@@ -46,16 +46,16 @@ export class CastState {
   readonly teleportFt: number;
   /** A list spell that may hit nobody, with nobody ticked: "Conjurar" asks in place first (PM-02d state 13). */
   readonly listAsking = signal(false);
+  /** The cast goes through the grant, with no slot: a grant with no slot allowed, or one the caster did not ask a slot for. */
+  readonly viaGrant = computed(
+    () => !!this.data.grant && (!this.data.grant.alsoWithSlot || this.freeCast()),
+  );
   /** The level the cast scales at: the slot's, else the level the grant casts at (a cast through the grant spends no slot), else the spell's own. */
   readonly slotLevel = computed(() =>
-    castLevelOf(
-      this.slot(),
-      this.data.grant && (!this.data.grant.alsoWithSlot || this.freeCast())
-        ? this.data.grant
-        : null,
-      this.data.level,
-    ),
+    castLevelOf(this.slot(), this.viaGrant() ? this.data.grant : null, this.data.level),
   );
+  /** The level the targets of the sheet's entry were listed at: the grant's cast level for a grant, else the spell's own. */
+  readonly entryLevel = computed(() => castLevelOf(null, this.data.grant, this.data.level));
   /** Whether the cast happened (or is being resumed): the result stage. */
   readonly done = computed(() => this.cast() !== null || !!this.data.resume);
 

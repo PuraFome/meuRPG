@@ -13320,7 +13320,11 @@ func (x *ResourceTarget) GetDisabledReasonPt() string {
 	return ""
 }
 
-// SpellTargets lists the targets one spell can choose.
+// SpellTargets lists the targets one cast option of a spell can choose.
+// The turn lists one entry per enabled option of a spell (`SpellOption`), in the order of the options: the class's
+// first, then the grants. The entry of an option is the n-th entry of its spell key, n being the place of the option
+// among the enabled options of that key. The entry of a grant is read at the grant's `cast_level`: `max_targets`,
+// the darts and the area; the targets a higher slot adds are counted from that level.
 type SpellTargets struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The spell, as in rules.v1.Spell.key.

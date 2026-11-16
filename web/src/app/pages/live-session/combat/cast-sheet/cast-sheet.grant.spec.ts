@@ -1,8 +1,10 @@
+import { create } from '@bufbuild/protobuf';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 
 import { DiceMode, DicePreference } from '../../../../../gen/meurpg/campaigns/v1/campaigns_pb';
+import { SpellTargetsSchema } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { ActionEconomy, SpellAttackType } from '../../../../../gen/meurpg/rules/v1/rules_pb';
 import { CombatClient } from '../../../../core/combat/combat-client';
 import { fakeCombatClient } from '../../../../core/combat/combat-client-testing';
@@ -24,7 +26,13 @@ describe('CastSheet: a spell cast through a grant (MR-025)', () => {
   };
 
   async function open(
-    over: { alsoWithSlot?: boolean; usesCost?: number; castLevel?: number; dice?: boolean } = {},
+    over: {
+      alsoWithSlot?: boolean;
+      usesCost?: number;
+      castLevel?: number;
+      dice?: boolean;
+      targets?: object;
+    } = {},
   ) {
     TestBed.resetTestingModule();
     const castSpell = vi.fn().mockRejectedValue(new Error('stop'));
@@ -71,7 +79,7 @@ describe('CastSheet: a spell cast through a grant (MR-025)', () => {
         : [],
       usage: [{ level: 1, total: 2, used: 0 }],
       pact: null,
-      targets: undefined,
+      targets: over.targets,
       shieldFree: null,
       shieldName: '',
       attackBonus: 6,
@@ -136,6 +144,18 @@ describe('CastSheet: a spell cast through a grant (MR-025)', () => {
     expect(el.querySelector('.grant')?.textContent).toContain('Graça de teste · 1 uso · no 2º');
     expect(el.textContent).toContain('3d6 de radiante');
     expect(el.textContent).not.toContain('2d6 de radiante');
+  });
+
+  it('allows the targets the grant’s entry lists at its cast level, with no per-level count on top', async () => {
+    // The server lists the entry of Bless granted at the 2nd level with 4 targets already.
+    const targets = create(SpellTargetsSchema, {
+      spellKey: 'spell:bless',
+      maxTargets: 4,
+      targetsPerLevel: 1,
+      targets: [{ combatantId: 'g1', label: 'G1', distanceFt: 10 }],
+    });
+    const { el } = await open({ castLevel: 2, targets });
+    expect(el.textContent).toContain('Escolha até 4 alvos');
   });
 
   it('keeps the spell’s own level and dice when the grant sets no higher one', async () => {

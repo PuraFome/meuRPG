@@ -136,7 +136,12 @@ export class TargetFlow {
     const slot = defaultSlot(slotRows(data.level, data.slots, data.usage, data.pact));
     // A granted spell opens cast through the grant, at the level the grant casts at.
     const level = castLevelOf(data.grant ? null : slot, data.grant, data.level);
-    return targetRule(data.targets, data.casterId, data.level, level);
+    return targetRule(
+      data.targets,
+      data.casterId,
+      castLevelOf(null, data.grant, data.level),
+      level,
+    );
   }
 
   /** Starts the mode when there is a creature to tap; the map comes into view. */
