@@ -141,12 +141,23 @@ func TestNpcCheckReachesOnlyTheBardAsked(t *testing.T) {
 			t.Errorf("the refusal of %s = %q, want no word of the check", p.name, msg)
 		}
 	}
+	// The fence: every hint the check sent has reached the streams before the session ends, so what the walk below reads is all of it.
+	fenced := w.fence(t, m, watchers, "fim da conversa")
+	asked := 0
+	for _, ev := range watchers[ana].since(0)[:fenced[ana]] {
+		if eventCase(ev) == "held_rolls_changed" {
+			asked++
+		}
+	}
+	if asked == 0 {
+		t.Errorf("Ana's stream heard no held rolls change before the fence, want the hint of her question (the positive control)")
+	}
 	must(m.play.EndGameSession(ctx, rq(&playv1.EndGameSessionRequest{CampaignId: w.campaign, GameSessionId: w.session})))
 	for p, sw := range watchers {
 		<-sw.done
 		for _, ev := range sw.events {
 			switch c := eventCase(ev); c {
-			case "ready", "heartbeat", "session_ended":
+			case "ready", "heartbeat", "session_ended", "session_message_added":
 			case "held_rolls_changed":
 				if p == caio {
 					t.Errorf("Caio's stream heard a hint of the held rolls, want none: none was Caio's")
@@ -386,6 +397,31 @@ func oneNumber(t *testing.T, kind descriptorpb.FieldDescriptorProto_Type, v prot
 	return m
 }
 
+// fence has the master say a line to all and waits until every stream has heard it, once the hint gate sent what it held: what a stream
+// heard of a phase is what is before the line in its events. It returns the place of the line in each stream.
+func (w *world) fence(t *testing.T, m *person, watchers map[*person]*streamWatcher, text string) map[*person]int {
+	t.Helper()
+	w.hints.Settle(t)
+	must(m.play.SendSessionMessage(t.Context(), rq(&playv1.SendSessionMessageRequest{
+		CampaignId: w.campaign, SpeakerKind: playv1.SessionMessageSpeakerKind_SESSION_MESSAGE_SPEAKER_KIND_NARRATOR, Text: text, IdempotencyKey: newKey(),
+	})))
+	at := map[*person]int{}
+	for p, sw := range watchers {
+		for deadline := time.After(20 * time.Second); ; {
+			if i := markerAt(sw, text); i >= 0 {
+				at[p] = i
+				break
+			}
+			select {
+			case <-sw.more:
+			case <-deadline:
+				t.Fatalf("%s's stream never heard the line %q", p.name, text)
+			}
+		}
+	}
+	return at
+}
+
 // markerAt is the place of the master's narrator line with this text in the events a stream heard, -1 when it did not hear it yet.
 func markerAt(sw *streamWatcher, text string) int {
 	return slices.IndexFunc(sw.since(0), func(ev *playv1.WatchGameSessionResponse) bool {
@@ -410,6 +446,16 @@ func TestNpcCheckHintsReachOnlyWhoMayHearThem(t *testing.T) {
 	dani := w.newPerson("Dani")
 	w.join(false, dani)
 	brisa, cassio := loreBard(w, ana, "Brisa", 16), loreBard(w, caio, "Cássio", 14)
+	// The creature is an NPC with Charisma 20, so its check is a d20 of 11 plus 5 for 16: none of the three is a number the bards' own
+	// answers and vitals carry (the uses left, 3 and 2 before the cut and 2 and 1 after, the die of 6 and the face of 4 the bard types), so
+	// a number of the check in them is the check's.
+	baron := must(m.characters.CreateCharacter(ctx, rq(&charactersv1.CreateCharacterRequest{
+		CampaignId: w.campaign, Kind: charactersv1.CharacterKind_CHARACTER_KIND_ENEMY, Name: "Barão da Serra",
+		Sheet: &charactersv1.CharacterSheet{Content: &charactersv1.CharacterSheet_Full{Full: &charactersv1.FullSheet{
+			BaseScores: &rulesv1.AbilityScores{Strength: 10, Dexterity: 12, Constitution: 12, Intelligence: 10, Wisdom: 10, Charisma: 20},
+			RaceKey:    "race:human", Classes: []*charactersv1.ClassLevel{{ClassKey: "class:fighter", Level: 1}},
+		}}},
+	}))).GetCharacter()
 	must(dani.characters.CreateCharacter(ctx, rq(&charactersv1.CreateCharacterRequest{
 		CampaignId: w.campaign, Kind: charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, Name: "Dora",
 		Sheet: &charactersv1.CharacterSheet{Content: &charactersv1.CharacterSheet_Full{Full: &charactersv1.FullSheet{
@@ -424,30 +470,7 @@ func TestNpcCheckHintsReachOnlyWhoMayHearThem(t *testing.T) {
 	for _, p := range people {
 		watchers[p] = w.watchStream(p)
 	}
-	// fence has the master say a line to all and waits until every stream has heard it, once the hint gate sent what it held: what a
-	// stream heard of the phase is what is before the line in its events.
-	fence := func(text string) map[*person]int {
-		t.Helper()
-		w.hints.Settle(t)
-		must(m.play.SendSessionMessage(ctx, rq(&playv1.SendSessionMessageRequest{
-			CampaignId: w.campaign, SpeakerKind: playv1.SessionMessageSpeakerKind_SESSION_MESSAGE_SPEAKER_KIND_NARRATOR, Text: text, IdempotencyKey: newKey(),
-		})))
-		at := map[*person]int{}
-		for p, sw := range watchers {
-			for deadline := time.After(20 * time.Second); ; {
-				if i := markerAt(sw, text); i >= 0 {
-					at[p] = i
-					break
-				}
-				select {
-				case <-sw.more:
-				case <-deadline:
-					t.Fatalf("%s's stream never heard the line %q", p.name, text)
-				}
-			}
-		}
-		return at
-	}
+	fence := func(text string) map[*person]int { return w.fence(t, m, watchers, text) }
 	// hints lists the held rolls and the vitals hints a stream heard in events [from, to).
 	hints := func(p *person, from, to int) (held int, vitals []string) {
 		for _, ev := range watchers[p].since(0)[from:to] {
@@ -462,12 +485,12 @@ func TestNpcCheckHintsReachOnlyWhoMayHearThem(t *testing.T) {
 	}
 
 	res := must(m.play.RollNpcCheck(ctx, rq(&playv1.RollNpcCheckRequest{
-		CampaignId: w.campaign, Npc: &playv1.RollNpcCheckRequest_MonsterKey{MonsterKey: "monster:wolf"}, CheckKey: "skill:perception",
-		Roll: &playv1.RollNpcCheckRequest_D20Face{D20Face: 17}, BardSees: true, IdempotencyKey: newKey(),
+		CampaignId: w.campaign, Npc: &playv1.RollNpcCheckRequest_NpcCharacterId{NpcCharacterId: baron.GetId()}, CheckKey: "ability:cha",
+		Roll: &playv1.RollNpcCheckRequest_D20Face{D20Face: 11}, BardSees: true, IdempotencyKey: newKey(),
 	})))
 	asks := res.GetCheck().GetAsks()
-	if !res.GetHeld() || len(asks) != 2 {
-		t.Fatalf("the master's roll = %v, want a held check with both bards asked (the positive control)", res)
+	if d20 := res.GetCheck().GetD20(); !res.GetHeld() || len(asks) != 2 || d20.GetFaces()[0] != 11 || d20.GetModifier() != 5 || d20.GetTotal() != 16 {
+		t.Fatalf("the master's roll = %v, want a held check of 11 plus 5 with both bards asked (the positive control)", res)
 	}
 	byChar := map[string]*person{brisa.GetId(): ana, cassio.GetId(): caio}
 	first, second := byChar[asks[0].GetCharacterId()], byChar[asks[1].GetCharacterId()]
@@ -494,11 +517,30 @@ func TestNpcCheckHintsReachOnlyWhoMayHearThem(t *testing.T) {
 		}
 	}
 
-	// The first bard cuts, the second lets it pass.
-	must(first.resources.AnswerHeldRoll(ctx, rq(&playv1.AnswerHeldRollRequest{
+	// The first bard cuts, the second lets it pass. What the cut answers is exactly the answer, the die of the bard's own and the uses left
+	// (Brisa has three uses, Cássio two); what the second bard then reads is exactly their own question.
+	uses := map[*person]int32{ana: 3, caio: 2}
+	cut := must(first.resources.AnswerHeldRoll(ctx, rq(&playv1.AnswerHeldRollRequest{
 		CampaignId: w.campaign, HoldId: hold, IdempotencyKey: newKey(),
 		Answer: &playv1.AnswerHeldRollRequest_CuttingWords{CuttingWords: &playv1.CuttingWordsAnswer{Cut: true, Roll: &playv1.CuttingWordsAnswer_TypedFace{TypedFace: 4}}},
 	})))
+	wantCut := &playv1.AnswerHeldRollResponse{Result: &playv1.AnswerHeldRollResponse_CuttingWords{CuttingWords: &playv1.CuttingWordsAnswered{
+		Cut: true, Die: &playv1.DiceRoll{DiceCount: 1, DiceSides: 6, Faces: []int32{4}, Total: 4, Physical: true}, UsesLeft: uses[first] - 1,
+	}}}
+	if !proto.Equal(cut, wantCut) {
+		t.Errorf("the cut's answer = %s, want only %s", protojson.Format(cut), protojson.Format(wantCut))
+	}
+	offered := must(second.resources.ListHeldRolls(ctx, rq(&playv1.ListHeldRollsRequest{CampaignId: w.campaign}))).GetOffers()
+	if len(offered) != 1 {
+		t.Fatalf("%s lists %v, want their own question", second.name, offered)
+	}
+	wantOffer := &playv1.HeldRollOffer{
+		HoldId: hold, Kind: playv1.HeldRollKind_HELD_ROLL_KIND_NPC_CHECK, CreatedAt: offered[0].GetCreatedAt(), RollerLabel: "uma criatura",
+		Question: &playv1.HeldRollOffer_CuttingWords{CuttingWords: &playv1.CuttingWordsQuestion{Sides: 6, UsesLeft: uses[second]}},
+	}
+	if !proto.Equal(offered[0], wantOffer) {
+		t.Errorf("%s's question = %s, want only %s", second.name, protojson.Format(offered[0]), protojson.Format(wantOffer))
+	}
 	must(second.resources.AnswerHeldRoll(ctx, rq(&playv1.AnswerHeldRollRequest{
 		CampaignId: w.campaign, HoldId: hold, IdempotencyKey: newKey(),
 		Answer: &playv1.AnswerHeldRollRequest_CuttingWords{CuttingWords: &playv1.CuttingWordsAnswer{Cut: false}},
@@ -524,7 +566,12 @@ func TestNpcCheckHintsReachOnlyWhoMayHearThem(t *testing.T) {
 		}
 	}
 
-	secret := rollNumbers{d20: 17, modifier: res.GetCheck().GetD20().GetModifier(), total: res.GetCheck().GetD20().GetTotal(), name: res.GetCheck().GetCreatureLabel()}
+	secret := rollNumbers{d20: 11, modifier: 5, total: 16, name: res.GetCheck().GetCreatureLabel()}
+	for what, msg := range map[string]proto.Message{"the cut's answer": cut, "the second bard's question": offered[0]} {
+		for _, l := range secret.leaks(msg) {
+			t.Errorf("%s: %s", what, l)
+		}
+	}
 	must(m.play.EndGameSession(ctx, rq(&playv1.EndGameSessionRequest{CampaignId: w.campaign, GameSessionId: w.session})))
 	for p, sw := range watchers {
 		<-sw.done
@@ -542,10 +589,8 @@ func TestNpcCheckHintsReachOnlyWhoMayHearThem(t *testing.T) {
 			default:
 				t.Errorf("%s's stream carries a %q event, want none of the check", p.name, c)
 			}
-			if eventCase(ev) != "vitals_changed" {
-				for _, l := range secret.leaks(ev) {
-					t.Errorf("%s's stream: %s", p.name, l)
-				}
+			for _, l := range secret.leaks(ev) {
+				t.Errorf("%s's stream: %s", p.name, l)
 			}
 		}
 	}
