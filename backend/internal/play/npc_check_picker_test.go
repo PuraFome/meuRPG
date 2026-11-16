@@ -259,12 +259,18 @@ func TestNpcCheckPickerBonusesAreThoseOfTheRoll(t *testing.T) {
 		candidate func(*playv1.NpcCheckCandidate) bool
 		known     bool // what the creature is expected to have a number for, so the test cannot pass with nothing known anywhere
 	}{
-		"a creature with a full sheet": {&playv1.RollNpcCheckRequest{Npc: &playv1.RollNpcCheckRequest_NpcCharacterId{NpcCharacterId: mage.GetId()}},
-			func(c *playv1.NpcCheckCandidate) bool { return c.GetCharacterId() == mage.GetId() }, true},
-		"an NPC typed by hand": {&playv1.RollNpcCheckRequest{Npc: &playv1.RollNpcCheckRequest_NpcCharacterId{NpcCharacterId: n.npcID}},
-			func(c *playv1.NpcCheckCandidate) bool { return c.GetCharacterId() == n.npcID }, false},
-		"an SRD creature": {&playv1.RollNpcCheckRequest{Npc: &playv1.RollNpcCheckRequest_MonsterKey{MonsterKey: wolf}},
-			func(c *playv1.NpcCheckCandidate) bool { return c.GetMonsterKey() == wolf && c.GetCharacterId() == "" }, true},
+		"a creature with a full sheet": {
+			&playv1.RollNpcCheckRequest{Npc: &playv1.RollNpcCheckRequest_NpcCharacterId{NpcCharacterId: mage.GetId()}},
+			func(c *playv1.NpcCheckCandidate) bool { return c.GetCharacterId() == mage.GetId() }, true,
+		},
+		"an NPC typed by hand": {
+			&playv1.RollNpcCheckRequest{Npc: &playv1.RollNpcCheckRequest_NpcCharacterId{NpcCharacterId: n.npcID}},
+			func(c *playv1.NpcCheckCandidate) bool { return c.GetCharacterId() == n.npcID }, false,
+		},
+		"an SRD creature": {
+			&playv1.RollNpcCheckRequest{Npc: &playv1.RollNpcCheckRequest_MonsterKey{MonsterKey: wolf}},
+			func(c *playv1.NpcCheckCandidate) bool { return c.GetMonsterKey() == wolf && c.GetCharacterId() == "" }, true,
+		},
 	} {
 		cand := slices.IndexFunc(res.Msg.GetCandidates(), tc.candidate)
 		if cand < 0 {
