@@ -170,11 +170,14 @@ func narratedTargets(plan castPlan) []castTarget {
 	return out
 }
 
-// levelOf is the level the spell has in this casting: the slot's, or its own (SRD
-// 5.1, "Casting a Spell at a Higher Level").
+// levelOf is the level the spell has in this casting: the slot's, the cast level of the grant it goes
+// through, or its own (SRD 5.1, "Casting a Spell at a Higher Level").
 func levelOf(plan castPlan) int {
-	if plan.slot != nil {
+	switch {
+	case plan.slot != nil:
 		return int(plan.slot.Level)
+	case plan.grant != nil:
+		return grantLevel(*plan.grant, plan.osp.Spell.Level)
 	}
 	return plan.osp.Spell.Level
 }

@@ -159,6 +159,8 @@ The slot, targets and dice are checked by the server alone: `invalid_argument` c
 
 - **Granted spells.** A spell a `granted_spell` effect gives ([Table content](../rules-table-content.md#granted-spells)) is one more way to cast it: `GetCastOptions` lists each grant on the spell (`CastingSpell.grants`: source, uses left, ability, attack bonus and DC), and a spell the character has from a grant alone is listed too.
   `granted_by` names the grant: the cast takes no slot (a slot only when the grant has `also_with_slot`, and then no use), spends one use of the grant's resource unless it is `at_will` (`NO_USES` when none is left), and reads the spell with the grant's casting ability.
+  A cast with no slot has the grant's `cast_level` (`CastingGrant.cast_level`, `SpellGrantOption.cast_level`), the spell's own level when the grant sets none: the dice, the healing and the targets the spell scales with follow it.
+  A cast with a slot has the slot's level.
   A ritual-only grant takes `as_ritual`.
   The use is spent when the cast starts, also for a long casting; the end of a long casting through a grant reads the sheet again for the way the row says.
   In a combat the same grant is a turn option (`SpellOption.grant`) and `CastSpellRequest.granted_by` picks it; the undo gives the use back.

@@ -385,10 +385,7 @@ func (f *castFlow) pickSlot(ctx context.Context) error {
 	if f.slot, err = f.chosenSlot(); err != nil {
 		return err
 	}
-	f.slotLevel = int(f.cast.level)
-	if f.slot != nil {
-		f.slotLevel = int(f.slot.Level)
-	}
+	f.slotLevel = f.cast.levelWith(f.slot)
 	if f.sp, err = f.s.roster.GrantedCombatSpell(ctx, f.c.tx, f.m.CampaignID, f.caster.CharacterID, f.call.spellKey, f.call.grantedBy, f.slotLevel, f.req.GetDamageTypeKey()); err != nil {
 		return err
 	}

@@ -386,10 +386,7 @@ func (s *Service) previewSpell(ctx context.Context, m authz.Membership, msg *pla
 	if err != nil {
 		return link.Spell{}, err
 	}
-	slotLevel := int(cast.level)
-	if slot != nil {
-		slotLevel = int(slot.Level)
-	}
+	slotLevel := cast.levelWith(slot)
 	sp, err := s.roster.GrantedCombatSpell(ctx, nil, m.CampaignID, caster.CharacterID, msg.GetSpellKey(), msg.GetGrantedBy(), slotLevel, "")
 	if err != nil {
 		return link.Spell{}, s.dbError(ctx, "read the spell", err)

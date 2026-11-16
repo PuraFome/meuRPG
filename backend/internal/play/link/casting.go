@@ -95,6 +95,7 @@ type OutsideGrant struct {
 	AlsoWithSlot     bool
 	RitualOnly       bool
 	Ready            bool
+	CastLevel        int // the level a cast with no slot has (0 for a cantrip): see combat.SpellGrant
 }
 
 // MageArmor is what Mage Armor would do for a character: Wears says it wears armor (the

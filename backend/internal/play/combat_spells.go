@@ -113,6 +113,18 @@ type castable struct {
 	grant *rulesv1.SpellGrantOption
 }
 
+// levelWith is the level the spell is cast at: the slot's, else the cast level of the grant it goes through
+// (the spell's own when the grant sets none), else the spell's own.
+func (c castable) levelWith(slot *slotRef) int {
+	switch {
+	case slot != nil:
+		return int(slot.Level)
+	case c.grant.GetCastLevel() > 0:
+		return int(c.grant.GetCastLevel())
+	}
+	return int(c.level)
+}
+
 // castableOf finds the spell among the options. invalid_argument when the
 // caster does not have it, or it is a cantrip with an attack roll.
 func castableOf(opts *rulesv1.TurnOptions, key, grantedBy string) (castable, error) {
