@@ -516,6 +516,12 @@ type CombatServiceClient interface {
 	// is really a wall, and the real move is then cut short at the last square it
 	// can reach (MoveCombatantResponse.stopped_early).
 	//
+	// For the master the options are those of a free walk, also for a readier whose
+	// READIED move window is open: the call answers early and reads no readied budget,
+	// so the master's move flagged `release_readied` learns that a square is too far
+	// from the refusal (TOO_FAR), not from these options. The readier's own player
+	// reads the readied budget.
+	//
 	// Errors:
 	//   - `not_found`: the combat or the combatant is not in the open session.
 	//   - `permission_denied`: the caller is a player and the combatant is not
@@ -1256,6 +1262,8 @@ type CombatServiceClient interface {
 	//     While the caster's READIED window holds this spell, off its turn, the preview reads it at the
 	//     slot level the spell was held with: it takes no free slot of that level and reads no slot from
 	//     the request (the release spends none).
+	//     A request that names a `granted_by` is the preview of that grant, not of the held spell: it
+	//     reads the request's slot as any other preview does.
 	//   - `failed_precondition` (EncounterBlocked): NOT_ACTIVE, NOT_PLACED (the
 	//     caster has no square), and, for a player, TARGET_OUT_OF_REACH (with
 	//     missing_ft) for an origin beyond the spell's range.
@@ -2788,6 +2796,12 @@ type CombatServiceHandler interface {
 	// is really a wall, and the real move is then cut short at the last square it
 	// can reach (MoveCombatantResponse.stopped_early).
 	//
+	// For the master the options are those of a free walk, also for a readier whose
+	// READIED move window is open: the call answers early and reads no readied budget,
+	// so the master's move flagged `release_readied` learns that a square is too far
+	// from the refusal (TOO_FAR), not from these options. The readier's own player
+	// reads the readied budget.
+	//
 	// Errors:
 	//   - `not_found`: the combat or the combatant is not in the open session.
 	//   - `permission_denied`: the caller is a player and the combatant is not
@@ -3528,6 +3542,8 @@ type CombatServiceHandler interface {
 	//     While the caster's READIED window holds this spell, off its turn, the preview reads it at the
 	//     slot level the spell was held with: it takes no free slot of that level and reads no slot from
 	//     the request (the release spends none).
+	//     A request that names a `granted_by` is the preview of that grant, not of the held spell: it
+	//     reads the request's slot as any other preview does.
 	//   - `failed_precondition` (EncounterBlocked): NOT_ACTIVE, NOT_PLACED (the
 	//     caster has no square), and, for a player, TARGET_OUT_OF_REACH (with
 	//     missing_ft) for an origin beyond the spell's range.
