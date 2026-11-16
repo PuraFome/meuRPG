@@ -5469,7 +5469,9 @@ type ChangedContent struct {
 	// a escolha Estilo de Luta: Defesa; ela não vale mais nesta ficha." Any other issue
 	// tied to the entry is told with its own sentence in `issues`. What no longer
 	// matches, for the sheet of what changed.
-	Messages      []string `protobuf:"bytes,7,rep,name=messages,proto3" json:"messages,omitempty"`
+	Messages []string `protobuf:"bytes,7,rep,name=messages,proto3" json:"messages,omitempty"`
+	// The code of each line of `messages`, in the same order: one code per line. A reader who gets the line gets its code.
+	Codes         []string `protobuf:"bytes,8,rep,name=codes,proto3" json:"codes,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -5549,6 +5551,13 @@ func (x *ChangedContent) GetChangedAt() *timestamppb.Timestamp {
 func (x *ChangedContent) GetMessages() []string {
 	if x != nil {
 		return x.Messages
+	}
+	return nil
+}
+
+func (x *ChangedContent) GetCodes() []string {
+	if x != nil {
+		return x.Codes
 	}
 	return nil
 }
@@ -15013,7 +15022,7 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"damageType\x12-\n" +
 	"\x13damage_type_name_pt\x18\x02 \x01(\tR\x10damageTypeNamePt\x12\x1d\n" +
 	"\n" +
-	"source_key\x18\x03 \x01(\tR\tsourceKey\"\xeb\x01\n" +
+	"source_key\x18\x03 \x01(\tR\tsourceKey\"\x81\x02\n" +
 	"\x0eChangedContent\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x17\n" +
 	"\aname_pt\x18\x02 \x01(\tR\x06namePt\x12\x14\n" +
@@ -15022,7 +15031,8 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\x0esaved_revision\x18\x05 \x01(\x05R\rsavedRevision\x129\n" +
 	"\n" +
 	"changed_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\tchangedAt\x12\x1a\n" +
-	"\bmessages\x18\a \x03(\tR\bmessages\"\xe2\x01\n" +
+	"\bmessages\x18\a \x03(\tR\bmessages\x12\x14\n" +
+	"\x05codes\x18\b \x03(\tR\x05codes\"\xe2\x01\n" +
 	"\n" +
 	"SaveAction\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x12\n" +

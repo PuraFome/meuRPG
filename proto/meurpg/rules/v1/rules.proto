@@ -998,6 +998,8 @@ message ChangedContent {
   // tied to the entry is told with its own sentence in `issues`. What no longer
   // matches, for the sheet of what changed.
   repeated string messages = 7;
+  // The code of each line of `messages`, in the same order: one code per line. A reader who gets the line gets its code.
+  repeated string codes = 8;
 }
 
 // SaveAction is a creature's action that asks for a saving throw.
