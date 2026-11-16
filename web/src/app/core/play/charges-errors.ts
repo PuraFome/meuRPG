@@ -108,6 +108,26 @@ const KIND_WORDS: Record<ConsumableKind, { use: string }> = {
   scroll: { use: 'o pergaminho' },
 };
 
+/** What a refusal of the combat says: the turn, the action, the receiver down or dead, and the reasons the combat has sentences for. */
+function combatMessage(
+  encounter: NonNullable<ReturnType<typeof encounterBlocked>>,
+  ctx: ConsumableErrorContext,
+  words: { use: string },
+): string {
+  switch (encounter.reason) {
+    case EncounterBlockedReason.NOT_YOUR_TURN:
+      return `Só na ${ctx.actingFor ? `vez de ${ctx.actingFor}` : 'sua vez'}: beber ou dar gasta a ação.`;
+    case EncounterBlockedReason.ACTION_USED:
+      return `${ctx.actingFor ?? 'Você'} já usou a ação desta vez.`;
+    case EncounterBlockedReason.COMBATANT_DOWN:
+      return 'Quem está caído não age, mas ainda pode receber uma poção.';
+    // A creature at three failed death saves still reads "Caída" in the list of a player, and the server refuses it.
+    case EncounterBlockedReason.TARGET_DEAD:
+      return `${ctx.targetName ?? 'Quem ia receber'} já morreu: não dá para dar ${words.use} a quem morreu. Nada foi gasto.`;
+  }
+  return blockedMessage(encounter);
+}
+
 /**
  * What a refused or failed use of a consumable says in the "Usar" sheet, by the typed reason and never by the server's
  * message: the turn and the action of a combat, then
@@ -117,18 +137,7 @@ export function consumableErrorMessage(err: unknown, ctx: ConsumableErrorContext
   const words = KIND_WORDS[ctx.kind];
   const encounter = encounterBlocked(err);
   if (encounter) {
-    switch (encounter.reason) {
-      case EncounterBlockedReason.NOT_YOUR_TURN:
-        return `Só na ${ctx.actingFor ? `vez de ${ctx.actingFor}` : 'sua vez'}: beber ou dar gasta a ação.`;
-      case EncounterBlockedReason.ACTION_USED:
-        return `${ctx.actingFor ?? 'Você'} já usou a ação desta vez.`;
-      case EncounterBlockedReason.COMBATANT_DOWN:
-        return 'Quem está caído não age, mas ainda pode receber uma poção.';
-      // A creature at three failed death saves still reads "Caída" in the list of a player, and the server refuses it.
-      case EncounterBlockedReason.TARGET_DEAD:
-        return `${ctx.targetName ?? 'Quem ia receber'} já morreu: não dá para dar ${words.use} a quem morreu. Nada foi gasto.`;
-    }
-    return blockedMessage(encounter);
+    return combatMessage(encounter, ctx, words);
   }
   if (sessionClosed(err)) {
     return 'Sem sessão aberta: só dá para usar durante a sessão. Nada foi gasto.';

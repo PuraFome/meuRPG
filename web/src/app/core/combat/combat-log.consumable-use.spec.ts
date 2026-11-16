@@ -25,7 +25,7 @@ const entry = (
 /** The line as the log draws it: the actor in bold, then the text. */
 const said = (e: CombatLogEntry) => {
   const line = logLine(e);
-  return line ? `${line.actor}${line.text}`.replace(/ /g, ' ') : null;
+  return line ? `${line.actor}${line.text}`.replace(/\u00a0/g, ' ') : null;
 };
 
 const healed = {
