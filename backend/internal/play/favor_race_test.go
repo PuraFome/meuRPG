@@ -112,7 +112,7 @@ func (f *favorParty) tryFavorLocked(i int, a favorAsk) spendTry {
 		return nil
 	})
 	if err != nil {
-		f.h.t.Errorf("%s", failureOf(fmt.Sprintf("the transaction of spend %d", i), err))
+		f.h.t.Errorf("%s; the spend inside it returned: %s", failureOf(fmt.Sprintf("the transaction of spend %d", i), err), failureOf(fmt.Sprintf("spend %d", i), out.err))
 	}
 	return out
 }
