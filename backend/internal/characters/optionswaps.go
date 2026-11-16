@@ -75,22 +75,28 @@ func (s *Service) endGivenUpOptions(ctx context.Context, tx pgx.Tx, current char
 		return nil
 	}
 	before, after := rules.Derive(t.build, t.content), rules.Derive(buildOf(plan.sheet), t.content)
-	var resources, states []string
+	resources, states := endedByGivingUp(before, after, givenUp)
+	q := s.queries.WithTx(tx)
+	if err := s.clearResourceUses(ctx, q, current.ID, resources); err != nil {
+		return err
+	}
+	return s.clearStates(ctx, tx, current, states)
+}
+
+// endedByGivingUp are the keys of the resources and of the states that the given-up options defined and nothing else of the new
+// sheet defines: a resource or state another source in after still defines keeps what it has stored.
+func endedByGivingUp(before, after rules.Derived, givenUp []string) (resources, states []string) {
 	for _, r := range before.Resources {
 		if slices.Contains(givenUp, r.Source) && !slices.ContainsFunc(after.Resources, func(a rules.Resource) bool { return a.Key == r.Key }) {
 			resources = append(resources, r.Key)
 		}
 	}
 	for _, st := range before.States {
-		if slices.Contains(givenUp, st.Source) {
+		if slices.Contains(givenUp, st.Source) && !slices.ContainsFunc(after.States, func(a rules.State) bool { return a.Key == st.Key }) {
 			states = append(states, st.Key)
 		}
 	}
-	q := s.queries.WithTx(tx)
-	if err := s.clearResourceUses(ctx, q, current.ID, resources); err != nil {
-		return err
-	}
-	return s.clearStates(ctx, tx, current, states)
+	return resources, states
 }
 
 // clearResourceUses takes the stored used counts of the resources out of the character's vitals row, when it has one.
