@@ -259,7 +259,9 @@ describe('EquipmentPanel, the magic items and the attunement', () => {
       h.sheet.set(sheetWith([entry({})]));
       h.notice.set('Item mágico adicionado.');
     });
-    expect(flat(el.querySelector('.magic [role=status]'))).toBe('Item mágico adicionado.');
+    expect(flat(el.querySelector('.magic .gear__notice[role=status]'))).toBe(
+      'Item mágico adicionado.',
+    );
   });
 
   it('marks a gear row with the chip of its attunement: attuned, or asking for it', () => {

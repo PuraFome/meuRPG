@@ -207,7 +207,6 @@ export function consumableNeedsReload(err: unknown): boolean {
  * was spent and can be sent again. The turn and the action of a combat are ban lines.
  */
 export function consumableRefusal(err: unknown, ctx: ConsumableErrorContext): ConsumableRefusal {
-  const words = kindWords(ctx.kind);
   const encounter = encounterBlocked(err);
   if (encounter) {
     return combatRefusal(encounter, ctx);
@@ -216,16 +215,35 @@ export function consumableRefusal(err: unknown, ctx: ConsumableErrorContext): Co
     return refusal('Sem sessão aberta.', 'Só dá para usar durante a sessão. Nada foi gasto.');
   }
   const connectErr = ConnectError.from(err, Code.Unavailable);
-  if (connectErr.code === Code.FailedPrecondition) {
-    const blocked = connectErr.findDetails(CharacterBlockedSchema)[0];
-    if (blocked?.reason === CharacterBlockedReason.CHARACTER_DEAD) {
-      const forTarget = !!ctx.targetId && blocked.characterId === ctx.targetId;
-      const who = forTarget ? (ctx.targetName ?? 'Quem ia receber') : ctx.userName;
-      return refusal(`${who} morreu.`, 'Quem morreu não usa nem recebe itens. Nada foi gasto.', {
-        cause: forTarget ? 'target-dead' : 'other',
-      });
-    }
+  return characterDeadRefusal(connectErr, ctx) ?? codeRefusal(connectErr, ctx, err);
+}
+
+/** A dead user or receiver: the one whose death the server names. */
+function characterDeadRefusal(
+  connectErr: ConnectError,
+  ctx: ConsumableErrorContext,
+): ConsumableRefusal | null {
+  if (connectErr.code !== Code.FailedPrecondition) {
+    return null;
   }
+  const blocked = connectErr.findDetails(CharacterBlockedSchema)[0];
+  if (blocked?.reason !== CharacterBlockedReason.CHARACTER_DEAD) {
+    return null;
+  }
+  const forTarget = !!ctx.targetId && blocked.characterId === ctx.targetId;
+  const who = forTarget ? (ctx.targetName ?? 'Quem ia receber') : ctx.userName;
+  return refusal(`${who} morreu.`, 'Quem morreu não usa nem recebe itens. Nada foi gasto.', {
+    cause: forTarget ? 'target-dead' : 'other',
+  });
+}
+
+/** What the call's own code says, when no typed reason does. */
+function codeRefusal(
+  connectErr: ConnectError,
+  ctx: ConsumableErrorContext,
+  err: unknown,
+): ConsumableRefusal {
+  const words = kindWords(ctx.kind);
   switch (connectErr.code) {
     case Code.InvalidArgument:
       return ctx.typedDice
