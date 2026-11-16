@@ -182,6 +182,7 @@ func TestMoveOverAStaleRecordTellsPlayItEnded(t *testing.T) {
 }
 
 // A move onto an object tells play the object's own key, the one the record keeps.
+// An infusion that takes an object takes no piece, so a move from a piece onto an object cannot happen.
 func TestMoveOntoAnObjectTellsPlayTheObjectKey(t *testing.T) {
 	t.Parallel()
 	ip := newInfusedPlay(t)
