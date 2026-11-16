@@ -186,6 +186,7 @@ While the row waits, `GetTurnOptions.spell_targets` of its readier also lists th
 It does so only off the readier's turn, where the window opens and no ordinary entry is listed: on the turn a second action (Action Surge) could list the same spell twice, with nothing to tell the entries apart.
 A held spell attack lists none.
 The list is the owner's and the master's, as the options are (RN-10).
+The release picks only what the readier's player could pick, whoever answers, so the master reads the list under that player's sight too: an NPC the player does not see is not in it (`listHeldTargets`).
 The release spends no slot, the reaction instead of the action, and takes the slot level of Ready (a pact slot spent at Ready counts as a slot of its level).
 The release is checked as a cast: a spell the caster no longer has prepared is refused, and can only be let pass.
 `CastSpell` is a release only off the caster's turn, for the spell its own open READIED window holds (`findReadied`); any other cast is an ordinary one.

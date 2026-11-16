@@ -1,6 +1,7 @@
 package play
 
 import (
+	"slices"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -179,5 +180,39 @@ func TestACounterspellOnAReadiedReleaseWithDartsCastsThemWhenItPasses(t *testing
 	}
 	if got[a.id(t, "Toren")] != 2 || got[a.id(t, "Brisa")] != 1 || a.readiedStatus(t, "Mago Sombrio") != readiedFired {
 		t.Errorf("darts by target = %v, rows %q; want 2 on Toren and 1 on Brisa, fired", got, a.readiedStatus(t, "Mago Sombrio"))
+	}
+}
+
+// heldTargetsOf are the ids of the creatures the options of the combatant list for the held spell, as u reads them.
+func (a *armed) heldTargetsOf(t *testing.T, u *user, e *playv1.Encounter, label, spell string) []string {
+	t.Helper()
+	var ids []string
+	for _, st := range a.mustOptions(t, u, e, label).GetSpellTargets() {
+		if st.GetSpellKey() != spell {
+			continue
+		}
+		for _, tg := range st.GetTargets() {
+			ids = append(ids, tg.GetCombatantId())
+		}
+	}
+	slices.Sort(ids)
+	return ids
+}
+
+// The release picks only what the readier's player could pick, whoever answers (it refuses a hidden creature as not found to
+// both), so the list the master reads for the held spell holds exactly what the release accepts: the readier's player's.
+func TestTheMastersListOfAHeldSpellHoldsWhatTheReleaseAccepts(t *testing.T) {
+	t.Parallel()
+	a := newCasters(t)
+	e := a.targetsFight(t)
+	a.mustReady(t, a.ana, a.readySpell(t, e, "Pensantus", holdPerson, 2, "Capitão Goblin"))
+	e = a.mustEndTurn(t, a.master, e)
+	hidden := a.id(t, "Goblin 2")
+	if byLabel(t, a.get(t, a.master), "Goblin 2").GetId() != hidden {
+		t.Fatal("the master's combat does not list the hidden goblin: the canary is unreachable")
+	}
+	player, master := a.heldTargetsOf(t, a.ana, e, "Pensantus", holdPerson), a.heldTargetsOf(t, a.master, e, "Pensantus", holdPerson)
+	if len(player) == 0 || !slices.Equal(player, master) || slices.Contains(master, hidden) {
+		t.Errorf("held Hold Person's targets: the player's %v, the master's %v; want the same creatures and not the hidden goblin %s", player, master, hidden)
 	}
 }
