@@ -12,8 +12,10 @@ import (
 // that it was lost; never which spell. The master's and Caio's reads are the positive controls.
 
 // readiedSpellWords are what only the master and Caio read of Toren's readied Hold Person: its key and its name (they
-// hold letters outside a-f, so no id matches them), that it is a spell, and Toren's concentration.
-var readiedSpellWords = []string{"spell:hold-person", "Imobilizar Pessoa", "READIED_KIND_SPELL", `"concentrationSpell"`}
+// hold letters outside a-f, so no id matches them), that it is a spell, Toren's concentration, and the slot level of the
+// row (`"slotLevel"`, the key alone: protojson puts a random space after a colon; it omits a zero, and no other read of
+// these tests holds a slot level that is not zero).
+var readiedSpellWords = []string{"spell:hold-person", "Imobilizar Pessoa", "READIED_KIND_SPELL", `"concentrationSpell"`, `"slotLevel"`}
 
 // onTorenTurnAsWizard makes Toren a 3rd-level wizard who prepared Hold Person and plays the combat until his turn.
 func (w *world) onTorenTurnAsWizard() {

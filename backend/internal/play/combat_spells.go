@@ -278,7 +278,7 @@ func (s *Service) CastSpell(
 	if req.Msg.RevealHidden != nil && m.Role != authz.RoleMaster {
 		return nil, errOnlyMasterReveals()
 	}
-	return s.castSpell(ctx, m, req)
+	return s.castSpell(ctx, m, req, false)
 }
 
 // checkTargets checks, for a player, who a spell may touch: how many targets

@@ -1060,7 +1060,7 @@ func applyPicks(after *Build, ch LevelUpChoices, c *content) {
 	after.SpellsPrepared = append(after.SpellsPrepared, ch.Prepared...)
 	applySwap(after, ch.Swap)
 	if ch.SwapInvocation != "" {
-		after.FeatureChoices = slices.DeleteFunc(after.FeatureChoices, func(k string) bool { return k == ch.SwapInvocation })
+		after.FeatureChoices = slices.DeleteFunc(after.FeatureChoices, func(k string) bool { return k == ch.SwapInvocation || ownPick(ch.SwapInvocation, k) })
 	}
 	after.FeatureChoices = append(after.FeatureChoices, ch.LateChoices...)
 	after.FeatureChoices = append(after.FeatureChoices, ch.FeatureChoices...)
@@ -1318,7 +1318,20 @@ func checkLevelUpChoices(before, after Build, classKey string, swap PickSwap, sw
 			return refuse("full.feature_choice_text", LevelUpReasonLocked, "a text already written does not change")
 		}
 	}
-	return checkChoiceProblems(c.choiceSet(before), c.choiceSet(after))
+	return checkChoiceProblems(c.choiceSet(before), c.choiceSet(after), openedByPick(before, after))
+}
+
+// openedByPick are the plain options the new sheet picked that the sheet before did not have:
+// the choices they open (the Pact of the Tome's cantrips, the Book of Ancient Secrets' rituals)
+// may stay open at this level, and the next level asks them as late choices.
+func openedByPick(before, after Build) map[string]bool {
+	opened := map[string]bool{}
+	for _, k := range after.FeatureChoices {
+		if _, _, scoped := SplitScopedChoice(k); !scoped && !slices.Contains(before.FeatureChoices, k) {
+			opened[k] = true
+		}
+	}
+	return opened
 }
 
 // levelUpChoicesField is the sheet field of the choice engine's picks.
@@ -1329,10 +1342,11 @@ const levelUpChoicesField = "full.feature_choice_keys"
 func checkRemovedChoices(before, after Build, classKey string, swap PickSwap, swapped bool, c *content) *LevelUpError {
 	var gone []string
 	for _, k := range before.FeatureChoices {
-		if !slices.Contains(after.FeatureChoices, k) && (!swapped || swap.Group == SwapGroupCantrip || swap.From != k) {
+		if !slices.Contains(after.FeatureChoices, k) && (!swapped || swap.Group == SwapGroupCantrip || (swap.From != k && !ownPick(swap.From, k))) {
 			gone = append(gone, k)
 		}
 	}
+	gone = slices.DeleteFunc(slices.Clone(gone), func(k string) bool { return ownedByAnyOf(gone, k) })
 	if len(gone) > 1 || (len(gone) == 1 && (classKey != classWarlock || !c.isInvocation(gone[0]))) {
 		return refuse(levelUpChoicesField, LevelUpReasonFeatureChoice, "an option was removed")
 	}
@@ -1342,7 +1356,9 @@ func checkRemovedChoices(before, after Build, classKey string, swap PickSwap, sw
 // checkChoiceProblems refuses the first problem of the sheet after's choices that
 // the sheet before did not have: a choice left open (a late one, which an earlier
 // level left open, or a new one), an unmet prerequisite or an option not offered.
-func checkChoiceProblems(setBefore, setAfter ChoiceSet) *LevelUpError {
+// A choice that a plain option picked at this level opens (opened) may stay open:
+// the next level asks it as a late choice.
+func checkChoiceProblems(setBefore, setAfter ChoiceSet, opened map[string]bool) *LevelUpError {
 	had := map[string]bool{}
 	for _, p := range setBefore.ChoiceProblems(false) {
 		had[p.Code+"|"+p.ChoiceKey+"|"+p.OptionKey] = true
@@ -1351,12 +1367,36 @@ func checkChoiceProblems(setBefore, setAfter ChoiceSet) *LevelUpError {
 	for _, p := range setBefore.Pending() {
 		late[p.ChoiceKey] = true
 	}
+	opens := openedChoices(setBefore, setAfter, opened)
 	for _, p := range setAfter.ChoiceProblems(true) {
+		if p.Code == ChoiceProblemMissing && opens[p.ChoiceKey] {
+			continue
+		}
 		if lerr := choiceProblemRefusal(p, late[p.ChoiceKey], had[p.Code+"|"+p.ChoiceKey+"|"+p.OptionKey]); lerr != nil {
 			return lerr
 		}
 	}
 	return nil
+}
+
+// openedChoices are the choices of the new sheet that the sheet before did not ask and that a plain option
+// picked at this level opens.
+func openedChoices(setBefore, setAfter ChoiceSet, opened map[string]bool) map[string]bool {
+	asked := map[string]bool{}
+	for _, g := range setBefore.Groups {
+		for _, ch := range g.Choices {
+			asked[ch.Key] = true
+		}
+	}
+	out := map[string]bool{}
+	for _, g := range setAfter.Groups {
+		for _, ch := range g.Choices {
+			if !asked[ch.Key] && opened[ch.FeatureKey] {
+				out[ch.Key] = true
+			}
+		}
+	}
+	return out
 }
 
 // choiceProblemRefusal is the refusal of one problem of the new sheet's choices,
