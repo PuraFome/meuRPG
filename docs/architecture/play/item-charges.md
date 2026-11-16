@@ -209,15 +209,18 @@ The notice of the last unit therefore keeps its heading and the line "Nenhum ite
 A sheet with potions and charges reads "Travada: usar poções e cargas continua valendo; o resto, só o mestre muda."
 `ConsumableUse` (`shared/consumable-use/consumable-use.ts`) opens `UseConsumableSheet` with the character the dialog acts for (the master's title reads "Usar por <personagem>"), reads the character after a use and words the result as a notice.
 The sheet's magic items and the combat's "Itens" both build one, with the owner's items and what the page knows of the combat.
-`inCombat` is `null` on the sheet, which says both costs, and `true` in the combat.
-The sheet holds no read of a combat: the character's vitals carry none, and the only thing it learns of one is the `COMBAT_RUNNING` refusal of "Recuperar a metade".
+An entry without `consumable` is no consumable row, whatever its name or its effect line says.
+The web keeps no list of oils, no category read and no parsing of `effect_pt` for dice: the verb, the icon, the noun, the Ação mark, the pre-block and the dice read `consumable`.
+`inCombat` is `true` or `false` in the combat's "Itens" and `null` on the sheet.
+The sheet learns the combat from `ListConsumableTargetsResponse.in_combat` and says nothing of the cost until that read answers.
+A scroll or another item that is not given has no targets read, so the sheet uses what the page knows, and `costs_action` is false for it anyway.
 `turnBlock` is `null` on the sheet; in the combat it is `turn` when the turn is not the character's and `action` when the Action is spent (`turnBlockOf`).
-Every potion costs the action in a combat, a text-only one included, except the oils (`OILS`, the keys of the SRD's three oils).
-An oil, a scroll and any other consumable cost no turn and no action, and the master rules on the time.
-A sheet blocked by the turn dashes both buttons and says "Só na sua vez: beber ou dar gasta a ação." or "Você já usou a ação desta vez."
-It reads no list, sends nothing, and opens blocked only for an item that costs the action.
-`UseConsumableSheet` opens on "Dar a…" outlined and "Beber" filled.
-A scroll has no "Dar a…": the sheet reads no list for it and says nothing of receivers.
+Only an item whose `consumable.costs_action` is true opens blocked.
+A sheet blocked by the turn or the Action dashes both buttons and says it in the ban line, with a bold lead: "Só na sua vez:" or "Ação já usada.".
+It reads no list and sends nothing.
+A refusal of the turn or of the Action that comes from the server blocks the open sheet the same way.
+`UseConsumableSheet` opens on "Dar a…" outlined and "Beber" filled; an oil reads "Usar" and "Usar eu mesmo".
+A scroll or another item that is no potion or oil has no "Dar a…": the sheet reads no list for it and says nothing of receivers.
 "Dar a…" is dashed when nobody may receive the item or the list could not be read, and then it carries a block icon.
 A blocked sheet keeps the open hand on its dashed "Dar a…".
 The dashed button is described by the line that says why, or by the error of the read.

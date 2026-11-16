@@ -219,6 +219,29 @@ describe('ActionGroups: the Itens tab', () => {
     expect(text(panel()!.querySelector('.mr-fold__button'))).toContain('Ação · Indisponível');
   });
 
+  it('gives the row of a potion its reason when the character cannot act, and keeps an oil open', () => {
+    const { panel, open, fixture, used } = setup(
+      { items: [HEAL, OIL] },
+      { conditions: ['condition:stunned'] },
+    );
+    open();
+    panel()!.querySelector<HTMLButtonElement>('.mr-fold__button')!.click();
+    fixture.detectChanges();
+    const rows = [...panel()!.querySelectorAll('app-action-row')];
+    const heal = rows.find((r) => text(r).includes('Poção de cura'))!;
+    const oil = rows.find((r) => text(r).includes('Óleo de afiar'))!;
+    expect(text(heal)).toContain('Atordoado: não pode agir.');
+    const button = heal.querySelector<HTMLButtonElement>('.row__btn');
+    expect(!button || button.getAttribute('aria-disabled') === 'true' || button.disabled).toBe(
+      true,
+    );
+    button?.click();
+    expect(used).toEqual([]);
+    expect(text(oil)).not.toContain('não pode agir');
+    oil.querySelector<HTMLButtonElement>('.row__btn')!.click();
+    expect(used).toEqual([OIL.first]);
+  });
+
   it('turns every "Usar" off while an answer is awaited, and says why', () => {
     const { panel, open, used } = setup({ items: [HEAL], locked: 'Esperando a reação do mestre' });
     open();
@@ -232,7 +255,7 @@ describe('ActionGroups: the Itens tab', () => {
     const { panel, open } = setup({ items: [HEAL] });
     open();
     expect(text(panel()!.querySelector('.items__rule span'))).toBe(
-      'Beber ou dar uma poção gasta a ação. Óleos e pergaminhos não gastam a ação: o mestre decide o tempo.',
+      'Beber ou dar uma poção gasta a ação. Um óleo ou um pergaminho é gasto e mostra o texto dele, sem turno e sem ação: o mestre decide o tempo.',
     );
   });
 
