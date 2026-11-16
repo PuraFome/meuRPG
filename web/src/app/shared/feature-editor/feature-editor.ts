@@ -146,6 +146,22 @@ export class FeatureEditor {
   protected readonly unsavedPeers = computed(
     () => this.peers().filter((o) => o.key === '' && o.id !== this.feature().id).length,
   );
+  /**
+   * The chips of "Outras opções" a refusal is about, while the row has one: a sibling that asks for this option in turn (the two
+   * wait for each other), and a key no option has any more.
+   */
+  protected readonly flaggedOptions = computed<string[]>(() => {
+    if (this.issuesOf()(this.path('prerequisite.requires_option_keys')).length === 0) {
+      return [];
+    }
+    const own = this.feature().key;
+    const known = new Set(this.requirable().map((o) => o.value));
+    return this.asks().requiresOptions.filter((k) => {
+      const peer = this.peers().find((p) => p.key === k);
+      const waits = own !== '' && !!peer && featureAsks(peer).requiresOptions.includes(own);
+      return waits || !known.has(k);
+    });
+  });
   protected readonly spellSearch = computed(() => this.catalog()?.spellSearch ?? []);
 
   protected setAsks(change: Partial<Asks>): void {
@@ -362,12 +378,10 @@ export class FeatureEditor {
     this.patch({ options });
     afterNextRender(
       () => {
-        const row = this.host.nativeElement.querySelector(
-          `section.options [role="group"][aria-label="Opção ${j + 1}"]`,
-        );
-        const verbs = by === 1 ? ['Descer', 'Subir'] : ['Subir', 'Descer'];
+        const row = this.host.nativeElement.querySelector(`section.options .opt[data-opt="${j}"]`);
+        const verbs = by === 1 ? ['down', 'up'] : ['up', 'down'];
         for (const verb of verbs) {
-          const button = row?.querySelector<HTMLButtonElement>(`button[aria-label^="${verb} "]`);
+          const button = row?.querySelector<HTMLButtonElement>(`button[data-move="${verb}"]`);
           if (button && !button.disabled) {
             button.focus();
             return;

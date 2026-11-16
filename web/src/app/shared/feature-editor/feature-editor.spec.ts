@@ -384,8 +384,56 @@ describe('FeatureEditor (a trait, a feature)', () => {
       );
       setup(asked, { isOption: true, allowAsks: true });
       expect(text(el)).toContain(
-        '1 de 10. Opções que o personagem já escolheu, do SRD ou da mesa. Nunca a própria opção.',
+        'Opções que o personagem já escolheu, do SRD ou da mesa. Nunca a própria opção.',
       );
+      expect(text(el)).not.toContain('1 de 10.');
+      // The count stands at the end of the chip row, apart from the sentence.
+      expect(text(el.querySelector('.pick__count')!).trim()).toBe('1 de 10');
+    });
+
+    it('draws the chip a cycle refusal is about with the danger border, an icon and a hidden "com problema" (580-03)', () => {
+      const peer = (key: string, asks: string): FeatureDraft =>
+        withAsks({ ...emptyFeature(), key, name: key }, { requiresOptions: [asks] });
+      const own = withAsks(
+        { ...emptyFeature(), key: 'feature:b@mesa', name: 'Asa Partida' },
+        { requiresOptions: ['feature:a@mesa', 'feature:z@mesa'] },
+      );
+      setup(own, {
+        isOption: true,
+        allowAsks: true,
+        issues: {
+          'table_race.traits[1].prerequisite.requires_option_keys': [
+            'Duas opções não podem pedir uma à outra.',
+          ],
+        },
+      });
+      fixture.componentRef.setInput('peers', [
+        peer('feature:a@mesa', 'feature:b@mesa'),
+        { ...emptyFeature(), key: 'feature:z@mesa', name: 'Zê' },
+      ]);
+      fixture.detectChanges();
+      const chips = Array.from(el.querySelectorAll('app-pick-list .chip'));
+      expect(chips[0].classList).toContain('chip--bad');
+      expect(chips[0].querySelector('mat-icon.chip__bad')).not.toBeNull();
+      expect(text(chips[0])).toContain(', com problema');
+      expect(chips[1].classList).not.toContain('chip--bad');
+      // The sentence stands under the chips and above the select.
+      const pick = el.querySelector('app-pick-list')!;
+      const sentence = pick.querySelector('app-field-note')!;
+      expect(text(sentence)).toContain('Duas opções não podem pedir uma à outra.');
+      expect(
+        sentence.compareDocumentPosition(pick.querySelector('.pick__add')!) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+    });
+
+    it('flags no chip while the row has no refusal', () => {
+      const own = withAsks(
+        { ...emptyFeature(), key: 'feature:b@mesa', name: 'Asa Partida' },
+        { requiresOptions: ['feature:a@mesa'] },
+      );
+      setup(own, { isOption: true, allowAsks: true });
+      expect(el.querySelector('app-pick-list .chip--bad')).toBeNull();
     });
 
     it('keeps the outlined "Remover" for a trait that is not an option row', () => {
@@ -531,7 +579,7 @@ describe('FeatureEditor (a trait, a feature)', () => {
       setup(three(), { allowOptions: true, index: -1, count: 0, issues: refused });
       await render();
       const sub = (n: number) =>
-        text(el.querySelectorAll('.opt')[n - 1].querySelector('.opt__sub')!);
+        text(el.querySelectorAll('.opt')[n - 1].querySelector('.opt__text')!);
       expect(sub(2)).toContain('Precisa de ajuste');
       expect(sub(1)).not.toContain('Precisa de ajuste');
       arrow('Subir', 'Asa Partida').click();
@@ -569,7 +617,7 @@ describe('FeatureEditor (a trait, a feature)', () => {
       );
       await render();
       const sub = (n: number) =>
-        text(el.querySelectorAll('.opt')[n - 1].querySelector('.opt__sub')!);
+        text(el.querySelectorAll('.opt')[n - 1].querySelector('.opt__text')!);
       expect(sub(2)).toContain('Precisa de ajuste');
       expect(sub(1)).not.toContain('Precisa de ajuste');
       expect(el.querySelectorAll('.opt')[1].classList).toContain('opt--open');
@@ -742,7 +790,7 @@ describe('FeatureEditor (a trait, a feature)', () => {
       expect(text(toggle(3))).toContain('Precisa de ajuste');
     });
 
-    it('draws no "·" before "Precisa de ajuste" when the row has no line of its own (580-03)', async () => {
+    it('puts "Precisa de ajuste" after the name on the title line, outside the summary, with no dot tied to it (580-03)', async () => {
       const nameless = (): FeatureDraft => ({
         ...emptyFeature(),
         name: 'Truques de lâmina',
@@ -760,20 +808,20 @@ describe('FeatureEditor (a trait, a feature)', () => {
         },
       });
       await render();
-      const sub = (n: number) => text(rows()[n - 1].querySelector('.opt__sub')!).trim();
-      // The row with a line: the dot separates the line from the tag.
-      expect(sub(1)).toBe('Soma o dado · errorPrecisa de ajuste');
-      // The dot is not a piece of the tag: it stays with the line (joined to its last word by a no-break space, so a wrap never
-      // starts a line with it) and the tag begins after it.
-      const dot = rows()[0].querySelector('.opt__sub > .opt__dot')!;
-      expect(dot).not.toBeNull();
-      expect(dot.textContent).toBe('\u00a0·');
-      expect(dot.previousSibling?.textContent).toBe('Soma o dado');
-      expect(dot.nextElementSibling?.classList).toContain('opt__bad');
-      expect(rows()[0].querySelector('.opt__bad')?.textContent).not.toContain('·');
-      // The row without one: the tag stands alone, with nothing to separate it from.
-      expect(sub(2)).toBe('errorPrecisa de ajuste');
-      expect(rows()[1].querySelector('.opt__dot')).toBeNull();
+      for (const n of [1, 2]) {
+        const row = rows()[n - 1];
+        const line = row.querySelector('.opt__line')!;
+        // The tag is the second item of the title line, after the name, and the summary line is another element.
+        expect(line.children[0].classList).toContain('opt__title');
+        expect(line.children[1].classList).toContain('opt__bad');
+        expect(text(line.children[1])).toContain('Precisa de ajuste');
+        expect(row.querySelector('.opt__sub')!.textContent).not.toContain('Precisa de ajuste');
+        expect(row.querySelector('.opt__dot')).toBeNull();
+        expect(getComputedStyle(line.children[1]).whiteSpace).toBe('nowrap');
+        expect(row.classList).toContain('opt--bad');
+      }
+      expect(text(rows()[0].querySelector('.opt__sub')!).trim()).toBe('Soma o dado');
+      expect(text(rows()[1].querySelector('.opt__sub')!).trim()).toBe('');
     });
 
     it('takes an option away from the "⋮" menu of its row and puts the focus on the next row', async () => {

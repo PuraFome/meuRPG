@@ -27,7 +27,10 @@ export interface ChipName {
   template: `
     <div class="pick" role="group" [attr.aria-label]="label()" [attr.data-field]="path() || null">
       @for (key of values(); track key) {
-        <span class="chip">
+        <span class="chip" [class.chip--bad]="isFlagged(key)" [attr.data-flagged]="isFlagged(key) ? '' : null">
+          @if (isFlagged(key)) {
+            <mat-icon class="chip__bad" aria-hidden="true">error</mat-icon>
+          }
           {{ chipName(key) }}
           @if (isTable(key)) {
             <span class="mr-tag">Da mesa</span>
@@ -35,11 +38,31 @@ export interface ChipName {
           @if (badgeOf(key); as badge) {
             <span class="mr-tag mr-tag--compact">{{ badge }}</span>
           }
+          @if (isFlagged(key)) {
+            <span class="mr-visually-hidden">, com problema</span>
+          }
           <button type="button" class="chip__x" [attr.aria-label]="removeLabel(key)" [disabled]="disabled()" (click)="removed.emit(key)">
             <mat-icon aria-hidden="true">close</mat-icon>
           </button>
         </span>
       }
+      @if (!stacked()) {
+        <ng-container *ngTemplateOutlet="adder" />
+      }
+      @if (count()) {
+        <span class="pick__count">{{ count() }}</span>
+      }
+    </div>
+    @if (stacked()) {
+      <app-field-note [id]="noteId" [issues]="issues()" />
+      <div class="pick pick--add">
+        <ng-container *ngTemplateOutlet="adder" />
+      </div>
+      <app-field-note [id]="noteId + '-hint'" [hint]="hint()" />
+    } @else {
+      <app-field-note [id]="noteId" [issues]="issues()" [hint]="hint()" />
+    }
+    <ng-template #adder>
       @if (available().length > 0 && (max() === 0 || values().length < max())) {
         <mat-form-field class="pick__add" appearance="outline" subscriptSizing="dynamic">
           <mat-label>{{ addLabel() }}</mat-label>
@@ -59,14 +82,13 @@ export interface ChipName {
             }
           </select>
         </mat-form-field>
-        <ng-template #items let-items>
-          @for (o of items; track o.value) {
-            <option [value]="o.value">{{ o.side || o.badge ? o.label + ' · ' + (o.side || o.badge) : o.label }}</option>
-          }
-        </ng-template>
       }
-    </div>
-    <app-field-note [id]="noteId" [issues]="issues()" [hint]="hint()" />
+    </ng-template>
+    <ng-template #items let-items>
+      @for (o of items; track o.value) {
+        <option [value]="o.value">{{ o.side || o.badge ? o.label + ' · ' + (o.side || o.badge) : o.label }}</option>
+      }
+    </ng-template>
   `,
   styles: `
     :host {
@@ -126,9 +148,38 @@ export interface ChipName {
       }
     }
 
+    // The chip a refusal is about: the danger border and its icon, so the sentence under the chips has something to point at.
+    .chip--bad {
+      border-color: var(--mr-danger-ink);
+      box-shadow: inset 0 0 0 1px var(--mr-danger-ink);
+    }
+
+    .chip__bad {
+      flex: none;
+      width: 18px;
+      height: 18px;
+      margin-right: -4px;
+      font-size: var(--mr-font-18);
+      color: var(--mr-danger-ink);
+    }
+
     .pick__add {
       min-width: 220px;
-      flex: 1 1 320px;
+      flex: 1 1 220px;
+      max-width: 320px;
+    }
+
+    // "1 de 10": at the end of the row, apart from the helper sentence.
+    .pick__count {
+      margin-left: auto;
+      font-size: var(--mr-font-14);
+      font-weight: 700;
+      color: var(--mr-ink-muted);
+      white-space: nowrap;
+    }
+
+    .pick--add {
+      margin-top: var(--mr-space-2);
     }
   `,
 })
@@ -146,12 +197,24 @@ export class PickList {
   readonly disabled = input(false);
   /** Words for the keys the options do not hold (a pick of a choice that is gone), by key. */
   readonly names = input<Readonly<Record<string, ChipName>>>({});
+  /** The keys of the chips a refusal is about: they are drawn with the danger border and icon, and the sentence stands under the chips. */
+  readonly flagged = input<readonly string[]>([]);
+  /** A count for the end of the row ("1 de 10"), apart from the hint. */
+  readonly count = input('');
   /** A line at the end of the add list that cannot be picked. */
   readonly footer = input('');
   readonly added = output<string>();
   readonly removed = output<string>();
 
   protected readonly noteId = `fn-p${nextId++}`;
+  /** A refusal that names chips: its sentence comes right under the chips, and the select under the sentence. */
+  protected readonly stacked = computed(
+    () => this.flagged().length > 0 && this.issues().length > 0,
+  );
+
+  protected isFlagged(key: string): boolean {
+    return this.flagged().includes(key);
+  }
   protected readonly available = computed(() =>
     this.options().filter((o) => !this.values().includes(o.value)),
   );

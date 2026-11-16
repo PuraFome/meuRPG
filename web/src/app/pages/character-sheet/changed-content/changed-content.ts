@@ -5,7 +5,12 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 
 import type { ChangedContentVm } from '../character-sheet.types';
-import { changeAnnouncement, changeIntro, changeTitle, tieAcChange } from './changed-content-format';
+import {
+  changeAnnouncement,
+  changeIntro,
+  changeTitle,
+  tieAcChange,
+} from './changed-content-format';
 import { openChangedContent } from './changed-content-sheet';
 
 /**

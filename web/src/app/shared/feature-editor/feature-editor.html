@@ -138,20 +138,25 @@
         </p>
       }
       @for (r of rows(); track r.option.id) {
-        <div class="opt" [class.opt--open]="r.open" role="group" [attr.aria-label]="r.place">
+        <div class="opt" [class.opt--open]="r.open" [class.opt--bad]="r.bad" [attr.data-opt]="r.index" role="group" [attr.aria-label]="r.place">
           <div class="opt__head">
-            <button type="button" class="opt__toggle" [attr.aria-expanded]="r.open" [attr.aria-controls]="r.bodyId" (click)="toggleOption(r.option.id)">
+            <button type="button" class="opt__toggle" [attr.aria-expanded]="r.open" [attr.aria-controls]="r.open ? r.bodyId : null" (click)="toggleOption(r.option.id)">
               <mat-icon aria-hidden="true">{{ r.open ? 'expand_more' : 'chevron_right' }}</mat-icon>
               <span class="opt__text">
-                <span class="opt__title">{{ r.title }}</span>
-                <span class="opt__sub">{{ r.summary }}@if (r.bad) { @if (r.summary) { <span class="opt__dot" aria-hidden="true">&nbsp;·</span>&ngsp; }<span class="opt__bad"><mat-icon aria-hidden="true">error</mat-icon>Precisa de ajuste</span> }</span>
+                <span class="opt__line">
+                  <span class="opt__title" [attr.title]="r.title">{{ r.title }}</span>
+                  @if (r.bad) {
+                    <span class="opt__bad"><mat-icon aria-hidden="true">error</mat-icon>Precisa de ajuste</span>
+                  }
+                </span>
+                <span class="opt__sub">{{ r.summary }}</span>
               </span>
             </button>
             @if (rows().length > 1) {
-              <button matIconButton type="button" class="act" aria-label="Subir {{ r.ref }}" [disabled]="r.index === 0" (click)="moveOption(r.index, -1)">
+              <button matIconButton type="button" class="act" data-move="up" aria-label="Subir {{ r.ref }}" [disabled]="r.index === 0" (click)="moveOption(r.index, -1)">
                 <mat-icon aria-hidden="true">arrow_upward</mat-icon>
               </button>
-              <button matIconButton type="button" class="act" aria-label="Descer {{ r.ref }}" [disabled]="r.index === rows().length - 1" (click)="moveOption(r.index, 1)">
+              <button matIconButton type="button" class="act" data-move="down" aria-label="Descer {{ r.ref }}" [disabled]="r.index === rows().length - 1" (click)="moveOption(r.index, 1)">
                 <mat-icon aria-hidden="true">arrow_downward</mat-icon>
               </button>
             }
@@ -197,7 +202,7 @@
         <h4 class="options__title">O que a opção pede</h4>
         <span class="asks__all">O jogador precisa de todos</span>
       </div>
-      <app-ask-rows [base]="path('prerequisite')" [value]="asks()" [issuesOf]="issuesOf()" [classOptions]="classOptions()" [pactOptions]="pactOptions()" [requirable]="requirable()" [inList]="peers().length > 0" [unsavedPeers]="unsavedPeers()" [spellSearch]="spellSearch()" [resetKey]="feature().id" (asksChange)="setAsks($event)" />
+      <app-ask-rows [base]="path('prerequisite')" [value]="asks()" [issuesOf]="issuesOf()" [classOptions]="classOptions()" [pactOptions]="pactOptions()" [requirable]="requirable()" [inList]="peers().length > 0" [unsavedPeers]="unsavedPeers()" [flaggedOptions]="flaggedOptions()" [spellSearch]="spellSearch()" [resetKey]="feature().id" (asksChange)="setAsks($event)" />
       @for (m of issuesOf()(path('prerequisite')); track m) {
         <p class="inline-issue" role="note">{{ m }}</p>
       }
