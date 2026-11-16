@@ -15,10 +15,18 @@
     } @else {
       <h1 class="mr-page-title move__title">{{ title() }}</h1>
       @if (!goneView()) {
+        <!-- The player reads the band, then the budget (857-06); the master the budget, then the band (857-07). -->
         @if (release(); as r) {
-          <app-release-band [band]="r.band" />
+          @if (r.foot) {
+            <p class="move__lead">{{ lead() }}</p>
+            <app-release-band [band]="r.band" />
+          } @else {
+            <app-release-band [band]="r.band" />
+            <p class="move__lead">{{ lead() }}</p>
+          }
+        } @else {
+          <p class="move__lead">{{ lead() }}</p>
         }
-        <p class="move__lead">{{ lead() }}</p>
       }
       @if (jumps() && !release()) {
         <app-segmented class="move__seg" label="Como se mover" [segments]="modes" [value]="mode()" (choose)="setMode($event)" />

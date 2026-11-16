@@ -99,6 +99,15 @@ describe('MovePage: a readied move released off the readier’s turn (#856, boar
     expect(plain(el.querySelector('.move__lead')?.textContent)).toContain('Restam 9,0 m de 9,0 m');
   });
 
+  it('reads the band before the budget for the player (857-06) and the budget before the band for the master (857-07)', () => {
+    const order = (el: HTMLElement) =>
+      Array.from(
+        el.querySelectorAll('.move__main > .move__lead, .move__main > app-release-band'),
+      ).map((n) => n.tagName.toLowerCase() + (n.classList.contains('move__lead') ? '.lead' : ''));
+    expect(order(setup().el)).toEqual(['app-release-band', 'p.lead']);
+    expect(order(setup({ master: true }).el)).toEqual(['p.lead', 'app-release-band']);
+  });
+
   it('keeps no way to jump or to disengage: the server’s budget is a walk', () => {
     const { el } = setup();
     expect(el.querySelector('app-segmented')).toBeNull();
