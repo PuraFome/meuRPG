@@ -425,7 +425,7 @@ func (s *Service) rollConcentration(
 		return false, err
 	}
 	mode := fv.Mode
-	ev.Favor = fv.Used
+	ev.Favor, ev.FavorPrompt = fv.Used, fv.Prompt
 	save = withRollBonus(save, states, reactor.ID, rules.RollAppliesSave)
 	// A player's character that holds a Bardic Inspiration die has the d20 kept until the player
 	// answers (no result is written yet, only the held row, which moves the number once); the answer brings it back with the die added. So

@@ -96,6 +96,8 @@ type sceneRollEvent struct {
 	RollMode string `json:"roll_mode,omitempty"`
 	// Favor says the roll was made with the roller's Inspiration (favor_spend.go); the spend is part of this event.
 	Favor bool `json:"favor,omitempty"`
+	// FavorPrompt is the id of the refund prompt the spend opened (favorUse.Prompt), empty when it opened none.
+	FavorPrompt string `json:"favor_prompt,omitempty"`
 	// The Bardic Inspiration die the player added after the d20 (already in Total).
 	BonusSides int32 `json:"bonus_sides,omitempty"`
 	BonusFace  int32 `json:"bonus_face,omitempty"`
@@ -1176,7 +1178,7 @@ func (c *sceneRollCall) write(ctx context.Context, session playdb.GameSession, s
 	ev := sceneRollEvent{
 		PointID: scene.PointID, ActionID: action.ID, Key: action.Key,
 		D20: clamp32(d20.Face(), 1, d20Sides), Modifier: conv.Int32(bonus), Total: conv.Int32(d20.Total),
-		Physical: d20.Physical, DCShown: scene.ShowDC, D20B: clamp32(d20.otherFace(), 0, d20Sides), Counted: clamp32(d20.Index, 0, 1), RollMode: advantage.ModeKey(cm.Mode), Favor: c.out.favor.Used,
+		Physical: d20.Physical, DCShown: scene.ShowDC, D20B: clamp32(d20.otherFace(), 0, d20Sides), Counted: clamp32(d20.Index, 0, 1), RollMode: advantage.ModeKey(cm.Mode), Favor: c.out.favor.Used, FavorPrompt: c.out.favor.Prompt,
 		Lucky: step.Lucky, Stroke: step.Stroke, CountedBy: d20.CountedBy,
 	}
 	if step.Bonus != nil {
