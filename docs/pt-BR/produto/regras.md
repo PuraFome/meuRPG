@@ -165,7 +165,7 @@ O mestre também pode corrigir à mão, a qualquer momento da sessão, PV, PV te
   A lista segue a palavra que cada jogador já lê: uma criatura com três falhas nos testes de morte que o mestre não confirmou aparece como caída, como qualquer aliado caído, e uma morte que o mestre confirmou fica fora.
   A lista do mestre deixa de fora uma criatura com três falhas nos testes de morte, e o uso a recusa sem gastar nada.
   Para essa poção, quem dá e não está no combate recebe os personagens que também não estão nele.
-  Para qualquer outro consumível, e fora de combate, lista os outros personagens do grupo que não estão mortos, sem dizer como estão, pela mesma palavra.
+  Para qualquer outro consumível, e fora de combate, lista os outros personagens do grupo que não estão mortos, sem dizer como estão.
   Os pontos de vida do personagem de um jogador não são de outro jogador ler ali.
   Numa mesa de dados físicos o jogador digita as faces dos dados de cura, uma para cada dado.
   O app aplica sozinho só as poções de cura e de resistência, os itens da lista de poções dele.

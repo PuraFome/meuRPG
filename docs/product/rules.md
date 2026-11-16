@@ -175,7 +175,7 @@ The master can also correct hit points, temporary hit points, spell slots (and p
   The list follows the word each player already reads: a creature with three failed death saves that the master has not confirmed reads as down, like any down ally, and a death the master confirmed is left out.
   The master's list leaves out a creature with three failed death saves, and the use refuses it with nothing spent.
   For such a potion, a giver that is not in the combat gets the characters that are not in it either.
-  For any other consumable, and out of a combat, it lists the other characters of the party that are not dead, without how they stand, by the same word.
+  For any other consumable, and out of a combat, it lists the other characters of the party that are not dead, without how they stand.
   The hit points of a player's character are no other player's to read there.
   At a table of real dice the player types the faces of the healing dice, one for each die.
   The app applies by itself only the potions of healing and of resistance, the items of its potion list.

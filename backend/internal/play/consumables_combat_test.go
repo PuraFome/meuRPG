@@ -12,6 +12,7 @@ import (
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
 
@@ -613,10 +614,10 @@ func TestTheTargetsFollowTheStateWordThePlayerReads(t *testing.T) {
 	}
 }
 
-// Outside a running combat the list of a user's consumable is the party, with no state word: a combatant with three failed death
-// saves the master has not confirmed is on a player's list as any other, a confirmed death is on nobody's, and the master's list
-// leaves the first out.
-func TestTheTargetsOutsideTheRunningCombatFollowTheStateWordThePlayerReads(t *testing.T) {
+// A consumable that is not a potion is no action of the combat, even while the combat runs: its list is the party, with no state
+// word and no distance. A combatant with three failed death saves the master has not confirmed is on a player's list as any other,
+// a confirmed death is on nobody's, and the master's list leaves the first out.
+func TestTheTargetsOfAScrollInARunningCombatFollowTheStateWordThePlayerReads(t *testing.T) {
 	t.Parallel()
 	f := newPotionFight(t, scrollFirst)
 	f.hurt(t, f.pens, 0)
@@ -631,6 +632,93 @@ func TestTheTargetsOutsideTheRunningCombatFollowTheStateWordThePlayerReads(t *te
 	}
 	_, err := f.use(t, f.caio, f.toren, scrollFirst, giveTo(f.pens))
 	wantBlockedBy(t, "a scroll to a creature the list showed", err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_TARGET_DEAD)
+}
+
+// wantTargets is the exact list a user reads: the characters in order, each at no distance, with no state word (the table does not
+// read one outside a running combat) and able to receive.
+func wantTargets(t *testing.T, who string, got []*playv1.ConsumableTarget, want ...*charactersv1.Character) {
+	t.Helper()
+	if len(got) != len(want) {
+		t.Fatalf("%s reads %v, want %d targets", who, got, len(want))
+	}
+	for i, c := range want {
+		g := got[i]
+		if g.GetCharacterId() != c.GetId() || g.GetName() != c.GetName() || g.GetDistanceFt() != 0 || !g.GetMayReceive() ||
+			g.GetState() != playv1.ConsumableTargetState_CONSUMABLE_TARGET_STATE_UNSPECIFIED {
+			t.Errorf("%s reads %v at %d, want %s (%s), 0 ft, no state, may receive", who, g, i, c.GetName(), c.GetId())
+		}
+	}
+}
+
+// heroOfAna is a fourth character of the party, a wizard, made before the combat starts.
+func (s *stocked) heroOfAna(t *testing.T, name string) *charactersv1.Character {
+	t.Helper()
+	return s.ana.hero(t, s.campaignID, name, "class:wizard", "race:gnome", 1,
+		&rulesv1.AbilityScores{Strength: 10, Dexterity: 14, Constitution: 12, Intelligence: 16, Wisdom: 10, Charisma: 8}, nil, []string{fireBolt})
+}
+
+// While the combat is in setup it has no turn and no distance: the list of an item of Toren is the party's characters that are not
+// dead. A creature with three failed death saves (on its combatant) that the master has not confirmed reads as a down ally to a
+// player, with no state word as for every target outside a running combat, and the master's list leaves it out; a creature the
+// character sheet marks dead is on nobody's list.
+func TestTheTargetsInACombatInSetupFollowTheStateWordThePlayerReads(t *testing.T) {
+	t.Parallel()
+	for _, key := range []string{potionCommon, scrollFirst} {
+		t.Run(key, func(t *testing.T) {
+			t.Parallel()
+			s := newStocked(t, key)
+			fallen := s.heroOfAna(t, "Orvalho")
+			p := plan{
+				npcs:     []*playv1.Participant{{CharacterId: s.goblin.GetId()}},
+				npcRolls: []int{3},
+				players:  map[string]int32{"Toren": 18, "Pensantus": 10, "Brisa": 1, "Orvalho": 5},
+				reveal:   []string{"Goblin"},
+				at:       map[string][2]int32{"Toren": {3, 3}, "Pensantus": {4, 4}, "Brisa": {9, 8}, "Orvalho": {5, 5}, "Goblin": {12, 8}},
+				setup:    true,
+			}
+			f := &potionFight{stocked: s, e: s.start(t, p)}
+			f.hurt(t, f.pens, 0) // three failed death saves, not confirmed
+			f.execSQL(t, `UPDATE combatants SET death_failures = 3 WHERE id = $1`, f.id(t, "Pensantus"))
+			f.hurt(t, f.bri, 0) // an ordinary down ally
+			f.execSQL(t, `UPDATE characters SET status = 'dead', died_at = now() WHERE id = $1`, fallen.GetId())
+			if enc := f.get(t, f.master); enc.GetStatus() != playv1.EncounterStatus_ENCOUNTER_STATUS_SETUP {
+				t.Fatalf("the combat is %v, want it in setup", enc.GetStatus())
+			}
+			wantTargets(t, "a player's list", f.targets(t, f.caio, f.toren, key), f.pens, f.bri)
+			wantTargets(t, "the master's list", f.targets(t, f.master, f.toren, key), f.bri)
+			if key == potionCommon {
+				_, err := f.use(t, f.caio, f.toren, key, giveTo(f.pens))
+				wantBlockedBy(t, "a potion to the creature with three failed death saves", err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_TARGET_DEAD)
+				if !f.holds(t, f.toren, key) {
+					t.Error("the refused gift spent the potion")
+				}
+			}
+		})
+	}
+}
+
+// With no combat at all the list of an item is the party's characters that are not dead, whoever asks, with no state word: the
+// death saves live only on the combatants of a combat (the combatants table), so there is no creature with three failed death
+// saves to leave out of the master's list, and a character at 0 hit points is on every list. The code reads no death saves here:
+// nothing but the sheet's status (dead is out of the party) tells a down character from a dead one.
+func TestTheTargetsWithNoCombatAreThePartyNotDeadForEveryUser(t *testing.T) {
+	t.Parallel()
+	for _, key := range []string{potionCommon, scrollFirst} {
+		t.Run(key, func(t *testing.T) {
+			t.Parallel()
+			s := newStocked(t, key)
+			fallen := s.heroOfAna(t, "Orvalho")
+			s.hurt(t, s.pens, 0)
+			s.hurt(t, s.bri, 0)
+			s.execSQL(t, `UPDATE characters SET status = 'dead', died_at = now() WHERE id = $1`, fallen.GetId())
+			var combats int
+			if err := s.h.pool.QueryRow(t.Context(), `SELECT count(*) FROM encounters e JOIN game_sessions g ON g.id = e.game_session_id WHERE g.campaign_id = $1`, s.campaignID).Scan(&combats); err != nil || combats != 0 {
+				t.Fatalf("encounters = %d, %v; want none", combats, err)
+			}
+			wantTargets(t, "a player's list", s.targets(t, s.caio, s.toren, key), s.pens, s.bri)
+			wantTargets(t, "the master's list", s.targets(t, s.master, s.toren, key), s.pens, s.bri)
+		})
+	}
 }
 
 // failOpenSession is a database that answers every read of the open session with an error.
