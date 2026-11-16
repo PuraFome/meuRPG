@@ -122,38 +122,38 @@ func listOf(field string) string {
 	return list
 }
 
-// legacyLostStart is how the sentence of a lost feat or option begins: it names the entry after it, and the rest is
+// sentenceStart is how the sentence of a lost feat or option begins: it names the entry after it, and the rest is
 // the sentence's own.
-const legacyLostStart = "O personagem não cumpre mais o pré-requisito de "
+const sentenceStart = "O personagem não cumpre mais o pré-requisito de "
 
-// legacyRow is a stored identity that holds a lost feat or option by its sentence: the issue's code, the field it is
+// sentenceRow is a stored identity that holds a lost feat or option by its sentence: the issue's code, the field it is
 // in and the sentence, which begins the same for every reader and names the entry. The place in the field is not read:
 // a feat taken through a choice is stored with none, and a swap may have moved a pick.
-type legacyRow struct {
+type sentenceRow struct {
 	index    int
 	field    string
 	sentence string
 }
 
-// legacyRows are the stored identities that hold, by their sentence, a lost prerequisite of this code and list.
-func (is Issue) legacyRows(stored []string) []legacyRow {
-	var rows []legacyRow
+// sentenceRows are the stored identities that hold, by their sentence, a lost prerequisite of this code and list.
+func (is Issue) sentenceRows(stored []string) []sentenceRow {
+	var rows []sentenceRow
 	for i, id := range stored {
 		code, rest, ok := strings.Cut(id, "|")
 		if !ok || code != is.Code {
 			continue
 		}
 		field, sentence, ok := strings.Cut(rest, "|")
-		if ok && listOf(field) == listOf(is.Field) && strings.HasPrefix(sentence, legacyLostStart) {
-			rows = append(rows, legacyRow{index: i, field: field, sentence: sentence})
+		if ok && listOf(field) == listOf(is.Field) && strings.HasPrefix(sentence, sentenceStart) {
+			rows = append(rows, sentenceRow{index: i, field: field, sentence: sentence})
 		}
 	}
 	return rows
 }
 
 // named says the row's sentence names this issue's entry.
-func (r legacyRow) named(is Issue) bool {
-	return strings.HasPrefix(r.sentence, legacyLostStart+is.Lost.EntryPT+":")
+func (r sentenceRow) named(is Issue) bool {
+	return strings.HasPrefix(r.sentence, sentenceStart+is.Lost.EntryPT+":")
 }
 
 // knownIssues matches the stored identities to the issues of a sheet. An issue is known when its identity is stored.
@@ -170,12 +170,12 @@ func knownIssues(stored []string, issues []Issue) (known []bool, held []int) {
 	for i, is := range issues {
 		known[i] = slices.Contains(stored, is.ID())
 	}
-	lost := func(take func(is Issue, r legacyRow) bool, skipKnown bool) {
+	lost := func(take func(is Issue, r sentenceRow) bool, skipKnown bool) {
 		for i, is := range issues {
 			if is.Lost == nil || skipKnown && known[i] {
 				continue
 			}
-			for _, r := range is.legacyRows(stored) {
+			for _, r := range is.sentenceRows(stored) {
 				if held[r.index] < 0 && take(is, r) {
 					held[r.index], known[i] = i, true
 					break
@@ -183,9 +183,9 @@ func knownIssues(stored []string, issues []Issue) (known []bool, held []int) {
 			}
 		}
 	}
-	lost(func(is Issue, r legacyRow) bool { return r.named(is) }, false)
-	lost(func(is Issue, r legacyRow) bool { return r.field == is.Field }, true)
-	lost(func(Issue, legacyRow) bool { return true }, true)
+	lost(func(is Issue, r sentenceRow) bool { return r.named(is) }, false)
+	lost(func(is Issue, r sentenceRow) bool { return r.field == is.Field }, true)
+	lost(func(Issue, sentenceRow) bool { return true }, true)
 	return known, held
 }
 
