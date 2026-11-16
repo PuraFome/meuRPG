@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"slices"
 
 	"connectrpc.com/connect"
 	"github.com/jackc/pgx/v5"
@@ -338,11 +337,9 @@ func (s *Service) planFinish(ctx context.Context, c *combatTx, m authz.Membershi
 		return s.finishWithGrant(ctx, c, m, plan, i)
 	case !osp.Prepared:
 		return plan, badCast("spell_key is not one of the caster's spells")
-	case plan.slot != nil:
-		if !slices.ContainsFunc(osp.Slots, func(sl link.CastSlot) bool { return sl.Level == int(plan.slot.Level) && sl.Pact == plan.slot.Pact }) {
-			return plan, errCasting(playv1.CastingBlockedReason_CASTING_BLOCKED_REASON_NO_SLOT, "there is no free spell slot for this spell",
-				func(b *playv1.CastingBlocked) { b.MinLevel = plan.slot.Level })
-		}
+	case plan.slot != nil && !osp.HasFreeSlot(int(plan.slot.Level), plan.slot.Pact):
+		return plan, errCasting(playv1.CastingBlockedReason_CASTING_BLOCKED_REASON_NO_SLOT, "there is no free spell slot for this spell",
+			func(b *playv1.CastingBlocked) { b.MinLevel = plan.slot.Level })
 	}
 	return plan, nil
 }

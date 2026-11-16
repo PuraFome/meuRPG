@@ -81,6 +81,11 @@ func (o OutsideSpell) GrantedWithoutSlot() bool {
 	return slices.ContainsFunc(o.Grants, func(g OutsideGrant) bool { return !g.RitualOnly })
 }
 
+// HasFreeSlot says the caster has a free slot of this level and kind (pact or not).
+func (o OutsideSpell) HasFreeSlot(level int, pact bool) bool {
+	return slices.ContainsFunc(o.Slots, func(sl CastSlot) bool { return sl.Level == level && sl.Pact == pact })
+}
+
 // OutsideGrant is a way to cast a spell the character has from a granted_spell effect: with
 // no slot, spending a use of Resource unless AtWill. RitualOnly limits it to the ritual way;
 // AlsoWithSlot lets a spell slot cast it too. Ready says a cast works now (an at-will grant,
