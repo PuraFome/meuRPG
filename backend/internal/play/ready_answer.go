@@ -2,7 +2,6 @@ package play
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"slices"
@@ -545,14 +544,7 @@ func (u *undoer) readiedWaitsAgain(ctx context.Context, r *readiedEvent) error {
 		return nil
 	}
 	t.Rolling, t.WaitBegan = false, nil
-	body, err := json.Marshal(t)
-	if err != nil {
-		return fmt.Errorf("encode the window's trigger: %w", err)
-	}
-	if _, err := u.c.q.SetReactionWindowTrigger(ctx, playdb.SetReactionWindowTriggerParams{ID: w.ID, Trigger: body}); err != nil {
-		return fmt.Errorf("clear the readied window's wait: %w", err)
-	}
-	return nil
+	return setWindowTrigger(ctx, u.c.q, w.ID, t)
 }
 
 // chainReadied: a Ready whose row was lost since (its readier was defeated or dismissed: that line never closes the
