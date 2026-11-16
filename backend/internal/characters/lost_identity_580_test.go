@@ -285,3 +285,33 @@ func (lt *lostFeatTable) giveThroughAChoice(t *testing.T) {
 		t.Fatalf("the master's save of the pick: %v", err)
 	}
 }
+
+// A row in the old wording holds one issue. When another entry of the same list becomes lost after the row was
+// written, that one is new to the sheet: the owner reads its notice and the master's "Fichas com aviso" counts the sheet.
+func TestAStoredOldRowHoldsOneFeatAndNotASecondOneLostLater(t *testing.T) {
+	t.Parallel()
+	lt := newLostFeatTable(t)
+	second := lt.master.addEntry(t, lt.campaign, &rulesv1.TableFeat{NamePt: "Pede a ordem de novo", DescPt: []string{"Texto."}}).GetKey()
+	current := lt.master.get(t, lt.campaign, lt.pc.GetId())
+	sheet := proto.CloneOf(current.GetSheet())
+	sheet.GetFull().FeatKeys = []string{lt.feat, second}
+	if _, err := lt.master.update(t, current, current.GetName(), sheet); err != nil {
+		t.Fatalf("the master's save of the feats: %v", err)
+	}
+	setStoredIssues(t, lt.h, lt.pc.GetId(), withoutCode(storedIssues(t, lt.h, lt.pc.GetId()), "feat_prerequisite",
+		"feat_prerequisite|full.feat_keys[0]|O personagem não cumpre mais o pré-requisito de Pede a ordem: o talento só vale de novo quando cumprir."))
+
+	entry := lt.master.entries(t, lt.campaign)[second]
+	edited := proto.CloneOf(bodyMessage(entry).(*rulesv1.TableFeat))
+	edited.Prerequisite = &rulesv1.FeatPrerequisite{ClassLevel: &rulesv1.FeatClassLevel{ClassKey: lt.class, Level: 3}}
+	res, err := lt.master.table.UpdateTableEntry(t.Context(), connect.NewRequest(updateReq(lt.campaign, second, entry.GetRevision(), edited)))
+	if err != nil {
+		t.Fatalf("UpdateTableEntry() error = %v", err)
+	}
+	if a := res.Msg.GetAffectedCharacters(); len(a) != 1 {
+		t.Errorf("\"Fichas com aviso\" counts %v, want the sheet whose second feat became lost", a)
+	}
+	if keys := changedKeys(lt.owner.get(t, lt.campaign, lt.pc.GetId())); !slices.Contains(keys, second) || slices.Contains(keys, lt.feat) {
+		t.Errorf("the owner's changed entries = %v, want only the feat that became lost (%s)", keys, second)
+	}
+}

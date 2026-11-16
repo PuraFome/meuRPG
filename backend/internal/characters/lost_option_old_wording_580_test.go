@@ -103,3 +103,41 @@ func TestAStoredOptionIssueSurvivesTheRenameOfItsOption(t *testing.T) {
 		t.Errorf("the owner reads a changed entry %v for an issue the sheet already had", keys)
 	}
 }
+
+// A row in the old wording holds one issue: a second option of the feat that becomes lost afterwards is new to the sheet.
+func TestAStoredOldRowHoldsOneOptionAndNotASecondOneLostLater(t *testing.T) {
+	t.Parallel()
+	lo := newLostOptionTable(t)
+	m := lo.master
+	// A second option, picked too, and the first one lost with its row in the old wording.
+	lo.edit(t, func(f *rulesv1.TableFeat) {
+		f.Options = append(f.Options, &rulesv1.TableFeature{NamePt: "Postura firme", DescPt: []string{"Texto."}})
+	})
+	second := lo.master.entries(t, lo.campaign)[lo.feat.GetKey()].GetTableFeat().GetOptions()[1].GetKey()
+	current := m.get(t, lo.campaign, lo.pc.GetId())
+	sheet := proto.CloneOf(current.GetSheet())
+	sheet.GetFull().FeatureChoiceKeys = append(sheet.GetFull().FeatureChoiceKeys, second)
+	if _, err := m.update(t, current, current.GetName(), sheet); err != nil {
+		t.Fatalf("the master's save of the second option: %v", err)
+	}
+	lo.edit(t, lo.asksTheClass)
+	lo.storeOld(t, "Postura exigente", "precisa de nível 3 de "+forgottenClass+".")
+
+	res := lo.edit(t, func(f *rulesv1.TableFeat) {
+		f.Options[1].Prerequisite = &rulesv1.OptionPrerequisite{ClassLevel: &rulesv1.OptionClassLevel{ClassKey: lo.class, Level: 3}}
+	})
+	if a := res.GetAffectedCharacters(); len(a) != 1 {
+		t.Errorf("\"Fichas com aviso\" counts %v, want the sheet whose second option became lost", a)
+	}
+	read := lo.owner.get(t, lo.campaign, lo.pc.GetId())
+	var got []string
+	for _, ch := range read.GetDerived().GetChangedContent() {
+		if ch.GetKey() == lo.feat.GetKey() {
+			got = ch.GetMessages()
+		}
+	}
+	want := "Postura firme pede uma condição que a mesa não mostra: a opção só vale de novo quando " + read.GetName() + " cumprir."
+	if len(got) != 1 || got[0] != want {
+		t.Errorf("the owner reads the changed feat as %q, want only [%q]", got, want)
+	}
+}
