@@ -483,6 +483,7 @@ describe('ReadiedWindowSheet (#582, boards 582-06 to 582-08)', () => {
     expect(flat(move.el.querySelector('[data-testid=release-map-notice] p'))).toBe(
       'O mapa abre para você escolher o quadrado. Lá a mesa espera até 2 min, e dá para voltar antes de mover.',
     );
+    expect(flat(move.el.querySelector('[data-testid=release-map-notice] mat-icon'))).toBe('map');
     expect(
       Array.from(move.el.querySelectorAll('[data-testid=readied-legend] li span')).map((l) =>
         flat(l),
