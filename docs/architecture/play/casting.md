@@ -161,8 +161,8 @@ The slot, targets and dice are checked by the server alone: `invalid_argument` c
   `granted_by` names the grant: the cast takes no slot (a slot only when the grant has `also_with_slot`, and then no use), spends one use of the grant's resource unless it is `at_will` (`NO_USES` when none is left), and reads the spell with the grant's casting ability.
   A cast with no slot has the grant's `cast_level` (`CastingGrant.cast_level`, `SpellGrantOption.cast_level`), the spell's own level when the grant sets none: the dice, the healing and the targets the spell scales with follow it.
   A cast with a slot has the slot's level.
-  The dice of a cast through a grant are those at its `cast_level`, in the app or rolled physically.
-  `CastingSpell.roll_dice` is the dice at the spell's own level.
+  In a combat the dice of a cast through a grant are those at its `cast_level`, rolled in the app or physically.
+  Outside a combat the server rolls and heals at the `cast_level`, and the cast sheet shows the spell's own dice (`CastingSpell.roll_dice`, the dice at the spell's own level).
   The undo of a cast through a grant gives back no slot.
   A retried cast answers with the area at the cast level.
   `SpellTargets` lists one entry per enabled cast option of a spell, in the order of the options.
@@ -170,7 +170,8 @@ The slot, targets and dice are checked by the server alone: `invalid_argument` c
   It lists `max_targets`, the darts and the area at the grant's cast level, and a client counts `targets_per_level` from that level.
   The outside cast row has `slot_level` 0 for a cast with no slot.
   A ritual-only grant takes `as_ritual`.
-  The use is spent when the cast starts, also for a long casting; the end of a long casting through a grant reads the sheet again for the way the row says.
+  The use is spent when the cast starts, also for a long casting.
+  The cast keeps the source of the grant it started through (`spell_casts.grant_source`), and the end of a long casting reads that grant again from the sheet: its cast level and its numbers.
   In a combat the same grant is a turn option (`SpellOption.grant`) and `CastSpellRequest.granted_by` picks it; the undo gives the use back.
 - **One cast, two steps when it takes time.** An action, bonus action or reaction takes effect at once.
   A spell of a minute or more, and every ritual (casting time plus 10 minutes, no slot, no higher level: SRD 5.1 "Rituals"), starts in `casting`: nothing is spent and the caster concentrates on the casting from the start.
