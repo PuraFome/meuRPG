@@ -558,6 +558,7 @@ A hidden member is never named: the turn waits for the master's part as "Falta o
 - The key and the uses a day of an innate use go to the master and the caster's owner, and every other player reads only that the cast was innate ("conjuração inata").
 - A cast that touches a hidden combatant leaves no line for the player. The reaction prompt carries neither the attacker nor the hit's total. The player cannot aim at a hidden target.
 - **Spells that read HP** (Sleep, Color Spray, Power Word Stun, Power Word Kill, Spare the Dying, Heal; "Sono", "Leque Cromático", "Palavra de Poder Atordoar", "Palavra de Poder Matar", "Estabilizar", "Cura Completa") are resolved with the real hit points, and the player still sees only words. The caster sees their own total (`5d8 (2, 4, 1, 5, 3) = 15`) and who was affected ("adormeceu", "não foi afetado"), never a target's hit points or the reason. The master sees the total, each creature's hit points, what remained and the reason. Other players see only who was affected and the condition. Targets are listed in the caster's order, not the order of the total, which would reveal who has the least hit points. Power Word Kill on a player character takes them to 0 with three failures, and the master confirms the death (RN-03).
+- **A heal that depends on the damage dealt** (Vampiric Touch) uses the damage after the target's resistances, and the healed character's hit points show it.
 
 **RP scenes** (MR-015).
 An action's DC belongs to the master. A player never receives another player's roll.
@@ -697,6 +698,10 @@ A readied spell holds the concentration until it is released or lost (RN-31): re
 A spell or the master that ends concentration on a summoning spell (Conjure Animals) dismisses the creatures of that casting.
 The master's undo gives the concentration and the same creatures back.
 A spell that forces a saving throw later (Flaming Sphere, Sleet Storm, Earthquake) rolls its saves and damage when it is cast; the master calls for the later ones. Spirit Guardians, Moonbeam, Cloudkill, Web, Grease, Entangle, Stinking Cloud, Spike Growth and Wall of Fire are the exception: the app keeps their area and calls for the later saves by itself (RN-37).
+Vampiric Touch attacks a creature in reach when it is cast, and heals the caster half the damage dealt.
+The log shows the heal, and the master's undo takes it back.
+The later attacks of Flame Blade and Vampiric Touch and the bite of Faithful Hound are said in the cast result.
+The player acts them as an action, and the master applies them; the app keeps no repeat.
 
 Conditions are public or owner-class.
 Public conditions are readable by everyone.
@@ -913,6 +918,7 @@ On a map with a grid the caster does not list who an area spell touches: they pl
 - **Walls.** A location is outside the area when no unblocked straight line runs from the point of origin to it. Only total cover blocks (a wall, a closed door; crates, a column or other creatures do not). A spell that "spreads around corners" (Fireball and the other spheres) reaches the part of its shape connected to the origin, but never between two walls that touch at a corner. If a player places the point behind a wall, it lands on the near side. The master's point stays, and the master is not held to the range.
 - **Who is hit.** Everyone inside: allies, the caster when inside, hidden creatures. The damage is one roll for all. Cover is measured from the point of origin, and adds +2 (half) or +5 (three-quarters) only to a Dexterity saving throw. A creature reached only around a corner gets no automatic cover; the master marks it by hand.
 - **An empty area** is still cast and spends the slot and the action. The app asks first: "Ninguém que você vê está na área".
+- **Several creatures with a closeness limit.** Some spells take several creatures that must stay near each other: Acid Splash takes two within 1.5 m of each other, Chain Lightning takes others within 9 m of the first, and Mass Cure Wounds takes creatures within 18 m of each other. On a map a player's picks are refused when they are too far apart. Without a map the app does not check. The master is not held to the number of creatures or to the closeness.
 - **Without a grid** (combat without a map, RN-25) none of this exists: the caster lists who is hit, and the master judges who is inside and the cover.
 
 ### Teleport spells on the grid
@@ -993,6 +999,13 @@ The master judges reach, distance and spell range, and the lists of targets hold
 The player spends movement by number ("Gastar movimento"), never more than the turn has, and reads what remains ("Restam 6 m"); the master spends for anyone.
 The opportunity attack is an offer from the master, who sees who left whose reach and may withdraw it or go on without waiting.
 Cover is what the master marks; total cover puts the target out of reach.
+**Spell targets** follow the SRD's number of creatures.
+Seeming and Wall of Ice take up to 10 creatures, and the master applies the rest.
+Slow takes up to 6 and Water Breathing up to 10.
+A spell with no creature to pick (a point, an object, a place) takes no target.
+Fire Shield and Dimension Door take the caster only.
+The master is not held to the number.
+
 Moving, jumping, putting on the map, the reach preview, traps, fog, doors, summoned creatures' places and the familiar's eyes do not exist in this mode, and ask for a map.
 Everything else (initiative, turns, actions, attacks, spells, damage, reactions, conditions, death saves, highlights, log, undo, XP) is the same.
 See ADR-0017, [Architecture](../architecture/play/theatre.md) and [Design](../design/README.md).

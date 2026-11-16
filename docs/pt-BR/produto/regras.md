@@ -558,6 +558,7 @@ Um membro escondido nunca é nomeado: o turno espera a parte do mestre como "Fal
 - A chave e os usos por dia de um uso inato vão ao mestre e ao dono do conjurador, e os outros jogadores leem só que a conjuração foi inata ("conjuração inata").
 - Uma conjuração que toca um combatente escondido não deixa linha para o jogador. O aviso de reação não carrega nem o atacante nem o total do acerto. O jogador não pode mirar em um alvo escondido.
 - **Magias que leem PV** (Sono, Leque Cromático, Palavra de Poder Atordoar, Palavra de Poder Matar, Estabilizar, Cura Completa) são resolvidas com os PV reais, e o jogador ainda vê só palavras. O conjurador vê o próprio total (`5d8 (2, 4, 1, 5, 3) = 15`) e quem foi afetado ("adormeceu", "não foi afetado"), nunca os PV de um alvo nem o motivo. O mestre vê o total, os PV de cada criatura, o que sobrou e o motivo. Os outros jogadores veem só quem foi afetado e a condição. Os alvos são listados na ordem do conjurador, não na ordem do total, que revelaria quem tem menos PV. Palavra de Poder Matar num personagem de jogador o leva a 0 com três falhas, e o mestre confirma a morte (RN-03).
+- **Uma cura que depende do dano causado** (Toque Vampírico) usa o dano depois das resistências do alvo, e os PV de quem foi curado mostram isso.
 
 **Cenas de RP** (MR-015).
 A CD de uma ação pertence ao mestre. Um jogador nunca recebe a rolagem de outro jogador.
@@ -697,6 +698,10 @@ Uma magia preparada mantém a concentração até ser liberada ou perdida (RN-31
 Uma magia, ou o mestre, que encerra a concentração de uma magia de invocação (Conjurar Animais) dispensa as criaturas daquela conjuração.
 O "desfazer" do mestre devolve a concentração e as mesmas criaturas.
 Uma magia que força um teste de resistência mais tarde (Esfera Flamejante, Nevasca, Terremoto) rola os testes e o dano quando é conjurada; o mestre chama os testes seguintes. Espíritos Guardiões, Raio Lunar, Névoa Mortal, Teia, Área Escorregadia, Constrição, Névoa Fétida, Crescer Espinhos e Muralha de Fogo são a exceção: o app mantém a área delas e chama os testes seguintes sozinho (RN-37).
+O Toque Vampírico ataca uma criatura ao alcance quando é conjurado, e cura quem conjura em metade do dano causado.
+O registro mostra a cura, e o desfazer do mestre a devolve.
+Os ataques seguintes da Lâmina Flamejante e do Toque Vampírico e a mordida do Cão Fiel são ditos no resultado da conjuração.
+O jogador os faz como uma ação, e o mestre os aplica; o app não guarda repetição.
 
 As condições são públicas ou da classe do dono.
 As públicas são legíveis por todos.
@@ -913,6 +918,7 @@ Num mapa com grade, quem conjura não lista quem a magia atinge: coloca a área,
 - **Paredes.** Um local fica fora da área quando nenhuma linha reta livre vai do ponto de origem até ele. Só a cobertura total bloqueia (uma parede, uma porta fechada; caixotes, uma coluna ou outras criaturas, não). Uma magia que "se espalha pelos cantos" (Bola de Fogo e as outras esferas) alcança a parte da forma ligada à origem, mas nunca entre duas paredes que se tocam num canto. Se um jogador põe o ponto atrás de uma parede, ele cai do lado de cá. O ponto do mestre fica onde está, e o mestre não é limitado pelo alcance.
 - **Quem é atingido.** Todos lá dentro: aliados, quem conjura quando está dentro, criaturas escondidas. O dano é uma só rolagem para todos. A cobertura é medida a partir do ponto de origem e soma +2 (metade) ou +5 (três quartos) apenas a um teste de resistência de Destreza. Uma criatura alcançada só por um canto não ganha cobertura automática; o mestre a marca à mão.
 - **Uma área vazia** ainda é conjurada e gasta o espaço de magia e a ação. O app pergunta antes: "Ninguém que você vê está na área".
+- **Várias criaturas com limite de proximidade.** Algumas magias pedem várias criaturas que fiquem perto umas das outras: Espirro Ácido pede duas a até 1,5 m uma da outra, Corrente de Relâmpagos pede outras a até 9 m da primeira, e Curar Ferimentos em Massa pede criaturas a até 18 m umas das outras. Num mapa, as escolhas de um jogador são recusadas quando estão longe demais. Sem mapa o app não confere. O mestre não é limitado pelo número de criaturas nem pela proximidade.
 - **Sem grade** (combate sem mapa, RN-25) nada disso existe: quem conjura lista quem é atingido, e o mestre julga quem está dentro e a cobertura.
 
 ### Magias de teletransporte na grade
@@ -993,6 +999,13 @@ O mestre julga alcance, distância e alcance de magia, e as listas de alvos traz
 O jogador gasta o movimento por número ("Gastar movimento"), nunca mais do que o turno tem, e lê o que resta ("Restam 6 m"); o mestre gasta por qualquer um.
 O ataque de oportunidade é uma oferta do mestre, que vê quem saiu do alcance de quem e pode retirá-la ou seguir sem esperar.
 A cobertura é a que o mestre marca; a cobertura total deixa o alvo fora de alcance.
+**Os alvos de uma magia** seguem o número de criaturas do SRD.
+Similaridade e Muralha de Gelo pedem até 10 criaturas, e o mestre aplica as demais.
+Lentidão pede até 6 e Respirar na Água até 10.
+Uma magia sem criatura para escolher (um ponto, um objeto, um lugar) não pede alvo.
+Escudo de Fogo e Porta Dimensional pedem só quem conjura.
+O mestre não é limitado pelo número.
+
 Mover, pular, pôr no mapa, a prévia de alcance, armadilhas, névoa, portas, os lugares das criaturas invocadas e os olhos do familiar não existem nesse modo, e pedem um mapa.
 Tudo o mais (iniciativa, turnos, ações, ataques, magias, dano, reações, condições, testes contra a morte, destaques, registro, desfazer, XP) é igual.
 Veja a ADR-0017, a [Arquitetura](../../architecture/play/theatre.md) e o [Design](../../design/README.md).
