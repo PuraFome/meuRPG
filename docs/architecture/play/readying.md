@@ -172,14 +172,14 @@ The targets are `targets` (each with its darts), or `creature_ids`, or the targe
 The target named at Ready is used only for a spell that takes named targets (`namedAtReady`): a spell that reaches its caster alone, or an area, released with no targets is cast with none.
 In the window, a creature named at Ready that cannot be aimed at now is not chosen: the readier picks another or lets it pass.
 `castSpell` checks them as a cast on the caster's turn: the darts of the slot and the number of targets.
-`targets` on another kind of row, on a held spell attack, on a pass or on a window that is not READIED are `invalid_argument` (`refuseTargets`): an answer never drops what it carries.
+`targets` on another kind of row, on a held spell attack, on a pass or on a window that is not READIED are `invalid_argument` (`badTargets`, with `targetsNotUsed`): an answer never drops what it carries.
 The answer carries no point and no direction: a spell placed on a map (a sphere at a point, a cone, a wall) is refused by the answer, with targets or without, and the window stays open.
 The readier releases it with `CastSpell`, which carries the point, while the READIED window is open.
 In a combat with no map the area is released with the creatures the answer picks, or with nobody.
 The Ready sheet offers the spells the window releases with darts, creatures or nothing.
 It shows with a reason, and does not offer, a spell that asks the caster an ability (Enhance Ability), the creatures of a summon (Conjure Animals) or a damage type (Flame Strike): the answer carries no `ability_key`, `summon` or `damage_type_key`.
 The sheet reads them as the cast sheet does: `needsAbility`, the summon options of the character and the `damage_choice` of the spell's details.
-While the row waits, `GetTurnOptions.spell_targets` of its readier also lists the targets of the held spell (`heldSpellTargets`), with the darts of its slot, so the window can show them.
+While the row waits, `GetTurnOptions.spell_targets` of its readier also lists the targets of the held spell (`heldEntry`), with the darts of its slot, so the window can show them.
 It does so only off the readier's turn, where the window opens and no ordinary entry is listed: on the turn a second action (Action Surge) could list the same spell twice, with nothing to tell the entries apart.
 A held spell attack lists none.
 The list is the owner's and the master's, as the options are (RN-10).
