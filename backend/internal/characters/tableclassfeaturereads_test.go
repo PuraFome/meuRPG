@@ -163,3 +163,43 @@ func TestAPlayerStillReadsTheSpellAndFeatTheirSheetKeepsWhenSwitchedOffOrRetired
 		t.Errorf("the master's entries = %v, want all three", e)
 	}
 }
+
+// A fighting style option the master switches off or retires after a sheet picked it: another entry that names it
+// still names it to the player whose sheet has it, and not to another player; the master reads both entries whole.
+func TestAPlayerStillReadsTheOptionTheirSheetKeepsWhenSwitchedOffOrRetired(t *testing.T) {
+	t.Parallel()
+	for name, change := range map[string]func(*testing.T, *choiceTable, string){
+		"switched off": func(t *testing.T, tb *choiceTable, key string) { tb.master.setOff(t, tb.campaign, true, key) },
+		"retired": func(t *testing.T, tb *choiceTable, key string) {
+			if _, err := tb.master.table.ArchiveTableEntry(t.Context(), connect.NewRequest(&rulesv1.ArchiveTableEntryRequest{CampaignId: tb.campaign, Key: key})); err != nil {
+				t.Fatalf("ArchiveTableEntry() error = %v", err)
+			}
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			tb := newChoiceTable(t)
+			key := tb.master.addEntry(t, tb.campaign, &rulesv1.TableOption{NamePt: "Guarda de teste", Set: "fighting_style", DescPt: []string{"Texto."}}).GetKey()
+			feat := testFeat("Sem guarda")
+			feat.Prerequisite = &rulesv1.FeatPrerequisite{LacksFeatureKey: key}
+			lacker := tb.master.addEntry(t, tb.campaign, feat).GetKey()
+			if _, err := tb.create(tb.caio, choiceSheet("race:human", "", "class:fighter", "", 1, key)); err != nil {
+				t.Fatalf("create the sheet that picks %s: %v", key, err)
+			}
+			change(t, tb, key)
+
+			lacks := func(u *user) *rulesv1.FeatPrerequisite {
+				return u.entries(t, tb.campaign)[lacker].GetTableFeat().GetPrerequisite()
+			}
+			if p := lacks(tb.caio); p.GetLacksFeatureKey() != key || p.GetLacksHidden() {
+				t.Errorf("the player whose sheet keeps the option reads the entry that lacks it as %v, want the key", p)
+			}
+			if p := lacks(tb.ana); p.GetLacksFeatureKey() != "" || !p.GetLacksHidden() {
+				t.Errorf("the other player reads the entry that lacks the option as %v, want the key blank and marked", p)
+			}
+			if p := lacks(tb.master); p.GetLacksFeatureKey() != key || p.GetLacksHidden() {
+				t.Errorf("the master reads the entry that lacks the option as %v, want the key", p)
+			}
+		})
+	}
+}
