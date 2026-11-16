@@ -396,9 +396,8 @@ func readiedHeldForWindows(ctx context.Context, q *playdb.Queries, encID, window
 	return false, nil
 }
 
-// readiedMoveOf is the readied move the mover makes: a walk off its turn while its READIED window of a move is open. A
-// player's own such walk is the release; the master's is a token moved, free and unlimited, unless the request says it is
-// the release (release_readied). Any other move (on its turn, forced, a jump, a placement, a legendary move) is not one.
+// readiedMoveOf is the readied move the mover makes: a plain walk off its turn while its READIED window of a move is open. A
+// player's own is the release; the master's is a free token move unless the request says it is (release_readied).
 func (s *Service) readiedMoveOf(ctx context.Context, a *moveAttempt) error {
 	if a.v.master && !a.req.release {
 		return nil
@@ -426,8 +425,7 @@ func (s *Service) readiedMoveOf(ctx context.Context, a *moveAttempt) error {
 	return s.mustReactNowOrOnTurn(ctx, a.c, a.target)
 }
 
-// openReadied finds the open READIED window of a combatant and the row it holds: found is false when it has none. A
-// combatant has at most one waiting row, so it has at most one such window.
+// openReadied finds the open READIED window of a combatant (it has at most one) and the row it holds.
 func openReadied(ctx context.Context, q *playdb.Queries, encID, whoID string) (w playdb.ReactionWindow, row playdb.ReadiedAction, found bool, err error) {
 	open, err := q.ListOpenReactionWindows(ctx, encID)
 	if err != nil {
@@ -445,8 +443,8 @@ func openReadied(ctx context.Context, q *playdb.Queries, encID, whoID string) (w
 	return open[i], row, true, nil
 }
 
-// openReadiedMove is the readied move of who whose READIED window is open while it is not on its turn, if any:
-// GetMoveOptions then works out the move at that move's own budget, as MoveCombatant walks it (readiedMoveOf).
+// openReadiedMove is the readied move of who whose READIED window is open off its turn, if any: GetMoveOptions works it out
+// at that move's own budget, as MoveCombatant walks it (readiedMoveOf).
 func (s *Service) openReadiedMove(ctx context.Context, d *encounterData, who playdb.Combatant) (*playdb.ReadiedAction, error) {
 	if actsNow(d.enc, who) {
 		return nil, nil

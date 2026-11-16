@@ -186,10 +186,9 @@ func (s *Service) answerWindow(ctx context.Context, c *combatTx, m authz.Members
 }
 
 // MarkReactionRolling implements playv1connect.CombatServiceHandler. It sets the
-// window's `rolling` mark for the master's clock, or takes it off with `clear`, and writes
-// nothing else: no session event, no log line (the closure returns no payload). A mark that
-// changes nothing writes and tells nothing; one that does tells the master and the reactor's
-// player alone: no other player reads the wait.
+// window's `rolling` mark for the master's clock, or takes it off with `clear`, and writes nothing else: no session
+// event, no log line. A mark that changes nothing writes and tells nothing; one that does tells the master and the
+// reactor's player alone: no other player reads the wait.
 func (s *Service) MarkReactionRolling(
 	ctx context.Context,
 	req *connect.Request[playv1.MarkReactionRollingRequest],
@@ -228,8 +227,8 @@ func (s *Service) MarkReactionRolling(
 }
 
 // markRolling is the write of MarkReactionRolling: the mark on, or off when asked to. The mark is the reactor
-// player's own: the master reads it, never sets it or takes it off. It returns no payload: the change is kept and
-// nothing is written to the log. changed says the mark was a change: one that is already as asked writes nothing.
+// player's own: the master reads it, never sets it or takes it off. It writes no log line; changed says the mark was a
+// change: one already as asked writes nothing.
 func (s *Service) markRolling(ctx context.Context, c *combatTx, m authz.Membership, winID string, off bool) (changed bool, err error) {
 	if err := notEnded(c.enc); err != nil {
 		return false, err

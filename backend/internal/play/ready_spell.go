@@ -191,9 +191,8 @@ func (f *castFlow) findReadied(ctx context.Context) error {
 	return err
 }
 
-// heldByWindow finds the readied spell a combatant's open READIED window holds: the window and its row. A held spell
-// attack is not one (its release is a roll), and found is false when the combatant's window holds no such spell. It matches
-// the spell's key alone: the source of the cast is checked by the caller (a release takes the source of Ready).
+// heldByWindow finds the readied spell a combatant's open READIED window holds: the window and its row. A held spell attack is
+// not one (its release is a roll). It matches the spell's key alone: the caller checks the source (a release takes Ready's).
 func heldByWindow(ctx context.Context, q *playdb.Queries, encID, casterID, spellKey string) (playdb.ReactionWindow, playdb.ReadiedAction, bool, error) {
 	w, row, found, err := openReadied(ctx, q, encID, casterID)
 	return w, row, found && row.Kind == readiedSpell && !heldSpellAttackRow(row) && conv.OrZero(row.ActionKey) == spellKey, err
