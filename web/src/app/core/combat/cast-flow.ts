@@ -268,9 +268,10 @@ export function targetRule(
     return { kind: 'multi', max: MAX_CAST_TARGETS, min: 0 }; // an area: any number, even none
   }
   // The server says how many more targets each level above the entry's adds; a server that sets only the flag means one.
+  // A slot below the level of a grant's entry takes as many away.
   const perLevel = st.targetsPerLevel > 0 ? st.targetsPerLevel : st.extraTargetPerLevel ? 1 : 0;
-  const extra = perLevel * Math.max(slotLevel - entryLevel, 0);
-  const max = Math.min(st.maxTargets + extra, MAX_CAST_TARGETS);
+  const extra = perLevel * (slotLevel - entryLevel);
+  const max = Math.max(Math.min(st.maxTargets + extra, MAX_CAST_TARGETS), 1);
   return { kind: max === 1 ? 'single' : 'multi', max, min: 1 };
 }
 

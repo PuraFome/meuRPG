@@ -553,5 +553,9 @@ describe('the level a cast scales at', () => {
       targetRule(grantEntry, 'me', 2, castLevelOf({ level: 3 }, { castLevel: 2 }, 1)).max,
     ).toBe(5);
     expect(targetRule(classEntry, 'me', 1, castLevelOf({ level: 2 }, null, 1)).max).toBe(4);
+    // A grant at cast level 3 (5 targets) cast with a 2nd-level slot reaches the 2nd level's 4.
+    expect(targetRule(bless(5), 'me', 3, castLevelOf({ level: 2 }, { castLevel: 3 }, 1)).max).toBe(
+      4,
+    );
   });
 });

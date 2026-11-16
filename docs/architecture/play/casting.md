@@ -163,9 +163,9 @@ The slot, targets and dice are checked by the server alone: `invalid_argument` c
   A cast with a slot has the slot's level.
   The dice of a cast through a grant are those at its `cast_level`, in the app or rolled physically.
   `CastingSpell.roll_dice` is the dice at the spell's own level.
-  The cast event keeps the cast level as `cast_level` only when it is above the spell's own, and never as `slot`, so the undo gives back no slot.
-  A retried cast answers with the area of the cast level.
-  `SpellTargets` lists one entry per enabled cast option of a spell, in the order of the options: the class's first, then the grants.
+  The undo of a cast through a grant gives back no slot.
+  A retried cast answers with the area at the cast level.
+  `SpellTargets` lists one entry per enabled cast option of a spell, in the order of the options.
   The entry of a grant is the n-th entry of its spell key, n being the place of the grant among the enabled options of that key.
   It lists `max_targets`, the darts and the area at the grant's cast level, and a client counts `targets_per_level` from that level.
   The outside cast row has `slot_level` 0 for a cast with no slot.
