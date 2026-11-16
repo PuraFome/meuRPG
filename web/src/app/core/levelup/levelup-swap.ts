@@ -90,8 +90,8 @@ export class LevelUpSwap {
             {
               key: `swap:${w.group}`,
               label: g.namePt,
-              before: nameIn(g.picks, w.fromKey),
-              after: nameIn(g.pool, w.toKey),
+              before: nameIn(g.picks, w.fromKey, g.namePt),
+              after: nameIn(g.pool, w.toKey, g.namePt),
               sub: '',
             },
           ]
@@ -103,7 +103,9 @@ export class LevelUpSwap {
   readonly summary = computed(() => {
     const g = this.group();
     const w = this.whole().find((x) => x.group === g?.group);
-    return g && w ? `Trocar ${nameIn(g.picks, w.fromKey)} por ${nameIn(g.pool, w.toKey)}` : '';
+    return g && w
+      ? `Trocar ${nameIn(g.picks, w.fromKey, g.namePt)} por ${nameIn(g.pool, w.toKey, g.namePt)}`
+      : '';
   });
 
   /** Whether the swap of this group is whole (the panel marks the group). */
@@ -184,6 +186,12 @@ export class LevelUpSwap {
   }
 }
 
-function nameIn(list: readonly LevelUpNamedKey[], key: string): string {
-  return list.find((p) => p.key === key)?.namePt ?? key;
+/** A pick's name without its group's name ("Estilo de Luta: Defesa" is "Defesa" under "Estilo de Luta"). */
+export function plainName(groupName: string, name: string): string {
+  const lead = `${groupName}: `;
+  return name.startsWith(lead) && name.length > lead.length ? name.slice(lead.length) : name;
+}
+
+function nameIn(list: readonly LevelUpNamedKey[], key: string, groupName = ''): string {
+  return plainName(groupName, list.find((p) => p.key === key)?.namePt ?? key);
 }

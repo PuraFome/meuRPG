@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
-import type { LevelUpSwap } from '../../../core/levelup/levelup-swap';
+import { plainName, type LevelUpSwap } from '../../../core/levelup/levelup-swap';
 
 /**
  * "Trocar escolhas" (MR-025): one panel, in the Ability Score Improvement step or, at a level without it, in the
@@ -24,15 +24,17 @@ import type { LevelUpSwap } from '../../../core/levelup/levelup-swap';
           <input type="radio" name="swap-group" class="opt__input" [checked]="swap().groupKey() === ''" (change)="swap().clear()" />
           Não trocar
         </label>
-        @for (g of swap().groups(); track g.group) {
-          <label class="opt" [class.opt--open]="swap().groupKey() === g.group" [class.opt--done]="swap().isWhole(g.group)">
-            <input type="radio" name="swap-group" class="opt__input" [checked]="swap().groupKey() === g.group" (change)="swap().setGroup(g.group)" />
-            {{ g.namePt }}
-            @if (swap().isWhole(g.group)) {
-              <span class="opt__hidden"> (troca escolhida)</span>
-            }
-          </label>
-        }
+        <div class="groups">
+          @for (g of swap().groups(); track g.group) {
+            <label class="opt" [class.opt--open]="swap().groupKey() === g.group" [class.opt--done]="swap().isWhole(g.group)">
+              <input type="radio" name="swap-group" class="opt__input" [checked]="swap().groupKey() === g.group" (change)="swap().setGroup(g.group)" />
+              {{ g.namePt }}
+              @if (swap().isWhole(g.group)) {
+                <span class="opt__hidden"> (troca escolhida)</span>
+              }
+            </label>
+          }
+        </div>
       </div>
       @let rows = swap().rows();
       @if (rows.length > 0) {
@@ -61,7 +63,7 @@ import type { LevelUpSwap } from '../../../core/levelup/levelup-swap';
                     [disabled]="swap().givenUpElsewhere(p.key)"
                     (change)="swap().setFrom(p.key)"
                   />
-                  <span class="opt__name">{{ p.namePt }}</span>
+                  <span class="opt__name">{{ plain(g.namePt, p.namePt) }}</span>
                   @if (swap().givenUpElsewhere(p.key)) {
                     <span class="opt__tag opt__tag--quiet">já sai em outro conjunto</span>
                   } @else if (swap().fromKey() === p.key) {
@@ -77,7 +79,7 @@ import type { LevelUpSwap } from '../../../core/levelup/levelup-swap';
               @for (p of g.pool; track p.key) {
                 <label class="opt" [class.opt--open]="swap().toKey() === p.key">
                   <input type="radio" name="swap-to" class="opt__input" [checked]="swap().toKey() === p.key" (change)="swap().setTo(p.key)" />
-                  <span class="opt__name">{{ p.namePt }}</span>
+                  <span class="opt__name">{{ plain(g.namePt, p.namePt) }}</span>
                   @if (swap().toKey() === p.key) {
                     <span class="opt__tag" aria-hidden="true">entra</span>
                   }
@@ -126,8 +128,22 @@ import type { LevelUpSwap } from '../../../core/levelup/levelup-swap';
       }
     }
 
-    .opt--none {
-      grid-column: 1 / -1;
+    // "Não trocar" has a row of its own; the groups wrap below it, a long name taking the whole row.
+    .opts:has(> .groups) {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .groups {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--mr-space-2);
+
+      .opt {
+        flex: 1 1 auto;
+        min-width: min(150px, 100%);
+        max-width: 100%;
+      }
     }
 
     .lists {
@@ -266,5 +282,6 @@ import type { LevelUpSwap } from '../../../core/levelup/levelup-swap';
   `,
 })
 export class SwapPicker {
+  protected readonly plain = plainName;
   readonly swap = input.required<LevelUpSwap>();
 }

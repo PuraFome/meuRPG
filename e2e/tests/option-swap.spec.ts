@@ -154,7 +154,7 @@ test(
       await panel.getByRole('radiogroup', { name: 'Abrir mão de' }).getByText('Defesa').click();
       await panel.getByRole('radiogroup', { name: 'Pegar no lugar' }).getByText('Duelismo').click();
       const list = panel.getByRole('list', { name: 'Trocas escolhidas' });
-      await expect(list.getByRole('listitem')).toHaveText(['Estilo de Luta: Estilo de Luta: Defesa → Estilo de Luta: Duelismo', 'Posturas: Postura do Touro → Postura do Urso']);
+      await expect(list.getByRole('listitem')).toHaveText(['Estilo de Luta: Defesa → Duelismo', 'Posturas: Postura do Touro → Postura do Urso']);
       const side = p.getByRole('region', { name: 'O que muda até aqui' });
       await expect(side.getByRole('listitem').filter({ hasText: 'Posturas' })).toContainText('Postura do Touro');
       await expect(side.getByRole('listitem').filter({ hasText: 'Estilo de Luta' })).toContainText('Duelismo');

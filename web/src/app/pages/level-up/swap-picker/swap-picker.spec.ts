@@ -6,7 +6,7 @@ import {
   LevelUpOptionsSchema,
   LevelUpSwapGroupSchema,
 } from '../../../../gen/meurpg/characters/v1/characters_pb';
-import { LevelUpSwap } from '../../../core/levelup/levelup-swap';
+import { LevelUpSwap, plainName } from '../../../core/levelup/levelup-swap';
 import { SwapPicker } from './swap-picker';
 
 const named = (key: string, namePt: string) => create(LevelUpNamedKeySchema, { key, namePt });
@@ -322,5 +322,32 @@ describe('LevelUpSwap and SwapPicker', () => {
     swap.setGroup('feature:a@mesa');
     fixture.detectChanges();
     expect(radio(el, 'swap-from', 'Comum').disabled).toBe(false);
+  });
+
+  it('drops the group name from the front of a pick name, in the lists and in the rows', () => {
+    expect(plainName('Estilo de Luta', 'Estilo de Luta: Defesa')).toBe('Defesa');
+    expect(plainName('Estilo de Luta', 'Estilo de Luta: ')).toBe('Estilo de Luta: ');
+    expect(plainName('Posturas', 'Postura do Lobo')).toBe('Postura do Lobo');
+    const swap = new LevelUpSwap(
+      create(LevelUpOptionsSchema, {
+        swapGroups: [
+          create(LevelUpSwapGroupSchema, {
+            group: 'fighting_style',
+            namePt: 'Estilo de Luta',
+            picks: [named('d', 'Estilo de Luta: Defesa')],
+            pool: [named('e', 'Estilo de Luta: Duelismo')],
+          }),
+        ],
+      }),
+    );
+    swap.setGroup('fighting_style');
+    swap.setFrom('d');
+    swap.setTo('e');
+    expect(swap.rows()[0]).toMatchObject({
+      label: 'Estilo de Luta',
+      before: 'Defesa',
+      after: 'Duelismo',
+    });
+    expect(swap.summary()).toBe('Trocar Defesa por Duelismo');
   });
 });
