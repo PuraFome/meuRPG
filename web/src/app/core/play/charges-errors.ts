@@ -188,11 +188,20 @@ function combatRefusal(
         { cause: 'target-away' },
       );
     case EncounterBlockedReason.ITEM_GONE:
-      return refusal(words.goneLead, `${words.goneUsed}. A ficha foi atualizada.`, {
-        cause: 'item-gone',
-      });
+      return refusal(`${words.goneUsed}.`, 'A ficha foi atualizada.', { cause: 'item-gone' });
   }
   return refusal('Não foi possível.', blockedMessage(encounter));
+}
+
+/**
+ * The refusal of an item that is gone while the page could not read the sheet again (or the read was overtaken): the lead says
+ * the item was used, and the rest does not say the sheet was updated, because it was not. It offers to read it again.
+ */
+export function unreadSheetRefusal(kind: ConsumableKind): ConsumableRefusal {
+  return refusal(`${kindWords(kind).goneUsed}.`, 'Não conseguimos reler a ficha.', {
+    retry: true,
+    cause: 'item-gone',
+  });
 }
 
 /** Whether the sheet must be read again after a failed use: everything but a call that never reached the server. */
@@ -281,9 +290,7 @@ export function consumableTargetsRefusal(
 ): ConsumableRefusal {
   const words = kindWords(ctx.kind);
   if (encounterBlocked(err)?.reason === EncounterBlockedReason.ITEM_GONE) {
-    return refusal(words.goneLead, `${words.goneUsed}. A ficha foi atualizada.`, {
-      cause: 'item-gone',
-    });
+    return refusal(`${words.goneUsed}.`, 'A ficha foi atualizada.', { cause: 'item-gone' });
   }
   const connectErr = ConnectError.from(err, Code.Unavailable);
   if (

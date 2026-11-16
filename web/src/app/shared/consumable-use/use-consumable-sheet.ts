@@ -48,6 +48,8 @@ export interface Aftermath {
   readonly rebound?: boolean;
   /** No unit is left: the sheet closes, and the page shows the notice. */
   readonly close?: boolean;
+  /** The unit is gone and the page could not read the sheet again: the sheet offers nothing until a read lands. */
+  readonly unread?: boolean;
 }
 
 /** Who may receive the consumable, or why the list could not be read. */
@@ -93,6 +95,8 @@ export interface UseConsumableData {
   readonly preferApp: boolean;
   /** Reads who the item may be given to; never rejects. */
   readonly loadTargets: () => Promise<TargetsOutcome>;
+  /** Reads the sheet again after an `unread` answer; never rejects. */
+  readonly reread: () => Promise<Aftermath>;
   /** Uses the item under `key`; answers the refusal in words, or none when it was used. */
   readonly use: (request: UseConsumableRequest, key: string) => Promise<UseAnswer>;
 }
