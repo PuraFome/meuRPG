@@ -96,7 +96,7 @@ test('um jogador prepara uma magia com o espaço e o servidor recusa quando a a�
     const sheet = await openReadySheet(p);
     // Mover is on in a combat with a map (#856): what it does is written, and the trigger is all it needs to be held.
     await sheet.getByRole('button', { name: 'Mover', exact: true }).click();
-    await expect(sheet.getByText(/Você anda até .+ quando o mestre disparar\./)).toBeVisible();
+    await expect(sheet.getByText(/Você anda até\s.+ quando o mestre disparar\./)).toBeVisible();
     await sheet.getByLabel('Quando dispara, nas suas palavras').fill('Quando o goblin recuar, corro até a porta');
     await expect(sheet.getByRole('button', { name: 'Preparar', exact: true })).toBeEnabled();
     await sheet.getByRole('button', { name: 'Magia', exact: true }).click();

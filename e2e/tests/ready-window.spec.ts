@@ -378,7 +378,13 @@ test('uma magia de uma criatura preparada é solta na criatura que o jogador esc
     await expect(prompt).toContainText(/Você está escolhendo: a mesa espera 1 min \d+ s\. Depois disso, passa sozinho\./);
     const queue = m.locator('app-reaction-queue[part="rest"]');
     await expect
-      .poll(async () => Number(/passa sozinho em (\d+) s/.exec(await queue.innerText())?.[1] ?? '0'), { message: 'os segundos do relógio do mestre' })
+      .poll(
+        async () => {
+          const left = /passa sozinho em (?:(\d+) min)?\s*(?:(\d+) s)?/.exec(await queue.innerText());
+          return Number(left?.[1] ?? 0) * 60 + Number(left?.[2] ?? 0);
+        },
+        { message: 'os segundos do relógio do mestre' },
+      )
       .toBeGreaterThan(30);
     await release.click();
     await expect(prompt).toHaveCount(0);

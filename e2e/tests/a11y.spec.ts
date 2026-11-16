@@ -15078,7 +15078,7 @@ async function scanReadyScreens(browser: Browser, colorScheme: 'light' | 'dark',
     await shoot(p, 'preparar-magia');
 
     await sheet.getByRole('button', { name: 'Mover', exact: true }).click();
-    await expect(sheet.getByText(/Você anda até .+ quando o mestre disparar\./)).toBeVisible();
+    await expect(sheet.getByText(/Você anda até\s.+ quando o mestre disparar\./)).toBeVisible();
     await expectScreenPasses(p, `Preparar, a folha do movimento ${where}`);
     await shoot(p, 'preparar-mover');
 
