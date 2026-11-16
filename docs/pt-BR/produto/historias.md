@@ -1980,6 +1980,10 @@ O MVP tem os três estilos prontos da página "Regras da mesa" (RN-24); o resto 
 - **Dado** um combate aberto, **quando** o mestre rola o teste de um NPC assim, **então** é recusado com o motivo.
 - **Dado** o seletor do mestre, **então** ele lista os NPCs do palco (com a marca dos escondidos dos jogadores), os tokens de NPC do mapa atual e a criatura pedida do bestiário, não todo NPC vivo; e diz, para cada criatura, se o mapa consegue medi-la contra um bardo (os dois tokens na grade do mapa atual), para que o app peça a caixa só quando não consegue.
 - **Dado** um teste que fechou, **quando** o mestre abre a mesa de novo, **então** o mestre o lê outra vez (a criatura, o teste, a rolagem, quem cortou e com qual dado, quem deixou passar, quem ficou sem ser esperado, o total) até o próximo teste ser rolado ou a sessão terminar; ninguém além do mestre o lê.
+- **Dado** um teste que espera os bardos, **quando** o mestre esconde o token da criatura no mapa, **então** na próxima vez que a pergunta é lida ou respondida ela se fecha como "Continuar sem esperar" e ninguém é perguntado; **quando** o mestre esconde a criatura no palco, **então** a pergunta passa a chamá-la de "uma criatura".
+- **Dado** que o bardo perguntado agora foi para a reserva, morreu, foi apagado ou ficou sem jogador, **quando** a pergunta é lida ou respondida em seguida, **então** ela se fecha como um passe e o próximo bardo é perguntado (o mestre e esse bardo são avisados), e o teste se resolve quando não resta nenhum bardo.
+- **Dado** que ninguém pode cortar um teste, **quando** o mestre o rola ou o lê de novo, **então** o mestre lê o motivo: nenhum bardo pode cortar um teste, a criatura é imune a encantamento, o token dela está escondido ou ninguém a vê.
+- **Dado** que a caixa do mestre está marcada e não há token de ambos no mapa, **então** só os bardos cujo jogador a cena aberta alcança são perguntados.
 
 ### MR-047: Mais quebra-cabeças
 

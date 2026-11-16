@@ -1981,6 +1981,10 @@ The MVP has the three ready-made styles of the "Regras da mesa" page (RN-24); th
 - **Given** a combat is open, **when** the master rolls an NPC's check this way, **then** it is refused with the reason.
 - **Given** the master's picker, **then** it lists the NPCs on the stage (with the mark of the ones hidden from the players), the NPC tokens on the current map and the creature asked from the bestiary, not every living NPC; and it says, for each creature, whether the map can measure it against a bard (both tokens on the grid of the current map), so the app asks for the checkbox only when it cannot.
 - **Given** a check that settled, **when** the master opens the table again, **then** the master reads it again (the creature, the check, the roll, who cut with which die, who let it pass, who was skipped, the total) until the next check is rolled or the session ends; nobody but the master reads it.
+- **Given** a check that waits for the bards, **when** the master hides the creature's token on the map, **then** the next time the question is read or answered it closes as "Continuar sem esperar" does and nobody is asked; **when** the master hides the creature on the stage, **then** the question calls it "uma criatura" from then on.
+- **Given** the bard asked now was put in the reserve, died, was deleted or lost its player, **when** the question is next read or answered, **then** it closes as a pass and the next bard is asked (the master and that bard are told), and the check settles when no bard is left.
+- **Given** nobody may cut a check, **when** the master rolls it or reads it again, **then** the master reads why: no bard can cut a check, the creature is immune to charm, its token is hidden, or nobody sees it.
+- **Given** the master's box is ticked and no token of both is on the map, **then** only the bards whose player the open scene is open to are asked.
 
 ### MR-047: More puzzles
 
