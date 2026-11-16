@@ -188,9 +188,9 @@ func (s *Service) ListInfusionTargets(
 	if err != nil {
 		return nil, s.dbError(ctx, "read the pieces of a character", err)
 	}
-	// The pieces depend on the infusion alone; whether the character knows it is the write's refusal. A key that is no
-	// infusion of the content has no piece to go on.
-	in, ok := v.content.Infusion(req.Msg.GetInfusionKey())
+	// Only an infusion the character knows has pieces to go on: for any other key the answer is the one of a key that is
+	// no infusion at all.
+	in, ok := v.knownData(req.Msg.GetInfusionKey())
 	if !ok {
 		return connect.NewResponse(&charactersv1.ListInfusionTargetsResponse{}), nil
 	}

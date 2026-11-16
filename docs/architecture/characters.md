@@ -241,6 +241,7 @@ It lists the damage types it offers, with their Portuguese names.
 `limit` and `used` come from `Derived.InfusionHosts`.
 A character with two host features gets the sum of their limits and of their valid records.
 
+`ListInfusionTargets` answers an infusion the character does not know as it answers a key that is no infusion: the empty list.
 `ListInfusionTargets` has one row for each gear key of the sheet (armor, shield, weapons, equipped or carried).
 `copies` says how many times the key is listed.
 The reason of a row, in this order, is `WRONG_KIND`, `ALREADY_MAGICAL` and `TAKEN`.

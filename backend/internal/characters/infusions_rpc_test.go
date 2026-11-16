@@ -9,6 +9,7 @@ import (
 	"uuid"
 
 	"connectrpc.com/connect"
+	"google.golang.org/protobuf/proto"
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
@@ -205,6 +206,33 @@ func TestListInfusionTargetsOfAnotherHolderIsRefused(t *testing.T) {
 		CampaignId: it.campaign, CharacterId: it.pc.GetId(), InfusionKey: infusionKeyBlade, HolderCharacterId: uuid.New().String(),
 	}))
 	wantCode(t, "ListInfusionTargets(another holder)", err, connect.CodeInvalidArgument)
+}
+
+// The targets of an infusion the character does not know (the table has it and the sheet did not pick it) are the answer of
+// a key that is no infusion: same code, same empty list.
+func TestListInfusionTargetsOfAnInfusionTheCharacterDoesNotKnow(t *testing.T) {
+	t.Parallel()
+	it := newInfusedTable(t)
+	ask := func(key string) (*charactersv1.ListInfusionTargetsResponse, error) {
+		res, err := it.dona.infusions.ListInfusionTargets(t.Context(), connect.NewRequest(&charactersv1.ListInfusionTargetsRequest{
+			CampaignId: it.campaign, CharacterId: it.pc.GetId(), InfusionKey: key, HolderCharacterId: it.pc.GetId(),
+		}))
+		if err != nil {
+			return nil, err
+		}
+		return res.Msg, nil
+	}
+	if _, rows := it.targets(t, it.dona, infusionKeyBlade); len(rows) == 0 {
+		t.Fatal("a known infusion lists no piece, want rows (the positive control)")
+	}
+	want, wantErr := ask("feature:no-such-infusion")
+	got, err := ask(infusionKeyFocus)
+	if (err == nil) != (wantErr == nil) || (err != nil && err.Error() != wantErr.Error()) {
+		t.Fatalf("the infusion the character does not know answers error %v, want %v", err, wantErr)
+	}
+	if !proto.Equal(got, want) || len(got.GetTargets()) != 0 {
+		t.Errorf("the infusion the character does not know answers %v, want %v", got, want)
+	}
 }
 
 // The target list has a row for each gear key with the reason it cannot take the infusion, in the order wrong kind, already

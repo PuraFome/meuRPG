@@ -35,6 +35,8 @@ const (
 	infusionAsh   = "feature:class-engenhista-de-li-6d59b9--manto-de-cinza@mesa"
 	infusionFalse = "feature:class-engenhista-de-li-6d59b9--fundo-falso@mesa"
 	infusionSeal  = "feature:class-engenhista-de-li-6d59b9--selo-de-casa@mesa"
+	// An infusion of the table's class that Toren did not pick.
+	infusionFocus = "feature:class-engenhista-de-li-6d59b9--diapasao-interno@mesa"
 
 	// The names the pack gives the blade and the seal, which the test swaps for markers.
 	packBladeName, packSealName = "Gume Vivo", "Selo de Casa"
@@ -287,4 +289,33 @@ func TestAnInfusionIsTheOwnersAndTheMastersAlone(t *testing.T) {
 		}
 	}
 	t.Run("canaries are reachable", func(t *testing.T) { checkCanariesAreReachable(t, w, it.got) })
+}
+
+// The targets of an infusion the character does not know: the table has the infusion, Toren did not pick it, and the answer
+// is the whole answer of a key the table does not have, for the owner and for the master.
+func TestInfusionTargetsOfAnInfusionTheCharacterDoesNotKnowAnswerAsAMissingKey(t *testing.T) {
+	it := newInfusedTable(t)
+	w := it.world
+	answer := func(p *person, key string) string {
+		res, err := p.infusions.ListInfusionTargets(t.Context(), rq(&charactersv1.ListInfusionTargetsRequest{
+			CampaignId: w.campaign, CharacterId: w.toren.GetId(), InfusionKey: key, HolderCharacterId: w.toren.GetId(),
+		}))
+		if err != nil {
+			return "error: " + err.Error()
+		}
+		body, err := protojson.Marshal(res.Msg)
+		if err != nil {
+			t.Fatalf("marshal the answer: %v", err)
+		}
+		return "ok: " + string(body)
+	}
+	for _, p := range []*person{w.caio, w.master} {
+		if known := answer(p, infusionBlade); !strings.Contains(known, "targets") {
+			t.Fatalf("%s reads the targets of a known infusion as %s, want rows (the positive control)", p.name, known)
+		}
+		missing := answer(p, "feature:no-such-infusion")
+		if got := answer(p, infusionFocus); got != missing {
+			t.Errorf("%s: the answer for an infusion the character does not know is %s, want the answer for a missing key, %s", p.name, got, missing)
+		}
+	}
 }
