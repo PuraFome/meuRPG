@@ -340,6 +340,21 @@ func protectedRefund(t *testing.T) (*favorFight, *playv1.FavorRefundPrompt) {
 	return f, prompts[0]
 }
 
+// wantUndoableIsTheKeylessRoll says the event the master's Desfazer reaches is the attack_rolled the replay wrote with no key, and no other
+// event (not the Protection's answer written beside it, not a roll under a key): the undo that follows reads the prompt by what that event
+// says, and these tests mean to prove that and nothing else.
+func (f *favorFight) wantUndoableIsTheKeylessRoll(t *testing.T, undoable string) {
+	t.Helper()
+	var id, kind string
+	var keyless bool
+	if err := f.h.pool.QueryRow(t.Context(), `SELECT id::text, kind, idempotency_key IS NULL FROM session_events WHERE id::text = $1 AND game_session_id = $2`, undoable, f.sessionID).Scan(&id, &kind, &keyless); err != nil {
+		t.Fatalf("the event the master can undo (%q) is not an event of the session: %v", undoable, err)
+	}
+	if kind != eventAttackRolled || !keyless {
+		t.Fatalf("the master can undo the event %s of kind %q (keyless %v), want the keyless %s the replay wrote", id, kind, keyless, eventAttackRolled)
+	}
+}
+
 // A Protection that was used does not close the chain, so the replayed roll (no key) is the last action: the "Devolver" that came before is
 // found by what the event says, and the undo gives nothing back.
 func TestUndoOfAProtectedRollNeverGivesBackAReturnedRefund(t *testing.T) {
@@ -350,9 +365,7 @@ func TestUndoOfAProtectedRollNeverGivesBackAReturnedRefund(t *testing.T) {
 	}
 	f.execSQL(t, `DELETE FROM character_favor WHERE character_id = $1`, f.toren.GetId()) // spent again, on another roll
 	id := f.log(t, f.master, f.e).GetUndoableEventId()
-	if id == "" {
-		t.Fatal("the protected roll is not the last action of the combat")
-	}
+	f.wantUndoableIsTheKeylessRoll(t, id)
 	if err := f.undo(t, f.master, f.e, id); err != nil {
 		t.Fatalf("UndoLastAction(the roll) error = %v", err)
 	}
@@ -369,9 +382,7 @@ func TestUndoOfAProtectedRollKeepsItsRefundPrompt(t *testing.T) {
 	t.Parallel()
 	f, p := protectedRefund(t)
 	id := f.log(t, f.master, f.e).GetUndoableEventId()
-	if id == "" {
-		t.Fatal("the protected roll is not the last action of the combat")
-	}
+	f.wantUndoableIsTheKeylessRoll(t, id)
 	if err := f.undo(t, f.master, f.e, id); err != nil {
 		t.Fatalf("UndoLastAction(the roll) error = %v", err)
 	}

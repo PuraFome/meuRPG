@@ -1,6 +1,7 @@
 package play
 
 import (
+	"slices"
 	"strings"
 	"testing"
 
@@ -64,6 +65,8 @@ func (c *upperHeldCast) wantOnlyPensantus(t *testing.T, what string) {
 }
 
 // The held cast's roll is answered after the pass and undone: the Inspiração it spent was returned already, so the undo gives nothing back.
+// What it guards: the id path. The prompt is found by the id the event and the hold carry; it passes with the cast's key as typed too (checked by
+// putting the raw key back in spellModes), so it is not the proof of the parsed key.
 func TestUndoOfACastSentWithAnUpperCaseKeyNeverGivesBackAReturnedRefund(t *testing.T) {
 	t.Parallel()
 	c := newUpperHeldCast(t)
@@ -81,6 +84,8 @@ func TestUndoOfACastSentWithAnUpperCaseKeyNeverGivesBackAReturnedRefund(t *testi
 }
 
 // The held cast is forgotten (the round turned) after the pass: it gives nothing back.
+// What it guards: the id path (the hold's favor_prompt_id), as the test above; it passes with the cast's key as typed too, so it is not the proof
+// of the parsed key.
 func TestForgottenCastSentWithAnUpperCaseKeyNeverGivesBackAReturnedRefund(t *testing.T) {
 	t.Parallel()
 	c := newUpperHeldCast(t)
@@ -104,6 +109,8 @@ func TestForgottenCastSentWithAnUpperCaseKeyNeverGivesBackAReturnedRefund(t *tes
 }
 
 // A retry of the held cast, with the key as typed the first time, is the same cast: it answers the die's question again and does not spend.
+// What it guards: the retry of a held cast whose key was typed in upper case; it passes with the cast's key as typed too (the hold is found by its
+// UUID column, which reads either spelling), so it is not the proof of the parsed key.
 func TestRetryOfAHeldCastSentWithAnUpperCaseKeyDoesNotSpendAgain(t *testing.T) {
 	t.Parallel()
 	c := newUpperHeldCast(t)
@@ -116,5 +123,40 @@ func TestRetryOfAHeldCastSentWithAnUpperCaseKeyDoesNotSpendAgain(t *testing.T) {
 	}
 	if again.holdID != c.holdID {
 		t.Errorf("the retry asks the question %q, want the first one, %q", again.holdID, c.holdID)
+	}
+}
+
+// A weapon attack that spent the Inspiração and waits for a die's question is answered, and the client sends the request again with its key in
+// upper case, as the first time: the retry gives the attack the answer wrote and spends nothing more. What it guards: the retry of an answered
+// hold under a key as typed. It cannot be red on the lookup alone: retryOfHeldAttack (held_registry.go) reads the hold by the key as typed, and
+// inspiration_holds.idempotency_key is a UUID column (00244), so the database reads an upper-case key as the parsed one and finds the hold. The
+// hash of the retry differs from the stored one (the hold pinned the mode), so the retry does reach that lookup.
+func TestRetryOfAnAnsweredWeaponAttackSentWithAnUpperCaseKeyGivesTheWrittenAttack(t *testing.T) {
+	t.Parallel()
+	f := newFavorFight(t)
+	f.give(t, f.toren)
+	f.giveCombatantDie(t, "Toren", f.e)
+	f.hiddenEffect(t, "Toren", false, "["+attackAdv+"]")
+	p := favorPaths[0]
+	key := strings.ToUpper(newKey())
+	f.h.roller.queue(4, 15)
+	held, err := p.send(t, f, f.caio, key, true, nil)
+	if err != nil || held.holdID == "" {
+		t.Fatalf("the attack with the Inspiração and a die = %+v, %v, want the die's question", held, err)
+	}
+	res, err := f.answerHeldRoll(t, f.caio, held.holdID, dieAnswer(false))
+	if err != nil {
+		t.Fatalf("AnswerHeldRoll() error = %v", err)
+	}
+	answered := p.answered(res)
+	again, err := p.send(t, f, f.caio, key, true, nil)
+	if err != nil {
+		t.Fatalf("the retry of the answered attack error = %v, want the attack the answer wrote", err)
+	}
+	if !slices.Equal(again.faces, answered.faces) || again.holdID != "" {
+		t.Errorf("the retry = %+v, want the attack the answer wrote (%+v) and no question", again, answered)
+	}
+	if f.favorHolds(t) || len(f.prompts(t, f.master)) != 1 || f.eventsOf(t, eventFavorRefundPrompted) != 1 {
+		t.Errorf("the Inspiração is there %v, the master reads %d prompts, %d prompted events, want it spent once and one prompt", f.favorHolds(t), len(f.prompts(t, f.master)), f.eventsOf(t, eventFavorRefundPrompted))
 	}
 }
