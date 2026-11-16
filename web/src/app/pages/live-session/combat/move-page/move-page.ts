@@ -43,7 +43,6 @@ import { LivePill } from '../../../../shared/live-pill/live-pill';
 import { MapLayersLegend } from '../../../../shared/map-layers/map-layers-legend';
 import { mediaQuery } from '../../../../shared/map-view/media-query';
 import type { MoveReleaseView } from '../../../../core/combat/move-release';
-import { RELEASE_BACK, RELEASE_DONE } from '../../../../core/combat/release-text';
 import { ReleaseBandView } from '../release-band/release-band';
 import { JumpPanel } from './jump-panel';
 import { MoveAdjust } from './move-adjust';
@@ -200,8 +199,6 @@ export class MovePage {
   );
   /** The window went away under the page: nothing can be moved, and "Voltar à sessão" is the one button. */
   protected readonly goneView = computed(() => this.release()?.gone ?? null);
-  protected readonly backLabel = RELEASE_BACK;
-  protected readonly doneLabel = RELEASE_DONE;
   protected readonly jumping = computed(() => this.mode() === 'jump' && !!this.jumps());
   protected readonly modes = MODES;
   protected readonly kinds = KINDS;
@@ -294,17 +291,18 @@ export class MovePage {
   protected readonly disengaging = computed(
     () => this.disengageChoice() && this.jumpProvokes() && this.canDisengage(),
   );
-  protected readonly canMove = computed(() =>
-    !this.goneView() &&
-    canMoveOf(
-      this.busy(),
-      this.jumping(),
-      this.kind(),
-      this.height(),
-      this.chosen(),
-      this.summary().kind,
-      this.verdict(),
-    ),
+  protected readonly canMove = computed(
+    () =>
+      !this.goneView() &&
+      canMoveOf(
+        this.busy(),
+        this.jumping(),
+        this.kind(),
+        this.height(),
+        this.chosen(),
+        this.summary().kind,
+        this.verdict(),
+      ),
   );
   protected readonly visibleError = computed(() =>
     errorShown(this.serverError(), this.errorFor(), this.chosen()),

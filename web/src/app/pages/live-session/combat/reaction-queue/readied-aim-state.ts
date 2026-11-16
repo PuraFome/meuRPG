@@ -1,10 +1,11 @@
 import { signal } from '@angular/core';
 
 import type { ReactionAnswer } from '../../../../core/combat/combat-client-types';
-import type { Encounter } from '../../../../../gen/meurpg/play/v1/combat_pb';
+import type { Encounter, ReactionWindow } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import type { AimNeed } from '../../../../core/combat/readied-aim';
 import type { QueueRow } from '../../../../core/combat/reaction-master';
 import { ReadiedKind } from '../../../../../gen/meurpg/play/v1/combat_pb';
+import { masterRowWait } from '../../../../core/combat/readied-wait';
 import { readiedOfWindow } from '../../../../core/combat/reaction-readied';
 import {
   NO_PICK,
@@ -13,6 +14,12 @@ import {
   aimedUse,
   releaseComplete,
 } from '../../../../core/combat/readied-release';
+
+/** "Soltar por X" and "Mover por X" open the map for the master (#857, #856): the window, and the plan of a held spell (`null` for a move). */
+export interface ReleaseRequest {
+  readonly window: ReactionWindow;
+  readonly plan: ReleasePlan | null;
+}
 
 /**
  * What the master's list of creatures of each readied window asks, and what he picked (`app-readied-aim`): "Atacar por X" and
@@ -24,7 +31,25 @@ export class ReadiedAimState {
   private readonly picks = signal<Readonly<Record<string, ReleasePick>>>({});
   private readonly plans = signal<Readonly<Record<string, ReleasePlan | null>>>({});
 
-  constructor(private readonly encounter: () => Encounter) {}
+  constructor(
+    private readonly encounter: () => Encounter,
+    /** The prefix of the ids of the queue's rows, for what a row's buttons point to. */
+    private readonly uid = '',
+  ) {}
+
+  /** What a row's buttons point to: the reason "use" is off, the wait another window holds, or the line that says who the table waits for. */
+  describedBy(row: QueueRow): string | null {
+    const id = this.uid + row.window.id;
+    if (row.status) {
+      return `${id}-why`;
+    }
+    return row.readied ? `${id}-wait` : null;
+  }
+
+  /** The wait line of a readied row: where the player is and the time left (`undefined` for a window with no clock). */
+  waitOf(row: QueueRow, seconds: number | undefined) {
+    return masterRowWait(row.window.reactorLabel, row.window.rolling, seconds);
+  }
 
   held(row: Pick<QueueRow, 'window'>) {
     return readiedOfWindow(this.encounter(), row.window);

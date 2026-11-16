@@ -24,6 +24,7 @@ import { MoveSaves } from '../../../core/maps/move-saves';
 import { metersFixed } from '../../../core/units';
 import type { Reach, TokenDrop } from '../../../shared/combat-map/combat-map';
 import type { JumpRequest } from './move-page/move-page';
+import { jumpCall } from './move-jump';
 import { MoveReleaseFlow } from './move-release-flow';
 
 /** What `MoveFlow` reads from the screen it serves. */
@@ -155,18 +156,7 @@ export class MoveFlow {
   private readonly jumpKey = new ActionKey();
 
   constructor(private readonly ctx: MoveFlowContext) {
-    this.release = new MoveReleaseFlow(
-      {
-        api: ctx.api,
-        campaignId: () => ctx.campaignId(),
-        encounter: () => ctx.encounter(),
-        state: () => ctx.state(),
-        isMaster: () => ctx.isMaster(),
-        own: () => ctx.own(),
-        reopenWindow: (id) => ctx.reopenWindow?.(id),
-      },
-      inject(Injector),
-    );
+    this.release = new MoveReleaseFlow(ctx, inject(Injector));
     // "Mover" belongs to the player's turn: when it ends, the page closes.
     effect(() => {
       if (!this.moverActs() || !this.ctx.active()) {
@@ -379,7 +369,16 @@ export class MoveFlow {
     if (req.kind === 'long' && req.disengage && !(await this.disengage())) {
       return;
     }
-    const ok = await this.runMove((e) => this.sendJump(e, own, req));
+    const ok = await this.runMove((e) =>
+      jumpCall(
+        this.ctx.api,
+        this.ctx.campaignId(),
+        e,
+        own,
+        req,
+        this.jumpKey.keyFor([e.id, own.id, req]),
+      ),
+    );
     if (ok) {
       this.jumpKey.renew();
     }
@@ -393,31 +392,6 @@ export class MoveFlow {
       );
     }
     this.afterMove(ok);
-  }
-
-  /** The jump's call. The same jump again (a lost answer) is a retry: it keeps its key and is not charged twice. */
-  private sendJump(e: Encounter, own: Combatant, req: JumpRequest): Promise<MoveResult> {
-    const key = this.jumpKey.keyFor([e.id, own.id, req]);
-    const campaignId = this.ctx.campaignId();
-    return req.kind === 'long'
-      ? this.ctx.api.moves.move(
-          campaignId,
-          e.id,
-          own.id,
-          req.square.col,
-          req.square.row,
-          { kind: 'long' },
-          key,
-        )
-      : this.ctx.api.moves.move(
-          campaignId,
-          e.id,
-          own.id,
-          own.col,
-          own.row,
-          { kind: 'high', heightDft: req.heightDft },
-          key,
-        );
   }
 
   private afterMove(ok: boolean): void {
@@ -473,14 +447,10 @@ export class MoveFlow {
 
   closeFullPage(): void {
     if (this.release.current()) {
-      // "Voltar" on the page of a readied move: the mark comes off and the window shows again.
-      void this.release.back().then(() => this.reset());
+      // "Voltar" on the page of a readied move: the mark comes off and the window shows again, then the page closes.
+      void this.release.back().then(() => this.closeFullPage());
       return;
     }
-    this.reset();
-  }
-
-  private reset(): void {
     this.lockedDoor.set(false);
     this.moverId.set('');
     this.dropStart.set(null);
@@ -491,18 +461,11 @@ export class MoveFlow {
   /** "Mover agora" and "Mover por Tor": the page of the readied move the window holds, for the reactor (the master moves for the player). */
   openRelease(windowId: string): void {
     const release = this.release.open(windowId);
-    if (!release) {
-      return;
+    if (release) {
+      // The player's own page is the character's (no id); the master's is told whose it is.
+      const mine = !this.ctx.isMaster() && release.reactorId === this.ctx.own()?.id;
+      this.show(mine ? '' : release.reactorId);
     }
-    this.lockedDoor.set(false);
-    // The player's own page is the character's (no id); the master's is told whose it is.
-    this.moverId.set(
-      this.ctx.isMaster() || release.reactorId !== this.ctx.own()?.id ? release.reactorId : '',
-    );
-    this.dropStart.set(null);
-    this.moveError.set('');
-    this.jump.set(null);
-    this.ctx.state().moving.set(true);
   }
 
   /** "Mover": the page of the player's character, or "Gastar movimento" in a combat without a map. */
@@ -511,12 +474,8 @@ export class MoveFlow {
       this.ctx.openSpend();
       return;
     }
-    this.lockedDoor.set(false);
     // The master moves the character he acts for: the page is told whose it is.
-    this.moverId.set(this.ctx.isMaster() ? (this.ctx.own()?.id ?? '') : '');
-    this.dropStart.set(null);
-    this.moveError.set('');
-    this.ctx.state().moving.set(true);
+    this.show(this.ctx.isMaster() ? (this.ctx.own()?.id ?? '') : '');
   }
 
   /** "Mover o Lobo atroz 1": the same page, for the creature. */
@@ -526,8 +485,13 @@ export class MoveFlow {
       return;
     }
     this.moverName = this.ctx.encounter()?.combatants.find((c) => c.id === id)?.label ?? '';
-    this.moverId.set(id);
+    this.show(id);
+  }
+
+  /** The "Mover" page for `moverId` (`''`: the player's own), with nothing left of the last one. */
+  private show(moverId: string): void {
     this.lockedDoor.set(false);
+    this.moverId.set(moverId);
     this.dropStart.set(null);
     this.moveError.set('');
     this.ctx.state().moving.set(true);

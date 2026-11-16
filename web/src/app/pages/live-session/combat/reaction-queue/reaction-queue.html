@@ -351,7 +351,7 @@
           <p class="row__status" [id]="uid + row.window.id + '-why'">{{ row.status }}</p>
         }
         @if (row.readied) {
-          @let wait = readiedWait(row.window.reactorLabel, row.window.rolling, autoLeft()[row.window.id]);
+          @let wait = aim.waitOf(row, autoLeft()[row.window.id]);
           <p class="row__status" [id]="uid + row.window.id + '-wait'" data-testid="readied-wait">
             @if (row.readied.after) {
               {{ row.readied.after }}
@@ -408,7 +408,7 @@
         [attr.data-initial]="row.answerNow && !row.readied ? '' : null"
         [disabled]="busy() || aim.useOff(row)"
         disabledInteractive
-        [attr.aria-describedby]="describedBy(row)"
+        [attr.aria-describedby]="aim.describedBy(row)"
         (click)="use(row)"
       >
         {{ row.useLabel }}
@@ -424,7 +424,7 @@
         [attr.data-initial]="row.answerNow && row.readied ? '' : null"
         [disabled]="busy() || !row.answerNow"
         disabledInteractive
-        [attr.aria-describedby]="describedBy(row)"
+        [attr.aria-describedby]="aim.describedBy(row)"
         (click)="pass(row.window)"
       >
         {{ row.passLabel }}

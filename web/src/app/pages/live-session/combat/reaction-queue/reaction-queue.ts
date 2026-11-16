@@ -73,22 +73,14 @@ import {
   sayAnswer,
 } from './reaction-queue-text';
 import { readiedRefusalText } from '../../../../core/combat/readied-refusal';
-import type { ReleasePlan } from '../../../../core/combat/readied-release';
-import { masterRowWait } from '../../../../core/combat/readied-wait';
 import { ReadiedAimList } from '../readied-aim/readied-aim';
-import { ReadiedAimState } from './readied-aim-state';
+import { ReadiedAimState, type ReleaseRequest } from './readied-aim-state';
 import { ParryOffer } from './parry-offer';
 import { ResistanceBox } from './resistance-box';
 import { ResistanceOffer } from './resistance-offer';
 import { RollPicker } from '../../../../shared/roll-picker/roll-picker';
 
 let nextId = 0;
-
-/** "Soltar por X" and "Mover por X" open the map for the master (#857, #856): the window, and the plan of a held spell (`null` for a move). */
-export interface ReleaseRequest {
-  readonly window: ReactionWindow;
-  readonly plan: ReleasePlan | null;
-}
 
 /**
  * The master's side of the reaction windows (PM-04b 8, PM-04c 9 and 12b, PM-04d 2): every open window of the combat,
@@ -268,17 +260,7 @@ export class ReactionQueue {
     this.picks.update((p) => ({ ...p, [windowId]: option }));
   }
 
-  /** What a row's buttons point to: the reason "use" is off, the wait another window holds, or the line that says who the table waits for. */
-  protected describedBy(row: QueueRow): string | null {
-    const id = this.uid + row.window.id;
-    if (row.status) {
-      return `${id}-why`;
-    }
-    return row.readied ? `${id}-wait` : null;
-  }
-
-  protected readonly aim = new ReadiedAimState(() => this.encounter());
-  protected readonly readiedWait = masterRowWait;
+  protected readonly aim = new ReadiedAimState(() => this.encounter(), this.uid);
   /** The master releases a held spell that needs the map, or a held move, on the map: the screen opens it. */
   readonly release = output<ReleaseRequest>();
 

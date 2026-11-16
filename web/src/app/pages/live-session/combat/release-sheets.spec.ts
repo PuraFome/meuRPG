@@ -12,6 +12,7 @@ import {
   SpellTargetsSchema,
 } from '../../../../gen/meurpg/play/v1/combat_pb';
 import { combatant, encounter, reactionWindow } from '../../../core/combat/combat-testing';
+import { nextTurn } from '../../../../test-settle';
 import { CastSheet } from './cast-sheet/cast-sheet';
 import { MasterAreaCast } from './area-cast/master-area-cast';
 import type { CombatSheetsContext } from './combat-sheets-context';
@@ -85,8 +86,6 @@ function setup(
   return { sheets, dialogOpen, releaseMove, note, turnOptions, reopen };
 }
 
-const settle = () => new Promise((r) => setTimeout(r));
-
 describe('ReleaseSheets, the map of a readied action (#857, #856)', () => {
   it('opens the Mover page for a held move', () => {
     const { sheets, releaseMove, turnOptions } = setup({ row: move });
@@ -98,7 +97,7 @@ describe('ReleaseSheets, the map of a readied action (#857, #856)', () => {
   it('opens the cast sheet in release mode for the player, reading the readier’s own options', async () => {
     const { sheets, dialogOpen, turnOptions } = setup();
     sheets.open('w1');
-    await settle();
+    await nextTurn();
     expect(turnOptions).toHaveBeenCalledWith('camp', 'enc', 'pen');
     expect(dialogOpen).toHaveBeenCalledTimes(1);
     const [component, config] = dialogOpen.mock.calls[0];
@@ -114,14 +113,14 @@ describe('ReleaseSheets, the map of a readied action (#857, #856)', () => {
   it('shows the window again once the player’s cast sheet closed', async () => {
     const { sheets, reopen } = setup();
     sheets.open('w1');
-    await settle();
+    await nextTurn();
     expect(reopen).toHaveBeenCalledWith('w1');
   });
 
   it('opens the master’s area dialog with the held slot for "Soltar por Pensantus", and shows no window again', async () => {
     const { sheets, dialogOpen, reopen } = setup({ master: true });
     sheets.open('w1');
-    await settle();
+    await nextTurn();
     const [component, config] = dialogOpen.mock.calls[0];
     expect(component).toBe(MasterAreaCast);
     expect(config.data.slot).toBeNull();
@@ -132,11 +131,11 @@ describe('ReleaseSheets, the map of a readied action (#857, #856)', () => {
   it('says so, and opens nothing, when there is no map or the options do not list the spell', async () => {
     const noMap = setup({ map: false });
     noMap.sheets.open('w1');
-    await settle();
+    await nextTurn();
     expect(noMap.note).toHaveBeenCalledWith('Não deu para abrir o mapa. Tente de novo.');
     const noSpell = setup({ targets: false });
     noSpell.sheets.open('w1');
-    await settle();
+    await nextTurn();
     expect(noSpell.note).toHaveBeenCalledWith('Não deu para abrir o mapa. Tente de novo.');
     expect(noSpell.dialogOpen).not.toHaveBeenCalled();
   });

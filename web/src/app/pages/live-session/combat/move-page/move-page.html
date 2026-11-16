@@ -165,7 +165,7 @@
   @if (goneView()) {
     <div class="move__foot">
       <div class="move__buttons">
-        <button matButton="filled" type="button" class="move__go" data-testid="release-done" (click)="back.emit()">{{ doneLabel }}</button>
+        <button matButton="filled" type="button" class="move__go" data-testid="release-done" (click)="back.emit()">Voltar à sessão</button>
       </div>
     </div>
   } @else if (!readOnly()) {
@@ -197,7 +197,7 @@
           </button>
           <button matButton="outlined" type="button" class="move__cancel" (click)="back.emit()">
             @if (release()) {
-              <mat-icon aria-hidden="true">arrow_back</mat-icon>{{ backLabel }}
+              <mat-icon aria-hidden="true">arrow_back</mat-icon>Voltar
             } @else {
               Cancelar
             }
