@@ -78,8 +78,11 @@ export class AutoPassClock {
   private readonly seen = new Map<string, number>();
   /** When this screen first saw each window marked as being rolled: the longer wait counts from here. */
   private readonly rollingSince = new Map<string, number>();
-  /** The readied windows kept as the screen last saw them: their wait is the server's (`wait_began_at`), not this screen's (#857). */
-  private readonly readied = new Map<string, ReactionWindow>();
+  /**
+   * The readied windows as the screen last read them, with the time of that read: their wait is the server's (`waited_ms` as read,
+   * plus the time since), not this screen's clock set against `wait_began_at` (#857).
+   */
+  private readonly readied = new Map<string, { readonly w: ReactionWindow; readonly readAt: number }>();
   private readonly sent = new Set<string>();
 
   /** Looks at the open windows at `now` (ms): forgets the gone ones, starts the clock of the new ones. */
@@ -89,10 +92,18 @@ export class AutoPassClock {
       waiting.map((w) => w.id),
       now,
     );
-    this.readied.clear();
+    const ids = new Set(waiting.filter((w) => w.kind === ReactionKind.READIED).map((w) => w.id));
+    for (const id of [...this.readied.keys()]) {
+      if (!ids.has(id)) {
+        this.readied.delete(id);
+      }
+    }
     for (const w of waiting) {
       if (w.kind === ReactionKind.READIED) {
-        this.readied.set(w.id, w);
+        // The same read seen again keeps its stamp; a new read (a new object, with its own `waited_ms`) takes this one.
+        if (this.readied.get(w.id)?.w !== w) {
+          this.readied.set(w.id, { w, readAt: now });
+        }
       } else if (w.rolling && !this.rollingSince.has(w.id)) {
         this.rollingSince.set(w.id, now);
       }
@@ -124,7 +135,7 @@ export class AutoPassClock {
     // A readied window: the 30 s, then the one wait of 2 minutes the server dates from the player's first entry on the map.
     const held = this.readied.get(windowId);
     if (held) {
-      return readiedSecondsLeft(held, since, now);
+      return readiedSecondsLeft(held.w, since, now, held.readAt);
     }
     // A window its player is rolling waits longer, counted from when this screen saw the mark (never shorter than
     // what was left: the 30 s may be nearly up when the mark arrives).

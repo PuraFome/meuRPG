@@ -48,7 +48,7 @@ function setup(opts: { move?: boolean } = {}) {
     );
     TestBed.tick();
   };
-  open([win({ rolling: true, waitBeganAt: timestampFromMs(T0) })]);
+  open([win({ rolling: true, waitBeganAt: timestampFromMs(T0), waitedMs: 12_000n })]);
   const watch = TestBed.runInInjectionContext(
     () =>
       new ReleaseWatch(() => state.encounter(), {

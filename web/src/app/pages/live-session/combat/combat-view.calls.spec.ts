@@ -19,9 +19,13 @@ import {
   type OpportunityOffer,
   OpportunityOfferSchema,
   OpportunityAttackSchema,
+  ReactionKind,
+  ReadiedActionSchema,
+  ReadiedKind,
+  ReadiedStatus,
 } from '../../../../gen/meurpg/play/v1/combat_pb';
 import { TurnOptionsSchema } from '../../../../gen/meurpg/rules/v1/rules_pb';
-import { combatant, encounter } from '../../../core/combat/combat-testing';
+import { combatant, encounter, reactionWindow } from '../../../core/combat/combat-testing';
 import { CombatUndone } from '../../../core/combat/combat-undone';
 import { PHONE_QUERY } from '../../../shared/map-view/media-query';
 import { RollAnimator } from '../../../shared/roll-overlay/roll-animator';
@@ -1476,6 +1480,55 @@ describe("CombatView calls: moving a token (the master's drag and a player's dro
     await nextTurn();
     expect(callsOf('get')).toHaveLength(1);
     expect(state.encounter()?.round).toBe(3);
+  });
+});
+
+describe('CombatView calls: the master releases a readied move (#857)', () => {
+  const readier = () =>
+    toren({
+      readied: create(ReadiedActionSchema, {
+        id: 'r1',
+        kind: ReadiedKind.MOVE,
+        status: ReadiedStatus.WAITING,
+        triggerText: 'Quando o goblin passar pela porta',
+      }),
+    });
+  const mountReleasable = () => {
+    const e = encounter({
+      mode: EncounterMode.GRID,
+      currentCombatantId: 'g',
+      combatants: [readier(), goblin()],
+      reactionWindows: [
+        reactionWindow({
+          id: 'w1',
+          kind: ReactionKind.READIED,
+          reactorId: 't',
+          reactorLabel: 'Toren',
+          reactorIsPlayer: true,
+        } as never),
+      ],
+    });
+    return mountCombatView({
+      enc: e,
+      master: true,
+      api: {
+        move: () => ({ encounter: e, stoppedEarly: false, lockedDoor: false, provoked: false }),
+      },
+    });
+  };
+
+  it('"Usar pelo jogador" moves with release_readied, so the move is the release', async () => {
+    const { view, callsOf } = mountReleasable();
+    view.moves.openRelease('w1');
+    await view.moves.confirmMove({ col: 4, row: 2 });
+    expect(callsOf('move')[0].args).toEqual(['c', 'enc', 't', 4, 2, undefined, undefined, false, '', true]);
+  });
+
+  it("the master's ordinary drag of the readier stays a plain walk", async () => {
+    const { view, callsOf } = mountReleasable();
+    await view.moves.drop({ id: 't', col: 4, row: 2 });
+    expect(callsOf('move')[0].args.slice(0, 5)).toEqual(['c', 'enc', 't', 4, 2]);
+    expect(callsOf('move')[0].args[9]).toBeUndefined();
   });
 });
 

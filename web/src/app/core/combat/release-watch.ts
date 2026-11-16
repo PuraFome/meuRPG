@@ -32,6 +32,8 @@ export class ReleaseWatch {
   private readonly now = signal(Date.now());
   private readonly seenAt = Date.now();
   private last: ReactionWindow | undefined;
+  /** When `last` was read: the 120 s count from the server's `waited_ms` of that read plus the time since (#857). */
+  private readAt = this.seenAt;
   private readonly goneAt = signal<number | null>(null);
   private readonly frozen = signal<GoneView | null>(null);
 
@@ -46,6 +48,7 @@ export class ReleaseWatch {
       this.window() ?? this.last ?? ({} as ReactionWindow),
       this.seenAt,
       this.goneAt() ?? this.now(),
+      this.readAt,
     ),
   );
   /** The player opened the map while the window was open: its wait is the 120 s, not the 30 s. */
@@ -73,7 +76,10 @@ export class ReleaseWatch {
   }
 
   private see(w: ReactionWindow): void {
-    this.last = w;
+    if (this.last !== w) {
+      this.last = w;
+      this.readAt = Date.now();
+    }
     this.waitedOnMap.set(waitBeganMs(w) !== null);
     this.onWindow?.(w);
   }
@@ -93,7 +99,7 @@ export class ReleaseWatch {
         stillWaiting: held?.id === this.ids.readiedId && held.status === ReadiedStatus.WAITING,
         reactionUsed: who?.reactionUsed ?? false,
         down: who?.state === CombatantState.DOWN,
-        timedOut: !!this.last && readiedSecondsLeft(this.last, this.seenAt, at) === 0,
+        timedOut: !!this.last && readiedSecondsLeft(this.last, this.seenAt, at, this.readAt) === 0,
         afterMap: this.waitedOnMap(),
       }),
     );

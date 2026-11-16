@@ -249,12 +249,30 @@ describe('a reaction its player is rolling', () => {
     const held = win('w1', ReactionKind.READIED, {
       rolling: true,
       waitBeganAt: timestampFromMs(Date.now()),
+      waitedMs: 0n,
     });
     clock.sync([held], Date.now());
     expect(clock.secondsLeft('w1', Date.now())).toBe(ROLLING_WAIT_SECONDS);
     vi.advanceTimersByTime(AUTO_PASS_SECONDS * MS);
     clock.sync([held], Date.now());
     expect(clock.due(Date.now())).toEqual([]);
+  });
+
+  it("counts a marked readied window from the server's waited_ms and the time since it was read, not from this device's clock (#857)", () => {
+    const clock = new AutoPassClock();
+    // This device's clock is an hour behind the server's: wait_began_at is an hour ahead of it.
+    const held = win('w1', ReactionKind.READIED, {
+      rolling: true,
+      waitBeganAt: timestampFromMs(Date.now() + 3_600_000),
+      waitedMs: 30_000n,
+    });
+    clock.sync([held], Date.now());
+    expect(clock.secondsLeft('w1', Date.now())).toBe(ROLLING_WAIT_SECONDS - 30);
+    vi.advanceTimersByTime(10 * MS);
+    clock.sync([held], Date.now());
+    expect(clock.secondsLeft('w1', Date.now())).toBe(ROLLING_WAIT_SECONDS - 40);
+    vi.advanceTimersByTime(5 * MS);
+    expect(clock.secondsLeft('w1', Date.now())).toBe(ROLLING_WAIT_SECONDS - 45);
   });
 
   it('tells the player who is choosing the targets how long the table waits', () => {

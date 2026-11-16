@@ -351,7 +351,21 @@ export class MoveFlow {
     }
     this.moveError.set('');
     const ok = await this.runMove((e) =>
-      this.ctx.api.moves.move(this.ctx.campaignId(), e.id, own.id, to.col, to.row),
+      this.release.current()?.master
+        ? // The master's "Usar pelo jogador": the walk is the release of the readied move (a plain drag is not).
+          this.ctx.api.moves.move(
+            this.ctx.campaignId(),
+            e.id,
+            own.id,
+            to.col,
+            to.row,
+            undefined,
+            undefined,
+            false,
+            '',
+            true,
+          )
+        : this.ctx.api.moves.move(this.ctx.campaignId(), e.id, own.id, to.col, to.row),
     );
     this.afterMove(ok);
   }

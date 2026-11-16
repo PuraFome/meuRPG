@@ -6,7 +6,7 @@ import { AUTO_PASS_SECONDS, ROLLING_WAIT_SECONDS, clockText } from './reaction-c
 /**
  * The wait of a readied action's window while its player is on the map (#857, #856, boards 857-08 and 857-09): the 30 s of the window
  * give way, at the first entry on the map, to one wait of 2 minutes. The server records when it began (`ReactionWindow.wait_began_at`,
- * once; no later mark or clear changes it) and the master's screen passes the window when the 120 s end. Pure functions.
+ * once; no later mark or clear changes it) and says how long it has run (`waited_ms`); the master's screen passes the window when the 120 s end. Pure functions.
  */
 
 /** The one wait the player gets once on the map, in seconds. */
@@ -30,13 +30,21 @@ function clamp(seconds: number, max: number): number {
 }
 
 /**
- * The seconds left before a readied window passes by itself (rounded up, held between 0 and the wait): the 120 s from the server's
- * `wait_began_at` once it is set, else the 30 s of the window from when this screen first saw it (`seenAt`).
+ * The seconds left before a readied window passes by itself (rounded up, held between 0 and the wait). Once the player marked the
+ * map, the 120 s count from the wait the server says has run (`ReactionWindow.waited_ms`, worked out with its own clock) plus the
+ * time since this screen read the window (`readAt`, a stamp of the same clock as `now`): the device's clock is never set against
+ * `wait_began_at`, so a screen with a wrong clock counts right. Before the mark it is the 30 s of the window from when this
+ * screen first saw it (`seenAt`).
  */
-export function readiedSecondsLeft(w: ReactionWindow, seenAt: number, now: number): number {
-  const began = waitBeganMs(w);
-  if (began !== null) {
-    return clamp(Math.ceil(MAP_WAIT_SECONDS - (now - began) / MS_PER_SECOND), MAP_WAIT_SECONDS);
+export function readiedSecondsLeft(
+  w: ReactionWindow,
+  seenAt: number,
+  now: number,
+  readAt: number,
+): number {
+  if (waitBeganMs(w) !== null) {
+    const waited = Number(w.waitedMs) + (now - readAt);
+    return clamp(Math.ceil(MAP_WAIT_SECONDS - waited / MS_PER_SECOND), MAP_WAIT_SECONDS);
   }
   return clamp(Math.ceil(AUTO_PASS_SECONDS - (now - seenAt) / MS_PER_SECOND), AUTO_PASS_SECONDS);
 }
