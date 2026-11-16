@@ -18,11 +18,11 @@ import { MatIconModule } from '@angular/material/icon';
 
 import { DiceMode, DicePreference } from '../../../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import { AreaPlacement } from '../../../../../gen/meurpg/play/v1/combat_pb';
+import type { SpellGrantOption } from '../../../../../gen/meurpg/rules/v1/rules_pb';
 import { effectivePreference } from '../../../../core/campaigns/dice-labels';
 import type { SlotRow } from '../../../../core/combat/cast-flow';
 import { CombatClient } from '../../../../core/combat/combat-client';
 import { SpellCatalog } from '../../../../core/combat/spell-catalog';
-import type { SpellGrantOption } from '../../../../../gen/meurpg/rules/v1/rules_pb';
 import { grantLine } from '../../../../core/combat/combat-options';
 import { castLabel } from '../../../../core/resources/metamagic';
 import { ResourceClient } from '../../../../core/resources/resources-client';

@@ -14,7 +14,7 @@ import {
 import { ActionEconomy } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { type MarksVm, attackMarksFor, markWords } from '../characters/gear';
 import { rechargeText } from './combat-errors';
-import { circleLabel } from './combat-grid';
+import { aboveOwnLevel, circleLabel } from './combat-grid';
 import { metersText } from '../units';
 import { joinDots, tight } from '../format/text';
 
@@ -306,7 +306,7 @@ export function grantLine(g: SpellGrantOption, spellLevel: number): string {
   const left = g.usesLeft === 1 ? '1 uso' : `${g.usesLeft} usos`;
   const uses = g.atWill ? 'À vontade' : g.usesCost > 1 ? `gasta ${g.usesCost} · ${left}` : left;
   const line = `${g.sourceNamePt} · ${uses}`;
-  return g.castLevel > spellLevel ? `${line} · no ${circleLabel(g.castLevel)}` : line;
+  return `${line}${aboveOwnLevel(g.castLevel, spellLevel)}`;
 }
 
 /** The tags under a spell's name: its circle, and the economy when it is not

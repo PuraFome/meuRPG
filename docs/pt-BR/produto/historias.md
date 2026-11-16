@@ -742,7 +742,7 @@ As regras de dados, os limites e o lado do servidor estão em [Conteúdo da mesa
 - **Dado** uma magia concedida, **quando** o jogador a conjura, em combate ou fora dele, **então** a ficha de conjuração a oferece como um jeito próprio, sem espaço de magia (espaço só quando a concessão permite), usando a habilidade da concessão para a jogada de ataque e a CD do teste de resistência.
   Uma concessão limitada gasta os usos que o custo diz (um, se nada for dito): uma conjuração que os usos restantes não cobrem é recusada ("A concessão não tem mais usos."), o desfazer da primeira devolve o uso, e uma concessão à vontade nunca acaba.
   Uma concessão só de ritual conjura como ritual.
-- **Dado** o editor de efeitos, **quando** cadastro uma magia concedida, **então** o servidor recusa uma magia que não existe, uma concessão só de ritual numa magia sem a etiqueta de ritual, um recurso que a entrada não define, um custo sem recurso, uma habilidade que não é uma das quatro e um círculo de conjuração abaixo do círculo da magia, acima de 9, num truque ou numa concessão só de ritual, cada um no seu campo.
+- **Dado** o editor de efeitos, **quando** cadastro uma magia concedida, **então** o servidor recusa uma magia que não existe, uma concessão só de ritual numa magia sem a etiqueta de ritual, um recurso que a entrada não define, um custo sem recurso, uma habilidade que não é uma das quatro e um nível de conjuração abaixo do nível da magia, acima de 9, num truque ou numa concessão só de ritual, cada um no seu campo.
 
 **Opções para os conjuntos de opções do SRD.**
 

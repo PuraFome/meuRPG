@@ -75,7 +75,7 @@ async function featCastAtSecondLevel(master: Page, campaignId: string, character
 }
 
 test(
-  'a linha da magia concedida na ficha diz que ela é conjurada no 2º nível @881',
+  'a linha da magia concedida na ficha diz que ela é conjurada no 2º nível',
   { tag: ['@881'] },
   async ({ browser }) => {
     const master = await newSignedInContext(browser, 'Mestre Teste', { viewport: { width: 1280, height: 900 } });
@@ -102,7 +102,7 @@ test(
 );
 
 test(
-  'a folha de conjuração fora do combate diz que a magia concedida é conjurada no 2º nível @881',
+  'a folha de conjuração fora do combate diz que a magia concedida é conjurada no 2º nível',
   { tag: ['@881'] },
   async ({ browser }) => {
     const master = await newSignedInContext(browser, 'Mestre Teste', { viewport: { width: 1280, height: 900 } });
@@ -129,7 +129,7 @@ test(
 );
 
 test(
-  'a folha de conjuração do combate diz que a magia concedida é conjurada no 2º nível @881',
+  'a folha de conjuração do combate diz que a magia concedida é conjurada no 2º nível',
   { tag: ['@881'] },
   async ({ browser }) => {
     const master = await newSignedInContext(browser, 'Mestre Teste', { viewport: { width: 1280, height: 900 } });
@@ -150,6 +150,7 @@ test(
       const sheet = p.getByRole('dialog', { name: 'Conjurar Bênção' });
       await viaTargetList(p, sheet);
       await expect(sheet.getByText('Graça de teste · À vontade · no 2º nível')).toBeVisible();
+      await expect(sheet.getByText('Escolha até 4 alvos')).toBeVisible();
     } finally {
       await endOpenSessionRPC(m, campaignId);
       await master.close();

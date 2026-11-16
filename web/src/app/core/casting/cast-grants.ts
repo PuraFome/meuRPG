@@ -1,5 +1,5 @@
 import type { CastingGrant, CastingSpell } from '../../../gen/meurpg/play/v1/casting_pb';
-import { circleLabel } from '../combat/combat-grid';
+import { aboveOwnLevel } from '../combat/combat-grid';
 import { abilityLabel } from '../characters/character-labels';
 import type { AbilityKey } from '../characters/characters.types';
 import type { CastWay } from './cast-out-flow';
@@ -114,7 +114,7 @@ export function grantCard(
     title: [g.sourceNamePt, how].filter((x) => x !== '').join(' · '),
     detail: p.slot
       ? `${grantNumbers(g)} · não gasta usos`
-      : `${grantUsesText(g)} · ${grantNumbers(g)}${g.castLevel > spellLevel ? ` · no ${circleLabel(g.castLevel)}` : ''}`,
+      : `${grantUsesText(g)} · ${grantNumbers(g)}${aboveOwnLevel(g.castLevel, spellLevel)}`,
     enabled: usable,
     reason: usable ? '' : 'Sem usos restantes.',
   };
