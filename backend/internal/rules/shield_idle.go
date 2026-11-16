@@ -3,10 +3,9 @@ package rules
 import (
 	"fmt"
 	"slices"
-	"strings"
 )
 
-// IssueShieldIdle is the code of the notice "O Machado agora pede as duas mãos: com ele equipado, o escudo fica parado":
+// IssueShieldIdle is the code of the notice "Machado passou a exigir as duas mãos. Com Machado em uso, o escudo não conta na CA":
 // an equipped shield does not count because an equipped weapon takes both hands (board 580-16, state 8). It is a notice
 // (Derived.Notices), never an issue.
 const IssueShieldIdle = "shield_idle"
@@ -25,29 +24,21 @@ type ShieldIdle struct {
 // idleIDPrefix marks, in a notice's identity, the weapon's key where an issue has its sentence.
 const idleIDPrefix = "idle:"
 
-// SentencePT is the sentence a reader gets: "O Machado de Lenhador agora pede as duas mãos: com ele equipado, o escudo de
-// Tor fica parado (CA 18 → 16).". name is the character's (empty reads "o personagem").
+// SentencePT is the sentence a reader gets: "Machado de Lenhador passou a exigir as duas mãos. Com Machado de Lenhador
+// em uso, o escudo de Tor não conta na CA (CA 18 → 16).". name is the character's (empty reads "o personagem"). The
+// weapon's name stands alone, with no article and no pronoun, as the table gives it no gender. The armor classes are
+// told only when they differ.
 func (s ShieldIdle) SentencePT(name string) string {
 	of := "de " + name
 	if name == "" {
 		of = "do personagem"
 	}
-	article, pronoun, ending := "O", "ele", "o"
-	if feminineWeapon(s.WeaponPT) {
-		article, pronoun, ending = "A", "ela", "a"
+	numbers := ""
+	if s.ACWith != s.ACWithout {
+		numbers = fmt.Sprintf(" (CA %d → %d)", s.ACWith, s.ACWithout)
 	}
-	return fmt.Sprintf("%s %s agora pede as duas mãos: com %s equipad%s, o escudo %s fica parado (CA %d → %d).",
-		article, s.WeaponPT, pronoun, ending, of, s.ACWith, s.ACWithout)
-}
-
-// feminineWeaponNouns are the weapon names that end in a letter other than "a" and are feminine.
-var feminineWeaponNouns = []string{"foice", "rede"}
-
-// feminineWeapon says the weapon's name is feminine, read from its first word: the table does not give a gender, and a
-// Portuguese weapon name ending in "a" is feminine (a espada, a lança, a besta).
-func feminineWeapon(name string) bool {
-	first, _, _ := strings.Cut(strings.ToLower(strings.TrimSpace(name)), " ")
-	return strings.HasSuffix(first, "a") || strings.HasSuffix(first, "ã") || slices.Contains(feminineWeaponNouns, first)
+	return fmt.Sprintf("%s passou a exigir as duas mãos. Com %s em uso, o escudo %s não conta na CA%s.",
+		s.WeaponPT, s.WeaponPT, of, numbers)
 }
 
 // shieldIdleNotices are the notices of a sheet whose equipped shield does not count: one for each equipped table weapon
