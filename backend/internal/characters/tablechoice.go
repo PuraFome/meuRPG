@@ -225,8 +225,9 @@ func carryFlags(content *rules.Content, stored, next *charactersv1.FullSheet) {
 func addChangedContent(d *rulesv1.DerivedSheet, issues []rules.Issue, content *rules.Content, build rules.Build, full *charactersv1.FullSheet, r reader) {
 	for _, f := range flags(content, full, build, issues) {
 		name := content.NamePT(f.entry.Key)
-		var messages []string
+		var messages, codes []string
 		for _, is := range f.issues {
+			codes = append(codes, is.Code)
 			// The sentence as a change reads it ("agora dá 2 perícias"), when the
 			// engine has one for this issue; otherwise the issue's own.
 			if is.Lost != nil || is.Idle != nil {
@@ -237,7 +238,7 @@ func addChangedContent(d *rulesv1.DerivedSheet, issues []rules.Issue, content *r
 		}
 		d.ChangedContent = append(d.ChangedContent, &rulesv1.ChangedContent{
 			Key: f.entry.Key, NamePt: name, Field: f.entry.Field, Revision: i32(f.entry.Revision), SavedRevision: i32(f.entry.Since),
-			ChangedAt: timestampOf(f.entry.ChangedAt), Messages: messages,
+			ChangedAt: timestampOf(f.entry.ChangedAt), Messages: messages, Codes: codes,
 		})
 		d.Issues = append(d.Issues, &rulesv1.Issue{
 			Code: IssueTableContentChanged, Field: f.entry.Field,
