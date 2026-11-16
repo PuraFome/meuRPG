@@ -96,6 +96,29 @@ describe('ChangedContentNotice', () => {
     expect(titles).toEqual(['A classe mudou.', 'A raça mudou.']);
   });
 
+  it('names a weapon the master changed, with the board sentence, and puts the button 8 px under it (580-16, state 8)', () => {
+    const sentence =
+      'O Machado de Lenhador agora pede as duas mãos: com ele equipado, o escudo de Tor fica parado (CA 18 → 16).';
+    const { el } = render([
+      change({
+        key: 'weapon:machado-de-lenhador@mesa',
+        namePt: 'Machado de Lenhador',
+        changedAt: new Date(2026, 10, 14, 9, 0),
+        messages: [sentence],
+      }),
+    ]);
+    const notice = el.querySelector('.mr-notice--warning')!;
+    expect(notice.querySelector('.change__text')?.textContent?.replace(/\s+/g, ' ').trim()).toBe(
+      'A arma mudou. O mestre mudou a arma Machado de Lenhador em 14/11/2026. Os números da ficha já usam as regras novas. O que não combina mais:',
+    );
+    expect(Array.from(notice.querySelectorAll('li')).map((li) => li.textContent)).toEqual([
+      sentence,
+    ]);
+    // The board has 8 px between the last line and the button, the gap of the column and nothing more.
+    const open = notice.querySelector<HTMLElement>('.change__open')!;
+    expect(['', '0px']).toContain(getComputedStyle(open).marginTop);
+  });
+
   it('shows nothing when nothing changed', () => {
     const { el } = render([]);
     expect(el.querySelector('.mr-notice')).toBeNull();
