@@ -3,7 +3,9 @@
 <p class="mr-visually-hidden" role="status" aria-live="polite">{{ status() }}</p>
 <div class="page">
   <aside class="side">
-    <app-section-nav [sections]="sections()" label="Seções da classe" />
+    <div class="side__nav">
+      <app-section-nav [sections]="sections()" label="Seções da classe" />
+    </div>
     @if (entry(); as saved) {
       <app-players-switch [campaignId]="campaignId()" [entry]="saved" (switched)="switched.emit($event)" />
     }
@@ -191,7 +193,7 @@
 
     @if (previewing()) {
       <aside aria-label="Como os jogadores veem">
-        <app-feature-preview [features]="d.features" [openId]="openFeature()" [menu]="menu()" [catalog]="catalog()" [entries]="entries()" />
+        <app-feature-preview [features]="d.features" [openId]="openFeature()" [menu]="menu()" [catalog]="catalog()" [entries]="entries()" [switches]="switches()" [switchesUnread]="switchesUnread()" [unsaved]="saver.placement().fields.length > 0" />
       </aside>
     }
 

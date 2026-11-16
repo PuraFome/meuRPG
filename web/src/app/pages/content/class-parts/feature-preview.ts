@@ -3,6 +3,7 @@ import { create } from '@bufbuild/protobuf';
 import { MatIconModule } from '@angular/material/icon';
 
 import {
+  type OptionSwitchEntry,
   type TableEntry,
   TableFeatureSchema,
 } from '../../../../gen/meurpg/rules/v1/table_content_pb';
@@ -21,7 +22,8 @@ import { EntryRead } from '../entry-read/entry-read';
  * "Como os jogadores veem" for the open feature of a class or subclass (board 580-03): the name with "Da mesa", the choice it
  * asks ("Escolha 3 de 5 opções") and its options, each with the muted "Pede …" line. It is written by the functions of the
  * players' page (`featureItem`, `featChoiceRows`) from the feature as the save would send it, so an option with no name (not sent)
- * is not here, a class, pact, spell or option that is off or archived is not named (the players' copy drops it), and the sentence of what an option asks is the one `optionAsksPhrase` words for every reader.
+ * is not here, a class, pact, spell or option that is off or archived is not named (the players' copy drops it), and the sentence of what an option asks is the one `optionAsksPhrase` words for every reader. The master's switches (SRD ones included, and
+ * what is hidden through an owner) are read from `ListOptionSwitches`; the summon line is not drawn.
  */
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -35,6 +37,12 @@ import { EntryRead } from '../entry-read/entry-read';
           <span>{{ f.name.trim() || 'Nova característica' }}</span>
           <span class="mr-tag"><mat-icon aria-hidden="true">menu_book</mat-icon>Da mesa</span>
         </p>
+        @if (unsaved()) {
+          <p class="preview__note" role="note">Ainda não salvo: a característica tem um ajuste pendente.</p>
+        }
+        @if (switchesUnread()) {
+          <p class="preview__note" role="note">Não deu para ler quais opções do SRD estão desligadas; a prévia pode citar uma que os jogadores não recebem.</p>
+        }
         <app-entry-read [read]="read()" [plain]="true" />
       </section>
     }
@@ -51,6 +59,13 @@ import { EntryRead } from '../entry-read/entry-read';
 
       .mr-panel__title {
         margin: 0;
+      }
+
+      &__note {
+        margin: 0;
+        font-size: var(--mr-font-15);
+        line-height: 20px;
+        color: var(--mr-ink-muted);
       }
 
       &__name {
@@ -77,6 +92,12 @@ export class FeaturePreview {
   readonly menu = input.required<EffectMenuVm>();
   readonly catalog = input<CatalogVm | null>(null);
   readonly entries = input<readonly TableEntry[]>([]);
+  /** The master's list of switches (SRD and table): what the players do not receive, even through an owner that is off. */
+  readonly switches = input<readonly OptionSwitchEntry[]>([]);
+  /** The list could not be read: the panel says so, in one line. */
+  readonly switchesUnread = input(false);
+  /** A refusal stands on the entry: what is read here is the form's, not the saved one. */
+  readonly unsaved = input(false);
 
   protected readonly feature = computed<FeatureDraft | null>(
     () => this.features().find((f) => f.id === this.openId())?.feature ?? null,
@@ -88,7 +109,7 @@ export class FeaturePreview {
     }
     const sent = featureForPlayers(
       create(TableFeatureSchema, draftToFeature(f, this.menu())),
-      hiddenFrom(this.entries()),
+      hiddenFrom(this.entries(), this.switches()),
     );
     const nameOf = askKeyNamer(
       f.options,

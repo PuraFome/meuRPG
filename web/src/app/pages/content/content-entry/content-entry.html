@@ -204,10 +204,10 @@
               <app-race-editor mode="subrace" [campaignId]="campaignId()" [entry]="entry()" [parentKey]="subraceParent()" [menu]="menu()!" [catalog]="catalog()!" [entries]="entries()" [saveBlocked]="saveBlocked()" [leftOut]="leftOut().violation" (saved)="onSaved($event)" (switched)="replace($event)" (reload)="load()" (cancelled)="goBack()" />
             }
             @case (Kind.CLASS) {
-              <app-class-editor (switched)="replace($event)" [campaignId]="campaignId()" [entry]="entry()" [menu]="menu()!" [catalog]="catalog()!" [defaults]="defaults()!" [entries]="entries()" [saveBlocked]="saveBlocked()" [leftOut]="leftOut().violation" (saved)="onSaved($event)" (reload)="load()" (cancelled)="goBack()" />
+              <app-class-editor (switched)="replace($event)" [campaignId]="campaignId()" [entry]="entry()" [menu]="menu()!" [catalog]="catalog()!" [defaults]="defaults()!" [entries]="entries()" [switches]="switches()" [switchesUnread]="switchesUnread()" [saveBlocked]="saveBlocked()" [leftOut]="leftOut().violation" (saved)="onSaved($event)" (reload)="load()" (cancelled)="goBack()" />
             }
             @case (Kind.SUBCLASS) {
-              <app-subclass-editor (switched)="replace($event)" [campaignId]="campaignId()" [entry]="entry()" [parentKey]="parentClass()" [menu]="menu()!" [catalog]="catalog()!" [defaults]="defaults()!" [entries]="entries()" [saveBlocked]="saveBlocked()" [leftOut]="leftOut().violation" (saved)="onSaved($event)" (reload)="load()" (cancelled)="goBack()" />
+              <app-subclass-editor (switched)="replace($event)" [campaignId]="campaignId()" [entry]="entry()" [parentKey]="parentClass()" [menu]="menu()!" [catalog]="catalog()!" [defaults]="defaults()!" [entries]="entries()" [switches]="switches()" [switchesUnread]="switchesUnread()" [saveBlocked]="saveBlocked()" [leftOut]="leftOut().violation" (saved)="onSaved($event)" (reload)="load()" (cancelled)="goBack()" />
             }
             @case (Kind.FEAT) {
               <app-feat-editor [campaignId]="campaignId()" [entry]="entry()" [menu]="menu()!" [catalog]="catalog()!" [entries]="entries()" [saveBlocked]="saveBlocked()" [leftOut]="leftOut().violation" (saved)="onSaved($event)" (switched)="replace($event)" (reload)="load()" (cancelled)="goBack()" />

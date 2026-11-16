@@ -3,12 +3,14 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { create } from '@bufbuild/protobuf';
 
 import {
+  OptionSwitchEntrySchema,
   TableContentKind,
   TableEntrySchema,
 } from '../../../../gen/meurpg/rules/v1/table_content_pb';
 import { catalog } from '../../../core/content/content-testing';
 import { menu } from '../../../core/content/content-testing-menu';
 import { emptyEffect } from '../../../core/content/effect-draft';
+import { emptySummon } from '../../../core/content/summon-draft';
 import { emptyFeature, type FeatureDraft, withAsks } from '../../../core/content/feature-draft';
 import { FeaturePreview } from './feature-preview';
 
@@ -147,6 +149,59 @@ describe('"Como os jogadores veem" for the open feature (#580, board 580-03)', (
       fixture.detectChanges();
       expect(text()).toContain('Asa Partida. Soma o dado ao ataque.');
       expect(text()).not.toContain('Pede');
+    });
+  });
+
+  describe('what the web can know a player reads (#580)', () => {
+    const sw = (key: string, over: { off?: boolean; hidden?: boolean }) =>
+      create(OptionSwitchEntrySchema, { key, namePt: key, ...over });
+    const asking = (): FeatureDraft => {
+      const f = feature();
+      f.options[1] = withAsks(f.options[1], {
+        classKey: 'class:paladin',
+        classLevel: '7',
+        requiresOptions: ['feature:golpe@mesa'],
+      });
+      return f;
+    };
+
+    it('leaves the summon line out', () => {
+      setup({ ...feature(), summon: { ...emptySummon(), creatureKeys: ['monster:wolf'] } });
+      expect(text()).not.toContain('Invoca');
+    });
+
+    it('does not name an SRD class the master switched off, read from the switch list', () => {
+      setup(asking());
+      fixture.componentRef.setInput('switches', [sw('class:paladin', { off: true, hidden: true })]);
+      fixture.detectChanges();
+      expect(text()).not.toContain('Paladino');
+      expect(text()).toContain('Pede Golpe do Corvo.');
+    });
+
+    it('leaves out an entry hidden through its owner, though its own switch is on', () => {
+      setup(asking());
+      fixture.componentRef.setInput('switches', [
+        sw('feature:golpe@mesa', { off: false, hidden: true }),
+      ]);
+      fixture.detectChanges();
+      expect(text()).not.toContain('Pede Paladino 7 e Golpe do Corvo');
+      expect(text()).toContain('Pede Paladino 7.');
+    });
+
+    it('says in one line that the switches could not be read, and only then', () => {
+      setup(asking());
+      expect(text()).not.toContain('Não deu para ler');
+      fixture.componentRef.setInput('switchesUnread', true);
+      fixture.detectChanges();
+      expect(text()).toContain('Não deu para ler quais opções do SRD estão desligadas');
+    });
+
+    it('marks itself as not saved while a refusal stands', () => {
+      setup(asking());
+      expect(text()).not.toContain('Ainda não salvo');
+      fixture.componentRef.setInput('unsaved', true);
+      fixture.detectChanges();
+      expect(text()).toContain('Ainda não salvo');
     });
   });
 

@@ -127,7 +127,7 @@
   </div>
 
   <aside class="editor__side" [attr.aria-label]="previewing() ? 'Como os jogadores veem' : null">
-    <app-feature-preview [features]="d.features" [openId]="openFeature()" [menu]="menu()" [catalog]="catalog()" [entries]="entries()" />
+    <app-feature-preview [features]="d.features" [openId]="openFeature()" [menu]="menu()" [catalog]="catalog()" [entries]="entries()" [switches]="switches()" [switchesUnread]="switchesUnread()" [unsaved]="saver.placement().fields.length > 0" />
     @if (entry(); as saved) {
       <app-players-switch [campaignId]="campaignId()" [entry]="saved" (switched)="switched.emit($event)" />
     }

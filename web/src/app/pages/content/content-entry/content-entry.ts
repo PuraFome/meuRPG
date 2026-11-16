@@ -21,6 +21,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import {
   type AffectedCharacter,
   type GetClassTableDefaultsResponse,
+  type OptionSwitchEntry,
   TableContentKind,
   type TableEntry,
 } from '../../../../gen/meurpg/rules/v1/table_content_pb';
@@ -136,6 +137,9 @@ export class ContentEntry {
   protected readonly state = signal<PageState>({ status: 'loading' });
   protected readonly catalog = signal<CatalogVm | null>(null);
   protected readonly menu = signal<EffectMenuVm | null>(null);
+  /** The master's switches (SRD and table), for "Como os jogadores veem" in the class and subclass editors. */
+  protected readonly switches = signal<readonly OptionSwitchEntry[]>([]);
+  protected readonly switchesUnread = signal(false);
   /** The numbers the class and subclass editors start from (`GetClassTableDefaults`), for the master. */
   protected readonly defaults = signal<GetClassTableDefaultsResponse | null>(null);
   /** The key of the entry in the URL; empty for a new one. */
@@ -291,6 +295,9 @@ export class ContentEntry {
         if (mine === this.reads) {
           this.catalog.set(catalogVm(c, entries));
         }
+        if (res.ctx.isMaster && this.needsDefaults()) {
+          await this.loadSwitches(res.ctx.campaignId);
+        }
       }
     } catch {
       // Keep what is on screen: the next change reads again.
@@ -330,6 +337,9 @@ export class ContentEntry {
     this.catalogError.set('');
     this.menuError.set('');
     this.defaultsError.set('');
+    if (ctx.isMaster && this.needsDefaults()) {
+      void this.loadSwitches(ctx.campaignId);
+    }
     void Promise.allSettled([
       this.client.catalog(ctx.campaignId).then((c) => this.catalog.set(catalogVm(c, ctx.entries))),
       ctx.isMaster
@@ -345,6 +355,17 @@ export class ContentEntry {
       this.catalogError.set(errors.catalog);
       this.menuError.set(errors.menu);
     });
+  }
+
+  /** The switches the preview reads; when the read fails the preview says so, and nothing else stops. */
+  private async loadSwitches(campaignId: string): Promise<void> {
+    try {
+      const res = await this.client.switches(campaignId);
+      this.switches.set(res.options);
+      this.switchesUnread.set(false);
+    } catch {
+      this.switchesUnread.set(true);
+    }
   }
 
   protected backLink(): string[] {

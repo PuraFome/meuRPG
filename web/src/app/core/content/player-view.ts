@@ -2,6 +2,7 @@ import { clone } from '@bufbuild/protobuf';
 
 import {
   type OptionPrerequisite,
+  type OptionSwitchEntry,
   type TableEntry,
   type TableFeature,
   TableFeatureSchema,
@@ -9,10 +10,20 @@ import {
 
 /**
  * Whether a key is one the players never read: the table entry it names is off or archived (the server's players' copy drops
- * those keys before it sends an entry). A key that is no table entry (an SRD one, a sibling option) is not hidden here.
+ * those keys before it sends an entry), or the master's switch list (`ListOptionSwitches`) says the players do not receive it:
+ * an SRD option switched off, or one hidden through its owner (a subclass of a class that is off). A key that is in none of them
+ * (a sibling option) is not hidden here.
  */
-export function hiddenFrom(entries: readonly TableEntry[]): (key: string) => boolean {
+export function hiddenFrom(
+  entries: readonly TableEntry[],
+  switches: readonly OptionSwitchEntry[] = [],
+): (key: string) => boolean {
   const gone = new Set(entries.filter((e) => e.off || e.archived).map((e) => e.key));
+  for (const o of switches) {
+    if (o.hidden || o.off || o.archived) {
+      gone.add(o.key);
+    }
+  }
   return (key) => gone.has(key);
 }
 
@@ -34,6 +45,8 @@ function stripAsks(p: OptionPrerequisite | undefined, hidden: (key: string) => b
 }
 
 function strip(f: TableFeature, hidden: (key: string) => boolean): void {
+  // The summon block is the master's to configure; the preview does not say it as a line the players read.
+  f.summon = undefined;
   for (const e of f.effects) {
     e.spells = e.spells.filter((k) => !hidden(k));
     e.from = e.from.filter((k) => !hidden(k));
@@ -45,7 +58,7 @@ function strip(f: TableFeature, hidden: (key: string) => boolean): void {
   f.options.forEach((o) => strip(o, hidden));
 }
 
-/** A copy of the feature as a player reads it: no hidden class, pact, spell or option is named in it. */
+/** A copy of the feature as a player reads it: no hidden class, pact, spell or option is named in it, and no summon line. */
 export function featureForPlayers(f: TableFeature, hidden: (key: string) => boolean): TableFeature {
   const copy = clone(TableFeatureSchema, f);
   strip(copy, hidden);
