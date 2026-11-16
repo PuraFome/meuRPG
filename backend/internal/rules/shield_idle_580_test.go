@@ -197,3 +197,75 @@ func TestTheShieldIdleNoticeBlocksNothing(t *testing.T) {
 		t.Errorf("the level-up of a sheet with a shield idle was refused: %v", err)
 	}
 }
+
+func TestTheShieldIdleNumbersStowEveryTwoHandedWeaponTheSrdOnesToo(t *testing.T) {
+	t.Parallel()
+	c := shieldIdleContent(t)
+	b := withShieldOn(ruleSheet(12, 14, "equipment:greatsword", wHeavy))
+	d := Derive(b, c)
+	n, ok := noticeOf(d, IssueShieldIdle)
+	if !ok || n.Idle == nil {
+		t.Fatalf("notices = %+v, want the one shield_idle", d.Notices)
+	}
+	bare := b
+	bare.Weapons = []string{}
+	if want := Derive(bare, c).ArmorClass; n.Idle.ACWith != want || n.Idle.ACWithout != d.ArmorClass || n.Idle.ACWith != n.Idle.ACWithout+2 {
+		t.Errorf("AC with %d and without %d, want %d and %d (the shield counts once both two-handed weapons are stowed)", n.Idle.ACWith, n.Idle.ACWithout, want, d.ArmorClass)
+	}
+}
+
+func TestTheShieldIdleNumbersCountAMagicShield(t *testing.T) {
+	t.Parallel()
+	c := shieldIdleContent(t)
+	b := withShieldOn(ruleSheet(12, 14, wHeavy))
+	b.ItemBonuses = []ItemBonus{{Key: ShieldKey, Bonus: 1}}
+	d := Derive(b, c)
+	n, ok := noticeOf(d, IssueShieldIdle)
+	if !ok || n.Idle == nil {
+		t.Fatalf("notices = %+v, want the one shield_idle", d.Notices)
+	}
+	if n.Idle.ACWith != n.Idle.ACWithout+3 {
+		t.Errorf("AC with %d and without %d, want the +2 shield and its +1 bonus: 3 more", n.Idle.ACWith, n.Idle.ACWithout)
+	}
+}
+
+func TestTwoTableTwoHandedWeaponsGiveTheSameNumbers(t *testing.T) {
+	t.Parallel()
+	const second = "weapon:machado-grande" + tableSuffix
+	ws := append(ruleWeapons(), TableWeapon{TableEntry: TableEntry{Key: second, NamePT: "Machado Grande"}, Category: "martial", Damage: "1d12", DamageType: "damage-type:slashing", Properties: []string{"weapon-property:heavy", "weapon-property:two-handed"}})
+	for i := range ws {
+		ws[i].Revision = 1
+	}
+	c := withOverlay(t, Overlay{Revision: 1, Weapons: ws})
+	d := Derive(withShieldOn(ruleSheet(12, 14, wHeavy, second)), c)
+	if len(d.Notices) != 2 {
+		t.Fatalf("notices = %+v, want one for each table two-handed weapon", d.Notices)
+	}
+	for _, n := range d.Notices {
+		if n.Idle.ACWith != d.ArmorClass+2 || n.Idle.ACWithout != d.ArmorClass {
+			t.Errorf("%s: AC with %d and without %d, want %d and %d", n.Idle.Key, n.Idle.ACWith, n.Idle.ACWithout, d.ArmorClass+2, d.ArmorClass)
+		}
+	}
+}
+
+// An effect that sets the armor class leaves it the same with the shield counting or not: the shield is no idle one in
+// any number the sheet shows, and the notice would say "CA 15 → 15", so none is raised. The shield's hint stays.
+func TestNoShieldIdleNoticeWhenTheShieldChangesNoNumber(t *testing.T) {
+	t.Parallel()
+	const fixed = "feat:ca-fixa" + tableSuffix
+	ws := append(ruleWeapons(), tableWeapons()...)
+	for i := range ws {
+		ws[i].Revision = 1
+	}
+	feat := TableFeat{TableEntry: TableEntry{Key: fixed, NamePT: "CA Fixa", Revision: 1}, DescPT: []string{"Texto."}, Effects: []Effect{{Type: "modifier", Target: "ac", Mode: "set", Value: "15"}}}
+	c := withOverlay(t, Overlay{Revision: 1, Weapons: ws, Feats: []TableFeat{feat}})
+	b := withShieldOn(ruleSheet(12, 14, wHeavy))
+	b.Feats = []string{fixed}
+	d := Derive(b, c)
+	if !d.ShieldIdle || d.ArmorClass != 15 {
+		t.Fatalf("shield idle %v, AC %d, want the idle shield and the set AC 15: the case tests nothing", d.ShieldIdle, d.ArmorClass)
+	}
+	if len(d.Notices) != 0 {
+		t.Errorf("notices = %+v, want none: the shield changes no number", d.Notices)
+	}
+}
