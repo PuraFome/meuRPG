@@ -542,7 +542,7 @@ func (col *collector) feature(key, name, source string, level int, desc []string
 	x := col.x
 	x.d.Features = append(x.d.Features, Feature{
 		Key: key, Name: name, NamePT: x.c.namePT(key), Source: source, Level: level,
-		SourcePT: x.sourcePT(source, level), Description: x.c.withSwapLine(key, level, desc), SummaryPT: x.optionSummary(key),
+		SourcePT: x.sourcePT(source, level), Description: x.c.withSwapLine(key, source, level, desc), SummaryPT: x.optionSummary(key),
 	}.withTextPT(x.c))
 }
 

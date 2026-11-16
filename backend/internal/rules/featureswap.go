@@ -168,30 +168,40 @@ func unmatchedRemovals(gone []string, groups []SwapGroup) []string {
 	return slices.DeleteFunc(slices.Clone(gone), func(k string) bool { _, ok := owner[k]; return ok })
 }
 
-// withSwapLine is the text of the table feature key, at class level level, with the line that says at which levels one of its
-// options can be swapped; the text of a feature that allows no swap is the master's own.
-func (c *content) withSwapLine(key string, level int, desc []string) []string {
+// withSwapLine is the text of the table feature key, which comes from source (a class or a subclass) at class level level,
+// with the line that says at which levels one of its options can be swapped; the text of a feature that allows no swap is
+// the master's own. The line is markdown: its lead is bold.
+func (c *content) withSwapLine(key, source string, level int, desc []string) []string {
 	s, ok := c.featureSwaps[key]
 	if !ok {
 		return desc
 	}
-	return slices.Concat(desc, []string{swapLinePT(s, level)})
+	return slices.Concat(desc, []string{swapLinePT(s, c.namePT(c.classOfSource(source)), level)})
 }
 
-// swapLinePT says, in Portuguese, when a player may swap an option of a feature that is at class level from.
-func swapLinePT(s FeatureSwapLevels, from int) string {
+// classOfSource is the class of a class or subclass key.
+func (c *content) classOfSource(source string) string {
+	if sub, ok := c.subclasses[source]; ok {
+		return sub.Class
+	}
+	return source
+}
+
+// swapLinePT says, in Portuguese, when a player may swap an option of a feature of the class named class that is at class
+// level from.
+func swapLinePT(s FeatureSwapLevels, class string, from int) string {
 	var when string
 	switch levels := slices.Sorted(slices.Values(s.Levels)); {
 	case s.EveryLevel:
-		when = fmt.Sprintf("em todos os níveis da classe a partir do nível %d", from)
+		when = fmt.Sprintf("em todo nível de %s a partir do nível %d", class, from)
 	case len(levels) == 1:
-		when = fmt.Sprintf("no nível %d da classe", levels[0])
+		when = fmt.Sprintf("no nível %d de %s", levels[0], class)
 	default:
 		names := make([]string, len(levels))
 		for i, n := range levels {
 			names[i] = strconv.Itoa(n)
 		}
-		when = "nos níveis " + joinList(names) + " da classe"
+		when = fmt.Sprintf("nos níveis %s de %s", joinList(names), class)
 	}
-	return "Troca de opção: " + when + ", ao subir de nível, você pode trocar uma opção escolhida aqui por outra da mesma lista."
+	return "**Troca:** " + when + " você pode trocar uma opção desta característica por outra."
 }

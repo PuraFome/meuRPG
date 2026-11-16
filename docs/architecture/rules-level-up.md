@@ -66,7 +66,7 @@ The permission is the feature's own data: it does not depend on `PickSwapAllowed
 `LevelUpChoices.FeatureSwaps` (`[]PickSwap`) gives up `From` for `To`: at most one per group, `From` values distinct, `To` values distinct, each one of the offer's, else the swap is refused (`SWAP_NOT_ALLOWED`).
 `ApplyLevelUp` replaces the pick in place (the choice engine deals the picks in order); `CheckLevelUp` lets exactly the offered removals through (`unmatchedRemovals`), and `CheckLevelUpOf`, which the level-up calls with the choices the sheet was made from, only the removals a sent swap names (`sentSwaps`); `applyPicks` takes a pick out through `SwapInvocation` only for the Warlock (the check refuses the level unless that pick is an invocation); the check judges the new pick on the sheet after the level (prerequisite, no repeat).
 A history record is never rewritten.
-The sheet text of a feature with `swap_levels` carries one more paragraph, "Troca de opção: ...", saying at which class levels a pick may be swapped (`withSwapLine`, in both `Description` and `DescriptionPT`).
+The sheet text of a feature with `swap_levels` carries one more paragraph, "**Troca:** nos níveis 5 e 6 de Guerreiro você pode trocar uma opção desta característica por outra." ("em todo nível de <Classe> a partir do nível N" for every_level; markdown, the lead in bold), saying at which class levels of the class a pick may be swapped (`withSwapLine`, in both `Description` and `DescriptionPT`).
 
 ## Multiclassing at level-up
 

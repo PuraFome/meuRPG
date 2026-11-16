@@ -465,10 +465,10 @@ func TestTheSheetTextOfAFeatureSaysAtWhichLevelsAnOptionCanBeSwapped(t *testing.
 		swap FeatureSwapLevels
 		want string
 	}{
-		{"one level", FeatureSwapLevels{Levels: []int{5}}, "Troca de opção: no nível 5 da classe, ao subir de nível, você pode trocar uma opção escolhida aqui por outra da mesma lista."},
-		{"two levels, unordered", FeatureSwapLevels{Levels: []int{8, 5}}, "Troca de opção: nos níveis 5 e 8 da classe, ao subir de nível, você pode trocar uma opção escolhida aqui por outra da mesma lista."},
-		{"three levels", FeatureSwapLevels{Levels: []int{5, 8, 12}}, "Troca de opção: nos níveis 5, 8 e 12 da classe, ao subir de nível, você pode trocar uma opção escolhida aqui por outra da mesma lista."},
-		{"every level", FeatureSwapLevels{EveryLevel: true}, "Troca de opção: em todos os níveis da classe a partir do nível 3, ao subir de nível, você pode trocar uma opção escolhida aqui por outra da mesma lista."},
+		{"one level", FeatureSwapLevels{Levels: []int{5}}, "**Troca:** no nível 5 de Guerreiro você pode trocar uma opção desta característica por outra."},
+		{"two levels, unordered", FeatureSwapLevels{Levels: []int{8, 5}}, "**Troca:** nos níveis 5 e 8 de Guerreiro você pode trocar uma opção desta característica por outra."},
+		{"three levels", FeatureSwapLevels{Levels: []int{5, 8, 12}}, "**Troca:** nos níveis 5, 8 e 12 de Guerreiro você pode trocar uma opção desta característica por outra."},
+		{"every level", FeatureSwapLevels{EveryLevel: true}, "**Troca:** em todo nível de Guerreiro a partir do nível 3 você pode trocar uma opção desta característica por outra."},
 	} {
 		c := withOverlay(t, swapPostureOverlay("class:fighter", tc.swap, FeatureSwapLevels{}))
 		desc, descPT := last(c, picks...)
