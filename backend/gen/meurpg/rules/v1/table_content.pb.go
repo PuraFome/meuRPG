@@ -1576,7 +1576,7 @@ type TableWeapon struct {
 	PriceCp  int32 `protobuf:"varint,12,opt,name=price_cp,json=priceCp,proto3" json:"price_cp,omitempty"`
 	// The table revision at which the weapon last became two-handed (the property "weapon-property:two-handed" went on, or the
 	// weapon was made with it): the server's, set on every write and never read from a request. 0 when the weapon is not
-	// two-handed, or was before the server kept it. The sheet that carries the weapon is told "agora pede as duas mãos" only
+	// two-handed, or was before the server kept it. The sheet that carries the weapon is told "passou a exigir as duas mãos" only
 	// when this is newer than the revision the sheet fits (an edit of the damage tells nothing).
 	TwoHandedSinceRevision int32 `protobuf:"varint,13,opt,name=two_handed_since_revision,json=twoHandedSinceRevision,proto3" json:"two_handed_since_revision,omitempty"`
 	unknownFields          protoimpl.UnknownFields

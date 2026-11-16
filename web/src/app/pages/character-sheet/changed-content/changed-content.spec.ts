@@ -98,7 +98,7 @@ describe('ChangedContentNotice', () => {
 
   it('names a weapon the master changed, with the board sentence, and puts the button 8 px under it (580-16, state 8)', () => {
     const sentence =
-      'O Machado de Lenhador agora pede as duas mãos: com ele equipado, o escudo de Tor fica parado (CA 18 → 16).';
+      'Machado de Lenhador passou a exigir as duas mãos. Com Machado de Lenhador em uso, o escudo de Tor não conta na CA (CA 18 → 16).';
     const { el } = render([
       change({
         key: 'weapon:machado-de-lenhador@mesa',

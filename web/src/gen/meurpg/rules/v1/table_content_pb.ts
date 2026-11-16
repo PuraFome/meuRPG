@@ -300,7 +300,7 @@ export type TableWeapon = Message<"meurpg.rules.v1.TableWeapon"> & {
   /**
    * The table revision at which the weapon last became two-handed (the property "weapon-property:two-handed" went on, or the
    * weapon was made with it): the server's, set on every write and never read from a request. 0 when the weapon is not
-   * two-handed, or was before the server kept it. The sheet that carries the weapon is told "agora pede as duas mãos" only
+   * two-handed, or was before the server kept it. The sheet that carries the weapon is told "passou a exigir as duas mãos" only
    * when this is newer than the revision the sheet fits (an edit of the damage tells nothing).
    *
    * @generated from field: int32 two_handed_since_revision = 13;
