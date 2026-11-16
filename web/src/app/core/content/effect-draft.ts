@@ -337,7 +337,7 @@ export class EffectMenuVm {
       case 'language':
         return this.list('languages');
       case 'tool':
-        return this.list('tools');
+        return this.list('tool_choices');
       case 'damage_type':
         return this.list('damage_types');
       case 'cantrip':

@@ -48,6 +48,13 @@ export function choiceSourceMenu(): EffectMenuVm {
       ],
     }),
     create(EffectMenuListSchema, {
+      name: 'tool_choices',
+      values: [
+        value('proficiency:longsword', 'Espada longa'),
+        value('proficiency:cartographers-tools', 'Ferramentas de cartógrafo'),
+      ],
+    }),
+    create(EffectMenuListSchema, {
       name: 'weapon_proficiencies',
       values: proficiencies('weapon', WEAPONS),
     }),
