@@ -541,6 +541,21 @@ message TableFeature {
   // options picked, a Pact Boon, a spell. An option whose prerequisite is not met is listed in the choice, disabled,
   // with what it lacks; a sheet that already has it keeps it and shows the "prerequisite" problem.
   OptionPrerequisite prerequisite = 7;
+  // The class levels at which a player who levels up may swap a pick of this feature's option pool for another
+  // option of the pool; unset or empty means never. The pool is this feature's options, with the options of the
+  // other features of the same class or subclass that share an option with it (a later level's "2 more"). Only a
+  // class or subclass feature that has options may set it (an option may not). Whether the table plays with the rule
+  // "Trocar uma escolha no aumento de atributo" does not matter: the feature's own data decides.
+  FeatureSwapLevels swap_levels = 10;
+}
+
+// FeatureSwapLevels says at which class levels the picks of a feature's option pool may be swapped, one pick for
+// another option of the pool, as part of the level-up (TableFeature.swap_levels).
+message FeatureSwapLevels {
+  // The class levels (1 to 20, each at most once) at which a swap is allowed. Not set together with `every_level`.
+  repeated int32 levels = 1;
+  // True for every class level from the feature's own level on. Not set together with `levels`.
+  bool every_level = 2;
 }
 
 // TableFeat is a feat (MR-025): an optional rule of the game that a character takes

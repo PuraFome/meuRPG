@@ -2813,7 +2813,10 @@ message LevelUpOptions {
   // Improvement, when the table plays with the rule "Trocar uma escolha no aumento de
   // atributo" (TableRules.pick_swap_allowed). Empty at the other levels and where the
   // rule is off. The swap is LevelUpChoices.swap_pick; the warlock's own invocation
-  // swap stays can_swap_invocation.
+  // swap stays can_swap_invocation. The options of a table feature that allows a swap at this
+  // class level (TableFeature.swap_levels) are also here, one group for each feature, whatever
+  // the rule and whether the level has an Ability Score Improvement: `group` is the feature's key.
+  // Their swap is LevelUpChoices.swap_feature_options.
   repeated LevelUpSwapGroup swap_groups = 44;
 
   // Multiclassing (SRD 5.1, "Multiclassing"). is_new_class says the character
@@ -2987,7 +2990,8 @@ message LevelUpFeatureChoice {
 
 // LevelUpSwapGroup is a group of picks one of which the level may swap for another.
 message LevelUpSwapGroup {
-  // The group: "cantrip", "fighting_style", "metamagic", "invocation" or "pact_boon".
+  // The group: "cantrip", "fighting_style", "metamagic", "invocation" or "pact_boon", or the key of a
+  // table feature whose options may be swapped at this level (TableFeature.swap_levels).
   string group = 1;
   string name_pt = 2;
   // The picks the character has in the group, which it may give up.
@@ -3082,6 +3086,13 @@ message LevelUpChoices {
   // One pick given up for another of the same group, at a level with an Ability Score
   // Improvement, when the table allows it (TableRules.pick_swap_allowed). Unset for none.
   LevelUpPickSwap swap_pick = 16;
+  // The swaps of a table feature's options (TableFeature.swap_levels), at the class levels the feature
+  // allows. Each entry has `group` = the feature's key (the group of the same name in
+  // LevelUpOptions.swap_groups), `from_key` a pick of the feature's pool the character gives up and `to_key` another
+  // option of the pool it takes. At most one swap for each feature; the table's rule
+  // "Trocar uma escolha no aumento de atributo" does not matter, and it does not need an Ability Score Improvement.
+  // `swap_pick` and the other swaps of the level stay as they are. At most 20.
+  repeated LevelUpPickSwap swap_feature_options = 17 [(meurpg.options.v1.max_items) = 20];
 }
 
 // LevelUpRefusalReason says why the rules refuse a set of choices, so the app
@@ -3177,7 +3188,10 @@ enum LevelUpRefusalReason {
   LEVEL_UP_REFUSAL_REASON_LATE_CHOICE_MISSING = 29;
   // A swap of a pick was asked where the table does not use the rule, at a level with
   // no Ability Score Improvement, or for a pick or pool option the group does not offer.
-  // `field` is "choices.swap_pick".
+  // `field` is "choices.swap_pick". The same for a swap of a table feature's options
+  // (`field` "choices.swap_feature_options"): the feature does not allow a swap at this level,
+  // the swap names a pick or option the feature's pool does not offer, or two swaps repeat a
+  // feature, a given-up option or a taken one.
   LEVEL_UP_REFUSAL_REASON_SWAP_NOT_ALLOWED = 30;
 }
 
