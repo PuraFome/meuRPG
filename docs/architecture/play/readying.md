@@ -114,8 +114,10 @@ The window closes by itself, with the reason told to its reactor alone.
 That happens when the readier is defeated or incapacitated, spends its reaction elsewhere, or the row stops waiting.
 A change that ends the row (a held spell broken, a readier defeated) closes its window in the same call, a correction to 0 hit points too: the table does not wait for it.
 
-The automatic pass of 30 s counts on the master's screen from when the window opened.
-It can pass a window whose player is still choosing a square for a move, or a target: the row is then ignored.
+A window the readier's player has not touched passes by itself after 30 s, counted on the master's screen from when it opened, even while the player is choosing a square for a move or a target: the row is then ignored.
+The readier's player touching the list of creatures or the darts of the window for the first time marks it as being rolled (`MarkReactionRolling`, once), as the dice step of the other optional reactions does: the master's clock then waits 2 minutes instead of 30 s, and the prompt says so.
+The master's own touch does not mark it: the mark is the reactor player's alone, and the server refuses the master's.
+So the master's queue row does not mark the window, and a master choosing darts for the player has the ordinary 30 s.
 
 ## The reaction
 
@@ -156,6 +158,8 @@ Its row has no `spell_cast_id` (`heldSpellAttackRow`), and its release is `RollA
 As an `attack` it is refused (`READY_ACTION`): it would hold no concentration.
 A pact slot is spent only when no plain slot of that level is free.
 Targets and range are checked at the release, not at Ready.
+Ready refuses with `READY_SPELL_NOT_RELEASABLE` a spell the window cannot release, decided by what the spell is (`checkReadyReleasable`, never a list of keys): one that summons, that holds an ability or a damage type the caster picks, that revives, that keeps a zone to lay on a map (`zoneDefOfSpell`, in a combat with a map), or that is placed at a point or in a direction on a map.
+Nothing is spent; the answer carries none of those choices, so the spell could only be let pass.
 Ready spends the slot and the action, and notes the spell cast this turn.
 It sets the readier's concentration to the sentinel `readied` (`concentrationReadied`), even for a spell without concentration.
 A previous concentration ends there, with its line and its dismissed creatures, as a new concentration spell ends it.
@@ -163,9 +167,27 @@ No effect of the spell happens: no damage, no lasting effect, no zone, no `spell
 
 ### The release
 
-The release is the spell's cast as a reaction, through `castSpell` with `readied` set (`findReadied`).
-`AnswerReaction` "Usar" builds the `CastSpellRequest` from the row: the targets are `creature_ids`, or the target named at Ready.
-A spell placed on the map (an area, a wall) is released with `CastSpell` by the readier, with its point, while the READIED window is open.
+The release is the spell's cast as a reaction, through `castSpell` with `answering` set (`findReadied`).
+`AnswerReaction` "Usar" builds the `CastSpellRequest` from the answer and the row.
+The targets are `targets` (each with its darts), or `creature_ids`, or the target named at Ready.
+`targets` and `creature_ids` together are `invalid_argument`.
+The target named at Ready is used only for a spell that takes named targets (`namedAtReady`): a spell that reaches its caster alone, or an area, released with no targets is cast with none.
+In the window, a creature named at Ready that cannot be aimed at now is not chosen: the readier picks another or lets it pass.
+`castSpell` checks them as a cast on the caster's turn: the darts of the slot and the number of targets.
+`targets` on another kind of row, on a held spell attack, on a pass or on a window that is not READIED are `invalid_argument` (`badTargets`, with `targetsNotUsed`): an answer never drops what it carries.
+The answer carries no point and no direction, and Ready refuses a spell placed on a map (a sphere at a point, a cone, a wall), so no such row is written.
+The answer still refuses one, with targets or without, and keeps the window open: a guard for a row Ready did not check.
+In a combat with no map the area is released with the creatures the answer picks, or with nobody.
+The Ready sheet offers the spells the window releases with darts, creatures or nothing.
+It shows with a reason, and does not offer, a spell that asks the caster an ability (Enhance Ability), the creatures of a summon (Conjure Animals) or a damage type (Flame Strike): the answer carries no `ability_key`, `summon` or `damage_type_key`.
+The sheet reads them as the cast sheet does: `needsAbility`, the summon options of the character and the `damage_choice` of the spell's details.
+The server refuses the same spells at Ready, so a client that does not offer them is not the only guard.
+The sheet fails open: a read that fails leaves the spell offered. A revival (Revivify) is told by nothing the web reads, and a spell that lays a zone on a map is still offered by the sheet, so only the server refuses both; the answer of the window refuses a zone spell too (`laysZoneOnMap`, shared with Ready) for a row written before that refusal. The sheet shows the sentence of `READY_SPELL_NOT_RELEASABLE`.
+While the row waits, `GetTurnOptions.spell_targets` of its readier also lists the targets of the held spell (`heldEntry`), with the darts of its slot, so the window can show them.
+It does so only off the readier's turn, where the window opens and no ordinary entry is listed: on the turn a second action (Action Surge) could list the same spell twice, with nothing to tell the entries apart.
+A held spell attack lists none.
+The list is the owner's and the master's, as the options are (RN-10).
+The release picks only what the readier's player could pick, whoever answers, so the master reads the list under that player's sight too: an NPC the player does not see is not in it (`listHeldTargets`).
 The release spends no slot, the reaction instead of the action, and takes the slot level of Ready (a pact slot spent at Ready counts as a slot of its level).
 The release is checked as a cast: a spell the caster no longer has prepared is refused, and can only be let pass.
 `CastSpell` is a release only off the caster's turn, for the spell its own open READIED window holds (`findReadied`); any other cast is an ordinary one.
@@ -175,6 +197,7 @@ The cast waits for the windows any cast opens (Counterspell), with the READIED w
 A spell attack's d20 held for a die waits the same way, and the master's window reads `answer_now` false.
 A countered release is the use: the row is `fired`, the reaction spent, the concentration ended and the slot lost.
 A refused release spends nothing and the window stays open.
+"Usar" on a window that was answered or closed is `NOT_YOUR_TURN_TO_ANSWER`, even on the readier's own turn: only an open window releases the spell, and the cast an answer makes names its window.
 A held release whose spell breaks before the Counterspell windows are answered is lost: the row is `broken` and its window closes, the replay is refused as any cast off the readier's turn, and the master reads `held_dropped` in the log (`settleReplay`).
 Nothing is cast, and no write fails.
 "Deixar passar" loses the spell: the row is `ignored`, a `READIED_LOST` line names the spell, and the concentration ends.
@@ -197,7 +220,9 @@ The end of the previous concentration (`concentration_ended_key`) is public on t
 The concentration save of a held spell is the master's and the owner's: its window, its result and its line name the held spell (`HeldSpell` on the trigger, `Held` on the event).
 Another player reads none of it: no window, no line, and the wait reads "Esperando o mestre", never the readier's Constitution save.
 A line whose held spell is unknown names it "a magia preparada".
-`internal/leaktest` (`ready_spell_test.go`) checks these, the save's wait included, with canaries and positive controls.
+The targets the held spell lists leave out an NPC the player does not see, and an answer that picks one is refused as one that picks an id that is nowhere.
+Another player's answer to the window, with targets or without, is denied as an answer to a window that does not exist.
+`internal/leaktest` (`ready_spell_test.go`, `ready_spell_release_test.go`) checks these, the save's wait included, with canaries and positive controls.
 
 ## Undo
 
