@@ -369,36 +369,45 @@ func TestAnUndoThatReopensAReadiedWindowStartsItsWaitClean(t *testing.T) {
 		e      *playv1.Encounter
 		w      *playv1.ReactionWindow
 		player *user
-		use    func() // the use or the pass that closes the window
+		use    func(t *testing.T) // the use or the pass that closes the window
 	}
-	spell := func(release func(a *armed, e *playv1.Encounter, w *playv1.ReactionWindow)) func(t *testing.T) setup {
+	spell := func(release func(t *testing.T, a *armed, e *playv1.Encounter, w *playv1.ReactionWindow)) func(t *testing.T) setup {
 		return func(t *testing.T) setup {
+			t.Helper()
 			a := newCasters(t)
 			e := a.readyForRelease(t, magicMissileSpell, 1, "Capitão Goblin")
 			w := a.mustFire(t, e, "Pensantus")
-			return setup{a, e, w, a.ana, func() { release(a, e, w) }}
+			return setup{a, e, w, a.ana, func(t *testing.T) {
+				t.Helper()
+				release(t, a, e, w)
+			}}
 		}
 	}
 	for _, tt := range []struct {
 		name  string
 		setup func(t *testing.T) setup
 	}{
-		{"a spell released with CastSpell", spell(func(a *armed, e *playv1.Encounter, _ *playv1.ReactionWindow) {
+		{"a spell released with CastSpell", spell(func(t *testing.T, a *armed, e *playv1.Encounter, _ *playv1.ReactionWindow) {
+			t.Helper()
 			if _, err := a.cast(t, a.ana, e, "Pensantus", magicMissileSpell, nil, []*playv1.SpellTarget{darts(a, t, "Capitão Goblin", 3)}, noCastRoll); err != nil {
 				t.Fatalf("the release: %v", err)
 			}
 		})},
-		{"a spell released with an answer", spell(func(a *armed, e *playv1.Encounter, w *playv1.ReactionWindow) {
+		{"a spell released with an answer", spell(func(t *testing.T, a *armed, e *playv1.Encounter, w *playv1.ReactionWindow) {
+			t.Helper()
 			a.mustAnswer(t, a.ana, e, w.GetId(), withTargets(darts(a, t, "Capitão Goblin", 3)))
 		})},
-		{"a pass", spell(func(a *armed, e *playv1.Encounter, w *playv1.ReactionWindow) {
+		{"a pass", spell(func(t *testing.T, a *armed, e *playv1.Encounter, w *playv1.ReactionWindow) {
+			t.Helper()
 			a.mustAnswer(t, a.master, e, w.GetId(), passAnswer)
 		})},
 		{"a move", func(t *testing.T) setup {
+			t.Helper()
 			a := newArmed(t)
 			e := a.readyMove(t)
 			w := a.mustFire(t, e, "Toren")
-			return setup{a, e, w, a.caio, func() {
+			return setup{a, e, w, a.caio, func(t *testing.T) {
+				t.Helper()
 				if _, err := a.frozenMove(t, a.caio, "Toren", 3, 5); err != nil {
 					t.Fatalf("the readied move: %v", err)
 				}
@@ -417,7 +426,7 @@ func TestAnUndoThatReopensAReadiedWindowStartsItsWaitClean(t *testing.T) {
 				t.Fatalf("the first mark left rolling %v and the wait's beginning %v", a.windowOf(t, a.master, kindReadied).GetRolling(), first)
 			}
 			a.h.clock.advance(time.Minute) // the player keeps the window a while before it uses it
-			s.use()
+			s.use(t)
 			a.mustUndo(t, s.e)
 			for who, u := range map[string]*user{"the master": a.master, "the reactor's player": s.player} {
 				w := a.windowOf(t, u, kindReadied)
