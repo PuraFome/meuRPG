@@ -499,10 +499,11 @@ func (q *Queries) EndBond(ctx context.Context, arg EndBondParams) (int64, error)
 	return result.RowsAffected(), nil
 }
 
-const endCharacterInfusion = `-- name: EndCharacterInfusion :execrows
+const endCharacterInfusion = `-- name: EndCharacterInfusion :one
 UPDATE character_infusions
 SET ended_at = $1::TIMESTAMPTZ, ended_reason = $2::TEXT
 WHERE campaign_id = $3::UUID AND id = $4::UUID AND ended_at IS NULL
+RETURNING id, campaign_id, artificer_character_id, holder_character_id, infusion_key, item_kind, item_key, object_name, parameter, attuned, since, ended_at, ended_reason, materialises_id, created_at
 `
 
 type EndCharacterInfusionParams struct {
@@ -512,18 +513,33 @@ type EndCharacterInfusionParams struct {
 	ID         string
 }
 
-// Ends a record that is live; the count says whether it was.
-func (q *Queries) EndCharacterInfusion(ctx context.Context, arg EndCharacterInfusionParams) (int64, error) {
-	result, err := q.db.Exec(ctx, endCharacterInfusion,
+// Ends a record that is live and returns it as it was; no row means it was not live.
+func (q *Queries) EndCharacterInfusion(ctx context.Context, arg EndCharacterInfusionParams) (CharacterInfusion, error) {
+	row := q.db.QueryRow(ctx, endCharacterInfusion,
 		arg.At,
 		arg.Reason,
 		arg.CampaignID,
 		arg.ID,
 	)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
+	var i CharacterInfusion
+	err := row.Scan(
+		&i.ID,
+		&i.CampaignID,
+		&i.ArtificerCharacterID,
+		&i.HolderCharacterID,
+		&i.InfusionKey,
+		&i.ItemKind,
+		&i.ItemKey,
+		&i.ObjectName,
+		&i.Parameter,
+		&i.Attuned,
+		&i.Since,
+		&i.EndedAt,
+		&i.EndedReason,
+		&i.MaterialisesID,
+		&i.CreatedAt,
+	)
+	return i, err
 }
 
 const endStoryEditing = `-- name: EndStoryEditing :execrows

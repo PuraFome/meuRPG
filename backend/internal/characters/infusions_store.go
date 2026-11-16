@@ -2,10 +2,14 @@ package characters
 
 import (
 	"context"
+	"errors"
 	"uuid"
+
+	"github.com/jackc/pgx/v5"
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
+	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
@@ -62,13 +66,16 @@ func (s *Service) insertInfusion(ctx context.Context, q *charactersdb.Queries, n
 	return rec, nil
 }
 
-// endInfusion ends a record of the campaign that is live and says whether it was: an ended record is left as it is.
-func (s *Service) endInfusion(ctx context.Context, q *charactersdb.Queries, campaignID, id, reason string) (bool, error) {
-	n, err := q.EndCharacterInfusion(ctx, charactersdb.EndCharacterInfusionParams{CampaignID: campaignID, ID: id, Reason: reason, At: s.now()})
-	if err != nil {
-		return false, wrap("end an infusion", err)
+// endInfusion ends a record of the campaign that is live and returns it, with whether it was: an ended record is left as it is.
+func (s *Service) endInfusion(ctx context.Context, q *charactersdb.Queries, campaignID, id, reason string) (charactersdb.CharacterInfusion, bool, error) {
+	rec, err := q.EndCharacterInfusion(ctx, charactersdb.EndCharacterInfusionParams{CampaignID: campaignID, ID: id, Reason: reason, At: s.now()})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return rec, false, nil
 	}
-	return n > 0, nil
+	if err != nil {
+		return rec, false, wrap("end an infusion", err)
+	}
+	return rec, true, nil
 }
 
 // moveInfusion puts a live record on another item, starts its time again and clears its attunement (the item changed), and
@@ -98,18 +105,39 @@ func (s *Service) setInfusionAttuned(ctx context.Context, q *charactersdb.Querie
 // the armor, the shield or a weapon taken off the sheet. A piece moved between equipped and carried is still listed, so
 // its record stays. It runs in the transaction of the write that changed the sheet, after that write locked the holder's
 // row, with the records that save read (the holder's live ones). A sheet that is not a full one lists no gear and has no records to end.
-func (s *Service) endInfusionsOfGoneGear(ctx context.Context, q *charactersdb.Queries, campaignID string, live []rules.InfusionRecord, next *charactersv1.FullSheet) error {
+// It returns what ended, for the caller to tell play.
+func (s *Service) endInfusionsOfGoneGear(ctx context.Context, q *charactersdb.Queries, campaignID string, live []rules.InfusionRecord, next *charactersv1.FullSheet) ([]link.InfusionChange, error) {
 	if next == nil {
-		return nil
+		return nil, nil
 	}
 	build := buildOf(next)
+	var ended []link.InfusionChange
 	for _, r := range live {
 		if r.ItemKind != infusionItemGear || build.ListsGear(r.ItemKey) {
 			continue
 		}
-		if _, err := s.endInfusion(ctx, q, campaignID, r.ID, infusionEndedItemGone); err != nil {
-			return err
+		rec, ok, err := s.endInfusion(ctx, q, campaignID, r.ID, infusionEndedItemGone)
+		if err != nil {
+			return nil, err
+		}
+		if ok {
+			ended = append(ended, endedChange(rec, infusionEndedItemGone))
 		}
 	}
-	return nil
+	return ended, nil
+}
+
+// endedChange is what play is told when a record ended.
+func endedChange(rec charactersdb.CharacterInfusion, reason string) link.InfusionChange {
+	c := recordChange(link.InfusionEnded, rec)
+	c.EndedReason = reason
+	return c
+}
+
+// recordChange is the change of a record as it stands in rec.
+func recordChange(kind link.InfusionChangeKind, rec charactersdb.CharacterInfusion) link.InfusionChange {
+	return link.InfusionChange{
+		Kind: kind, RecordID: rec.ID, ArtificerID: rec.ArtificerCharacterID, HolderID: rec.HolderCharacterID,
+		InfusionKey: rec.InfusionKey, ItemKind: rec.ItemKind, ItemKey: rec.ItemKey,
+	}
 }

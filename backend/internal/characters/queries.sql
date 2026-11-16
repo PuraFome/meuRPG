@@ -1121,11 +1121,12 @@ ORDER BY since, id;
 SELECT count(*) FROM character_infusions
 WHERE artificer_character_id = sqlc.arg(artificer_character_id)::UUID AND ended_at IS NULL;
 
--- name: EndCharacterInfusion :execrows
--- Ends a record that is live; the count says whether it was.
+-- name: EndCharacterInfusion :one
+-- Ends a record that is live and returns it as it was; no row means it was not live.
 UPDATE character_infusions
 SET ended_at = sqlc.arg(at)::TIMESTAMPTZ, ended_reason = sqlc.arg(reason)::TEXT
-WHERE campaign_id = sqlc.arg(campaign_id)::UUID AND id = sqlc.arg(id)::UUID AND ended_at IS NULL;
+WHERE campaign_id = sqlc.arg(campaign_id)::UUID AND id = sqlc.arg(id)::UUID AND ended_at IS NULL
+RETURNING *;
 
 -- name: MoveCharacterInfusion :execrows
 -- Puts a live record on another item, begins its time again and clears the attunement (the item changed); the count says whether it was live.
