@@ -650,10 +650,12 @@ func wantTargets(t *testing.T, who string, got []*playv1.ConsumableTarget, want 
 	}
 }
 
-// heroOfAna is a fourth character of the party, a wizard, made before the combat starts.
-func (s *stocked) heroOfAna(t *testing.T, name string) *charactersv1.Character {
+// fourthHero is a fourth character of the party, a wizard of a fourth player who joins the campaign, made before the combat starts.
+func (s *stocked) fourthHero(t *testing.T, name string) *charactersv1.Character {
 	t.Helper()
-	return s.ana.hero(t, s.campaignID, name, "class:wizard", "race:gnome", 1,
+	fourth := s.h.newUser("Duda")
+	s.h.join(s.master, s.campaignID, fourth)
+	return fourth.hero(t, s.campaignID, name, "class:wizard", "race:gnome", 1,
 		&rulesv1.AbilityScores{Strength: 10, Dexterity: 14, Constitution: 12, Intelligence: 16, Wisdom: 10, Charisma: 8}, nil, []string{fireBolt})
 }
 
@@ -667,7 +669,7 @@ func TestTheTargetsInACombatInSetupFollowTheStateWordThePlayerReads(t *testing.T
 		t.Run(key, func(t *testing.T) {
 			t.Parallel()
 			s := newStocked(t, key)
-			fallen := s.heroOfAna(t, "Orvalho")
+			fallen := s.fourthHero(t, "Orvalho")
 			p := plan{
 				npcs:     []*playv1.Participant{{CharacterId: s.goblin.GetId()}},
 				npcRolls: []int{3},
@@ -707,7 +709,7 @@ func TestTheTargetsWithNoCombatAreThePartyNotDeadForEveryUser(t *testing.T) {
 		t.Run(key, func(t *testing.T) {
 			t.Parallel()
 			s := newStocked(t, key)
-			fallen := s.heroOfAna(t, "Orvalho")
+			fallen := s.fourthHero(t, "Orvalho")
 			s.hurt(t, s.pens, 0)
 			s.hurt(t, s.bri, 0)
 			s.execSQL(t, `UPDATE characters SET status = 'dead', died_at = now() WHERE id = $1`, fallen.GetId())

@@ -89,7 +89,7 @@ func (s *Service) isDead(ctx context.Context, tx pgx.Tx, campaignID string, t pl
 	if t.Kind != kindPlayer {
 		return false, nil
 	}
-	if t.Defeated || t.DeathFailures >= 3 {
+	if t.Defeated || t.DeathFailures >= combat.DeathSaveGoal {
 		return true, nil
 	}
 	_, err := s.vitals.GetVitalsTx(ctx, tx, campaignID, t.CharacterID)
@@ -252,7 +252,7 @@ func (s *Service) hpZero(ctx context.Context, c *combatTx, k *hpCast) ([]*playv1
 		if t.c.Kind == kindPlayer { // an NPC at 0 is defeated and never a target
 			h.DeathBefore = deathOf(t.c)
 			if err := c.q.SetCombatantDeathSaves(ctx, playdb.SetCombatantDeathSavesParams{
-				ID: t.c.ID, DeathSuccesses: deathSaveCount, DeathFailures: 0, DeathSaveRolled: t.c.DeathSaveRolled, Defeated: t.c.Defeated,
+				ID: t.c.ID, DeathSuccesses: combat.DeathSaveGoal, DeathFailures: 0, DeathSaveRolled: t.c.DeathSaveRolled, Defeated: t.c.Defeated,
 			}); err != nil {
 				return nil, fmt.Errorf("make the character stable: %w", err)
 			}

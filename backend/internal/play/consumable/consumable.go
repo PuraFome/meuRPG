@@ -12,6 +12,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dice"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
+	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 )
 
 // ErrFaces is a list of typed faces that is not the potion's dice: the wrong number, or a face off its die.
@@ -101,11 +102,8 @@ func Standing(gone bool, deathFailures int32, master bool, v *playv1.CharacterVi
 	switch {
 	case gone:
 		return false, false
-	case deathFailures >= deathSaveGoal:
+	case deathFailures >= combat.DeathSaveGoal:
 		return !master, !master
 	}
 	return true, v.GetHitPointsMax() > 0 && v.GetHitPointsCurrent() == 0
 }
-
-// deathSaveGoal is the number of death saves, of failures or of successes, that ends them.
-const deathSaveGoal = 3
