@@ -8,40 +8,11 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/PuraFome/meuRPG/backend/internal/platform/sessiontell"
+	"github.com/PuraFome/meuRPG/backend/internal/play/infusion"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/live"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
-
-// The session events of an Artificer's infusions (the characters module's character_infusions). Each payload holds ids and
-// keys, never a name or free text. characters.ReviewHost.InfusionChanged writes them (InfusionChanged).
-const (
-	// eventInfusionInfused: an item was infused.
-	eventInfusionInfused = "infusion_infused"
-	// eventInfusionMoved: an infusion was put on another item.
-	eventInfusionMoved = "infusion_moved"
-	// eventInfusionEnded: an infusion ended.
-	eventInfusionEnded = "infusion_ended"
-)
-
-// infusionEvent is the payload of the three infusion events: the record, the artificer, the holder and the infusion's
-// option, with the item it is on. Ended is why a record ended (infusion_ended only).
-type infusionEvent struct {
-	RecordID    string `json:"record_id"`
-	ArtificerID string `json:"artificer_character_id"`
-	HolderID    string `json:"holder_character_id"`
-	Infusion    string `json:"infusion_key"`
-	ItemKind    string `json:"item_kind"`
-	ItemKey     string `json:"item_key"`
-	Ended       string `json:"ended_reason,omitempty"`
-}
-
-// infusionKinds are the session event kinds of the changes a write reports.
-var infusionKinds = map[link.InfusionChangeKind]string{
-	link.InfusionInfused: eventInfusionInfused,
-	link.InfusionMoved:   eventInfusionMoved,
-	link.InfusionEnded:   eventInfusionEnded,
-}
 
 // InfusionChanged implements characters.ReviewHost: the changes of an artificer's infusions, in one write.
 //
@@ -62,11 +33,11 @@ func (s *Service) InfusionChanged(ctx context.Context, tx pgx.Tx, campaignID, ac
 		return err // no open session: no event, and no combat
 	}
 	for _, c := range changes {
-		kind, ok := infusionKinds[c.Kind]
+		kind, ok := infusion.KindOf(c)
 		if !ok {
 			return fmt.Errorf("an infusion change of kind %q", c.Kind)
 		}
-		if err := s.appendKeyedEvent(ctx, q, keyedEvent{sessionID: session.ID, kind: kind, userID: actorUserID, characterID: &c.ArtificerID}, infusionEventOf(c)); err != nil {
+		if err := s.appendKeyedEvent(ctx, q, keyedEvent{sessionID: session.ID, kind: kind, userID: actorUserID, characterID: &c.ArtificerID}, infusion.EventOf(c)); err != nil {
 			return err
 		}
 	}
@@ -76,26 +47,16 @@ func (s *Service) InfusionChanged(ctx context.Context, tx pgx.Tx, campaignID, ac
 	return s.infusionCombatChanged(ctx, q, campaignID, enc, changes, t)
 }
 
-// infusionEventOf is the payload of a change's session event.
-func infusionEventOf(c link.InfusionChange) infusionEvent {
-	return infusionEvent{
-		RecordID: c.RecordID, ArtificerID: c.ArtificerID, HolderID: c.HolderID, Infusion: c.InfusionKey,
-		ItemKind: c.ItemKind, ItemKey: c.ItemKey, Ended: c.EndedReason,
-	}
-}
-
 // infusionCombatChanged touches the combat and tells it changed when a character the changes name fights in it.
 func (s *Service) infusionCombatChanged(ctx context.Context, q *playdb.Queries, campaignID string, enc playdb.Encounter, changes []link.InfusionChange, t sessiontell.Tell) error {
 	cs, err := q.ListCombatants(ctx, enc.ID)
 	if err != nil {
 		return fmt.Errorf("list the combatants: %w", err)
 	}
-	var fighting []playdb.Combatant
-	for _, c := range changes {
-		for _, id := range []string{c.ArtificerID, c.HolderID} {
-			if i := slices.IndexFunc(cs, func(x playdb.Combatant) bool { return x.CharacterID == id && !x.Dismissed }); i >= 0 {
-				fighting = append(fighting, cs[i])
-			}
+	var fighting []playdb.Combatant // ListCombatants leaves the dismissed out
+	for _, id := range infusion.Named(changes) {
+		if i := slices.IndexFunc(cs, func(x playdb.Combatant) bool { return x.CharacterID == id }); i >= 0 {
+			fighting = append(fighting, cs[i])
 		}
 	}
 	if len(fighting) == 0 {

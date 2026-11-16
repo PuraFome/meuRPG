@@ -60,8 +60,8 @@ func (s *Service) infusionsChanged(ctx context.Context, tx pgx.Tx, t sessiontell
 
 // reportInfusions tells play what a write changed in the records, in the transaction of the write (play writes the session
 // event of each change when the campaign has an open session; play may refuse, and the write rolls back), and tells the
-// master and the owner of each character the records name (the artificer, and the holder when it is another character) that
-// its infusions changed once the transaction commits. It tells nothing for a write that changed nothing.
+// master and the owner of the artificer (the holder is always the artificer in this version) that its infusions changed once
+// the transaction commits. It tells nothing for a write that changed nothing.
 func (s *Service) reportInfusions(ctx context.Context, tx pgx.Tx, t sessiontell.Tell, campaignID, actorUserID string, current charactersdb.Character, changes []link.InfusionChange) error {
 	if len(changes) == 0 {
 		return nil
@@ -71,26 +71,7 @@ func (s *Service) reportInfusions(ctx context.Context, tx pgx.Tx, t sessiontell.
 			return err
 		}
 	}
-	q := s.queries.WithTx(tx)
-	var ids []string
-	for _, c := range changes {
-		ids = append(ids, c.ArtificerID, c.HolderID)
-	}
-	slices.Sort(ids)
-	for _, id := range slices.Compact(ids) {
-		owner := conv.OrZero(current.PlayerUserID)
-		if id != current.ID {
-			other, err := q.GetCharacter(ctx, charactersdb.GetCharacterParams{CampaignID: campaignID, ID: id})
-			if errors.Is(err, pgx.ErrNoRows) {
-				continue
-			}
-			if err != nil {
-				return wrap("read the owner of an infusion's character", err)
-			}
-			owner = conv.OrZero(other.PlayerUserID)
-		}
-		t.CharacterEvent(owner, id, hintInfusionsChanged)
-	}
+	t.CharacterEvent(conv.OrZero(current.PlayerUserID), current.ID, hintInfusionsChanged)
 	return nil
 }
 
@@ -737,9 +718,12 @@ func (s *Service) endIn(ctx context.Context, tx pgx.Tx, m authz.Membership, msg 
 	if err != nil {
 		return endedInfusion{}, err
 	}
-	ended, _, err := s.endInfusion(ctx, q, m.CampaignID, rec.ID, infusionEndedEnded)
+	ended, ok, err := s.endInfusion(ctx, q, m.CampaignID, rec.ID, infusionEndedEnded)
 	if err != nil {
 		return endedInfusion{}, err
+	}
+	if !ok { // the row was locked and live a moment ago: a record that ended anyway is a change, not a zero record for play
+		return endedInfusion{}, errInfusionBlocked(charactersv1.InfusionBlockedReason_INFUSION_BLOCKED_REASON_ITEM_CHANGED)
 	}
 	row, err := s.infusionsChanged(ctx, tx, t, m, current, []link.InfusionChange{endedChange(ended, infusionEndedEnded)})
 	return endedInfusion{id: rec.ID, revision: row.Revision}, err

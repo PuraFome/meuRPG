@@ -52,6 +52,7 @@ Como o código faz isso está nos [docs de arquitetura](../../architecture/READM
 | RN-41 | **Ações sem rolagem.** Uma ação de criatura que não rola nada (um poder que o texto descreve) é usada como lembrete: gasta a ação e escreve uma linha no registro, e o mestre lê o texto do SRD. | [Detalhe](#rn-41-ações-sem-rolagem) |
 | RN-42 | **Ataque de monstro com várias partes de dano.** O acerto de um ataque da ficha causa todas as partes de dano da ação (uma espada mais fogo) como um só dano a aplicar, cada parte resistida pelo próprio tipo. | [Detalhe](#rn-42-ataque-de-monstro-com-várias-partes-de-dano) |
 | RN-43 | **A Inspiração do mestre.** O mestre concede Inspiração a um personagem de jogador como recompensa; o personagem a tem ou não, nunca mais de uma. Gastá-la dá vantagem numa jogada de ataque, num teste de resistência ou num teste de habilidade do próprio personagem. Nenhum outro jogador lê quem a tem. | [Detalhe](#rn-43-a-inspiração-do-mestre) |
+| RN-44 | **Infusões do artífice.** O artífice põe numa peça uma infusão que conhece. O número de infusões em uso é limitado pelo nível na classe, e uma a mais encerra a mais antiga, ou a que o jogador escolher. O dono e o mestre as leem e mudam; nenhum outro jogador as lê. | [Detalhe](#rn-44-infusões-do-artífice) |
 
 ## RN-01: Trava da ficha
 
@@ -1513,6 +1514,61 @@ Um jogador só pode passá-la a outro personagem de jogador da mesma campanha pe
 O desfazer do mestre desfaz uma concessão feita por engano.
 Um jogador lê só se os próprios personagens a têm.
 Outro jogador não lê quem a tem nem que ela mudou de mãos (RN-10).
+
+## RN-44: Infusões do artífice
+
+**Construída em parte.**
+Construído: o lado do servidor para os itens do próprio artífice: os registros, o limite, os números na ficha, a sintonização, o aviso da transmissão e os eventos da sessão da mesa.
+Não construído: as telas; um item de outro personagem; as cargas de um item infundido; o fim de uma infusão quando a subida de nível troca a escolha; o pacote da campanha.
+Este é o comportamento pretendido:
+
+Um artífice (uma classe do conteúdo da mesa) conhece infusões, escolhidas como opções da característica da sua classe, e as põe em itens.
+Uma infusão num item é um registro: qual infusão, em qual item, desde quando, e se o item está sintonizado.
+A ficha lista os registros, valendo ou não, do mais antigo ao mais novo, e os números que uma infusão dá são calculados do registro e do nível na classe quando a ficha é lida.
+O app nunca confere se um descanso longo terminou: a mesa decide quando uma infusão é posta, e o mestre não aprova nada.
+
+**Quem.** O dono do artífice e o mestre põem uma infusão, a mudam de item e a encerram, também numa ficha trancada, como o equipar funciona.
+Nesta versão o item é do próprio artífice.
+Nenhum outro jogador as lê nem as muda.
+
+**O item.**
+Uma infusão vai no tipo de peça que ela pede (uma arma, uma arma de arremesso, uma arma com munição, uma armadura, um escudo, ou uma armadura ou um escudo).
+Uma que vai em qualquer objeto, ou num foco de conjuração, vai num objeto que o jogador nomeia, que a ficha não lista como peça.
+O nome é uma linha de 1 a 40 caracteres, e dois objetos podem ter o mesmo nome.
+Uma peça que já é mágica (um bônus mágico, ou a marca de mágica da arma) não recebe uma infusão, e uma peça guarda uma só infusão.
+A lista de peças diz, para cada uma, o motivo de ela não poder recebê-la, em palavras.
+
+**O limite e o fim da mais antiga.**
+A característica da classe diz quantas infusões ficam em uso ao mesmo tempo, por nível na classe.
+Pôr uma no limite encerra uma: o jogador pode escolher qual, e sem escolha é a mais antiga.
+Uma infusão só de texto, que o app não calcula, conta como uma e marca o item: "Só o texto: a mesa aplica."
+Mudar uma infusão para outro item começa a contar o tempo de novo.
+
+**Números.**
+Uma infusão com bônus mágico segue as regras do bônus mágico do equipamento (RN-02): vale para uma peça equipada, um escudo não soma nada atrás de uma arma de duas mãos, e uma infusão que pede sintonização não soma nada até o item estar sintonizado.
+A ficha nomeia a infusão na peça, no ataque dela e nas linhas de modificadores.
+Um bônus manual na mesma peça vence: a infusão não dá número ali, e um bônus manual novo numa peça com infusão é recusado.
+Um registro que não vale agora (o nível na classe, a característica, a peça ou um pré-requisito sumiu) não dá número e não ocupa lugar do limite.
+
+**Sintonização.**
+Uma infusão que a pede conta entre os três itens a que o personagem está sintonizado (RN-02), como um item mágico, e o jogador a sintoniza na janela de um descanso, como qualquer item.
+Quando o dono a põe, "Sintonizar agora" usa essa janela.
+
+**O que encerra um registro.**
+O jogador ou o mestre o encerra (o item volta a ser o item comum).
+Uma infusão nova no limite encerra a que cede lugar.
+Uma peça que sai da ficha encerra o registro dela.
+Um registro antigo que não vale agora termina quando a peça dele ou a infusão dele é posta em uso de novo.
+Uma infusão que a subida de nível não deixa o personagem manter também encerra, e isso espera as telas da subida de nível.
+Um personagem que morre mantém os registros.
+
+**Quem lê o quê.**
+O dono e o mestre leem os registros na ficha.
+A sessão da mesa guarda um evento para cada mudança enquanto há uma sessão aberta, e nenhum quando não há sessão aberta.
+O registro do combate, os destaques e o resumo não fazem linha deles, e nenhum jogador os lê.
+O desfazer do mestre não desfaz uma infusão, e uma infusão fecha a cadeia do desfazer.
+O mestre e o dono são avisados, sem conteúdo, de que as infusões mudaram, e o combate que tem o artífice lê o turno de novo.
+Uma cópia da campanha (o pacote) não traz registros: eles terminam na importação.
 
 ## Fluxos e estados
 

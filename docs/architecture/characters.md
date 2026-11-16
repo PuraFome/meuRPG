@@ -314,13 +314,18 @@ It tells the session through `Touch`.
 It is the one seam the three writes share after their change.
 
 The seam also tells play, through `ReviewHost.InfusionChanged`, once for the whole write.
-The call carries the list of what changed, in the order it happened: the records that ended (`taken`, `replaced`) first, then the one infused or moved.
-One call for the write, and not one for each record, so play writes its events in that order and tells its streams once.
-A change holds ids and keys only: the record, the artificer, the holder, the infusion's key, the item and why a record ended.
+The call carries the list of what changed, in the order it happened.
+The records that ended (`taken`, `replaced`) come first, then the one infused or moved.
+It is one call for the write, and not one for each record.
+So play writes its events in that order and tells its streams once.
+A change holds ids and keys only.
+These are the record, the artificer, the holder, the infusion's key, the item and why a record ended.
 Play may refuse, and then the whole write rolls back.
 A retry that finds its key stored calls nothing.
 The sheet save does the same for the records of a piece that left the sheet (`item_gone`), in the save's own transaction.
-After the call the seam tells the master and the owner of each character the changes name that its infusions changed (`character_infusions_changed`, a hint with the character's id and nothing else).
+After the call the seam tells the master and the owner of the artificer that its infusions changed.
+That hint is `character_infusions_changed`, with the character's id and nothing else.
+The holder is the artificer in this version, so no other character is told.
 
 ## Attunement
 

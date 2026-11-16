@@ -9,6 +9,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/sessiontell"
+	"github.com/PuraFome/meuRPG/backend/internal/play/infusion"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 )
 
@@ -103,7 +104,7 @@ func TestInfusionChangesAreSessionEventsOfTheOpenSession(t *testing.T) {
 		t.Fatalf("InfusionChanged() error = %v", err)
 	}
 	rows := a.infusionRows(t)
-	kinds := []string{eventInfusionEnded, eventInfusionInfused, eventInfusionMoved}
+	kinds := []string{infusion.KindEnded, infusion.KindInfused, infusion.KindMoved}
 	if len(rows) != len(kinds) {
 		t.Fatalf("the session holds %d infusion events, want %d", len(rows), len(kinds))
 	}
@@ -112,11 +113,11 @@ func TestInfusionChangesAreSessionEventsOfTheOpenSession(t *testing.T) {
 			t.Errorf("event %d = %+v, want kind %s about %s by Ana, with no combat", i, r, kinds[i], pens)
 		}
 	}
-	var got infusionEvent
+	var got infusion.Event
 	if err := json.Unmarshal(rows[0].Payload, &got); err != nil {
 		t.Fatal(err)
 	}
-	want := infusionEvent{
+	want := infusion.Event{
 		RecordID: "00000000-0000-4000-8000-000000000001", ArtificerID: pens, HolderID: pens, Infusion: infusionKeyOfTheTests,
 		ItemKind: "gear", ItemKey: "equipment:dagger", Ended: "replaced",
 	}
@@ -258,5 +259,23 @@ func TestInfusionChangeOfAHiddenCombatantTellsOnlyTheMaster(t *testing.T) {
 	}, true)
 	if !slices.Contains(heard["master"], kEncounterChanged) {
 		t.Errorf("the master heard %v, want the combat changed", heard["master"])
+	}
+}
+
+// A combatant that was dismissed no longer fights: a change of its infusions touches no combat.
+func TestInfusionChangeOfADismissedCombatantTouchesNoCombat(t *testing.T) {
+	t.Parallel()
+	a, _ := infusionFight(t, false)
+	a.execSQL(t, `UPDATE combatants SET dismissed = true WHERE label = 'Pensantus'`)
+	revision := a.encounterRevision(t)
+	g := a.partyHintRig(t)
+	heard := g.first(func() error {
+		return a.reportInfusion(t, a.ana, infusionChange(link.InfusionEnded, "00000000-0000-4000-8000-000000000001", a.pens.GetId()))
+	}, false)
+	if slices.Contains(heard["master"], kEncounterChanged) {
+		t.Errorf("the master heard %v, want no combat change for a dismissed combatant", heard["master"])
+	}
+	if got := a.encounterRevision(t); got != revision {
+		t.Errorf("the combat's revision = %d, want %d", got, revision)
 	}
 }

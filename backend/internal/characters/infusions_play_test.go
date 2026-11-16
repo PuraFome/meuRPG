@@ -181,6 +181,29 @@ func TestMoveOverAStaleRecordTellsPlayItEnded(t *testing.T) {
 	}
 }
 
+// A move onto an object tells play the object's own key, the one the record keeps.
+func TestMoveOntoAnObjectTellsPlayTheObjectKey(t *testing.T) {
+	t.Parallel()
+	ip := newInfusedPlay(t)
+	first, err := ip.infuseObject(t, infusionKeyHouse, "Lampião")
+	if err != nil {
+		t.Fatal(err)
+	}
+	rec := first.GetInfusion().GetId()
+	ip.calls()
+	ip.h.clock.Advance(time.Minute)
+	if _, err := ip.move(ip.dona, rec, "", "Lanterna"); err != nil {
+		t.Fatal(err)
+	}
+	got := ip.calls()
+	if len(got) != 1 || len(got[0]) != 1 || got[0][0].Kind != link.InfusionMoved || got[0][0].ItemKind != infusionItemObject || got[0][0].ItemKey != "object:"+rec {
+		t.Fatalf("the move told play %+v, want one move to the key object:%s", got, rec)
+	}
+	if kept := ip.record(t, rec).ItemKey; kept != got[0][0].ItemKey {
+		t.Errorf("play was told %q, the record keeps %q", got[0][0].ItemKey, kept)
+	}
+}
+
 // A retry, and a write play or the checks refused, tell nothing: no call, no hint.
 func TestInfusionRetryAndRefusalTellPlayNothing(t *testing.T) {
 	t.Parallel()

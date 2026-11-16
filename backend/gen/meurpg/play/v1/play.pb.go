@@ -3369,7 +3369,7 @@ type WatchGameSessionResponse_TableScreenChanged_ struct {
 }
 
 type WatchGameSessionResponse_CharacterInfusionsChanged_ struct {
-	// The infusions of a character changed (one was put on, moved or ended, or the infuser's limit changed). Sent to the
+	// The infusions of a character changed (one was put on, moved or ended). Sent to the
 	// master and the character's owner only. The app reads the open sheet again.
 	CharacterInfusionsChanged *WatchGameSessionResponse_CharacterInfusionsChanged `protobuf:"bytes,49,opt,name=character_infusions_changed,json=characterInfusionsChanged,proto3,oneof"`
 }

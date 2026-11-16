@@ -1833,7 +1833,7 @@ export type WatchGameSessionResponse = Message<"meurpg.play.v1.WatchGameSessionR
     case: "tableScreenChanged";
   } | {
     /**
-     * The infusions of a character changed (one was put on, moved or ended, or the infuser's limit changed). Sent to the
+     * The infusions of a character changed (one was put on, moved or ended). Sent to the
      * master and the character's owner only. The app reads the open sheet again.
      *
      * @generated from field: meurpg.play.v1.WatchGameSessionResponse.CharacterInfusionsChanged character_infusions_changed = 49;
