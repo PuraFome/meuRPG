@@ -266,6 +266,8 @@ type moveRequest struct {
 	// forced (a teleport, a token put right) and place (the first square of a
 	// combatant that has none) are the master's.
 	forced, place bool
+	// release is release_readied: the master's walk is the release of the combatant's readied move (readiedMoveOf).
+	release bool
 	// legendary is the key of the legendary option of kind "move" the move is made as (the master's, off the
 	// creature's own turn, with a budget of its own, see spendLegendaryMove).
 	legendary string
@@ -289,7 +291,7 @@ func readMoveRequest(ctx context.Context, msg *playv1.MoveCombatantRequest) (mov
 	}
 	r := moveRequest{
 		m: m, key: key, encID: encID, combID: combID, col: msg.GetCol(), row: msg.GetRow(),
-		jump: msg.GetJump(), height: msg.GetJumpHeightDft(), forced: msg.GetForced(), place: msg.GetPlace(), legendary: msg.GetLegendaryOption(),
+		jump: msg.GetJump(), height: msg.GetJumpHeightDft(), forced: msg.GetForced(), place: msg.GetPlace(), legendary: msg.GetLegendaryOption(), release: msg.GetReleaseReadied(),
 	}
 	return r, r.validate()
 }
@@ -1140,8 +1142,11 @@ func (s *Service) moverToPlan(ctx context.Context, m authz.Membership, d *encoun
 	if err := notEnded(enc); err != nil {
 		return who, sight, nil, err
 	}
+	if v.master { // his walk is free: the readied move's budget is the player's, and release_readied is not in the options
+		return who, sight, nil, nil
+	}
 	readied, err := s.openReadiedMove(ctx, d, who)
-	if err != nil || v.master {
+	if err != nil {
 		return who, sight, readied, err
 	}
 	return who, sight, readied, s.playerMovesNow(ctx, m, d, who, readied)

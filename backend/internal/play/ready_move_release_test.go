@@ -9,7 +9,7 @@ import (
 )
 
 // The release of a readied move (SRD 5.1 Ready, "move up to your speed in response to a trigger"): MoveCombatant by the
-// readier, or the master for it, while its READIED window of a move is open (ready_answer.go, readiedMoveOf). What the
+// readier, or the master for it (release_readied), while its READIED window of a move is open (ready_answer.go, readiedMoveOf). What the
 // budget is, what the use spends and closes, what leaves the window open, and who may release.
 
 // readyMoveRequest is the request that has Toren ready a move.
@@ -273,9 +273,9 @@ func TestAReadiedMoveToTheSameSquareIsRefusedAndKeepsTheWindow(t *testing.T) {
 // forced is the master's "Movimento forçado".
 func forced(r *playv1.MoveCombatantRequest) { r.Forced = true }
 
-// The master's drag of a token while a readied move's window is open is the release only when it is a walk of the readier:
-// his forced move or jump of the readier, his placing of a token and his walk or forced move of any other token are as they always are, spend no
-// reaction and leave the row waiting with its window open.
+// The master's drag of a token while a readied move's window is open is no release (only a walk with release_readied is): his
+// forced move or jump of the readier, his placing of a token and his walk or forced move of any other token are as they always
+// are, spend no reaction and leave the row waiting with its window open.
 func TestTheMastersOtherDragsDoNotReleaseAReadiedMove(t *testing.T) {
 	t.Parallel()
 	a := newArmed(t)
@@ -316,49 +316,7 @@ func TestTheMastersOtherDragsDoNotReleaseAReadiedMove(t *testing.T) {
 	}
 }
 
-// The master's plain walk of the readier's token while the window is open is the release, made for the player: it spends the
-// reaction and fires the row as the player's own move does, within the same budget, and a walk past it is TOO_FAR and
-// leaves the window; its undo gives it all back.
-func TestTheMastersWalkOfTheReadierIsTheRelease(t *testing.T) {
-	t.Parallel()
-	a := newArmed(t)
-	e := a.readyMoveFrom(t, 1, 5)
-	a.mustFire(t, e, "Toren")
-	_, err := a.frozenMove(t, a.master, "Toren", 8, 5) // 35 ft
-	wantBlockedBy(t, "the master's walk of 35 ft in the readied move", err, reasonTooFar)
-	a.untouched(t, e, "the refusal")
-	if _, err := a.frozenMove(t, a.master, "Toren", 4, 5); err != nil { // 15 ft
-		t.Fatalf("the master's walk of the readier: %v", err)
-	}
-	toren := byLabel(t, a.get(t, a.caio), "Toren")
-	if !toren.GetReactionUsed() || toren.GetReactionKind() != kindReadied || a.readiedStatus(t, "Toren") != readiedFired || a.readiedOpen(t, "Toren") {
-		t.Errorf("after the master's walk: reaction %v (%v), row %q, window open %v", toren.GetReactionUsed(), toren.GetReactionKind(), a.readiedStatus(t, "Toren"), a.readiedOpen(t, "Toren"))
-	}
-	if lines := a.firedLines(t, a.master, e); len(lines) != 1 || lines[0].GetReadiedFired().GetKind() != playv1.ReadiedKind_READIED_KIND_MOVE {
-		t.Errorf("the fired lines = %v", lines)
-	}
-	a.mustUndo(t, e)
-	if a.squareOf(t, "Toren") != [2]int32{1, 5} {
-		t.Errorf("Toren after the undo is at %v, want (1,5)", a.squareOf(t, "Toren"))
-	}
-	a.untouched(t, e, "the undo of the master's walk")
-}
-
-// The master's walk of the readier to the square it stands on travels nothing: it is let through as administration (a token
-// put right, as mustGoSomewhere lets any of his), but it is no use of the readied move: the reaction stays free and the window
-// stays open. A player's is refused (TestAReadiedMoveToTheSameSquareIsRefusedAndKeepsTheWindow).
-func TestTheMastersWalkOfTheReadierToItsOwnSquare(t *testing.T) {
-	t.Parallel()
-	a := newArmed(t)
-	e := a.readyMove(t)
-	a.mustFire(t, e, "Toren")
-	if _, err := a.frozenMove(t, a.master, "Toren", 3, 3); err != nil {
-		t.Fatalf("the master's walk of the readier to its own square: %v", err)
-	}
-	a.untouched(t, e, "a walk to the readier's own square")
-}
-
-// Who may release: the readier's player and the master. Another player is refused as for any token that is not theirs
+// Who may release: the readier's player and the master (with release_readied). Another player is refused as for any token that is not theirs
 // (permission_denied, before the window is looked at), and nothing is spent.
 func TestOnlyTheReadiersPlayerOrTheMasterReleasesAReadiedMove(t *testing.T) {
 	t.Parallel()

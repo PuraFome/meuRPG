@@ -481,6 +481,16 @@ type CombatServiceClient interface {
 	// walls, creatures and squares marked "Não dá para passar"), and one past the movement left is
 	// refused (TOO_FAR) unless `forced`. Out of its turn, and for a player's character, it stays free.
 	//
+	// A readied move (ReadyService.ReadyAction, kind MOVE) is released by this call while the combatant's
+	// READIED window of that move is open, off its turn. The player's own walk is the release: it spends the
+	// reaction, fires the row, closes the window and is limited to the speed held at Ready, on each surface
+	// (TOO_FAR past it). A walk stopped after at least one square is still the use; one stopped before the
+	// first (`stopped_early`, a creature the player does not see in the way) travels nowhere and spends
+	// nothing: the reaction stays free, the row waits and the window stays open. The master's plain walk of
+	// that combatant is not the release: it is free and unlimited as ever, and leaves the window as it was,
+	// unless `release_readied` says it is. A move that is not a walk (forced, a jump, a placement, a legendary
+	// move) is never one.
+	//
 	// `jump` turns it into a jump (D3): LONG goes to the square without paying for
 	// difficult terrain on the way (it cannot cross a wall or land on a creature),
 	// and costs its length in movement; HIGH spends `jump_height_dft` of movement
@@ -1194,6 +1204,16 @@ type CombatServiceClient interface {
 	//     COMBATANT_DOWN, ACTION_USED or BONUS_ACTION_USED (a player),
 	//     NO_SLOT (with min_level), NOT_PLACED and TARGET_OUT_OF_REACH (with
 	//     missing_ft; a player), TARGET_DEFEATED and WRONG_DICE_MODE.
+	//
+	// The off-turn release of a readied spell (ReadyService.ReadyAction, kind SPELL): off the caster's turn, a
+	// cast of the spell its own open READIED window holds is the release, as the reaction. It is the way to
+	// release a spell placed on a map (a point, a direction, a wall) or laying a zone, which AnswerReaction
+	// cannot carry. It spends no slot and the reaction instead of the action, takes the slot the spell was
+	// held with, and the source the row was readied with (`granted_by` must be the one of Ready: another
+	// source is `invalid_argument`). A slot of another level than the held one, and any Metamagic, are
+	// `invalid_argument`. Another spell, or a window of another kind or another combatant's, makes it an
+	// ordinary cast, refused off the turn (NOT_YOUR_TURN). A refused release spends nothing and the window
+	// stays open.
 	CastSpell(context.Context, *connect.Request[v1.CastSpellRequest]) (*connect.Response[v1.CastSpellResponse], error)
 	// PreviewSpellArea says who an area spell reaches when it is placed at a point
 	// or in a direction, and the cover each one has, without spending anything: the
@@ -1233,6 +1253,9 @@ type CombatServiceClient interface {
 	//   - `invalid_argument`: the spell is not one of the caster's, is no placed area,
 	//     the slot does not fit, both or neither of origin and direction for a spell
 	//     that needs one, a point off the map, or a direction with both numbers 0.
+	//     While the caster's READIED window holds this spell, off its turn, the preview reads it at the
+	//     slot level the spell was held with: it takes no free slot of that level and reads no slot from
+	//     the request (the release spends none).
 	//   - `failed_precondition` (EncounterBlocked): NOT_ACTIVE, NOT_PLACED (the
 	//     caster has no square), and, for a player, TARGET_OUT_OF_REACH (with
 	//     missing_ft) for an origin beyond the spell's range.
@@ -1479,7 +1502,11 @@ type CombatServiceClient interface {
 	// pass then waits a longer, still bounded time (the screen's clock; the master can
 	// always pass it by hand). With `clear` it takes the mark off, when the player came
 	// back from the map. It changes nothing else, writes no log line, and is idempotent:
-	// marking or clearing a window twice is the same as once.
+	// marking or clearing a window twice is the same as once, and writes and publishes nothing.
+	// The first mark of a window records when the wait began (`wait_began_at`), once; no later mark
+	// or clear moves it. A READIED window is where the mark means the player is on the map to place
+	// a spell or a move; on a window of any other kind it is the player rolling a die. In no kind
+	// does it keep the window from being answered or closed.
 	//
 	// Only the reactor's player may call it: the master is refused (`permission_denied`),
 	// and so is a player for a window that is not theirs, the same answer for a real
@@ -2726,6 +2753,16 @@ type CombatServiceHandler interface {
 	// walls, creatures and squares marked "Não dá para passar"), and one past the movement left is
 	// refused (TOO_FAR) unless `forced`. Out of its turn, and for a player's character, it stays free.
 	//
+	// A readied move (ReadyService.ReadyAction, kind MOVE) is released by this call while the combatant's
+	// READIED window of that move is open, off its turn. The player's own walk is the release: it spends the
+	// reaction, fires the row, closes the window and is limited to the speed held at Ready, on each surface
+	// (TOO_FAR past it). A walk stopped after at least one square is still the use; one stopped before the
+	// first (`stopped_early`, a creature the player does not see in the way) travels nowhere and spends
+	// nothing: the reaction stays free, the row waits and the window stays open. The master's plain walk of
+	// that combatant is not the release: it is free and unlimited as ever, and leaves the window as it was,
+	// unless `release_readied` says it is. A move that is not a walk (forced, a jump, a placement, a legendary
+	// move) is never one.
+	//
 	// `jump` turns it into a jump (D3): LONG goes to the square without paying for
 	// difficult terrain on the way (it cannot cross a wall or land on a creature),
 	// and costs its length in movement; HIGH spends `jump_height_dft` of movement
@@ -3439,6 +3476,16 @@ type CombatServiceHandler interface {
 	//     COMBATANT_DOWN, ACTION_USED or BONUS_ACTION_USED (a player),
 	//     NO_SLOT (with min_level), NOT_PLACED and TARGET_OUT_OF_REACH (with
 	//     missing_ft; a player), TARGET_DEFEATED and WRONG_DICE_MODE.
+	//
+	// The off-turn release of a readied spell (ReadyService.ReadyAction, kind SPELL): off the caster's turn, a
+	// cast of the spell its own open READIED window holds is the release, as the reaction. It is the way to
+	// release a spell placed on a map (a point, a direction, a wall) or laying a zone, which AnswerReaction
+	// cannot carry. It spends no slot and the reaction instead of the action, takes the slot the spell was
+	// held with, and the source the row was readied with (`granted_by` must be the one of Ready: another
+	// source is `invalid_argument`). A slot of another level than the held one, and any Metamagic, are
+	// `invalid_argument`. Another spell, or a window of another kind or another combatant's, makes it an
+	// ordinary cast, refused off the turn (NOT_YOUR_TURN). A refused release spends nothing and the window
+	// stays open.
 	CastSpell(context.Context, *connect.Request[v1.CastSpellRequest]) (*connect.Response[v1.CastSpellResponse], error)
 	// PreviewSpellArea says who an area spell reaches when it is placed at a point
 	// or in a direction, and the cover each one has, without spending anything: the
@@ -3478,6 +3525,9 @@ type CombatServiceHandler interface {
 	//   - `invalid_argument`: the spell is not one of the caster's, is no placed area,
 	//     the slot does not fit, both or neither of origin and direction for a spell
 	//     that needs one, a point off the map, or a direction with both numbers 0.
+	//     While the caster's READIED window holds this spell, off its turn, the preview reads it at the
+	//     slot level the spell was held with: it takes no free slot of that level and reads no slot from
+	//     the request (the release spends none).
 	//   - `failed_precondition` (EncounterBlocked): NOT_ACTIVE, NOT_PLACED (the
 	//     caster has no square), and, for a player, TARGET_OUT_OF_REACH (with
 	//     missing_ft) for an origin beyond the spell's range.
@@ -3724,7 +3774,11 @@ type CombatServiceHandler interface {
 	// pass then waits a longer, still bounded time (the screen's clock; the master can
 	// always pass it by hand). With `clear` it takes the mark off, when the player came
 	// back from the map. It changes nothing else, writes no log line, and is idempotent:
-	// marking or clearing a window twice is the same as once.
+	// marking or clearing a window twice is the same as once, and writes and publishes nothing.
+	// The first mark of a window records when the wait began (`wait_began_at`), once; no later mark
+	// or clear moves it. A READIED window is where the mark means the player is on the map to place
+	// a spell or a move; on a window of any other kind it is the player rolling a die. In no kind
+	// does it keep the window from being answered or closed.
 	//
 	// Only the reactor's player may call it: the master is refused (`permission_denied`),
 	// and so is a player for a window that is not theirs, the same answer for a real

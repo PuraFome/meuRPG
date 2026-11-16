@@ -9363,8 +9363,15 @@ type MoveCombatantRequest struct {
 	// move, no placement. It makes no opportunity offer. Refused (EncounterBlocked LEGENDARY_*) on
 	// its own turn, with too few actions left, or for an option that is not a move.
 	LegendaryOption string `protobuf:"bytes,11,opt,name=legendary_option,json=legendaryOption,proto3" json:"legendary_option,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// The master's move releases the combatant's readied move; a player's own off-turn move while its window
+	// is open is the release without it. For the master it is a plain walk, paid and limited as the player's,
+	// and refused with the checks of a release (a pending concentration save, a held question, surprise).
+	// Sent by the master for a combatant with no open READIED window of a move, or with a move that is not a
+	// plain walk, it is refused (EncounterBlocked NOT_YOUR_TURN, nothing written). A player sending it gets the
+	// same as without it: their move is the release anyway.
+	ReleaseReadied bool `protobuf:"varint,12,opt,name=release_readied,json=releaseReadied,proto3" json:"release_readied,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *MoveCombatantRequest) Reset() {
@@ -9472,6 +9479,13 @@ func (x *MoveCombatantRequest) GetLegendaryOption() string {
 		return x.LegendaryOption
 	}
 	return ""
+}
+
+func (x *MoveCombatantRequest) GetReleaseReadied() bool {
+	if x != nil {
+		return x.ReleaseReadied
+	}
+	return false
 }
 
 // MoveCombatantResponse returns the combat after the move.
@@ -24854,7 +24868,9 @@ type ReactionWindow struct {
 	// cleared it on going back (MarkReactionRolling, with `clear`). The master reads
 	// "Rolando…"; the player reads their own mark back (a second device shows it).
 	// False when nobody marked the window or the mark was cleared; read by the master
-	// and the reactor's player only.
+	// and the reactor's player only. On a READIED window the mark means the player is on the map
+	// choosing the square or the point of a release; on any other kind, rolling a die. It never
+	// changes what the window accepts.
 	Rolling bool `protobuf:"varint,13,opt,name=rolling,proto3" json:"rolling,omitempty"`
 	// Only the master: the reactor is a player's character and nobody answered in the first 10 s, so the question has come
 	// to the master ("10 s sem resposta"). The player may still answer; the first answer wins and the other reads
@@ -24865,6 +24881,10 @@ type ReactionWindow struct {
 	// Read by the master and the reactor's player only. The master's screen passes the
 	// window when the 120 s end.
 	WaitBeganAt *timestamppb.Timestamp `protobuf:"bytes,15,opt,name=wait_began_at,json=waitBeganAt,proto3" json:"wait_began_at,omitempty"`
+	// The milliseconds the wait has run, as the read works them out with the server's clock
+	// (now minus `wait_began_at`); 0 before the first mark. The clock is the server's, so a screen
+	// with a wrong clock still counts the wait right. Read by the master and the reactor's player only.
+	WaitedMs int64 `protobuf:"varint,16,opt,name=waited_ms,json=waitedMs,proto3" json:"waited_ms,omitempty"`
 	// Only whoever answers: the question, by kind.
 	//
 	// Types that are valid to be assigned to Prompt:
@@ -25025,6 +25045,13 @@ func (x *ReactionWindow) GetWaitBeganAt() *timestamppb.Timestamp {
 		return x.WaitBeganAt
 	}
 	return nil
+}
+
+func (x *ReactionWindow) GetWaitedMs() int64 {
+	if x != nil {
+		return x.WaitedMs
+	}
+	return 0
 }
 
 func (x *ReactionWindow) GetPrompt() isReactionWindow_Prompt {
@@ -30393,7 +30420,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x16discard_pending_damage\x18\x05 \x01(\bR\x14discardPendingDamage\x12%\n" +
 	"\x0eexpected_round\x18\x06 \x01(\x05R\rexpectedRound\"J\n" +
 	"\x0fEndTurnResponse\x127\n" +
-	"\tencounter\x18\x01 \x01(\v2\x19.meurpg.play.v1.EncounterR\tencounter\"\xf9\x02\n" +
+	"\tencounter\x18\x01 \x01(\v2\x19.meurpg.play.v1.EncounterR\tencounter\"\xa2\x03\n" +
 	"\x14MoveCombatantRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12!\n" +
@@ -30407,7 +30434,8 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x06forced\x18\t \x01(\bR\x06forced\x12\x14\n" +
 	"\x05place\x18\n" +
 	" \x01(\bR\x05place\x12)\n" +
-	"\x10legendary_option\x18\v \x01(\tR\x0flegendaryOption\"\xb2\x01\n" +
+	"\x10legendary_option\x18\v \x01(\tR\x0flegendaryOption\x12'\n" +
+	"\x0frelease_readied\x18\f \x01(\bR\x0ereleaseReadied\"\xb2\x01\n" +
 	"\x15MoveCombatantResponse\x127\n" +
 	"\tencounter\x18\x01 \x01(\v2\x19.meurpg.play.v1.EncounterR\tencounter\x12#\n" +
 	"\rstopped_early\x18\x02 \x01(\bR\fstoppedEarly\x12\x1a\n" +
@@ -31748,7 +31776,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x0ftarget_defeated\x18\t \x01(\bR\x0etargetDefeated\"F\n" +
 	"\fReactionWait\x12\x19\n" +
 	"\btitle_pt\x18\x01 \x01(\tR\atitlePt\x12\x1b\n" +
-	"\tdetail_pt\x18\x02 \x01(\tR\bdetailPt\"\xb9\x0f\n" +
+	"\tdetail_pt\x18\x02 \x01(\tR\bdetailPt\"\xd6\x0f\n" +
 	"\x0eReactionWindow\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x120\n" +
 	"\x04kind\x18\x02 \x01(\x0e2\x1c.meurpg.play.v1.ReactionKindR\x04kind\x12<\n" +
@@ -31770,7 +31798,8 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\n" +
 	"unanswered\x18\x0e \x01(\bR\n" +
 	"unanswered\x12>\n" +
-	"\rwait_began_at\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampR\vwaitBeganAt\x126\n" +
+	"\rwait_began_at\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampR\vwaitBeganAt\x12\x1b\n" +
+	"\twaited_ms\x18\x10 \x01(\x03R\bwaitedMs\x126\n" +
 	"\x06shield\x18\x14 \x01(\v2\x1c.meurpg.play.v1.ShieldPromptH\x00R\x06shield\x12I\n" +
 	"\runcanny_dodge\x18\x15 \x01(\v2\".meurpg.play.v1.UncannyDodgePromptH\x00R\funcannyDodge\x12L\n" +
 	"\x0ehellish_rebuke\x18\x16 \x01(\v2#.meurpg.play.v1.HellishRebukePromptH\x00R\rhellishRebuke\x12H\n" +
