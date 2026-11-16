@@ -26,7 +26,7 @@ export const INFUSION_TEXTS: readonly { shape: RegExp; reason?: string; text: st
   },
   {
     shape: /\.infusion\.accepts$/,
-    text: 'Escolha o tipo de peça. O efeito escolhido só vale em certos tipos: munição repetida pede arma de disparo, retorno pede arma de arremesso, foco pede foco de conjuração e resistência pede armadura.',
+    text: 'Escolha o tipo de peça. O efeito escolhido só vale em certos tipos: munição repetida pede arma de disparo, retorno pede arma de arremesso, foco pede foco de conjuração e resistência pede armadura. O bônus de item vale em arma, armadura, escudo, armadura ou escudo, arma de arremesso e arma de disparo.',
   },
   {
     shape: /\.infusion\.effect$/,

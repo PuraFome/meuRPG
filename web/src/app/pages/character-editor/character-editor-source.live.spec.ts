@@ -19,7 +19,9 @@ import { Code, ConnectError } from '@connectrpc/connect';
 
 import {
   AttunementRestriction,
+  InfusionItemKind,
   SheetAmmunitionSchema,
+  SheetInfusionSchema,
   SheetMagicItemSchema,
 } from '../../../gen/meurpg/characters/v1/characters_pb';
 import { create } from '@bufbuild/protobuf';
@@ -98,7 +100,19 @@ function fullyPopulatedFullSheet(): FullSheet {
       }),
     ],
     dailyPicks: [],
-    infusions: [],
+    infusions: [
+      create(SheetInfusionSchema, {
+        id: 'inf-1',
+        infusionKey: 'feature:gume-vivo@mesa',
+        namePt: 'Gume Vivo',
+        holderCharacterId: 'c-1',
+        itemKind: InfusionItemKind.GEAR,
+        itemKey: 'weapon:dagger',
+        itemNamePt: 'Adaga',
+        validNow: true,
+        bonus: 1,
+      }),
+    ],
     shortRested: false,
     cantripKeys: ['spell:fire-bolt', 'spell:ray-of-frost', 'spell:minor-illusion'],
     knownSpellKeys: [

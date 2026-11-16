@@ -1648,14 +1648,16 @@ export type ItemModifier = Message<"meurpg.rules.v1.ItemModifier"> & {
   reasonPt: string;
 
   /**
-   * The Portuguese name of the infusion this bonus comes from; empty when it comes from the piece itself.
+   * The Portuguese name of the infusion this bonus comes from; empty when it comes from the piece itself. Read by the
+   * owner and the master only.
    *
    * @generated from field: string infusion_name_pt = 7;
    */
   infusionNamePt: string;
 
   /**
-   * The id of the infusion record the bonus comes from; empty when it comes from the piece itself.
+   * The id of the infusion record the bonus comes from; empty when it comes from the piece itself. Read by the owner
+   * and the master only.
    *
    * @generated from field: string infusion_id = 8;
    */
@@ -1891,7 +1893,7 @@ export type GearEntry = Message<"meurpg.rules.v1.GearEntry"> & {
   count: number;
 
   /**
-   * The Portuguese name of the infusion on the piece, empty when it has none.
+   * The Portuguese name of the infusion on the piece, empty when it has none. Read by the owner and the master only.
    *
    * @generated from field: string infusion_name_pt = 8;
    */

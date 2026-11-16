@@ -144,6 +144,12 @@ var infusionAccepts = []string{
 	InfusionAcceptsThrownWeapon, InfusionAcceptsAmmunitionWeapon, InfusionAcceptsSpellcastingFocus, InfusionAcceptsAnyObject,
 }
 
+// stepLevelsText is what a step with a class level out of order is refused with.
+const stepLevelsText = "the class levels of the steps go up, each from 1 to %d"
+
+// levelStepOK says the class level of a step is 1 to MaxLevel and above the level of the step before (prev, 0 for the first).
+func levelStepOK(level, prev int) bool { return level >= 1 && level <= MaxLevel && level > prev }
+
 // checkInfusionRule refuses a rule that is not a limit by class level: no steps, levels outside 1 to 20 or not
 // ascending, or a step that allows none. Only a class or subclass feature with options has one.
 func checkInfusionRule(c *entryErrors, f *TableFeature, k featureKind, path string) {
@@ -159,8 +165,8 @@ func checkInfusionRule(c *entryErrors, f *TableFeature, k featureKind, path stri
 	prev := 0
 	for i, s := range r.LimitSteps {
 		at := fmt.Sprintf(".infusion_rule.limit_steps[%d]", i)
-		if s.ClassLevel < 1 || s.ClassLevel > MaxLevel || s.ClassLevel <= prev {
-			c.at(f.Key, path, at+".class_level", ReasonValue, "the class levels of the steps go up, each from 1 to %d", MaxLevel)
+		if !levelStepOK(s.ClassLevel, prev) {
+			c.at(f.Key, path, at+".class_level", ReasonValue, stepLevelsText, MaxLevel)
 		}
 		if s.Active < 1 {
 			c.at(f.Key, path, at+".active", ReasonValue, "a step allows at least 1 live infusion")
@@ -218,16 +224,24 @@ func (b *overlayBuilder) checkInfusion(c *entryErrors, key, path string, in *Tab
 func checkInfusionKinds(c *entryErrors, key, path string, in *TableInfusion) {
 	accepts := slices.Contains(infusionAccepts, in.Accepts)
 	if !accepts {
-		c.at(key, path, ".accepts", ReasonValue, "the kind of piece the infusion goes on is required")
+		c.at(key, path, ".accepts", ReasonValue, "%s", unknownText(in.Accepts, "the kind of piece the infusion goes on is required", "is not a kind of piece an infusion goes on"))
 	}
 	kinds, known := infusionKinds[in.Effect]
 	if !known {
-		c.at(key, path, ".effect", ReasonValue, "what the app computes is required: an effect, or none for a text only infusion")
+		c.at(key, path, ".effect", ReasonValue, "%s", unknownText(in.Effect, "what the app computes is required: an effect, or none for a text only infusion", "is not an effect of an infusion"))
 		return
 	}
 	if accepts && len(kinds) > 0 && !slices.Contains(kinds, in.Accepts) {
 		c.at(key, path, ".accepts", ReasonValue, "the effect %q does not go on a piece of kind %q", in.Effect, in.Accepts)
 	}
+}
+
+// unknownText is the sentence for a value that is not on a closed list: empty is missing, anything else is unknown.
+func unknownText(value, missing, unknown string) string {
+	if value == "" {
+		return missing
+	}
+	return fmt.Sprintf("%q %s", value, unknown)
 }
 
 // checkInfusionBonus checks the bonus steps: the bonus effects need them and no other effect has them.
@@ -245,8 +259,8 @@ func checkInfusionBonus(c *entryErrors, key, path string, in *TableInfusion) {
 	prev := 0
 	for i, s := range in.BonusSteps {
 		at := fmt.Sprintf(".bonus_steps[%d]", i)
-		if s.ClassLevel < 1 || s.ClassLevel > MaxLevel || s.ClassLevel <= prev {
-			c.at(key, path, at+".class_level", ReasonValue, "the class levels of the steps go up, each from 1 to %d", MaxLevel)
+		if !levelStepOK(s.ClassLevel, prev) {
+			c.at(key, path, at+".class_level", ReasonValue, stepLevelsText, MaxLevel)
 		}
 		if s.Bonus < 1 || s.Bonus > MaxInfusionBonus {
 			c.at(key, path, at+".bonus", ReasonValue, "the bonus is 1 to %d", MaxInfusionBonus)

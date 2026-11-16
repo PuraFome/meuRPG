@@ -3,6 +3,7 @@ package rules
 import (
 	"errors"
 	"slices"
+	"strings"
 	"testing"
 )
 
@@ -293,6 +294,42 @@ func TestInfusionDataOnATableOptionIsRefusedAtItsField(t *testing.T) {
 			if !ok || !hasViolation(oe, tc.field) {
 				t.Fatalf("want a violation at %s, got %v", tc.field, err)
 			}
+		})
+	}
+}
+
+// A kind or an effect that is not on the list is refused as unknown, and an empty one as missing.
+func TestAnUnknownInfusionKindIsRefusedAsUnknownNotAsRequired(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name, field, want string
+		edit              func(in *TableInfusion)
+	}{
+		{"an unknown accepts", "accepts", "is not a kind of piece", func(in *TableInfusion) { in.Accepts = "bolso" }},
+		{"no accepts", "accepts", "is required", func(in *TableInfusion) { in.Accepts = "" }},
+		{"an unknown effect", "effect", "is not an effect", func(in *TableInfusion) { in.Effect = "brilho" }},
+		{"no effect", "effect", "is required", func(in *TableInfusion) { in.Effect = "" }},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			o := infusionOverlay()
+			tc.edit(o.Subclasses[0].Levels[0].Features[0].Options[2].Infusion)
+			_, err := loadForTest(t).With(o)
+			oe, ok := errors.AsType[*OverlayError](err)
+			if !ok {
+				t.Fatalf("want *OverlayError, got %v", err)
+			}
+			field := infusionPre + ".options[2].infusion." + tc.field
+			for _, v := range oe.Violations() {
+				if v.Field == field {
+					if !strings.Contains(v.Message, tc.want) {
+						t.Errorf("message at %s = %q, want it to contain %q", field, v.Message, tc.want)
+					}
+					return
+				}
+			}
+			t.Errorf("no violation at %s: %v", field, err)
 		})
 	}
 }

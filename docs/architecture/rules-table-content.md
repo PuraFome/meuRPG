@@ -114,12 +114,12 @@ Pack import and export keep both.
 
 | Field | What is refused |
 | --- | --- |
-| `.infusion` | On a feature that is not an option, or on an option whose host has no `infusion_rule` (`bad_value`). |
+| `.infusion` | On a feature that is not an option, on an option whose host has no `infusion_rule`, or on a `TableOption` of another set than `table_feature` (`bad_value`). |
 | `.infusion_rule` | On an option, on a trait, or on a feature with no options (`bad_value`). |
 | `.infusion_rule.limit_steps` | Empty (`bad_value`). |
 | `.infusion_rule.limit_steps[i].class_level` | Outside 1 to 20 or not above the step before (`bad_value`). |
 | `.infusion_rule.limit_steps[i].active` | Below 1 (`bad_value`). |
-| `.infusion.accepts`, `.infusion.effect` | Missing or unknown (`bad_value`). |
+| `.infusion.accepts`, `.infusion.effect` | Missing, or a value the list does not have (`bad_value`; the message says which). |
 | `.infusion.accepts` | A kind the effect does not go on (`bad_value`): `repeating_ammunition` needs `ammunition_weapon`, `returning` needs `thrown_weapon`, `spell_focus_bonus` needs `spellcasting_focus`, `resistance_label` needs `armor`, and `item_bonus` needs a weapon, armor, shield, armor or shield, thrown weapon or ammunition weapon. `none` goes on any kind. |
 | `.infusion.bonus_steps` | Missing for `item_bonus` and `spell_focus_bonus`, present for any other effect (`bad_value`). |
 | `.infusion.bonus_steps[i].class_level`, `.bonus` | A level outside 1 to 20 or not above the step before; a bonus outside 1 to 3 (`bad_value`). |
@@ -127,7 +127,7 @@ Pack import and export keep both.
 | `.infusion.damage_types[i]` | Not a damage type of the content (`dangling_reference`), or listed twice (`bad_value`). |
 
 The content answers three lookups: `Content.Infusion` (the data of an option key), `Content.InfusionHost` (the host feature of an option key) and `Content.InfusionLimit` (the live limit of a host at a class level).
-`TableInfusion.BonusAt` gives the bonus at a class level.
+`TableInfusion.BonusAt` gives the bonus at a class level, and `TableInfusionRule.ActiveAt` gives the live limit at a class level (`Content.InfusionLimit` reads it).
 The refusal sentences in Portuguese are in `content-violation-texts-infusion.ts`.
 The web editor has no screen for the data and keeps it through an edit, as it keeps `prerequisite`.
 The invented class used by the tests is `backend/internal/characters/testdata/pack_engenhista.json`.

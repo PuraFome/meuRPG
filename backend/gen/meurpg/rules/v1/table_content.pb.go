@@ -2915,11 +2915,13 @@ type TableFeature struct {
 	// with what it lacks; a sheet that already has it keeps it and shows the "prerequisite" problem.
 	Prerequisite *OptionPrerequisite `protobuf:"bytes,7,opt,name=prerequisite,proto3" json:"prerequisite,omitempty"`
 	// Set on an OPTION of a host feature: the option is an infusion an artificer-like class puts on a piece of gear.
-	// Only an option whose host feature carries `infusion_rule` has it. The master's editor and the sheet's infusion
-	// list read it; a player's copy of the entry drops it.
+	// Only an option whose host feature carries `infusion_rule` has it. The sheet's infusion list reads it, and so do
+	// the pack import and export. The editor has no screen for it: it only keeps the data through an edit. A player's
+	// copy of the entry drops it.
 	Infusion *TableInfusion `protobuf:"bytes,8,opt,name=infusion,proto3" json:"infusion,omitempty"`
 	// Set on the HOST feature (the one with `options`): how many infusions a character may keep live at once, by
-	// class level. Only a feature with options has it. The sheet's infusion list reads it; a player's copy drops it.
+	// class level. Only a feature with options has it. The sheet's infusion list reads it, and so do the pack import and
+	// export. The editor only keeps it through an edit. A player's copy drops it.
 	InfusionRule  *TableInfusionRule `protobuf:"bytes,9,opt,name=infusion_rule,json=infusionRule,proto3" json:"infusion_rule,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

@@ -14,7 +14,7 @@ import (
 )
 
 // The fixture pack of the infusion tests: testdata/pack_engenhista.json, the invented class "Engenhista de Ligas".
-// Its level 2 feature "Infundir Peças" has the infusion rule (2 live from level 2, 3 from 6, 4 from 10) and eight
+// Its level 2 feature "Gravar Peças" has the infusion rule (2 live from level 2, 3 from 6, 4 from 10) and eight
 // inline options with infusion data, one of every effect and two with no effect (text only). Its features at
 // levels 6, 10 and 14 pick more of the same options through a `choice` of kind feature with `from`. Later tests
 // load it with loadInfusionPack, import it into a campaign with packTable.apply or build the engine's content from
@@ -22,7 +22,7 @@ import (
 
 const (
 	infusionClassKey = "class:engenhista-de-ligas@mesa"
-	infusionHostName = "Infundir Peças"
+	infusionHostName = "Gravar Peças"
 )
 
 // loadInfusionPack reads the fixture the way an import reads a file: strictly, so a field the message lacks fails.

@@ -16,19 +16,19 @@ import (
 // infusionHostBody is a class feature that has an infusion rule and two options: a bonus and a resistance.
 func infusionHostBody() *rulesv1.TableFeature {
 	return &rulesv1.TableFeature{
-		NamePt: "Infundir", DescPt: []string{"Escolha infusões."},
+		NamePt: "Gravar", DescPt: []string{"Escolha infusões."},
 		Effects:      []*rulesv1.TableEffect{{Type: "choice", Choice: "feature", Count: 2}},
 		InfusionRule: &rulesv1.TableInfusionRule{LimitSteps: []*rulesv1.TableInfusionLimitStep{{ClassLevel: 2, Active: 2}, {ClassLevel: 6, Active: 3}}},
 		Options: []*rulesv1.TableFeature{
-			{NamePt: "Fio afiado", DescPt: []string{"Mais precisão."}, Infusion: &rulesv1.TableInfusion{
+			{NamePt: "Gume manso", DescPt: []string{"Corta um pouco melhor."}, Infusion: &rulesv1.TableInfusion{
 				Accepts: rulesv1.InfusionAccepts_INFUSION_ACCEPTS_WEAPON, Effect: rulesv1.InfusionEffect_INFUSION_EFFECT_ITEM_BONUS,
 				BonusSteps: []*rulesv1.TableInfusionStep{{ClassLevel: 2, Bonus: 1}, {ClassLevel: 10, Bonus: 2}},
 			}},
-			{NamePt: "Casca de brasa", DescPt: []string{"Resiste ao calor."}, Infusion: &rulesv1.TableInfusion{
+			{NamePt: "Cobertura morna", DescPt: []string{"Aguenta o calor."}, Infusion: &rulesv1.TableInfusion{
 				Accepts: rulesv1.InfusionAccepts_INFUSION_ACCEPTS_ARMOR, Effect: rulesv1.InfusionEffect_INFUSION_EFFECT_RESISTANCE_LABEL,
 				RequiresAttunement: true, DamageTypes: []string{"damage-type:fire", "damage-type:cold"},
 			}},
-			{NamePt: "Marca muda", Infusion: &rulesv1.TableInfusion{Accepts: rulesv1.InfusionAccepts_INFUSION_ACCEPTS_ANY_OBJECT, Effect: rulesv1.InfusionEffect_INFUSION_EFFECT_NONE}},
+			{NamePt: "Traço mudo", Infusion: &rulesv1.TableInfusion{Accepts: rulesv1.InfusionAccepts_INFUSION_ACCEPTS_ANY_OBJECT, Effect: rulesv1.InfusionEffect_INFUSION_EFFECT_NONE}},
 		},
 	}
 }
@@ -89,7 +89,7 @@ func TestAPlayersCopyOfAnEntryHasNoInfusionData(t *testing.T) {
 				t.Errorf("the player's copy keeps the infusion of %q: %v", o.GetNamePt(), o.GetInfusion())
 			}
 		}
-		if len(host.GetOptions()) != 3 || host.GetOptions()[0].GetNamePt() != "Fio afiado" {
+		if len(host.GetOptions()) != 3 || host.GetOptions()[0].GetNamePt() != "Gume manso" {
 			t.Errorf("the options themselves left the copy: %v", host.GetOptions())
 		}
 		// The master's body is not touched.
@@ -131,5 +131,30 @@ func TestATableOptionsInfusionIsReadAndLeftOutOfAPlayersCopy(t *testing.T) {
 	}
 	if body.GetInfusion() == nil {
 		t.Errorf("the original lost its infusion")
+	}
+}
+
+// Only a class or a subclass can hold infusion data, but a body of another kind that carries some anyway never reaches a
+// player: the copy drops it, whether or not something is hidden.
+func TestAPlayersCopyOfARaceFeatAndBackgroundHasNoInfusionData(t *testing.T) {
+	t.Parallel()
+	withData := infusionHostBody
+	bodies := map[string]tableBody{
+		"race":       &rulesv1.TableRace{NamePt: "Povo", Traits: []*rulesv1.TableFeature{withData()}},
+		"subrace":    &rulesv1.TableSubrace{NamePt: "Ramo", Traits: []*rulesv1.TableFeature{withData()}},
+		"background": &rulesv1.TableBackground{NamePt: "Ofício", Feature: withData()},
+		"feat":       &rulesv1.TableFeat{NamePt: "Talento", Options: []*rulesv1.TableFeature{withData()}},
+	}
+	for kind, body := range bodies {
+		if !carriesInfusions(body) {
+			t.Errorf("%s: carriesInfusions = false for a body with infusion data", kind)
+		}
+		got := forPlayer(entryRow{body: body}, nil, nil).body
+		if carriesInfusions(got) {
+			t.Errorf("%s: the player's copy still carries infusion data: %v", kind, got)
+		}
+		if !carriesInfusions(body) {
+			t.Errorf("%s: the original lost its data", kind)
+		}
 	}
 }

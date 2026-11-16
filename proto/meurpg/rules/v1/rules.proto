@@ -867,9 +867,11 @@ message ItemModifier {
   bool counts = 5;
   // Why it adds nothing now, in Portuguese; empty when it counts.
   string reason_pt = 6;
-  // The Portuguese name of the infusion this bonus comes from; empty when it comes from the piece itself.
+  // The Portuguese name of the infusion this bonus comes from; empty when it comes from the piece itself. Read by the
+  // owner and the master only.
   string infusion_name_pt = 7;
-  // The id of the infusion record the bonus comes from; empty when it comes from the piece itself.
+  // The id of the infusion record the bonus comes from; empty when it comes from the piece itself. Read by the owner
+  // and the master only.
   string infusion_id = 8;
 }
 
@@ -949,7 +951,7 @@ message GearEntry {
   // How many of this piece the sheet lists: weapons with the same key are one row (their state is kept by key, so the
   // copies move together). 1 for armor and the shield.
   int32 count = 7;
-  // The Portuguese name of the infusion on the piece, empty when it has none.
+  // The Portuguese name of the infusion on the piece, empty when it has none. Read by the owner and the master only.
   string infusion_name_pt = 8;
 }
 

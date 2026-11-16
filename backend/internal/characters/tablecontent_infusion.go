@@ -60,7 +60,8 @@ func tableInfusionRuleOf(in *rulesv1.TableInfusionRule) *rules.TableInfusionRule
 }
 
 // carriesInfusions says the body is an entry with a feature, or an option of a feature, that has infusion data, or a
-// table option that is an infusion.
+// table option that is an infusion. Only a class or a subclass can hold valid data; the other kinds are covered so a
+// body that carries some anyway never reaches a player.
 func carriesInfusions(body tableBody) bool {
 	has := func(fs []*rulesv1.TableFeature) bool { return slices.ContainsFunc(fs, featureCarriesInfusion) }
 	switch b := body.(type) {
@@ -68,6 +69,14 @@ func carriesInfusions(body tableBody) bool {
 		return slices.ContainsFunc(b.GetLevels(), func(l *rulesv1.TableClassLevel) bool { return has(l.GetFeatures()) })
 	case *rulesv1.TableSubclass:
 		return slices.ContainsFunc(b.GetLevels(), func(l *rulesv1.TableSubclassLevel) bool { return has(l.GetFeatures()) })
+	case *rulesv1.TableRace:
+		return has(b.GetTraits())
+	case *rulesv1.TableSubrace:
+		return has(b.GetTraits())
+	case *rulesv1.TableBackground:
+		return b.GetFeature() != nil && has([]*rulesv1.TableFeature{b.GetFeature()})
+	case *rulesv1.TableFeat:
+		return has(b.GetOptions())
 	case *rulesv1.TableOption:
 		return b.GetInfusion() != nil
 	}

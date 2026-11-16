@@ -63,10 +63,10 @@
           {
             "features": [
               {
-                "key": "feature:class-engenhista-de-li-6d59b9--infundir-pecas@mesa",
-                "namePt": "Infundir Peças",
+                "key": "feature:class-engenhista-de-li-6d59b9--gravar-pecas@mesa",
+                "namePt": "Gravar Peças",
                 "descPt": [
-                  "Você conhece infusões e as coloca em peças do seu equipamento ou do de um aliado.",
+                  "Você conhece infusões e as coloca em peças do seu equipamento ou do equipamento de outra pessoa.",
                   "O limite de infusões vivas cresce com o nível."
                 ],
                 "effects": [
@@ -78,10 +78,10 @@
                 ],
                 "options": [
                   {
-                    "key": "feature:class-engenhista-de-li-6d59b9--fio-agucado@mesa",
-                    "namePt": "Fio Aguçado",
+                    "key": "feature:class-engenhista-de-li-6d59b9--gume-vivo@mesa",
+                    "namePt": "Gume Vivo",
                     "descPt": [
-                      "A peça de corte ganha um fio que não perde. O bônus de ataque e de dano cresce com o nível."
+                      "Uma lâmina ou ponta passa a cortar melhor: os números de ataque e de dano sobem conforme a classe avança."
                     ],
                     "infusion": {
                       "accepts": "INFUSION_ACCEPTS_WEAPON",
@@ -99,10 +99,10 @@
                     }
                   },
                   {
-                    "key": "feature:class-engenhista-de-li-6d59b9--casca-reforcada@mesa",
-                    "namePt": "Casca Reforçada",
+                    "key": "feature:class-engenhista-de-li-6d59b9--couraca-de-petalas@mesa",
+                    "namePt": "Couraça de Pétalas",
                     "descPt": [
-                      "A armadura ou o escudo ganha uma camada de liga fina. O bônus na Classe de Armadura cresce com o nível."
+                      "Uma peça de proteção, vestida ou empunhada, endurece: a Classe de Armadura sobe conforme a classe avança."
                     ],
                     "infusion": {
                       "accepts": "INFUSION_ACCEPTS_ARMOR_OR_SHIELD",
@@ -120,10 +120,10 @@
                     }
                   },
                   {
-                    "key": "feature:class-engenhista-de-li-6d59b9--foco-afinado@mesa",
-                    "namePt": "Foco Afinado",
+                    "key": "feature:class-engenhista-de-li-6d59b9--diapasao-interno@mesa",
+                    "namePt": "Diapasão Interno",
                     "descPt": [
-                      "O objeto usado para conjurar vibra em sintonia com quem o carrega. Soma um bônus aos ataques e às Classes de Dificuldade das magias."
+                      "Um objeto de conjuração passa a guiar melhor as magias: os ataques e as Classes de Dificuldade de magia somam um valor que cresce com o nível."
                     ],
                     "infusion": {
                       "accepts": "INFUSION_ACCEPTS_SPELLCASTING_FOCUS",
@@ -142,10 +142,10 @@
                     }
                   },
                   {
-                    "key": "feature:class-engenhista-de-li-6d59b9--aljava-sem-fundo@mesa",
-                    "namePt": "Aljava Sem Fundo",
+                    "key": "feature:class-engenhista-de-li-6d59b9--cesto-que-repoe@mesa",
+                    "namePt": "Cesto Que Repõe",
                     "descPt": [
-                      "A arma de disparo cria sozinha as próprias munições, uma por disparo."
+                      "A arma de disparo gera a munição que usa, então não há peças para contar."
                     ],
                     "infusion": {
                       "accepts": "INFUSION_ACCEPTS_AMMUNITION_WEAPON",
@@ -153,10 +153,10 @@
                     }
                   },
                   {
-                    "key": "feature:class-engenhista-de-li-6d59b9--lanca-fiel@mesa",
-                    "namePt": "Lança Fiel",
+                    "key": "feature:class-engenhista-de-li-6d59b9--laco-de-retorno@mesa",
+                    "namePt": "Laço de Retorno",
                     "descPt": [
-                      "A arma de arremesso volta à mão de quem a lançou logo depois do ataque."
+                      "Depois de lançada, a arma de arremesso encontra o caminho de volta para a mão de quem a atirou."
                     ],
                     "infusion": {
                       "accepts": "INFUSION_ACCEPTS_THROWN_WEAPON",
@@ -164,10 +164,10 @@
                     }
                   },
                   {
-                    "key": "feature:class-engenhista-de-li-6d59b9--pele-de-brasa@mesa",
-                    "namePt": "Pele de Brasa",
+                    "key": "feature:class-engenhista-de-li-6d59b9--manto-de-cinza@mesa",
+                    "namePt": "Manto de Cinza",
                     "descPt": [
-                      "Quem veste a armadura escolhe um tipo de dano ao infundir e resiste a ele enquanto estiver sintonizado."
+                      "Ao infundir, escolha um tipo de dano da lista: quem usar a armadura e mantiver a sintonia resiste a ele."
                     ],
                     "infusion": {
                       "accepts": "INFUSION_ACCEPTS_ARMOR",
@@ -182,10 +182,10 @@
                     }
                   },
                   {
-                    "key": "feature:class-engenhista-de-li-6d59b9--marca-muda@mesa",
-                    "namePt": "Marca Muda",
+                    "key": "feature:class-engenhista-de-li-6d59b9--selo-de-casa@mesa",
+                    "namePt": "Selo de Casa",
                     "descPt": [
-                      "Um objeto qualquer guarda um sinal que só o infusor sente. A mesa decide o que isso muda."
+                      "Um objeto qualquer recebe um traço que só quem infundiu reconhece. A mesa define o efeito."
                     ],
                     "infusion": {
                       "accepts": "INFUSION_ACCEPTS_ANY_OBJECT",
@@ -193,10 +193,10 @@
                     }
                   },
                   {
-                    "key": "feature:class-engenhista-de-li-6d59b9--bolso-fundo@mesa",
-                    "namePt": "Bolso Fundo",
+                    "key": "feature:class-engenhista-de-li-6d59b9--fundo-falso@mesa",
+                    "namePt": "Fundo Falso",
                     "descPt": [
-                      "Um escudo ganha um compartimento que cabe mais do que parece. A mesa decide o que cabe."
+                      "Um escudo ganha um vão escondido. A mesa define o que cabe nele."
                     ],
                     "infusion": {
                       "accepts": "INFUSION_ACCEPTS_SHIELD",
@@ -232,7 +232,7 @@
                 "key": "feature:class-engenhista-de-li-6d59b9--mais-infusoes-i@mesa",
                 "namePt": "Mais Infusões I",
                 "descPt": [
-                  "Você aprende mais infusões da lista de Infundir Peças."
+                  "Você aprende mais infusões da lista de Gravar Peças."
                 ],
                 "effects": [
                   {
@@ -240,14 +240,14 @@
                     "choice": "feature",
                     "count": 2,
                     "from": [
-                      "feature:class-engenhista-de-li-6d59b9--fio-agucado@mesa",
-                      "feature:class-engenhista-de-li-6d59b9--casca-reforcada@mesa",
-                      "feature:class-engenhista-de-li-6d59b9--foco-afinado@mesa",
-                      "feature:class-engenhista-de-li-6d59b9--aljava-sem-fundo@mesa",
-                      "feature:class-engenhista-de-li-6d59b9--lanca-fiel@mesa",
-                      "feature:class-engenhista-de-li-6d59b9--pele-de-brasa@mesa",
-                      "feature:class-engenhista-de-li-6d59b9--marca-muda@mesa",
-                      "feature:class-engenhista-de-li-6d59b9--bolso-fundo@mesa"
+                      "feature:class-engenhista-de-li-6d59b9--gume-vivo@mesa",
+                      "feature:class-engenhista-de-li-6d59b9--couraca-de-petalas@mesa",
+                      "feature:class-engenhista-de-li-6d59b9--diapasao-interno@mesa",
+                      "feature:class-engenhista-de-li-6d59b9--cesto-que-repoe@mesa",
+                      "feature:class-engenhista-de-li-6d59b9--laco-de-retorno@mesa",
+                      "feature:class-engenhista-de-li-6d59b9--manto-de-cinza@mesa",
+                      "feature:class-engenhista-de-li-6d59b9--selo-de-casa@mesa",
+                      "feature:class-engenhista-de-li-6d59b9--fundo-falso@mesa"
                     ]
                   }
                 ]
@@ -263,7 +263,7 @@
                 "key": "feature:class-engenhista-de-li-6d59b9--mais-infusoes-ii@mesa",
                 "namePt": "Mais Infusões II",
                 "descPt": [
-                  "Você aprende mais infusões da lista de Infundir Peças."
+                  "Você aprende mais infusões da lista de Gravar Peças."
                 ],
                 "effects": [
                   {
@@ -271,14 +271,14 @@
                     "choice": "feature",
                     "count": 2,
                     "from": [
-                      "feature:class-engenhista-de-li-6d59b9--fio-agucado@mesa",
-                      "feature:class-engenhista-de-li-6d59b9--casca-reforcada@mesa",
-                      "feature:class-engenhista-de-li-6d59b9--foco-afinado@mesa",
-                      "feature:class-engenhista-de-li-6d59b9--aljava-sem-fundo@mesa",
-                      "feature:class-engenhista-de-li-6d59b9--lanca-fiel@mesa",
-                      "feature:class-engenhista-de-li-6d59b9--pele-de-brasa@mesa",
-                      "feature:class-engenhista-de-li-6d59b9--marca-muda@mesa",
-                      "feature:class-engenhista-de-li-6d59b9--bolso-fundo@mesa"
+                      "feature:class-engenhista-de-li-6d59b9--gume-vivo@mesa",
+                      "feature:class-engenhista-de-li-6d59b9--couraca-de-petalas@mesa",
+                      "feature:class-engenhista-de-li-6d59b9--diapasao-interno@mesa",
+                      "feature:class-engenhista-de-li-6d59b9--cesto-que-repoe@mesa",
+                      "feature:class-engenhista-de-li-6d59b9--laco-de-retorno@mesa",
+                      "feature:class-engenhista-de-li-6d59b9--manto-de-cinza@mesa",
+                      "feature:class-engenhista-de-li-6d59b9--selo-de-casa@mesa",
+                      "feature:class-engenhista-de-li-6d59b9--fundo-falso@mesa"
                     ]
                   }
                 ]
@@ -294,7 +294,7 @@
                 "key": "feature:class-engenhista-de-li-6d59b9--mais-infusoes-iii@mesa",
                 "namePt": "Mais Infusões III",
                 "descPt": [
-                  "Você aprende mais infusões da lista de Infundir Peças."
+                  "Você aprende mais infusões da lista de Gravar Peças."
                 ],
                 "effects": [
                   {
@@ -302,14 +302,14 @@
                     "choice": "feature",
                     "count": 1,
                     "from": [
-                      "feature:class-engenhista-de-li-6d59b9--fio-agucado@mesa",
-                      "feature:class-engenhista-de-li-6d59b9--casca-reforcada@mesa",
-                      "feature:class-engenhista-de-li-6d59b9--foco-afinado@mesa",
-                      "feature:class-engenhista-de-li-6d59b9--aljava-sem-fundo@mesa",
-                      "feature:class-engenhista-de-li-6d59b9--lanca-fiel@mesa",
-                      "feature:class-engenhista-de-li-6d59b9--pele-de-brasa@mesa",
-                      "feature:class-engenhista-de-li-6d59b9--marca-muda@mesa",
-                      "feature:class-engenhista-de-li-6d59b9--bolso-fundo@mesa"
+                      "feature:class-engenhista-de-li-6d59b9--gume-vivo@mesa",
+                      "feature:class-engenhista-de-li-6d59b9--couraca-de-petalas@mesa",
+                      "feature:class-engenhista-de-li-6d59b9--diapasao-interno@mesa",
+                      "feature:class-engenhista-de-li-6d59b9--cesto-que-repoe@mesa",
+                      "feature:class-engenhista-de-li-6d59b9--laco-de-retorno@mesa",
+                      "feature:class-engenhista-de-li-6d59b9--manto-de-cinza@mesa",
+                      "feature:class-engenhista-de-li-6d59b9--selo-de-casa@mesa",
+                      "feature:class-engenhista-de-li-6d59b9--fundo-falso@mesa"
                     ]
                   }
                 ]

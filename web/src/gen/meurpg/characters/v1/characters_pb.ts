@@ -1100,9 +1100,9 @@ export type FullSheet = Message<"meurpg.characters.v1.FullSheet"> & {
   shortRested: boolean;
 
   /**
-   * The infusions the character keeps live on pieces of gear or objects, and the ones put on its own gear by another
-   * character. Filled by the server on every read; a save ignores it and never touches the records. Only the
-   * character's player, the holder's player and the master read it.
+   * The infusions this character carries on its gear and the ones it put on gear or objects. Today nothing fills it:
+   * the server will fill it on every read, and a save ignores it and never stores it. Only the character's owner and
+   * the master read it.
    *
    * @generated from field: repeated meurpg.characters.v1.SheetInfusion infusions = 48;
    */

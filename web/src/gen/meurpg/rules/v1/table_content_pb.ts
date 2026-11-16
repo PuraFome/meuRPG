@@ -1170,8 +1170,9 @@ export type TableFeature = Message<"meurpg.rules.v1.TableFeature"> & {
 
   /**
    * Set on an OPTION of a host feature: the option is an infusion an artificer-like class puts on a piece of gear.
-   * Only an option whose host feature carries `infusion_rule` has it. The master's editor and the sheet's infusion
-   * list read it; a player's copy of the entry drops it.
+   * Only an option whose host feature carries `infusion_rule` has it. The sheet's infusion list reads it, and so do
+   * the pack import and export. The editor has no screen for it: it only keeps the data through an edit. A player's
+   * copy of the entry drops it.
    *
    * @generated from field: meurpg.rules.v1.TableInfusion infusion = 8;
    */
@@ -1179,7 +1180,8 @@ export type TableFeature = Message<"meurpg.rules.v1.TableFeature"> & {
 
   /**
    * Set on the HOST feature (the one with `options`): how many infusions a character may keep live at once, by
-   * class level. Only a feature with options has it. The sheet's infusion list reads it; a player's copy drops it.
+   * class level. Only a feature with options has it. The sheet's infusion list reads it, and so do the pack import and
+   * export. The editor only keeps it through an edit. A player's copy drops it.
    *
    * @generated from field: meurpg.rules.v1.TableInfusionRule infusion_rule = 9;
    */

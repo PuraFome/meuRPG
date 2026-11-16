@@ -4939,9 +4939,11 @@ type ItemModifier struct {
 	Counts bool `protobuf:"varint,5,opt,name=counts,proto3" json:"counts,omitempty"`
 	// Why it adds nothing now, in Portuguese; empty when it counts.
 	ReasonPt string `protobuf:"bytes,6,opt,name=reason_pt,json=reasonPt,proto3" json:"reason_pt,omitempty"`
-	// The Portuguese name of the infusion this bonus comes from; empty when it comes from the piece itself.
+	// The Portuguese name of the infusion this bonus comes from; empty when it comes from the piece itself. Read by the
+	// owner and the master only.
 	InfusionNamePt string `protobuf:"bytes,7,opt,name=infusion_name_pt,json=infusionNamePt,proto3" json:"infusion_name_pt,omitempty"`
-	// The id of the infusion record the bonus comes from; empty when it comes from the piece itself.
+	// The id of the infusion record the bonus comes from; empty when it comes from the piece itself. Read by the owner
+	// and the master only.
 	InfusionId    string `protobuf:"bytes,8,opt,name=infusion_id,json=infusionId,proto3" json:"infusion_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -5307,7 +5309,7 @@ type GearEntry struct {
 	// How many of this piece the sheet lists: weapons with the same key are one row (their state is kept by key, so the
 	// copies move together). 1 for armor and the shield.
 	Count int32 `protobuf:"varint,7,opt,name=count,proto3" json:"count,omitempty"`
-	// The Portuguese name of the infusion on the piece, empty when it has none.
+	// The Portuguese name of the infusion on the piece, empty when it has none. Read by the owner and the master only.
 	InfusionNamePt string `protobuf:"bytes,8,opt,name=infusion_name_pt,json=infusionNamePt,proto3" json:"infusion_name_pt,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
