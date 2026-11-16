@@ -44,7 +44,8 @@ func (a *armed) wantNothingReadied(t *testing.T, events int, level, slots int32)
 }
 
 // Ready refuses, with READY_SPELL_NOT_RELEASABLE and writing nothing, a spell whose release the answer cannot carry: the
-// creatures of a summon, an ability, a damage type, the dead creature of a revival, a point or a direction on a map.
+// creatures of a summon, an ability, a damage type or the dead creature of a revival. A spell placed on the map is not
+// one: CastSpell releases it with the point or the direction of the map (TestReadyHoldsASpellPlacedOnAMap).
 func TestReadyRefusesASpellTheWindowCannotRelease(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
@@ -60,9 +61,6 @@ func TestReadyRefusesASpellTheWindowCannotRelease(t *testing.T) {
 		{"a damage type (Spirit Guardians)", "class:cleric", 7, spiritGuardiansSpell, 3, []string{spiritGuardiansSpell}},
 		{"a damage type (Flame Strike)", "class:cleric", 11, flameStrikeSpell, 5, []string{flameStrikeSpell}},
 		{"a revival (Revivify)", "class:cleric", 5, revivify, 3, []string{revivify}},
-		{"a point on a map (Sleep)", "class:sorcerer", 5, sleepSpell, 1, []string{sleepSpell}},
-		{"a point on a map (Fireball)", "class:sorcerer", 5, fireballSpell, 3, []string{fireballSpell}},
-		{"a direction on a map (Burning Hands)", "class:sorcerer", 5, burningHands, 1, []string{burningHands}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -103,6 +101,31 @@ func TestReadyStillHoldsASpellTheWindowReleases(t *testing.T) {
 			} else {
 				e = a.castersFight(t, 1)
 			}
+			a.mustReady(t, a.ana, a.readySpell(t, e, "Pensantus", tc.spell, tc.slot, ""))
+			if a.readiedStatus(t, "Pensantus") != readiedWaiting || a.concentrationAs(t, a.ana, "Pensantus") != tc.spell {
+				t.Errorf("rows %q, concentration %q; want the spell held", a.readiedStatus(t, "Pensantus"), a.concentrationAs(t, a.ana, "Pensantus"))
+			}
+		})
+	}
+}
+
+// A spell placed on the map is readied: the window's "Soltar no mapa" releases it with CastSpell, which carries the point or
+// the direction.
+func TestReadyHoldsASpellPlacedOnAMap(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name  string
+		spell string
+		slot  int32
+	}{
+		{"a point on a map (Sleep)", sleepSpell, 1},
+		{"a point on a map (Fireball)", fireballSpell, 3},
+		{"a direction on a map (Burning Hands)", burningHands, 1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			a := newReadierOf(t, "class:sorcerer", 5, tc.spell)
+			e := a.castersFight(t, 1)
 			a.mustReady(t, a.ana, a.readySpell(t, e, "Pensantus", tc.spell, tc.slot, ""))
 			if a.readiedStatus(t, "Pensantus") != readiedWaiting || a.concentrationAs(t, a.ana, "Pensantus") != tc.spell {
 				t.Errorf("rows %q, concentration %q; want the spell held", a.readiedStatus(t, "Pensantus"), a.concentrationAs(t, a.ana, "Pensantus"))

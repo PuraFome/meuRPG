@@ -396,59 +396,75 @@ func readiedHeldForWindows(ctx context.Context, q *playdb.Queries, encID, window
 	return false, nil
 }
 
-// readiedMoveOf is the readied move the mover makes: a walk off its turn while its READIED window of a move is open. Any
-// other move (on its turn, forced, a jump, a placement, a legendary move) is not one.
+// readiedMoveOf is the readied move the mover makes: a plain walk off its turn while its READIED window of a move is open. A
+// player's own is the release; the master's is a free token move unless the request says it is (release_readied). Any other
+// move (on its turn, forced, a jump, a placement, a legendary move) is not one.
 func (s *Service) readiedMoveOf(ctx context.Context, a *moveAttempt) error {
-	if !a.req.walking() || a.req.place || a.req.legendary != "" || actsNow(a.c.enc, a.target) {
+	if a.v.master && !a.req.release {
 		return nil
 	}
-	open, err := openWindowsOf(ctx, a.c)
-	if err != nil {
-		return err
+	var (
+		w   playdb.ReactionWindow
+		row playdb.ReadiedAction
+		err error
+	)
+	found := a.req.walking() && !a.req.place && a.req.legendary == "" && !actsNow(a.c.enc, a.target)
+	if found {
+		if w, row, found, err = openReadied(ctx, a.c.q, a.c.enc.ID, a.target.ID); err != nil {
+			return err
+		}
 	}
-	i := slices.IndexFunc(open, func(w playdb.ReactionWindow) bool {
-		return reaction.Kind(w.Kind) == reaction.Readied && conv.OrZero(w.ReactorID) == a.target.ID
-	})
-	if i < 0 {
+	if !found || row.Kind != readiedMove { // another kind of readied action: the move is an ordinary one, and no release
+		if a.v.master {
+			return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_YOUR_TURN, "the combatant has no readied move to release")
+		}
 		return nil
 	}
-	row, err := a.c.q.GetReadiedAction(ctx, playdb.GetReadiedActionParams{ID: windowTriggerOf(open[i]).Readied, EncounterID: a.c.enc.ID})
-	if err != nil {
-		return fmt.Errorf("read the readied action: %w", err)
-	}
-	if row.Kind != readiedMove { // a window of another kind of readied action: the move is an ordinary one
-		return nil
-	}
-	if a.readied, err = readiedUseOf(ctx, a.c, open[i].ID, a.target, readiedMove); err != nil {
+	if a.readied, err = readiedUseOf(ctx, a.c, w.ID, a.target, readiedMove); err != nil {
 		return err
 	}
 	return s.mustReactNowOrOnTurn(ctx, a.c, a.target)
 }
 
-// openReadiedMove is the readied move of who whose READIED window is open while it is not on its turn, if any:
-// GetMoveOptions then works out the move at that move's own budget, as MoveCombatant walks it (readiedMoveOf).
-func (s *Service) openReadiedMove(ctx context.Context, d *encounterData, who playdb.Combatant) (*playdb.ReadiedAction, error) {
-	if actsNow(d.enc, who) || !slices.ContainsFunc(d.readied, func(r playdb.ReadiedAction) bool { return r.CombatantID == who.ID && r.Kind == readiedMove }) {
-		return nil, nil
-	}
-	open, err := s.queries.ListOpenReactionWindows(ctx, d.enc.ID)
+// openReadied finds the open READIED window of a combatant (it has at most one) and the row it holds.
+func openReadied(ctx context.Context, q *playdb.Queries, encID, whoID string) (w playdb.ReactionWindow, row playdb.ReadiedAction, found bool, err error) {
+	open, err := q.ListOpenReactionWindows(ctx, encID)
 	if err != nil {
-		return nil, s.dbError(ctx, "list the reaction windows", err)
+		return w, row, false, fmt.Errorf("list the reaction windows: %w", err)
 	}
-	for _, w := range open {
-		if reaction.Kind(w.Kind) != reaction.Readied || conv.OrZero(w.ReactorID) != who.ID {
-			continue
-		}
-		if i := slices.IndexFunc(d.readied, func(r playdb.ReadiedAction) bool { return r.ID == windowTriggerOf(w).Readied && r.Kind == readiedMove }); i >= 0 {
-			return &d.readied[i], nil
-		}
+	i := slices.IndexFunc(open, func(w playdb.ReactionWindow) bool {
+		return reaction.Kind(w.Kind) == reaction.Readied && conv.OrZero(w.ReactorID) == whoID
+	})
+	if i < 0 {
+		return w, row, false, nil
 	}
-	return nil, nil
+	if row, err = q.GetReadiedAction(ctx, playdb.GetReadiedActionParams{ID: windowTriggerOf(open[i]).Readied, EncounterID: encID}); err != nil {
+		return w, row, false, fmt.Errorf("read the readied action: %w", err)
+	}
+	return open[i], row, true, nil
 }
 
-// spendReadiedMove spends the reaction of a readied move and writes its use.
+// openReadiedMove is the readied move of who whose READIED window is open off its turn, if any: GetMoveOptions works it out
+// at that move's own budget, as MoveCombatant walks it (readiedMoveOf).
+func (s *Service) openReadiedMove(ctx context.Context, d *encounterData, who playdb.Combatant) (*playdb.ReadiedAction, error) {
+	if actsNow(d.enc, who) || !slices.ContainsFunc(d.readied, func(r playdb.ReadiedAction) bool { return r.CombatantID == who.ID && r.Kind == readiedMove }) {
+		return nil, nil // no readied move waits for it: the query of the open windows is not run
+	}
+	_, row, found, err := openReadied(ctx, s.queries, d.enc.ID, who.ID)
+	if err != nil {
+		return nil, s.dbError(ctx, "read the readied move", err)
+	}
+	if !found || row.Kind != readiedMove {
+		return nil, nil
+	}
+	return &row, nil
+}
+
+// spendReadiedMove spends the reaction of a readied move and writes its use. A walk that went nowhere (stopped before its
+// first square) is no use: moveInTx stops it before anything is written (idle), so nothing is spent, the row waits and its
+// window stays open.
 func (s *Service) spendReadiedMove(ctx context.Context, a *moveAttempt) error {
-	if a.readied == nil {
+	if a.readied == nil || a.length == 0 {
 		return nil
 	}
 	a.made.ReactionBefore = a.target.ReactionUsed
@@ -510,12 +526,25 @@ func (u *undoer) readiedFiredBack(ctx context.Context, ev actionEvent) error {
 	return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOTHING_TO_UNDO, "this readied action cannot be undone")
 }
 
-// readiedWaitsAgain makes the row wait and opens its window again.
+// readiedWaitsAgain makes the row wait and opens its window again, with its wait clean: the mark of the reactor's player
+// and the beginning of the wait the window had before its use are gone, so the next mark starts a new wait.
 func (u *undoer) readiedWaitsAgain(ctx context.Context, r *readiedEvent) error {
 	if err := u.c.q.ReopenReadiedAction(ctx, r.ID); err != nil {
 		return fmt.Errorf("make the readied action wait again: %w", err)
 	}
-	return reopenWindows(ctx, u.c, []string{r.Window})
+	if err := reopenWindows(ctx, u.c, []string{r.Window}); err != nil {
+		return err
+	}
+	w, err := u.c.q.GetReactionWindow(ctx, playdb.GetReactionWindowParams{EncounterID: u.c.enc.ID, ID: r.Window})
+	if err != nil {
+		return fmt.Errorf("read the readied window: %w", err)
+	}
+	t := windowTriggerOf(w)
+	if !t.Rolling && t.WaitBegan == nil {
+		return nil
+	}
+	t.Rolling, t.WaitBegan = false, nil
+	return setWindowTrigger(ctx, u.c.q, w.ID, t)
 }
 
 // chainReadied: a Ready whose row was lost since (its readier was defeated or dismissed: that line never closes the
