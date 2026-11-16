@@ -184,30 +184,19 @@ func (f *castFlow) findReadied(ctx context.Context) error {
 		}
 		return nil
 	}
+	if f.req.GetGrantedBy() != "" { // a spell is readied from the caster's classes: a grant's charge is no release's to spend
+		return connect.NewError(connect.CodeInvalidArgument, errors.New("a readied spell is released from the source it was readied with: name no grant"))
+	}
 	f.readied, err = readiedUseOf(ctx, f.c, w.ID, f.caster, readiedSpell)
 	return err
 }
 
 // heldByWindow finds the readied spell a combatant's open READIED window holds: the window and its row. A held spell
-// attack is not one (its release is a roll), and found is false when the combatant's windows hold no such spell.
-func heldByWindow(ctx context.Context, q *playdb.Queries, encID, casterID, spellKey string) (w playdb.ReactionWindow, row playdb.ReadiedAction, found bool, err error) {
-	open, err := q.ListOpenReactionWindows(ctx, encID)
-	if err != nil {
-		return w, row, false, fmt.Errorf("list the reaction windows: %w", err)
-	}
-	for _, w := range open {
-		if reaction.Kind(w.Kind) != reaction.Readied || conv.OrZero(w.ReactorID) != casterID {
-			continue
-		}
-		row, err := q.GetReadiedAction(ctx, playdb.GetReadiedActionParams{ID: windowTriggerOf(w).Readied, EncounterID: encID})
-		if err != nil {
-			return w, row, false, fmt.Errorf("read the readied action: %w", err)
-		}
-		if row.Kind == readiedSpell && !heldSpellAttackRow(row) && conv.OrZero(row.ActionKey) == spellKey {
-			return w, row, true, nil
-		}
-	}
-	return w, row, false, nil
+// attack is not one (its release is a roll), and found is false when the combatant's window holds no such spell. It matches
+// the spell's key alone: the source of the cast is checked by the caller (a release takes the source of Ready).
+func heldByWindow(ctx context.Context, q *playdb.Queries, encID, casterID, spellKey string) (playdb.ReactionWindow, playdb.ReadiedAction, bool, error) {
+	w, row, found, err := openReadied(ctx, q, encID, casterID)
+	return w, row, found && row.Kind == readiedSpell && !heldSpellAttackRow(row) && conv.OrZero(row.ActionKey) == spellKey, err
 }
 
 // chosenSlot is the slot of the cast: the request's, or the one a readied spell spent at Ready. A release names no slot or
