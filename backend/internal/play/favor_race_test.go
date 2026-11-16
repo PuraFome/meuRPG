@@ -18,6 +18,13 @@ import (
 // A spend racing the master's answer of the refund prompt (RN-43: one row per character). The prompt's roll left Toren with nothing, and
 // the master gives it back while his player spends again. Either the spend came first (it finds nothing: HAS_NONE, and the refund
 // returns the one row) or the refund did (the spend takes the returned row: none left). Never two rows, never the Inspiração returned twice.
+//
+// How the two are ordered: Service.tx locks the session's row first, so the transactions take turns. But a SERIALIZABLE transaction takes
+// its snapshot at its first statement, which is that lock: a spend that waited for the answer holds a snapshot from before the answer, and
+// when it deletes the row the answer inserted the database refuses it with 40001 (could not serialize access due to concurrent delete). That
+// is no failure of the product: the closure of every call returns the error, Service.tx runs the closure again on a fresh snapshot, and the
+// second run reads the row gone (HAS_NONE). So the test spends through that retry (tryFavorLocked) and asserts the end state; any error that
+// is not the product's answer fails with the side that returned it and its SQLSTATE (failureOf), and the test retries nothing of its own.
 func TestASpendAndTheAnswerOfARefundPromptRace(t *testing.T) {
 	t.Parallel()
 	dbtest.PoolSize(t, 8)
@@ -30,7 +37,7 @@ func TestASpendAndTheAnswerOfARefundPromptRace(t *testing.T) {
 		start.Add(1)
 		wg.Go(func() { start.Wait(); _, ansErr = f.answerRefund(f.master, p.GetId(), true, newKey()) })
 		for i := range spenders {
-			wg.Go(func() { start.Wait(); spent[i] = f.tryFavorLocked(i, f.ask(combat.ModeNormal)) })
+			wg.Go(func() { start.Wait(); spent[i] = f.tryFavorLocked(f.ask(combat.ModeNormal)) })
 		}
 		start.Done()
 		wg.Wait()
@@ -46,6 +53,9 @@ func TestASpendAndTheAnswerOfARefundPromptRace(t *testing.T) {
 		}
 		if got := f.eventsOf(t, eventFavorRefunded); got != 1 {
 			t.Errorf("%d refunded events, want 1", got)
+		}
+		if status := f.promptStatus(t, p.GetId()); status != "returned" {
+			t.Errorf("the prompt is %q, want returned: the master's answer is the one that always wins its own prompt", status)
 		}
 	}
 }
@@ -102,18 +112,17 @@ func spendsThatWon(t *testing.T, spent []spendTry) int {
 	return won
 }
 
-// tryFavorLocked is tryFavor on the transaction every call of the service runs in (Service.tx), which takes the session's lock first: the
-// spend and the master's answer take turns, so a spend races the answer by the order of the lock and never by a conflict between two
-// transactions that read the same rows. Nothing is repeated: a transaction that fails is an error of the test.
-func (f *favorParty) tryFavorLocked(i int, a favorAsk) spendTry {
+// tryFavorLocked is tryFavor on the transaction every call of the service runs in (Service.tx), and with the closure of those calls: it takes
+// the spend and returns its error, as the closure of RollAttack or of a check does, so Service.tx runs it again when the database refuses it
+// with 40001 and returns any other error as it is (the product's answer, such as HAS_NONE). The spend of the attempt that settled is what it
+// reports. Nothing is repeated by the test itself.
+func (f *favorParty) tryFavorLocked(a favorAsk) spendTry {
 	var out spendTry
-	err := f.h.svc.tx(context.Background(), f.sessionID, func(tx pgx.Tx, _ *hints) error {
-		out.use, out.err = f.h.svc.useFavor(context.Background(), f.h.svc.outsideGate(tx, f.h.svc.queries.WithTx(tx), nil), a)
-		return nil
+	out.err = f.h.svc.tx(context.Background(), f.sessionID, func(tx pgx.Tx, _ *hints) error {
+		use, err := f.h.svc.useFavor(context.Background(), f.h.svc.outsideGate(tx, f.h.svc.queries.WithTx(tx), nil), a)
+		out.use = use
+		return err
 	})
-	if err != nil {
-		f.h.t.Errorf("%s; the spend inside it returned: %s", failureOf(fmt.Sprintf("the transaction of spend %d", i), err), failureOf(fmt.Sprintf("spend %d", i), out.err))
-	}
 	return out
 }
 
