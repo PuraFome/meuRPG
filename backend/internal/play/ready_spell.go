@@ -62,7 +62,7 @@ func (f *castFlow) checkReadyTime(context.Context) error {
 
 // checkReadyReleasable refuses a spell the READIED window cannot release, decided by what the spell is: the answer carries
 // targets and darts, and nothing else. A spell that brings creatures (a summon), asks the caster an ability or a damage
-// type, revives the dead, or is placed at a point or in a direction on a map could only be let pass, with its slot spent:
+// type, revives the dead, keeps a zone on a map, or is placed at a point or in a direction on a map could only be let pass, with its slot spent:
 // it is cast on the caster's turn, not held. An area in a combat with no map is released with the creatures the answer
 // picks, and stays allowed.
 func (f *readyFlow) checkReadyReleasable(cf *castFlow) func(context.Context) error {
@@ -78,7 +78,10 @@ func (f *readyFlow) checkReadyReleasable(cf *castFlow) func(context.Context) err
 // unreleasable names what the spell asks that the window's answer cannot carry, "" when it asks nothing of the kind.
 func (f *castFlow) unreleasable(ctx context.Context) (string, error) {
 	sp := f.sp
+	_, keepsZone := zoneDefOfSpell(sp)
 	switch placement := placementOf(sp); {
+	case keepsZone && !isTheatre(f.c.enc):
+		return "a zone to lay on the map", nil
 	case sp.Summon:
 		return "the creatures of a summon", nil
 	case sp.DamageChoice != "" && len(sp.DamageTypes) > 0:
@@ -93,18 +96,14 @@ func (f *castFlow) unreleasable(ctx context.Context) (string, error) {
 	if asks {
 		return "an ability", nil
 	}
-	content, err := f.s.contentOf(ctx, f.c)
-	if err != nil {
-		return "", err
-	}
-	if _, revives := content.Revive(f.call.spellKey); revives {
+	if castsAsRevival(f.call.spellKey) {
 		return "the dead creature to revive", nil
 	}
 	return "", nil
 }
 
 // pickReadySlot sets the slot the request's slot_level names on the cast: a free slot of that level, a Warlock's pact
-// slot when it has no other; none for a cantrip. pickSlot then checks it as CastSpell's slot.
+// slot when it has no other; none for a cantrip. readSpellAtSlot, which runs next, checks it as CastSpell's slot.
 func (f *readyFlow) pickReadySlot(cf *castFlow) func(context.Context) error {
 	return func(context.Context) error {
 		level := f.call.slotLevel

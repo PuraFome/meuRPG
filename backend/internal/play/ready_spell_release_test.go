@@ -186,8 +186,8 @@ func TestAReadiedAreaReleasedWithNoTargetsIsNotAimedAtTheCreatureNamedAtReady(t 
 
 // A readied Sleep on a map is placed at a point, which the answer never carries (CastSpell does): the answer is
 // refused, with targets or without, and the window stays open. The targets are never dropped for the creatures in the area.
-// Ready refuses such a spell (READY_SPELL_NOT_RELEASABLE), so the row is made by hand: it is the answer's own guard, which
-// stays as a defense in depth for a row the server did not write, that this test holds.
+// The row is one written before Ready refused such spells (READY_SPELL_NOT_RELEASABLE): an open combat in production can
+// hold one, so it is made by hand. The answer's own guard refuses it, and that guard's reason is what this test holds.
 func TestAReadiedAreaOnAMapIsNotReleasedByTheAnswer(t *testing.T) {
 	t.Parallel()
 	for name, set := range map[string]func(*testing.T, *armed) func(*playv1.AnswerReactionRequest){
@@ -205,6 +205,9 @@ func TestAReadiedAreaOnAMapIsNotReleasedByTheAnswer(t *testing.T) {
 			w := a.mustFire(t, e, "Pensantus")
 			_, err := a.answerReaction(t, a.ana, e, w.GetId(), set(t, a))
 			wantCode(t, "Sleep placed on a map, answered "+name, err, connect.CodeInvalidArgument)
+			if got, want := err.Error(), "invalid_argument: this spell is placed at a point: set origin"; got != want {
+				t.Fatalf("Sleep placed on a map, answered %s: error = %q, want the area guard's %q", name, got, want)
+			}
 			if !a.readiedOpen(t, "Pensantus") || a.readiedStatus(t, "Pensantus") != readiedWaiting {
 				t.Errorf("the refused answer left the window open %v and rows %q", a.readiedOpen(t, "Pensantus"), a.readiedStatus(t, "Pensantus"))
 			}

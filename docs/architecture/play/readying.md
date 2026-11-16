@@ -114,8 +114,7 @@ The window closes by itself, with the reason told to its reactor alone.
 That happens when the readier is defeated or incapacitated, spends its reaction elsewhere, or the row stops waiting.
 A change that ends the row (a held spell broken, a readier defeated) closes its window in the same call, a correction to 0 hit points too: the table does not wait for it.
 
-The automatic pass of 30 s counts on the master's screen from when the window opened.
-A window the readier's player has not touched passes by itself after 30 s, even while the player is choosing a square for a move or a target: the row is then ignored.
+A window the readier's player has not touched passes by itself after 30 s, counted on the master's screen from when it opened, even while the player is choosing a square for a move or a target: the row is then ignored.
 The readier's player touching the list of creatures or the darts of the window for the first time marks it as being rolled (`MarkReactionRolling`, once), as the dice step of the other optional reactions does: the master's clock then waits 2 minutes instead of 30 s, and the prompt says so.
 The master's own touch does not mark it: the mark is the reactor player's alone, and the server refuses the master's.
 So the master's queue row does not mark the window, and a master choosing darts for the player has the ordinary 30 s.
@@ -159,7 +158,7 @@ Its row has no `spell_cast_id` (`heldSpellAttackRow`), and its release is `RollA
 As an `attack` it is refused (`READY_ACTION`): it would hold no concentration.
 A pact slot is spent only when no plain slot of that level is free.
 Targets and range are checked at the release, not at Ready.
-Ready refuses with `READY_SPELL_NOT_RELEASABLE` a spell the window cannot release, decided by what the spell is (`checkReadyReleasable`, never a list of keys): one that summons, that holds an ability or a damage type the caster picks, that revives, or that is placed at a point or in a direction on a map.
+Ready refuses with `READY_SPELL_NOT_RELEASABLE` a spell the window cannot release, decided by what the spell is (`checkReadyReleasable`, never a list of keys): one that summons, that holds an ability or a damage type the caster picks, that revives, that keeps a zone to lay on a map (`zoneDefOfSpell`, in a combat with a map), or that is placed at a point or in a direction on a map.
 Nothing is spent; the answer carries none of those choices, so the spell could only be let pass.
 Ready spends the slot and the action, and notes the spell cast this turn.
 It sets the readier's concentration to the sentinel `readied` (`concentrationReadied`), even for a spell without concentration.

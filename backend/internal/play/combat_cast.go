@@ -159,7 +159,7 @@ func (s *Service) castSpell(ctx context.Context, m authz.Membership, req *connec
 		return nil, err
 	}
 	call.answering = answering
-	if call.spellKey == revivifyKey { // brings the dead back: its own target, its own checks (revivify.go)
+	if castsAsRevival(call.spellKey) { // brings the dead back: its own target, its own checks (revivify.go)
 		return s.castRevivify(ctx, req)
 	}
 	if err := call.readBody(req.Msg); err != nil {
