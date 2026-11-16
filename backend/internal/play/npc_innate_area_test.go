@@ -25,7 +25,11 @@ func TestTheMasterCastsAnNPCsInnateAreaSpellThroughItsGrantWithNoSlot(t *testing
 		t.Fatal("the Pit Fiend's options list no granted Fireball")
 	}
 	grantedBySource := func(r *playv1.CastSpellRequest) { r.GrantedBy = source }
-	if _, err := a.cast(t, a.master, e, "Diabo das profundezas", fireball, slotOfLevel(3), a.at(t, "Toren", "Pensantus", "Brisa"), grantedBySource); connect.CodeOf(err) != connect.CodeInvalidArgument {
+	_, err := a.master.combat.PreviewSpellArea(t.Context(), connect.NewRequest(&playv1.PreviewSpellAreaRequest{
+		CampaignId: a.campaignID, EncounterId: e.GetId(), CasterId: a.id(t, "Diabo das profundezas"), SpellKey: fireball, Slot: slotOfLevel(3), GrantedBy: source,
+		Area: &playv1.PreviewSpellAreaRequest_Origin{Origin: &playv1.SpellOrigin{Col: 6, Row: 5}},
+	}))
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Errorf("a slot through a grant that allows none: code = %v, want invalid_argument", connect.CodeOf(err))
 	}
 	a.h.roller.queue(5, 18, 12)
