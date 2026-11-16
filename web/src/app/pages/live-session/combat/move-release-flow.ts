@@ -73,13 +73,17 @@ export class MoveReleaseFlow {
     this.watch = runInInjectionContext(
       this.injector,
       () =>
-        new ReleaseWatch(() => this.ctx.encounter(), {
-          windowId,
-          readiedId: held.id,
-          reactorId: w.reactorId,
-          spellName: '',
-          move: true,
-        }),
+        new ReleaseWatch(
+          () => this.ctx.encounter(),
+          {
+            windowId,
+            readiedId: held.id,
+            reactorId: w.reactorId,
+            spellName: '',
+            move: true,
+          },
+          (win) => this.mark?.observe(win),
+        ),
     );
     // Only the reactor's player marks the window (the master is refused): the server dates the one wait of 120 s from the first mark.
     const attacks = this.ctx.api.attacks;

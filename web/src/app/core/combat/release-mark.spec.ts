@@ -100,4 +100,35 @@ describe("the wait mark of a readied window's release (#857, #856)", () => {
     await m.leave();
     expect(mark).toHaveBeenCalledTimes(1);
   });
+
+  describe('a reopen after the master undid the trigger (#857)', () => {
+    it('marks again once when the window is back open with rolling false while the player is on the map', async () => {
+      const { m, mark } = setup();
+      await m.enter();
+      m.observe({ rolling: true });
+      m.observe({ rolling: false });
+      await Promise.resolve();
+      expect(mark.mock.calls.map((c) => c[3])).toEqual([false, false]);
+      m.observe({ rolling: false });
+      expect(mark).toHaveBeenCalledTimes(2);
+    });
+
+    it('does not mark on a window never seen rolling, off the map, or after the player went back or the release finished', async () => {
+      const { m, mark } = setup();
+      m.observe({ rolling: false });
+      await m.enter();
+      m.observe({ rolling: false });
+      expect(mark).toHaveBeenCalledTimes(1);
+      m.observe({ rolling: true });
+      await m.leave();
+      m.observe({ rolling: false });
+      expect(mark).toHaveBeenCalledTimes(2);
+      const done = setup();
+      await done.m.enter();
+      done.m.observe({ rolling: true });
+      done.m.finish();
+      done.m.observe({ rolling: false });
+      expect(done.mark).toHaveBeenCalledTimes(1);
+    });
+  });
 });

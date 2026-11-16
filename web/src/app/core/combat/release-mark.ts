@@ -20,6 +20,8 @@ export class ReleaseMark {
   /** The mark is set, as far as this screen knows. */
   readonly on = signal(false);
   private finished = false;
+  /** The window was seen rolling while the mark was on: a later "not rolling" is a reopen, not a window the mark never reached. */
+  private seenRolling = false;
   /** The mark in the air: a "Voltar" tapped before it lands waits for it, then clears it. */
   private pending: Promise<void> | null = null;
 
@@ -54,6 +56,7 @@ export class ReleaseMark {
       return;
     }
     this.on.set(false);
+    this.seenRolling = false;
     try {
       this.apply(await this.call(true));
     } catch {
@@ -61,9 +64,28 @@ export class ReleaseMark {
     }
   }
 
+  /**
+   * The window as the combat has it, told on every change. An undo of the trigger reopens a READIED window clean (the server clears
+   * `rolling`), so a player still on the map marks again, once, or the master reads "not on the map".
+   */
+  observe(w: { readonly rolling: boolean } | undefined): void {
+    if (!w || !this.on() || this.finished) {
+      return;
+    }
+    if (w.rolling) {
+      this.seenRolling = true;
+      return;
+    }
+    if (this.seenRolling) {
+      this.seenRolling = false;
+      void this.mark();
+    }
+  }
+
   /** The release went through: the window is closed, and there is nothing to clear. */
   finish(): void {
     this.finished = true;
+    this.seenRolling = false;
     this.on.set(false);
   }
 

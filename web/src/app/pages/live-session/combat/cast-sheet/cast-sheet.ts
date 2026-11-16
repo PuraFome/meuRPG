@@ -166,13 +166,17 @@ export class CastSheet {
     ? masterFoot(this.release?.reactorLabel ?? '')
     : ON_MAP_TEXT;
   private readonly watch = this.release
-    ? new ReleaseWatch(() => this.data.state.encounter(), {
-        windowId: this.release.windowId,
-        readiedId: this.release.readiedId,
-        reactorId: this.data.casterId,
-        spellName: this.data.name,
-        move: false,
-      })
+    ? new ReleaseWatch(
+        () => this.data.state.encounter(),
+        {
+          windowId: this.release.windowId,
+          readiedId: this.release.readiedId,
+          reactorId: this.data.casterId,
+          spellName: this.data.name,
+          move: false,
+        },
+        (w) => this.mark?.observe(w),
+      )
     : null;
   /** The player marks the window while on the map (the master never does): the server dates the one wait of 120 s from it. */
   private readonly mark =

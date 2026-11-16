@@ -56,6 +56,8 @@ export class ReleaseWatch {
   constructor(
     private readonly encounter: () => Encounter | null,
     private readonly ids: ReleaseWatchIds,
+    /** Told the window on every change while it is open (the player's mark reads a reopen from it). */
+    private readonly onWindow?: (w: ReactionWindow) => void,
   ) {
     const timer = setInterval(() => this.now.set(Date.now()), TICK_MS);
     inject(DestroyRef).onDestroy(() => clearInterval(timer));
@@ -73,6 +75,7 @@ export class ReleaseWatch {
   private see(w: ReactionWindow): void {
     this.last = w;
     this.waitedOnMap.set(waitBeganMs(w) !== null);
+    this.onWindow?.(w);
   }
 
   private settle(e: Encounter | null): void {
