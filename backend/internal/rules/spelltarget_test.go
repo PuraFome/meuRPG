@@ -135,7 +135,7 @@ func TestSpellTargetOverrides(t *testing.T) {
 	want(TargetNone, "spell:arcane-eye", "spell:magnificent-mansion", "spell:dancing-lights", "spell:druidcraft", "spell:fabricate",
 		"spell:light", "spell:major-image", "spell:minor-illusion", "spell:animate-objects", "spell:passwall", "spell:wall-of-force", "spell:wall-of-stone",
 		"spell:stone-shape", "spell:secret-chest", "spell:giant-insect", "spell:mage-hand", "spell:mending", "spell:prestidigitation", "spell:shillelagh",
-		"spell:thaumaturgy")
+		"spell:thaumaturgy", "spell:faithful-hound")
 	want(TargetArea, "spell:flame-strike", "spell:forbiddance", "spell:mirage-arcane", "spell:teleportation-circle", "spell:guards-and-wards",
 		"spell:fire-storm", "spell:hypnotic-pattern", "spell:plant-growth", "spell:purify-food-and-drink", "spell:glyph-of-warding")
 	want(TargetCreatures, "spell:aid", "spell:bless", "spell:bane", "spell:mass-healing-word", "spell:prayer-of-healing", "spell:mass-suggestion",
@@ -166,7 +166,7 @@ func TestSpellTargetOverrides(t *testing.T) {
 		}
 	}
 	// What stays as the text says: any number, and the summons untouched.
-	for _, key := range []string{"spell:compulsion", "spell:enthrall", "spell:mass-heal", "spell:dispel-evil-and-good", "spell:eyebite", "spell:animate-dead", "spell:create-undead"} {
+	for _, key := range []string{"spell:compulsion", "spell:enthrall", "spell:mass-heal", "spell:dispel-evil-and-good", "spell:animate-dead", "spell:create-undead"} {
 		if d, _ := c.SpellDetails(key); !d.Target.AnyNumber() {
 			t.Errorf("%s = %+v, want any number of creatures", key, d.Target)
 		}

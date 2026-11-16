@@ -605,6 +605,9 @@ func TestSpellAndSubclassCorrectionsAreClosed(t *testing.T) {
 	for name, doc := range map[string]string{
 		"unknown spell":               `{"spell_corrections":[{"spell":"spell:nope","attack_type":"ranged","source":"SRD"}]}`,
 		"nothing to correct":          spell(`"attack_type":""`),
+		"range of nothing":            spell(`"range":""`),
+		"special range":               spell(`"range":"Special"`),
+		"range that is no distance":   spell(`"range":"close by"`),
 		"attack that is not a type":   spell(`"attack_type":"thrown"`),
 		"save that is not an ability": spell(`"save_ability":"luck","save_success":"half"`),
 		"save without an outcome":     spell(`"save_ability":"dex"`),
@@ -627,14 +630,28 @@ func TestSpellAndSubclassCorrectionsAreClosed(t *testing.T) {
 		}
 	}
 	c := newContent()
-	doc := `{"spell_corrections":[{"spell":"spell:ray","attack_type":"ranged","save_ability":"dex","save_success":"half",
+	doc := `{"spell_corrections":[{"spell":"spell:ray","range":"60 feet","attack_type":"ranged","save_ability":"dex","save_success":"half",
 		"damage":[{"damage_type":"damage-type:fire","at_slot_level":{"2":"2d6","3":"3d6"}}],"source":"SRD"}],
 		"subclass_corrections":[{"subclass":"subclass:life","add_spells":[{"spell":"spell:ward","class_level":7}],"source":"SRD"}]}`
 	if err := c.applyCorrections(fstest.MapFS{"effects/corrections.json": {Data: []byte(doc)}}); err != nil {
 		t.Fatalf("good corrections: %v", err)
 	}
-	if s := c.spells["spell:ray"]; s.AttackType != "ranged" || s.SaveAbility != "dex" || s.SaveSuccess != "half" || len(s.Damage) != 1 || s.Damage[0].AtSlotLevel["3"] != "3d6" {
+	if s := c.spells["spell:ray"]; s.Range != "60 feet" || s.AttackType != "ranged" || s.SaveAbility != "dex" || s.SaveSuccess != "half" || len(s.Damage) != 1 || s.Damage[0].AtSlotLevel["3"] != "3d6" {
 		t.Errorf("corrected spell = %+v, want attack, save and damage written", s)
+	}
+	// A none clears the attack a spell has, and a range alone is a correction.
+	cleared := newContent()
+	cleared.spells["spell:ray"].AttackType = "melee"
+	cleared.spells["spell:ward"].Range = "Self"
+	if err := cleared.applyCorrections(fstest.MapFS{"effects/corrections.json": {Data: []byte(`{"spell_corrections":[
+		{"spell":"spell:ray","attack_type":"none","source":"SRD"},{"spell":"spell:ward","range":"Touch","source":"SRD"}]}`)}}); err != nil {
+		t.Fatalf("attack none and range alone: %v", err)
+	}
+	if got := cleared.spells["spell:ray"].AttackType; got != "" {
+		t.Errorf("attack after none = %q, want none", got)
+	}
+	if got := cleared.spells["spell:ward"].Range; got != "Touch" {
+		t.Errorf("range after the correction = %q, want Touch", got)
 	}
 	if got := c.subclasses["subclass:life"].Spells; len(got) != 2 || got[1].Spell != "spell:ward" || got[1].ClassLevel != 7 {
 		t.Errorf("corrected subclass spells = %+v, want the new spell at level 7 after the old one", got)

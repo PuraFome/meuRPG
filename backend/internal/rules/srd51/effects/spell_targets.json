@@ -38,6 +38,7 @@
     "spell:prestidigitation": { "kind": "none" },
     "spell:shillelagh": { "kind": "none" },
     "spell:thaumaturgy": { "kind": "none" },
+    "spell:faithful-hound": { "kind": "none" },
 
     "spell:flame-strike": { "kind": "area", "shape": "cylinder", "size_ft": 10, "label_pt": "Cilindro de 3 m de raio" },
     "spell:forbiddance": { "kind": "area", "shape": "cube", "size_ft": 200, "label_pt": "Uma área de cerca de 3.700 m²" },

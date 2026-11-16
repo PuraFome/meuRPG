@@ -277,12 +277,53 @@ func TestSpellsWithoutTheirDamageInTheSnapshot(t *testing.T) {
 	}
 }
 
+// TestSelfRangeSpellsAimedAtOthers: a spell the snapshot gives range Self whose
+// attack or save is aimed at another creature has the SRD's range, and the ones
+// whose attack comes on later turns carry no attack at the cast.
+func TestSelfRangeSpellsAimedAtOthers(t *testing.T) {
+	t.Parallel()
+	c := loadForTest(t)
+	for key, want := range map[string]struct {
+		kind   string
+		feet   int
+		attack string
+	}{
+		"spell:vampiric-touch": {RangeTouch, 0, "melee"},
+		"spell:produce-flame":  {RangeRanged, 30, "ranged"},
+		"spell:eyebite":        {RangeRanged, 60, ""},
+		"spell:faithful-hound": {RangeRanged, 30, ""},
+		"spell:flame-blade":    {RangeSelf, 0, ""},
+	} {
+		d, ok := c.SpellDetails(key)
+		if !ok || d.Range.Kind != want.kind || d.Range.DistanceFt != want.feet || d.AttackType != want.attack {
+			t.Errorf("%s = range %+v, attack %q; want %s %d ft, attack %q", key, d.Range, d.AttackType, want.kind, want.feet, want.attack)
+		}
+	}
+	// Flame Blade and Faithful Hound keep their damage for the later turns; nothing opens at the cast.
+	for _, key := range []string{"spell:flame-blade", "spell:faithful-hound"} {
+		if d, _ := c.SpellDetails(key); d.Save != nil || d.AttackType != "" || len(d.Damage) == 0 {
+			t.Errorf("%s = save %+v, attack %q, damage %d rows; want no save or attack, its damage kept", key, d.Save, d.AttackType, len(d.Damage))
+		}
+	}
+	for key, want := range map[string]SpellTarget{
+		"spell:vampiric-touch": {Kind: TargetCreature},
+		"spell:produce-flame":  {Kind: TargetCreature},
+		"spell:eyebite":        {Kind: TargetCreature},
+		"spell:faithful-hound": {Kind: TargetNone},
+		"spell:flame-blade":    {Kind: TargetSelf},
+	} {
+		if d, _ := c.SpellDetails(key); d.Target != want {
+			t.Errorf("%s target = %+v, want %+v", key, d.Target, want)
+		}
+	}
+}
+
 // TestSpellAttacksAndSaves: spells the SRD makes attack rolls or saving throws
 // carry them with their damage.
 func TestSpellAttacksAndSaves(t *testing.T) {
 	t.Parallel()
 	c := loadForTest(t)
-	for key, want := range map[string]string{"spell:scorching-ray": "ranged", "spell:flame-blade": "melee", "spell:arcane-hand": "melee"} {
+	for key, want := range map[string]string{"spell:scorching-ray": "ranged", "spell:vampiric-touch": "melee", "spell:produce-flame": "ranged", "spell:arcane-hand": "melee"} {
 		d, ok := c.SpellDetails(key)
 		if !ok || d.AttackType != want {
 			t.Errorf("%s attack type = %q, want %q", key, d.AttackType, want)
