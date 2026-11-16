@@ -30,6 +30,7 @@ import {
   rollGroups,
   slotRows,
   spellKind,
+  castLevelOf,
   targetRule,
   toggled,
 } from './cast-flow';
@@ -528,5 +529,26 @@ describe('a spell attack that missed on a natural 1', () => {
       natural: '1 natural',
     });
     expect(castRows(attack(4), new Map(), labels)[0].natural).toBeUndefined();
+  });
+});
+
+describe('the level a cast scales at', () => {
+  it('is the slot’s, else the grant’s cast level, else the spell’s own', () => {
+    const grant = { castLevel: 2 };
+    expect(castLevelOf({ level: 3 }, null, 1)).toBe(3);
+    expect(castLevelOf({ level: 3 }, grant, 1)).toBe(3);
+    expect(castLevelOf(null, grant, 1)).toBe(2);
+    expect(castLevelOf(null, { castLevel: 0 }, 0)).toBe(0);
+    expect(castLevelOf(null, null, 1)).toBe(1);
+  });
+
+  it('gives the targets of the grant’s level, and the slot’s when a slot is used', () => {
+    const table = create(SpellTargetsSchema, {
+      spellKey: 'spell:x',
+      maxTargets: 3,
+      targetsPerLevel: 3,
+    });
+    expect(targetRule(table, 'me', 1, castLevelOf(null, { castLevel: 2 }, 1)).max).toBe(6);
+    expect(targetRule(table, 'me', 1, castLevelOf({ level: 4 }, { castLevel: 2 }, 1)).max).toBe(10);
   });
 });

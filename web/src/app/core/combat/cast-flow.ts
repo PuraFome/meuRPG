@@ -226,6 +226,18 @@ export function dartsAt(darts: readonly DartsAtSlot[], level: number): number {
   return darts.find((d) => d.slotLevel === level)?.darts ?? 0;
 }
 
+/**
+ * The level a cast scales at: the slot's, else the level the grant casts at, else the spell's own (`own`; 0 for a
+ * cantrip), so a grant's level never replaces a slot's.
+ */
+export function castLevelOf(
+  slot: { readonly level: number } | null | undefined,
+  grant: { readonly castLevel: number } | null | undefined,
+  own: number,
+): number {
+  return slot?.level ?? (grant && grant.castLevel > own ? grant.castLevel : own);
+}
+
 export function targetRule(
   st: SpellTargets | undefined,
   casterId: string,
