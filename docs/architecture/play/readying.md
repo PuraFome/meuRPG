@@ -128,6 +128,8 @@ A change that ends the row (a held spell broken, a readier defeated) closes its 
 
 The automatic pass of 30 s counts on the master's screen from when the window opened.
 It can pass a window whose player is still choosing a square for a move, or a target: the row is then ignored.
+The readier's player touching the list of creatures or the darts of the window for the first time marks it as being rolled (`MarkReactionRolling`, once), as the dice step of the other optional reactions does: the master's clock then waits 2 minutes instead of 30 s, and the prompt says so.
+The master's own touch does not mark it: the mark is the reactor player's alone.
 
 ## The reaction
 
@@ -182,14 +184,16 @@ The targets are `targets` (each with its darts), or `creature_ids`, or the targe
 The target named at Ready is used only for a spell that takes named targets (`namedAtReady`): a spell that reaches its caster alone, or an area, released with no targets is cast with none.
 In the window, a creature named at Ready that cannot be aimed at now is not chosen: the readier picks another or lets it pass.
 `castSpell` checks them as a cast on the caster's turn: the darts of the slot and the number of targets.
-`targets` on another kind of row, on a held spell attack, on a pass or on a window that is not READIED are `invalid_argument` (`refuseTargets`): an answer never drops what it carries.
+`targets` on another kind of row, on a held spell attack, on a pass or on a window that is not READIED are `invalid_argument` (`badTargets`, with `targetsNotUsed`): an answer never drops what it carries.
 The answer carries no point and no direction: a spell placed on a map (a sphere at a point, a cone, a wall) is refused by the answer, with targets or without, and the window stays open.
 A spell that needs the map (a point, a direction, a wall) is released with `CastSpell` by the readier's player, or the master, while the READIED window is open.
 `PreviewSpellArea` reads the held spell at the slot level of the row while the caster's READIED window holds it (`heldByWindow`).
 That preview takes no free slot of that level and reads no slot from the request; any other preview is checked against the free slots as before.
 In a combat with no map the area is released with the creatures the answer picks, or with nobody.
 The Ready sheet offers the spells the window releases with darts, creatures or nothing.
-While the row waits, `GetTurnOptions.spell_targets` of its readier also lists the targets of the held spell (`heldSpellTargets`), with the darts of its slot, so the window can show them.
+It shows with a reason, and does not offer, a spell that asks the caster an ability (Enhance Ability), the creatures of a summon (Conjure Animals) or a damage type (Flame Strike): the answer carries no `ability_key`, `summon` or `damage_type_key`.
+The sheet reads them as the cast sheet does: `needsAbility`, the summon options of the character and the `damage_choice` of the spell's details.
+While the row waits, `GetTurnOptions.spell_targets` of its readier also lists the targets of the held spell (`heldEntry`), with the darts of its slot, so the window can show them.
 It does so only off the readier's turn, where the window opens and no ordinary entry is listed: on the turn a second action (Action Surge) could list the same spell twice, with nothing to tell the entries apart.
 A held spell attack lists none.
 The list is the owner's and the master's, as the options are (RN-10).

@@ -14,6 +14,7 @@ import {
   type TurnOptions,
 } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { joinDots, tight } from '../format/text';
+import { CHOICE_ASKS, type CastChoice } from './ready-choices';
 import type { ReadyArgs } from './combat-client-ready';
 import { circleLabel } from './combat-grid';
 import {
@@ -73,6 +74,10 @@ export const MOVE_PENDING_TEXT =
 /** A spell placed on the map: `AnswerReaction` carries no point or direction for it yet (#857, part 2). */
 export const SPELL_PENDING_TEXT =
   'Soltar pela janela ainda não dá para esta magia: ela pede um ponto ou uma direção no mapa.';
+/** A spell that asks the caster an ability, creatures or a damage type: the release of the window sends none of them yet (#857). */
+export function choicePendingText(choice: CastChoice): string {
+  return `Soltar pela janela ainda não dá para esta magia: ela pede ${CHOICE_ASKS[choice]} ao conjurar.`;
+}
 export const NO_ATTACK_TEXT = 'Você não tem um ataque para preparar.';
 export const NO_OTHER_TEXT = 'Nenhuma outra ação pode ser preparada agora.';
 export const EMPTY_TRIGGER_TEXT = 'Escreva quando a ação dispara.';
@@ -212,10 +217,24 @@ function spellBlocked(o: SpellOption): string {
  * Whether the window can release a spell today: it names darts, creatures (one or several) or nothing, as the cast screens do. A spell
  * placed on the map (a point or a direction) cannot yet. Read from what `GetTurnOptions` says of the spell (`spell_targets`); with no
  * entry (an attack cantrip, which is released as an attack) nothing is known against it. In a combat with no map nothing is placed.
+ * A spell that asks the caster a choice (`choices`) cannot either: the answer carries none.
  */
-function releaseBlocked(all: readonly SpellTargets[], key: string): string {
+function releaseBlocked(
+  all: readonly SpellTargets[],
+  key: string,
+  choices: ReadonlyMap<string, CastChoice> = new Map(),
+): string {
   const t = all.find((x) => x.spellKey === key);
-  return t && t.placement !== AreaPlacement.UNSPECIFIED ? SPELL_PENDING_TEXT : '';
+  if (t && t.placement !== AreaPlacement.UNSPECIFIED) {
+    return SPELL_PENDING_TEXT;
+  }
+  return choiceBlocked(choices, key);
+}
+
+/** Why the window cannot release a spell that asks the caster a choice (an ability, creatures, a damage type); `''` when it asks none. */
+function choiceBlocked(choices: ReadonlyMap<string, CastChoice>, key: string): string {
+  const choice = choices.get(key);
+  return choice ? choicePendingText(choice) : '';
 }
 
 /** "1º círculo · 1 ação · Evocação ...": the line under a spell's name. */
@@ -227,12 +246,14 @@ function spellSub(o: SpellOption, level: number, summaries: ReadonlyMap<string, 
 
 /**
  * The spells: the cantrips that attack, then the spells of the list the server sends. A spell a feature grants is not offered (the
- * server holds the class spells only). A spell that is not of 1 action, or has no slot, is listed with its reason.
+ * server holds the class spells only). A spell that is not of 1 action, or has no slot, is listed with its reason, and so is one that
+ * asks a choice at the cast (`choices`, see `readyChoices`).
  */
 export function readySpellRows(
   options: TurnOptions,
   spellTargets: readonly SpellTargets[] = [],
   summaries: ReadonlyMap<string, string> = new Map(),
+  choices: ReadonlyMap<string, CastChoice> = new Map(),
 ): readonly ReadyRow[] {
   const cantrips: ReadyRow[] = cantripAttacks(options).map((o) => ({
     id: o.attack?.key ?? '',
@@ -258,7 +279,7 @@ export function readySpellRows(
         id: o.spell?.key ?? '',
         title: o.spell?.namePt || o.spell?.name || '',
         sub: spellSub(o, level, summaries),
-        blocked: spellBlocked(o) || releaseBlocked(spellTargets, o.spell?.key ?? ''),
+        blocked: spellBlocked(o) || releaseBlocked(spellTargets, o.spell?.key ?? '', choices),
         level,
         slots: level > 0 ? slotsOf(o) : [],
         spell: true,

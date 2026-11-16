@@ -5,6 +5,7 @@ import type { Encounter } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import type { AimNeed } from '../../../../core/combat/readied-aim';
 import type { QueueRow } from '../../../../core/combat/reaction-master';
 import { readiedOfWindow } from '../../../../core/combat/reaction-readied';
+import { readiedRefusalText } from '../../../../core/combat/readied-refusal';
 import {
   NO_PICK,
   type ReleasePick,
@@ -29,6 +30,11 @@ export class ReadiedAimState {
     return readiedOfWindow(this.encounter(), row.window);
   }
 
+  /** The words of a refused answer of the row's window: its held action, and the darts when the held spell splits them. */
+  refusalText(err: unknown, row: Pick<QueueRow, 'window'>, doing: string): string {
+    return readiedRefusalText(err, this.held(row), doing, this.planOf(row));
+  }
+
   needOf(row: QueueRow): AimNeed {
     return this.needs()[row.window.id] ?? 'loading';
   }
@@ -41,7 +47,7 @@ export class ReadiedAimState {
     return this.picks()[row.window.id] ?? NO_PICK;
   }
 
-  planOf(row: QueueRow): ReleasePlan | null {
+  planOf(row: Pick<QueueRow, 'window'>): ReleasePlan | null {
     return this.plans()[row.window.id] ?? null;
   }
 

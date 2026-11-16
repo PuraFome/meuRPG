@@ -98,7 +98,7 @@ import {
 } from './table-sheet-support';
 import { masterLog, openCombatPanel, openMap, openOrderRow, openTurn } from './combat-layout';
 import { waitForEncounterRevision } from './revision-support';
-import { goblinTrigger, moveOffText, openReadySheet, pensantusReadyKit, readyAttackRPC, readyRPC, readySpellRPC, shootReady, spellOffText } from './ready-support';
+import { goblinTrigger, moveOffText, openReadySheet, pensantusReadyKit, readyAttackRPC, readyRPC, readySpellRPC, shootReady, spellOffText, summonOffText } from './ready-support';
 import { WIDTHS, beginVrockFight, pagesFor, shoot, useCreatureActionRPC, viewportOf } from './recharge-support';
 import { chooseRow, openTvPanel, rollForTableRPC, tvRoute } from './table-screen-support';
 import { LIT, WIDTHS as SUN_WIDTHS, sunSpot as sunBar, mapCard as sunMapCard, paintStatus as sunPaintStatus, setSunlightRPC, shoot as shootSun, sunSwitch, sunlightTable, viewportOf as sunViewport } from './sunlight-support';
@@ -15037,6 +15037,11 @@ async function scanReadyScreens(browser: Browser, colorScheme: 'light' | 'dark',
     campaignId = table.campaignId;
     const begun = await beginAttackCombatRPC(m, table, { Pensantus: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 }, attackCombatSquares);
     const shoot = async (page: Page, screen: string): Promise<void> => shootReady(page, screen, width, colorScheme);
+    // Pensantus summons nothing of the kinds the window cannot release yet (a summon, an ability, a damage type), so the character's summon options are
+    // answered with Mísseis Mágicos in them: the sheet then lists it off with the reason of its kind, as it does Conjurar Animais for a druid (#857).
+    await p.route('**/meurpg.characters.v1.CharacterService/GetSummonOptions', (route) =>
+      route.fulfill({ contentType: 'application/json', body: JSON.stringify({ spells: [{ spellKey: 'spell:magic-missile', namePt: 'Mísseis Mágicos', level: 1 }], slots: [] }) }),
+    );
 
     await openSessionPage(p, campaignId);
     await expect(p.getByRole('heading', { name: 'Sua vez, Pensantus' })).toBeVisible();
@@ -15062,6 +15067,9 @@ async function scanReadyScreens(browser: Browser, colorScheme: 'light' | 'dark',
     // A spell: the circle to hold it with, and the warning that it is the concentration.
     await sheet.getByRole('button', { name: 'Magia', exact: true }).click();
     await expect(sheet.locator('label', { hasText: 'Sono' })).toContainText(spellOffText);
+    await expect(sheet.locator('label', { hasText: 'Mísseis Mágicos' })).toContainText(summonOffText);
+    await expect(sheet.getByRole('radio', { name: /Mísseis Mágicos/ })).toBeDisabled();
+    await shootReady(p, 'preparar-magia-escolha', width, colorScheme, '857');
     await sheet.locator('label', { hasText: 'Enfeitiçar Pessoa' }).click();
     await expect(sheet.getByRole('group', { name: 'Com que espaço' })).toBeVisible();
     await field.fill('Se o goblin sair da sombra do pilar');
@@ -15238,7 +15246,7 @@ async function scanReadyWindowScreens(browser: Browser, colorScheme: 'light' | '
   try {
     await m.goto('/');
     await p.goto('/');
-    const table = await tableForCombat(m, p, `Acessibilidade preparar janelas ${Date.now()}`, true, true, { sheet: pensantusCasting });
+    const table = await tableForCombat(m, p, `Acessibilidade preparar janelas ${Date.now()}`, true, true, { sheet: pensantusReadyKit });
     campaignId = table.campaignId;
     const squares: Record<string, [number, number]> = { Pensantus: [1, 1], 'Capitão Goblin': [2, 1], 'Goblin 1': [9, 9], 'Goblin 2': [14, 10] };
     const begun = await beginAttackCombatRPC(m, table, { Pensantus: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 }, squares);
@@ -15318,6 +15326,51 @@ async function scanReadyWindowScreens(browser: Browser, colorScheme: 'light' | '
     await shootReady(p, 'janela-dardos-repartidos', width, colorScheme, '857');
     await spell.getByRole('button', { name: 'Deixar passar' }).click();
     await expect(spell).toHaveCount(0);
+
+    // A readied spell of one creature (#857): the creatures it reaches are a radio list inside the window's alertdialog.
+    const roundOne = await passTurnsToAndWait(m, campaignId, 'Pensantus', [m, p]);
+    await waitForEncounterRevision(p, await readySpellRPC(p, campaignId, roundOne, 'Pensantus', 'spell:charm-person', 1));
+    await passTurnsToAndWait(m, campaignId, 'Capitão Goblin', [m, p]);
+    await m.locator('app-readied-fold').getByRole('button', { name: 'Disparar a ação de Pensantus' }).click();
+    const one = p.getByRole('alertdialog', { name: 'Soltar Enfeitiçar Pessoa' });
+    await expect(one).toBeVisible();
+    await expect(one.getByRole('radiogroup')).toBeVisible();
+    await expect(one.getByRole('radio', { name: /Capitão Goblin/ })).toBeVisible();
+    await expect(one.getByRole('button', { name: /^Soltar/ })).toHaveAttribute('aria-disabled', 'true');
+    await expectScreenPasses(p, `Preparar, a magia de uma criatura com o alvo por escolher ${where}`);
+    await shootReady(p, 'janela-criatura', width, colorScheme, '857');
+    await one.locator('label', { hasText: 'Capitão Goblin' }).click();
+    await expect(one.getByRole('radio', { name: /Capitão Goblin/ })).toBeChecked();
+    await expectScreenPasses(p, `Preparar, a magia de uma criatura com o alvo escolhido ${where}`);
+    await shootReady(p, 'janela-criatura-escolhida', width, colorScheme, '857');
+    await one.getByRole('button', { name: 'Deixar passar' }).click();
+    await expect(one).toHaveCount(0);
+
+    // The same spell held with a 2nd circle slot takes two creatures: checkboxes in the window, and the master's row with the same list open.
+    const roundMany = await passTurnsToAndWait(m, campaignId, 'Pensantus', [m, p]);
+    await waitForEncounterRevision(p, await readySpellRPC(p, campaignId, roundMany, 'Pensantus', 'spell:charm-person', 2));
+    await passTurnsToAndWait(m, campaignId, 'Capitão Goblin', [m, p]);
+    await m.locator('app-readied-fold').getByRole('button', { name: 'Disparar a ação de Pensantus' }).click();
+    const many = p.getByRole('alertdialog', { name: 'Soltar Enfeitiçar Pessoa' });
+    await expect(many).toBeVisible();
+    await expect(many.getByRole('group', { name: /Escolha até 2 alvos/ })).toBeVisible();
+    await expect(many.getByRole('checkbox', { name: /Capitão Goblin/ })).toBeVisible();
+    await expectScreenPasses(p, `Preparar, a magia de vários alvos com nenhum escolhido ${where}`);
+    await shootReady(p, 'janela-criaturas', width, colorScheme, '857');
+    await many.locator('label', { hasText: 'Capitão Goblin' }).click();
+    await expect(many.getByRole('checkbox', { name: /Capitão Goblin/ })).toBeChecked();
+    await expectScreenPasses(p, `Preparar, a magia de vários alvos com um escolhido ${where}`);
+    await shootReady(p, 'janela-criaturas-escolhida', width, colorScheme, '857');
+    const held = m.locator('app-reaction-queue[part="rest"]');
+    await expect(held.getByRole('checkbox', { name: /Capitão Goblin/ })).toBeVisible();
+    await expect(held.getByRole('button', { name: 'Soltar por Pensantus' })).toBeVisible();
+    await held.scrollIntoViewIfNeeded();
+    await expectScreenPasses(m, `Preparar, a fila do mestre com a magia preparada e a lista dos alvos aberta ${where}`);
+    await shootReady(m, 'janela-fila-magia', width, colorScheme, '857');
+    await held.getByRole('button', { name: 'Deixar passar' }).click();
+    await expect(many).toContainText('A janela fechou.');
+    await many.getByRole('button', { name: 'Fechar' }).click();
+    await expect(many).toHaveCount(0);
 
     // A readied attack with no creature named: the master's row asks who, with the use off until he picks.
     const round5 = await passTurnsToAndWait(m, campaignId, 'Pensantus', [m, p]);
