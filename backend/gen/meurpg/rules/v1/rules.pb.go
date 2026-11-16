@@ -5470,12 +5470,7 @@ type ChangedContent struct {
 	// tied to the entry is told with its own sentence in `issues`. What no longer
 	// matches, for the sheet of what changed.
 	Messages []string `protobuf:"bytes,7,rep,name=messages,proto3" json:"messages,omitempty"`
-	// The code of the issue each sentence of `messages` comes from, one per sentence, in the same order (so
-	// `codes` has as many items as `messages`, and codes[i] is the code of messages[i]). It is read by the same
-	// reader as the sentence: a line the reader does not get has no code in their answer either. The codes are
-	// the `Issue*` constants of the rules package (backend/internal/rules: `IssueShieldIdle`, `IssueSkillCount`
-	// and the others), the same strings as `Issue.code`. An answer from before this field has no codes: a reader
-	// of `codes` that is shorter than `messages` takes the sentences as plain ones.
+	// The code of each line of `messages`, in the same order: one code per line. A reader who gets the line gets its code.
 	Codes         []string `protobuf:"bytes,8,rep,name=codes,proto3" json:"codes,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

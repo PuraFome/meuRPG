@@ -324,8 +324,8 @@ func (tb *idleTable) weaponSince(t *testing.T, key string) int32 {
 
 // A sheet that already had a two-handed table weapon and a shield, saved before the notice existed (no stored identity),
 // is told nothing when that weapon is edited for anything but "Duas mãos"; the edit that puts "Duas mãos" on another weapon
-// it has still tells that one.
-func TestASheetSavedBeforeTheNoticeIsToldOnlyTheEditThatTurnsTwoHandedOn(t *testing.T) {
+// it has tells nothing either while the first weapon keeps the shield idle: stowing the second alone moves no number.
+func TestASheetSavedBeforeTheNoticeIsToldNothingWhileAnotherTwoHandedWeaponKeepsTheShieldIdle(t *testing.T) {
 	t.Parallel()
 	tb := newIdleTable(t, twoHanded)
 	second := tb.master.addEntry(t, tb.campaign, testWeapon("Martelo de Ferreiro"))
@@ -356,8 +356,8 @@ func TestASheetSavedBeforeTheNoticeIsToldOnlyTheEditThatTurnsTwoHandedOn(t *test
 	}
 	for who, u := range map[string]*user{"the owner": tb.owner, "the master": tb.master} {
 		got := u.get(t, tb.campaign, tb.pc.GetId())
-		if msgs := bannerOf(got, second.GetKey()); len(msgs) != 1 || !strings.HasPrefix(msgs[0], "A arma Martelo de Ferreiro passou a exigir as duas mãos. Com ela em uso, o escudo de Pensantus não conta na CA (CA ") {
-			t.Errorf("%s reads %q for the second weapon, want the notice", who, msgs)
+		if msgs := bannerOf(got, second.GetKey()); msgs != nil {
+			t.Errorf("%s reads %q for the second weapon, want none: the first still keeps the shield idle", who, msgs)
 		}
 		if msgs := tb.banner(got); msgs != nil {
 			t.Errorf("%s reads %q for the first weapon, which was already two-handed, want none", who, msgs)
