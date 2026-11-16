@@ -58,6 +58,8 @@ func keepAttunement(content *rules.Content, stored, saved *charactersv1.FullShee
 	keepMagicItems(stored, saved)
 	// The ammunition held is the server's: only SetAmmunition and the shots change it.
 	saved.Ammunition = nil
+	// The infusions are the server's too: InfusionService writes them, and a read fills them.
+	saved.Infusions = nil
 }
 
 // keepMagicItems keeps the ids and the `attuned` of the entries a saved sheet shares with the stored one, and gives an

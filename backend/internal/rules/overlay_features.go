@@ -50,6 +50,12 @@ func (b *overlayBuilder) addFeature(f *TableFeature, k featureKind, path string)
 	if !f.Prerequisite.IsZero() {
 		return ovErr(f.Key, "only an option has a prerequisite").at(path+".prerequisite", ReasonValue)
 	}
+	if f.Infusion != nil {
+		return ovErr(f.Key, "only an option has an infusion").at(path+".infusion", ReasonValue)
+	}
+	if err := b.addInfusionRule(f, k, path); err != nil {
+		return err
+	}
 	b.know(f.Key, k)
 	effects, err := b.featureOptions(f, k, path)
 	if err != nil {
@@ -241,6 +247,9 @@ func checkOptionShape(o *TableFeature, at string) error {
 	if o.Summon != nil {
 		return ovErr(o.Key, "an option does not summon: the summon is its feature's").at(at+".summon", ReasonValue)
 	}
+	if o.InfusionRule != nil {
+		return ovErr(o.Key, "an option does not have an infusion rule: the rule is its feature's").at(at+".infusion_rule", ReasonValue)
+	}
 	return nil
 }
 
@@ -261,7 +270,9 @@ func (b *overlayBuilder) addOptions(f *TableFeature, k featureKind, path string)
 	// An option may ask for a sibling, so the prerequisites are judged once every option is known.
 	var c entryErrors
 	for i := range f.Options {
-		b.addOptionPrerequisite(&c, &f.Options[i], k, fmt.Sprintf("%s.options[%d]", path, i))
+		at := fmt.Sprintf("%s.options[%d]", path, i)
+		b.addOptionPrerequisite(&c, &f.Options[i], k, at)
+		b.addOptionInfusion(&c, f, &f.Options[i], at)
 	}
 	return keys, c.err()
 }

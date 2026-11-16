@@ -98,6 +98,7 @@ function fullyPopulatedFullSheet(): FullSheet {
       }),
     ],
     dailyPicks: [],
+    infusions: [],
     shortRested: false,
     cantripKeys: ['spell:fire-bolt', 'spell:ray-of-frost', 'spell:minor-illusion'],
     knownSpellKeys: [
@@ -283,6 +284,7 @@ describe('FullSheet round-trips load → save unchanged (integrator fix, phase 2
       magicItems: loaded.magicItems,
       ammunition: loaded.ammunition,
       dailyPicks: loaded.dailyPicks,
+      infusions: loaded.infusions,
       shortRested: loaded.shortRested,
       itemBonuses: loaded.itemBonuses,
       cantripKeys: loaded.cantripKeys,

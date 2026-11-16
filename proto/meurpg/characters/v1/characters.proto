@@ -1629,6 +1629,54 @@ message FullSheet {
   // A short rest was taken since the last long rest: a proficiency that lasts until a short rest is spent (TableEffect.duration).
   // Only a rest writes it.
   bool short_rested = 47;
+  // The infusions the character keeps live on pieces of gear or objects, and the ones put on its own gear by another
+  // character. Filled by the server on every read; a save ignores it and never touches the records. Only the
+  // character's player, the holder's player and the master read it.
+  repeated SheetInfusion infusions = 48;
+}
+
+// SheetInfusion is one infusion a character put on a piece of gear or on an object.
+message SheetInfusion {
+  // The record's id.
+  string id = 1;
+  // The table content key of the infusion (an option of the artificer-like class's feature).
+  string infusion_key = 2;
+  // The infusion's name in Portuguese.
+  string name_pt = 3;
+  // The character whose gear carries the infusion: the infuser itself or another character.
+  string holder_character_id = 4;
+  // What the infusion is on: a piece of the holder's sheet, or a named object.
+  InfusionItemKind item_kind = 5;
+  // For GEAR: the gear key of the holder's sheet. Empty for an object.
+  string item_key = 6;
+  // For OBJECT: the name the player gave the object.
+  string object_name_pt = 7;
+  // The piece's name in Portuguese: the gear's name, or the object's.
+  string item_name_pt = 8;
+  // The damage type key the holder picked, for a resistance infusion; empty otherwise.
+  string parameter = 9;
+  // When the infusion was put on.
+  google.protobuf.Timestamp since = 10;
+  // The holder is attuned to the piece.
+  bool attuned = 11;
+  // The infusion needs attunement to count.
+  bool requires_attunement = 12;
+  // True when the app gives the infusion's numbers; false means text only.
+  bool computed = 13;
+  // False when the sheet no longer knows the infusion (the content changed or the class was lost): it gives no numbers and
+  // takes no slot.
+  bool valid_now = 14;
+  // The bonus the infusion gives now, 0 when it gives none.
+  int32 bonus = 15;
+}
+
+// InfusionItemKind says what an infusion is on.
+enum InfusionItemKind {
+  INFUSION_ITEM_KIND_UNSPECIFIED = 0;
+  // A piece of the holder's gear: armor, a shield or a weapon the sheet lists.
+  INFUSION_ITEM_KIND_GEAR = 1;
+  // An object the player names (a focus, a tool): the sheet has no row for it.
+  INFUSION_ITEM_KIND_OBJECT = 2;
 }
 
 // DailyPick is the answer to one daily choice.

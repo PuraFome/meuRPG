@@ -481,3 +481,28 @@ func TestAnotherPlayerNeverReadsTheAmmunition(t *testing.T) {
 	}
 	et.requireHiddenFromOthers(t, pc, arrowKey)
 }
+
+// The infusions of a sheet are the server's, like the ammunition: a save that carries some changes nothing, and the
+// stored document never holds them.
+func TestSaveIgnoresTheInfusionsOfASheet(t *testing.T) {
+	t.Parallel()
+	et, pc := attuneTable(t)
+	req := editorSaveOf(et.read(t, et.master, pc.GetId()))
+	req.Sheet = editorClone(req.GetSheet(), func(f *charactersv1.FullSheet) {
+		f.Infusions = []*charactersv1.SheetInfusion{{Id: "inf-1", InfusionKey: "feature:forjada@mesa", NamePt: "Fio forjado", HolderCharacterId: pc.GetId(), ItemKey: "weapon:longsword", Bonus: 2}}
+	})
+	saved, err := editorUpdate(et.master, req)
+	if err != nil {
+		t.Fatalf("save: %v", err)
+	}
+	if got := saved.GetSheet().GetFull().GetInfusions(); len(got) != 0 {
+		t.Errorf("after the save: %+v", got)
+	}
+	var doc string
+	if err := et.h.pool.QueryRow(t.Context(), "SELECT sheet::text FROM characters WHERE id = $1", pc.GetId()).Scan(&doc); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(doc, "infusions") || strings.Contains(doc, "Fio forjado") {
+		t.Errorf("the document holds infusions: %s", doc)
+	}
+}

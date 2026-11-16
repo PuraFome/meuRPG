@@ -1,0 +1,329 @@
+{
+  "format": "meurpg.table-content",
+  "version": 1,
+  "name": "Engenhista de Ligas (teste)",
+  "entries": [
+    {
+      "key": "class:engenhista-de-ligas@mesa",
+      "kind": "TABLE_CONTENT_KIND_CLASS",
+      "namePt": "Engenhista de Ligas",
+      "tableClass": {
+        "namePt": "Engenhista de Ligas",
+        "hitDie": 8,
+        "savingThrows": [
+          "ABILITY_CONSTITUTION",
+          "ABILITY_WISDOM"
+        ],
+        "skillChoose": 2,
+        "skillFrom": [
+          "skill:arcana",
+          "skill:history",
+          "skill:medicine",
+          "skill:nature",
+          "skill:survival"
+        ],
+        "proficiencies": [
+          "proficiency:light-armor",
+          "proficiency:simple-weapons"
+        ],
+        "minimums": {
+          "constitution": 11
+        },
+        "subclassLevel": 3,
+        "levels": [
+          {
+            "features": [
+              {
+                "key": "feature:class-engenhista-de-li-6d59b9--vigor@mesa",
+                "namePt": "Vigor",
+                "descPt": [
+                  "Mais iniciativa."
+                ],
+                "effects": [
+                  {
+                    "type": "modifier",
+                    "target": "initiative",
+                    "mode": "add",
+                    "value": "1"
+                  }
+                ]
+              },
+              {
+                "key": "feature:class-engenhista-de-li-6d59b9--treino@mesa",
+                "namePt": "Treino",
+                "effects": [
+                  {
+                    "type": "proficiency",
+                    "proficiency": "skill:survival"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "features": [
+              {
+                "key": "feature:class-engenhista-de-li-6d59b9--infundir-pecas@mesa",
+                "namePt": "Infundir Peças",
+                "descPt": [
+                  "Você conhece infusões e as coloca em peças do seu equipamento ou do de um aliado.",
+                  "O limite de infusões vivas cresce com o nível."
+                ],
+                "effects": [
+                  {
+                    "type": "choice",
+                    "choice": "feature",
+                    "count": 3
+                  }
+                ],
+                "options": [
+                  {
+                    "key": "feature:class-engenhista-de-li-6d59b9--fio-agucado@mesa",
+                    "namePt": "Fio Aguçado",
+                    "descPt": [
+                      "A peça de corte ganha um fio que não perde. O bônus de ataque e de dano cresce com o nível."
+                    ],
+                    "infusion": {
+                      "accepts": "INFUSION_ACCEPTS_WEAPON",
+                      "effect": "INFUSION_EFFECT_ITEM_BONUS",
+                      "bonusSteps": [
+                        {
+                          "classLevel": 2,
+                          "bonus": 1
+                        },
+                        {
+                          "classLevel": 10,
+                          "bonus": 2
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "key": "feature:class-engenhista-de-li-6d59b9--casca-reforcada@mesa",
+                    "namePt": "Casca Reforçada",
+                    "descPt": [
+                      "A armadura ou o escudo ganha uma camada de liga fina. O bônus na Classe de Armadura cresce com o nível."
+                    ],
+                    "infusion": {
+                      "accepts": "INFUSION_ACCEPTS_ARMOR_OR_SHIELD",
+                      "effect": "INFUSION_EFFECT_ITEM_BONUS",
+                      "bonusSteps": [
+                        {
+                          "classLevel": 2,
+                          "bonus": 1
+                        },
+                        {
+                          "classLevel": 10,
+                          "bonus": 2
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "key": "feature:class-engenhista-de-li-6d59b9--foco-afinado@mesa",
+                    "namePt": "Foco Afinado",
+                    "descPt": [
+                      "O objeto usado para conjurar vibra em sintonia com quem o carrega. Soma um bônus aos ataques e às Classes de Dificuldade das magias."
+                    ],
+                    "infusion": {
+                      "accepts": "INFUSION_ACCEPTS_SPELLCASTING_FOCUS",
+                      "requiresAttunement": true,
+                      "effect": "INFUSION_EFFECT_SPELL_FOCUS_BONUS",
+                      "bonusSteps": [
+                        {
+                          "classLevel": 2,
+                          "bonus": 1
+                        },
+                        {
+                          "classLevel": 10,
+                          "bonus": 2
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "key": "feature:class-engenhista-de-li-6d59b9--aljava-sem-fundo@mesa",
+                    "namePt": "Aljava Sem Fundo",
+                    "descPt": [
+                      "A arma de disparo cria sozinha as próprias munições, uma por disparo."
+                    ],
+                    "infusion": {
+                      "accepts": "INFUSION_ACCEPTS_AMMUNITION_WEAPON",
+                      "effect": "INFUSION_EFFECT_REPEATING_AMMUNITION"
+                    }
+                  },
+                  {
+                    "key": "feature:class-engenhista-de-li-6d59b9--lanca-fiel@mesa",
+                    "namePt": "Lança Fiel",
+                    "descPt": [
+                      "A arma de arremesso volta à mão de quem a lançou logo depois do ataque."
+                    ],
+                    "infusion": {
+                      "accepts": "INFUSION_ACCEPTS_THROWN_WEAPON",
+                      "effect": "INFUSION_EFFECT_RETURNING"
+                    }
+                  },
+                  {
+                    "key": "feature:class-engenhista-de-li-6d59b9--pele-de-brasa@mesa",
+                    "namePt": "Pele de Brasa",
+                    "descPt": [
+                      "Quem veste a armadura escolhe um tipo de dano ao infundir e resiste a ele enquanto estiver sintonizado."
+                    ],
+                    "infusion": {
+                      "accepts": "INFUSION_ACCEPTS_ARMOR",
+                      "requiresAttunement": true,
+                      "effect": "INFUSION_EFFECT_RESISTANCE_LABEL",
+                      "damageTypes": [
+                        "damage-type:fire",
+                        "damage-type:cold",
+                        "damage-type:lightning",
+                        "damage-type:acid"
+                      ]
+                    }
+                  },
+                  {
+                    "key": "feature:class-engenhista-de-li-6d59b9--marca-muda@mesa",
+                    "namePt": "Marca Muda",
+                    "descPt": [
+                      "Um objeto qualquer guarda um sinal que só o infusor sente. A mesa decide o que isso muda."
+                    ],
+                    "infusion": {
+                      "accepts": "INFUSION_ACCEPTS_ANY_OBJECT",
+                      "effect": "INFUSION_EFFECT_NONE"
+                    }
+                  },
+                  {
+                    "key": "feature:class-engenhista-de-li-6d59b9--bolso-fundo@mesa",
+                    "namePt": "Bolso Fundo",
+                    "descPt": [
+                      "Um escudo ganha um compartimento que cabe mais do que parece. A mesa decide o que cabe."
+                    ],
+                    "infusion": {
+                      "accepts": "INFUSION_ACCEPTS_SHIELD",
+                      "effect": "INFUSION_EFFECT_NONE"
+                    }
+                  }
+                ],
+                "infusionRule": {
+                  "limitSteps": [
+                    {
+                      "classLevel": 2,
+                      "active": 2
+                    },
+                    {
+                      "classLevel": 6,
+                      "active": 3
+                    },
+                    {
+                      "classLevel": 10,
+                      "active": 4
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {},
+          {},
+          {},
+          {
+            "features": [
+              {
+                "key": "feature:class-engenhista-de-li-6d59b9--mais-infusoes-i@mesa",
+                "namePt": "Mais Infusões I",
+                "descPt": [
+                  "Você aprende mais infusões da lista de Infundir Peças."
+                ],
+                "effects": [
+                  {
+                    "type": "choice",
+                    "choice": "feature",
+                    "count": 2,
+                    "from": [
+                      "feature:class-engenhista-de-li-6d59b9--fio-agucado@mesa",
+                      "feature:class-engenhista-de-li-6d59b9--casca-reforcada@mesa",
+                      "feature:class-engenhista-de-li-6d59b9--foco-afinado@mesa",
+                      "feature:class-engenhista-de-li-6d59b9--aljava-sem-fundo@mesa",
+                      "feature:class-engenhista-de-li-6d59b9--lanca-fiel@mesa",
+                      "feature:class-engenhista-de-li-6d59b9--pele-de-brasa@mesa",
+                      "feature:class-engenhista-de-li-6d59b9--marca-muda@mesa",
+                      "feature:class-engenhista-de-li-6d59b9--bolso-fundo@mesa"
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {},
+          {},
+          {},
+          {
+            "features": [
+              {
+                "key": "feature:class-engenhista-de-li-6d59b9--mais-infusoes-ii@mesa",
+                "namePt": "Mais Infusões II",
+                "descPt": [
+                  "Você aprende mais infusões da lista de Infundir Peças."
+                ],
+                "effects": [
+                  {
+                    "type": "choice",
+                    "choice": "feature",
+                    "count": 2,
+                    "from": [
+                      "feature:class-engenhista-de-li-6d59b9--fio-agucado@mesa",
+                      "feature:class-engenhista-de-li-6d59b9--casca-reforcada@mesa",
+                      "feature:class-engenhista-de-li-6d59b9--foco-afinado@mesa",
+                      "feature:class-engenhista-de-li-6d59b9--aljava-sem-fundo@mesa",
+                      "feature:class-engenhista-de-li-6d59b9--lanca-fiel@mesa",
+                      "feature:class-engenhista-de-li-6d59b9--pele-de-brasa@mesa",
+                      "feature:class-engenhista-de-li-6d59b9--marca-muda@mesa",
+                      "feature:class-engenhista-de-li-6d59b9--bolso-fundo@mesa"
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {},
+          {},
+          {},
+          {
+            "features": [
+              {
+                "key": "feature:class-engenhista-de-li-6d59b9--mais-infusoes-iii@mesa",
+                "namePt": "Mais Infusões III",
+                "descPt": [
+                  "Você aprende mais infusões da lista de Infundir Peças."
+                ],
+                "effects": [
+                  {
+                    "type": "choice",
+                    "choice": "feature",
+                    "count": 1,
+                    "from": [
+                      "feature:class-engenhista-de-li-6d59b9--fio-agucado@mesa",
+                      "feature:class-engenhista-de-li-6d59b9--casca-reforcada@mesa",
+                      "feature:class-engenhista-de-li-6d59b9--foco-afinado@mesa",
+                      "feature:class-engenhista-de-li-6d59b9--aljava-sem-fundo@mesa",
+                      "feature:class-engenhista-de-li-6d59b9--lanca-fiel@mesa",
+                      "feature:class-engenhista-de-li-6d59b9--pele-de-brasa@mesa",
+                      "feature:class-engenhista-de-li-6d59b9--marca-muda@mesa",
+                      "feature:class-engenhista-de-li-6d59b9--bolso-fundo@mesa"
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {},
+          {},
+          {},
+          {},
+          {},
+          {}
+        ]
+      }
+    }
+  ]
+}
