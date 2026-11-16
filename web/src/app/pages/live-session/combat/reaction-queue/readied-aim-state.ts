@@ -41,7 +41,7 @@ export class ReadiedAimState {
     return this.picks()[row.window.id] ?? NO_PICK;
   }
 
-  planOf(row: QueueRow): ReleasePlan | null {
+  planOf(row: Pick<QueueRow, 'window'>): ReleasePlan | null {
     return this.plans()[row.window.id] ?? null;
   }
 

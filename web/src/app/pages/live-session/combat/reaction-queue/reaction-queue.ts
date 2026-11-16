@@ -317,7 +317,10 @@ export class ReactionQueue {
       this.said.set(sayAnswer(w, answer, res.result?.result));
       this.play(() => showOfReaction(res.result));
     } catch (err) {
-      this.error.set(readiedRefusalText(err, this.aim.held({ window: w }), 'responder a reação'));
+      const row = { window: w };
+      this.error.set(
+        readiedRefusalText(err, this.aim.held(row), 'responder a reação', this.aim.planOf(row)),
+      );
     } finally {
       this.busy.set(false);
     }

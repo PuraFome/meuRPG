@@ -357,7 +357,7 @@ export class ReadiedWindowSheet {
       }
       this.sheet.close();
     } catch (err) {
-      this.error.set(readiedRefusalText(err, this.data.readied, 'responder à reação'));
+      this.error.set(readiedRefusalText(err, this.data.readied, 'responder à reação', this.plan()));
       this.busy.set(false);
     }
   }
