@@ -2,9 +2,26 @@ import { ChangeDetectionStrategy, Component, computed, input, output } from '@an
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
+import { ACTION_SPENT_WHY, type CombatItemRowVm } from '../../../../core/characters/consumables';
+import { cannotActWhy } from '../../../../core/combat/conditions';
 import { EconomyMark } from '../../../../shared/economy-shapes/economy-shapes';
 
 let nextId = 0;
+
+/**
+ * Why an item row cannot be used: the page is locked, or the item costs the Action and the character cannot act or has spent it.
+ * An item that costs none (an oil, a scroll) stays open. The row is disabled with its reason and opens no sheet.
+ */
+export function itemWhyOf(
+  row: CombatItemRowVm,
+  own: { readonly conditions?: readonly string[]; readonly actionUsed: boolean },
+  locked: string,
+): string {
+  if (locked || row.economy !== 'action') {
+    return locked;
+  }
+  return cannotActWhy(own) || (own.actionUsed ? ACTION_SPENT_WHY : '');
+}
 
 /** The icon of the "Usar" button: the flask of drinking and applying, whatever the item's own icon is. */
 const USE_ICON = 'science';

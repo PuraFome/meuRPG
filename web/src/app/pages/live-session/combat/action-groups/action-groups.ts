@@ -22,11 +22,7 @@ import {
   type TurnOptions,
 } from '../../../../../gen/meurpg/rules/v1/rules_pb';
 import type { AttunementEntryVm } from '../../../../core/characters/attunement';
-import {
-  ACTION_SPENT_WHY,
-  type CombatItemRowVm,
-  type ConsumableNotice,
-} from '../../../../core/characters/consumables';
+import type { CombatItemRowVm, ConsumableNotice } from '../../../../core/characters/consumables';
 import { AMMUNITION } from '../../../../core/combat/ammunition-line';
 import {
   throwNote,
@@ -57,7 +53,7 @@ import {
   partByEconomy,
   partItems,
 } from '../../../../core/combat/action-tabs';
-import { cannotAct, cannotActWhy } from '../../../../core/combat/conditions';
+import { cannotAct } from '../../../../core/combat/conditions';
 import { spellSummary } from '../../../../core/combat/spell-summary';
 import {
   ESCAPE_DETAIL,
@@ -85,7 +81,7 @@ import { TabList, tabId, tabPanelId } from '../../../../shared/tab-list/tab-list
 import type { PactSlotsVm, SlotUsageVm } from '../../../../core/play/resource-usage.types';
 import { SlotDots } from '../../../../shared/slot-dots/slot-dots';
 import { ActionRow, type RowEconomy } from './action-row';
-import { ItemRow } from './item-row';
+import { ItemRow, itemWhyOf } from './item-row';
 import { featureIsOff, featureLine, featureWhy } from '../../../../core/combat/action-spend';
 import { resourceOf, useLine } from '../../../../core/combat/feature-use';
 import type { ResourceUsageVm } from '../../../../core/play/resource-usage.types';
@@ -313,19 +309,8 @@ export class ActionGroups {
   protected readonly itemParts = computed(() =>
     partItems(this.items(), this.own(), this.spent(), this.spentWord()),
   );
-  /**
-   * Why an item row cannot be used: the page is locked, or the item costs the Action and the character cannot act (stunned,
-   * paralyzed...) or has spent it. An item that costs none (an oil, a scroll) stays open. The row is disabled with its reason
-   * and opens no sheet.
-   */
   protected itemWhy(row: CombatItemRowVm): string {
-    if (this.locked()) {
-      return this.locked();
-    }
-    if (row.economy !== 'action') {
-      return '';
-    }
-    return cannotActWhy(this.own()) || (this.own().actionUsed ? ACTION_SPENT_WHY : '');
+    return itemWhyOf(row, this.own(), this.locked());
   }
 
   /** The effects waiting for the caster's next weapon hit (#577), the card at the top of "Ataques". */
