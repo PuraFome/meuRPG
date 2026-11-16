@@ -15877,13 +15877,13 @@ async function scanOptionRows(browser: Browser, colorScheme: 'light' | 'dark', w
     await expect(rows.nth(0)).toContainText('Soma o dado de manobra ao dano · não pede nada');
     await expect(rows.nth(1)).toContainText('Soma o dado ao ataque · pede Guerreiro 7 e Golpe do Corvo');
     await expect(rows.nth(2)).toContainText('pede Guerreiro 10');
-    await expect(m.getByRole('button', { name: 'Subir Golpe do Corvo' })).toBeDisabled();
-    await expect(m.getByRole('button', { name: 'Descer Grito do Bando' })).toBeDisabled();
-    await expect(m.getByRole('button', { name: 'Subir Asa Partida' })).toBeEnabled();
-    await expect(m.getByRole('button', { name: 'Descer Asa Partida' })).toBeEnabled();
+    await expect(m.getByRole('button', { name: 'Subir a opção Golpe do Corvo' })).toBeDisabled();
+    await expect(m.getByRole('button', { name: 'Descer a opção Grito do Bando' })).toBeDisabled();
+    await expect(m.getByRole('button', { name: 'Subir a opção Asa Partida' })).toBeEnabled();
+    await expect(m.getByRole('button', { name: 'Descer a opção Asa Partida' })).toBeEnabled();
     const closed = await m.evaluate(() => {
       const heads = [...document.querySelectorAll('section.options > [role="group"] .opt__head')].map((h) => h.getBoundingClientRect());
-      const arrow = document.querySelector('button[aria-label="Subir Asa Partida"]')!.getBoundingClientRect();
+      const arrow = document.querySelector('button[aria-label="Subir a opção Asa Partida"]')!.getBoundingClientRect();
       const box = document.querySelector('app-class-features .item--open')!;
       const style = getComputedStyle(box);
       return { heights: heads.map((h) => h.height), gaps: heads.slice(1).map((h, i) => h.top - heads[i].bottom), arrow: [arrow.width, arrow.height], frame: style.borderTopColor, frameWidth: style.borderTopWidth, bg: style.backgroundColor, head: getComputedStyle(document.querySelector('.opt__head')!).backgroundColor };
@@ -15891,7 +15891,8 @@ async function scanOptionRows(browser: Browser, colorScheme: 'light' | 'dark', w
     for (const h of closed.heights) expect(h, `cada linha fechada tem de 56 a 60 px ${where}`).toBeGreaterThanOrEqual(56);
     for (const h of closed.heights) expect(h).toBeLessThanOrEqual(60);
     for (const g of closed.gaps) expect(g, `12 px entre as linhas ${where}`).toBeCloseTo(12, 0);
-    expect(closed.arrow, `as setas têm 44 px ${where}`).toEqual([44, 44]);
+    expect(closed.arrow[0], `as setas são os botões de ícone do sistema, de 40 px no mínimo ${where}`).toBeGreaterThanOrEqual(40);
+    expect(closed.arrow[1]).toBeGreaterThanOrEqual(40);
     expect(closed.frame, `a característica aberta tem a moldura cinza, não a de destaque ${where}`).toBe(line);
     expect(closed.frame).not.toBe(accent);
     expect(closed.frameWidth).toBe('1px');
@@ -15932,6 +15933,13 @@ async function scanOptionRows(browser: Browser, colorScheme: 'light' | 'dark', w
     await expect(row3).not.toContainText('depois de salvar a característica');
     await row3.locator('app-pick-list select').selectOption({ label: 'Golpe do Corvo · Opção 1' });
     await expect(row3.locator('app-pick-list .chip', { hasText: 'Golpe do Corvo' }).locator('.mr-tag')).toHaveText('Opção 1');
+    const chipGap = await row3.locator('app-pick-list .chip', { hasText: 'Golpe do Corvo' }).evaluate((chip) => {
+      const tag = chip.querySelector('.mr-tag')!;
+      const name = document.createRange();
+      name.selectNodeContents([...chip.childNodes].find((n) => n.nodeType === 3 && n.textContent!.includes('Golpe do Corvo'))!);
+      return tag.getBoundingClientRect().left - name.getBoundingClientRect().right;
+    });
+    expect(chipGap, `a etiqueta "Opção 1" não encosta no nome, 8 px de intervalo ${where}`).toBeGreaterThanOrEqual(7.5);
     await m.getByRole('button', { name: 'Adicionar uma opção' }).click();
     await expect(rows).toHaveCount(6);
     await expect(toggle(6), 'a opção nova abre').toHaveAttribute('aria-expanded', 'true');
@@ -15952,15 +15960,15 @@ async function scanOptionRows(browser: Browser, colorScheme: 'light' | 'dark', w
     expect(asks.color, `a linha "Pede" é apagada ${where}`).not.toBe(asks.text);
 
     // The arrows move an option with its key, and the focus stays on the arrow.
-    await m.getByRole('button', { name: 'Descer Golpe do Corvo' }).click();
+    await m.getByRole('button', { name: 'Descer a opção Golpe do Corvo' }).click();
     await expect(rows.nth(0)).toContainText('Opção 1 · Asa Partida');
-    await expect(m.getByRole('button', { name: 'Descer Golpe do Corvo' }), `o foco fica na seta ${where}`).toBeFocused();
-    await m.getByRole('button', { name: 'Subir Golpe do Corvo' }).click();
+    await expect(m.getByRole('button', { name: 'Descer a opção Golpe do Corvo' }), `o foco fica na seta ${where}`).toBeFocused();
+    await m.getByRole('button', { name: 'Subir a opção Golpe do Corvo' }).click();
     await expect(rows.nth(0)).toContainText('Opção 1 · Golpe do Corvo');
 
     // The server's refusal (two options waiting for each other) lands at the field of the pick, in an open row marked in its summary.
     await toggle(6).click();
-    await m.getByRole('button', { name: 'Mais ações de Opção 6' }).click();
+    await m.getByRole('button', { name: 'Mais ações da opção 6' }).click();
     await m.getByRole('menuitem', { name: 'Remover opção' }).click();
     await expect(rows).toHaveCount(5);
     await toggle(1).click();
@@ -15968,11 +15976,47 @@ async function scanOptionRows(browser: Browser, colorScheme: 'light' | 'dark', w
     await m.getByRole('menuitem', { name: /Outras opções/ }).click();
     await rows.nth(0).locator('app-pick-list select').selectOption({ label: 'Asa Partida · Opção 2' });
     await m.getByRole('button', { name: 'Salvar subclasse' }).click();
-    const refused = m.locator('[data-field$=".prerequisite.requires_option_keys"]').locator('xpath=following-sibling::*[1]');
-    await expect(rows.locator('.opt__bad').first(), `a linha com a recusa é marcada ${where}`).toBeVisible();
-    const marked = rows.filter({ has: m.locator('.opt__bad') }).first();
-    await expect(marked.locator('app-ask-rows app-pick-list ~ app-field-note, app-ask-rows app-field-note').first(), `a recusa fica no campo de "Outras opções" ${where}`).toContainText('Este valor não é aceito.');
-    expect(await refused.count()).toBeGreaterThan(0);
+    // The two options that wait for each other are marked, and no other: option 1 (asked Asa Partida) and option 2 (asks Golpe do Corvo).
+    const waiting = 'Esta opção e a que ela pede esperam uma pela outra: nenhuma das duas poderia ser escolhida. Tire um dos pedidos.';
+    await expect(rows.locator('.opt__bad'), `só as duas opções que esperam uma pela outra são marcadas ${where}`).toHaveCount(2);
+    await expect(rows.nth(0).locator('.opt__bad'), `a opção 1 é marcada ${where}`).toBeVisible();
+    await expect(rows.nth(1).locator('.opt__bad'), `a opção 2 é marcada ${where}`).toBeVisible();
+    for (const n of [3, 4, 5]) {
+      await expect(rows.nth(n - 1).locator('.opt__bad'), `a opção ${n} não é marcada ${where}`).toHaveCount(0);
+    }
+    // Layout of a refused row: the arrows and the "⋮" keep the width of the rows below, and the dot ends the line of the summary
+    // (never starts one, never touches the name) with the tag after it.
+    const refusedLayout = await m.evaluate(() => {
+      const rowsEl = [...document.querySelectorAll('section.options > [role="group"]')];
+      const widths = rowsEl.map((r) => [...r.querySelectorAll('.opt__head > button.act')].map((b) => Math.round(b.getBoundingClientRect().width)));
+      const sub = rowsEl[0].querySelector('.opt__sub')!;
+      const dot = sub.querySelector('.opt__dot')!;
+      const tag = sub.querySelector('.opt__bad')!;
+      const before = document.createRange();
+      before.setStart(sub, 0);
+      before.setEndBefore(dot);
+      const lines = [...before.getClientRects()];
+      const last = lines[lines.length - 1];
+      const d = dot.getBoundingClientRect();
+      return { widths, dotInTag: tag.contains(dot), sameLine: Math.abs(d.top - last.top) < 4, dotAfterText: d.left >= last.right - 0.5, tagAfterDot: tag.getBoundingClientRect().left > d.right - 0.5 || tag.getBoundingClientRect().top > d.top };
+    });
+    for (const w of refusedLayout.widths) expect(w, `as setas e o "⋮" têm o mesmo tamanho em todas as linhas ${where}`).toEqual(refusedLayout.widths[2]);
+    expect(refusedLayout.dotInTag, `o ponto fica fora da marca ${where}`).toBe(false);
+    expect(refusedLayout.sameLine, `o ponto fecha a linha do resumo, não começa uma ${where}`).toBe(true);
+    expect(refusedLayout.dotAfterText && refusedLayout.tagAfterDot, `o ponto vem depois do resumo e antes da marca ${where}`).toBe(true);
+    // The first row opens and says why at the field of the pick, in words; the generic sentence is gone.
+    await expect(toggle(1)).toHaveAttribute('aria-expanded', 'true');
+    const note = rows.nth(0).locator('app-ask-rows app-field-note').filter({ hasText: waiting });
+    await expect(note, `a recusa diz por quê, no campo de "Outras opções" ${where}`).toHaveCount(1);
+    await expect(rows.nth(0)).not.toContainText('Este valor não é aceito.');
+    // The arrows keep a refusal on the option it was about: Asa Partida (marked) goes down past the third option (not marked), the mark goes with it.
+    await expect(rows.nth(1)).toContainText('Opção 2 · Asa Partida');
+    await m.getByRole('button', { name: 'Descer a opção Asa Partida' }).click();
+    await expect(rows.nth(2), `a marca anda com a opção ${where}`).toContainText('Opção 3 · Asa Partida');
+    await expect(rows.nth(2).locator('.opt__bad')).toBeVisible();
+    await expect(rows.nth(1), `a opção que subiu não herda a marca ${where}`).not.toContainText('Precisa de ajuste');
+    await expect(rows.nth(0).locator('.opt__bad')).toBeVisible();
+    await expect(rows.locator('.opt__bad')).toHaveCount(2);
     await m.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
     await expectScreenPasses(m, `Editor de subclasse, a recusa no campo de "Outras opções" ${where}`);
   } finally {
