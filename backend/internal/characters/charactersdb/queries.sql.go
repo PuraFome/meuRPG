@@ -254,6 +254,18 @@ func (q *Queries) CountLiveCreaturesOfCharacter(ctx context.Context, arg CountLi
 	return column_1, err
 }
 
+const countLiveInfusionsOfArtificer = `-- name: CountLiveInfusionsOfArtificer :one
+SELECT count(*) FROM character_infusions
+WHERE artificer_character_id = $1::UUID AND ended_at IS NULL
+`
+
+func (q *Queries) CountLiveInfusionsOfArtificer(ctx context.Context, artificerCharacterID string) (int64, error) {
+	row := q.db.QueryRow(ctx, countLiveInfusionsOfArtificer, artificerCharacterID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const deleteAbilityRolls = `-- name: DeleteAbilityRolls :exec
 DELETE FROM character_ability_rolls
 WHERE campaign_id = $1::UUID AND user_id = $2::UUID
@@ -481,6 +493,27 @@ type EndBondParams struct {
 // A release ends the bond of a steed: the row stays as the history of the dismissal, and the character may bond another.
 func (q *Queries) EndBond(ctx context.Context, arg EndBondParams) (int64, error) {
 	result, err := q.db.Exec(ctx, endBond, arg.CampaignID, arg.ID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const endCharacterInfusion = `-- name: EndCharacterInfusion :execrows
+UPDATE character_infusions
+SET ended_at = $1, ended_reason = $2
+WHERE id = $3::UUID AND ended_at IS NULL
+`
+
+type EndCharacterInfusionParams struct {
+	At     *time.Time
+	Reason *string
+	ID     string
+}
+
+// Ends a record that is live; the count says whether it was.
+func (q *Queries) EndCharacterInfusion(ctx context.Context, arg EndCharacterInfusionParams) (int64, error) {
+	result, err := q.db.Exec(ctx, endCharacterInfusion, arg.At, arg.Reason, arg.ID)
 	if err != nil {
 		return 0, err
 	}
@@ -1028,6 +1061,41 @@ func (q *Queries) GetCharacterForUpdate(ctx context.Context, arg GetCharacterFor
 		&i.ReviveKey,
 		&i.ReviveHash,
 		&i.ActiveStates,
+	)
+	return i, err
+}
+
+const getCharacterInfusionForUpdate = `-- name: GetCharacterInfusionForUpdate :one
+SELECT id, campaign_id, artificer_character_id, holder_character_id, infusion_key, item_kind, item_key, object_name, parameter, attuned, since, ended_at, ended_reason, materialises_id, created_at FROM character_infusions
+WHERE campaign_id = $1::UUID AND id = $2::UUID
+FOR UPDATE
+`
+
+type GetCharacterInfusionForUpdateParams struct {
+	CampaignID string
+	ID         string
+}
+
+// A record of the campaign, live or ended, locking its row until the transaction ends.
+func (q *Queries) GetCharacterInfusionForUpdate(ctx context.Context, arg GetCharacterInfusionForUpdateParams) (CharacterInfusion, error) {
+	row := q.db.QueryRow(ctx, getCharacterInfusionForUpdate, arg.CampaignID, arg.ID)
+	var i CharacterInfusion
+	err := row.Scan(
+		&i.ID,
+		&i.CampaignID,
+		&i.ArtificerCharacterID,
+		&i.HolderCharacterID,
+		&i.InfusionKey,
+		&i.ItemKind,
+		&i.ItemKey,
+		&i.ObjectName,
+		&i.Parameter,
+		&i.Attuned,
+		&i.Since,
+		&i.EndedAt,
+		&i.EndedReason,
+		&i.MaterialisesID,
+		&i.CreatedAt,
 	)
 	return i, err
 }
@@ -1622,6 +1690,68 @@ func (q *Queries) InsertCharacterCreature(ctx context.Context, arg InsertCharact
 		&i.SummonKey,
 		&i.CreatureType,
 		&i.Bonded,
+	)
+	return i, err
+}
+
+const insertCharacterInfusion = `-- name: InsertCharacterInfusion :one
+
+INSERT INTO character_infusions
+    (campaign_id, artificer_character_id, holder_character_id, infusion_key, item_kind, item_key, object_name, parameter, attuned, since, created_at)
+VALUES (
+    $1::UUID, $2::UUID, $3::UUID, $4,
+    $5, $6, $7::TEXT, $8::TEXT, $9::BOOLEAN,
+    $10, $11
+)
+RETURNING id, campaign_id, artificer_character_id, holder_character_id, infusion_key, item_kind, item_key, object_name, parameter, attuned, since, ended_at, ended_reason, materialises_id, created_at
+`
+
+type InsertCharacterInfusionParams struct {
+	CampaignID           string
+	ArtificerCharacterID string
+	HolderCharacterID    string
+	InfusionKey          string
+	ItemKind             string
+	ItemKey              string
+	ObjectName           string
+	Parameter            string
+	Attuned              bool
+	Since                time.Time
+	CreatedAt            time.Time
+}
+
+// An Artificer's infusions. A record is "live" until it ends; an ended one is kept (ended_at, ended_reason).
+func (q *Queries) InsertCharacterInfusion(ctx context.Context, arg InsertCharacterInfusionParams) (CharacterInfusion, error) {
+	row := q.db.QueryRow(ctx, insertCharacterInfusion,
+		arg.CampaignID,
+		arg.ArtificerCharacterID,
+		arg.HolderCharacterID,
+		arg.InfusionKey,
+		arg.ItemKind,
+		arg.ItemKey,
+		arg.ObjectName,
+		arg.Parameter,
+		arg.Attuned,
+		arg.Since,
+		arg.CreatedAt,
+	)
+	var i CharacterInfusion
+	err := row.Scan(
+		&i.ID,
+		&i.CampaignID,
+		&i.ArtificerCharacterID,
+		&i.HolderCharacterID,
+		&i.InfusionKey,
+		&i.ItemKind,
+		&i.ItemKey,
+		&i.ObjectName,
+		&i.Parameter,
+		&i.Attuned,
+		&i.Since,
+		&i.EndedAt,
+		&i.EndedReason,
+		&i.MaterialisesID,
+		&i.CreatedAt,
 	)
 	return i, err
 }
@@ -3023,6 +3153,92 @@ func (q *Queries) ListLiveFamiliars(ctx context.Context, arg ListLiveFamiliarsPa
 	return items, nil
 }
 
+const listLiveInfusionsOfArtificer = `-- name: ListLiveInfusionsOfArtificer :many
+SELECT id, campaign_id, artificer_character_id, holder_character_id, infusion_key, item_kind, item_key, object_name, parameter, attuned, since, ended_at, ended_reason, materialises_id, created_at FROM character_infusions
+WHERE artificer_character_id = $1::UUID AND ended_at IS NULL
+ORDER BY since, id
+`
+
+// The live records of an artificer, the oldest first.
+func (q *Queries) ListLiveInfusionsOfArtificer(ctx context.Context, artificerCharacterID string) ([]CharacterInfusion, error) {
+	rows, err := q.db.Query(ctx, listLiveInfusionsOfArtificer, artificerCharacterID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CharacterInfusion
+	for rows.Next() {
+		var i CharacterInfusion
+		if err := rows.Scan(
+			&i.ID,
+			&i.CampaignID,
+			&i.ArtificerCharacterID,
+			&i.HolderCharacterID,
+			&i.InfusionKey,
+			&i.ItemKind,
+			&i.ItemKey,
+			&i.ObjectName,
+			&i.Parameter,
+			&i.Attuned,
+			&i.Since,
+			&i.EndedAt,
+			&i.EndedReason,
+			&i.MaterialisesID,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listLiveInfusionsOfHolder = `-- name: ListLiveInfusionsOfHolder :many
+SELECT id, campaign_id, artificer_character_id, holder_character_id, infusion_key, item_kind, item_key, object_name, parameter, attuned, since, ended_at, ended_reason, materialises_id, created_at FROM character_infusions
+WHERE holder_character_id = $1::UUID AND ended_at IS NULL
+ORDER BY since, id
+`
+
+// The live records on the items of a holder's sheet.
+func (q *Queries) ListLiveInfusionsOfHolder(ctx context.Context, holderCharacterID string) ([]CharacterInfusion, error) {
+	rows, err := q.db.Query(ctx, listLiveInfusionsOfHolder, holderCharacterID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CharacterInfusion
+	for rows.Next() {
+		var i CharacterInfusion
+		if err := rows.Scan(
+			&i.ID,
+			&i.CampaignID,
+			&i.ArtificerCharacterID,
+			&i.HolderCharacterID,
+			&i.InfusionKey,
+			&i.ItemKind,
+			&i.ItemKey,
+			&i.ObjectName,
+			&i.Parameter,
+			&i.Attuned,
+			&i.Since,
+			&i.EndedAt,
+			&i.EndedReason,
+			&i.MaterialisesID,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listMapCharacters = `-- name: ListMapCharacters :many
 SELECT id, kind, name, player_user_id FROM characters
 WHERE campaign_id = $1::UUID
@@ -3530,6 +3746,35 @@ func (q *Queries) MarkCharacterReviewResubmitted(ctx context.Context, arg MarkCh
 	return i, err
 }
 
+const moveCharacterInfusion = `-- name: MoveCharacterInfusion :execrows
+UPDATE character_infusions
+SET item_kind = $1, item_key = $2, object_name = $3::TEXT, since = $4
+WHERE id = $5::UUID AND ended_at IS NULL
+`
+
+type MoveCharacterInfusionParams struct {
+	ItemKind   string
+	ItemKey    string
+	ObjectName string
+	At         time.Time
+	ID         string
+}
+
+// Puts a live record on another item and begins its time again; the count says whether it was live.
+func (q *Queries) MoveCharacterInfusion(ctx context.Context, arg MoveCharacterInfusionParams) (int64, error) {
+	result, err := q.db.Exec(ctx, moveCharacterInfusion,
+		arg.ItemKind,
+		arg.ItemKey,
+		arg.ObjectName,
+		arg.At,
+		arg.ID,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const portraitInUse = `-- name: PortraitInUse :one
 SELECT EXISTS (
     SELECT 1 FROM characters
@@ -3848,6 +4093,26 @@ type SetCharacterCreatureNameParams struct {
 func (q *Queries) SetCharacterCreatureName(ctx context.Context, arg SetCharacterCreatureNameParams) error {
 	_, err := q.db.Exec(ctx, setCharacterCreatureName, arg.Name, arg.CampaignID, arg.ID)
 	return err
+}
+
+const setCharacterInfusionAttuned = `-- name: SetCharacterInfusionAttuned :execrows
+UPDATE character_infusions
+SET attuned = $1::BOOLEAN
+WHERE id = $2::UUID AND ended_at IS NULL
+`
+
+type SetCharacterInfusionAttunedParams struct {
+	Attuned bool
+	ID      string
+}
+
+// Says whether the holder is attuned to the item of a live record; the count says whether it was live.
+func (q *Queries) SetCharacterInfusionAttuned(ctx context.Context, arg SetCharacterInfusionAttunedParams) (int64, error) {
+	result, err := q.db.Exec(ctx, setCharacterInfusionAttuned, arg.Attuned, arg.ID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const setCharacterRevivifyBlocked = `-- name: SetCharacterRevivifyBlocked :one

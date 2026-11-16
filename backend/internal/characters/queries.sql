@@ -1086,3 +1086,55 @@ UPDATE characters
 SET sheet = jsonb_set(jsonb_set(sheet, '{full,daily_picks}', sqlc.arg(picks)::JSONB), '{full,short_rested}', sqlc.arg(short_rested)::JSONB),
     revision = revision + 1, updated_at = sqlc.arg(now)
 WHERE id = sqlc.arg(id) AND sheet ? 'full';
+
+-- An Artificer's infusions. A record is "live" until it ends; an ended one is kept (ended_at, ended_reason).
+
+-- name: InsertCharacterInfusion :one
+INSERT INTO character_infusions
+    (campaign_id, artificer_character_id, holder_character_id, infusion_key, item_kind, item_key, object_name, parameter, attuned, since, created_at)
+VALUES (
+    sqlc.arg(campaign_id)::UUID, sqlc.arg(artificer_character_id)::UUID, sqlc.arg(holder_character_id)::UUID, sqlc.arg(infusion_key),
+    sqlc.arg(item_kind), sqlc.arg(item_key), sqlc.arg(object_name)::TEXT, sqlc.arg(parameter)::TEXT, sqlc.arg(attuned)::BOOLEAN,
+    sqlc.arg(since), sqlc.arg(created_at)
+)
+RETURNING *;
+
+-- name: GetCharacterInfusionForUpdate :one
+-- A record of the campaign, live or ended, locking its row until the transaction ends.
+SELECT * FROM character_infusions
+WHERE campaign_id = sqlc.arg(campaign_id)::UUID AND id = sqlc.arg(id)::UUID
+FOR UPDATE;
+
+-- name: ListLiveInfusionsOfArtificer :many
+-- The live records of an artificer, the oldest first.
+SELECT * FROM character_infusions
+WHERE artificer_character_id = sqlc.arg(artificer_character_id)::UUID AND ended_at IS NULL
+ORDER BY since, id;
+
+-- name: ListLiveInfusionsOfHolder :many
+-- The live records on the items of a holder's sheet.
+SELECT * FROM character_infusions
+WHERE holder_character_id = sqlc.arg(holder_character_id)::UUID AND ended_at IS NULL
+ORDER BY since, id;
+
+-- name: CountLiveInfusionsOfArtificer :one
+SELECT count(*) FROM character_infusions
+WHERE artificer_character_id = sqlc.arg(artificer_character_id)::UUID AND ended_at IS NULL;
+
+-- name: EndCharacterInfusion :execrows
+-- Ends a record that is live; the count says whether it was.
+UPDATE character_infusions
+SET ended_at = sqlc.arg(at), ended_reason = sqlc.arg(reason)
+WHERE id = sqlc.arg(id)::UUID AND ended_at IS NULL;
+
+-- name: MoveCharacterInfusion :execrows
+-- Puts a live record on another item and begins its time again; the count says whether it was live.
+UPDATE character_infusions
+SET item_kind = sqlc.arg(item_kind), item_key = sqlc.arg(item_key), object_name = sqlc.arg(object_name)::TEXT, since = sqlc.arg(at)
+WHERE id = sqlc.arg(id)::UUID AND ended_at IS NULL;
+
+-- name: SetCharacterInfusionAttuned :execrows
+-- Says whether the holder is attuned to the item of a live record; the count says whether it was live.
+UPDATE character_infusions
+SET attuned = sqlc.arg(attuned)::BOOLEAN
+WHERE id = sqlc.arg(id)::UUID AND ended_at IS NULL;

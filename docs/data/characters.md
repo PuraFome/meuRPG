@@ -63,6 +63,12 @@ erDiagram
         uuid campaign_id FK
         uuid character_id FK
     }
+    character_infusions {
+        uuid id PK
+        uuid campaign_id FK
+        uuid artificer_character_id FK
+        uuid holder_character_id FK
+    }
     campaign_content {
         uuid campaign_id PK,FK
         text content_key PK
@@ -92,6 +98,9 @@ erDiagram
     users ||--o{ character_ability_rolls : "user_id"
     campaigns ||--o{ character_creatures : "campaign_id"
     characters ||--o{ character_creatures : "character_id"
+    campaigns ||--o{ character_infusions : "campaign_id"
+    characters ||--o{ character_infusions : "artificer_character_id"
+    characters ||--o{ character_infusions : "holder_character_id"
     characters ||--o{ character_level_up_rolls : "character_id"
     campaigns ||--o{ character_level_ups : "campaign_id"
     characters ||--o{ character_level_ups : "character_id"
@@ -294,6 +303,21 @@ A dismissed creature is not deleted: it keeps `dismissed_at` and `dismissed_reas
 Partial index on the living ones of a character; indexes on the summon group and the campaign.
 Cascades with the campaign and the character.
 
+## `character_infusions`
+
+The infusions of an Artificer: one row for each item an infusion is on.
+`infusion_key` is the key of the option in the table feature's content.
+`artificer_character_id` is the character that made the infusion and `holder_character_id` the character whose sheet has the item; both cascade, and they are the same character for now.
+`item_kind` is `gear` or `object` (`CHECK`); `item_key` is a gear key of the holder's sheet, or `object:<record id>` for an object, so two objects never share a key; `object_name` is the name the table gave an object, **free text** (listed in [Privacy](../privacy.md)).
+`parameter` is the damage type an infusion asks for, or empty; `attuned` says the holder attuned to the item.
+`since` is when the infusion began or last moved, and it orders the live records of an artificer, the oldest first.
+`materialises_id` links to the item or creature an infusion made, and nothing writes it yet.
+A record that ends is kept: `ended_at` and `ended_reason` (`ended`, `replaced`, `swapped`, `item_gone`, `taken`; both set or both `NULL`, `CHECK`).
+A unique partial index allows one live record for each `(holder_character_id, item_key)`.
+A partial index on `(artificer_character_id, since, id)` serves the live records of an artificer.
+Cascades with the campaign and with each of the two characters.
+The campaign package does not carry it: an imported character comes with no infusions.
+
 ## Table content
 
 The content the master adds to a campaign (MR-025, RN-23, ADR-0018): classes, subclasses, races, subraces, backgrounds, spells, feats, options, class features and creatures.
@@ -327,3 +351,4 @@ Only names and texts the master writes; no personal data (see [Privacy](../priva
 - Table content (`campaign_content`) is read by the whole campaign through the rules overlay, minus what `campaign_content_off` switched off, which never reaches a player in any read; the import records are not read by players.
 - `character_item_charges` and `character_ammunition` are read with the sheet: by the owner and the master.
 - `character_creatures` are read by the owner and the master; the creature's name is free text.
+- `character_infusions` are read by the artificer's owner and the master; the name of an object is free text.

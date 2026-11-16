@@ -477,6 +477,7 @@ func checkNewSheet(content *rules.Content, m authz.Membership, kind string, raw 
 	}
 	if sheet.GetFull() != nil {
 		sheet.GetFull().AbilityOrigin = nil // the server's record, set later for a player
+		sheet.GetFull().Infusions = nil     // the server's records: a new character, or one a package brings, has none
 	}
 	if err := refuseNewChoices(content, m, "", nil, sheet.GetFull()); err != nil {
 		return nil, err

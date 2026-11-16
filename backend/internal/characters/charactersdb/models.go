@@ -75,6 +75,24 @@ type CharacterCreature struct {
 	Bonded              bool
 }
 
+type CharacterInfusion struct {
+	ID                   string
+	CampaignID           string
+	ArtificerCharacterID string
+	HolderCharacterID    string
+	InfusionKey          string
+	ItemKind             string
+	ItemKey              string
+	ObjectName           string
+	Parameter            string
+	Attuned              bool
+	Since                time.Time
+	EndedAt              *time.Time
+	EndedReason          *string
+	MaterialisesID       *string
+	CreatedAt            time.Time
+}
+
 type CharacterLevelUp struct {
 	ID          string
 	CampaignID  string
