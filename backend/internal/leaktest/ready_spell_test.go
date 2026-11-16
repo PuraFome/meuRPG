@@ -48,10 +48,10 @@ func (w *world) waitReadOf(p *person) waitRead {
 	return waitRead{windows: e.GetReactionWindows(), wait: e.GetReactionWait()}
 }
 
-// markRolling calls MarkReactionRolling as p, with clear when it takes the mark off.
-func (w *world) markRolling(p *person, windowID string, clear bool) reply {
+// markRolling calls MarkReactionRolling as p, with off when it takes the mark off.
+func (w *world) markRolling(p *person, windowID string, off bool) reply {
 	return p.call(playv1connect.CombatServiceMarkReactionRollingProcedure, &playv1.MarkReactionRollingRequest{
-		CampaignId: w.campaign, EncounterId: w.encounter.GetId(), WindowId: windowID, Clear: clear,
+		CampaignId: w.campaign, EncounterId: w.encounter.GetId(), WindowId: windowID, Clear: off,
 	})
 }
 
