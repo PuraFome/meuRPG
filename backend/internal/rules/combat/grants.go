@@ -19,7 +19,7 @@ type SpellGrant struct {
 	// NoMaterialComponents says the grant waives the material components (display only).
 	Cost                 int
 	NoMaterialComponents bool
-	// CastLevel is the level a cast with no slot has: the grant's own level, the spell's level when
+	// CastLevel is the level a cast with no slot has: the grant's cast level, the spell's level when
 	// the effect sets none, 0 for a cantrip. A cast with a slot has the slot's level.
 	CastLevel int
 	// Recharge is when the resource comes back (a rules.Recharge* constant), for the refusal.

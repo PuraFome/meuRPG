@@ -526,11 +526,11 @@ func (s *Service) areaSpellOf(ctx context.Context, campaignID string, caster pla
 	return spellOfPlan(plan), nil
 }
 
-// slotLevelOf is the level a cast was made at, for reading the spell again: the
-// slot's, 0 for a cantrip.
+// slotLevelOf is the level a cast was made at, for reading the spell again: the slot's, else the cast level
+// of the grant it went through, else 0 (a cantrip, or a cast at the spell's own level).
 func slotLevelOf(ev actionEvent) int {
 	if ev.Slot == nil {
-		return 0
+		return int(ev.CastLevel)
 	}
 	return int(ev.Slot.Level)
 }

@@ -161,6 +161,10 @@ The slot, targets and dice are checked by the server alone: `invalid_argument` c
   `granted_by` names the grant: the cast takes no slot (a slot only when the grant has `also_with_slot`, and then no use), spends one use of the grant's resource unless it is `at_will` (`NO_USES` when none is left), and reads the spell with the grant's casting ability.
   A cast with no slot has the grant's `cast_level` (`CastingGrant.cast_level`, `SpellGrantOption.cast_level`), the spell's own level when the grant sets none: the dice, the healing and the targets the spell scales with follow it.
   A cast with a slot has the slot's level.
+  The dice of a cast through a grant are those at its `cast_level`, in the app or rolled physically: `CastingSpell.roll_dice` is the spell's own level, so a client counts the dice at `CastingGrant.cast_level`.
+  The cast event keeps that level as `cast_level` (never as `slot`, so the undo gives back no slot), and a retry draws the area at it.
+  `SpellTargets` for a grant lists `max_targets` and the darts at that level.
+  The outside cast row has `slot_level` 0 for such a cast, with no migration: the level is the grant's.
   A ritual-only grant takes `as_ritual`.
   The use is spent when the cast starts, also for a long casting; the end of a long casting through a grant reads the sheet again for the way the row says.
   In a combat the same grant is a turn option (`SpellOption.grant`) and `CastSpellRequest.granted_by` picks it; the undo gives the use back.

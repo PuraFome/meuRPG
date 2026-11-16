@@ -165,8 +165,8 @@ func TestMR025_AnOutsideGrantHealsAtItsCastLevel(t *testing.T) {
 	a.h.roller.queue(6, 3)
 	res := a.mustCastOut(t, a.ana, a.pens, cureWounds, nil, false, []*charactersv1.Character{a.toren}, grantedBy(feat))
 	cast := res.GetCast()
-	if cast.GetDiceCount() != 2 || cast.GetDiceSides() != 8 || cast.GetRollTotal() < 9 || cast.GetSlotLevel() != 0 {
-		t.Errorf("cast = %dd%d total %d slot %d, want 2d8 rolled with no slot", cast.GetDiceCount(), cast.GetDiceSides(), cast.GetRollTotal(), cast.GetSlotLevel())
+	if cast.GetDiceCount() != 2 || cast.GetDiceSides() != 8 || cast.GetRollTotal() != 11 || cast.GetSlotLevel() != 0 {
+		t.Errorf("cast = %dd%d total %d slot %d, want 2d8 rolled to 11 (6 + 3 and the +2 of Charisma) with no slot", cast.GetDiceCount(), cast.GetDiceSides(), cast.GetRollTotal(), cast.GetSlotLevel())
 	}
 	if used, _ := resourceUsed(a.vitals(t, a.pens), graceUses); used != 1 {
 		t.Errorf("grant uses = %d, want 1", used)
@@ -231,5 +231,95 @@ func TestMR025_TheSheetAndTheCastOptionsSayTheGrantsCastLevel(t *testing.T) {
 		if g, ok := cast[k]; !ok || g != w {
 			t.Errorf("the castable spells' cast level of %s = %d (listed %v), want %d", k, g, ok, w)
 		}
+	}
+}
+
+// grantEntryOf is the targets the turn's options list for the grant of the spell: the nth entry of that key, where
+// n is the place of the grant among the castable spells of that key (the character's own cast of it is another).
+func grantEntryOf(t *testing.T, o *playv1.GetTurnOptionsResponse, spell, feat string) *playv1.SpellTargets {
+	t.Helper()
+	n := 0
+	for _, s := range o.GetOptions().GetSpells() {
+		if !s.GetEnabled() || s.GetSpell().GetKey() != spell {
+			continue
+		}
+		if s.GetGrant().GetSourceKey() == feat {
+			var entries []*playv1.SpellTargets
+			for _, st := range o.GetSpellTargets() {
+				if st.GetSpellKey() == spell {
+					entries = append(entries, st)
+				}
+			}
+			if n >= len(entries) {
+				t.Fatalf("no targets listed for the grant of %s (entry %d of %d)", spell, n, len(entries))
+			}
+			return entries[n]
+		}
+		n++
+	}
+	t.Fatalf("the options list no enabled grant of %s", spell)
+	return nil
+}
+
+// The turn's targets read a grant's entry at its cast level: Magic Missile cast through a grant at the 3rd level
+// lists the 5 darts of that level, and Bless at the 2nd the 4 targets of that level, with no slot to say so.
+func TestMR025_TheTurnTargetsOfAGrantAreAtItsCastLevel(t *testing.T) {
+	t.Parallel()
+	a, feat := newGracePartyWith(t, []*rulesv1.TableEffect{
+		{Type: "granted_spell", Spell: magicMissileSpell, Ability: "cha", CastLevel: 3},
+		{Type: "granted_spell", Spell: blessKey, Ability: "cha", CastLevel: 2},
+	})
+	opts := a.mustOptions(t, a.ana, a.castersFight(t, 1), "Pensantus")
+	mm := grantEntryOf(t, opts, magicMissileSpell, feat)
+	if got := mm.GetDarts(); len(got) != 1 || got[0].GetSlotLevel() != 3 || got[0].GetDarts() != 5 {
+		t.Errorf("darts of the granted Magic Missile = %v, want 5 darts at level 3", got)
+	}
+	if mm.GetMaxTargets() != 5 {
+		t.Errorf("max targets of the granted Magic Missile = %d, want 5", mm.GetMaxTargets())
+	}
+	if bless := grantEntryOf(t, opts, blessKey, feat); bless.GetMaxTargets() != 4 {
+		t.Errorf("max targets of the granted Bless = %d, want 4 (3 and one more for the 2nd level)", bless.GetMaxTargets())
+	}
+}
+
+// A cast of Bless through a grant at the 2nd level takes the 4 targets of that level and refuses a 5th.
+func TestMR025_AGrantCastTakesTheTargetsOfItsCastLevel(t *testing.T) {
+	t.Parallel()
+	a, feat := newLevelParty(t, blessKey, 2)
+	e := a.castersFight(t, 1)
+	if _, err := a.cast(t, a.ana, e, "Pensantus", blessKey, nil, a.at(t, "Pensantus", "Toren", "Brisa", "Capitão Goblin", "Goblin"), grantedCast(feat)); err == nil {
+		t.Fatal("CastSpell(Bless, 5 targets) error = nil, want a refusal: the grant casts at the 2nd level, 4 targets")
+	}
+	cast := a.mustCast(t, a.ana, e, "Pensantus", blessKey, nil, a.at(t, "Pensantus", "Toren", "Brisa", "Capitão Goblin"), grantedCast(feat))
+	if cast.GetCast().GetSlot() != nil || len(cast.GetCast().GetTargets()) != 4 {
+		t.Errorf("cast = %v, want no slot and 4 targets", cast.GetCast())
+	}
+	noSlotSpent(t, a)
+}
+
+// A retried cast of a granted Fog Cloud at the 3rd level answers with the area of that level (60 ft), as the first
+// answer did, and the zone it laid is that size.
+func TestMR025_ARetriedGrantCastAnswersWithTheAreaOfItsCastLevel(t *testing.T) {
+	t.Parallel()
+	a, feat := newLevelParty(t, fogCloudKey, 3)
+	e := a.castersFight(t, 1)
+	key := newKey()
+	first, err := a.castKey(t, a.ana, e, "Pensantus", fogCloudKey, nil, nil, grantedCast(feat), key)
+	if err != nil {
+		t.Fatalf("CastSpell(Fog Cloud) error = %v", err)
+	}
+	again, err := a.castKey(t, a.ana, e, "Pensantus", fogCloudKey, nil, nil, grantedCast(feat), key)
+	if err != nil {
+		t.Fatalf("CastSpell(Fog Cloud) retried error = %v", err)
+	}
+	if n := len(first.GetArea().GetSquares()); n == 0 || len(again.GetArea().GetSquares()) != n {
+		t.Errorf("area squares = %d, retried = %d, want the same and not none", n, len(again.GetArea().GetSquares()))
+	}
+	zones := zonesOf(a.get(t, a.master), fogCloudKey)
+	if len(zones) != 1 || zones[0].GetSizeFt() != 60 {
+		t.Fatalf("zones = %v, want one of 60 ft", zones)
+	}
+	if n := len(zones[0].GetSquares()); len(again.GetArea().GetSquares()) != n {
+		t.Errorf("retried area = %d squares, want the %d of the zone (the 3rd level, 60 ft)", len(again.GetArea().GetSquares()), n)
 	}
 }

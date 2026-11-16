@@ -520,6 +520,8 @@ type CastingSpell struct {
 	Effect CastingEffectKind `protobuf:"varint,12,opt,name=effect,proto3,enum=meurpg.play.v1.CastingEffectKind" json:"effect,omitempty"`
 	// Whether the cast rolls dice (a healing spell, False Life): it needs `roll_in_app` or
 	// `typed_sum`. `roll_dice` is the dice at the spell's own level, "2d8".
+	// A cast through a grant rolls the dice at the grant's `cast_level` (`grants[].cast_level`), so a client that
+	// rolls physical dice reads the count at that level, not this one.
 	RollsDice bool   `protobuf:"varint,13,opt,name=rolls_dice,json=rollsDice,proto3" json:"rolls_dice,omitempty"`
 	RollDice  string `protobuf:"bytes,14,opt,name=roll_dice,json=rollDice,proto3" json:"roll_dice,omitempty"`
 	// How many targets the spell takes at its own level (0: any number, an area; the
@@ -757,6 +759,7 @@ type CastingGrant struct {
 	UsesCost int32 `protobuf:"varint,13,opt,name=uses_cost,json=usesCost,proto3" json:"uses_cost,omitempty"`
 	// The level the grant casts the spell at, with no slot: the effect's `cast_level`, or the spell's own
 	// level when it sets none; 0 for a cantrip. A cast with a slot (`also_with_slot`) uses the slot's level.
+	// The dice a cast with no slot rolls are those at this level, in the app or typed from physical dice.
 	CastLevel     int32 `protobuf:"varint,14,opt,name=cast_level,json=castLevel,proto3" json:"cast_level,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -2017,8 +2020,8 @@ type OutsideCast struct {
 	Status      OutsideCastStatus `protobuf:"varint,7,opt,name=status,proto3,enum=meurpg.play.v1.OutsideCastStatus" json:"status,omitempty"`
 	// Cast as a ritual (no slot, 10 minutes more).
 	Ritual bool `protobuf:"varint,8,opt,name=ritual,proto3" json:"ritual,omitempty"`
-	// The slot level the spell was cast at (0: a cantrip or a ritual, the spell's own
-	// level) and whether it was a pact magic slot.
+	// The slot level the spell was cast at (0: no slot, for a cantrip, a ritual or a cast through a grant, which is
+	// at the grant's `cast_level`) and whether it was a pact magic slot.
 	SlotLevel int32 `protobuf:"varint,9,opt,name=slot_level,json=slotLevel,proto3" json:"slot_level,omitempty"`
 	SlotPact  bool  `protobuf:"varint,10,opt,name=slot_pact,json=slotPact,proto3" json:"slot_pact,omitempty"`
 	// The minutes the casting takes (the ritual's 10 included); 0 when it was cast at once.

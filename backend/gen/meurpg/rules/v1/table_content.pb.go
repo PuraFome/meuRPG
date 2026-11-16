@@ -2046,8 +2046,8 @@ type TableEffect struct {
 	// choice of a skill or a tool only: the player picks again after each rest of `duration`, apart from the sheet (a
 	// locked sheet takes the pick), and what is picked lasts until that rest. Required with `duration`.
 	DailyChoice bool `protobuf:"varint,94,opt,name=daily_choice,json=dailyChoice,proto3" json:"daily_choice,omitempty"`
-	// granted_spell only: the level the grant casts the spell at, from the spell's own level to 9 (0 and
-	// empty: the spell's own level). The spell scales with that level (damage, healing, targets), and
+	// granted_spell only: the level the grant casts the spell at, from the spell's own level to 9 (0:
+	// the spell's own level). The spell scales with that level (damage, healing, targets), and
 	// the cast spends no slot. A cast of the same spell with a slot (`also_with_slot`) uses the slot's
 	// level. Refused on a cantrip, with `ritual_only` and on any other effect type.
 	CastLevel     int32 `protobuf:"varint,95,opt,name=cast_level,json=castLevel,proto3" json:"cast_level,omitempty"`

@@ -1086,8 +1086,8 @@ export type TableEffect = Message<"meurpg.rules.v1.TableEffect"> & {
   dailyChoice: boolean;
 
   /**
-   * granted_spell only: the level the grant casts the spell at, from the spell's own level to 9 (0 and
-   * empty: the spell's own level). The spell scales with that level (damage, healing, targets), and
+   * granted_spell only: the level the grant casts the spell at, from the spell's own level to 9 (0:
+   * the spell's own level). The spell scales with that level (damage, healing, targets), and
    * the cast spends no slot. A cast of the same spell with a slot (`also_with_slot`) uses the slot's
    * level. Refused on a cantrip, with `ritual_only` and on any other effect type.
    *

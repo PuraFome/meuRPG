@@ -98,13 +98,28 @@ type OutsideGrant struct {
 	CastLevel        int // the level a cast with no slot has (0 for a cantrip): see combat.SpellGrant
 }
 
-// LevelOr is the level a cast of the spell through the grant has with no slot: the grant's cast level, or own
-// (the spell's level) when the grant sets none or there is no grant (a nil g).
+// LevelOr is the level a cast of the spell through the grant has with no slot: the grant's cast level, or the
+// spell's own level when the grant sets none or there is no grant (a nil g).
 func (g *OutsideGrant) LevelOr(own int) int {
 	if g == nil {
 		return own
 	}
 	return max(g.CastLevel, own)
+}
+
+// ScorchingRays is how many rays Scorching Ray makes at a slot level: 3 at its own level, one more for each level above.
+func (sp Spell) ScorchingRays(slotLevel int) int {
+	const baseRays = 3
+	return baseRays + max(slotLevel-sp.Level, 0)
+}
+
+// GrantCastLevel is the level a cast made with no slot has when it is not the spell's own: the grant's cast level,
+// else 0. A cast with a slot (noSlot false) or at the spell's own level has none to keep.
+func GrantCastLevel(noSlot bool, level, own int) int {
+	if !noSlot || level == own {
+		return 0
+	}
+	return level
 }
 
 // MageArmor is what Mage Armor would do for a character: Wears says it wears armor (the

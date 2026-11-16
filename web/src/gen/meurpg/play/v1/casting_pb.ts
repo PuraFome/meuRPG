@@ -150,6 +150,8 @@ export type CastingSpell = Message<"meurpg.play.v1.CastingSpell"> & {
   /**
    * Whether the cast rolls dice (a healing spell, False Life): it needs `roll_in_app` or
    * `typed_sum`. `roll_dice` is the dice at the spell's own level, "2d8".
+   * A cast through a grant rolls the dice at the grant's `cast_level` (`grants[].cast_level`), so a client that
+   * rolls physical dice reads the count at that level, not this one.
    *
    * @generated from field: bool rolls_dice = 13;
    */
@@ -315,6 +317,7 @@ export type CastingGrant = Message<"meurpg.play.v1.CastingGrant"> & {
   /**
    * The level the grant casts the spell at, with no slot: the effect's `cast_level`, or the spell's own
    * level when it sets none; 0 for a cantrip. A cast with a slot (`also_with_slot`) uses the slot's level.
+   * The dice a cast with no slot rolls are those at this level, in the app or typed from physical dice.
    *
    * @generated from field: int32 cast_level = 14;
    */
@@ -986,8 +989,8 @@ export type OutsideCast = Message<"meurpg.play.v1.OutsideCast"> & {
   ritual: boolean;
 
   /**
-   * The slot level the spell was cast at (0: a cantrip or a ritual, the spell's own
-   * level) and whether it was a pact magic slot.
+   * The slot level the spell was cast at (0: no slot, for a cantrip, a ritual or a cast through a grant, which is
+   * at the grant's `cast_level`) and whether it was a pact magic slot.
    *
    * @generated from field: int32 slot_level = 9;
    */

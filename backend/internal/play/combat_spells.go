@@ -43,19 +43,11 @@ const magicMissile = "spell:magic-missile"
 // and each ray is its own spell attack with its own damage.
 const scorchingRay = "spell:scorching-ray"
 
-// scorchingBaseRays is the rays Scorching Ray makes at its own level.
-const scorchingBaseRays = 3
-
-// scorchingRays is how many rays Scorching Ray makes at a slot level.
-func scorchingRays(sp link.Spell, slotLevel int) int {
-	return scorchingBaseRays + max(slotLevel-sp.Level, 0)
-}
-
 // sharesAt is how many darts or rays a slot level gives the caster to share out among the targets: 0 for a
 // spell that shares none.
 func sharesAt(sp link.Spell, slotLevel int) int {
 	if sp.Key == scorchingRay {
-		return scorchingRays(sp, slotLevel)
+		return sp.ScorchingRays(slotLevel)
 	}
 	return dartsOf(sp, slotLevel)
 }
@@ -246,7 +238,7 @@ func maxTargetsOf(sp link.Spell, slotLevel int) int {
 	case sp.Key == magicMissile:
 		return dartsOf(sp, slotLevel) // a dart each, at most
 	case sp.Key == scorchingRay:
-		return scorchingRays(sp, slotLevel)
+		return sp.ScorchingRays(slotLevel)
 	case sp.Area:
 		return 0
 	case sp.TargetCount > 0:
@@ -359,7 +351,7 @@ func checkRays(v combatViewer, sp link.Spell, targs []playdb.Combatant, rays []i
 	for _, n := range rays {
 		total += max(n, 1)
 	}
-	limit := scorchingRays(sp, slotLevel)
+	limit := sp.ScorchingRays(slotLevel)
 	if v.master {
 		limit = maxSpellTargets
 	}

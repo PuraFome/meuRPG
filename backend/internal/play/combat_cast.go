@@ -657,7 +657,7 @@ func (f *castFlow) spend(ctx context.Context) error {
 		return err
 	}
 	f.out.made = actionEvent{
-		RunBefore: run, Round: f.c.enc.Round, Actor: f.caster.ID, Key: f.call.spellKey, CastID: f.castID(), Slot: f.slot,
+		RunBefore: run, Round: f.c.enc.Round, Actor: f.caster.ID, Key: f.call.spellKey, CastID: f.castID(), Slot: f.slot, CastLevel: clamp32(link.GrantCastLevel(f.slot == nil, f.slotLevel, int(f.cast.level)), 0, 9),
 		ActionBefore: f.caster.ActionUsed, BonusBefore: f.caster.BonusActionUsed, ReactionBefore: f.caster.ReactionUsed, DashedBefore: f.caster.Dashed,
 		SpellCastBefore: f.caster.SpellCast, BonusSpellBefore: f.caster.BonusSpellCast,
 	}
