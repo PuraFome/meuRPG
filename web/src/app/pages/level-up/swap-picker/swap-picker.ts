@@ -23,11 +23,11 @@ import type { LevelUpSwap } from '../../../core/levelup/levelup-swap';
           Não trocar
         </label>
         @for (g of swap().groups(); track g.group) {
-          <label class="opt" [class.opt--on]="swap().groupKey() === g.group">
+          <label class="opt" [class.opt--on]="swap().groupKey() === g.group" [class.opt--done]="swap().isWhole(g.group)">
             <input type="radio" name="swap-group" class="opt__input" [checked]="swap().groupKey() === g.group" (change)="swap().setGroup(g.group)" />
             {{ g.namePt }}
             @if (swap().isWhole(g.group)) {
-              <span class="opt__done">troca escolhida</span>
+              <span class="opt__hidden"> (troca escolhida)</span>
             }
           </label>
         }
@@ -95,7 +95,8 @@ import type { LevelUpSwap } from '../../../core/levelup/levelup-swap';
       font-weight: 700;
       cursor: pointer;
 
-      &--on::before {
+      &--on::before,
+      &--done::before {
         content: '✓';
         margin-right: var(--mr-space-2);
       }
@@ -112,12 +113,13 @@ import type { LevelUpSwap } from '../../../core/levelup/levelup-swap';
       }
     }
 
-    .opt__done {
-      margin-left: auto;
-      padding-left: var(--mr-space-2);
-      font-size: var(--mr-font-13);
-      font-weight: 600;
-      color: var(--mr-ink-muted);
+    .opt__hidden {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
     }
 
     .opt__input {

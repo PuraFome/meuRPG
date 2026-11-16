@@ -221,7 +221,7 @@ describe('LevelUpSwap and SwapPicker', () => {
     expect(
       Array.from(el.querySelectorAll('label')).find((l) => l.textContent?.includes('Infusões'))
         ?.textContent,
-    ).toContain('troca escolhida');
+    ).toContain('(troca escolhida)');
     expect(swap.featurePicks()).toHaveLength(1);
   });
 });
