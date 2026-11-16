@@ -1989,12 +1989,7 @@ export type ChangedContent = Message<"meurpg.rules.v1.ChangedContent"> & {
   messages: string[];
 
   /**
-   * The code of the issue each sentence of `messages` comes from, one per sentence, in the same order (so
-   * `codes` has as many items as `messages`, and codes[i] is the code of messages[i]). It is read by the same
-   * reader as the sentence: a line the reader does not get has no code in their answer either. The codes are
-   * the `Issue*` constants of the rules package (backend/internal/rules: `IssueShieldIdle`, `IssueSkillCount`
-   * and the others), the same strings as `Issue.code`. An answer from before this field has no codes: a reader
-   * of `codes` that is shorter than `messages` takes the sentences as plain ones.
+   * The code of each line of `messages`, in the same order: one code per line. A reader who gets the line gets its code.
    *
    * @generated from field: repeated string codes = 8;
    */

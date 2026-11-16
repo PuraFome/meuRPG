@@ -16160,7 +16160,7 @@ async function scanAxeTurnedTwoHanded(browser: Browser, colorScheme: 'light' | '
     await expect(notice.locator('.change__text')).toContainText(`O mestre mudou a arma ${AXE_NAME} em `);
     await expect(notice.locator('.change__text')).toContainText('Os números da ficha já usam as regras novas. O que não combina mais:');
     const sentence = await notice.locator('li').innerText();
-    const ac = /^Machado de Lenhador passou a exigir as duas mãos\. Com Machado de Lenhador em uso, o escudo de Toren não conta na CA \(CA (\d+) → (\d+)\)\.$/.exec(sentence);
+    const ac = /^A arma Machado de Lenhador passou a exigir as duas mãos\. Com ela em uso, o escudo de Toren não conta na CA \(CA (\d+) → (\d+)\)\.$/.exec(sentence);
     expect(ac, `a frase do quadro, lida: "${sentence}" ${where}`).not.toBeNull();
     const [withShield, withoutShield] = [Number(ac![1]), Number(ac![2])];
     expect(withShield - withoutShield, `o escudo vale 2 de CA ${where}`).toBe(2);

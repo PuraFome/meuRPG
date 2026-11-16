@@ -10,7 +10,7 @@ import { MatIconModule } from '@angular/material/icon';
 
 import { PHONE_QUERY } from '../../../shared/map-view/media-query';
 import type { ChangedContentVm } from '../character-sheet.types';
-import { changeSheetTitle, isShieldNotice } from './changed-content-format';
+import { changeSheetTitle, whoLines } from './changed-content-format';
 
 export interface ChangedContentData {
   readonly change: ChangedContentVm;
@@ -51,9 +51,11 @@ export interface ChangedContentData {
             }
           </ul>
         </div>
-        <p class="sheet__who">
-          {{ who }}
-        </p>
+        @for (w of who; track $index) {
+          <p class="sheet__who">
+            {{ w }}
+          </p>
+        }
       </div>
       <div class="sheet__foot">
         <button matButton="outlined" type="button" class="sheet__action" (click)="close()">Fechar</button>
@@ -171,10 +173,8 @@ export class ChangedContentSheet {
 
   protected readonly inSheet = this.sheetRef !== null;
   protected readonly title = changeSheetTitle(this.data.change);
-  /** Who adjusts and when the notice goes: the shield notice has its own two sentences (the owner stows the gear), the others are about the numbers. */
-  protected readonly who = isShieldNotice(this.data.change)
-    ? 'Quem ajusta: o dono da ficha, guardando o escudo ou a arma. O aviso some quando um dos dois deixa de estar em uso.'
-    : `Quem ajusta: ${this.data.canEdit ? 'você, na ficha' : 'o mestre, na ficha'}. O aviso some sozinho quando os números voltam a combinar.`;
+  /** Who adjusts and when the notice goes, for each kind of line: a shield line has its own sentences (the owner stows the gear), any other is about the numbers. */
+  protected readonly who = whoLines(this.data.change, this.data.canEdit);
   /** "Perícias da ficha: Atletismo, Natureza.", under a sentence that talks about the skills. */
   protected readonly skillsLine =
     (this.data.skills?.length ?? 0) > 0 && this.data.change.messages.some((m) => /perícia/i.test(m))

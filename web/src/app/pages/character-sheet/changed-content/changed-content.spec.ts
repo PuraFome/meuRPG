@@ -177,7 +177,7 @@ describe('ChangedContentNotice', () => {
       await closeSheet();
     });
 
-    it('is decided for each line by that line\'s code, never for the whole entry', async () => {
+    it("is decided for each line by that line's code, never for the whole entry", async () => {
       const mixed = {
         ...shield(),
         messages: [shield().messages[0], 'Corujeiro agora dá 2 perícias; esta ficha tem 3.'],
@@ -200,7 +200,7 @@ describe('ChangedContentNotice', () => {
       expect(isShieldLine({ ...mixed, codes: ['skill_count', 'shield_idle'] }, 1)).toBe(true);
     });
 
-    it('reads the code at the line\'s own place: a line with no code at that place is a plain sentence', () => {
+    it("reads the code at the line's own place: a line with no code at that place is a plain sentence", () => {
       const two = { ...shield(), messages: ['a', 'b'], codes: ['shield_idle'] };
       expect(isShieldLine(two, 0)).toBe(true);
       expect(isShieldLine(two, 1)).toBe(false);
