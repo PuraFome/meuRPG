@@ -29,6 +29,7 @@ func TestAChoiceIsCompleteWithAsManyPicksAsAPlayerMayMakeToday(t *testing.T) {
 }
 
 func (tc completeCase) run(t *testing.T, step string) {
+	t.Helper()
 	td := newTidesAsking(t, tc.way, tc.count, tc.lean)
 	w, ctx := td.p.w, t.Context()
 	made := func(who *person) *charactersv1.Character {

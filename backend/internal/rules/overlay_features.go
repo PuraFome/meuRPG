@@ -1,6 +1,7 @@
 package rules
 
 import (
+	"errors"
 	"fmt"
 	"slices"
 	"strconv"
@@ -574,6 +575,23 @@ func (b *overlayBuilder) checkPickChoice(site effectSite, e *Effect) error {
 	return nil
 }
 
+// checkToolKey checks a key the list of a tool choice offers is a proficiency a tool choice may name. A write that names
+// another kind is refused; an entry stored with one loads as it always did: the pool leaves the key out, and the content
+// keeps the issue for the master (Content.StoredIssues).
+func (b *overlayBuilder) checkToolKey(site effectSite, k string) error {
+	if b.base.isToolPickKey(k) {
+		return nil
+	}
+	err := site.fail(".from", ReasonValue, "%q is not a tool, a weapon or another kind of proficiency a tool choice offers", k)
+	if site.strict {
+		return err
+	}
+	if oe, ok := errors.AsType[*OverlayError](err); ok {
+		b.n.kept = append(b.n.kept, oe)
+	}
+	return nil
+}
+
 // checkChoiceKey checks one key a choice offers.
 func (b *overlayBuilder) checkChoiceKey(site effectSite, e *Effect, k string) error {
 	if e.Choice == "feature" && b.optionEntry[k] != "" {
@@ -598,13 +616,8 @@ func (b *overlayBuilder) checkChoiceKey(site effectSite, e *Effect, k string) er
 	if e.Choice == "feature" && !isOption(b.base, k) {
 		return site.fail(".from", ReasonReference, "%q is not an option of an SRD feature", k)
 	}
-	if e.Choice == "tool" && !b.base.isToolPickKey(k) {
-		err := site.fail(".from", ReasonValue, "%q is not a tool, a weapon or another kind of proficiency a tool choice offers", k)
-		if site.strict {
-			return err
-		}
-		// A stored entry that names such a key loads, as it always did: the pool leaves the key out, and the master reads why.
-		b.n.kept = append(b.n.kept, err.(*OverlayError))
+	if e.Choice == "tool" {
+		return b.checkToolKey(site, k)
 	}
 	return nil
 }

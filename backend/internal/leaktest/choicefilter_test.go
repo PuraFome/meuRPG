@@ -99,7 +99,10 @@ type tides struct {
 // A way the table keeps options out: the source's class is switched off, archived, or one option is switched off.
 var tideWays = []string{"the source is switched off", "the source is archived", "an option is switched off"}
 
-func newTides(t *testing.T, way string) *tides { return newTidesAsking(t, way, 1, false) }
+func newTides(t *testing.T, way string) *tides {
+	t.Helper()
+	return newTidesAsking(t, way, 1, false)
+}
 
 // newTidesAsking is newTides where the asking choice picks count options, and the source is lean when it lists only the
 // option the table keeps on (the live one) besides the one it keeps out.
