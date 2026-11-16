@@ -4,6 +4,7 @@ import type { Observable } from 'rxjs';
 import { type AttunementEntryVm, magicEntryOf } from '../../../core/characters/attunement';
 import { combatItemRows, type TurnBlock } from '../../../core/characters/consumables';
 import type { ChargesClient, TableDice } from '../../../core/play/charges-client';
+import { NewestRead } from '../../../core/system/newest-read';
 import { ConsumableUse } from '../../../shared/consumable-use/consumable-use';
 import type { UseConsumableData } from '../../../shared/consumable-use/use-consumable-sheet';
 
@@ -42,7 +43,6 @@ export class CombatItems {
   /** What the last use said, for the card at the top of the tab. */
   readonly notice = computed(() => this.use.result());
   private loadedFor = '';
-  private seq = 0;
 
   /** Built where Angular can run an effect (a field of the screen). */
   constructor(private readonly ctx: CombatItemsContext) {
@@ -84,17 +84,14 @@ export class CombatItems {
     this.use.result.set(null);
   }
 
-  /** The newest read: a read that a newer one supersedes answers with the newer one's result. */
-  private newest: Promise<boolean> = Promise.resolve(false);
+  private readonly reads = new NewestRead();
 
   /** Reads the items of the screen's character; `true` when the newest read of them is on screen. */
   private read(): Promise<boolean> {
-    const run = this.fetch();
-    this.newest = run;
-    return run;
+    return this.reads.start((seq) => this.fetch(seq));
   }
 
-  private async fetch(): Promise<boolean> {
+  private async fetch(seq: number): Promise<boolean> {
     const characterId = this.ctx.characterId();
     if (!characterId) {
       return false;
@@ -103,12 +100,11 @@ export class CombatItems {
       this.loadedFor = characterId;
       this.entries.set([]);
     }
-    const seq = ++this.seq;
     try {
       const sheet = await this.ctx.client().sheetOf(this.ctx.campaignId(), characterId);
-      if (seq !== this.seq || characterId !== this.ctx.characterId()) {
+      if (!this.reads.holds(seq) || characterId !== this.ctx.characterId()) {
         // A newer read owns the screen: the answer is its own, not a refusal to say "on screen".
-        return characterId === this.ctx.characterId() ? this.newest : false;
+        return characterId === this.ctx.characterId() ? this.reads.overtaken(seq) : false;
       }
       this.entries.set(sheet.magicItems.map(magicEntryOf));
       return true;

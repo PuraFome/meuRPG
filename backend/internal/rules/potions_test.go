@@ -244,3 +244,30 @@ func TestConsumableOfNamesTheKindsAndTheCosts(t *testing.T) {
 		}
 	}
 }
+
+func TestCostsActionHealOfAndTheChipFollowConsumableOf(t *testing.T) {
+	t.Parallel()
+	c := loadForTest(t)
+	for key, want := range map[string]bool{
+		"item:potion-of-healing-common": true, "item:potion-of-climbing": true,
+		"item:oil-of-sharpness": false, "item:spell-scroll-1st": false, "item:bag-of-holding": false, "": false,
+	} {
+		if got := c.CostsAction(key); got != want {
+			t.Errorf("CostsAction(%q) = %v, want %v", key, got, want)
+		}
+	}
+	if got, want := c.HealOf("item:potion-of-healing-common"), (DiceFormula{Count: 2, Sides: 4, Bonus: 2}); got != want {
+		t.Errorf("HealOf(common) = %+v, want %+v", got, want)
+	}
+	for _, key := range []string{"item:potion-of-resistance-fire", "item:oil-of-sharpness", "item:no-such-item"} {
+		if got := c.HealOf(key); got != (DiceFormula{}) {
+			t.Errorf("HealOf(%q) = %+v, want none", key, got)
+		}
+	}
+	if got := c.PotionChipsPT("item:potion-of-resistance-fire"); len(got) != 1 || got[0] != "Resistência: fogo" {
+		t.Errorf("PotionChipsPT(fire) = %v, want [Resistência: fogo]", got)
+	}
+	if got := c.PotionChipsPT("item:potion-of-healing-common"); got != nil {
+		t.Errorf("PotionChipsPT(heal) = %v, want none", got)
+	}
+}
