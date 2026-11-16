@@ -132,7 +132,9 @@ describe("ReactionQueue, a readied action's window (#582, board 582-05)", () => 
     expect(plain(row.querySelector('.row__desc')?.textContent)).toBe(
       'Ação preparada: Espada longa no Zumbi 1 · “Quando o zumbi passar pela porta”',
     );
-    expect(plain(row.querySelector('.row__status')?.textContent)).toMatch(/^Esperando Tor/);
+    expect(plain(row.querySelector('.row__status')?.textContent)).toMatch(
+      /^hourglass_top Esperando Tor/,
+    );
     expect(buttons(el).map((b) => plain(b.textContent))).toEqual([
       'Deixar passar',
       'Atacar por Tor',
@@ -284,12 +286,18 @@ describe("ReactionQueue, a readied action's window (#582, board 582-05)", () => 
     back.fixture.componentRef.setInput('autoLeft', { w1: 72 });
     back.fixture.detectChanges();
     expect(plain(back.el.querySelector('[data-testid=readied-wait]')?.textContent)).toBe(
-      'Esperando Tor · passa sozinho em 1 min 12 s',
+      'hourglass_top Esperando Tor · passa sozinho em 1 min 12 s',
+    );
+    expect(back.el.querySelector('[data-testid=readied-wait]')?.classList).toContain(
+      'row__status--wait',
     );
   });
 
   it('says "Depois de ..." and no clock for a window that waits for another', () => {
     const { el } = setup({}, { answerNow: false });
+    expect(plain(el.querySelector('[data-testid=readied-wait]')?.textContent)).toContain(
+      'hourglass_top',
+    );
     expect(plain(el.querySelector('[data-testid=readied-wait]')?.textContent)).not.toContain(
       'passa sozinho',
     );
