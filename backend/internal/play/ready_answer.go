@@ -397,7 +397,8 @@ func readiedHeldForWindows(ctx context.Context, q *playdb.Queries, encID, window
 }
 
 // readiedMoveOf is the readied move the mover makes: a plain walk off its turn while its READIED window of a move is open. A
-// player's own is the release; the master's is a free token move unless the request says it is (release_readied).
+// player's own is the release; the master's is a free token move unless the request says it is (release_readied). Any other
+// move (on its turn, forced, a jump, a placement, a legendary move) is not one.
 func (s *Service) readiedMoveOf(ctx context.Context, a *moveAttempt) error {
 	if a.v.master && !a.req.release {
 		return nil
@@ -446,8 +447,8 @@ func openReadied(ctx context.Context, q *playdb.Queries, encID, whoID string) (w
 // openReadiedMove is the readied move of who whose READIED window is open off its turn, if any: GetMoveOptions works it out
 // at that move's own budget, as MoveCombatant walks it (readiedMoveOf).
 func (s *Service) openReadiedMove(ctx context.Context, d *encounterData, who playdb.Combatant) (*playdb.ReadiedAction, error) {
-	if actsNow(d.enc, who) {
-		return nil, nil
+	if actsNow(d.enc, who) || !slices.ContainsFunc(d.readied, func(r playdb.ReadiedAction) bool { return r.CombatantID == who.ID && r.Kind == readiedMove }) {
+		return nil, nil // no readied move waits for it: the query of the open windows is not run
 	}
 	_, row, found, err := openReadied(ctx, s.queries, d.enc.ID, who.ID)
 	if err != nil {

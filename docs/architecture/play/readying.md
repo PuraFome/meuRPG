@@ -42,6 +42,7 @@ The end of the combat drops every row.
 3. `FireReadied` opens a reaction window of kind `READIED` for the readier, in its own group, through `openWindows`.
 4. The window holds the table like any other: `reactionGate` answers `REACTION_PENDING` until it is answered or closes.
 5. The readier's player answers it, or the master for an NPC, with `AnswerReaction` or, for a move, `MoveCombatant`.
+   The master's walk of the token is the release of a move only with `release_readied`; without it, it is a free token move.
 
 `FireReadied` refuses, in this order and writing nothing:
 
@@ -88,7 +89,7 @@ The fire event (`readied_fired` with `opened`) writes no log line.
   A speed that fell since Ready (a condition, an effect) shrinks the budget; one that rose does not widen it.
   So a swimmer that readied in water may swim its swim speed, and walk only its walking speed.
   It pays its way like a move on turn, difficult terrain included, and spends no movement of the turn.
-  `GetMoveOptions` reads the same budget for the readier while the window is open.
+  `GetMoveOptions` reads the same budget for the readier's player while the window is open (the master's options of the token are those of a free walk).
   Move's own refusals apply: a grappled readier has no speed (`TOO_FAR`).
   A refused move spends nothing and the window stays open.
   A move to the square the readier stands on is refused for a player (`invalid_argument`) and the window stays open.
@@ -109,7 +110,6 @@ The fire event (`readied_fired` with `opened`) writes no log line.
   That walk is a release in every way: paid and limited as the player's, with the release's checks, and its undo gives it all back.
   `release_readied` with no open READIED window of a move for the combatant, or on a move that is not a plain walk, is refused as a release with no window is: `NOT_YOUR_TURN`, with nothing written.
   A player sending `release_readied` is accepted and means nothing more: their own off-turn move while the window is open is the release anyway.
-  `GetMoveOptions` reads the readied budget for the player only; the master's options of the token are those of a free walk.
   Another player's move of the readier is `permission_denied`.
   A window the player lets pass, or the master passes, ends the move: the row is ignored, the reaction stays and no `readied_lost` line is written.
   A move after that is `NOT_YOUR_TURN`.

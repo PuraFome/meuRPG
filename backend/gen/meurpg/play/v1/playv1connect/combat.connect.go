@@ -1209,8 +1209,8 @@ type CombatServiceClient interface {
 	// cast of the spell its own open READIED window holds is the release, as the reaction. It is the way to
 	// release a spell placed on a map (a point, a direction, a wall) or laying a zone, which AnswerReaction
 	// cannot carry. It spends no slot and the reaction instead of the action, takes the slot the spell was
-	// held with, and the source the row was readied with (`granted_by` must be the one of Ready: another
-	// source is `invalid_argument`). A slot of another level than the held one, and any Metamagic, are
+	// held with. Ready records no grant: a held spell is released naming none (a `granted_by` is
+	// `invalid_argument`). A slot of another level than the held one, and any Metamagic, are
 	// `invalid_argument`. Another spell, or a window of another kind or another combatant's, makes it an
 	// ordinary cast, refused off the turn (NOT_YOUR_TURN). A refused release spends nothing and the window
 	// stays open.
@@ -3481,8 +3481,8 @@ type CombatServiceHandler interface {
 	// cast of the spell its own open READIED window holds is the release, as the reaction. It is the way to
 	// release a spell placed on a map (a point, a direction, a wall) or laying a zone, which AnswerReaction
 	// cannot carry. It spends no slot and the reaction instead of the action, takes the slot the spell was
-	// held with, and the source the row was readied with (`granted_by` must be the one of Ready: another
-	// source is `invalid_argument`). A slot of another level than the held one, and any Metamagic, are
+	// held with. Ready records no grant: a held spell is released naming none (a `granted_by` is
+	// `invalid_argument`). A slot of another level than the held one, and any Metamagic, are
 	// `invalid_argument`. Another spell, or a window of another kind or another combatant's, makes it an
 	// ordinary cast, refused off the turn (NOT_YOUR_TURN). A refused release spends nothing and the window
 	// stays open.
