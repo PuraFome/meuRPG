@@ -293,7 +293,7 @@ func tableWeaponOf(te rules.TableEntry, b *rulesv1.TableWeapon) rules.TableWeapo
 	return rules.TableWeapon{
 		TableEntry: te, DescPT: b.GetDescPt(), Category: category, Ranged: b.GetRanged(), Damage: b.GetDamage(), DamageType: b.GetDamageType(),
 		TwoHandedDamage: b.GetTwoHandedDamage(), Properties: b.GetProperties(), NormalRangeFt: int(b.GetNormalRangeFt()), LongRangeFt: int(b.GetLongRangeFt()),
-		WeightOz: int(b.GetWeightOz()), PriceCP: int(b.GetPriceCp()),
+		WeightOz: int(b.GetWeightOz()), PriceCP: int(b.GetPriceCp()), TwoHandedSince: int(b.GetTwoHandedSinceRevision()),
 	}
 }
 
