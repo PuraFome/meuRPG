@@ -69,6 +69,7 @@ import {
   confirmArchiveInSheet,
   headingOf,
   leftOutView,
+  loadedNoteView,
   mergeRefreshed,
   nameResolver,
   nounPhraseOf,
@@ -212,6 +213,8 @@ export class ContentEntry {
   protected readonly leftOut = computed(() => leftOutView(this.ctx(), this.key(), this.editing()));
   protected readonly updated = computed(() => updatedLine(this.entry()));
   protected readonly archivedOn = computed(() => archivedDay(this.entry()));
+  /** The warning of an entry that loads with a part left out (the master's only). */
+  protected readonly loaded = computed(() => loadedNoteView(this.ctx(), this.key(), this.nameOf()));
   protected readonly using = computed(() => usageOf(this.entry()));
   protected readonly backLabel = computed(() => backLabelOf(this.isMaster(), this.nav()));
   protected readonly backQuery = computed(() =>

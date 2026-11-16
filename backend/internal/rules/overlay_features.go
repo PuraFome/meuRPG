@@ -578,14 +578,16 @@ func (b *overlayBuilder) checkPickChoice(site effectSite, e *Effect) error {
 // checkToolKey checks a key the list of a tool choice offers is a proficiency a tool choice may name. A write that names
 // another kind is refused; an entry stored with one loads as it always did: the pool leaves the key out, and the content
 // keeps the issue for the master (Content.StoredIssues).
-func (b *overlayBuilder) checkToolKey(site effectSite, k string) error {
+func (b *overlayBuilder) checkToolKey(site effectSite, e *Effect, k string) error {
 	if b.base.isToolPickKey(k) {
 		return nil
 	}
-	err := site.fail(".from", ReasonValue, "%q is not a tool, a weapon or another kind of proficiency a tool choice offers", k)
+	const message = "%q is not a tool, a weapon or another kind of proficiency a tool choice offers"
 	if site.strict {
-		return err
+		return site.fail(".from", ReasonValue, message, k)
 	}
+	// The issue names the key it is about: the path is the item of the list.
+	err := site.fail(fmt.Sprintf(".from[%d]", slices.Index(e.From, k)), ReasonValue, message, k)
 	if oe, ok := errors.AsType[*OverlayError](err); ok {
 		b.n.kept = append(b.n.kept, oe)
 	}
@@ -617,7 +619,7 @@ func (b *overlayBuilder) checkChoiceKey(site effectSite, e *Effect, k string) er
 		return site.fail(".from", ReasonReference, "%q is not an option of an SRD feature", k)
 	}
 	if e.Choice == "tool" {
-		return b.checkToolKey(site, k)
+		return b.checkToolKey(site, e, k)
 	}
 	return nil
 }

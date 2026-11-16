@@ -202,7 +202,7 @@ func TestAStoredToolListThatNamesAKeyOfAnotherKindLoads(t *testing.T) {
 				t.Errorf("the pool is %v, want the listed tool alone", got)
 			}
 			issues := c.StoredIssues()
-			if len(issues) != 1 || !strings.HasSuffix(issues[0].Field, ".effects[0].from") || issues[0].Reason != ReasonValue {
+			if len(issues) != 1 || !strings.HasSuffix(issues[0].Field, ".effects[0].from[1]") || issues[0].Reason != ReasonValue {
 				t.Errorf("issues = %+v, want one at the list", issues)
 			}
 		})

@@ -23,7 +23,7 @@ func TestAStoredToolChoiceThatListsAKeyOfAnotherKindLoadsAndTheMasterReadsIt(t *
 		t.Fatalf("buildTolerant() = %v, %v, %v; want the entry loaded and nothing left out", c, out, err)
 	}
 	got := c.Stored()
-	if len(got) != 1 || got[0].Key != key || got[0].Field != "table_background.feature.effects[0].from" {
+	if len(got) != 1 || got[0].Key != key || got[0].Field != "table_background.feature.effects[0].from[1]" {
 		t.Fatalf("Stored() = %+v, want one issue at the list of the entry", got)
 	}
 	master := (&tableListing{master: true, content: c}).response()

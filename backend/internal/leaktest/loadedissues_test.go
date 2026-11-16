@@ -40,7 +40,7 @@ func TestOnlyTheMasterReadsTheIssueOfAStoredEntryThatLoadsWithAPartLeftOut(t *te
 		got := res.GetLoadedWithIssues()
 		switch {
 		case who.person == w.master:
-			if len(got) != 1 || got[0].GetKey() != entry.GetKey() || got[0].GetField() != "table_background.feature.effects[0].from" || len(res.GetLeftOut()) != 0 {
+			if len(got) != 1 || got[0].GetKey() != entry.GetKey() || got[0].GetField() != "table_background.feature.effects[0].from[1]" || len(res.GetLeftOut()) != 0 {
 				t.Errorf("%s reads %v (left out %v), want one issue on the entry", who.name, got, res.GetLeftOut())
 			}
 		case len(got) != 0:
