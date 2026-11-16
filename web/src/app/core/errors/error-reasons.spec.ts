@@ -46,42 +46,63 @@ function sources(dir: string): string[] {
 }
 const CODE = sources(APP).join('\n');
 
+/** Every `Name.VALUE` the code names, read once: the values by the name they are reached through. */
+const NAMED = new Map<string, Set<string>>();
+for (const m of CODE.matchAll(/\b(\w+)\.([A-Z][A-Z0-9_]*)\b/g)) {
+  const values = NAMED.get(m[1]) ?? new Set<string>();
+  values.add(m[2]);
+  NAMED.set(m[1], values);
+}
+
 /** The names a source gives an enum: its own, and the ones it imports it as. */
-function namesOf(enumName: string): string {
+function namesOf(enumName: string): string[] {
   const aliases = [...CODE.matchAll(new RegExp(`\\b${enumName} as (\\w+)`, 'g'))].map((m) => m[1]);
-  return [enumName, ...aliases].join('|');
+  return [enumName, ...aliases];
+}
+
+/** The values the code names for an enum, whichever name it reaches the enum by. */
+function handledValues(enumName: string): string[] {
+  return namesOf(enumName).flatMap((n) => [...(NAMED.get(n) ?? [])]);
 }
 
 /** Whether a source names the enum value (`Enum.VALUE`, or `Enum.PREFIX_VALUE` for the enums whose generated names keep the prefix). */
-function isHandled(enumName: string, value: string): boolean {
-  return new RegExp(`\\b(?:${namesOf(enumName)})\\.(?:[A-Z_]*?_)?${value}\\b`).test(CODE);
+function isHandled(handled: string[], value: string): boolean {
+  return handled.some((h) => h === value || h.endsWith(`_${value}`));
 }
 
 describe('error reasons: a typed detail', () => {
-  const pairs = LIST.details.flatMap((d) =>
-    d.fields.flatMap((f) => f.reasons.map((r) => ({ message: d.message, enumName: f.enum, r }))),
-  );
+  const byEnum = new Map<string, { message: string; r: string }[]>();
+  for (const d of LIST.details) {
+    for (const f of d.fields) {
+      const list = byEnum.get(f.enum) ?? [];
+      list.push(...f.reasons.map((r) => ({ message: d.message, r })));
+      byEnum.set(f.enum, list);
+    }
+  }
 
   it('lists reasons', () => {
-    expect(pairs.length).toBeGreaterThan(200);
+    const total = [...byEnum.values()].reduce((n, list) => n + list.length, 0);
+    expect(total).toBeGreaterThan(200);
   });
 
-  it('has a place in the web for every reason the server sends', () => {
-    const missing = pairs
-      .filter((p) => !isHandled(p.enumName, p.r))
-      .map((p) => `${p.message}: ${p.enumName}.${p.r}`);
-    expect(missing).toEqual([]);
-  });
+  it.each([...byEnum.keys()].sort())(
+    'has a place in the web for every reason of %s',
+    (enumName) => {
+      const handled = handledValues(enumName);
+      const missing = (byEnum.get(enumName) ?? [])
+        .filter((p) => !isHandled(handled, p.r))
+        .map((p) => `${p.message}: ${enumName}.${p.r}`);
+      expect(missing).toEqual([]);
+    },
+  );
 });
 
 describe('error reasons: the body of an HTTP route error', () => {
   const listed = [...new Set(LIST.body.map((b) => b.reason))].sort();
 
-  it('has a Portuguese sentence for every listed reason', () => {
-    for (const reason of listed) {
-      const text = (BODY_REASON_TEXT as Record<string, string | undefined>)[reason];
-      expect(text, reason).toMatch(/^[A-ZÀ-Ý].{12,}[.!]$/);
-    }
+  it.each(listed)('has a Portuguese sentence for the listed reason %s', (reason) => {
+    const text = (BODY_REASON_TEXT as Record<string, string | undefined>)[reason];
+    expect(text, reason).toMatch(/^[A-ZÀ-Ý].{12,}[.!]$/);
   });
 
   it('has no sentence for a reason that is not listed', () => {
@@ -103,22 +124,23 @@ describe('error reasons: a violation of the table content', () => {
   const ctx = { aOne: 'uma magia' };
   const textOf = (field: string, reason: string) => violationText({ field, reason }, ctx);
 
-  it('has a sentence of its own for every listed reason', () => {
+  it.each(listed)('has a sentence of its own for the listed reason %s', (reason) => {
     const generic = 'reason-nobody-sends';
-    const bare = listed.filter(
-      (reason) => !PROBES.some((field) => textOf(field, reason) !== textOf(field, generic)),
-    );
-    expect(bare).toEqual([]);
+    expect(PROBES.some((field) => textOf(field, reason) !== textOf(field, generic))).toBe(true);
   });
 });
 
 describe('error reasons: the reason in the query of an error page', () => {
-  it('has a sentence of its own for every listed reason of /invite/error', () => {
-    const generic = describeInviteErrorCode(null);
-    const bare = LIST.redirects
-      .map((r) => r.reason)
-      .filter((reason) => describeInviteErrorCode(reason) === generic);
-    expect(bare).toEqual([]);
+  const generic = describeInviteErrorCode(null);
+
+  it('lists reasons', () => {
     expect(LIST.redirects.length).toBeGreaterThan(0);
   });
+
+  it.each(LIST.redirects.map((r) => r.reason))(
+    'has a sentence of its own for the reason %s of /invite/error',
+    (reason) => {
+      expect(describeInviteErrorCode(reason)).not.toBe(generic);
+    },
+  );
 });
