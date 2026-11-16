@@ -219,9 +219,11 @@ func pinAttackFaces(req proto.Message, faces []int) {
 	}
 }
 
-// rerunNpcCheck is the rerun of an NPC's check: it never runs the master's roll again (the d20 was rolled once and is kept), it only
-// closes the check with the dice taken off so far. The bards' answers and the master's skip settle it themselves; this is for a path
-// that finds the check still held after its session moved on.
+// rerunNpcCheck is the rerun of an NPC's check, and it runs nothing: the master's d20 is rolled once and kept, and the check settles by
+// the bards' answers (AnswerHeldRoll's cutting_words arm, answerNpcCheck), by the master's skip, or when a combat opens or the session
+// ends, none of which goes through a rerun (the gate's classes never admit the kind, held_store.go). It refuses, with an internal error
+// and no write, a path that reaches it by mistake: closing the check here with the dice taken off so far would settle it under a key of
+// the gate's, which the check's own paths (skipNpcCheck, settleNpcCheck) own.
 func rerunNpcCheck(ctx context.Context, s *Service, h heldRoll, key string) (proto.Message, error) {
 	return nil, s.dbError(ctx, "settle the held check", fmt.Errorf("the held check %s is settled by its bards' answers or by the master's skip, key %s", h.ID, key))
 }

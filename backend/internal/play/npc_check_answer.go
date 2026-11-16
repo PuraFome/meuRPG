@@ -246,7 +246,7 @@ func (s *Service) answerNpcCheck(ctx context.Context, m authz.Membership, req *p
 		return nil, errHeldNotFound()
 	}
 	if err != nil {
-		return nil, err
+		return nil, s.dbError(ctx, "answer the cutting words question", err)
 	}
 	return &playv1.AnswerHeldRollResponse{Result: &playv1.AnswerHeldRollResponse_CuttingWords{CuttingWords: out}}, nil
 }
@@ -284,6 +284,12 @@ func (a *npcAnswer) run(ctx context.Context, holdID string) (*playv1.CuttingWord
 	}
 	if other, err := a.q.GetNpcCheckAskByAnswerKey(ctx, playdb.GetNpcCheckAskByAnswerKeyParams{CampaignID: a.m.CampaignID, AnswerKey: &a.key}); err == nil && other.ID != "" {
 		return nil, errKeyReused()
+	}
+	// The last answer settles the check under its own key, as the resolved event's: a key some event of the session holds is a reused key.
+	if _, err := a.q.GetSessionEventByIdempotencyKey(ctx, playdb.GetSessionEventByIdempotencyKeyParams{GameSessionID: a.session.ID, IdempotencyKey: &a.key}); err == nil {
+		return nil, errKeyReused()
+	} else if !errors.Is(err, pgx.ErrNoRows) {
+		return nil, fmt.Errorf("find the event of this idempotency key: %w", err)
 	}
 	if asks[mine].State != askAsked || hold.AnswerKey != nil {
 		return nil, errAnsweredAlready()
