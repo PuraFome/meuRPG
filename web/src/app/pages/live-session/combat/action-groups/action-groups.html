@@ -234,7 +234,10 @@
           <ng-container *ngTemplateOutlet="itemRow; context: { $implicit: r }" />
         }
         @for (g of itemParts().folded; track g.group) {
-          <app-fold appearance="row" [muted]="true" [title]="g.title" [level]="3">
+          <!-- The group the Action closed: folded by default, the chevron first, the count of its rows at the right (board 565-03). -->
+          <app-fold appearance="row" chevron="start" [aligned]="true" [muted]="true" [title]="g.title" [level]="3">
+            <app-economy-mark foldMark class="items__mark" kind="action" [spent]="true" />
+            <span foldNote>{{ g.rows.length }} {{ g.rows.length === 1 ? 'item' : 'itens' }}</span>
             @for (r of g.rows; track r.id) {
               <ng-container *ngTemplateOutlet="itemRow; context: { $implicit: r }" />
             }
@@ -472,13 +475,12 @@
 </ng-template>
 
 <ng-template #itemRow let-r>
-  <app-action-row
+  <app-item-row
     [name]="r.namePt"
     [times]="r.count"
+    [icon]="r.icon"
     [economy]="r.economy"
     [detail]="r.detail"
-    button="Usar"
-    [icon]="r.icon"
     [buttonLabel]="'Usar ' + r.namePt"
     [attr.data-item-row]="r.key"
     [off]="!!itemWhy(r)"

@@ -42,4 +42,28 @@ describe('ConsumableNoticeCard', () => {
     expect(el.querySelector('.consumable__detail')).toBeNull();
     expect(el.querySelector('.consumable__text')?.textContent).toBe('Por 1 hora, você escala.');
   });
+
+  it('puts the item\'s text and its caption in one box, the caption heading it', () => {
+    const el = render({
+      tone: 'neutral',
+      icon: 'menu_book',
+      headline: 'Tor usou o Óleo de precisão.',
+      detail: '',
+      caption: 'Poção, muito rara',
+      text: ['Este óleo gelatinoso.', 'Aplicar o óleo leva 1 minuto.'],
+    });
+    const boxes = el.querySelectorAll('.consumable__text');
+    expect(boxes).toHaveLength(1);
+    expect(boxes[0].firstElementChild?.className).toBe('consumable__caption');
+    expect(boxes[0].firstElementChild?.textContent).toBe('Poção, muito rara');
+    expect([...boxes[0].querySelectorAll('.consumable__line')].map((n) => n.textContent)).toEqual([
+      'Este óleo gelatinoso.',
+      'Aplicar o óleo leva 1 minuto.',
+    ]);
+  });
+
+  it('draws no box when the item has no text', () => {
+    const el = render({ tone: 'good', icon: 'favorite', headline: 'x', detail: '', text: [] });
+    expect(el.querySelector('.consumable__text')).toBeNull();
+  });
 });

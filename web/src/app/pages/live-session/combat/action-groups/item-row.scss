@@ -1,0 +1,111 @@
+// The same columns as the other tabs' rows: the text, then the 112px action column, so the buttons line up down every tab.
+:host {
+  display: grid;
+  grid-template-columns: var(--mr-font-20) minmax(0, 1fr) 112px;
+  align-items: center;
+  column-gap: var(--mr-space-2);
+  padding: var(--mr-space-3) 0;
+}
+
+.row__icon {
+  align-self: start;
+  width: var(--mr-font-20);
+  height: var(--mr-font-20);
+  margin-top: var(--mr-space-1);
+  font-size: var(--mr-font-20);
+}
+
+.row__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.row__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 var(--mr-space-2);
+}
+
+.row__name {
+  overflow-wrap: anywhere;
+  font-family: var(--mr-font-display);
+  font-size: var(--mr-font-18);
+  font-weight: 700;
+  line-height: 24px;
+}
+
+// The count of identical units is part of the name's weight, not a footnote.
+.row__times {
+  font-size: var(--mr-font-14);
+  font-weight: 700;
+}
+
+.row__line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 var(--mr-space-1);
+  font-size: var(--mr-font-15);
+  line-height: 20px;
+  color: var(--mr-ink-muted);
+}
+
+// The mark of the Ação in the economy row's ink; its spent look (dashed, muted) only when the row is spent.
+.row__econ {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--mr-space-1);
+  font-weight: 700;
+  color: var(--mr-ink);
+}
+
+.row__econ--spent {
+  color: var(--mr-ink-muted);
+}
+
+.row__why {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: var(--mr-space-1);
+  font-size: var(--mr-font-14);
+  font-weight: 500;
+  line-height: 19px;
+  color: var(--mr-ink);
+
+  .mat-icon {
+    flex: none;
+    width: var(--mr-font-18);
+    height: var(--mr-font-18);
+    font-size: var(--mr-font-18);
+  }
+}
+
+.row__btn {
+  grid-column: 3;
+  --mat-button-outlined-container-height: 48px;
+  --mat-button-outlined-label-text-color: var(--mr-ink);
+  --mat-button-outlined-outline-color: var(--mr-control-line);
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+
+  .mat-icon {
+    flex: none;
+    width: var(--mr-font-18);
+    height: var(--mr-font-18);
+    margin: 0 var(--mr-space-1) 0 0;
+    font-size: var(--mr-font-18);
+  }
+}
+
+.row__btn--off {
+  --mat-button-outlined-label-text-color: var(--mr-ink-muted);
+  --mat-button-outlined-disabled-label-text-color: var(--mr-ink-muted);
+  --mat-button-outlined-disabled-outline-color: var(--mr-control-line);
+  border-style: dashed;
+  cursor: default;
+}

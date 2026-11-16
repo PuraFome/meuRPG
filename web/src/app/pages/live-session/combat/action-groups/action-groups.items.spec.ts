@@ -156,10 +156,33 @@ describe('ActionGroups: the Itens tab', () => {
     expect(buttons.map(text)).toEqual(['science Usar', 'science Usar']);
   });
 
+  it('leads each row with the icon of its item, apart from the flask of the button', () => {
+    const { panel, open } = setup({ items: [HEAL, SCROLL] });
+    open();
+    const icons = [...panel()!.querySelectorAll('app-item-row')].map((r) =>
+      text(r.querySelector('.row__icon')),
+    );
+    expect(icons).toEqual(['science', 'description']);
+  });
+
+  it('says the mark, the Ação and what the item does on one second line, in that order', () => {
+    const { panel, open } = setup({ items: [HEAL, SCROLL] });
+    open();
+    const lines = [...panel()!.querySelectorAll('.row__line')].map(text);
+    expect(lines).toEqual(['Ação · cura 2d4 + 2', 'só mostra o texto']);
+  });
+
+  it('draws the Ação in the ink and with no spent look on a row that can be used', () => {
+    const { panel, open } = setup({ items: [HEAL] });
+    open();
+    expect(panel()!.querySelector('.row__econ--spent')).toBeNull();
+    expect(panel()!.querySelector('app-economy-mark svg')?.classList).not.toContain('mark--spent');
+  });
+
   it('says "×2" beside the name of a group, and reads it as "2 unidades"', () => {
     const { panel, open } = setup({ items: [HEAL, FIRE] });
     open();
-    const rows = [...panel()!.querySelectorAll('app-action-row')];
+    const rows = [...panel()!.querySelectorAll('app-item-row')];
     const times = rows[0].querySelector('.row__times')!;
     expect(text(times.querySelector('[aria-hidden="true"]'))).toBe('×2');
     expect(times.hasAttribute('aria-label')).toBe(false);
@@ -171,7 +194,7 @@ describe('ActionGroups: the Itens tab', () => {
   it('marks the Ação on a potion and nothing on an oil or a scroll', () => {
     const { panel, open } = setup({ items: [HEAL, OIL, SCROLL] });
     open();
-    const econ = [...panel()!.querySelectorAll('.row__text')].map((r) =>
+    const econ = [...panel()!.querySelectorAll('app-item-row')].map((r) =>
       text(r.querySelector('.row__econ')),
     );
     expect(econ).toEqual(['Ação', '', '']);
@@ -180,7 +203,7 @@ describe('ActionGroups: the Itens tab', () => {
   it('draws a page on the button of a scroll, "Usar" like every other row (no "Ler" yet)', () => {
     const { panel, open } = setup({ items: [SCROLL] });
     open();
-    expect(text(panel()!.querySelector('.row__btn'))).toBe('description Usar');
+    expect(text(panel()!.querySelector('.row__btn'))).toBe('science Usar');
     expect(text(panel()!)).not.toContain('Ler');
   });
 
@@ -202,6 +225,55 @@ describe('ActionGroups: the Itens tab', () => {
     fold.click();
     fixture.detectChanges();
     expect(names(p)).toEqual(['Óleo de afiar', 'Poção de cura', 'Poção de resistência']);
+  });
+
+  it('draws the folded line as the board does: the chevron first, the spent circle, the words and the count of its rows', () => {
+    const { panel, open } = setup({ items: [HEAL, FIRE, OIL] }, { actionUsed: true });
+    open();
+    const fold = panel()!.querySelector<HTMLButtonElement>('.mr-fold__button')!;
+    const parts = [...fold.children].map((c) => c.tagName.toLowerCase());
+    expect(parts).toEqual(['mat-icon', 'app-economy-mark', 'span', 'span']);
+    expect(text(fold.children[0])).toBe('expand_more');
+    expect(fold.querySelector('app-economy-mark svg')?.classList).toContain('mark--spent');
+    expect(text(fold.querySelector('.mr-fold__note'))).toBe('2 itens');
+  });
+
+  it('says "1 item" for one folded row', () => {
+    const { panel, open } = setup({ items: [HEAL] }, { actionUsed: true });
+    open();
+    expect(text(panel()!.querySelector('.mr-fold__note'))).toBe('1 item');
+  });
+
+  it('looks spent inside the fold: the dashed button and the reason on the row, and "Usar" opens no sheet', () => {
+    const { panel, open, fixture, used } = setup({ items: [HEAL] }, { actionUsed: true });
+    open();
+    panel()!.querySelector<HTMLButtonElement>('.mr-fold__button')!.click();
+    fixture.detectChanges();
+    const row = panel()!.querySelector('app-item-row')!;
+    const button = row.querySelector<HTMLButtonElement>('.row__btn')!;
+    expect(button.classList).toContain('row__btn--off');
+    expect(button.getAttribute('aria-disabled')).toBe('true');
+    expect(row.querySelector('.row__econ')?.classList).toContain('row__econ--spent');
+    expect(row.querySelector('app-economy-mark svg')?.classList).toContain('mark--spent');
+    expect(text(row.querySelector('.row__why'))).toBe('blockA ação desta vez já foi usada.');
+    expect(button.getAttribute('aria-describedby')).toBe(row.querySelector('.row__why')!.id);
+    button.click();
+    expect(used).toEqual([]);
+  });
+
+  it('keeps a row that costs no action enabled while the Ação is spent', () => {
+    const { panel, open, used } = setup({ items: [OIL] }, { actionUsed: true });
+    open();
+    const button = panel()!.querySelector<HTMLButtonElement>('.row__btn')!;
+    expect(button.classList).not.toContain('row__btn--off');
+    button.click();
+    expect(used).toEqual([OIL.first]);
+  });
+
+  it('lines the buttons of the folded rows up with the open rows above them', () => {
+    const { panel, open } = setup({ items: [HEAL, OIL] }, { actionUsed: true });
+    open();
+    expect(panel()!.querySelector('app-fold')?.classList).toContain('mr-panel--fold-aligned');
   });
 
   it('folds them with Extra Attack too: the first attack already spent the Ação a potion costs', () => {
@@ -227,7 +299,7 @@ describe('ActionGroups: the Itens tab', () => {
     open();
     panel()!.querySelector<HTMLButtonElement>('.mr-fold__button')!.click();
     fixture.detectChanges();
-    const rows = [...panel()!.querySelectorAll('app-action-row')];
+    const rows = [...panel()!.querySelectorAll('app-item-row')];
     const heal = rows.find((r) => text(r).includes('Poção de cura'))!;
     const oil = rows.find((r) => text(r).includes('Óleo de afiar'))!;
     expect(text(heal)).toContain('Atordoado: não pode agir.');

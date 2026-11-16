@@ -65,23 +65,25 @@
   }
   @if (dice; as d) {
     <div class="dice">
-      @if (!typing()) {
-        <p class="dice__line">
-          O app rola {{ d.text }}{{ receiverName() ? ' para ' + receiverName() : '' }}.
-          @if (data.canType) {
-            <button #typeSwitch type="button" class="dice__switch" (click)="startTyping()">Digitar os dados</button>
+      <!-- The toggle has one place, at the right of the first line, whichever way the dice come. -->
+      <p class="dice__line">
+        <span class="dice__text">
+          @if (!typing()) {
+            O app rola {{ d.text }}{{ receiverName() ? ' para ' + receiverName() : '' }}.
+          } @else {
+            Digite o que saiu em cada dado.
+            @if (d.modifier !== 0) {
+              O {{ signedModifier }} o app soma.
+            }
           }
-        </p>
-      } @else {
-        <p class="dice__line">
-          Digite o que saiu em cada dado.
-          @if (d.modifier !== 0) {
-            O {{ signedModifier }} o app soma.
-          }
-          @if (data.canApp) {
-            <button type="button" class="dice__switch" (click)="stopTyping()">Rolar no app</button>
-          }
-        </p>
+        </span>
+        @if (typing() ? data.canApp : data.canType) {
+          <button #typeSwitch type="button" class="dice__switch" (click)="typing() ? stopTyping() : startTyping()">
+            {{ typing() ? 'Rolar no app' : 'Digitar os dados' }}
+          </button>
+        }
+      </p>
+      @if (typing()) {
         <div class="dice__fields">
           @for (n of numbers; track n) {
             <div class="dice__one">
@@ -96,15 +98,18 @@
                 autocomplete="off"
                 [value]="faces()[n]"
                 [attr.aria-invalid]="invalid()[n] ? 'true' : null"
-                [attr.aria-describedby]="invalid()[n] ? 'use-consumable-face-err-' + n : null"
+                [attr.aria-describedby]="invalid()[n] ? faceErrorId : null"
                 (input)="onFace(n, $event)"
               />
-              @if (invalid()[n]) {
-                <span class="dice__err" [id]="'use-consumable-face-err-' + n">
-                  <mat-icon aria-hidden="true">error</mat-icon>Digite um número de 1 a {{ d.sides }}
-                </span>
-              }
             </div>
+          }
+        </div>
+        <!-- One message for the whole row, under it: the live region is there before the words come. -->
+        <div class="mr-live" role="alert">
+          @if (anyInvalid()) {
+            <p class="dice__err" [id]="faceErrorId">
+              <mat-icon aria-hidden="true">error</mat-icon>Digite um número de 1 a {{ d.sides }}
+            </p>
           }
         </div>
       }
@@ -139,14 +144,14 @@
       </span>
     </p>
   }
-  <div foot class="foot">
+  <div foot class="foot" [class.foot--phone]="inSheet" [class.foot--wide]="phase() === 'give' && inCombat() === true">
     @if (phase() === 'choose') {
       @if (gives) {
         <button
           #give
           matButton="outlined"
           type="button"
-          class="give"
+          class="give go--half"
           [class.give--off]="giveOff()"
           [class.mr-button--off]="giveOff()"
           [disabled]="busy() || !canGive()"
@@ -161,6 +166,8 @@
         matButton="filled"
         type="button"
         class="go"
+        [class.go--half]="gives"
+        [class.go--wide]="!gives"
         [class.go--off]="!canSend()"
         [class.mr-button--off]="!!blocked()"
         [disabled]="!canSend()"

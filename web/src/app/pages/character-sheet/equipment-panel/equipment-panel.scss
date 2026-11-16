@@ -207,6 +207,18 @@
   align-self: center;
 }
 
+// The kebab keeps one place (the column before the button, as the gear rows have it), so the buttons of every row share a right edge
+// whether or not the sheet can manage its magic items.
+.magic-row--charges .magic-row__more,
+.magic-row--consumable .magic-row__more {
+  grid-column: 3;
+}
+
+.magic-row--charges .magic-row__use,
+.magic-row--consumable .magic-row__use {
+  grid-column: 4;
+}
+
 .magic-row__times {
   font-size: var(--mr-font-14);
   font-weight: 400;

@@ -138,16 +138,6 @@
                     <mat-icon aria-hidden="true">{{ c.effectIcon }}</mat-icon>{{ c.effectLine }}
                   </span>
                 </div>
-                @if (canEquip()) {
-                  <button
-                    matButton="outlined"
-                    type="button"
-                    class="magic-row__use"
-                    [attr.data-consumable-action]="c.key"
-                    [attr.aria-label]="'Usar ' + c.namePt"
-                    (click)="consumableUsed.emit(c.first)"
-                  >Usar</button>
-                }
                 @if (canManageMagic()) {
                   <button
                     type="button"
@@ -158,6 +148,16 @@
                   >
                     <mat-icon aria-hidden="true">more_vert</mat-icon>
                   </button>
+                }
+                @if (canEquip()) {
+                  <button
+                    matButton="outlined"
+                    type="button"
+                    class="magic-row__use"
+                    [attr.data-consumable-action]="c.key"
+                    [attr.aria-label]="'Usar ' + c.namePt"
+                    (click)="consumableUsed.emit(c.first)"
+                  >Usar</button>
                 }
               </li>
             } @else {
@@ -196,6 +196,17 @@
                     </span>
                   }
                 </div>
+                @if (canManageMagic()) {
+                  <button
+                    type="button"
+                    class="magic-row__more"
+                    aria-haspopup="dialog"
+                    [attr.aria-label]="'Remover item · ' + e.namePt"
+                    (click)="magicRemoving.emit(e)"
+                  >
+                    <mat-icon aria-hidden="true">more_vert</mat-icon>
+                  </button>
+                }
                 @if (canEquip() && c.state === 'pending') {
                   <button
                     matButton="outlined"
@@ -218,17 +229,6 @@
                     [attr.aria-label]="'Usar ' + e.namePt"
                     (click)="c.state === 'ready' && chargesUsed.emit(e)"
                   >Usar</button>
-                }
-                @if (canManageMagic()) {
-                  <button
-                    type="button"
-                    class="magic-row__more"
-                    aria-haspopup="dialog"
-                    [attr.aria-label]="'Remover item · ' + e.namePt"
-                    (click)="magicRemoving.emit(e)"
-                  >
-                    <mat-icon aria-hidden="true">more_vert</mat-icon>
-                  </button>
                 }
               </li>
             } @else {

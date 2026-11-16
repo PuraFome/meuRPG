@@ -20,6 +20,7 @@ import {
   magicRows,
   subtitleOf,
   targetRows,
+  textOf,
   turnBlockOf,
   useCost,
   useNotice,
@@ -554,6 +555,18 @@ describe('useNotice', () => {
     });
   });
 
+  it('heads the text of an item with its first line when more follow: the rarity is a caption, not a box', () => {
+    const n = useNotice(
+      create(UseConsumableResponseSchema, {
+        outcome: ConsumableUseOutcome.TEXT_ONLY,
+        text: ['Poção, muito rara', 'Este óleo gelatinoso.', 'Aplicar o óleo leva 1 minuto.'],
+      }),
+      { ...base, itemName: 'Óleo de precisão', kind: 'oil', effectPt: '', gift: false },
+    );
+    expect(n.caption).toBe('Poção, muito rara');
+    expect(n.text).toEqual(['Este óleo gelatinoso.', 'Aplicar o óleo leva 1 minuto.']);
+  });
+
   it('says an oil is used and not drunk, with the article of its name', () => {
     const text = create(UseConsumableResponseSchema, { outcome: ConsumableUseOutcome.TEXT_ONLY });
     const oil = { ...base, itemName: 'Óleo de precisão', kind: 'oil' as const, effectPt: '' };
@@ -611,5 +624,16 @@ describe('itemWords', () => {
     });
     expect(itemWords('Pergaminho de magia').indefinite).toBe('um Pergaminho de magia');
     expect(itemWords('Conta de força').indefinite).toBe('uma Conta de força');
+  });
+});
+
+describe('textOf', () => {
+  it('keeps a single line as the text, with no caption', () => {
+    expect(textOf(['Por 1 hora.'])).toEqual({ text: ['Por 1 hora.'] });
+    expect(textOf([])).toEqual({ text: [] });
+  });
+
+  it('takes the first of several lines as the caption', () => {
+    expect(textOf(['Poção, rara', 'a', 'b'])).toEqual({ caption: 'Poção, rara', text: ['a', 'b'] });
   });
 });

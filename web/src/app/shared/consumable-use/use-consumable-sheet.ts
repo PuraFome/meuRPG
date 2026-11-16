@@ -236,6 +236,9 @@ export class UseConsumableSheet {
   protected readonly invalid = computed(() =>
     this.faces().map((text, i) => text.trim() !== '' && this.parsed()[i] === null),
   );
+  /** Some die holds a face that is no number of its range: the one message under the row says it. */
+  protected readonly anyInvalid = computed(() => this.invalid().some(Boolean));
+  protected readonly faceErrorId = 'use-consumable-face-err';
   /** Every die has its face (or the app rolls them). */
   private readonly rolled = computed(
     () => !this.dice || !this.typing() || this.parsed().every((v) => v !== null),
@@ -333,13 +336,13 @@ export class UseConsumableSheet {
     );
   }
 
-  /** "Digitar os dados": the fields replace the button that was pressed, so the focus goes to the first die. */
+  /** "Digitar os dados": the fields open and the focus goes to the first die; the toggle is one control that changes its word and keeps its place. */
   protected startTyping(): void {
     this.typing.set(true);
     afterNextRender(() => this.faceFields()[0]?.nativeElement.focus(), { injector: this.injector });
   }
 
-  /** "Rolar no app": the fields go, so the focus goes back to the button that opens them. */
+  /** "Rolar no app": the fields go, and the focus goes back to the toggle, which is still there. */
   protected stopTyping(): void {
     this.typing.set(false);
     afterNextRender(() => focusWithRing(this.typeSwitch()?.nativeElement), {

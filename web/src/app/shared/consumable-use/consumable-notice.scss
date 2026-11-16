@@ -38,11 +38,24 @@
   font-weight: 400;
 }
 
-// The item's own text, for a potion the app carries out nothing for: a dashed box under the notice.
+// The item's own text, for a potion the app carries out nothing for: one dashed box under the notice, headed by its caption.
 .consumable__text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
   margin: var(--mr-space-2) 0 0;
   padding: var(--mr-space-2);
   border: 1px dashed var(--mr-rule);
   border-radius: var(--mr-radius-md);
   font-size: var(--mr-font-14);
+
+  p {
+    margin: 0;
+  }
+}
+
+.consumable__caption {
+  font-size: var(--mr-font-13);
+  font-weight: 700;
+  color: var(--mr-ink-muted);
 }

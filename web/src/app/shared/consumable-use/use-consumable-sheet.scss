@@ -1,8 +1,14 @@
+// One 16px rhythm between the parts of the body (the effect line, the "O app rola" row, the ban line, the cost line): the frame's gap
+// is that rhythm here, and the parts carry no margin of their own.
+:host {
+  --mr-sheet-gap: var(--mr-space-4);
+  display: block;
+}
 .effect {
   display: flex;
   align-items: center;
   gap: var(--mr-space-2);
-  margin: 0 0 var(--mr-space-2);
+  margin: 0;
 }
 .effect .mat-icon {
   width: var(--mr-font-18);
@@ -10,11 +16,11 @@
   font-size: var(--mr-font-18);
 }
 .explain {
-  margin: 0 0 var(--mr-space-3);
+  margin: 0;
 }
 .who {
   min-width: 0;
-  margin: 0 0 var(--mr-space-3);
+  margin: 0;
   padding: 0;
   border: 0;
 }
@@ -69,18 +75,28 @@
   font-size: var(--mr-font-14);
 }
 .dice {
-  margin: 0 0 var(--mr-space-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+  margin: 0;
 }
+// The words at the left and the toggle at the right of the first line, in the same place whichever way the dice come: the words
+// are centred on the toggle's 44px, so one line or three, the toggle does not move.
 .dice__line {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: var(--mr-space-1) var(--mr-space-3);
-  margin: 0 0 var(--mr-space-2);
+  gap: var(--mr-space-3);
+  margin: 0;
   font-size: var(--mr-font-14);
 }
+.dice__text {
+  flex: 1 1 0;
+  min-width: 0;
+  padding-block: var(--mr-space-3);
+}
 .dice__switch {
+  flex: none;
   min-height: 44px;
   padding: 0 var(--mr-space-1);
   border: 0;
@@ -105,12 +121,13 @@
 .dice__label {
   font-size: var(--mr-font-14);
 }
+// A neutral border at rest; the danger colour is for a face that is no number of the die's range.
 .dice__field {
   box-sizing: border-box;
   width: 100%;
   min-height: 48px;
   padding: 0 var(--mr-space-3);
-  border: 2px solid var(--mr-accent);
+  border: 1px solid var(--mr-control-line);
   border-radius: var(--mr-radius-md);
   background: var(--mr-surface);
   color: var(--mr-ink);
@@ -119,11 +136,13 @@
 }
 .dice__field[aria-invalid='true'] {
   border-color: var(--mr-danger-ink);
+  box-shadow: inset 0 0 0 1px var(--mr-danger-ink);
 }
 .dice__err {
   display: flex;
   align-items: flex-start;
   gap: var(--mr-space-1);
+  margin: 0;
   color: var(--mr-danger-ink);
   font-size: var(--mr-font-13);
   // A line of its own height, so the icon sits by the middle of the first line however many lines follow.
@@ -136,16 +155,17 @@
   height: var(--mr-font-14);
   font-size: var(--mr-font-14);
 }
-// The live region is always there, so the line that comes after the read is announced; empty, it takes no room.
-// The 14px cancels the `gap` of `.frame__body` in sheet-frame.scss, which has no token.
-.why:empty {
-  margin-bottom: -14px;
+// The live regions are always there, so the line that comes after the read is announced; empty, they take no room: a negative
+// margin cancels the frame's gap beside them.
+.why:empty,
+.mr-live:empty {
+  margin-bottom: calc(var(--mr-sheet-gap) * -1);
 }
 .none {
   display: flex;
   align-items: center;
   gap: var(--mr-space-2);
-  margin: 0 0 var(--mr-space-2);
+  margin: 0;
 }
 .none .mat-icon {
   flex: none;
@@ -179,6 +199,8 @@
 .cost strong {
   color: var(--mr-ink);
 }
+// One footer for each breakpoint. A dialog (768px up) right-aligns its buttons at their own width, as board 565-05 draws it. The phone's
+// sheet (`foot--phone`) gives them the width: two equal halves, or one a line when a receiver is chosen in a combat (board 565-02).
 .foot {
   display: flex;
   flex-wrap: wrap;
@@ -187,6 +209,18 @@
 }
 .foot button {
   min-height: 48px;
+}
+// The receiver's button is the first in the reading order, so the dialog sets it last: the primary action at the right edge.
+.foot--wide:not(.foot--phone) {
+  flex-direction: row-reverse;
+  justify-content: flex-start;
+}
+.foot--phone .go--half {
+  flex: 1 1 0;
+  min-width: 0;
+}
+.foot--phone .go--wide {
+  flex: 1 1 100%;
 }
 .give--off {
   cursor: default;
@@ -199,19 +233,11 @@
 .mr-button--off.go--off {
   opacity: 1;
 }
-.go--wide {
-  flex: 1 1 100%;
-}
-// "Voltar" and "Dar a …" side by side.
-.go--half {
-  flex: 1 1 0;
-  min-width: 0;
-}
 // A refusal that can be tried again has its button beside the words, and under them when the sheet is narrow.
 .refusal {
   flex-wrap: wrap;
   align-items: center;
-  margin: 0 0 var(--mr-space-3);
+  margin: 0;
 }
 .refusal__retry {
   margin-left: auto;

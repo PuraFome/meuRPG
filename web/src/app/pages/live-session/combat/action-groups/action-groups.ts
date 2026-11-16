@@ -22,7 +22,11 @@ import {
   type TurnOptions,
 } from '../../../../../gen/meurpg/rules/v1/rules_pb';
 import type { AttunementEntryVm } from '../../../../core/characters/attunement';
-import type { CombatItemRowVm, ConsumableNotice } from '../../../../core/characters/consumables';
+import {
+  ACTION_SPENT_WHY,
+  type CombatItemRowVm,
+  type ConsumableNotice,
+} from '../../../../core/characters/consumables';
 import { AMMUNITION } from '../../../../core/combat/ammunition-line';
 import {
   throwNote,
@@ -72,7 +76,7 @@ import { hitCards } from '../../../../core/effects/hit-effect-text';
 import { AttackLegend } from './attack-legend';
 import { ConsumableNoticeCard } from '../../../../shared/consumable-use/consumable-notice';
 import { Fold } from '../../../../shared/fold/fold';
-import { EconomyShapes } from '../../../../shared/economy-shapes/economy-shapes';
+import { EconomyMark, EconomyShapes } from '../../../../shared/economy-shapes/economy-shapes';
 import { movementOf, turnLineOf } from './turn-line';
 import { leaveDetailOf, SURPRISE_ROWS } from './surprise-and-form-text';
 import { holdsReadied, isReadyOption, withoutReady } from '../../../../core/combat/ready';
@@ -81,6 +85,7 @@ import { TabList, tabId, tabPanelId } from '../../../../shared/tab-list/tab-list
 import type { PactSlotsVm, SlotUsageVm } from '../../../../core/play/resource-usage.types';
 import { SlotDots } from '../../../../shared/slot-dots/slot-dots';
 import { ActionRow, type RowEconomy } from './action-row';
+import { ItemRow } from './item-row';
 import { featureIsOff, featureLine, featureWhy } from '../../../../core/combat/action-spend';
 import { resourceOf, useLine } from '../../../../core/combat/feature-use';
 import type { ResourceUsageVm } from '../../../../core/play/resource-usage.types';
@@ -116,8 +121,10 @@ import { offersWeaponAttack } from './weapon-offer';
 @Component({
   selector: 'app-action-groups',
   imports: [
+    EconomyMark,
     EconomyShapes,
     ActionRow,
+    ItemRow,
     AttackLegend,
     ConsumableNoticeCard,
     Fold,
@@ -307,11 +314,18 @@ export class ActionGroups {
     partItems(this.items(), this.own(), this.spent(), this.spentWord()),
   );
   /**
-   * Why an item row cannot be used: the page is locked, or the character cannot act (stunned, paralyzed...) and the item costs the
-   * Action. An item that costs none (an oil, a scroll) stays open. The row is disabled with its reason and opens no sheet.
+   * Why an item row cannot be used: the page is locked, or the item costs the Action and the character cannot act (stunned,
+   * paralyzed...) or has spent it. An item that costs none (an oil, a scroll) stays open. The row is disabled with its reason
+   * and opens no sheet.
    */
   protected itemWhy(row: CombatItemRowVm): string {
-    return this.locked() || (row.economy === 'action' ? cannotActWhy(this.own()) : '');
+    if (this.locked()) {
+      return this.locked();
+    }
+    if (row.economy !== 'action') {
+      return '';
+    }
+    return cannotActWhy(this.own()) || (this.own().actionUsed ? ACTION_SPENT_WHY : '');
   }
 
   /** The effects waiting for the caster's next weapon hit (#577), the card at the top of "Ataques". */

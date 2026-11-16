@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import { MAT_BOTTOM_SHEET_DATA, MatBottomSheetRef } from '@angular/material/bottom-sheet';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 
 import type { ConsumableVm } from '../../core/characters/consumable-vm';
@@ -70,7 +71,7 @@ describe('UseConsumableSheet', () => {
     close.mockReset();
   });
 
-  function render(over: Partial<UseConsumableData> = {}) {
+  function render(over: Partial<UseConsumableData> = {}, phone = false) {
     const consumable = over.consumable ?? POTION;
     if (over.inCombat !== undefined && over.inCombat !== null) {
       serverCombat = over.inCombat;
@@ -92,10 +93,15 @@ describe('UseConsumableSheet', () => {
       consumable,
     };
     TestBed.configureTestingModule({
-      providers: [
-        { provide: MAT_DIALOG_DATA, useValue: data },
-        { provide: MatDialogRef, useValue: { close, disableClose: false } },
-      ],
+      providers: phone
+        ? [
+            { provide: MAT_BOTTOM_SHEET_DATA, useValue: data },
+            { provide: MatBottomSheetRef, useValue: { dismiss: close, disableClose: false } },
+          ]
+        : [
+            { provide: MAT_DIALOG_DATA, useValue: data },
+            { provide: MatDialogRef, useValue: { close, disableClose: false } },
+          ],
     });
     const fixture = TestBed.createComponent(UseConsumableSheet);
     fixture.detectChanges();
@@ -694,6 +700,62 @@ describe('UseConsumableSheet', () => {
       expect(flat(el.querySelector('.dice'))).toContain('O app rola 2d4 + 2.');
     });
 
+    it('says a wrong face once, under the whole row, and ties every wrong field to that message', async () => {
+      const { el, settle, fixture } = render();
+      await settle();
+      Array.from(el.querySelectorAll('button'))
+        .find((b) => label(b) === 'Digitar os dados')!
+        .click();
+      fixture.detectChanges();
+      const fields = Array.from(el.querySelectorAll<HTMLInputElement>('.dice input'));
+      for (const f of fields) {
+        f.value = '9';
+        f.dispatchEvent(new Event('input'));
+      }
+      fixture.detectChanges();
+      const messages = Array.from(el.querySelectorAll('.dice__err'));
+      expect(messages.map(flat)).toEqual(['Digite um número de 1 a 4']);
+      expect(messages[0].parentElement?.nextElementSibling).toBeNull();
+      expect(fields.map((f) => f.getAttribute('aria-describedby'))).toEqual([
+        messages[0].id,
+        messages[0].id,
+      ]);
+      expect(fields.every((f) => f.getAttribute('aria-invalid') === 'true')).toBe(true);
+    });
+
+    it('says nothing while every face is right or empty, and the message waits in a live region', async () => {
+      const { el, settle, fixture } = render();
+      await settle();
+      Array.from(el.querySelectorAll('button'))
+        .find((b) => label(b) === 'Digitar os dados')!
+        .click();
+      fixture.detectChanges();
+      const fields = Array.from(el.querySelectorAll<HTMLInputElement>('.dice input'));
+      fields[0].value = '3';
+      fields[0].dispatchEvent(new Event('input'));
+      fixture.detectChanges();
+      expect(el.querySelector('.dice__err')).toBeNull();
+      expect(fields.some((f) => f.hasAttribute('aria-invalid'))).toBe(false);
+      expect(el.querySelector('.dice .mr-live')?.getAttribute('role')).toBe('alert');
+    });
+
+    it('keeps the toggle as one control in the first line, whichever way the dice come', async () => {
+      const { el, settle, fixture } = render();
+      await settle();
+      const toggle = () => el.querySelector<HTMLButtonElement>('.dice__line .dice__switch')!;
+      const before = toggle();
+      expect(label(before)).toBe('Digitar os dados');
+      before.click();
+      fixture.detectChanges();
+      expect(toggle()).toBe(before);
+      expect(label(toggle())).toBe('Rolar no app');
+      expect(el.querySelectorAll('.dice__switch')).toHaveLength(1);
+      toggle().click();
+      fixture.detectChanges();
+      expect(toggle()).toBe(before);
+      expect(label(toggle())).toBe('Digitar os dados');
+    });
+
     it('opens on the fields when the table plays with real dice only, with no way back to the app', async () => {
       const { el, settle } = render({ canApp: false, preferApp: false });
       await settle();
@@ -1189,6 +1251,58 @@ describe('UseConsumableSheet', () => {
       )!;
       expect(document.activeElement).toBe(back);
       el.remove();
+    });
+  });
+
+  describe('the footer, one for each breakpoint', () => {
+    const giveIn = async (over: Partial<UseConsumableData>, phone: boolean) => {
+      const r = render(over, phone);
+      await r.settle();
+      return r;
+    };
+    const foot = (el: HTMLElement) => el.querySelector<HTMLElement>('.foot')!;
+
+    it('gives the phone sheet the widths: two halves, whichever buttons the first choice has', async () => {
+      const { el } = await giveIn({}, true);
+      expect(foot(el).classList).toContain('foot--phone');
+      const buttons = Array.from(foot(el).querySelectorAll('button'));
+      expect(buttons.map((b) => b.classList.contains('go--half'))).toEqual([true, true]);
+    });
+
+    it('gives the one button of an item that is not given the whole width of the phone sheet', async () => {
+      const { el } = await giveIn(
+        { itemName: 'Pergaminho', kind: 'scroll', consumable: SCROLL, inCombat: false },
+        true,
+      );
+      const buttons = Array.from(foot(el).querySelectorAll('button'));
+      expect(buttons.map((b) => b.classList.contains('go--wide'))).toEqual([true]);
+    });
+
+    it('right-aligns the dialog\'s buttons at their own width, with or without a receiver chosen', async () => {
+      const { el, settle } = await giveIn({}, false);
+      expect(foot(el).classList).not.toContain('foot--phone');
+      expect(foot(el).classList).not.toContain('foot--wide');
+      Array.from(el.querySelectorAll('button'))
+        .find((b) => label(b) === 'Dar a…')!
+        .click();
+      await settle();
+      // In a combat the receiver's button sets the last at the right edge of the dialog.
+      expect(foot(el).classList).toContain('foot--wide');
+      expect(foot(el).classList).not.toContain('foot--phone');
+    });
+
+    it('stacks the two buttons of a receiver chosen in a combat on the phone, and halves them out of one', async () => {
+      const phone = await giveIn({}, true);
+      Array.from(phone.el.querySelectorAll('button'))
+        .find((b) => label(b) === 'Dar a…')!
+        .click();
+      await phone.settle();
+      expect(foot(phone.el).classList).toContain('foot--phone');
+      expect(
+        Array.from(foot(phone.el).querySelectorAll('button')).map((b) =>
+          b.classList.contains('go--wide'),
+        ),
+      ).toEqual([true, true]);
     });
   });
 });

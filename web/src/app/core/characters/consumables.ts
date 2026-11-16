@@ -165,6 +165,9 @@ export function magicRows(entries: readonly AttunementEntryVm[]): MagicRowVm[] {
   return rows;
 }
 
+/** Why a row that costs the Action is off once the turn's Action is spent: it sits folded, and the row says it too. */
+export const ACTION_SPENT_WHY = 'A ação desta vez já foi usada.';
+
 /** A row of the combat's "Itens": one potion or scroll, or the group of identical ones, with the mark of what using it costs. */
 export interface CombatItemRowVm {
   readonly id: string;
@@ -340,6 +343,8 @@ export interface ConsumableNotice {
   readonly detail: string;
   /** The item's text, for a consumable the app carries out no effect for. */
   readonly text: readonly string[];
+  /** The line that heads the item's text and says what the item is ("Poção, muito rara"): the caption of the text's box, not a box of its own. */
+  readonly caption?: string;
 }
 
 export interface UseNoticeInput {
@@ -420,6 +425,17 @@ export function goneNotice(kind: ConsumableKind): ConsumableNotice {
 }
 
 /**
+ * The item's text as the notice shows it: the server sends it as lines, the first of which says what the item is ("Poção, muito
+ * rara") when more follow. That one is the caption of the box the others sit in.
+ */
+export function textOf(lines: readonly string[]): {
+  readonly text: readonly string[];
+  readonly caption?: string;
+} {
+  return lines.length > 1 ? { caption: lines[0], text: lines.slice(1) } : { text: lines };
+}
+
+/**
  * What the server said of a use, as the page words it: the heal with its dice, a potion at full hit points (nothing healed:
  * a neutral notice, no dice), the resistance, or the item's own text. `healed` zero is how the answer says the receiver was
  * already at full hit points.
@@ -465,7 +481,7 @@ export function useNotice(res: UseConsumableResponse, input: UseNoticeInput): Co
           ? `${input.userName} deu ${the} a ${input.receiverName}.`
           : `${input.userName} ${verb} ${the}.`,
         detail: 'O app não aplica este efeito: o mestre e você seguem o texto.',
-        text: res.text,
+        ...textOf(res.text),
       };
   }
 }

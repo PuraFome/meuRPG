@@ -22,8 +22,15 @@ import type { ConsumableNotice } from '../../core/characters/consumables';
         }
       </p>
     </div>
-    @for (line of notice().text; track $index) {
-      <p class="consumable__text">{{ line }}</p>
+    @if (notice().text.length > 0) {
+      <div class="consumable__text">
+        @if (notice().caption) {
+          <p class="consumable__caption">{{ notice().caption }}</p>
+        }
+        @for (line of notice().text; track $index) {
+          <p class="consumable__line">{{ line }}</p>
+        }
+      </div>
     }
   `,
   styleUrl: './consumable-notice.scss',
