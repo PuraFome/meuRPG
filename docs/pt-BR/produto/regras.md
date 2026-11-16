@@ -1187,6 +1187,7 @@ Um jogador lê só as próprias janelas, e os números do gatilho (um total de a
 
 - **Uma reação opcional que o jogador não responde passa depois de 30 segundos** (Escudo Arcano, Esquiva Sobrenatural, a conjuração da Repreensão Infernal, Contramágica, Palavras de Interrupção, Defletir Projéteis, Proteção, Queda Suave, Queda Lenta, uma ação preparada que o mestre disparou, uma característica com reação cujo gatilho aconteceu e um ataque de oportunidade oferecido a um jogador). A tela do mestre a conta ("Passa sozinho em N s"), o aviso do jogador diz "Se você não responder, passa sozinho em N s.". Nunca um teste de resistência, uma disputa nem o teste do mestre.
 - **Um jogador que está rolando ganha mais tempo.** Enquanto o jogador rola um dado físico, a janela espera até 2 minutos: "Você está rolando: a mesa espera 2 min", e o mestre lê "Rolando… passa sozinho em N s". O mestre pode passá-la antes.
+  A mesma espera vale para o jogador que escolhe os alvos ou os dardos de uma magia preparada.
 - **Preparar** (SRD 5.1, "Ready").
   No próprio turno, uma criatura gasta a ação para guardar outra até um gatilho que o jogador dela escreve.
   A ação guardada é um ataque, um movimento, uma magia ou outra ação padrão.
@@ -1195,6 +1196,10 @@ Um jogador lê só as próprias janelas, e os números do gatilho (um total de a
   Guardá-la exige concentração, que encerra qualquer outra concentração da criatura.
   Um truque com jogada de ataque é guardado do mesmo jeito.
   Liberada, a magia tem efeito como reação e não gasta espaço de novo; a Contramágica ainda pode barrá-la.
+  Os alvos e a divisão dos dardos são escolhidos ao liberar a magia, não ao preparar.
+  A criatura nomeada ao preparar é só uma sugestão para a liberação.
+  Uma magia que pede um ponto ou uma direção no mapa, uma habilidade, um tipo de dano, as criaturas de uma invocação ou a volta de uma criatura morta à vida não pode ser liberada pela janela, e o Preparar a recusa.
+  Num combate com mapa, uma magia que deixa uma zona no mapa também não pode ser liberada pela janela, e o Preparar a recusa.
   A magia se perde, com o espaço gasto, se a concentração acabar antes, se a criatura a deixar passar ou quando a ação preparada se perde.
   Esconder-se e Ajudar não podem ser guardados: têm chamadas próprias, que uma reação não executa.
   Correr e Desengajar também não: valem só para o turno da própria criatura.

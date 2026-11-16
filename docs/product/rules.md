@@ -1187,6 +1187,7 @@ A player reads only their own windows, and the numbers of the trigger (an attack
 
 - **An optional reaction a player does not answer passes after 30 seconds** (Shield, Uncanny Dodge, Hellish Rebuke's cast, Counterspell, Cutting Words, Deflect Missiles, Protection, Feather Fall, Slow Fall, a readied action the master fired, a reaction feature whose trigger happened and an opportunity attack offered to a player). The master's screen counts it ("Passa sozinho em N s"), the player's prompt reads "Se você não responder, passa sozinho em N s.". Never a saving throw, a contest or the master's check.
 - **A player who is rolling gets longer.** While the player rolls a physical die, the window waits up to 2 minutes: "Você está rolando: a mesa espera 2 min", and the master reads "Rolando… passa sozinho em N s". The master can pass it sooner.
+  The same wait is for a player choosing the targets or the darts of a held spell.
 - **Ready** (SRD 5.1, "Ready").
   On its turn a creature spends its action to hold another until a trigger its player writes.
   The held action is an attack, a move, a spell or another standard action.
@@ -1195,6 +1196,10 @@ A player reads only their own windows, and the numbers of the trigger (an attack
   Holding it takes concentration, which ends any other concentration of the creature.
   A cantrip with an attack roll is held this way too.
   Released, the spell takes effect as a reaction and spends no slot again; Counterspell can still stop it.
+  The targets and the split of the darts are chosen when the spell is released, not at Ready.
+  The creature named at Ready is only a suggestion for the release.
+  A spell that asks a point or a direction on a map, an ability, a damage type, the creatures of a summon or a revival cannot be released by the window, and Ready refuses it.
+  In a combat with a map, a spell that lays a zone on it cannot be released by the window either, and Ready refuses it.
   The spell is lost, with its slot, if the concentration ends first, if the creature lets it pass, or when the readied action is lost.
   Hide and Help cannot be held: they have their own calls, which a reaction does not run.
   Dash and Disengage cannot be held either: they last only for the creature's own turn.
