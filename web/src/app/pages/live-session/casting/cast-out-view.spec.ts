@@ -194,6 +194,21 @@ describe('the ways to cast a granted spell', () => {
     expect(withSlot.detail).toContain('não gasta usos');
   });
 
+  it('says the level the grant casts at only in the grant’s detail, and only above the spell’s own', () => {
+    const up = castingSpell('spell:bless', 'Bênção', 1, {
+      grants: [create(CastingGrantSchema, { ...grant, castLevel: 2 })],
+    });
+    const [, own, withSlot] = wayCardsOf(up);
+    expect(own.detail).toBe(
+      '2 usos restantes · Sabedoria · CD 13 · ataque +5 · no\u00a02º\u00a0nível',
+    );
+    expect(withSlot.detail).not.toContain('nível');
+    const same = castingSpell('spell:bless', 'Bênção', 1, {
+      grants: [create(CastingGrantSchema, { ...grant, castLevel: 1 })],
+    });
+    expect(wayCardsOf(same)[1].detail).not.toContain('nível');
+  });
+
   it('lists a spell castable only through a grant, and not one whose grant is spent', () => {
     const only = castingSpell('spell:bless', 'Bênção', 1, { canCast: false, grants: [grant] });
     const spent = castingSpell('spell:bless', 'Bênção', 1, {

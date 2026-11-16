@@ -311,7 +311,8 @@ message TableEffect {
   // lets the character cast it with a spell slot too, `ritual_only` limits it to the
   // ritual way (a spell with the ritual tag; not with also_with_slot) and
   // `counts_as_known` lists it among the known spells without using any of the
-  // class's picks. A leveled spell cast through the grant is cast at its own level.
+  // class's picks. A leveled spell cast through the grant is cast at its own level, or at
+  // `cast_level` when that is set (see there).
   // The material components are waived only when `no_material_components` is set, and
   // only on the sheet and the cast sheet (the server never enforces components).
   // `uses_cost` is how many uses of the resource each cast spends (0 and 1 are one);
@@ -498,6 +499,11 @@ message TableEffect {
   // choice of a skill or a tool only: the player picks again after each rest of `duration`, apart from the sheet (a
   // locked sheet takes the pick), and what is picked lasts until that rest. Required with `duration`.
   bool daily_choice = 94;
+  // granted_spell only: the level the grant casts the spell at, from the spell's own level to 9 (0:
+  // the spell's own level). The spell scales with that level (damage, healing, targets), and
+  // the cast spends no slot. A cast of the same spell with a slot (`also_with_slot`) uses the slot's
+  // level. Refused on a cantrip, with `ritual_only` and on any other effect type.
+  int32 cast_level = 95;
   // Field 90 is not used.
   reserved 90;
 }

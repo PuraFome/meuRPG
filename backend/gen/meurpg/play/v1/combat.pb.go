@@ -13411,7 +13411,11 @@ func (x *ResourceTarget) GetDisabledReasonPt() string {
 	return ""
 }
 
-// SpellTargets lists the targets one spell can choose.
+// SpellTargets lists the targets one cast option of a spell can choose.
+// The turn lists one entry per enabled option of a spell (`SpellOption`), in the order of the options: the class's
+// first, then the grants. The entry of an option is the n-th entry of its spell key, n being the place of the option
+// among the enabled options of that key. The entry of a grant is read at the grant's `cast_level`: `max_targets`,
+// the darts and the area; the targets a higher slot adds are counted from that level.
 type SpellTargets struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The spell, as in rules.v1.Spell.key.
@@ -13421,21 +13425,23 @@ type SpellTargets struct {
 	// out of the caster, such as a cone), Touch 5 ft.
 	Targets []*TargetInReach `protobuf:"bytes,2,rep,name=targets,proto3" json:"targets,omitempty"`
 	// How many targets the spell takes at its own level; 0 means any number (an
-	// area), and no target at all for a spell that targets the caster only.
+	// area), and no target at all for a spell that targets the caster only. For the entry of a
+	// grant it is the number at the grant's `cast_level`, the level of a cast with no slot.
 	MaxTargets int32 `protobuf:"varint,3,opt,name=max_targets,json=maxTargets,proto3" json:"max_targets,omitempty"`
 	// True when the spell takes one more target for each slot level above its own.
 	ExtraTargetPerLevel bool `protobuf:"varint,4,opt,name=extra_target_per_level,json=extraTargetPerLevel,proto3" json:"extra_target_per_level,omitempty"`
 	// Magic Missile: how many darts each slot level makes (3 at the 1st, one more
 	// for each level above). Scorching Ray: how many rays (3 at the 2nd, one more
-	// for each level above). Empty for any other spell.
+	// for each level above). Empty for any other spell. The entry of a grant also lists the
+	// grant's `cast_level` as a level, the one a cast with no slot makes.
 	Darts []*DartsAtSlot `protobuf:"bytes,5,rep,name=darts,proto3" json:"darts,omitempty"`
 	// How many more targets the spell takes for each slot level above its own: 1 for
 	// an SRD spell that says "one additional creature", the master's number for a
 	// table spell ("três criaturas, duas a mais por nível"). 1 for Magic Missile
 	// (a dart more) and Scorching Ray (a ray more): with `max_targets`, the targets
 	// at a slot level are `max_targets + targets_per_level * (slot level - the
-	// spell's level)`. 0 when it takes no more. `extra_target_per_level` is true
-	// when this is above 0.
+	// spell's level)`; for the entry of a grant, the level counted from is its `cast_level`.
+	// 0 when it takes no more. `extra_target_per_level` is true when this is above 0.
 	TargetsPerLevel int32 `protobuf:"varint,6,opt,name=targets_per_level,json=targetsPerLevel,proto3" json:"targets_per_level,omitempty"`
 	// How the spell is placed on a map with a grid; UNSPECIFIED for a spell that is
 	// not a placed area (it takes `targets` as before, and in a combat without a map
@@ -17216,9 +17222,10 @@ type CastSpellRequest struct {
 	Destination *SpellOrigin `protobuf:"bytes,32,opt,name=destination,proto3" json:"destination,omitempty"`
 	// The trait, feat or feature whose granted_spell effect casts the spell (the
 	// `grant.source_key` of the turn option): the cast takes no slot, spends a use of the
-	// grant's resource unless it is at will, the spell is cast at its own level and the spell
-	// attack and the save DC are the grant's. With a `slot` it casts through the slot instead
-	// (when the grant allows it). Empty for a spell of the character's classes.
+	// grant's resource unless it is at will, the spell is cast at the grant's `cast_level` (its
+	// own level when that is 0) and the spell attack and the save DC are the grant's. With a
+	// `slot` it casts through the slot instead (when the grant allows it). Empty for a spell of
+	// the character's classes.
 	GrantedBy string `protobuf:"bytes,33,opt,name=granted_by,json=grantedBy,proto3" json:"granted_by,omitempty"`
 	// The cast options of the character's table features the caster ticked
 	// (SpellOption.table_options that are not always on). Each must be an option the

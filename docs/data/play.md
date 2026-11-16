@@ -287,6 +287,8 @@ Ids, spell keys and numbers, no personal data; cascades with the campaign, the s
 - `caster_id` is a player character or an NPC.
   `slot_level` (0 for a cantrip or ritual) and `slot_pact` only record the slot; it is spent in `character_vitals` when the casting finishes.
   An NPC caster spends nothing.
+- `grant_source` is the source of the granted-spell effect the casting started through, empty for none.
+  The end of a long casting reads that grant; it is never sent to a client.
 - `concentrating` says the caster concentrates on this cast now.
   `duration_seconds` is the spell's timed duration (`NULL`: nothing to count) and `rest_ends` the rest long enough to end it.
   The app never counts a duration: the master, the caster's concentration or a rest ends the spell.

@@ -520,6 +520,8 @@ type CastingSpell struct {
 	Effect CastingEffectKind `protobuf:"varint,12,opt,name=effect,proto3,enum=meurpg.play.v1.CastingEffectKind" json:"effect,omitempty"`
 	// Whether the cast rolls dice (a healing spell, False Life): it needs `roll_in_app` or
 	// `typed_sum`. `roll_dice` is the dice at the spell's own level, "2d8".
+	// A cast through a grant rolls the dice at the grant's `cast_level` (`grants[].cast_level`), so a client that
+	// rolls physical dice reads the count at that level, not this one.
 	RollsDice bool   `protobuf:"varint,13,opt,name=rolls_dice,json=rollsDice,proto3" json:"rolls_dice,omitempty"`
 	RollDice  string `protobuf:"bytes,14,opt,name=roll_dice,json=rollDice,proto3" json:"roll_dice,omitempty"`
 	// How many targets the spell takes at its own level (0: any number, an area; the
@@ -754,7 +756,11 @@ type CastingGrant struct {
 	NoMaterialComponents bool `protobuf:"varint,12,opt,name=no_material_components,json=noMaterialComponents,proto3" json:"no_material_components,omitempty"`
 	// The uses a cast spends of `resource` (1 or more; 0 for an at-will grant). A cast works
 	// only while `uses_left` covers it.
-	UsesCost      int32 `protobuf:"varint,13,opt,name=uses_cost,json=usesCost,proto3" json:"uses_cost,omitempty"`
+	UsesCost int32 `protobuf:"varint,13,opt,name=uses_cost,json=usesCost,proto3" json:"uses_cost,omitempty"`
+	// The level the grant casts the spell at, with no slot: the effect's `cast_level`, or the spell's own
+	// level when it sets none; 0 for a cantrip. A cast with a slot (`also_with_slot`) uses the slot's level.
+	// The dice a cast with no slot rolls are those at this level, in the app or typed from physical dice.
+	CastLevel     int32 `protobuf:"varint,14,opt,name=cast_level,json=castLevel,proto3" json:"cast_level,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -876,6 +882,13 @@ func (x *CastingGrant) GetNoMaterialComponents() bool {
 func (x *CastingGrant) GetUsesCost() int32 {
 	if x != nil {
 		return x.UsesCost
+	}
+	return 0
+}
+
+func (x *CastingGrant) GetCastLevel() int32 {
+	if x != nil {
+		return x.CastLevel
 	}
 	return 0
 }
@@ -2007,8 +2020,8 @@ type OutsideCast struct {
 	Status      OutsideCastStatus `protobuf:"varint,7,opt,name=status,proto3,enum=meurpg.play.v1.OutsideCastStatus" json:"status,omitempty"`
 	// Cast as a ritual (no slot, 10 minutes more).
 	Ritual bool `protobuf:"varint,8,opt,name=ritual,proto3" json:"ritual,omitempty"`
-	// The slot level the spell was cast at (0: a cantrip or a ritual, the spell's own
-	// level) and whether it was a pact magic slot.
+	// The slot level the spell was cast at (0: no slot, for a cantrip, a ritual or a cast through a grant, which is
+	// at the grant's `cast_level`) and whether it was a pact magic slot.
 	SlotLevel int32 `protobuf:"varint,9,opt,name=slot_level,json=slotLevel,proto3" json:"slot_level,omitempty"`
 	SlotPact  bool  `protobuf:"varint,10,opt,name=slot_pact,json=slotPact,proto3" json:"slot_pact,omitempty"`
 	// The minutes the casting takes (the ritual's 10 included); 0 when it was cast at once.
@@ -2420,7 +2433,7 @@ const file_meurpg_play_v1_casting_proto_rawDesc = "" +
 	"\brange_ft\x18\x14 \x01(\x05R\arangeFt\x122\n" +
 	"\x05reach\x18\x15 \x03(\v2\x1c.meurpg.play.v1.CastingReachR\x05reach\x12\x18\n" +
 	"\asummons\x18\x12 \x01(\bR\asummons\x124\n" +
-	"\x06grants\x18\x16 \x03(\v2\x1c.meurpg.play.v1.CastingGrantR\x06grants\"\xab\x03\n" +
+	"\x06grants\x18\x16 \x03(\v2\x1c.meurpg.play.v1.CastingGrantR\x06grants\"\xca\x03\n" +
 	"\fCastingGrant\x12\x1d\n" +
 	"\n" +
 	"source_key\x18\x01 \x01(\tR\tsourceKey\x12$\n" +
@@ -2437,7 +2450,9 @@ const file_meurpg_play_v1_casting_proto_rawDesc = "" +
 	" \x01(\x05R\vattackBonus\x12\x17\n" +
 	"\asave_dc\x18\v \x01(\x05R\x06saveDc\x124\n" +
 	"\x16no_material_components\x18\f \x01(\bR\x14noMaterialComponents\x12\x1b\n" +
-	"\tuses_cost\x18\r \x01(\x05R\busesCost\"i\n" +
+	"\tuses_cost\x18\r \x01(\x05R\busesCost\x12\x1d\n" +
+	"\n" +
+	"cast_level\x18\x0e \x01(\x05R\tcastLevel\"i\n" +
 	"\fCastingReach\x12!\n" +
 	"\fcharacter_id\x18\x01 \x01(\tR\vcharacterId\x12\x19\n" +
 	"\bin_range\x18\x02 \x01(\bR\ainRange\x12\x1b\n" +

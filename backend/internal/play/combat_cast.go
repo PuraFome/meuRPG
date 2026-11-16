@@ -408,10 +408,7 @@ func (f *castFlow) readSpellAtSlot(ctx context.Context) error {
 	if f.slot, err = f.chosenSlot(); err != nil {
 		return err
 	}
-	f.slotLevel = int(f.cast.level)
-	if f.slot != nil {
-		f.slotLevel = int(f.slot.Level)
-	}
+	f.slotLevel = f.cast.levelWith(f.slot)
 	f.sp, err = f.s.roster.GrantedCombatSpell(ctx, f.c.tx, f.m.CampaignID, f.caster.CharacterID, f.call.spellKey, f.call.grantedBy, f.slotLevel, f.req.GetDamageTypeKey())
 	return err
 }
@@ -694,7 +691,7 @@ func (f *castFlow) spend(ctx context.Context) error {
 		return err
 	}
 	f.out.made = actionEvent{
-		RunBefore: run, Round: f.c.enc.Round, Actor: f.caster.ID, Key: f.call.spellKey, CastID: f.castID(), Slot: f.slot,
+		RunBefore: run, Round: f.c.enc.Round, Actor: f.caster.ID, Key: f.call.spellKey, CastID: f.castID(), Slot: f.slot, CastLevel: clamp32(link.GrantCastLevel(f.slot == nil, f.slotLevel, int(f.cast.level)), 0, 9),
 		ActionBefore: f.caster.ActionUsed, BonusBefore: f.caster.BonusActionUsed, ReactionBefore: f.caster.ReactionUsed, DashedBefore: f.caster.Dashed,
 		SpellCastBefore: f.caster.SpellCast, BonusSpellBefore: f.caster.BonusSpellCast,
 	}

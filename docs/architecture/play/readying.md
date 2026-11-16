@@ -191,7 +191,7 @@ The release picks only what the readier's player could pick, whoever answers, so
 The release spends no slot, the reaction instead of the action, and takes the slot level of Ready (a pact slot spent at Ready counts as a slot of its level).
 The release is checked as a cast: a spell the caster no longer has prepared is refused, and can only be let pass.
 `CastSpell` is a release only off the caster's turn, for the spell its own open READIED window holds (`findReadied`); any other cast is an ordinary one.
-Metamagic at the release is `invalid_argument`.
+Metamagic or `granted_by` at the release is `invalid_argument`.
 A concentration spell keeps the concentration, now with its own key; another spell ends it.
 The cast waits for the windows any cast opens (Counterspell), with the READIED window open and `REACTION_PENDING` (`readiedHeld`).
 A spell attack's d20 held for a die waits the same way, and the master's window reads `answer_now` false.

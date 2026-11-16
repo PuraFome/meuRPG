@@ -43,7 +43,11 @@ func spellsToList(opts *rulesv1.TurnOptions) []spellTargetEntry {
 	var spells []spellTargetEntry
 	for _, sp := range opts.GetSpells() {
 		if sp.GetEnabled() {
-			spells = append(spells, spellTargetEntry{sp.GetSpell().GetKey(), int(sp.GetSpell().GetLevel()), sp.GetSlots()})
+			level, slots := int(sp.GetSpell().GetLevel()), sp.GetSlots()
+			if cl := sp.GetGrant().GetCastLevel(); cl > 0 { // a cast through a grant with no slot is read at its cast level
+				level, slots = int(cl), append(slices.Clone(slots), &rulesv1.SlotChoice{Level: cl})
+			}
+			spells = append(spells, spellTargetEntry{sp.GetSpell().GetKey(), level, slots})
 		}
 	}
 	for _, a := range opts.GetAttacks() {

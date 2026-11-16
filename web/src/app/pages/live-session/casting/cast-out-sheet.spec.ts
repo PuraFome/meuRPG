@@ -241,6 +241,25 @@ describe('CastOutSheet (MR-048)', () => {
       });
     });
 
+    it('takes the targets of the level the grant casts at, and of the slot’s when a slot is used', async () => {
+      const raised = grant({ castLevel: 2, alsoWithSlot: true });
+      const { el, click } = await setup(
+        withSpells(
+          bless([raised], {
+            canCast: false,
+            targetsPerLevel: 3,
+            slots: [create(SlotChoiceSchema, { level: 1, free: 1 })],
+            effect: CastingEffectKind.MAX_HIT_POINTS,
+          }),
+        ),
+      );
+      await click('label.row', 'Bênção');
+      expect(plain(el.textContent)).toContain('até 6 criaturas');
+      await click('label.row', 'com espaço de magia');
+      await click('app-slot-picker label.row');
+      expect(plain(el.textContent)).toContain('até 3 criaturas');
+    });
+
     it('offers the class way and each grant, with the uses left, and sends the one picked', async () => {
       const limited = grant({ atWill: false, resource: 'usos', usesLeft: 1 });
       const { el, api, click } = await setup(withSpells(bless([limited])));

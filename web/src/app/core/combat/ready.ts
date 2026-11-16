@@ -14,6 +14,7 @@ import {
   type TurnOptions,
 } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { joinDots, tight } from '../format/text';
+import { targetsOfOption } from './cast-ref';
 import { CHOICE_ASKS, type CastChoice } from './ready-choices';
 import type { ReadyArgs } from './combat-client-ready';
 import { circleLabel } from './combat-grid';
@@ -220,11 +221,10 @@ function spellBlocked(o: SpellOption): string {
  * A spell that asks the caster a choice (`choices`) cannot either: the answer carries none.
  */
 function releaseBlocked(
-  all: readonly SpellTargets[],
+  t: SpellTargets | undefined,
   key: string,
   choices: ReadonlyMap<string, CastChoice> = new Map(),
 ): string {
-  const t = all.find((x) => x.spellKey === key);
   if (t && t.placement !== AreaPlacement.UNSPECIFIED) {
     return SPELL_PENDING_TEXT;
   }
@@ -266,7 +266,10 @@ export function readySpellRows(
         rangeText(o.attack!),
       ]),
     ),
-    blocked: releaseBlocked(spellTargets, o.attack?.key ?? ''),
+    blocked: releaseBlocked(
+      spellTargets.find((x) => x.spellKey === o.attack?.key),
+      o.attack?.key ?? '',
+    ),
     level: 0,
     slots: [],
     spell: true,
@@ -279,7 +282,13 @@ export function readySpellRows(
         id: o.spell?.key ?? '',
         title: o.spell?.namePt || o.spell?.name || '',
         sub: spellSub(o, level, summaries),
-        blocked: spellBlocked(o) || releaseBlocked(spellTargets, o.spell?.key ?? '', choices),
+        blocked:
+          spellBlocked(o) ||
+          releaseBlocked(
+            targetsOfOption(options.spells, spellTargets, o),
+            o.spell?.key ?? '',
+            choices,
+          ),
         level,
         slots: level > 0 ? slotsOf(o) : [],
         spell: true,

@@ -5668,7 +5668,11 @@ export const ResourceTargetSchema: GenMessage<ResourceTarget> = /*@__PURE__*/
   messageDesc(file_meurpg_play_v1_combat, 92);
 
 /**
- * SpellTargets lists the targets one spell can choose.
+ * SpellTargets lists the targets one cast option of a spell can choose.
+ * The turn lists one entry per enabled option of a spell (`SpellOption`), in the order of the options: the class's
+ * first, then the grants. The entry of an option is the n-th entry of its spell key, n being the place of the option
+ * among the enabled options of that key. The entry of a grant is read at the grant's `cast_level`: `max_targets`,
+ * the darts and the area; the targets a higher slot adds are counted from that level.
  *
  * @generated from message meurpg.play.v1.SpellTargets
  */
@@ -5691,7 +5695,8 @@ export type SpellTargets = Message<"meurpg.play.v1.SpellTargets"> & {
 
   /**
    * How many targets the spell takes at its own level; 0 means any number (an
-   * area), and no target at all for a spell that targets the caster only.
+   * area), and no target at all for a spell that targets the caster only. For the entry of a
+   * grant it is the number at the grant's `cast_level`, the level of a cast with no slot.
    *
    * @generated from field: int32 max_targets = 3;
    */
@@ -5707,7 +5712,8 @@ export type SpellTargets = Message<"meurpg.play.v1.SpellTargets"> & {
   /**
    * Magic Missile: how many darts each slot level makes (3 at the 1st, one more
    * for each level above). Scorching Ray: how many rays (3 at the 2nd, one more
-   * for each level above). Empty for any other spell.
+   * for each level above). Empty for any other spell. The entry of a grant also lists the
+   * grant's `cast_level` as a level, the one a cast with no slot makes.
    *
    * @generated from field: repeated meurpg.play.v1.DartsAtSlot darts = 5;
    */
@@ -5719,8 +5725,8 @@ export type SpellTargets = Message<"meurpg.play.v1.SpellTargets"> & {
    * table spell ("três criaturas, duas a mais por nível"). 1 for Magic Missile
    * (a dart more) and Scorching Ray (a ray more): with `max_targets`, the targets
    * at a slot level are `max_targets + targets_per_level * (slot level - the
-   * spell's level)`. 0 when it takes no more. `extra_target_per_level` is true
-   * when this is above 0.
+   * spell's level)`; for the entry of a grant, the level counted from is its `cast_level`.
+   * 0 when it takes no more. `extra_target_per_level` is true when this is above 0.
    *
    * @generated from field: int32 targets_per_level = 6;
    */
@@ -8072,9 +8078,10 @@ export type CastSpellRequest = Message<"meurpg.play.v1.CastSpellRequest"> & {
   /**
    * The trait, feat or feature whose granted_spell effect casts the spell (the
    * `grant.source_key` of the turn option): the cast takes no slot, spends a use of the
-   * grant's resource unless it is at will, the spell is cast at its own level and the spell
-   * attack and the save DC are the grant's. With a `slot` it casts through the slot instead
-   * (when the grant allows it). Empty for a spell of the character's classes.
+   * grant's resource unless it is at will, the spell is cast at the grant's `cast_level` (its
+   * own level when that is 0) and the spell attack and the save DC are the grant's. With a
+   * `slot` it casts through the slot instead (when the grant allows it). Empty for a spell of
+   * the character's classes.
    *
    * @generated from field: string granted_by = 33;
    */

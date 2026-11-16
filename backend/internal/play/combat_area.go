@@ -386,10 +386,7 @@ func (s *Service) previewSpell(ctx context.Context, m authz.Membership, msg *pla
 	if err != nil {
 		return link.Spell{}, err
 	}
-	slotLevel := int(cast.level)
-	if slot != nil {
-		slotLevel = int(slot.Level)
-	}
+	slotLevel := cast.levelWith(slot)
 	sp, err := s.roster.GrantedCombatSpell(ctx, nil, m.CampaignID, caster.CharacterID, msg.GetSpellKey(), msg.GetGrantedBy(), slotLevel, "")
 	if err != nil {
 		return link.Spell{}, s.dbError(ctx, "read the spell", err)
@@ -529,11 +526,11 @@ func (s *Service) areaSpellOf(ctx context.Context, campaignID string, caster pla
 	return spellOfPlan(plan), nil
 }
 
-// slotLevelOf is the level a cast was made at, for reading the spell again: the
-// slot's, 0 for a cantrip.
+// slotLevelOf is the level a cast was made at, for reading the spell again: the slot's, else the cast level
+// of the grant it went through, else 0 (a cantrip, or a cast at the spell's own level).
 func slotLevelOf(ev actionEvent) int {
 	if ev.Slot == nil {
-		return 0
+		return int(ev.CastLevel)
 	}
 	return int(ev.Slot.Level)
 }
