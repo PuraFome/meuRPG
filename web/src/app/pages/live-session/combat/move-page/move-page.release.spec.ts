@@ -125,6 +125,35 @@ describe('MovePage: a readied move released off the readier’s turn (#856, boar
     expect(el.querySelector('[data-testid=release-foot]')).toBeNull();
   });
 
+  it('puts the cost and the note in one card once a square is chosen, with no "Depois restam", and waits for the table above the buttons (857-06)', () => {
+    const { el, fixture } = setup();
+    const surface = el.querySelector<HTMLElement>('.cm__surface')!;
+    surface.getBoundingClientRect = () =>
+      ({
+        left: 0,
+        top: 0,
+        width: 200,
+        height: 140,
+        right: 200,
+        bottom: 140,
+        x: 0,
+        y: 0,
+        toJSON: () => '',
+      }) as DOMRect;
+    surface.dispatchEvent(new MouseEvent('click', { clientX: 45, clientY: 45, bubbles: true }));
+    fixture.detectChanges();
+    const card = el.querySelector('.status');
+    expect(plain(card?.querySelector('.status__title')?.textContent)).toBe('Mover 1,5 m');
+    expect(plain(card?.textContent)).toContain(
+      'É o movimento preparado: gasta a ■ Reação e não tira nada do deslocamento da sua vez. Vale um movimento só.',
+    );
+    expect(plain(card?.textContent)).not.toContain('Depois restam');
+    expect(el.querySelector('.move__release-note')).toBeNull();
+    expect(plain(el.querySelector('[data-testid=release-wait]')?.textContent)).toBe(
+      'A mesa espera você: até 2 min.',
+    );
+  });
+
   it('says the master’s band with who he answers for, and the footer that the player may still answer', () => {
     const { el } = setup({ master: true });
     expect(plain(el.querySelector('[data-testid=release-band]')?.textContent)).toContain(

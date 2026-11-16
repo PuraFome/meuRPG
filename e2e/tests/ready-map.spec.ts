@@ -74,6 +74,8 @@ test('"Voltar" do mapa traz a janela de novo, tira a marca e deixa a reação li
     await spellWindow(p).getByTestId('release-to-map').click();
     const sheet = releaseSheet(p);
     await expect(sheet).toBeVisible();
+    // The way back is "Voltar" (the board draws the "?" and no close button).
+    await expect(sheet.getByRole('button', { name: 'Fechar' })).toHaveCount(0);
     await expect.poll(async () => (await windowOf(m, campaignId))?.rolling).toBe(true);
 
     await sheet.getByRole('button', { name: releaseTexts.back, exact: true }).click();
@@ -158,6 +160,9 @@ test('o movimento preparado: "Mover agora" abre o mapa, "Voltar" volta à janela
     await win.getByTestId('release-to-map').click();
     await expect(p.getByRole('heading', { name: 'Mover Pensantus' })).toBeVisible();
     await tapSquare(p, (before.col ?? 0) + 2, before.row ?? 0);
+    // The cost card holds the cost and the note of the readied move; the table's wait is read above the buttons.
+    await expect(p.locator('app-move-status .status')).toContainText('É o movimento preparado: gasta a ■ Reação');
+    await expect(p.getByTestId('release-wait')).toHaveText(releaseTexts.onMap);
     await p.getByRole('button', { name: 'Mover para cá' }).click();
     await expect.poll(async () => (await getEncounterRPC(m, campaignId)).combatants.find((c) => c.label === 'Pensantus')?.col).toBe((before.col ?? 0) + 2);
     const after = await getEncounterRPC(m, campaignId);

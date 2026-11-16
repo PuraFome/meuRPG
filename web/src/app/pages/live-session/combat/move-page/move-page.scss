@@ -325,3 +325,18 @@
   line-height: 20px;
   color: var(--mr-ink-muted);
 }
+
+// "A mesa espera você: até 2 min.": the hourglass, then the line, over the buttons (board 857-06).
+.move__release-foot--wait {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: var(--mr-space-2);
+
+  .mat-icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    font-size: var(--mr-font-18);
+  }
+}

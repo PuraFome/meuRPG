@@ -152,13 +152,16 @@
             [summary]="summary()"
             [canDisengage]="canDisengage()"
             [busy]="busy()"
+            [note]="release()?.note ?? ''"
             [chosen]="disengaging()"
             (disengage)="chooseDisengage()"
             (undo)="takeBackDisengage()"
           />
         }
         @if (release(); as r) {
-          <p class="move__release-note" data-testid="release-note">{{ r.note }}</p>
+          @if (summary().kind !== 'ok') {
+            <p class="move__release-note" data-testid="release-note">{{ r.note }}</p>
+          }
         }
         @if (optionsFailed()) {
           <div class="mr-notice mr-notice--warning" role="status">
@@ -184,6 +187,8 @@
     <div class="move__foot">
       @if (release()?.foot; as foot) {
         <p class="move__release-foot" role="status" data-testid="release-foot">{{ foot }}</p>
+      } @else if (release()?.wait; as wait) {
+        <p class="move__release-foot move__release-foot--wait" role="status" data-testid="release-wait"><mat-icon fontIcon="hourglass_empty" aria-hidden="true"></mat-icon>{{ wait }}</p>
       }
       @if (trapAsk()) {
         <p class="move__ask" role="alert">{{ trapText() }}</p>

@@ -1,4 +1,4 @@
-<app-sheet-frame [title]="tx.title()" [subtitle]="tx.subtitle()" [icon]="release && !s.done() ? 'alarm' : ''" [phone]="inSheet" (closed)="close()">
+<app-sheet-frame [title]="tx.title()" [subtitle]="tx.subtitle()" [icon]="release && !s.done() ? 'alarm' : ''" [phone]="inSheet" [closable]="!release" (closed)="close()">
   @if (!s.done() && !gone()) {
     <app-spell-help head-action [name]="data.name" (press)="describe()" />
   }
@@ -359,7 +359,7 @@
   @if (!s.done() && !gone() && ar.flow; as f) {
     <div foot>
       @if (release) {
-        <p class="wait" role="status" data-testid="release-wait">{{ waitLine }}</p>
+        <p class="wait" role="status" data-testid="release-wait"><mat-icon fontIcon="hourglass_empty" aria-hidden="true"></mat-icon>{{ waitLine }}</p>
       }
       @if (f.step() === 'place') {
         @if (ch.missing()) {

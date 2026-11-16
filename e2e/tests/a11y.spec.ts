@@ -101,7 +101,7 @@ import {
 } from './table-sheet-support';
 import { masterLog, openCombatPanel, openMap, openOrderRow, openTurn } from './combat-layout';
 import { waitForEncounterRevision } from './revision-support';
-import { fireReadied, masterQueue, moveWindow, placeFireball, readyMapTable, releaseSheet, releaseTexts, spellWindow, undoFire } from './ready-map-support';
+import { fireReadied, masterQueue, mapSquares, moveWindow, pickFireballPoint, placeFireball, readyMapTable, releaseSheet, releaseTexts, scrollToEnd, spellWindow, undoFire } from './ready-map-support';
 import { goblinTrigger, openReadySheet, pensantusReadyKit, readyAttackRPC, readyRPC, readySpellRPC, shootReady, summonOffText } from './ready-support';
 import { WIDTHS, beginVrockFight, pagesFor, shoot, useCreatureActionRPC, viewportOf } from './recharge-support';
 import { chooseRow, openTvPanel, rollForTableRPC, tvRoute } from './table-screen-support';
@@ -15444,6 +15444,9 @@ async function scanReadyMapScreens(browser: Browser, colorScheme: 'light' | 'dar
     const sheet = releaseSheet(p);
     await expect(sheet.getByTestId('release-band')).toBeVisible();
     await expect(sheet.getByTestId('release-wait')).toHaveText(releaseTexts.onMap);
+    // The point is picked, as the board draws it: "Confirmar local" is filled.
+    await pickFireballPoint(sheet);
+    await expect(sheet.getByRole('button', { name: 'Confirmar local' })).toBeEnabled();
     await expectScreenPasses(p, `Soltar, o mapa da magia com a faixa da ação preparada ${where}`);
     await shoot(p, 'mapa-magia');
     await expect(queue.getByTestId('readied-wait')).toContainText(/No mapa · passa sozinho em/);
@@ -15455,6 +15458,7 @@ async function scanReadyMapScreens(browser: Browser, colorScheme: 'light' | 'dar
 
     // A second device of the player reads where the table waits while the map is open on the first.
     const area = await placeFireball(p);
+    await area.locator('app-area-list li').last().scrollIntoViewIfNeeded();
     await expectScreenPasses(p, `Soltar, quem está na área da magia ${where}`);
     await shoot(p, 'area-magia');
     const other = await spell.player.newPage();
@@ -15473,6 +15477,11 @@ async function scanReadyMapScreens(browser: Browser, colorScheme: 'light' | 'dar
     await queue.getByRole('button', { name: 'Soltar por Pensantus' }).click();
     const masterSheet = releaseSheet(m, true);
     await expect(masterSheet.getByTestId('release-foot')).toHaveText(releaseTexts.masterFoot);
+    // The step the board shows: the point picked and confirmed, the map at the left and who is in the area at the right.
+    await pickFireballPoint(masterSheet);
+    await masterSheet.getByRole('application', { name: 'Mapa: escolha o ponto da Bola de Fogo' }).press('Enter');
+    await expect(masterSheet.getByRole('heading', { name: /Quem está na área/ })).toBeVisible();
+    await expect(masterSheet.getByRole('button', { name: 'Conjurar Bola de Fogo' })).toBeEnabled();
     await expectScreenPasses(m, `Soltar, a janela do mestre para a magia ${where}`);
     await shoot(m, 'mestre-magia');
     await masterSheet.getByRole('button', { name: releaseTexts.back, exact: true }).click();
@@ -15522,6 +15531,10 @@ async function scanReadyMapScreens(browser: Browser, colorScheme: 'light' | 'dar
     await win.getByTestId('release-to-map').click();
     await expect(p.getByRole('heading', { name: 'Mover Pensantus' })).toBeVisible();
     await expect(p.getByTestId('release-note')).toBeVisible();
+    // A square picked, as the board draws it: the cost card, the legend and the nudge buttons in view.
+    await tapSquare(p, mapSquares.Pensantus[0] + 2, mapSquares.Pensantus[1]);
+    await expect(p.locator('app-move-status .status__title')).toHaveText('Mover 3,0 m');
+    await scrollToEnd(p);
     await expectScreenPasses(p, `Soltar, a página de movimento do jogador ${where}`);
     await shoot(p, 'mover-jogador');
 
@@ -15537,6 +15550,9 @@ async function scanReadyMapScreens(browser: Browser, colorScheme: 'light' | 'dar
     await expect(moveWindow(p)).toBeVisible();
     await masterQueue(m).getByRole('button', { name: 'Mover por Pensantus' }).click();
     await expect(m.getByTestId('release-foot')).toHaveText(releaseTexts.masterFoot);
+    await tapSquare(m, mapSquares.Pensantus[0] + 2, mapSquares.Pensantus[1]);
+    await expect(m.locator('app-move-status .status__title')).toHaveText('Mover 3,0 m');
+    await scrollToEnd(m);
     await expectScreenPasses(m, `Soltar, a página de movimento do mestre ${where}`);
     await shoot(m, 'mover-mestre');
     await m.getByRole('button', { name: releaseTexts.back, exact: true }).click();

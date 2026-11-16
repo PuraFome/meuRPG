@@ -150,17 +150,30 @@ export function masterQueue(m: Page): Locator {
   return m.locator('app-reaction-queue[part="rest"]');
 }
 
-/** Opens the map from the player's window and picks the point on the creature "Goblin 1" with the keyboard ("C" opens "Centrar em…"); stops at the "Quem está na área" step. */
-export async function placeFireball(p: Page): Promise<Locator> {
-  await spellWindow(p).getByTestId('release-to-map').click();
-  const sheet = releaseSheet(p);
+/** Picks the point on the creature "Goblin 1" with the keyboard on the open release sheet ("C" opens "Centrar em…"), and waits until the sheet reads the point: "Confirmar local" is then filled. */
+export async function pickFireballPoint(sheet: Locator): Promise<void> {
   const map = sheet.getByRole('application', { name: 'Mapa: escolha o ponto da Bola de Fogo' });
   await expect(map).toBeFocused();
   await map.press('c');
   await sheet.getByRole('listbox', { name: 'Centrar em…' }).getByRole('option', { name: /Goblin 1/ }).click();
   // Enter confirms the point the map holds: it is read once the pick has been placed, as a table sees it.
   await expect(sheet.getByText('Toque de novo no mesmo ponto')).toBeVisible();
-  await map.press('Enter');
+}
+
+/** Opens the map from the player's window and picks the point on the creature "Goblin 1"; stops at the "Quem está na área" step. */
+export async function placeFireball(p: Page): Promise<Locator> {
+  await spellWindow(p).getByTestId('release-to-map').click();
+  const sheet = releaseSheet(p);
+  await pickFireballPoint(sheet);
+  await sheet.getByRole('application', { name: 'Mapa: escolha o ponto da Bola de Fogo' }).press('Enter');
   await expect(sheet.getByRole('heading', { name: 'Quem está na área' })).toBeFocused();
   return sheet;
+}
+
+/** The page scrolled to its end, so the legend and the nudge buttons under the map are in the shot, as the boards draw them. */
+export async function scrollToEnd(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const el = document.scrollingElement ?? document.documentElement;
+    el.scrollTop = el.scrollHeight;
+  });
 }

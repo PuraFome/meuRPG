@@ -1,4 +1,5 @@
 import { type GoneView, type ReleaseBand, moveBand, moveNote, masterFoot } from './release-text';
+import { ON_MAP_TEXT } from './readied-wait';
 
 /** The readied move a page releases (#856): the window, who holds it and what the master said would trigger it. */
 export interface MoveRelease {
@@ -18,6 +19,8 @@ export interface MoveReleaseView {
   readonly note: string;
   /** The master's footer; `''` for the player. */
   readonly foot: string;
+  /** What the table does while the player is on the page ("A mesa espera você: até 2 min."); `''` for the master, whose footer says the other thing. */
+  readonly wait: string;
   /** The window went away under the page: the move cannot be made and "Voltar à sessão" is the one button. */
   readonly gone: GoneView | null;
 }
@@ -32,6 +35,7 @@ export function moveReleaseView(
     band: moveBand({ trigger: r.trigger, reactor: r.reactor, turnOf, master: r.master }),
     note: moveNote(r.reactor, r.master),
     foot: r.master ? masterFoot(r.reactor) : '',
+    wait: r.master ? '' : ON_MAP_TEXT,
     gone,
   };
 }
