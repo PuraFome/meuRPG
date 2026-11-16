@@ -417,14 +417,16 @@ jobs:
             -coverprofile="cover-$GROUP.out" \
             "${run_args[@]}" "${packages[@]}"
 
-      - name: Say why the test database stopped
-        # A test that cannot reach the database fails with a connection error and no cause. When a step of this job
-        # failed, this prints the container's state, the end of its log and the runner's memory
+      - name: Say how the test database ended
+        # A test that cannot reach the database fails with a connection error and no cause. After a failed step this
+        # prints the container's state, the end of its log, the runner's memory and disk and the kernel's memory
+        # kills; after a job that passed, the container's state and memory alone, which shows the room the group had
         # (.github/scripts/database-evidence.sh).
-        if: ${{ failure() && steps.db.outputs.database != '' }}
+        if: ${{ !cancelled() && steps.db.outputs.database != '' }}
         env:
           DATABASE: ${{ steps.db.outputs.database }}
-        run: ../.github/scripts/database-evidence.sh "$DATABASE"
+          DETAIL: ${{ job.status == 'success' && 'brief' || '' }}
+        run: ../.github/scripts/database-evidence.sh "$DATABASE" "$DETAIL"
 
       - name: Keep this group's coverage profile
         if: ${{ !cancelled() }}
