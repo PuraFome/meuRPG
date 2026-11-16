@@ -2328,8 +2328,9 @@ type CharacterEffect struct {
 	// The effect's own name in Portuguese ("Resistência a fogo"), set for every effect whatever its source. When the content gives the
 	// effect no name of its own it is the source's name, so a spell's effect is titled by the spell. Whoever reads source_name_pt reads it.
 	TitlePt string `protobuf:"bytes,13,opt,name=title_pt,json=titlePt,proto3" json:"title_pt,omitempty"`
-	// How long the effect lasts in all, as the end of a sentence ("por 1 hora"); empty when it has no fixed length (until it is dismissed,
-	// or while the caster concentrates) or the content does not say it. duration_text_pt keeps saying what is left.
+	// How long the effect was given in all, as the end of a sentence ("por 1 hora"); empty when it has no fixed length (until it is
+	// dismissed, or while the caster concentrates) and when the master chose its length, which the effect does not keep. A potion
+	// drunk and a spell cast by a character have the catalog's length. duration_text_pt keeps saying what is left.
 	TotalDurationTextPt string `protobuf:"bytes,14,opt,name=total_duration_text_pt,json=totalDurationTextPt,proto3" json:"total_duration_text_pt,omitempty"`
 	unknownFields       protoimpl.UnknownFields
 	sizeCache           protoimpl.SizeCache

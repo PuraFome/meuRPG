@@ -211,6 +211,7 @@ The notice of a use sits at the top of the section, as in the combat.
 "Usar" works on a locked sheet, and the lock line names what the sheet holds: potions, oils, scrolls, other items and charges.
 A sheet with potions and charges reads "Travada: usar poções e cargas continua valendo; o resto, só o mestre muda."
 `ConsumableUse` (`shared/consumable-use/consumable-use.ts`) opens `UseConsumableSheet` with the character the dialog acts for (the master's title reads "Usar por <personagem>"), reads the character after a use and words the result as a notice.
+A read of the character that a newer one overtakes answers with the newer read's result once it has landed (`NewestRead`), so the notice never counts from an old sheet.
 The sheet's magic items and the combat's "Itens" both build one, with the owner's items and what the page knows of the combat.
 An entry without `consumable` is no consumable row, whatever its name or its effect line says.
 The web keeps no list of oils, no category read and no parsing of `effect_pt` for dice: the verb, the icon, the noun, the Ação mark, the pre-block and the dice read `consumable`.

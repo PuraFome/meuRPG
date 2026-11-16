@@ -1203,8 +1203,9 @@ export type CharacterEffect = Message<"meurpg.play.v1.CharacterEffect"> & {
   titlePt: string;
 
   /**
-   * How long the effect lasts in all, as the end of a sentence ("por 1 hora"); empty when it has no fixed length (until it is dismissed,
-   * or while the caster concentrates) or the content does not say it. duration_text_pt keeps saying what is left.
+   * How long the effect was given in all, as the end of a sentence ("por 1 hora"); empty when it has no fixed length (until it is
+   * dismissed, or while the caster concentrates) and when the master chose its length, which the effect does not keep. A potion
+   * drunk and a spell cast by a character have the catalog's length. duration_text_pt keeps saying what is left.
    *
    * @generated from field: string total_duration_text_pt = 14;
    */
