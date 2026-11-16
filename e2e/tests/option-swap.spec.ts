@@ -44,7 +44,7 @@ test(
       await panel.getByText('Posturas', { exact: true }).click();
       await expect(panel.getByRole('radio', { name: 'Posturas' })).toBeChecked();
       await panel.getByRole('radiogroup', { name: 'Abrir mão de' }).getByText('Postura da Garça').click();
-      await expect(panel.getByRole('status')).toContainText('Falta escolher. Escolha de que abrir mão e o que pegar no lugar.');
+      await expect(panel.getByRole('status')).toContainText('Falta escolher. Posturas: escolha de que abrir mão e o que pegar no lugar.');
       await expect(panel.getByText('Trocas escolhidas')).toHaveCount(0);
       await panel.getByRole('radiogroup', { name: 'Pegar no lugar' }).getByText('Postura do Lobo').click();
       await expect(panel.getByRole('status')).toHaveText('Trocar Postura da Garça por Postura do Lobo');
@@ -71,7 +71,7 @@ test(
 );
 
 test(
-  'Doran deixa a troca de postura pela metade e aperta Próximo: o Resumo não traz troca, a troca não vale e a ficha fica com a Garça',
+  'Doran deixa a troca de postura pela metade e aperta Próximo: o passo não avança, "Falta escolher." aparece, o foco vai ao conjunto pela metade, e "Não trocar" libera o passo',
   { tag: ['@MR-040', '@RN-12'] },
   async ({ browser }) => {
     test.setTimeout(150_000);
@@ -94,15 +94,25 @@ test(
       await panel.getByText('Posturas', { exact: true }).click();
       await panel.getByRole('radiogroup', { name: 'Abrir mão de' }).getByText('Postura da Garça').click();
       await expect(panel.getByText('Trocas escolhidas')).toHaveCount(0);
-      await p.getByRole('button', { name: 'Próximo' }).click();
 
-      // Half a swap is no swap: the summary has no row for it.
+      // Half a swap is a choice left half done, as any other of the level-up: "Próximo" waits, a tap does not advance.
+      const next = p.getByRole('button', { name: 'Próximo' });
+      await expect(next).toHaveClass(/next--off/);
+      await expect(p.locator('#foot-reason')).toContainText('Falta escolher o que trocar em Posturas.');
+      // "Próximo" is aria-disabled but still answers a press, as on main.
+      await next.press('Enter');
+      await expect(p.getByText('Passo 3 de 4 · Escolhas')).toBeVisible();
+      await expect(panel.getByRole('status')).toContainText('Falta escolher.');
+      await expect(panel.getByRole('radio', { name: /Posturas/ })).toBeFocused();
+      await expect(panel).toHaveAttribute('data-attn', '');
+
+      // "Não trocar" clears it: the step goes on, the summary has no row, the sheet keeps the Garça.
+      await panel.getByText('Não trocar', { exact: true }).click();
+      await expect(next).not.toHaveClass(/next--off/);
+      await next.click();
       await expect(p.getByText('Passo 4 de 4 · Resumo')).toBeVisible();
       await expect(p.getByText('Postura do Lobo')).toHaveCount(0);
       await expect(p.getByRole('listitem').filter({ hasText: 'Posturas' })).toHaveCount(0);
-      await p.getByRole('button', { name: 'Voltar' }).click();
-      await expect(panel.getByRole('status')).toContainText('Falta escolher.');
-      await p.getByRole('button', { name: 'Próximo' }).click();
       await p.getByRole('button', { name: 'Confirmar o nível 5' }).click();
       await expect(p).toHaveURL(sheet);
       await expect(p.getByText('Postura da Garça').first()).toBeVisible();
@@ -150,19 +160,19 @@ test(
       await panel.locator('label.opt').filter({ hasText: 'Posturas' }).click();
       await panel.getByRole('radiogroup', { name: 'Abrir mão de' }).getByText('Postura do Touro').click();
       await panel.getByRole('radiogroup', { name: 'Pegar no lugar' }).getByText('Postura do Urso').click();
-      await panel.getByText('Estilo de Luta', { exact: true }).click();
+      await panel.getByText('Estilo de luta', { exact: true }).click();
       await panel.getByRole('radiogroup', { name: 'Abrir mão de' }).getByText('Defesa').click();
       await panel.getByRole('radiogroup', { name: 'Pegar no lugar' }).getByText('Duelismo').click();
       const list = panel.getByRole('list', { name: 'Trocas escolhidas' });
-      await expect(list.getByRole('listitem')).toHaveText(['Estilo de Luta: Defesa → Duelismo', 'Posturas: Postura do Touro → Postura do Urso']);
+      await expect(list.getByRole('listitem')).toHaveText(['Estilo de luta: Defesa → Duelismo', 'Posturas: Postura do Touro → Postura do Urso']);
       const side = p.getByRole('region', { name: 'O que muda até aqui' });
       await expect(side.getByRole('listitem').filter({ hasText: 'Posturas' })).toContainText('Postura do Touro');
-      await expect(side.getByRole('listitem').filter({ hasText: 'Estilo de Luta' })).toContainText('Duelismo');
+      await expect(side.getByRole('listitem').filter({ hasText: 'Estilo de luta' })).toContainText('Duelismo');
       await p.getByRole('button', { name: 'Próximo' }).click();
       await p.getByRole('button', { name: 'Próximo' }).click();
       await expect(p.getByText('Passo 4 de 4 · Resumo')).toBeVisible();
       await expect(p.getByRole('listitem').filter({ hasText: 'Posturas' }).filter({ hasText: 'Postura do Urso' })).toBeVisible();
-      await expect(p.getByRole('listitem').filter({ hasText: 'Estilo de Luta' }).filter({ hasText: 'Duelismo' })).toBeVisible();
+      await expect(p.getByRole('listitem').filter({ hasText: 'Estilo de luta' }).filter({ hasText: 'Duelismo' })).toBeVisible();
     } finally {
       await endOpenSessionRPC(m, campaignId);
       await master.close();

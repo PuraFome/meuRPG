@@ -16,7 +16,7 @@ import { plainName, type LevelUpSwap } from '../../../core/levelup/levelup-swap'
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [MatIconModule],
   template: `
-    <section class="mr-panel" aria-labelledby="swap-title">
+    <section class="mr-panel" id="pick-swap" [attr.data-missing]="swap().halfGroups().length > 0 ? '' : null" aria-labelledby="swap-title">
       <h2 class="mr-panel__title" id="swap-title">Trocar escolhas</h2>
       <p class="lead">Neste nível você pode trocar uma escolha de cada conjunto por outra do mesmo conjunto. É opcional.</p>
       <div class="opts" role="radiogroup" aria-labelledby="swap-title">
@@ -26,11 +26,18 @@ import { plainName, type LevelUpSwap } from '../../../core/levelup/levelup-swap'
         </label>
         <div class="groups">
           @for (g of swap().groups(); track g.group) {
-            <label class="opt" [class.opt--open]="swap().groupKey() === g.group" [class.opt--done]="swap().isWhole(g.group)">
+            <label
+              class="opt"
+              [class.opt--open]="swap().groupKey() === g.group"
+              [class.opt--done]="swap().isWhole(g.group)"
+              [attr.data-half]="swap().halfGroups().includes(g) ? '' : null"
+            >
               <input type="radio" name="swap-group" class="opt__input" [checked]="swap().groupKey() === g.group" (change)="swap().setGroup(g.group)" />
               {{ g.namePt }}
               @if (swap().isWhole(g.group)) {
                 <span class="opt__hidden"> (troca escolhida)</span>
+              } @else if (swap().halfGroups().includes(g)) {
+                <span class="opt__hidden"> (troca pela metade)</span>
               }
             </label>
           }
@@ -90,20 +97,31 @@ import { plainName, type LevelUpSwap } from '../../../core/levelup/levelup-swap'
         </div>
       }
       <div class="status" role="status">
-        @if (swap().group(); as g) {
-          @if (swap().summary(); as line) {
-            <p class="line">{{ line }}</p>
-          } @else {
-            <p class="hint">
-              <mat-icon aria-hidden="true">warning</mat-icon>
-              <span><strong>Falta escolher.</strong> Escolha de que abrir mão e o que pegar no lugar. Sem os dois, a troca não vale.</span>
-            </p>
-          }
+        @let half = swap().halfGroups()[0];
+        @if (swap().summary(); as line) {
+          <p class="line">{{ line }}</p>
+        }
+        @if (half) {
+          <p class="hint">
+            <mat-icon aria-hidden="true">warning</mat-icon>
+            <span><strong>Falta escolher.</strong> {{ half.namePt }}: escolha de que abrir mão e o que pegar no lugar. Sem os dois, a troca não vale.</span>
+          </p>
+        } @else if (swap().group() && !swap().summary()) {
+          <p class="hint">
+            <mat-icon aria-hidden="true">warning</mat-icon>
+            <span><strong>Falta escolher.</strong> Escolha de que abrir mão e o que pegar no lugar. Sem os dois, a troca não vale.</span>
+          </p>
         }
       </div>
     </section>
   `,
   styles: `
+    // The first missing choice, after a tap on the dashed "Próximo".
+    :host section[data-attn] {
+      border-color: var(--mr-warning-ink);
+      box-shadow: 0 0 0 1px var(--mr-warning-ink);
+    }
+
     .lead {
       margin: 0 0 var(--mr-space-3);
       font-size: var(--mr-font-15);

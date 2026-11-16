@@ -18,7 +18,7 @@ const (
 
 var swapGroupNames = map[string]string{
 	SwapGroupCantrip:    "Truque",
-	SwapGroupFightStyle: "Estilo de Luta",
+	SwapGroupFightStyle: "Estilo de luta",
 	SwapGroupMetamagic:  "Metamagia",
 	SwapGroupInvocation: "Invocação mística",
 	SwapGroupPactBoon:   "Dádiva do pacto",

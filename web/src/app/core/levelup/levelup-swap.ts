@@ -108,6 +108,11 @@ export class LevelUpSwap {
       : '';
   });
 
+  /** The groups with a part of a swap chosen and not the rest: a missing choice of the step, until it is whole or cleared. */
+  readonly halfGroups = computed<LevelUpSwapGroup[]>(() =>
+    this.groups().filter((g) => this.selections()[g.group] !== undefined && !this.isWhole(g.group)),
+  );
+
   /** Whether the swap of this group is whole (the panel marks the group). */
   isWhole(group: string): boolean {
     return this.whole().some((w) => w.group === group);
@@ -186,10 +191,11 @@ export class LevelUpSwap {
   }
 }
 
-/** A pick's name without its group's name ("Estilo de Luta: Defesa" is "Defesa" under "Estilo de Luta"). */
+/** A pick's name without its group's name ("Estilo de Luta: Defesa" is "Defesa" under "Estilo de luta"; the case of the lead is not compared). */
 export function plainName(groupName: string, name: string): string {
   const lead = `${groupName}: `;
-  return name.startsWith(lead) && name.length > lead.length ? name.slice(lead.length) : name;
+  const same = name.toLocaleLowerCase('pt-BR').startsWith(lead.toLocaleLowerCase('pt-BR'));
+  return same && name.length > lead.length ? name.slice(lead.length) : name;
 }
 
 function nameIn(list: readonly LevelUpNamedKey[], key: string, groupName = ''): string {

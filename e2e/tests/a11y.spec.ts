@@ -3632,13 +3632,13 @@ async function scanOptionSwapScreens(browser: Browser, colorScheme: 'light' | 'd
     await passClassStep(p);
     await expect(p.getByText('Passo 2 de 4 · Habilidades')).toBeVisible();
     const both = p.getByRole('region', { name: 'Trocar escolhas' });
-    await expect(both.getByRole('radio', { name: 'Estilo de Luta' })).toBeVisible();
+    await expect(both.getByRole('radio', { name: 'Estilo de luta' })).toBeVisible();
     await expect(both.getByRole('radio', { name: 'Posturas' })).toBeVisible();
     await expectScreenPasses(p, `Habilidades, o painel com o conjunto da regra e o da característica ${where}`);
     await both.locator('label.opt').filter({ hasText: 'Posturas' }).click();
     await both.getByRole('radiogroup', { name: 'Abrir mão de' }).getByText('Postura do Touro').click();
     await both.getByRole('radiogroup', { name: 'Pegar no lugar' }).getByText('Postura do Urso').click();
-    await both.getByText('Estilo de Luta', { exact: true }).click();
+    await both.getByText('Estilo de luta', { exact: true }).click();
     await both.getByRole('radiogroup', { name: 'Abrir mão de' }).getByText('Defesa').click();
     await both.getByRole('radiogroup', { name: 'Pegar no lugar' }).getByText('Duelismo').click();
     await both.locator('label.opt').filter({ hasText: 'Posturas' }).click();

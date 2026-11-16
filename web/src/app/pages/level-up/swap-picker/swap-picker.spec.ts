@@ -25,7 +25,7 @@ function bothOf(): LevelUpSwap {
   return new LevelUpSwap(
     create(LevelUpOptionsSchema, {
       swapGroups: [
-        group('fighting_style', 'Estilo de Luta', 'Defesa', ['Duelismo']),
+        group('fighting_style', 'Estilo de luta', 'Defesa', ['Duelismo']),
         group('cantrip', 'Truque', 'Luz', ['Chama']),
         group(FEATURE, 'Infusões', 'Escudo', ['Radiante', 'Bumerangue']),
         group('feature:outra@mesa', 'Outra', 'X', ['Y']),
@@ -41,7 +41,7 @@ function swapOf(withGroups = true): LevelUpSwap {
         ? [
             create(LevelUpSwapGroupSchema, {
               group: 'fighting_style',
-              namePt: 'Estilo de Luta',
+              namePt: 'Estilo de luta',
               picks: [named('feature:fighter-fighting-style-defense', 'Defesa')],
               pool: [
                 named('feature:fighter-fighting-style-dueling', 'Duelismo'),
@@ -83,7 +83,7 @@ describe('LevelUpSwap and SwapPicker', () => {
     const swap = swapOf();
     const fixture = render(swap);
     const el = fixture.nativeElement as HTMLElement;
-    radio(el, 'swap-group', 'Estilo de Luta').click();
+    radio(el, 'swap-group', 'Estilo de luta').click();
     fixture.detectChanges();
     radio(el, 'swap-from', 'Defesa').click();
     fixture.detectChanges();
@@ -219,7 +219,7 @@ describe('LevelUpSwap and SwapPicker', () => {
     expect(el.querySelector('[role="status"]')?.textContent).toContain(
       'Trocar Escudo por Bumerangue',
     );
-    radio(el, 'swap-group', 'Estilo de Luta').click();
+    radio(el, 'swap-group', 'Estilo de luta').click();
     fixture.detectChanges();
     expect(
       Array.from(el.querySelectorAll('label')).find((l) => l.textContent?.includes('Infusões'))
@@ -325,15 +325,15 @@ describe('LevelUpSwap and SwapPicker', () => {
   });
 
   it('drops the group name from the front of a pick name, in the lists and in the rows', () => {
-    expect(plainName('Estilo de Luta', 'Estilo de Luta: Defesa')).toBe('Defesa');
-    expect(plainName('Estilo de Luta', 'Estilo de Luta: ')).toBe('Estilo de Luta: ');
+    expect(plainName('Estilo de luta', 'Estilo de Luta: Defesa')).toBe('Defesa');
+    expect(plainName('Estilo de luta', 'Estilo de Luta: ')).toBe('Estilo de Luta: ');
     expect(plainName('Posturas', 'Postura do Lobo')).toBe('Postura do Lobo');
     const swap = new LevelUpSwap(
       create(LevelUpOptionsSchema, {
         swapGroups: [
           create(LevelUpSwapGroupSchema, {
             group: 'fighting_style',
-            namePt: 'Estilo de Luta',
+            namePt: 'Estilo de luta',
             picks: [named('d', 'Estilo de Luta: Defesa')],
             pool: [named('e', 'Estilo de Luta: Duelismo')],
           }),
@@ -344,10 +344,34 @@ describe('LevelUpSwap and SwapPicker', () => {
     swap.setFrom('d');
     swap.setTo('e');
     expect(swap.rows()[0]).toMatchObject({
-      label: 'Estilo de Luta',
+      label: 'Estilo de luta',
       before: 'Defesa',
       after: 'Duelismo',
     });
     expect(swap.summary()).toBe('Trocar Defesa por Duelismo');
+  });
+
+  it('marks the half-done group, shows the hint for it even when another group is open, and clears it', () => {
+    const swap = bothOf();
+    const fixture = render(swap);
+    const el = fixture.nativeElement as HTMLElement;
+    const status = el.querySelector('[role="status"]');
+    expect(swap.halfGroups()).toEqual([]);
+    swap.setGroup(FEATURE);
+    swap.setFrom(`${FEATURE}:Escudo`);
+    swap.setGroup('fighting_style');
+    fixture.detectChanges();
+    expect(swap.halfGroups().map((g) => g.group)).toEqual([FEATURE]);
+    expect(el.querySelector('[data-half]')?.textContent).toContain('Infusões');
+    expect(el.querySelectorAll('[data-half]')).toHaveLength(1);
+    expect(el.querySelector('[role="status"]')).toBe(status);
+    expect(status?.textContent).toContain('Falta escolher.');
+    expect(status?.textContent).toContain('Infusões');
+    expect(el.querySelector('section')?.id).toBe('pick-swap');
+    swap.setGroup(FEATURE);
+    swap.setTo(`${FEATURE}:Radiante`);
+    fixture.detectChanges();
+    expect(el.querySelector('[data-half]')).toBeNull();
+    expect(swap.halfGroups()).toEqual([]);
   });
 });

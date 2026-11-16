@@ -199,4 +199,32 @@ describe('LevelUpSession', () => {
       sub: '',
     });
   });
+
+  it('counts a half-chosen swap as a missing choice of the step that holds the panel, until it is whole or cleared', () => {
+    const named = (key: string, namePt: string) => create(LevelUpNamedKeySchema, { key, namePt });
+    const group = create(LevelUpSwapGroupSchema, {
+      group: 'feature:posturas@mesa',
+      namePt: 'Posturas',
+      picks: [named('a', 'Postura da Garça')],
+      pool: [named('b', 'Postura do Lobo')],
+    });
+    const asi = session(opts({ swapGroups: [group], abilityScoreImprovement: true }));
+    const swapMissing = (s: LevelUpSession) => s.draft.missing().filter((m) => m.id === 'swap');
+    expect(swapMissing(asi)).toEqual([]);
+    asi.draft.swap.setGroup('feature:posturas@mesa');
+    expect(swapMissing(asi)).toEqual([]);
+    asi.draft.swap.setFrom('a');
+    expect(swapMissing(asi)).toEqual([
+      { step: 'abilities', id: 'swap', text: 'Falta escolher o que trocar em Posturas.' },
+    ]);
+    asi.draft.swap.setTo('b');
+    expect(swapMissing(asi)).toEqual([]);
+    asi.draft.swap.setTo('');
+    asi.draft.swap.clear();
+    expect(swapMissing(asi)).toEqual([]);
+    const plain = session(opts({ swapGroups: [group], abilityScoreImprovement: false }));
+    plain.draft.swap.setGroup('feature:posturas@mesa');
+    plain.draft.swap.setTo('b');
+    expect(swapMissing(plain)[0]?.step).toBe('picks');
+  });
 });
