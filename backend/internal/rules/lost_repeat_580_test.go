@@ -3,6 +3,7 @@ package rules
 import (
 	"fmt"
 	"slices"
+	"strings"
 	"testing"
 )
 
@@ -227,5 +228,34 @@ func TestAnOptionOfALostFeatReadsAsLostNotAsNotOffered(t *testing.T) {
 	}
 	if d.ArmorClass != Derive(plain, c).ArmorClass {
 		t.Errorf("AC %d, want %d: the lost option gives nothing", d.ArmorClass, Derive(plain, c).ArmorClass)
+	}
+}
+
+// A feat lost in the first pass for one condition, that fails another only on the sheet as it ends up (the Strength a lost
+// feat gave), says both: what the reader sees is what the final sheet shows.
+func TestALostFeatSaysTheConditionThatFailsOnlyOnTheFinalSheet(t *testing.T) {
+	t.Parallel()
+	a := scoreFeat("a", 0, true)
+	both := scoreFeat("b", 0, false)
+	both.Prerequisite = FeatPrerequisite{Level: 20, Minimums: map[Ability]int{STR: 13}}
+	c, b := featsOverlay(t, a, both)
+	// With A in place the sheet has Strength 13, which B asks: B is lost only for its level in the first pass. Without A
+	// the sheet has 12.
+	d := Derive(b, c)
+	if got := lostKeys(d); !slices.Equal(got, []string{a.Key, both.Key}) {
+		t.Fatalf("lost = %v, want both", got)
+	}
+	var is Issue
+	for _, i := range d.Issues {
+		if i.Lost != nil && i.Lost.Key == both.Key {
+			is = i
+		}
+	}
+	const want = "Talento b pede Força 13, e Tor tem 12 e nível 20, e Tor está no 3: o talento só vale de novo quando Tor cumprir."
+	if got := is.Lost.SentencePT("Tor", false); got != want {
+		t.Errorf("sentence = %q, want %q", got, want)
+	}
+	if want := strings.ReplaceAll(want, "Tor", lostNobody); is.Message != want {
+		t.Errorf("message = %q, want %q", is.Message, want)
 	}
 }
