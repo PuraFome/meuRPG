@@ -8,7 +8,6 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/sessiontell"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
@@ -128,9 +127,9 @@ func (s *Service) clearStates(ctx context.Context, tx pgx.Tx, current characters
 	if len(kept) == len(stored) {
 		return nil
 	}
-	list := make([]*playv1.ActiveState, 0, len(kept))
-	for _, st := range kept {
-		list = append(list, &playv1.ActiveState{Key: st.Key, RoundsLeft: st.RoundsLeft})
+	raw, err := json.Marshal(kept)
+	if err != nil {
+		return wrap("encode the states", err)
 	}
-	return s.writeStates(ctx, tx, current.ID, list)
+	return s.writeStoredStates(ctx, tx, current.ID, raw)
 }
