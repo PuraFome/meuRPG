@@ -285,6 +285,7 @@ func (s *Service) CastSpell(
 // The number of targets is checked for everyone but the master, and Magic Missile's darts must add up.
 // Each target must be on the map and in range; the master is never held to the range, and nobody is without a grid (RN-25).
 // Every target after the first must be within the spell's WithinFt of the first.
+// A player's spell attack is never aimed at its caster.
 // No target of a single-target spell may have total cover (D4).
 // It does not read the database.
 func (s *Service) checkTargets(v combatViewer, terrain grid.Terrain, cs []playdb.Combatant, sp link.Spell, caster playdb.Combatant, targs []playdb.Combatant, darts []int, dartsTotal, slotLevel int, theatre bool) error {
@@ -293,6 +294,9 @@ func (s *Service) checkTargets(v combatViewer, terrain grid.Terrain, cs []playdb
 	}
 	if v.master {
 		return nil
+	}
+	if sp.AttackType != "" && slices.ContainsFunc(targs, func(t playdb.Combatant) bool { return t.ID == caster.ID }) {
+		return badTargets("a spell attack is not aimed at its caster")
 	}
 	if err := checkTargetsClose(sp, targs, theatre); err != nil {
 		return err

@@ -24,6 +24,11 @@ const (
 	wallOfIce      = "spell:wall-of-ice"
 	slowSpell      = "spell:slow"
 	seemingSpell   = "spell:seeming"
+	vampiricTouch  = "spell:vampiric-touch"
+	produceFlame   = "spell:produce-flame"
+	eyebite        = "spell:eyebite"
+	faithfulHound  = "spell:faithful-hound"
+	flameBlade     = "spell:flame-blade"
 )
 
 // newSrdTargets is a party of three level 17 casters (Mago the wizard, Clerigo the
@@ -42,7 +47,7 @@ func newSrdParty(t *testing.T) *armed {
 	t.Helper()
 	wizardSpells := []string{
 		"spell:fire-shield", "spell:dimension-door", waterBreathing, chainLightning, disintegrate, wallOfIce, slowSpell, seemingSpell, "spell:animate-objects", "spell:passwall",
-		"spell:wall-of-force", "spell:wall-of-stone", "spell:stone-shape", "spell:secret-chest",
+		"spell:wall-of-force", "spell:wall-of-stone", "spell:stone-shape", "spell:secret-chest", vampiricTouch, eyebite, faithfulHound,
 	}
 	return newArmedWith(t, func(a *armed) {
 		a.pens = a.ana.caster(t, a.campaignID, "Mago", "class:wizard", "race:gnome", 17,
@@ -54,7 +59,7 @@ func newSrdParty(t *testing.T) *armed {
 			[]string{"spell:thaumaturgy"}, nil, []string{massCureWounds})
 		a.toren = a.caio.caster(t, a.campaignID, "Druida", "class:druid", "race:human", 17,
 			&rulesv1.AbilityScores{Strength: 10, Dexterity: 14, Constitution: 14, Intelligence: 10, Wisdom: 20, Charisma: 8}, nil,
-			[]string{"spell:shillelagh"}, nil, []string{"spell:giant-insect"})
+			[]string{"spell:shillelagh", produceFlame}, nil, []string{"spell:giant-insect", flameBlade})
 	})
 }
 

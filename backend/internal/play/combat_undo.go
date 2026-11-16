@@ -590,6 +590,9 @@ func (s *Service) takeBackCompanions(ctx context.Context, c *combatTx, run *undo
 		if err := s.takeBackEndedConcentration(ctx, c, run, recent, last, ev.Pending); err != nil {
 			return err
 		}
+		if err := s.takeBackDrain(ctx, c, run, recent, last, ev.Pending); err != nil {
+			return err
+		}
 	case eventHitPointsAdjusted:
 		if err := s.takeBackEndedConcentration(ctx, c, run, recent, last, ev.Actor); err != nil {
 			return err
@@ -632,6 +635,43 @@ func concentrationEndOf(row playdb.ListRecentSessionEventsRow, group string) (ev
 		return ev, false
 	}
 	return ev, ev.Reaction != nil && ev.Reaction.Kind == concentrationEnd && ev.Reaction.Group == group
+}
+
+// takeBackDrain takes back the heal a drain spell's damage gave its caster, written just before the damage's own event
+// (and after the concentration it ended, if any): the caster's hit points are as they were, and its line goes.
+func (s *Service) takeBackDrain(ctx context.Context, c *combatTx, run *undoRun, recent []playdb.ListRecentSessionEventsRow, last playdb.ListRecentSessionEventsRow, pending string) error {
+	at := slices.IndexFunc(recent, func(e playdb.ListRecentSessionEventsRow) bool { return e.ID == last.ID })
+	for _, older := range recent[at+1:] {
+		if _, ok := concentrationEndOf(older, pending); ok {
+			continue
+		}
+		pe, ok := drainOf(older, pending)
+		if !ok {
+			break
+		}
+		cs, err := listCombatants(ctx, c)
+		if err != nil {
+			return err
+		}
+		u := &undoer{s: s, c: c, cs: cs}
+		if who, ok := u.find(pe.Actor); ok {
+			if err := u.putCreatureOrVitals(ctx, who, *pe.Before, pe.DeathBefore); err != nil {
+				return err
+			}
+		}
+		run.vitals = append(run.vitals, u.vitals...)
+		run.alsoUndone = append(append(run.alsoUndone, older.ID), pe.linesBefore()...)
+	}
+	return nil
+}
+
+// drainOf reads the event of the heal a drain spell's damage with the pending id gave; ok is false for any other event.
+func drainOf(row playdb.ListRecentSessionEventsRow, pending string) (ev actionEvent, ok bool) {
+	ev, err := readEvent(row.Payload)
+	if err != nil {
+		return ev, false
+	}
+	return ev, ev.DrainOf == pending && ev.Before != nil
 }
 
 // takeBackFiring takes a firing written as several events back whole.
