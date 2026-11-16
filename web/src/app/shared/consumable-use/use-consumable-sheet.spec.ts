@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 
-import type { ConsumableTargetVm } from '../../../core/characters/consumables';
+import type { ConsumableTargetVm } from '../../core/characters/consumables';
 import {
   type UseConsumableData,
   UseConsumableSheet,

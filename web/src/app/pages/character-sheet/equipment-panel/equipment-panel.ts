@@ -17,6 +17,7 @@ import type { GearVm } from '../../../core/characters/gear';
 
 import { reasonOf } from '../../../shared/attunement-section/attunement-rows';
 import { ChipLegend } from '../../../shared/chip-legend/chip-legend';
+import { ConsumableNoticeCard } from '../../../shared/consumable-use/consumable-notice';
 import { CountPips } from '../../../shared/count-pips/count-pips';
 import {
   type AttunementChip,
@@ -34,7 +35,7 @@ import { coinEntries, keepUnitsTogether } from '../sheet-format';
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-equipment-panel',
-  imports: [ChipLegend, CountPips, GearList, MatButtonModule, MatIconModule],
+  imports: [ChipLegend, ConsumableNoticeCard, CountPips, GearList, MatButtonModule, MatIconModule],
   templateUrl: './equipment-panel.html',
   styleUrl: './equipment-panel.scss',
 })

@@ -21,6 +21,8 @@ import {
   type SpellOption,
   type TurnOptions,
 } from '../../../../../gen/meurpg/rules/v1/rules_pb';
+import type { AttunementEntryVm } from '../../../../core/characters/attunement';
+import type { CombatItemRowVm, ConsumableNotice } from '../../../../core/characters/consumables';
 import { AMMUNITION } from '../../../../core/combat/ammunition-line';
 import {
   attackDetail,
@@ -68,6 +70,7 @@ import { GearFold } from './gear-fold';
 import { HitEffectCards } from './hit-effect-cards';
 import { hitCards } from '../../../../core/effects/hit-effect-text';
 import { AttackLegend } from './attack-legend';
+import { ConsumableNoticeCard } from '../../../../shared/consumable-use/consumable-notice';
 import { Fold } from '../../../../shared/fold/fold';
 import { EconomyShapes } from '../../../../shared/economy-shapes/economy-shapes';
 import { movementOf, turnLineOf } from './turn-line';
@@ -115,6 +118,7 @@ import { offersWeaponAttack } from './weapon-offer';
     EconomyShapes,
     ActionRow,
     AttackLegend,
+    ConsumableNoticeCard,
     Fold,
     GearFold,
     GroupState,
@@ -203,6 +207,11 @@ export class ActionGroups {
   /** The extra action an effect gives (Velocidade): its line, what it may be and why it is not there; `null` without one. */
   readonly extraAction = input<ExtraActionOption | null>(null);
 
+  /** The potions and scrolls the character carries, one row for each kind (the "Itens" tab); none: no tab. */
+  readonly items = input<readonly CombatItemRowVm[]>([]);
+  /** What the last use of an item said (565-03): the card at the top of "Itens". */
+  readonly itemsNotice = input<ConsumableNotice | null>(null);
+
   /** "Atacar": the key of the attack, as in `Attack.key`. */
   readonly attack = output<string>();
   /** "Agarrar" or "Empurrar": the sheet that picks the target. */
@@ -221,6 +230,8 @@ export class ActionGroups {
   readonly giveUp = output<string>();
   /** Whether the combatant holds an action for its trigger: its card sits under the economy row, in every tab. */
   protected readonly holdsReadied = holdsReadied;
+  /** "Usar" on an item: the unit of the row (one entry of the sheet) that is used. */
+  readonly useItem = output<AttunementEntryVm>();
   /** "Conjurar": the key of the spell, or of a cantrip that asks for a save. */
   readonly cast = output<string>();
   /** "Usar": the key of a feature action ("feature:second-wind"). */
@@ -290,6 +301,18 @@ export class ActionGroups {
       this.canUse,
     ),
   );
+  /**
+   * The items still in play and the ones folded behind "Ação · Usada". A potion costs the Action, and a first attack of Extra
+   * Attack spends it too, so the fold follows `actionUsed` and not the attacks left; an oil or a scroll costs none and stays.
+   */
+  protected readonly itemParts = computed(() =>
+    partByEconomy(
+      this.items(),
+      (r) => r.economy,
+      { ...this.spent(), action: cannotAct(this.own()) || this.own().actionUsed },
+      this.spentWord(),
+    ),
+  );
   /** The effects waiting for the caster's next weapon hit (#577), the card at the top of "Ataques". */
   protected readonly hitEffects = computed(() => hitCards(this.own(), this.combatants()));
   /** The one line above the weapon rows: only with dice and at least one weapon attack still on offer. */
@@ -314,6 +337,8 @@ export class ActionGroups {
   protected readonly featureParts = computed(() =>
     partByEconomy(this.classFeatures(), featureGroup, this.spent(), this.spentWord(), this.canUse),
   );
+  /** The tab of the items: while the character carries one, and for the notice of the last unit. */
+  protected readonly hasItemsTab = computed(() => this.items().length > 0 || !!this.itemsNotice());
   protected readonly hasSpells = computed(() => this.spells().length > 0 && !this.beast());
   protected readonly hasClassTab = computed(
     () => this.classFeatures().length > 0 || !!this.beast(),
@@ -338,7 +363,7 @@ export class ActionGroups {
     return actionTabs(
       { ...counts, features: this.classFeatures().length + this.formRows() },
       this.beast() ? WILD_SHAPE_TAB : classTabName(this.classFeatures()),
-      { beast: !!this.beast() },
+      { beast: !!this.beast(), items: this.items().length, itemsKept: !!this.itemsNotice() },
     ).map((t) => ({
       id: t.id,
       label: t.label,

@@ -10379,6 +10379,138 @@ for (const [colorScheme, width] of [['light', 1280], ['dark', 390], ['light', 76
   });
 }
 
+/**
+ * The potions in a combat (#565), through the real stack: the "Itens" tab on Pensantus's turn (a potion with the mark of the Ação, an
+ * oil and a potion with no effect of its own with none), the master acting for Pensantus ("Usar por Pensantus"), the "Usar" sheet, the
+ * list of who is next to him (Brisa, down, at 1,5 m), the dice typed, the notice of the heal with the tab folded to "Ação · Usada" (the oil
+ * stays open), the oil used with no action, and the log lines (the master's, the giver's and the receiver's, with the numbers; the oil's,
+ * with none). Another player's lines, with no number, need a fourth account the e2e table does not have: they are in the unit specs.
+ */
+async function scanConsumableCombatScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: width >= 768 ? 900 : 844 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  let close: () => Promise<void> = async () => undefined;
+  try {
+    await Promise.all([m.goto('/'), p.goto('/')]);
+    const heal = 'item:potion-of-healing-common';
+    const fire = 'item:potion-of-resistance-fire';
+    const oil = 'item:oil-of-sharpness';
+    const climbing = 'item:potion-of-climbing';
+    const table = await tableForCombat(m, p, `Acessibilidade poções no combate ${Date.now()}`, true, true, {
+      sheet: { ...pensantusAttacks, magicItems: [{ key: heal }, { key: heal }, { key: fire }, { key: oil }, { key: climbing }] },
+    });
+    campaignId = table.campaignId;
+    const brisaPlayer = await thirdPlayer(browser, { m, p, table, campaignId, done: async () => undefined } satisfies TrapTable, brisa, brisaSheet, { colorScheme, width });
+    close = brisaPlayer.close;
+    // Brisa stands next to Pensantus (5, 7), at 0 hit points: the list says "A 1,5 m · Caída".
+    const square = sq20(4, 7);
+    await placeTokenRPC(m, campaignId, table.mapId, brisaPlayer.characterId, square.xBp, square.yBp);
+    await beginAttackCombatRPC(m, table, { Pensantus: 20, Brisa: 15, 'Capitão Goblin': 10, 'Goblin 1': 5, 'Goblin 2': 4 });
+    await adjustVitalsRPC(m, campaignId, brisaPlayer.characterId, { hitPointsCurrent: 0 });
+
+    // The master acts for Pensantus: "Usar por Pensantus".
+    await openSessionPage(m, campaignId);
+    await m.getByRole('button', { name: 'Agir por Pensantus' }).click();
+    const masterItems = await openActionTab(m, 'Itens');
+    await masterItems.getByRole('button', { name: 'Usar Poção de resistência' }).click();
+    const byMaster = m.getByRole('dialog', { name: /^Usar por / });
+    await expect(byMaster.getByRole('heading', { name: 'Usar por Pensantus' })).toBeVisible();
+    await expectConsumableScreen(m, `Combate, usar por Pensantus, visto pelo mestre ${where}`);
+    await byMaster.getByRole('button', { name: 'Fechar' }).first().click();
+    await expect(byMaster).toBeHidden();
+    await m.getByRole('button', { name: 'Voltar ao mestre' }).click();
+
+    // The player's tab: after the class's and before "Outras", with the mark of the Ação on the potions only.
+    await openSessionPage(p, campaignId);
+    const items = await openActionTab(p, 'Itens');
+    const rowOf = (key: string) => items.locator(`[data-item-row="${key}"]`);
+    await expect(rowOf(heal)).toContainText('Poção de cura');
+    await expect(rowOf(heal)).toContainText('2 unidades');
+    await expect(rowOf(heal)).toContainText('Ação');
+    await expect(rowOf(climbing)).toContainText('Ação');
+    await expect(rowOf(oil)).not.toContainText('Ação');
+    await expectConsumableScreen(p, `Combate, a aba Itens na vez de Pensantus ${where}`);
+
+    // "Usar": the sheet says a combat is running and that drinking costs the Action.
+    await rowOf(heal).getByRole('button', { name: 'Usar Poção de cura' }).click();
+    const use = p.getByRole('dialog', { name: /^Usar / });
+    await expect(use.getByText('Restam 2 · em combate, gasta a ação')).toBeVisible();
+    await expectConsumableScreen(p, `Combate, usar a poção de cura ${where}`);
+
+    // "Dar a…": Brisa, down, at 1,5 m.
+    await use.getByRole('button', { name: 'Dar a…' }).click();
+    await expect(use.getByRole('radio', { name: /Brisa/ })).toBeChecked();
+    await expect(use.getByRole('group', { name: 'Dar a quem está ao seu lado' })).toContainText('Caída');
+    await expectConsumableScreen(p, `Combate, dar a poção a Brisa ${where}`);
+    const typeDice = use.getByRole('button', { name: 'Digitar os dados' });
+    if (await typeDice.count()) {
+      await typeDice.click();
+    }
+    await use.getByLabel('Dado 1 (d4)').fill('3');
+    await use.getByLabel('Dado 2 (d4)').fill('2');
+    await use.getByRole('button', { name: 'Dar a Brisa' }).click();
+    await expect(use).toBeHidden();
+
+    // The notice in the turn, and the Action spent: the potions fold to "Ação · Usada", the oil stays.
+    const notice = items.locator('.consumable__result');
+    await expect(notice).toContainText('Brisa recebeu 7 PV e acorda.');
+    await expect(notice).toContainText('2d4 + 2: 3 + 2 + 2 = 7. Resta 1 Poção de cura.');
+    await expect(rowOf(oil)).toBeVisible();
+    await expect(rowOf(heal)).toHaveCount(0);
+    await expectConsumableScreen(p, `Combate, a cura dada e a ação usada ${where}`);
+    const spent = await openSpentGroup(p, 'Ação');
+    await expect(spent.locator(`[data-item-row="${heal}"]`)).toBeVisible();
+    await expectConsumableScreen(p, `Combate, a linha Ação usada aberta ${where}`);
+
+    // The oil takes no action: the sheet says the master rules on the time, and the log line has no number.
+    await rowOf(oil).getByRole('button', { name: /^Usar / }).click();
+    const oilSheet = p.getByRole('dialog', { name: /^Usar / });
+    await expect(oilSheet.getByText('Não gasta a ação: o mestre decide o tempo que isso leva.')).toBeVisible();
+    await expectConsumableScreen(p, `Combate, usar o óleo, que não gasta a ação ${where}`);
+    await oilSheet.getByRole('button', { name: 'Beber' }).click();
+    await expect(oilSheet).toBeHidden();
+    await expect(notice).toContainText('Pensantus usou o Óleo de precisão.');
+    await expectConsumableScreen(p, `Combate, o óleo usado ${where}`);
+
+    // The log: the numbers for the giver, the receiver and the master; the oil has none for anyone.
+    const gift = 'Pensantus deu uma Poção de cura a Brisa: 7 PV (2d4 + 2: 3 + 2 + 2)';
+    const ownerLog = await openCombatLog(p);
+    await expect(ownerLog).toContainText(gift);
+    await expect(ownerLog).toContainText('Pensantus usou um Óleo de precisão');
+    await expectConsumableScreen(p, `Combate, o registro com a poção, visto pelo dono ${where}`);
+
+    await openSessionPage(brisaPlayer.page, campaignId);
+    const receiverLog = await openCombatLog(brisaPlayer.page);
+    await expect(receiverLog).toContainText(gift);
+    await expectConsumableScreen(brisaPlayer.page, `Combate, o registro com a poção, visto por quem a recebeu ${where}`);
+
+    await openSessionPage(m, campaignId);
+    const mlog = await masterLog(m);
+    await expect(mlog).toContainText(gift);
+    await expect(mlog).toContainText('Pensantus usou um Óleo de precisão');
+    await expectConsumableScreen(m, `Combate, o registro com a poção, visto pelo mestre ${where}`);
+  } finally {
+    await close();
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+for (const [colorScheme, width] of [['light', 1280], ['dark', 390]] as const) {
+  test(`as poções no combate passam no axe e nas conferências de layout no tema ${colorScheme === 'light' ? 'claro, no desktop' : 'escuro, no celular'}`, { tag: ['@a11y', '@565'] }, async ({ browser }) => {
+    test.setTimeout(420_000);
+    await scanConsumableCombatScreens(browser, colorScheme, width);
+  });
+}
+
 test('a sintonização passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@561'] }, async ({ browser }) => {
   test.setTimeout(240_000);
   await scanAttunementScreens(browser, 'light', 1280);

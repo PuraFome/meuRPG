@@ -15,7 +15,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 
-import { parseSum } from '../../../core/combat/combat-dice';
+import { parseSum } from '../../core/combat/combat-dice';
 import {
   type ConsumableKind,
   type ConsumableTargetVm,
@@ -24,11 +24,11 @@ import {
   effectLine,
   healingDice,
   subtitleOf,
-} from '../../../core/characters/consumables';
-import { ActionKey } from '../../../core/connect/idempotency';
-import type { ConsumableRoll } from '../../../core/play/charges-client';
-import { SheetFrame } from '../../../shared/sheet/sheet-frame/sheet-frame';
-import { injectSheet, openSheet } from '../../../shared/sheet/sheet-host';
+} from '../../core/characters/consumables';
+import { ActionKey } from '../../core/connect/idempotency';
+import type { ConsumableRoll } from '../../core/play/charges-client';
+import { SheetFrame } from '../sheet/sheet-frame/sheet-frame';
+import { injectSheet, openSheet } from '../sheet/sheet-host';
 
 /** Who may receive the consumable, or why the list could not be read. */
 export interface TargetsOutcome {

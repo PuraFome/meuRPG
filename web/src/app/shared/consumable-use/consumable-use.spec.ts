@@ -2,21 +2,20 @@ import { create } from '@bufbuild/protobuf';
 import { Code, ConnectError } from '@connectrpc/connect';
 import { of } from 'rxjs';
 
-import { DiceMode, DicePreference } from '../../../../gen/meurpg/campaigns/v1/campaigns_pb';
+import { DiceMode, DicePreference } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import {
   ConsumableTargetSchema,
   ConsumableTargetState,
   UseConsumableResponseSchema,
-} from '../../../../gen/meurpg/play/v1/charges_pb';
+} from '../../../gen/meurpg/play/v1/charges_pb';
 import {
   ConsumableUseOutcome,
   EncounterBlockedReason,
   EncounterBlockedSchema,
-} from '../../../../gen/meurpg/play/v1/combat_pb';
-import type { AttunementEntryVm } from '../../../core/characters/attunement';
-import type { ChargesClient } from '../../../core/play/charges-client';
-import type { CharacterSheetVm } from '../character-sheet.types';
-import { SheetConsumables, type SheetConsumablesHost } from './sheet-consumables';
+} from '../../../gen/meurpg/play/v1/combat_pb';
+import type { AttunementEntryVm } from '../../core/characters/attunement';
+import type { ChargesClient } from '../../core/play/charges-client';
+import { ConsumableUse, type ConsumableUseHost } from './consumable-use';
 import type { UseConsumableData } from './use-consumable-sheet';
 
 const entry = (id: string, over: Partial<AttunementEntryVm> = {}): AttunementEntryVm => ({
@@ -38,7 +37,7 @@ const gone = (reason: EncounterBlockedReason) =>
     { desc: EncounterBlockedSchema, value: create(EncounterBlockedSchema, { reason }) },
   ]);
 
-describe('SheetConsumables', () => {
+describe('ConsumableUse', () => {
   const client = { useConsumable: vi.fn(), listConsumableTargets: vi.fn() };
   const reload = vi.fn();
   const focusConsumable = vi.fn();
@@ -46,11 +45,13 @@ describe('SheetConsumables', () => {
   let opened: UseConsumableData | undefined;
   let entries: AttunementEntryVm[];
   let isMaster: boolean;
-  let consumables: SheetConsumables;
+  let consumables: ConsumableUse;
+  let inCombat: boolean | null;
 
   beforeEach(() => {
     opened = undefined;
     isMaster = false;
+    inCombat = null;
     entries = [entry('p1'), entry('p2'), entry('r1', { key: 'item:ring', namePt: 'Anel' })];
     Object.values(client).forEach((f) => f.mockReset());
     reload.mockReset().mockResolvedValue(true);
@@ -59,16 +60,11 @@ describe('SheetConsumables', () => {
       mode: DiceMode.PLAYERS_CHOOSE,
       preference: DicePreference.APP,
     });
-    const host: SheetConsumablesHost = {
+    const host: ConsumableUseHost = {
       client: () => client as unknown as ChargesClient,
       campaignId: () => 'camp',
-      vm: () =>
-        ({
-          id: 'c1',
-          name: 'Tor',
-          isMaster,
-          sheet: { kind: 'full', attunement: { entries, attuned: 0 } },
-        }) as unknown as CharacterSheetVm,
+      owner: () => ({ id: 'c1', name: 'Tor', byMaster: isMaster, entries }),
+      inCombat: () => inCombat,
       reload,
       dice,
       focusConsumable,
@@ -78,7 +74,7 @@ describe('SheetConsumables', () => {
         return of(true);
       },
     };
-    consumables = new SheetConsumables(host);
+    consumables = new ConsumableUse(host);
   });
 
   async function open(over: AttunementEntryVm = entries[0]) {
@@ -101,6 +97,12 @@ describe('SheetConsumables', () => {
       canType: true,
       preferApp: true,
     });
+  });
+
+  it('says there is a combat when the page that owns the use is the combat', async () => {
+    inCombat = true;
+    const data = await open();
+    expect(data.inCombat).toBe(true);
   });
 
   it('opens for the master as the character it acts for', async () => {

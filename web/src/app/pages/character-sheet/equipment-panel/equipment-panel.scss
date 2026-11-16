@@ -301,50 +301,6 @@
   color: var(--mr-success-ink, var(--mr-ink));
 }
 
-.consumable__result {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--mr-space-2);
-  margin: var(--mr-space-2) 0 0;
-  padding: var(--mr-space-2);
-  border: 1px solid var(--mr-rule);
-  border-radius: var(--mr-radius-md);
-  font-size: var(--mr-font-14);
-
-  .mat-icon {
-    flex: none;
-    width: var(--mr-font-18);
-    height: var(--mr-font-18);
-    font-size: var(--mr-font-18);
-  }
-
-  p {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    margin: 0;
-  }
-}
-
-.consumable__result--good {
-  border-color: var(--mr-success-ink, var(--mr-rule));
-  background: var(--mr-success-surface, transparent);
-  color: var(--mr-success-ink, var(--mr-ink));
-}
-
-.consumable__detail {
-  font-weight: 400;
-}
-
-// The item's own text, for a potion the app carries out nothing for: a dashed box under the notice.
-.consumable__text {
-  margin: var(--mr-space-2) 0 0;
-  padding: var(--mr-space-2);
-  border: 1px dashed var(--mr-rule);
-  border-radius: var(--mr-radius-md);
-  font-size: var(--mr-font-14);
-}
-
 .charges__result--bad {
   background: var(--mr-danger-surface, transparent);
   color: var(--mr-danger-ink, var(--mr-ink));

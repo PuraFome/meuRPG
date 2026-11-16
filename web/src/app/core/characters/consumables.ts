@@ -109,6 +109,50 @@ export function magicRows(
   return rows;
 }
 
+/** A row of the combat's "Itens": one potion or scroll, or the group of identical ones, with the mark of what using it costs. */
+export interface CombatItemRowVm {
+  readonly id: string;
+  readonly key: string;
+  readonly namePt: string;
+  readonly kind: ConsumableKind;
+  readonly icon: string;
+  /** The line under the name: what the item does, in lower case, and "2 unidades" for a group. */
+  readonly detail: string;
+  readonly count: number;
+  /** The Ação, for what costs it in a combat (`costsAction`); none for what costs no action. */
+  readonly economy: 'action' | null;
+  /** The unit "Usar" sends: the first of the group. */
+  readonly first: AttunementEntryVm;
+}
+
+/** The consumables of a character as the combat's "Itens" lists them: the same rows as the sheet, with their cost. */
+export function combatItemRows(
+  entries: readonly AttunementEntryVm[],
+  categoryOf: (key: string) => string,
+): CombatItemRowVm[] {
+  return magicRows(entries, categoryOf).flatMap((r) => {
+    if (r.type !== 'consumable') {
+      return [];
+    }
+    const c = r.row;
+    return [
+      {
+        id: c.id,
+        key: c.key,
+        namePt: c.namePt,
+        kind: c.kind,
+        icon: c.icon,
+        detail: [lowerFirst(c.effectLine), c.count > 1 ? `${c.count} unidades` : '']
+          .filter((p) => p !== '')
+          .join(' · '),
+        count: c.count,
+        economy: costsAction(c.kind, c.key) ? ('action' as const) : null,
+        first: c.first,
+      },
+    ];
+  });
+}
+
 /** The dice of a healing line: how many, their faces and the number added; `text` is the formula as the line writes it. */
 export interface HealingDice {
   readonly count: number;
@@ -246,11 +290,29 @@ export interface UseNoticeInput {
   readonly woke: boolean;
   /** The units of the item that are left on the sheet after this use. */
   readonly left: number;
-  readonly kind?: ConsumableKind;
 }
 
 function lowerFirst(text: string): string {
   return `${text.charAt(0).toLowerCase()}${text.slice(1)}`;
+}
+
+/**
+ * How the sheet and the log speak of an item by its name: "a Poção de cura", "uma Poção de cura", "bebeu". The catalog carries no
+ * gender and files the oils with the potions, so a potion is what the name says ("Poção…"): it is drunk, and anything else
+ * (a scroll, an oil, a bead) is used, with the article its name asks for.
+ */
+export function itemWords(name: string): {
+  readonly definite: string;
+  readonly indefinite: string;
+  readonly verb: 'bebeu' | 'usou';
+} {
+  const potion = /^poç(ão|ões)/i.test(name);
+  const feminine = potion || article(name) === 'a';
+  return {
+    definite: `${feminine ? 'a' : 'o'} ${name}`,
+    indefinite: `${feminine ? 'uma' : 'um'} ${name}`,
+    verb: potion ? 'bebeu' : 'usou',
+  };
 }
 
 /** "Resta 1 Poção de cura.", "Restam 3 unidades de Poção de cura." or "Era a última unidade.". */
@@ -270,10 +332,7 @@ export function rollSum(faces: readonly number[], total: number): string {
 
 /** What the server said of a use, as the sheet words it: the heal with its dice, the resistance, or the item's own text. */
 export function useNotice(res: UseConsumableResponse, input: UseNoticeInput): ConsumableNotice {
-  // The catalog carries no gender: a potion ("a poção") and a scroll ("o pergaminho") are what these two kinds are.
-  const scroll = input.kind === 'scroll';
-  const the = `${scroll ? 'o' : 'a'} ${input.itemName}`;
-  const verb = scroll ? 'usou' : 'bebeu';
+  const { definite: the, verb } = itemWords(input.itemName);
   switch (res.outcome) {
     case ConsumableUseOutcome.HEALED: {
       const dice = healingDice(input.effectPt)?.text ?? res.diceText;

@@ -15,6 +15,7 @@ import {
   type MagicItemsPage,
   attunementOf,
   magicCategoryIcon,
+  magicEntryOf,
 } from './attunement';
 
 describe('attunementOf', () => {
@@ -111,6 +112,27 @@ describe('attunementOf, the consumables', () => {
       ['', 'Bola de Fogo'],
       ['', ''],
     ]);
+  });
+});
+
+describe('magicEntryOf', () => {
+  it('is the entry of one magic item, as the sheet lists it, for a page that reads the items alone', () => {
+    const m = create(SheetMagicItemSchema, {
+      id: 'p',
+      key: 'item:potion-of-healing',
+      namePt: 'Poção de cura',
+      effectPt: 'Cura 2d4 + 2',
+    });
+    expect(magicEntryOf(m)).toEqual(
+      attunementOf(create(FullSheetSchema, { magicItems: [m] })).entries[0],
+    );
+    expect(magicEntryOf(m)).toMatchObject({
+      id: 'p',
+      key: 'item:potion-of-healing',
+      namePt: 'Poção de cura',
+      kind: 'magic',
+      effectPt: 'Cura 2d4 + 2',
+    });
   });
 });
 

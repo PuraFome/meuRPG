@@ -269,18 +269,7 @@
       </div>
       <div role="status">
         @if (consumableResult(); as notice) {
-          <div class="consumable__result" [class.consumable__result--good]="notice.tone === 'good'" [class.consumable__result--neutral]="notice.tone === 'neutral'">
-            <mat-icon aria-hidden="true">{{ notice.icon }}</mat-icon>
-            <p>
-              <strong>{{ notice.headline }}</strong>
-              @if (notice.detail) {
-                <span class="consumable__detail">{{ notice.detail }}</span>
-              }
-            </p>
-          </div>
-          @for (line of notice.text; track $index) {
-            <p class="consumable__text">{{ line }}</p>
-          }
+          <app-consumable-notice [notice]="notice" />
         }
       </div>
       @if (chargesError()) {

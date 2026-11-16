@@ -5,8 +5,8 @@ import {
 } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { type EconomyGroup, groupOf } from './combat-options';
 
-/** The tabs of "O que você pode fazer": what the character attacks with, casts, its class's abilities, and the actions everyone has. */
-export type ActionTabId = 'attacks' | 'spells' | 'class' | 'other';
+/** The tabs of "O que você pode fazer": what the character attacks with, casts, its class's abilities, the potions and scrolls it carries, and the actions everyone has. */
+export type ActionTabId = 'attacks' | 'spells' | 'class' | 'items' | 'other';
 
 /** The name of the tab that holds a class's abilities, by the feature that grants them; the class itself is not in the turn options. */
 const CLASS_TAB_BY_FEATURE: readonly (readonly [prefix: string, tab: string])[] = [
@@ -138,13 +138,14 @@ export interface ActionTabItem {
 const plural = (n: number, one: string, many: string): string => `${n} ${n === 1 ? one : many}`;
 
 /**
- * The tabs to draw: "Ataques" and "Outras" always (when there is anything to attack with), "Magias" for a caster, and the class's
- * tab when it grants actions (or the character is a beast, whose way back is there).
+ * The tabs to draw: "Ataques" and "Outras" always (when there is anything to attack with), "Magias" for a caster, the class's
+ * tab when it grants actions (or the character is a beast, whose way back is there) and "Itens", between the class's and
+ * "Outras", while the character carries a potion or a scroll (`items` is how many rows it has; `itemsKept` holds the tab for the notice of the last one).
  */
 export function actionTabs(
   counts: ActionCounts,
   className: string,
-  options: { readonly beast?: boolean } = {},
+  options: { readonly beast?: boolean; readonly items?: number; readonly itemsKept?: boolean } = {},
 ): ActionTabItem[] {
   const tabs: ActionTabItem[] = [];
   if (counts.attacks > 0) {
@@ -170,6 +171,16 @@ export function actionTabs(
       label: className,
       badge: String(counts.features),
       words: plural(counts.features, 'habilidade', 'habilidades'),
+    });
+  }
+  const items = options.items ?? 0;
+  // The tab stays while what the last unit said (the notice) is on screen, as the unit leaves the list.
+  if (items > 0 || options.itemsKept) {
+    tabs.push({
+      id: 'items',
+      label: 'Itens',
+      badge: String(items),
+      words: plural(items, 'item', 'itens'),
     });
   }
   tabs.push({

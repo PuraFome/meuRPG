@@ -21,6 +21,7 @@ export const TAB_ICONS: Readonly<Record<ActionTabId, string>> = {
   attacks: 'swords',
   spells: 'auto_fix_high',
   class: 'shield',
+  items: 'science',
   other: 'more_horiz',
 };
 

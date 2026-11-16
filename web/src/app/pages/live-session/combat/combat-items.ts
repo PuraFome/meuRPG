@@ -1,0 +1,115 @@
+import { computed, effect, signal, untracked } from '@angular/core';
+import type { Observable } from 'rxjs';
+
+import { type AttunementEntryVm, magicEntryOf } from '../../../core/characters/attunement';
+import { combatItemRows } from '../../../core/characters/consumables';
+import type { ChargesClient, TableDice } from '../../../core/play/charges-client';
+import { ConsumableUse } from '../../../shared/consumable-use/consumable-use';
+import type { UseConsumableData } from '../../../shared/consumable-use/use-consumable-sheet';
+
+/** What the combat's "Itens" reads from the screen it serves. */
+export interface CombatItemsContext {
+  readonly client: () => ChargesClient;
+  /** The catalog category of every item key, read once per campaign (`MagicCategories`). */
+  readonly categories: {
+    readonly load: (campaignId: string) => Promise<void>;
+    readonly categoryOf: (key: string) => string;
+  };
+  readonly campaignId: () => string;
+  /** The character whose items the screen shows: the player's own, or the one the master acts for; empty when there is none. */
+  readonly characterId: () => string;
+  readonly name: () => string;
+  /** The master acts for the character: the sheet reads "Usar por Tor". */
+  readonly byMaster: () => boolean;
+  /** It is the turn the items are for (the tab is drawn only on the character's own turn): nothing is read otherwise. */
+  readonly enabled: () => boolean;
+  /** What of the combat changes what the items are or may cost (the turn, the Action): they are read again only when it changes. */
+  readonly signature: () => string;
+  readonly dice: () => Promise<TableDice>;
+  readonly openUse: (data: UseConsumableData) => Observable<boolean | undefined>;
+  /** Puts the focus back on the item's "Usar" once the page has drawn it again (or on the tab, when the item is gone or folded). */
+  readonly focusItem: (key: string) => void;
+}
+
+/**
+ * The potions and scrolls of the character on turn, for the combat's "Itens" tab (565-03, 565-04): the character's magic items
+ * read from its sheet, the consumables among them grouped in rows, and "Usar", which opens the same sheet as the character
+ * sheet's with a combat running (`ConsumableUse`). The items are read when the screen's character is known and on the character's
+ * turn, and again whenever the turn's economy changes and after a use; a read that fails keeps what is shown.
+ */
+export class CombatItems {
+  private readonly entries = signal<readonly AttunementEntryVm[]>([]);
+  readonly rows = computed(() =>
+    combatItemRows(this.entries(), (key) => this.ctx.categories.categoryOf(key)),
+  );
+  /** The use of an item: the sheet, the calls and the notice. */
+  readonly use: ConsumableUse;
+  /** What the last use said, for the card at the top of the tab. */
+  readonly notice = computed(() => this.use.result());
+  private loadedFor = '';
+  private seq = 0;
+
+  /** Built where Angular can run an effect (a field of the screen). */
+  constructor(private readonly ctx: CombatItemsContext) {
+    this.use = new ConsumableUse({
+      client: ctx.client,
+      campaignId: ctx.campaignId,
+      owner: () => {
+        const id = ctx.characterId();
+        return id
+          ? { id, name: ctx.name(), byMaster: ctx.byMaster(), entries: this.entries() }
+          : null;
+      },
+      inCombat: () => true,
+      reload: () => this.read(),
+      dice: ctx.dice,
+      categoryOf: (key) => ctx.categories.categoryOf(key),
+      focusConsumable: ctx.focusItem,
+      openUse: ctx.openUse,
+    });
+    effect(() => {
+      const id = ctx.characterId();
+      ctx.signature();
+      if (!ctx.enabled() || !id) {
+        return;
+      }
+      untracked(() => {
+        void ctx.categories.load(ctx.campaignId());
+        void this.read();
+      });
+    });
+  }
+
+  /** "Usar" on a row: `entry` is the unit the row sends. */
+  open(entry: AttunementEntryVm): void {
+    this.use.openUse(entry);
+  }
+
+  /** A turn that passes does not carry the last use's words into the next one. */
+  forgetNotice(): void {
+    this.use.result.set(null);
+  }
+
+  /** Reads the items of the screen's character; `true` when what it read is on screen. */
+  private async read(): Promise<boolean> {
+    const characterId = this.ctx.characterId();
+    if (!characterId) {
+      return false;
+    }
+    if (this.loadedFor !== characterId) {
+      this.loadedFor = characterId;
+      this.entries.set([]);
+    }
+    const seq = ++this.seq;
+    try {
+      const sheet = await this.ctx.client().sheetOf(this.ctx.campaignId(), characterId);
+      if (seq !== this.seq || characterId !== this.ctx.characterId()) {
+        return false; // a newer read, or another character, owns the screen
+      }
+      this.entries.set(sheet.magicItems.map(magicEntryOf));
+      return true;
+    } catch {
+      return false;
+    }
+  }
+}

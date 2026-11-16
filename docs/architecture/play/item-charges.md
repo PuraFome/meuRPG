@@ -191,13 +191,27 @@ The ammunition kinds (`AMMUNITION_KINDS`) also name the catalog weapons that fir
 A magic item is a consumable when the catalog category (`MagicCategories.categoryOf`) is a potion or a scroll and the item holds no charges.
 `EquipmentPanel` draws one row for every key ("×2"), and "Usar" sends the id of the first unit of the group.
 "Usar" works on a locked sheet, and the lock line then says "Travada: usar poções e cargas continua valendo; o resto, só o mestre muda."
-`SheetConsumables` (`pages/character-sheet/charges/sheet-consumables.ts`) opens `UseConsumableSheet` with the character the dialog acts for (the master's title reads "Usar por <personagem>"), reads the sheet again after a use and words the result as a notice under the magic items.
-The sheet does not know whether a combat is running, so it passes no combat flag and the dialog says both costs; the combat's list of items passes it.
-Only a potion with an effect line costs the action in a combat, so any other consumable says it costs no action.
+`ConsumableUse` (`shared/consumable-use/consumable-use.ts`) opens `UseConsumableSheet` with the character the dialog acts for (the master's title reads "Usar por <personagem>"), reads the character again after a use and words the result as a notice.
+The sheet's magic items and the combat's "Itens" both build one, with the owner's items and whether a combat is running (`inCombat`: `null` on the sheet, which says both costs; `true` in the combat).
+Every potion costs the action in a combat, a text-only one included, except the oils (`OILS`, the keys of the SRD's three oils): an oil, a scroll and any other consumable cost no turn and no action, and the master rules on the time.
+`ConsumableNoticeCard` draws the notice in the sheet's live region and in the tab of the combat.
+`itemWords` words an item by its name: a potion is "uma Poção" and drunk, anything else (an oil, a scroll) is used.
 "Beber" and "Dar a…" follow the table's dice (RN-18): the app rolls the dice of a healing potion, or the player types one face for each die.
 The receivers are the server's list: in a running combat the adjacent characters with their distance and how they stand, outside one only the names.
 `consumableErrorMessage` (`core/play/charges-errors.ts`) words the refusals of a use, and the combat's sentences (`combat-errors-limits.ts`) cover the receiver out of reach and the item gone.
+A receiver at three failed death saves still reads as down in the list of a player, and the server refuses it (`TARGET_DEAD`): the dialog says nothing was spent.
 A resistance lands in "Seus efeitos" through the effect cards the server already sends.
+
+### Consumables in a combat
+
+`CombatItems` (`pages/live-session/combat/combat-items.ts`) reads the magic items of the character on turn (the player's own, or the one the master acts for) through `ChargesClient.sheetOf`, and groups the consumables into rows (`combatItemRows`).
+It reads them when the turn is the character's and again when the turn or the Action changes, and after a use; a read that fails keeps what is shown.
+`ActionGroups` draws the "Itens" tab after the class's tab and before "Outras", with the row count, and no tab without a consumable.
+Each row has the mark of its cost (the Ação for a potion, none for an oil or a scroll) and "Usar", which opens `UseConsumableSheet` with a combat running.
+A spent Action (`actionUsed`, also after the first attack of Extra Attack) folds the rows that cost it to "Ação · Usada", and the oils stay open.
+The notice of a use shows at the top of the tab, which stays while the notice is on screen even after the last unit is gone, and is forgotten when the turn passes.
+A scroll is a plain "Usar" row until its own reading exists.
+`CONSUMABLE_USED` log lines (`combat-log-consumable.ts`) say who drank or gave which item; the heal's dice and hit points come only to the master and the owners of the user and the receiver, and any other player reads who and what.
 
 ## The master's panel
 

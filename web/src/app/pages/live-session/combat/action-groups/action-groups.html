@@ -222,6 +222,28 @@
       </div>
     }
 
+    @if (hasItemsTab()) {
+      <div class="panel" role="tabpanel" [id]="panelId('items')" [attr.aria-labelledby]="tabButtonId('items')" [hidden]="current() !== 'items'">
+        <!-- The potions and scrolls (565-03, 565-04): a row for each, the mark of what using it costs, and "Usar", which opens the same sheet as the character's. -->
+        <div role="status">
+          @if (itemsNotice(); as notice) {
+            <app-consumable-notice [notice]="notice" />
+          }
+        </div>
+        @for (r of itemParts().open; track r.id) {
+          <ng-container *ngTemplateOutlet="itemRow; context: { $implicit: r }" />
+        }
+        @for (g of itemParts().folded; track g.group) {
+          <app-fold appearance="row" [muted]="true" [title]="g.title" [level]="3">
+            @for (r of g.rows; track r.id) {
+              <ng-container *ngTemplateOutlet="itemRow; context: { $implicit: r }" />
+            }
+          </app-fold>
+        }
+        <p class="group__why items__rule"><mat-icon aria-hidden="true">info</mat-icon><span>Beber ou dar uma poção gasta a ação. Óleos e pergaminhos não gastam a ação: o mestre decide o tempo.</span></p>
+      </div>
+    }
+
     <div class="panel" role="tabpanel" [id]="panelId('other')" [attr.aria-labelledby]="tabButtonId('other')" [hidden]="current() !== 'other'">
       @if (standRow(); as su) {
         <app-action-row
@@ -446,4 +468,20 @@
       </button>
     }
   </div>
+</ng-template>
+
+<ng-template #itemRow let-r>
+  <app-action-row
+    [name]="r.namePt"
+    [economy]="r.economy"
+    [detail]="r.detail"
+    button="Usar"
+    [icon]="r.icon"
+    [buttonLabel]="'Usar ' + r.namePt"
+    [attr.data-item-row]="r.key"
+    [off]="!!locked()"
+    [reason]="locked()"
+    [busy]="busy()"
+    (press)="useItem.emit(r.first)"
+  />
 </ng-template>

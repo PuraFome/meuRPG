@@ -183,6 +183,7 @@ export class CombatView extends CombatViewPartsDirective {
         turnOf = id;
         untracked(() => {
           this.actionNote.set('');
+          this.items.forgetNotice();
           this.deaths.result.set('');
           this.deaths.masterResult.set('');
           this.actFor.set(null);

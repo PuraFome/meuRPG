@@ -3,8 +3,7 @@ import {
   CombatLogKind,
   ConsumableUseOutcome,
 } from '../../../gen/meurpg/play/v1/combat_pb';
-import { rollSum } from '../characters/consumables';
-import { article } from '../format/article';
+import { itemWords, rollSum } from '../characters/consumables';
 import type { LogLine } from './combat-log-types';
 
 /** What a builder of these lines is given: the entry and the fields every line shares. */
@@ -13,14 +12,7 @@ interface ConsumableArgs {
   readonly base: { id: string; actor: string; hidden: boolean; undoable: boolean };
 }
 
-/** The catalog has no gender or kind: a potion is "a Poção de …" and drunk, a scroll or an oil is used. */
-const isPotion = (name: string) => /^poç(ão|ões)/i.test(name);
 const isScroll = (name: string) => /^pergaminho/i.test(name);
-
-/** "uma Poção de cura", "um Óleo de afiar". */
-function indefinite(name: string): string {
-  return `${isPotion(name) || article(name) === 'a' ? 'uma' : 'um'} ${name}`;
-}
 
 /** The dice as the sheet writes them: "2d4+2" is "2d4 + 2", "1d4-1" is "1d4 − 1". */
 function spacedDice(text: string): string {
@@ -37,10 +29,8 @@ function consumableUsed({ e, base }: ConsumableArgs): LogLine | null {
   if (!use) {
     return null;
   }
-  const item = indefinite(use.itemNamePt);
-  const lead = use.targetLabel
-    ? ` deu ${item} a ${use.targetLabel}`
-    : ` ${isPotion(use.itemNamePt) ? 'bebeu' : 'usou'} ${item}`;
+  const { indefinite: item, verb } = itemWords(use.itemNamePt);
+  const lead = use.targetLabel ? ` deu ${item} a ${use.targetLabel}` : ` ${verb} ${item}`;
   let text = lead;
   if (use.outcome === ConsumableUseOutcome.HEALED && use.diceText !== '') {
     text = `${lead}: ${use.healed} PV (${spacedDice(use.diceText)}: ${rollSum(use.faces, use.rollTotal)})`;

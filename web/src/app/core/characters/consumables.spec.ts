@@ -8,12 +8,14 @@ import {
 import { ConsumableUseOutcome } from '../../../gen/meurpg/play/v1/combat_pb';
 import type { AttunementEntryVm } from './attunement';
 import {
+  combatItemRows,
   consumableKind,
   costsAction,
   effectIcon,
   effectLine,
   healingDice,
   isOil,
+  itemWords,
   leftWords,
   magicRows,
   OILS,
@@ -138,6 +140,66 @@ describe('healingDice', () => {
   it('has no dice for the lines that are no healing', () => {
     expect(healingDice('Resistência a fogo por 1 hora')).toBeNull();
     expect(healingDice('')).toBeNull();
+  });
+});
+
+describe('combatItemRows', () => {
+  const units = [
+    entry({ id: 'p1' }),
+    entry({ id: 'r1', key: 'item:ring-of-protection', namePt: 'Anel', effectPt: '' }),
+    entry({ id: 'p2' }),
+    entry({
+      id: 'f1',
+      key: 'item:potion-of-fire-resistance',
+      namePt: 'Poção de resistência',
+      effectPt: 'Resistência a fogo por 1 hora',
+    }),
+    entry({
+      id: 'o1',
+      key: 'item:oil-of-sharpness',
+      namePt: 'Óleo de afiar',
+      effectPt: '',
+    }),
+    entry({ id: 's1', key: 'item:spell-scroll', namePt: 'Pergaminho de magia', effectPt: '' }),
+  ];
+  const cats = (key: string) => (key === 'item:oil-of-sharpness' ? 'potion' : categoryOf(key));
+
+  it('lists the consumables only, one row for each key, with the id of one unit', () => {
+    const rows = combatItemRows(units, cats);
+    expect(rows.map((r) => [r.key, r.count, r.first.id])).toEqual([
+      ['item:potion-of-healing', 2, 'p1'],
+      ['item:potion-of-fire-resistance', 1, 'f1'],
+      ['item:oil-of-sharpness', 1, 'o1'],
+      ['item:spell-scroll', 1, 's1'],
+    ]);
+  });
+
+  it('says what the item does in the line under the name, and how many the group holds', () => {
+    const rows = combatItemRows(units, cats);
+    expect(rows.map((r) => r.detail)).toEqual([
+      'cura 2d4 + 2 · 2 unidades',
+      'resistência a fogo por 1 hora',
+      'só mostra o texto',
+      'só mostra o texto',
+    ]);
+  });
+
+  it('marks the Ação on every potion but the oils, and nothing on a scroll or an oil', () => {
+    const rows = combatItemRows(units, cats);
+    expect(rows.map((r) => r.economy)).toEqual(['action', 'action', null, null]);
+  });
+
+  it('draws a flask for a potion and a page for a scroll', () => {
+    expect(combatItemRows(units, cats).map((r) => r.icon)).toEqual([
+      'science',
+      'science',
+      'science',
+      'description',
+    ]);
+  });
+
+  it('is empty with no consumable, and so is the tab', () => {
+    expect(combatItemRows([units[1]], cats)).toEqual([]);
   });
 });
 
@@ -388,6 +450,15 @@ describe('useNotice', () => {
     });
   });
 
+  it('says an oil, filed with the potions, is used and not drunk, with the article of its name', () => {
+    const text = create(UseConsumableResponseSchema, { outcome: ConsumableUseOutcome.TEXT_ONLY });
+    const oil = { ...base, itemName: 'Óleo de precisão', effectPt: '' };
+    expect(useNotice(text, { ...oil, gift: false, receiverName: 'Tor' }).headline).toBe(
+      'Tor usou o Óleo de precisão.',
+    );
+    expect(useNotice(text, oil).headline).toBe('Tor deu o Óleo de precisão a Brisa.');
+  });
+
   it('says who the potion was given to when it has no effect of its own', () => {
     const n = useNotice(
       create(UseConsumableResponseSchema, { outcome: ConsumableUseOutcome.TEXT_ONLY }),
@@ -398,5 +469,21 @@ describe('useNotice', () => {
       },
     );
     expect(n.headline).toBe('Tor deu a Poção de escalada a Brisa.');
+  });
+});
+
+describe('itemWords', () => {
+  it('says a potion is "uma" and drunk, whatever the kind the sheet filed it under', () => {
+    expect(itemWords('Poção de cura')).toEqual({
+      definite: 'a Poção de cura',
+      indefinite: 'uma Poção de cura',
+      verb: 'bebeu',
+    });
+  });
+
+  it('says anything else is used, with the article of its name', () => {
+    expect(itemWords('Óleo de precisão')).toMatchObject({ definite: 'o Óleo de precisão', verb: 'usou' });
+    expect(itemWords('Pergaminho de magia').indefinite).toBe('um Pergaminho de magia');
+    expect(itemWords('Conta de força').indefinite).toBe('uma Conta de força');
   });
 });

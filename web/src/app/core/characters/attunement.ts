@@ -7,6 +7,7 @@ import {
   CharacterBlockedSchema,
   CharacterService,
   type FullSheet,
+  type SheetMagicItem,
 } from '../../../gen/meurpg/characters/v1/characters_pb';
 import { ContentService, type MagicItemOption } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { CONNECT_TRANSPORT } from '../connect/transport';
@@ -58,6 +59,24 @@ export interface AttunementVm {
   readonly attuned: number;
 }
 
+/** One magic item of the sheet as an entry (the attunement, the charges and what "Usar" does): the sheet's own read, and the one the combat's "Itens" makes. */
+export function magicEntryOf(m: SheetMagicItem): AttunementEntryVm {
+  return {
+    id: m.id,
+    key: m.key,
+    namePt: m.namePt,
+    kind: 'magic',
+    attuned: m.attuned,
+    asks: m.requiresAttunement,
+    restrictionPt: m.restrictionPt,
+    restriction: STATES[m.restriction] ?? 'none',
+    sameItemAttuned: m.sameItemAttuned,
+    charges: chargesOf(m),
+    effectPt: m.effectPt,
+    spellNamePt: m.spellNamePt,
+  };
+}
+
 /** The attunement of a full sheet, as the server says it on every read. */
 export function attunementOf(
   full: FullSheet,
@@ -82,20 +101,7 @@ export function attunementOf(
     });
   }
   for (const m of full.magicItems) {
-    entries.push({
-      id: m.id,
-      key: m.key,
-      namePt: m.namePt,
-      kind: 'magic',
-      attuned: m.attuned,
-      asks: m.requiresAttunement,
-      restrictionPt: m.restrictionPt,
-      restriction: STATES[m.restriction] ?? 'none',
-      sameItemAttuned: m.sameItemAttuned,
-      charges: chargesOf(m),
-      effectPt: m.effectPt,
-      spellNamePt: m.spellNamePt,
-    });
+    entries.push(magicEntryOf(m));
   }
   return { entries, attuned: entries.filter((e) => e.asks && e.attuned).length };
 }
