@@ -40,6 +40,9 @@ export const pensantusReadyKit = {
   preparedSpellKeys: [...pensantusCasting.preparedSpellKeys, 'spell:charm-person'],
 };
 
+/** Why a spell that asks the caster a choice is off in the sheet: here a summon's creatures (the window sends no `summon` yet). */
+export const summonOffText = 'Soltar pela janela ainda não dá para esta magia: ela pede as criaturas ao conjurar.';
+
 /** The trigger of the specs: the zombie of the boards, with the goblin of the table. */
 export const goblinTrigger = 'Quando o goblin passar pela porta';
 

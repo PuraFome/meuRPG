@@ -2,6 +2,7 @@ package play
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"slices"
@@ -518,12 +519,32 @@ func (u *undoer) readiedFiredBack(ctx context.Context, ev actionEvent) error {
 	return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOTHING_TO_UNDO, "this readied action cannot be undone")
 }
 
-// readiedWaitsAgain makes the row wait and opens its window again.
+// readiedWaitsAgain makes the row wait and opens its window again, with its wait clean: the mark of the reactor's player
+// and the beginning of the wait the window had before its use are gone, so the next mark starts a new wait.
 func (u *undoer) readiedWaitsAgain(ctx context.Context, r *readiedEvent) error {
 	if err := u.c.q.ReopenReadiedAction(ctx, r.ID); err != nil {
 		return fmt.Errorf("make the readied action wait again: %w", err)
 	}
-	return reopenWindows(ctx, u.c, []string{r.Window})
+	if err := reopenWindows(ctx, u.c, []string{r.Window}); err != nil {
+		return err
+	}
+	w, err := u.c.q.GetReactionWindow(ctx, playdb.GetReactionWindowParams{EncounterID: u.c.enc.ID, ID: r.Window})
+	if err != nil {
+		return fmt.Errorf("read the readied window: %w", err)
+	}
+	t := windowTriggerOf(w)
+	if !t.Rolling && t.WaitBegan == nil {
+		return nil
+	}
+	t.Rolling, t.WaitBegan = false, nil
+	body, err := json.Marshal(t)
+	if err != nil {
+		return fmt.Errorf("encode the window's trigger: %w", err)
+	}
+	if _, err := u.c.q.SetReactionWindowTrigger(ctx, playdb.SetReactionWindowTriggerParams{ID: w.ID, Trigger: body}); err != nil {
+		return fmt.Errorf("clear the readied window's wait: %w", err)
+	}
+	return nil
 }
 
 // chainReadied: a Ready whose row was lost since (its readier was defeated or dismissed: that line never closes the

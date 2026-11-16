@@ -9,6 +9,7 @@ import {
   type TurnOptions,
 } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { joinDots, tight } from '../format/text';
+import { CHOICE_ASKS, type CastChoice } from './ready-choices';
 import type { ReadyArgs } from './combat-client-ready';
 import { circleLabel } from './combat-grid';
 import { THEATRE_WHY } from './theatre';
@@ -63,6 +64,10 @@ export interface ReadyRow {
   readonly spell: boolean;
 }
 
+/** A spell that asks the caster an ability, creatures or a damage type: the Ready sheet leaves it off (#857), see `readyChoices`. */
+export function choicePendingText(choice: CastChoice): string {
+  return `Soltar pela janela ainda não dá para esta magia: ela pede ${CHOICE_ASKS[choice]} ao conjurar.`;
+}
 export const NO_ATTACK_TEXT = 'Você não tem um ataque para preparar.';
 export const NO_OTHER_TEXT = 'Nenhuma outra ação pode ser preparada agora.';
 export const EMPTY_TRIGGER_TEXT = 'Escreva quando a ação dispara.';
@@ -201,6 +206,12 @@ function spellBlocked(o: SpellOption): string {
   return '';
 }
 
+/** Why the window cannot release a spell that asks the caster a choice (an ability, creatures, a damage type); `''` when it asks none. */
+function choiceBlocked(choices: ReadonlyMap<string, CastChoice>, key: string): string {
+  const choice = choices.get(key);
+  return choice ? choicePendingText(choice) : '';
+}
+
 /** "1º nível · 1 ação · Evocação ...": the line under a spell's name. */
 function spellSub(o: SpellOption, level: number, summaries: ReadonlyMap<string, string>): string {
   const line = spellLine(o, summaries.get(o.spell?.key ?? '') ?? '');
@@ -210,11 +221,13 @@ function spellSub(o: SpellOption, level: number, summaries: ReadonlyMap<string, 
 
 /**
  * The spells: the cantrips that attack, then the spells of the list the server sends. A spell a feature grants is not offered (the
- * server holds the class spells only). A spell that is not of 1 action, or has no slot, is listed with its reason.
+ * server holds the class spells only). A spell that is not of 1 action, or has no slot, is listed with its reason, and so is one that
+ * asks a choice at the cast (`choices`, see `readyChoices`). A spell placed on the map is held like any other: the window releases it there.
  */
 export function readySpellRows(
   options: TurnOptions,
   summaries: ReadonlyMap<string, string> = new Map(),
+  choices: ReadonlyMap<string, CastChoice> = new Map(),
 ): readonly ReadyRow[] {
   const cantrips: ReadyRow[] = cantripAttacks(options).map((o) => ({
     id: o.attack?.key ?? '',
@@ -240,7 +253,7 @@ export function readySpellRows(
         id: o.spell?.key ?? '',
         title: o.spell?.namePt || o.spell?.name || '',
         sub: spellSub(o, level, summaries),
-        blocked: spellBlocked(o),
+        blocked: spellBlocked(o) || choiceBlocked(choices, o.spell?.key ?? ''),
         level,
         slots: level > 0 ? slotsOf(o) : [],
         spell: true,

@@ -72,7 +72,6 @@ import {
   heldWaitText,
   sayAnswer,
 } from './reaction-queue-text';
-import { readiedRefusalText } from '../../../../core/combat/readied-refusal';
 import { ReadiedAimList } from '../readied-aim/readied-aim';
 import { ReadiedAimState, type ReleaseRequest } from './readied-aim-state';
 import { ParryOffer } from './parry-offer';
@@ -315,7 +314,7 @@ export class ReactionQueue {
       this.said.set(sayAnswer(w, answer, res.result?.result));
       this.play(() => showOfReaction(res.result));
     } catch (err) {
-      this.error.set(readiedRefusalText(err, this.aim.held({ window: w }), 'responder a reação'));
+      this.error.set(this.aim.refusalText(err, { window: w }, 'responder a reação'));
     } finally {
       this.busy.set(false);
     }

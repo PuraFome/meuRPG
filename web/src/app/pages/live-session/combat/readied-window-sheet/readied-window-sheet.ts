@@ -19,6 +19,7 @@ import { article } from '../../../../core/format/article';
 import { CombatClient } from '../../../../core/combat/combat-client';
 import type { CombatState } from '../../../../core/combat/combat-state';
 import { ownCombatant } from '../../../../core/combat/combat-view';
+import { isOptionalReaction, playerChoosingText } from '../../../../core/combat/reaction-autopass';
 import { otherDeviceText, playerWaitText } from '../../../../core/combat/readied-wait';
 import { ReleaseWatch } from '../../../../core/combat/release-watch';
 import { moveOffText } from '../../../../core/combat/release-text';
@@ -61,146 +62,15 @@ export interface ReadiedWindowSheetData {
  * 582-06 to 582-08): the `alertdialog` of a readied action's window, opened by itself for its readier and answered with
  * `AnswerReaction`. "Deixar passar" comes first and has the focus; an attack picks its target from the server's list (the one the
  * player named is chosen when it is within reach); another action has one button. A held spell splits its darts or ticks its creatures
- * with the cast screens' own list (#857). A move cannot be released from here yet (`releasable`): the prompt says so and only lets it pass. The master's screen passes the window after 30 s, so the footer
- * counts the seconds; if the window closed meanwhile it says so and only closes. The server decides every refusal.
+ * with the cast screens' own list (#857); a spell that needs the map and a move go there (`toMap`, "Soltar no mapa" and "Mover agora").
+ * The master's screen passes the window after 30 s, or after the one wait of 120 s once the player is choosing or on the map, so the
+ * footer counts the seconds; if the window closed meanwhile it says so and only closes. The server decides every refusal.
  */
 @Component({
   selector: 'app-readied-window-sheet',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [MatButtonModule, MatIconModule, ReadiedAimList, SheetFrame],
-  template: `
-    <app-sheet-frame
-      icon="alarm"
-      [title]="view.title"
-      [subtitle]="view.subtitle"
-      [phone]="inSheet"
-      [closable]="false"
-      [focusableBody]="true"
-    >
-      <div class="body">
-        @if (error()) {
-          <div class="mr-notice mr-notice--danger" role="alert">
-            <mat-icon aria-hidden="true">error</mat-icon>
-            <p>{{ error() }}</p>
-          </div>
-        }
-        @if (gone()) {
-          <p class="what" role="status" data-testid="readied-gone">
-            @if (goneView(); as g) {
-              <b>{{ g.lead }}</b> {{ g.rest }}
-            } @else {
-              {{ goneText() }}
-            }
-          </p>
-        } @else {
-          @if (useHeld()) {
-            <p class="what" role="status">
-              A sua jogada espera as reações de outros. Assim que responderem, ela acontece.
-            </p>
-          }
-          <p class="what">
-            <b>{{ view.lead }}</b> {{ view.quote }}. {{ view.question }}
-          </p>
-          @if (aims) {
-            <app-readied-aim
-              [campaignId]="data.campaignId"
-              [encounterId]="data.encounterId"
-              [readied]="data.readied!"
-              [encounter]="data.state.encounter()"
-              [reactorId]="data.window.reactorId"
-              [(need)]="need"
-              [(target)]="target"
-              [(release)]="release"
-              [(plan)]="plan"
-            />
-          }
-          @if (mapNotice(); as n) {
-            <div class="mr-notice mr-notice--neutral" data-testid="release-map-notice">
-              <mat-icon aria-hidden="true">{{ isMove ? 'open_with' : 'map' }}</mat-icon>
-              <p>
-                <b>{{ n.lead }}</b> {{ n.rest }}
-              </p>
-            </div>
-          }
-          @if (view.legend.length) {
-            <ul class="legend" data-testid="readied-legend">
-              @for (line of view.legend; track line.text) {
-                <li>
-                  <mat-icon aria-hidden="true">{{ line.icon }}</mat-icon>
-                  <span>
-                    @if (line.lead) {
-                      <b>{{ line.lead }}</b>
-                    }
-                    {{ line.text }}
-                  </span>
-                </li>
-              }
-            </ul>
-          } @else {
-            <p class="small">{{ view.note }}</p>
-          }
-          @if (moveOff()) {
-            <p class="missing" id="readied-limit" role="status">
-              <mat-icon aria-hidden="true">block</mat-icon>{{ moveOffLine() }}
-            </p>
-          }
-        }
-      </div>
-      <div foot>
-        @if (gone()) {
-          <button matButton="outlined" type="button" class="foot__one" data-initial-focus (click)="sheet.close()">
-            Fechar
-          </button>
-        } @else {
-          <p class="small foot__clock" role="status" data-testid="readied-clock">
-            @if (otherDevice()) {
-              <mat-icon aria-hidden="true">location_on</mat-icon>
-            }
-            {{ autoPass() }}
-          </p>
-          <div class="pair">
-            <button
-              matButton="outlined"
-              type="button"
-              class="pair__btn"
-              data-initial-focus
-              [disabled]="busy()"
-              (click)="answer(false)"
-            >
-              {{ view.declineLabel }}
-            </button>
-            @if (mapRelease()) {
-              <button
-                matButton="filled"
-                type="button"
-                class="pair__btn"
-                [class.pair__btn--off]="moveOff()"
-                [attr.aria-describedby]="moveOff() ? 'readied-limit' : null"
-                [disabled]="!ready() || busy() || moveOff()"
-                disabledInteractive
-                data-testid="release-to-map"
-                (click)="goToMap()"
-              >
-                <mat-icon aria-hidden="true">{{ isMove ? 'directions_walk' : 'map' }}</mat-icon
-                >{{ isMove ? view.useLabel : 'Soltar no mapa' }}
-              </button>
-            } @else if (view.releasable) {
-              <button
-                matButton="filled"
-                type="button"
-                class="pair__btn"
-                [disabled]="!ready() || busy()"
-                disabledInteractive
-                (click)="answer(true)"
-              >
-                {{ busy() ? 'Usando…' : useLabel() }}
-              </button>
-            }
-          </div>
-        }
-      </div>
-    </app-sheet-frame>
-  `,
+  templateUrl: './readied-window-sheet.html',
   styleUrls: [
     '../resource-pick/resource-sheet.scss',
     '../feature-window-sheet/feature-window-sheet.scss',
@@ -311,13 +181,22 @@ export class ReadiedWindowSheet {
     spellName: this.data.readied?.kind === ReadiedKind.SPELL ? this.data.readied.actionNamePt : '',
     move: this.isMove,
   });
+  /**
+   * This sheet told the server the player is choosing (the first touch on the list of creatures or darts, see `choosing`). It is the
+   * same mark the map sets (`rolling`), so the one 120 s wait begins at whichever comes first.
+   */
+  private readonly choosingMarked = signal(false);
   /** The player is on the map in another device: this sheet reads the wait as theirs, not as a prompt of its own. */
-  protected readonly otherDevice = computed(() => this.watch.window()?.rolling === true);
-  protected readonly autoPass = computed(() =>
-    this.otherDevice()
-      ? otherDeviceText(this.watch.secondsLeft())
-      : playerWaitText(this.watch.secondsLeft()),
+  protected readonly otherDevice = computed(
+    () => this.watch.window()?.rolling === true && !this.choosingMarked(),
   );
+  protected readonly autoPass = computed(() => {
+    const seconds = this.watch.secondsLeft();
+    if (this.otherDevice()) {
+      return otherDeviceText(seconds);
+    }
+    return this.choosingMarked() ? playerChoosingText(seconds) : playerWaitText(seconds);
+  });
 
   /** The window is no longer in the combat: the time ran out, or the master answered for the player. */
   protected readonly gone = computed(() => !this.busy() && this.watch.gone());
@@ -409,6 +288,36 @@ export class ReadiedWindowSheet {
     )?.focus({ focusVisible: true } as FocusOptions);
   }
 
+  /**
+   * The player's first touch on the list of targets or darts: the master's clock would pass the window at 30 s in the middle of the
+   * choice, so the server is told they are at it (`MarkReactionRolling`, as the dice step of the other reactions does) and the longer
+   * wait counts from now. Best effort: if it fails the 30 s stay.
+   */
+  protected choosing(): void {
+    if (this.choosingTold || !isOptionalReaction(this.data.window)) {
+      return;
+    }
+    this.choosingTold = true;
+    void this.tellChoosing();
+  }
+
+  private choosingTold = false;
+
+  private async tellChoosing(): Promise<void> {
+    try {
+      const e = await this.api.attacks.markReactionRolling(
+        this.data.campaignId,
+        this.data.encounterId,
+        this.data.window.id,
+      );
+      this.data.state.apply(e);
+      this.choosingMarked.set(true);
+    } catch {
+      // The window may have been answered meanwhile; the stream shows the truth.
+      this.choosingTold = false;
+    }
+  }
+
   /** "Atacar o Zumbi 1" or "Deixar passar": the answer to the window. */
   protected async answer(use: boolean): Promise<void> {
     if (this.busy() || (use && !this.ready())) {
@@ -442,7 +351,7 @@ export class ReadiedWindowSheet {
       }
       this.sheet.close();
     } catch (err) {
-      this.error.set(readiedRefusalText(err, this.data.readied, 'responder à reação'));
+      this.error.set(readiedRefusalText(err, this.data.readied, 'responder à reação', this.plan()));
       this.busy.set(false);
     }
   }

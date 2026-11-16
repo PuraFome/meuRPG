@@ -139,13 +139,16 @@ func TestTargetsOnAReadiedAttackAreRefusedAndTheWindowStaysOpen(t *testing.T) {
 		ready func(t *testing.T) (*armed, *playv1.Encounter, *user)
 	}{
 		{"a held Fire Bolt", "Pensantus", func(t *testing.T) (*armed, *playv1.Encounter, *user) {
+			t.Helper()
 			a := newCasters(t)
 			e := a.readyForRelease(t, fireBolt, 0, "Goblin")
 			return a, e, a.ana
 		}},
 		{"a readied weapon attack", "Toren", func(t *testing.T) (*armed, *playv1.Encounter, *user) {
+			t.Helper()
 			a := newArmed(t)
-			return a, a.readyThenPass(t, nil), a.caio
+			e := a.readyThenPass(t, nil)
+			return a, e, a.caio
 		}},
 	}
 	for _, tc := range cases {
@@ -185,18 +188,19 @@ func TestAReadiedAreaReleasedWithNoTargetsIsNotAimedAtTheCreatureNamedAtReady(t 
 // refused, with targets or without, and the window stays open. The targets are never dropped for the creatures in the area.
 func TestAReadiedAreaOnAMapIsNotReleasedByTheAnswer(t *testing.T) {
 	t.Parallel()
-	for name, set := range map[string]func(*armed, *testing.T) func(*playv1.AnswerReactionRequest){
-		"with targets": func(a *armed, t *testing.T) func(*playv1.AnswerReactionRequest) {
+	for name, set := range map[string]func(*testing.T, *armed) func(*playv1.AnswerReactionRequest){
+		"with targets": func(t *testing.T, a *armed) func(*playv1.AnswerReactionRequest) {
+			t.Helper()
 			return withTargets(darts(a, t, "Goblin", 0))
 		},
-		"without targets": func(*armed, *testing.T) func(*playv1.AnswerReactionRequest) { return useSpellAnswer },
+		"without targets": func(*testing.T, *armed) func(*playv1.AnswerReactionRequest) { return useSpellAnswer },
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			a := newCasters(t)
 			e := a.readyForRelease(t, sleepSpell, 1, "")
 			w := a.mustFire(t, e, "Pensantus")
-			_, err := a.answerReaction(t, a.ana, e, w.GetId(), set(a, t))
+			_, err := a.answerReaction(t, a.ana, e, w.GetId(), set(t, a))
 			wantCode(t, "Sleep placed on a map, answered "+name, err, connect.CodeInvalidArgument)
 			if !a.readiedOpen(t, "Pensantus") || a.readiedStatus(t, "Pensantus") != readiedWaiting {
 				t.Errorf("the refused answer left the window open %v and rows %q", a.readiedOpen(t, "Pensantus"), a.readiedStatus(t, "Pensantus"))

@@ -29,14 +29,14 @@ func (a *armed) releaseOf(t *testing.T, spell string, slot int32) (*playv1.Encou
 	return e, a.mustFire(t, e, "Pensantus")
 }
 
-// wantWindowKept checks a refused release spent nothing: the window is open, the row waits, the slot of Ready is the only
-// one spent and the reaction is free.
-func (a *armed) wantWindowKept(t *testing.T, slots int32) {
+// wantWindowKept checks a refused release spent nothing: the window is open, the row waits, the slot of Ready, at the held
+// spell's level, is the only one spent and the reaction is free.
+func (a *armed) wantWindowKept(t *testing.T, level, slots int32) {
 	t.Helper()
 	if !a.readiedOpen(t, "Pensantus") || a.readiedStatus(t, "Pensantus") != readiedWaiting || byLabel(t, a.get(t, a.master), "Pensantus").GetReactionUsed() ||
-		a.slotsUsed(t, "Pensantus", 1) != slots {
-		t.Errorf("after the refusal: window open %v, rows %q, reaction used %v, 1st-level slots %d (want %d)", a.readiedOpen(t, "Pensantus"),
-			a.readiedStatus(t, "Pensantus"), byLabel(t, a.get(t, a.master), "Pensantus").GetReactionUsed(), a.slotsUsed(t, "Pensantus", 1), slots)
+		a.slotsUsed(t, "Pensantus", level) != slots {
+		t.Errorf("after the refusal: window open %v, rows %q, reaction used %v, level-%d slots %d (want %d)", a.readiedOpen(t, "Pensantus"),
+			a.readiedStatus(t, "Pensantus"), byLabel(t, a.get(t, a.master), "Pensantus").GetReactionUsed(), level, a.slotsUsed(t, "Pensantus", level), slots)
 	}
 }
 
@@ -56,15 +56,19 @@ func TestAReadiedReleaseRefusesWhatTheCastRefusesAndKeepsItsWindowOpen(t *testin
 		check  func(t *testing.T, err error)
 	}{
 		{"a dart on a creature that fell", magicMissileSpell, 1, "Capitão Goblin", "Capitão Goblin", 3, false, func(t *testing.T, err error) {
+			t.Helper()
 			wantBlockedBy(t, "a dart on a fallen goblin", err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_TARGET_DEFEATED)
 		}},
 		{"a target out of range", holdPerson, 2, "", "Goblin 1", 0, false, func(t *testing.T, err error) {
+			t.Helper()
 			wantCode(t, "Hold Person on a target 90 ft away", err, connect.CodeFailedPrecondition)
 		}},
 		{"a creature the players do not see", magicMissileSpell, 1, "", "Goblin 2", 3, false, func(t *testing.T, err error) {
+			t.Helper()
 			wantCode(t, "a hidden target", err, connect.CodeNotFound)
 		}},
 		{"a creature the players do not see, answered by the master", magicMissileSpell, 1, "", "Goblin 2", 3, true, func(t *testing.T, err error) {
+			t.Helper()
 			wantCode(t, "a hidden target answered by the master", err, connect.CodeNotFound)
 		}},
 	}
@@ -73,7 +77,7 @@ func TestAReadiedReleaseRefusesWhatTheCastRefusesAndKeepsItsWindowOpen(t *testin
 			t.Parallel()
 			a := newCasters(t)
 			e, w := a.releaseOf(t, tc.spell, tc.slot)
-			slots := a.slotsUsed(t, "Pensantus", 1)
+			slots := a.slotsUsed(t, "Pensantus", tc.slot)
 			if tc.defeat != "" {
 				a.execSQL(t, `UPDATE combatants SET defeated = true WHERE id = $1`, a.id(t, tc.defeat))
 			}
@@ -83,7 +87,7 @@ func TestAReadiedReleaseRefusesWhatTheCastRefusesAndKeepsItsWindowOpen(t *testin
 			}
 			_, err := a.answerReaction(t, u, e, w.GetId(), withTargets(darts(a, t, tc.target, tc.darts)))
 			tc.check(t, err)
-			a.wantWindowKept(t, slots)
+			a.wantWindowKept(t, tc.slot, slots)
 		})
 	}
 }
@@ -137,7 +141,7 @@ func TestTargetsOnAPassOfAReadiedWindowAreRefused(t *testing.T) {
 		r.Targets = []*playv1.SpellTarget{darts(a, t, "Capitão Goblin", 3)}
 	})
 	wantCode(t, "a pass with targets", err, connect.CodeInvalidArgument)
-	a.wantWindowKept(t, a.slotsUsed(t, "Pensantus", 1))
+	a.wantWindowKept(t, 1, a.slotsUsed(t, "Pensantus", 1))
 	a.mustAnswer(t, a.ana, e, w.GetId(), passAnswer)
 }
 
@@ -159,6 +163,15 @@ func TestACounterspellOnAReadiedReleaseWithDartsCastsThemWhenItPasses(t *testing
 		r.Targets = []*playv1.SpellTarget{darts(a, t, "Toren", 3)}
 	})
 	wantCode(t, "Counterspell's window with targets", err, connect.CodeInvalidArgument)
+	_, err = a.answerReaction(t, a.ana, e, cw.GetId(), func(r *playv1.AnswerReactionRequest) {
+		useAnswer(3)(r)
+		r.Targets = []*playv1.SpellTarget{darts(a, t, "Toren", 3)}
+	})
+	wantCode(t, "a use of Counterspell's window with targets", err, connect.CodeInvalidArgument)
+	if a.windowOf(t, a.ana, playv1.ReactionKind_REACTION_KIND_COUNTERSPELL) == nil || a.slotsUsed(t, "Pensantus", 3) != 0 {
+		t.Errorf("after the refused use: Counterspell window open %v, 3rd-level slots used %d (want it open and 0)",
+			a.windowOf(t, a.ana, playv1.ReactionKind_REACTION_KIND_COUNTERSPELL) != nil, a.slotsUsed(t, "Pensantus", 3))
+	}
 	a.mustAnswer(t, a.ana, e, cw.GetId(), passAnswer)
 	got := map[string]int32{}
 	for _, tg := range a.castLine(t, e, magicMissileSpell).GetSpell().GetTargets() {

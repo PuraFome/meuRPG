@@ -6,6 +6,7 @@ import {
   input,
   model,
   type OnInit,
+  output,
   signal,
 } from '@angular/core';
 
@@ -56,8 +57,8 @@ import { ResourcePick } from '../resource-pick/resource-pick';
           [total]="plan.total"
           [npcs]="npcs()"
           [creatures]="creatures()"
-          (toggle)="release.set(toggled(release(), $event))"
-          (deal)="release.set(dealt(release(), $event.id, $event.delta))"
+          (toggle)="touch(); release.set(toggled(release(), $event))"
+          (deal)="touch(); release.set(dealt(release(), $event.id, $event.delta))"
         />
         @if (status()) {
           <p class="small" role="status">{{ status() }}</p>
@@ -69,7 +70,7 @@ import { ResourcePick } from '../resource-pick/resource-pick';
         [rows]="aim().rows"
         [chosen]="target()"
         empty="Não há ninguém para escolher."
-        (pick)="target.set($event)"
+        (pick)="touch(); target.set($event)"
       />
     }
   `,
@@ -88,6 +89,9 @@ export class ReadiedAimList implements OnInit {
   readonly release = model<ReleasePick>(NO_PICK);
   /** What the options say of the held spell, once read: the parent builds the answer with it. */
   readonly plan = model<ReadiedAim['plan']>(null);
+  /** The first time the one answering touches the list (a creature, a dart): the parent tells the table they are choosing. Once. */
+  readonly touched = output<void>();
+  private told = false;
 
   private readonly api = inject(CombatClient);
   private readonly result = signal<GetTurnOptionsResponse | null>(null);
@@ -108,6 +112,12 @@ export class ReadiedAimList implements OnInit {
   protected readonly creatures = computed(
     () => new Set((this.encounter()?.combatants ?? []).filter(isCreature).map((c) => c.id)),
   );
+  protected touch(): void {
+    if (!this.told) {
+      this.told = true;
+      this.touched.emit();
+    }
+  }
   protected toggled(pick: ReleasePick, id: string): ReleasePick {
     const plan = this.aim().plan;
     return plan ? releaseToggled(plan, pick, id) : pick;
