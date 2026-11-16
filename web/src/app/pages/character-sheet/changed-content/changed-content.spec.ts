@@ -119,6 +119,54 @@ describe('ChangedContentNotice', () => {
     expect(['', '0', '0px']).toContain(getComputedStyle(open).marginTop);
   });
 
+  describe('the shield notice (580-16, state 8): the owner of the sheet stows the gear, locked or not', () => {
+    const shield = (): ChangedContentVm =>
+      change({
+        key: 'weapon:machado-de-lenhador@mesa',
+        namePt: 'Machado de Lenhador',
+        messages: [
+          'Machado de Lenhador passou a exigir as duas mãos. Com Machado de Lenhador em uso, o escudo de Tor não conta na CA (CA 18 → 16).',
+        ],
+      });
+    const WHO =
+      'Quem ajusta: o dono da ficha, guardando o escudo ou a arma. O aviso some quando um dos dois deixa de estar em uso.';
+
+    async function openSheet(canEdit: boolean, vm = shield()): Promise<Element> {
+      const { fixture, el } = render([vm], canEdit);
+      (el.querySelector('.change__open') as HTMLButtonElement).click();
+      fixture.detectChanges();
+      await fixture.whenStable();
+      return document.querySelector('app-changed-content-sheet')!;
+    }
+    async function closeSheet(): Promise<void> {
+      (
+        Array.from(document.querySelectorAll('app-changed-content-sheet button')).find(
+          (b) => b.textContent?.trim() === 'Fechar',
+        ) as HTMLButtonElement
+      ).click();
+      await nextTurn();
+    }
+
+    it('says the same two sentences to the owner of a locked sheet and to whoever can edit it', async () => {
+      for (const canEdit of [false, true]) {
+        const sheet = await openSheet(canEdit);
+        const who = sheet.querySelector('.sheet__who')?.textContent?.replace(/\s+/g, ' ').trim();
+        expect(who).toBe(WHO);
+        expect(sheet.textContent).not.toContain('o mestre, na ficha');
+        expect(sheet.textContent).not.toContain('voltam a combinar');
+        await closeSheet();
+      }
+    });
+
+    it('keeps the old sentences for every other notice', async () => {
+      const sheet = await openSheet(false, change());
+      expect(sheet.textContent).toContain(
+        'Quem ajusta: o mestre, na ficha. O aviso some sozinho quando os números voltam a combinar.',
+      );
+      await closeSheet();
+    });
+  });
+
   it('shows nothing when nothing changed', () => {
     const { el } = render([]);
     expect(el.querySelector('.mr-notice')).toBeNull();
