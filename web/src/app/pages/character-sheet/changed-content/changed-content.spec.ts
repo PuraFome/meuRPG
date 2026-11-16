@@ -6,7 +6,7 @@ import {
   changeIntro,
   changeSheetTitle,
   changeTitle,
-  isShieldNotice,
+  isShieldLine,
 } from './changed-content-format';
 import { ChangedContentNotice } from './changed-content';
 import { nextTurn } from '../../../../test-settle';
@@ -100,7 +100,7 @@ describe('ChangedContentNotice', () => {
 
   it('names a weapon the master changed, with the board sentence, and puts the button 8 px under it (580-16, state 8)', () => {
     const sentence =
-      'Machado de Lenhador passou a exigir as duas mãos. Com Machado de Lenhador em uso, o escudo de Tor não conta na CA (CA 18 → 16).';
+      'A arma Machado de Lenhador passou a exigir as duas mãos. Com ela em uso, o escudo de Tor não conta na CA (CA 18 → 16).';
     const { el } = render([
       change({
         key: 'weapon:machado-de-lenhador@mesa',
@@ -128,7 +128,7 @@ describe('ChangedContentNotice', () => {
         key: 'weapon:machado-de-lenhador@mesa',
         namePt: 'Machado de Lenhador',
         messages: [
-          'Machado de Lenhador passou a exigir as duas mãos. Com Machado de Lenhador em uso, o escudo de Tor não conta na CA (CA 18 → 16).',
+          'A arma Machado de Lenhador passou a exigir as duas mãos. Com ela em uso, o escudo de Tor não conta na CA (CA 18 → 16).',
         ],
         codes: ['shield_idle'],
       });
@@ -164,14 +164,12 @@ describe('ChangedContentNotice', () => {
 
     it('is told by the code alone: the same words with another code, or with no code, are a plain sentence', async () => {
       const words = shield().messages;
-      for (const codes of [['skill_count'], [], ['shield_idle', 'skill_count']]) {
-        const vm = shield();
-        const edited: ChangedContentVm = {
-          ...vm,
-          messages: codes.length === 2 ? [...words, 'Outra frase.'] : words,
-          codes,
-        };
-        expect(isShieldNotice(edited)).toBe(codes.length === 2);
+      for (const [codes, isShield] of [
+        [['skill_count'], false],
+        [[], false],
+        [['shield_idle'], true],
+      ] as const) {
+        expect(isShieldLine({ ...shield(), messages: words, codes }, 0)).toBe(isShield);
       }
       const sheet = await openSheet(false, { ...shield(), codes: [] });
       expect(sheet.textContent).not.toContain('Quem ajusta: o dono da ficha');
@@ -179,12 +177,35 @@ describe('ChangedContentNotice', () => {
       await closeSheet();
     });
 
-    it('shows plain sentences and no notice when the codes are fewer than the sentences (an older answer)', () => {
+    it('is decided for each line by that line\'s code, never for the whole entry', async () => {
+      const mixed = {
+        ...shield(),
+        messages: [shield().messages[0], 'Corujeiro agora dá 2 perícias; esta ficha tem 3.'],
+        codes: ['shield_idle', 'skill_count'],
+      };
+      expect(isShieldLine(mixed, 0)).toBe(true);
+      expect(isShieldLine(mixed, 1)).toBe(false);
+      const sheet = await openSheet(false, mixed);
+      expect(
+        Array.from(sheet.querySelectorAll('.sheet__who')).map((p) =>
+          p.textContent?.replace(/\s+/g, ' ').trim(),
+        ),
+      ).toEqual([
+        WHO,
+        'Quem ajusta: o mestre, na ficha. O aviso some sozinho quando os números voltam a combinar.',
+      ]);
+      await closeSheet();
+      // The skill line is not the shield one: with the codes the other way round, the same two sentences swap places.
+      expect(isShieldLine({ ...mixed, codes: ['skill_count', 'shield_idle'] }, 0)).toBe(false);
+      expect(isShieldLine({ ...mixed, codes: ['skill_count', 'shield_idle'] }, 1)).toBe(true);
+    });
+
+    it('reads the code at the line\'s own place: a line with no code at that place is a plain sentence', () => {
       const two = { ...shield(), messages: ['a', 'b'], codes: ['shield_idle'] };
-      expect(isShieldNotice(two)).toBe(false);
-      expect(isShieldNotice({ ...two, codes: [] })).toBe(false);
-      expect(isShieldNotice({ ...two, codes: ['shield_idle', 'skill_count'] })).toBe(true);
-      expect(isShieldNotice({ ...two, codes: ['skill_count', 'skill_count'] })).toBe(false);
+      expect(isShieldLine(two, 0)).toBe(true);
+      expect(isShieldLine(two, 1)).toBe(false);
+      expect(isShieldLine({ ...two, codes: [] }, 0)).toBe(false);
+      expect(isShieldLine({ ...two, codes: ['skill_count', 'skill_count'] }, 0)).toBe(false);
     });
 
     it('keeps the old sentences for every other notice', async () => {
