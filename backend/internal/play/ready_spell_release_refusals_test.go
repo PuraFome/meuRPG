@@ -56,15 +56,19 @@ func TestAReadiedReleaseRefusesWhatTheCastRefusesAndKeepsItsWindowOpen(t *testin
 		check  func(t *testing.T, err error)
 	}{
 		{"a dart on a creature that fell", magicMissileSpell, 1, "Capitão Goblin", "Capitão Goblin", 3, false, func(t *testing.T, err error) {
+			t.Helper()
 			wantBlockedBy(t, "a dart on a fallen goblin", err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_TARGET_DEFEATED)
 		}},
 		{"a target out of range", holdPerson, 2, "", "Goblin 1", 0, false, func(t *testing.T, err error) {
+			t.Helper()
 			wantCode(t, "Hold Person on a target 90 ft away", err, connect.CodeFailedPrecondition)
 		}},
 		{"a creature the players do not see", magicMissileSpell, 1, "", "Goblin 2", 3, false, func(t *testing.T, err error) {
+			t.Helper()
 			wantCode(t, "a hidden target", err, connect.CodeNotFound)
 		}},
 		{"a creature the players do not see, answered by the master", magicMissileSpell, 1, "", "Goblin 2", 3, true, func(t *testing.T, err error) {
+			t.Helper()
 			wantCode(t, "a hidden target answered by the master", err, connect.CodeNotFound)
 		}},
 	}
