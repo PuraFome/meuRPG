@@ -40,7 +40,11 @@ export interface ReleasePick {
 
 export const NO_PICK: ReleasePick = { chosen: [], dealt: new Map() };
 
-/** The entry the server lists for the spell a row holds. */
+/**
+ * The entry the server lists for the spell a row holds. `SpellTargets` carries nothing that tells a held entry from an ordinary one, so
+ * the match is on the key alone, and it is exact because of what the server lists: a held entry only off the readier's turn, where no
+ * ordinary entry is listed (those need the readier's turn), so one spell key holds one entry there.
+ */
 export function heldTargetsOf(
   res: GetTurnOptionsResponse,
   r: ReadiedAction,

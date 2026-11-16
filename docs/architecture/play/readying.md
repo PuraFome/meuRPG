@@ -172,6 +172,8 @@ Its row has no `spell_cast_id` (`heldSpellAttackRow`), and its release is `RollA
 As an `attack` it is refused (`READY_ACTION`): it would hold no concentration.
 A pact slot is spent only when no plain slot of that level is free.
 Targets and range are checked at the release, not at Ready.
+Ready refuses with `READY_SPELL_NOT_RELEASABLE` a spell the window cannot release, decided by what the spell is (`checkReadyReleasable`, never a list of keys): one that summons, that holds an ability or a damage type the caster picks, that revives, that keeps a zone to lay on a map (`zoneDefOfSpell`, in a combat with a map), or that is placed at a point or in a direction on a map.
+Nothing is spent; the answer carries none of those choices, so the spell could only be let pass.
 Ready spends the slot and the action, and notes the spell cast this turn.
 It sets the readier's concentration to the sentinel `readied` (`concentrationReadied`), even for a spell without concentration.
 A previous concentration ends there, with its line and its dismissed creatures, as a new concentration spell ends it.
@@ -179,7 +181,7 @@ No effect of the spell happens: no damage, no lasting effect, no zone, no `spell
 
 ### The release
 
-The release is the spell's cast as a reaction, through `castSpell` with `readied` set (`findReadied`).
+The release is the spell's cast as a reaction, through `castSpell` with `answering` set (`findReadied`).
 `AnswerReaction` "Usar" builds the `CastSpellRequest` from the answer and the row.
 The targets are `targets` (each with its darts), or `creature_ids`, or the target named at Ready.
 `targets` and `creature_ids` together are `invalid_argument`.
@@ -195,10 +197,13 @@ In a combat with no map the area is released with the creatures the answer picks
 The Ready sheet offers the spells the window releases with darts, creatures or nothing.
 It shows with a reason, and does not offer, a spell that asks the caster an ability (Enhance Ability), the creatures of a summon (Conjure Animals) or a damage type (Flame Strike): the answer carries no `ability_key`, `summon` or `damage_type_key`.
 The sheet reads them as the cast sheet does: `needsAbility`, the summon options of the character and the `damage_choice` of the spell's details.
+The server refuses the same spells at Ready, so a client that does not offer them is not the only guard.
+The sheet fails open: a read that fails leaves the spell offered. A revival (Revivify) is told by nothing the web reads, and a spell that lays a zone on a map is still offered by the sheet, so only the server refuses both; the answer of the window refuses a zone spell too (`laysZoneOnMap`, shared with Ready) for a row written before that refusal. The sheet shows the sentence of `READY_SPELL_NOT_RELEASABLE`.
 While the row waits, `GetTurnOptions.spell_targets` of its readier also lists the targets of the held spell (`heldEntry`), with the darts of its slot, so the window can show them.
 It does so only off the readier's turn, where the window opens and no ordinary entry is listed: on the turn a second action (Action Surge) could list the same spell twice, with nothing to tell the entries apart.
 A held spell attack lists none.
 The list is the owner's and the master's, as the options are (RN-10).
+The release picks only what the readier's player could pick, whoever answers, so the master reads the list under that player's sight too: an NPC the player does not see is not in it (`listHeldTargets`).
 The release spends no slot, the reaction instead of the action, and takes the slot level of Ready (a pact slot spent at Ready counts as a slot of its level).
 `ReadiedAction.slot_level` carries that level to the master and the readier's player, 0 for a cantrip.
 A release that names a slot of another level than the held one is `invalid_argument` (`chosenSlot`): it names no slot, or that level.

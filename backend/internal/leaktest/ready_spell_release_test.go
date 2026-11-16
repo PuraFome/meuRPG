@@ -143,8 +143,8 @@ func (w *world) heldTargetIDs(p *person, c *playv1.Combatant, spell string) []st
 }
 
 // The targets of a held spell and the answer that names them leave out an NPC the players do not see (RN-10): the readier's
-// options list the hidden NPC for the master alone; a pick of it is refused exactly as a pick of an id that is nowhere, so
-// the refusal does not tell it from one; and a player who is not the readier's is denied the answer with or without targets.
+// options list the hidden NPC for nobody, the master included (the release picks as the readier's player does); a pick of it is
+// refused exactly as a pick of an id that is nowhere, so the refusal does not tell it from one; and a player who is not the readier's is denied the answer with or without targets.
 func TestAHeldSpellsTargetsAndItsAnswerKeepTheHiddenNPCApart(t *testing.T) {
 	w := newWorld(t)
 	w.onTorenTurnAsWizard()
@@ -154,11 +154,15 @@ func TestAHeldSpellsTargetsAndItsAnswerKeepTheHiddenNPCApart(t *testing.T) {
 		TriggerText: w.secrets.marker("readied-hidden-pick-trigger", w.caio), Kind: playv1.ReadiedKind_READIED_KIND_SPELL, SpellKey: "spell:hold-person", SlotLevel: 2,
 	}))).GetEncounter()
 	w.endTurnOf(toren)
-	if !slices.Contains(w.heldTargetIDs(w.master, toren, "spell:hold-person"), hidden.GetId()) { // the positive control
-		t.Fatal("the master's list of the held Hold Person's targets has no hidden NPC: the canary is unreachable")
+	if w.combatantOf(w.master.currentEncounter(w), w.hiddenNPC.GetId()).GetId() != hidden.GetId() { // the positive control: the master's own read of the combat lists the hidden NPC
+		t.Fatal("the master's combatant list has no hidden NPC: the canary is unreachable")
 	}
-	if got := w.heldTargetIDs(w.caio, toren, "spell:hold-person"); len(got) == 0 || slices.Contains(got, hidden.GetId()) {
-		t.Errorf("Caio's list of the held Hold Person's targets = %v, want some and not the hidden NPC", got)
+	// The release picks what the readier's player could pick, whoever answers: both lists hold the same creatures, not the hidden NPC.
+	player, master := w.heldTargetIDs(w.caio, toren, "spell:hold-person"), w.heldTargetIDs(w.master, toren, "spell:hold-person")
+	slices.Sort(player)
+	slices.Sort(master)
+	if len(player) == 0 || slices.Contains(player, hidden.GetId()) || !slices.Equal(player, master) {
+		t.Errorf("the held Hold Person's targets: Caio's list = %v, the master's = %v; want the same creatures, not the hidden NPC", player, master)
 	}
 
 	ctx := t.Context()
