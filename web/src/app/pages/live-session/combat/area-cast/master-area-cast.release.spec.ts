@@ -22,7 +22,10 @@ import { AreaMap } from '../../../../shared/area-picker/area-map';
 import { MasterAreaCast, type MasterAreaCastData } from './master-area-cast';
 
 const plain = (t: string | null | undefined) =>
-  (t ?? '').replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
+  (t ?? '')
+    .replace(/\u00a0/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 
 const pen = combatant({
   id: 'pen',

@@ -415,10 +415,9 @@
           @if (ar.placement === Placement.CASTER) {
             <button #changePlace matButton="outlined" type="button" class="cancel" [disabled]="s.busy()" (click)="close()">
               @if (release) {
-                <mat-icon aria-hidden="true">arrow_back</mat-icon>{{ backLabel }}
-              } @else {
-                Cancelar
+                <mat-icon aria-hidden="true">arrow_back</mat-icon>
               }
+              {{ release ? backLabel : 'Cancelar' }}
             </button>
           } @else {
             <button #changePlace matButton="outlined" type="button" class="cancel" [disabled]="s.busy()" (click)="changeArea()">

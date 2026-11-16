@@ -197,10 +197,9 @@
           </button>
           <button matButton="outlined" type="button" class="move__cancel" (click)="back.emit()">
             @if (release()) {
-              <mat-icon aria-hidden="true">arrow_back</mat-icon>Voltar
-            } @else {
-              Cancelar
+              <mat-icon aria-hidden="true">arrow_back</mat-icon>
             }
+            {{ release() ? 'Voltar' : 'Cancelar' }}
           </button>
         </div>
       }
