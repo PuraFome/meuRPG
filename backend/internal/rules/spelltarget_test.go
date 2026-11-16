@@ -71,7 +71,7 @@ func TestEverySRDSpellHasATarget(t *testing.T) {
 			areas++
 		}
 	}
-	// 88 in the database, 7 of them not areas for us, 4 that the database lacks, and 5 that name their creatures (#953).
+	// 88 in the database, 7 of them not areas for us, 4 that the database lacks, and 5 that name their creatures.
 	if areas != 80 {
 		t.Errorf("%d SRD spells are areas, want 80", areas)
 	}
@@ -178,7 +178,7 @@ func TestSpellTargetOverrides(t *testing.T) {
 		"spell:mirage-arcane": "Terreno de até 1,6 km de lado", "spell:wind-walk": "Você e até 10 criaturas",
 		"spell:hypnotic-pattern": "Cubo de 9 m", "spell:plant-growth": "Esfera de 30 m",
 		"spell:acid-splash": "Uma criatura, ou duas a até 1,5 m uma da outra", "spell:chain-lightning": "Um alvo e até 3 outros a até 9 m do primeiro",
-		"spell:dimension-door": "Você e, se quiser, uma criatura a até 1,5 m", "spell:seeming": "Até 10 criaturas; o mestre aplica às demais",
+		"spell:dimension-door": "Só quem conjura; o mestre leva quem for junto", "spell:seeming": "Até 10 criaturas; o mestre aplica às demais",
 		"spell:wall-of-ice": "Até 10 criaturas cortadas pela muralha; o mestre aplica às demais",
 	} {
 		d, _ := c.SpellDetails(key)

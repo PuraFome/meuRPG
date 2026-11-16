@@ -281,10 +281,11 @@ func (s *Service) CastSpell(
 	return s.castSpell(ctx, m, req, false)
 }
 
-// checkTargets checks, for a player, who a spell may touch: how many targets
-// (the master is not held to the number), that Magic Missile's darts add up,
-// and that each target is on the map and in range (the master is never held to
-// the range, and nobody is without a grid: RN-25), and that no target of a single-target spell has total cover (D4).
+// checkTargets checks, for a player, who a spell may touch.
+// The number of targets is checked for everyone but the master, and Magic Missile's darts must add up.
+// Each target must be on the map and in range; the master is never held to the range, and nobody is without a grid (RN-25).
+// Every target after the first must be within the spell's WithinFt of the first.
+// No target of a single-target spell may have total cover (D4).
 // It does not read the database.
 func (s *Service) checkTargets(v combatViewer, terrain grid.Terrain, cs []playdb.Combatant, sp link.Spell, caster playdb.Combatant, targs []playdb.Combatant, darts []int, dartsTotal, slotLevel int, theatre bool) error {
 	if err := checkTargetCount(v, sp, caster, targs, darts, dartsTotal, slotLevel); err != nil {
@@ -321,11 +322,12 @@ func checkTargetsClose(sp link.Spell, targs []playdb.Combatant, theatre bool) er
 		return nil
 	}
 	within := clamp32(sp.WithinFt, 0, math.MaxInt32)
+	first := targs[0]
 	for _, t := range targs[1:] {
-		if !placed(targs[0]) || !placed(t) {
+		if !placed(first) || !placed(t) {
 			return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_PLACED, "the targets must be on the map")
 		}
-		if dist, _ := distanceFt(targs[0], t); dist > within {
+		if dist, _ := distanceFt(first, t); dist > within {
 			return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_TARGET_OUT_OF_REACH, "the target is too far from the first target",
 				func(b *playv1.EncounterBlocked) { b.MissingFt = dist - within })
 		}

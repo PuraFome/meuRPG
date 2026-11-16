@@ -16,7 +16,7 @@
     "spell:scrying": { "kind": "self" },
     "spell:wish": { "kind": "self" },
     "spell:fire-shield": { "kind": "self" },
-    "spell:dimension-door": { "kind": "self", "label_pt": "Você e, se quiser, uma criatura a até 1,5 m" },
+    "spell:dimension-door": { "kind": "self", "label_pt": "Só quem conjura; o mestre leva quem for junto" },
 
     "spell:arcane-eye": { "kind": "none" },
     "spell:magnificent-mansion": { "kind": "none" },

@@ -2,6 +2,7 @@ package play
 
 import (
 	"fmt"
+	"slices"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -10,7 +11,7 @@ import (
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 )
 
-// Whom an SRD spell takes for a player (#953): the number of creatures, how close
+// Whom an SRD spell takes for a player the number of creatures, how close
 // they must be to the first, and the spells that name no creature at all. These tests
 // need the database (MEURPG_TEST_DATABASE_URL).
 
@@ -40,7 +41,7 @@ func newSrdTargets(t *testing.T, first string, nGoblins int32) (*armed, *playv1.
 func newSrdParty(t *testing.T) *armed {
 	t.Helper()
 	wizardSpells := []string{
-		waterBreathing, chainLightning, disintegrate, wallOfIce, slowSpell, seemingSpell, "spell:animate-objects", "spell:passwall",
+		"spell:fire-shield", "spell:dimension-door", waterBreathing, chainLightning, disintegrate, wallOfIce, slowSpell, seemingSpell, "spell:animate-objects", "spell:passwall",
 		"spell:wall-of-force", "spell:wall-of-stone", "spell:stone-shape", "spell:secret-chest",
 	}
 	return newArmedWith(t, func(a *armed) {
@@ -204,7 +205,7 @@ func TestSRDMassCureWoundsHealsOnlyThePicked(t *testing.T) {
 		healed[p.GetTargetId()] = true
 	}
 	for _, label := range goblins(8) {
-		picked := slicesIndex(goblins(6), label)
+		picked := slices.Contains(goblins(6), label)
 		if got := healed[a.id(t, label)]; got != picked {
 			t.Errorf("%s healed = %v, want %v", label, got, picked)
 		}
@@ -212,15 +213,6 @@ func TestSRDMassCureWoundsHealsOnlyThePicked(t *testing.T) {
 	if healed[a.id(t, "Capitão Goblin")] || healed[a.id(t, "Mago")] {
 		t.Errorf("a creature nobody named is healed: %v", healed)
 	}
-}
-
-func slicesIndex(s []string, v string) bool {
-	for _, x := range s {
-		if x == v {
-			return true
-		}
-	}
-	return false
 }
 
 // TestSRDWallOfIceHarmsOnlyTheListed: only the creatures the caster lists as cut by the wall take damage,
@@ -235,13 +227,13 @@ func TestSRDWallOfIceHarmsOnlyTheListed(t *testing.T) {
 	for _, p := range cast.GetPendingDamages() {
 		damaged[p.GetTargetId()]++
 	}
-	for _, label := range []string{"Goblin 2", "Goblin 4", "Capitão Goblin"} {
-		if n := damaged[a.id(t, label)]; n != 0 {
-			t.Errorf("%s has %d damages though the caster did not list it", label, n)
+	for label, want := range map[string]int{"Goblin 1": 1, "Goblin 2": 0, "Goblin 3": 1, "Goblin 4": 0, "Capitão Goblin": 0} {
+		if n := damaged[a.id(t, label)]; n != want {
+			t.Errorf("%s has %d pending damages, want %d", label, n, want)
 		}
 	}
-	if len(damaged) == 0 {
-		t.Errorf("nobody the caster listed took damage: %v", cast.GetPendingDamages())
+	if len(damaged) != 2 {
+		t.Errorf("damaged = %v, want only the two the caster listed", damaged)
 	}
 }
 
@@ -257,6 +249,8 @@ func TestSRDSpellsWithNoCreatureNameNoOne(t *testing.T) {
 		{"Mago", "spell:passwall", slotOfLevel(5)},
 		{"Mago", "spell:wall-of-force", slotOfLevel(5)},
 		{"Mago", "spell:wall-of-stone", slotOfLevel(5)},
+		{"Mago", "spell:fire-shield", slotOfLevel(4)},
+		{"Mago", "spell:dimension-door", slotOfLevel(4)},
 		{"Mago", "spell:stone-shape", slotOfLevel(4)},
 		{"Mago", "spell:secret-chest", slotOfLevel(4)},
 		{"Druida", "spell:giant-insect", slotOfLevel(4)},
@@ -302,4 +296,64 @@ func TestSRDMendingNamesNoOneOutsideCombat(t *testing.T) {
 		t.Fatalf("Mending's options = %v, want caster only with no targets", got)
 	}
 	a.mustCastOut(t, a.ana, a.pens, "spell:mending", nil, false, nil)
+}
+
+// srdTheatre starts the party of newSrdParty against nGoblins goblins in a combat without a map.
+func (a *armed) srdTheatre(t *testing.T, first string, nGoblins int32) *playv1.Encounter {
+	t.Helper()
+	reveal := []string{"Capitão Goblin"}
+	rolls := []int{1}
+	for i := range nGoblins {
+		reveal = append(reveal, fmt.Sprintf("Goblin %d", i+1))
+		rolls = append(rolls, 1)
+	}
+	players := map[string]int32{"Mago": 10, "Clerigo": 10, "Druida": 10}
+	players[first] = 20
+	return a.start(t, plan{
+		npcs: []*playv1.Participant{{CharacterId: a.goblin.GetId(), Count: nGoblins}, {CharacterId: a.capitao.GetId()}}, npcRolls: rolls,
+		reveal: reveal, players: players, theatre: true,
+	})
+}
+
+// TestSRDMasterIsNotHeldToTheTargets: the master casts for a creature with more targets than the spell takes
+// and with targets farther apart than it allows.
+func TestSRDMasterIsNotHeldToTheTargets(t *testing.T) {
+	t.Parallel()
+	t.Run("Slow with seven", func(t *testing.T) {
+		t.Parallel()
+		a, e := newSrdTargets(t, "Mago", 8)
+		got := a.mustCast(t, a.master, e, "Mago", slowSpell, slotOfLevel(3), a.at(t, goblins(7)...), noCastRoll).GetCast()
+		if len(got.GetTargets()) != 7 {
+			t.Errorf("Slow hit %d targets, want 7", len(got.GetTargets()))
+		}
+	})
+	t.Run("Acid Splash two targets 10 ft apart", func(t *testing.T) {
+		t.Parallel()
+		a, e := newSrdTargets(t, "Mago", 4)
+		got := a.mustCast(t, a.master, e, "Mago", acidSplash, nil, a.at(t, "Goblin 1", "Goblin 3"), noCastRoll).GetCast()
+		if len(got.GetTargets()) != 2 {
+			t.Errorf("Acid Splash hit %d targets, want 2", len(got.GetTargets()))
+		}
+	})
+}
+
+// TestSRDNoGridNoCloseness: in a combat without a map a player is not held to how close the targets are.
+func TestSRDNoGridNoCloseness(t *testing.T) {
+	t.Parallel()
+	a := newSrdParty(t)
+	e := a.srdTheatre(t, "Mago", 4)
+	a.takes(t, e, "Mago", acidSplash, nil, []string{"Goblin 1", "Capitão Goblin"})
+}
+
+// TestSRDMassCureWoundsRefusesTargetsFarApart: two picks more than 60 ft apart are refused for a player.
+func TestSRDMassCureWoundsRefusesTargetsFarApart(t *testing.T) {
+	t.Parallel()
+	a, e := newSrdTargets(t, "Clerigo", 2)
+	a.put(t, "Goblin 1", 2, 1)
+	a.put(t, "Capitão Goblin", 15, 1) // 65 ft from Goblin 1
+	_, err := a.cast(t, a.bia, e, "Clerigo", massCureWounds, slotOfLevel(5), a.at(t, "Goblin 1", "Capitão Goblin"), noCastRoll)
+	b := wantEncounterBlocked(t, err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_TARGET_OUT_OF_REACH)
+	if b.GetMissingFt() != 5 {
+		t.Errorf("missing %d ft, want 5", b.GetMissingFt())
+	}
 }
