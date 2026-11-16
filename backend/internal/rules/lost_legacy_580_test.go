@@ -86,3 +86,16 @@ func TestARowInTheOldWordingIsTakenOnce(t *testing.T) {
 		t.Errorf("feats taken through a choice: known = %v, want [false true]", got)
 	}
 }
+
+// A stored sentence is replaced by the identity of the issue it holds, once, and the rows that hold none stay.
+func TestIdentitiesOfReplacesTheRowsThatHoldAnIssue(t *testing.T) {
+	t.Parallel()
+	a := lostOf(IssueOptionPrerequisite, "full.feature_choice_keys[0]", "feature:a@mesa", "Alfa")
+	b := lostOf(IssueOptionPrerequisite, "full.feature_choice_keys[1]", "feature:b@mesa", "Beta")
+	row := IssueOptionPrerequisite + "|full.feature_choice_keys[0]|" + oldStart + "Alfa: precisa de nível 5 de Guerreiro."
+	other := IssueUnknownKey + "|full.feat_keys[0]|chave desconhecida"
+	got := IdentitiesOf([]string{other, row}, []Issue{a, b})
+	if want := []string{other, a.ID()}; !slices.Equal(got, want) {
+		t.Errorf("identities = %v, want %v", got, want)
+	}
+}

@@ -122,36 +122,92 @@ func listOf(field string) string {
 	return list
 }
 
-// legacyLostStart is how every sentence of a lost feat or option began before issues held identities: it named the
-// entry after it, and the rest was the sentence's own.
+// legacyLostStart is how the sentence of a lost feat or option begins: it names the entry after it, and the rest is
+// the sentence's own.
 const legacyLostStart = "O personagem não cumpre mais o pré-requisito de "
 
-// legacyLostID says a stored identity is this lost prerequisite as the code before Issue.ID wrote it: the code, the
-// field and the old sentence, which began the same for every reader and named the entry. It is matched by the code,
-// the list the field is in and the fixed start of the sentence, not by the entry's name, which the master may have
-// changed before the sheet was saved again, nor by the pick's place, which a swap may have moved (a feat taken
-// through a choice was stored without one). A sheet that holds two such rows of one code in one list takes either
-// row for any lost prerequisite of that list: it can hide the notice of a second one, and never shows a false one.
-func (is Issue) legacyLostID(stored string) bool {
-	if is.Lost == nil {
-		return false
+// legacyRow is a stored identity that holds a lost feat or option by its sentence: the issue's code, the field it is
+// in and the sentence, which begins the same for every reader and names the entry. The place in the field is not read:
+// a feat taken through a choice is stored with none, and a swap may have moved a pick.
+type legacyRow struct {
+	index    int
+	field    string
+	sentence string
+}
+
+// legacyRows are the stored identities that hold, by their sentence, a lost prerequisite of this code and list.
+func (is Issue) legacyRows(stored []string) []legacyRow {
+	var rows []legacyRow
+	for i, id := range stored {
+		code, rest, ok := strings.Cut(id, "|")
+		if !ok || code != is.Code {
+			continue
+		}
+		field, sentence, ok := strings.Cut(rest, "|")
+		if ok && listOf(field) == listOf(is.Field) && strings.HasPrefix(sentence, legacyLostStart) {
+			rows = append(rows, legacyRow{index: i, field: field, sentence: sentence})
+		}
 	}
-	code, rest, ok := strings.Cut(stored, "|")
-	if !ok || code != is.Code {
-		return false
+	return rows
+}
+
+// named says the row's sentence names this issue's entry.
+func (r legacyRow) named(is Issue) bool {
+	return strings.HasPrefix(r.sentence, legacyLostStart+is.Lost.EntryPT+":")
+}
+
+// knownIssues matches the stored identities to the issues of a sheet. An issue is known when its identity is stored.
+// A stored sentence is the same issue as the lost prerequisite it names, and each such row holds one issue: the rows
+// that name an entry go to that entry first, then each row left goes to one lost prerequisite of its code and list that
+// no row names (the entry may have been renamed, its pick moved), the one at the row's own place first, in the
+// order of the issues. held[i] is the issue a stored row went to, and -1 for a row that holds no issue by its sentence.
+func knownIssues(stored []string, issues []Issue) (known []bool, held []int) {
+	known = make([]bool, len(issues))
+	held = make([]int, len(stored))
+	for i := range held {
+		held[i] = -1
 	}
-	field, sentence, ok := strings.Cut(rest, "|")
-	return ok && listOf(field) == listOf(is.Field) && strings.HasPrefix(sentence, legacyLostStart)
+	for i, is := range issues {
+		known[i] = slices.Contains(stored, is.ID())
+	}
+	lost := func(take func(is Issue, r legacyRow) bool, skipKnown bool) {
+		for i, is := range issues {
+			if is.Lost == nil || skipKnown && known[i] {
+				continue
+			}
+			for _, r := range is.legacyRows(stored) {
+				if held[r.index] < 0 && take(is, r) {
+					held[r.index], known[i] = i, true
+					break
+				}
+			}
+		}
+	}
+	lost(func(is Issue, r legacyRow) bool { return r.named(is) }, false)
+	lost(func(is Issue, r legacyRow) bool { return r.field == is.Field }, true)
+	lost(func(Issue, legacyRow) bool { return true }, true)
+	return known, held
 }
 
 // KnownIssues says, for each of issues, whether the stored identities hold it: the sheet's known issues, which are
-// what an issue is told "new" against.
+// what an issue is told "new" against. It is the one place that reads them.
 func KnownIssues(stored []string, issues []Issue) []bool {
-	known := make([]bool, len(issues))
-	for i, is := range issues {
-		known[i] = slices.Contains(stored, is.ID()) || is.Lost != nil && slices.ContainsFunc(stored, is.legacyLostID)
-	}
+	known, _ := knownIssues(stored, issues)
 	return known
+}
+
+// IdentitiesOf is stored with each row that holds an issue by its sentence replaced by the issue's identity.
+func IdentitiesOf(stored []string, issues []Issue) []string {
+	_, held := knownIssues(stored, issues)
+	out := make([]string, 0, len(stored))
+	for i, id := range stored {
+		if held[i] < 0 {
+			out = append(out, id)
+		} else if next := issues[held[i]].ID(); !slices.Contains(out, next) {
+			out = append(out, next)
+		}
+	}
+	return out
 }
 
 // retold is the lost prerequisite said over the sheet d: the same conditions, with what the character has there.
