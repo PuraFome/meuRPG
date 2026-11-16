@@ -3,6 +3,7 @@ import {
   type ActionOption,
   type TurnOptions,
 } from '../../../gen/meurpg/rules/v1/rules_pb';
+import { cannotAct } from './conditions';
 import { type EconomyGroup, groupOf } from './combat-options';
 
 /** The tabs of "O que você pode fazer": what the character attacks with, casts, its class's abilities, the potions and scrolls it carries, and the actions everyone has. */
@@ -136,6 +137,20 @@ export interface ActionTabItem {
 }
 
 const plural = (n: number, one: string, many: string): string => `${n} ${n === 1 ? one : many}`;
+
+/**
+ * The items still in play and the ones folded behind "Ação · Usada". A potion costs the Action, and a first attack of Extra
+ * Attack spends it too, so the fold follows `actionUsed` and not the attacks left; an oil or a scroll costs none and stays.
+ */
+export function partItems<T extends { readonly economy: EconomyGroup | null }>(
+  rows: readonly T[],
+  own: { readonly conditions?: readonly string[]; readonly actionUsed: boolean },
+  spent: SpentGroups,
+  word: string,
+): GroupParts<T> {
+  const action = cannotAct(own) || own.actionUsed;
+  return partByEconomy(rows, (r) => r.economy, { ...spent, action }, word);
+}
 
 /**
  * The tabs to draw: "Ataques" and "Outras" always (when there is anything to attack with), "Magias" for a caster, the class's

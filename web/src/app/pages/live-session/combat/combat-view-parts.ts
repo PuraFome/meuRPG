@@ -27,13 +27,7 @@ import { DiceMode } from '../../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import { HeldQuestions } from '../../../core/held-rolls/held-questions';
 import { HeldVanishWatch } from '../../../core/held-rolls/held-vanish';
 import { pendingCountText } from '../../../core/held-rolls/held-text';
-import { MagicCategories } from '../../../core/characters/attunement';
 import { GearClient } from '../../../core/characters/gear';
-import { focusWithRing } from '../../../core/creatures/focus-ring';
-import { ChargesClient } from '../../../core/play/charges-client';
-import { openUseConsumable } from '../../../shared/consumable-use/use-consumable-sheet';
-import { tabId } from '../../../shared/tab-list/tab-list';
-import { CombatItems } from './combat-items';
 import { GearFlow } from '../../../core/combat/gear-flow';
 import { ResourceClient } from '../../../core/resources/resources-client';
 
@@ -175,36 +169,6 @@ export abstract class CombatViewPartsDirective extends CombatViewActingDirective
         ? `${o.objectInteractionUsed}|${o.actionUsed}|${o.bonusActionUsed}|${o.armorClassBonus}`
         : '';
     },
-  });
-
-  /** The potions and scrolls of the character on turn: the "Itens" tab and the "Usar" sheet of the combat (`CombatItems`). */
-  protected readonly items = new CombatItems({
-    client: () => this.injector.get(ChargesClient),
-    categories: inject(MagicCategories),
-    campaignId: () => this.campaignId(),
-    // The own combatant: the player's character, or the one the master acts for.
-    characterId: () => this.own()?.characterId ?? '',
-    name: () => this.own()?.label ?? '',
-    byMaster: () => this.isMaster(),
-    enabled: () => this.myTurn() && !this.ownDown(),
-    signature: () => {
-      const o = this.own();
-      return o ? `${this.encounter()?.currentCombatantId}|${o.actionUsed}` : '';
-    },
-    dice: () => Promise.resolve({ mode: this.diceMode(), preference: this.dicePreference() }),
-    openUse: (data) => openUseConsumable(this.dialog, this.bottomSheet, data),
-    // The row of the potion is folded or gone once the Action is spent: the tab takes the focus then.
-    focusItem: (key) =>
-      afterNextRender(
-        () => {
-          const root = this.host.nativeElement;
-          focusWithRing(
-            root.querySelector<HTMLElement>(`[data-item-row="${key}"] .row__btn`) ??
-              root.querySelector<HTMLElement>(`#${tabId('acts', 'items')}`),
-          );
-        },
-        { injector: this.injector },
-      ),
   });
 
   /** The master's questions about the rolls that wait for their roller (kept in step with the combat's, in its effects). */

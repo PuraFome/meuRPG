@@ -482,7 +482,10 @@ describe('itemWords', () => {
   });
 
   it('says anything else is used, with the article of its name', () => {
-    expect(itemWords('Óleo de precisão')).toMatchObject({ definite: 'o Óleo de precisão', verb: 'usou' });
+    expect(itemWords('Óleo de precisão')).toMatchObject({
+      definite: 'o Óleo de precisão',
+      verb: 'usou',
+    });
     expect(itemWords('Pergaminho de magia').indefinite).toBe('um Pergaminho de magia');
     expect(itemWords('Conta de força').indefinite).toBe('uma Conta de força');
   });

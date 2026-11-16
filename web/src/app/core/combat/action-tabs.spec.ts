@@ -191,7 +191,9 @@ describe('actionTabs', () => {
   });
 
   it('keeps the tab, with a count of 0, while the notice of the last unit used is on screen', () => {
-    const tab = actionTabs(counts, 'x', { items: 0, itemsKept: true }).find((t) => t.id === 'items');
+    const tab = actionTabs(counts, 'x', { items: 0, itemsKept: true }).find(
+      (t) => t.id === 'items',
+    );
     expect(tab).toMatchObject({ badge: '0', words: '0 itens' });
   });
 

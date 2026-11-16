@@ -52,6 +52,7 @@ import {
   featureGroup,
   featureVerb,
   partByEconomy,
+  partItems,
 } from '../../../../core/combat/action-tabs';
 import { cannotAct } from '../../../../core/combat/conditions';
 import { spellSummary } from '../../../../core/combat/spell-summary';
@@ -88,7 +89,7 @@ import { GroupState } from './group-state';
 import {
   EXTRA_NAMES,
   FRENZY_QUESTION,
-  TAB_ICONS,
+  tabStrip,
   slotRowsOf,
   specialAttack,
 } from './action-groups-text';
@@ -301,17 +302,9 @@ export class ActionGroups {
       this.canUse,
     ),
   );
-  /**
-   * The items still in play and the ones folded behind "Ação · Usada". A potion costs the Action, and a first attack of Extra
-   * Attack spends it too, so the fold follows `actionUsed` and not the attacks left; an oil or a scroll costs none and stays.
-   */
+  /** The items still in play and the ones folded behind "Ação · Usada" (the Action follows `actionUsed`: see `partItems`). */
   protected readonly itemParts = computed(() =>
-    partByEconomy(
-      this.items(),
-      (r) => r.economy,
-      { ...this.spent(), action: cannotAct(this.own()) || this.own().actionUsed },
-      this.spentWord(),
-    ),
+    partItems(this.items(), this.own(), this.spent(), this.spentWord()),
   );
   /** The effects waiting for the caster's next weapon hit (#577), the card at the top of "Ataques". */
   protected readonly hitEffects = computed(() => hitCards(this.own(), this.combatants()));
@@ -337,8 +330,6 @@ export class ActionGroups {
   protected readonly featureParts = computed(() =>
     partByEconomy(this.classFeatures(), featureGroup, this.spent(), this.spentWord(), this.canUse),
   );
-  /** The tab of the items: while the character carries one, and for the notice of the last unit. */
-  protected readonly hasItemsTab = computed(() => this.items().length > 0 || !!this.itemsNotice());
   protected readonly hasSpells = computed(() => this.spells().length > 0 && !this.beast());
   protected readonly hasClassTab = computed(
     () => this.classFeatures().length > 0 || !!this.beast(),
@@ -360,17 +351,13 @@ export class ActionGroups {
       escape: this.grappled(),
       standard: this.standard().length,
     });
-    return actionTabs(
-      { ...counts, features: this.classFeatures().length + this.formRows() },
-      this.beast() ? WILD_SHAPE_TAB : classTabName(this.classFeatures()),
-      { beast: !!this.beast(), items: this.items().length, itemsKept: !!this.itemsNotice() },
-    ).map((t) => ({
-      id: t.id,
-      label: t.label,
-      icon: TAB_ICONS[t.id],
-      badge: t.badge,
-      words: t.words,
-    }));
+    return tabStrip(
+      actionTabs(
+        { ...counts, features: this.classFeatures().length + this.formRows() },
+        this.beast() ? WILD_SHAPE_TAB : classTabName(this.classFeatures()),
+        { beast: !!this.beast(), items: this.items().length, itemsKept: !!this.itemsNotice() },
+      ),
+    );
   });
   /** The tab shown: the person's choice while it is still there, else the first. */
   protected readonly current = computed<ActionTabId>(() => {
@@ -423,24 +410,6 @@ export class ActionGroups {
     }),
   );
   protected readonly movement = computed(() => movementOf(this.own(), this.grappled()));
-
-  /** The word on the Ação header: with Extra Attack, once the first attack
-   * spent the action, "1 ataque restante" (an open circle: it is not over). */
-  protected readonly cannot = computed(() => cannotAct(this.own()));
-  protected readonly actionWord = computed(() => {
-    if (cannotAct(this.own())) {
-      return { word: 'Indisponível', used: true };
-    }
-    const used = this.own().actionUsed;
-    const left = this.attacksLeft();
-    if (used && left > 0 && this.attacksPerAction() > 1) {
-      return {
-        word: `${left} ${left === 1 ? 'ataque restante' : 'ataques restantes'}`,
-        used: false,
-      };
-    }
-    return { word: groupState(used), used };
-  });
 
   protected readonly attackName = attackName;
 
