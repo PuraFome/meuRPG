@@ -174,7 +174,7 @@ func TestAnOptionWhoseOptionCameFromALostFeatIsLostToo(t *testing.T) {
 	if issue == nil || issue.Field != "full.feature_choice_keys[1]" {
 		t.Fatalf("issues = %+v, want the Wolf's option_prerequisite at full.feature_choice_keys[1]", d.Issues)
 	}
-	if got := issue.Lost.SentencePT("Tor", false); got != "Postura do Lobo pede "+optionLabel(c.c.namePT(archery))+", que Tor não tem mais: a opção só vale de novo quando Tor cumprir." {
+	if got := issue.Lost.SentencePT("Tor", false); got != "Postura do Lobo pede "+optionLabel(c.c.namePT(archery))+", que Tor não aplica agora: a opção só vale de novo quando Tor cumprir." {
 		t.Errorf("the Wolf's sentence = %q", got)
 	}
 	bare := b
