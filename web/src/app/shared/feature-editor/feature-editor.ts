@@ -167,10 +167,19 @@ export class FeatureEditor {
 
   constructor() {
     effect(() => {
-      const first = this.refusedIds().split(',')[0];
-      if (first) {
-        untracked(() => this.openOption.set(first));
+      if (this.refusedIds() !== '') {
+        const first = untracked(() => this.rows().find((r) => r.bad)?.option.id);
+        if (first) {
+          untracked(() => this.openOption.set(first));
+        }
       }
+    });
+    // A new answer of the save (or an option added or taken away) puts the refusals back at the places the save named: the rows
+    // are in that order again until the next move.
+    effect(() => {
+      this.issuesOf()(this.basePath());
+      this.optionCount();
+      untracked(() => this.moves.set([]));
     });
   }
 
@@ -241,6 +250,33 @@ export class FeatureEditor {
     this.patch({ options });
   }
 
+  private readonly optionCount = computed(() => this.feature().options.length);
+  /**
+   * The refusals of a save are told by place ("options[2]"), and the arrows move the option from its place at once. `moves[k]` is
+   * the place the save named for the option now at row `k` (empty: no move since the save), so a refusal stays on the option it was
+   * about while it moves; a new save, or an option added or taken away, clears it.
+   */
+  private readonly moves = signal<readonly number[]>([]);
+  private placeOf(k: number): number {
+    return this.moves()[k] ?? k;
+  }
+  /** The messages of a path of the option now at row `k`, read at the place the save named for it. */
+  private readonly rowIssues = computed(() =>
+    this.feature().options.map((_, k) => {
+      const issues = this.issuesOf();
+      const was = this.placeOf(k);
+      if (was === k) {
+        return issues;
+      }
+      const now = this.path(`options[${k}]`);
+      const named = this.path(`options[${was}]`);
+      const inRow = (p: string): boolean =>
+        p === now || p.startsWith(`${now}.`) || p.startsWith(`${now}[`);
+      return (path: string): readonly string[] =>
+        issues(inRow(path) ? named + path.slice(now.length) : path);
+    }),
+  );
+
   /** The option whose row is open: one at a time (board 580-03). */
   protected readonly openOption = signal('');
   /** The rows of "Opções para escolher": the option, its title, the line under it and whether it is open or has a refusal. */
@@ -249,6 +285,7 @@ export class FeatureEditor {
     const nameOf = this.askName();
     return this.feature().options.map((option, index) => {
       const place = `Opção ${index + 1}`;
+      const named = option.name.trim() !== '';
       const asks = optionAsksPhrase(option.prerequisite, nameOf);
       // The text of an option ends in a stop; the line is a label, so the stop goes before the " · " (board 580-03).
       const lead = optionSummary(option, this.menu()).replace(/\.$/, '');
@@ -260,6 +297,9 @@ export class FeatureEditor {
         index,
         place,
         name: option.name.trim() || place,
+        /** What the icon buttons of the row say they move: "a opção Golpe do Corvo", "a opção 3" for one with no name. */
+        ref: named ? `a opção ${option.name.trim()}` : `a opção ${index + 1}`,
+        issues: this.rowIssues()[index],
         title: option.name.trim() ? `${place} · ${option.name.trim()}` : place,
         summary,
         open: this.openOption() === option.id,
@@ -278,15 +318,18 @@ export class FeatureEditor {
   /** Whether a field of option `k`, or the option, has a refusal on it. */
   private refused(k: number): boolean {
     const issues = this.issuesOf();
-    return optionRowPaths(this.path(`options[${k}]`), this.feature().options[k], this.menu()).some(
-      (p) => issues(p).length > 0,
-    );
+    return optionRowPaths(
+      this.path(`options[${this.placeOf(k)}]`),
+      this.feature().options[k],
+      this.menu(),
+    ).some((p) => issues(p).length > 0);
   }
   /** The first row with a refusal opens when the set of such rows changes (a save that was refused): the field is there to be reached. */
   private readonly refusedIds = computed(() =>
     this.rows()
       .filter((r) => r.bad)
       .map((r) => r.option.id)
+      .sort()
       .join(','),
   );
 
@@ -313,6 +356,9 @@ export class FeatureEditor {
       return;
     }
     [options[i], options[j]] = [options[j], options[i]];
+    const places = options.map((_, k) => this.placeOf(k));
+    [places[i], places[j]] = [places[j], places[i]];
+    this.moves.set(places);
     this.patch({ options });
     afterNextRender(
       () => {

@@ -50,27 +50,10 @@
   gap: 2px;
 }
 
-.icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 44px;
-  padding: 0;
-  border: 0;
-  border-radius: var(--mr-radius-sm);
-  background: transparent;
-  color: var(--mr-ink-muted);
-  cursor: pointer;
-
-  &:hover:not(:disabled) {
-    color: var(--mr-accent-text);
-  }
-
-  &:disabled {
-    opacity: 0.4;
-    cursor: default;
-  }
+// The arrows and the "⋮" are the system's icon buttons (matIconButton): in a row they keep their size whatever the line beside them
+// does, so a long summary or the tag never shrinks them.
+.act {
+  flex: none;
 }
 
 // "Nome do traço" and "Efeito" on one row from a tablet up; the effect's own fields, the hint beside each, and the one text

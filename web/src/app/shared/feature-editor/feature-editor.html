@@ -4,10 +4,10 @@
       <span class="feature__title feature__title--n">{{ index() + 1 }}</span>
       @if (count() > 1) {
         <span class="feature__move">
-          <button type="button" class="icon" aria-label="Subir {{ moveName() }}" [disabled]="index() === 0" (click)="moved.emit(-1)">
+          <button matIconButton type="button" class="act" aria-label="Subir {{ moveName() }}" [disabled]="index() === 0" (click)="moved.emit(-1)">
             <mat-icon aria-hidden="true">arrow_upward</mat-icon>
           </button>
-          <button type="button" class="icon" aria-label="Descer {{ moveName() }}" [disabled]="index() === count() - 1" (click)="moved.emit(1)">
+          <button matIconButton type="button" class="act" aria-label="Descer {{ moveName() }}" [disabled]="index() === count() - 1" (click)="moved.emit(1)">
             <mat-icon aria-hidden="true">arrow_downward</mat-icon>
           </button>
         </span>
@@ -144,18 +144,18 @@
               <mat-icon aria-hidden="true">{{ r.open ? 'expand_more' : 'chevron_right' }}</mat-icon>
               <span class="opt__text">
                 <span class="opt__title">{{ r.title }}</span>
-                <span class="opt__sub">{{ r.summary }}@if (r.bad) { <span class="opt__bad">@if (r.summary) { · }<mat-icon aria-hidden="true">error</mat-icon>Precisa de ajuste</span> }</span>
+                <span class="opt__sub">{{ r.summary }}@if (r.bad) { @if (r.summary) { <span class="opt__dot" aria-hidden="true">&nbsp;·</span>&ngsp; }<span class="opt__bad"><mat-icon aria-hidden="true">error</mat-icon>Precisa de ajuste</span> }</span>
               </span>
             </button>
             @if (rows().length > 1) {
-              <button type="button" class="icon" aria-label="Subir {{ r.name }}" [disabled]="r.index === 0" (click)="moveOption(r.index, -1)">
+              <button matIconButton type="button" class="act" aria-label="Subir {{ r.ref }}" [disabled]="r.index === 0" (click)="moveOption(r.index, -1)">
                 <mat-icon aria-hidden="true">arrow_upward</mat-icon>
               </button>
-              <button type="button" class="icon" aria-label="Descer {{ r.name }}" [disabled]="r.index === rows().length - 1" (click)="moveOption(r.index, 1)">
+              <button matIconButton type="button" class="act" aria-label="Descer {{ r.ref }}" [disabled]="r.index === rows().length - 1" (click)="moveOption(r.index, 1)">
                 <mat-icon aria-hidden="true">arrow_downward</mat-icon>
               </button>
             }
-            <button type="button" class="icon" aria-label="Mais ações de {{ r.name }}" [matMenuTriggerFor]="optionActions" [matMenuTriggerData]="{ i: r.index }">
+            <button matIconButton type="button" class="act" aria-label="Mais ações d{{ r.ref }}" [matMenuTriggerFor]="optionActions" [matMenuTriggerData]="{ i: r.index }">
               <mat-icon aria-hidden="true">more_vert</mat-icon>
             </button>
           </div>
@@ -165,7 +165,7 @@
                 [feature]="r.option"
                 [menu]="menu()"
                 [basePath]="path('options[' + r.index + ']')"
-                [issuesOf]="issuesOf()"
+                [issuesOf]="r.issues"
                 [spellOptions]="spellOptions()"
                 [catalog]="catalog()"
                 [entries]="entries()"
