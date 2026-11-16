@@ -119,7 +119,7 @@ test(
       await openSessionPage(p, campaignId);
       const sheet = await openCastOf(p, 'Bênção');
       await expect(castSheet(p)).toBeVisible();
-      await expect(sheet.getByText(/À vontade · .* · no 2º nível/)).toBeVisible();
+      await expect(sheet.getByText('À vontade · Carisma · CD 12 · ataque +4 · no 2º nível', { exact: true })).toBeVisible();
     } finally {
       await endOpenSessionRPC(m, campaignId);
       await master.close();
