@@ -558,12 +558,12 @@ describe('ReadiedWindowSheet (#582, boards 582-06 to 582-08)', () => {
 
   it('counts the 120 s from the start the server dated, and says it is another device when the player is on the map', async () => {
     const began = timestampFromMs(Date.now() - 48_000);
-    const mine = setup({ window: { waitBeganAt: began } });
+    const mine = setup({ window: { waitBeganAt: began, waitedMs: 48_000n } });
     await mine.settle();
     expect(flat(mine.el.querySelector('[data-testid=readied-clock]'))).toBe(
       'Se você não responder, passa sozinho em 1 min 12 s.',
     );
-    const other = setup({ window: { waitBeganAt: began, rolling: true } });
+    const other = setup({ window: { waitBeganAt: began, waitedMs: 48_000n, rolling: true } });
     await other.settle();
     expect(flat(other.el.querySelector('[data-testid=readied-clock]'))).toContain(
       'Você abriu o mapa em outro aparelho. Passa sozinho em 1 min 12 s.',

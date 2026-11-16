@@ -30,7 +30,7 @@ describe("the master's clock of a readied window (#857)", () => {
     const clock = new AutoPassClock();
     clock.sync([readied()], T0);
     clock.sync(
-      [readied({ rolling: true, waitBeganAt: timestampFromMs(T0 + 10 * MS) })],
+      [readied({ rolling: true, waitBeganAt: timestampFromMs(T0 + 10 * MS), waitedMs: 2000n })],
       T0 + 12 * MS,
     );
     expect(clock.secondsLeft('w1', T0 + 12 * MS)).toBe(118);
@@ -40,20 +40,26 @@ describe("the master's clock of a readied window (#857)", () => {
   it('goes on from the same start when the player comes back, and never gives the 30 s back', () => {
     const clock = new AutoPassClock();
     const start = timestampFromMs(T0 + 10 * MS);
-    clock.sync([readied({ rolling: true, waitBeganAt: start })], T0 + 12 * MS);
-    clock.sync([readied({ rolling: false, waitBeganAt: start })], T0 + 58 * MS);
+    clock.sync([readied({ rolling: true, waitBeganAt: start, waitedMs: 2000n })], T0 + 12 * MS);
+    clock.sync([readied({ rolling: false, waitBeganAt: start, waitedMs: 48_000n })], T0 + 58 * MS);
     expect(clock.secondsLeft('w1', T0 + 58 * MS)).toBe(72);
   });
 
   it('counts a window the screen sees for the first time with the mark already set (a reload)', () => {
     const clock = new AutoPassClock();
-    clock.sync([readied({ rolling: true, waitBeganAt: timestampFromMs(T0) })], T0 + 40 * MS);
+    clock.sync(
+      [readied({ rolling: true, waitBeganAt: timestampFromMs(T0), waitedMs: 40_000n })],
+      T0 + 40 * MS,
+    );
     expect(clock.secondsLeft('w1', T0 + 40 * MS)).toBe(80);
   });
 
   it('passes the window once, when the 120 s end', () => {
     const clock = new AutoPassClock();
-    clock.sync([readied({ rolling: false, waitBeganAt: timestampFromMs(T0) })], T0 + 5 * MS);
+    clock.sync(
+      [readied({ rolling: false, waitBeganAt: timestampFromMs(T0), waitedMs: 5000n })],
+      T0 + 5 * MS,
+    );
     expect(clock.due(T0 + 119 * MS)).toEqual([]);
     expect(clock.due(T0 + 120 * MS)).toEqual(['w1']);
     expect(clock.due(T0 + 121 * MS)).toEqual([]);

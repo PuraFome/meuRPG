@@ -78,7 +78,9 @@ export class ReleaseWatch {
   private see(w: ReactionWindow): void {
     if (this.last !== w) {
       this.last = w;
+      // The clock of the redraws catches up to the read, so the time since it is never negative.
       this.readAt = Date.now();
+      this.now.set(this.readAt);
     }
     this.waitedOnMap.set(waitBeganMs(w) !== null);
     this.onWindow?.(w);

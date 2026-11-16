@@ -379,7 +379,9 @@ describe("what the master's held actions say", () => {
     const card = reactionCards(encounter({ combatants, reactionWindows: [w] })).find(
       (c) => c.type === 'queue' || c.type === 'single',
     );
-    expect(JSON.stringify(card)).toContain('Reações a uma montaria');
+    expect(JSON.stringify(card, (_k, v) => (typeof v === 'bigint' ? v.toString() : v))).toContain(
+      'Reações a uma montaria',
+    );
   });
 });
 
