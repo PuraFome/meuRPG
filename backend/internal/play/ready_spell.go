@@ -162,7 +162,7 @@ func (f *readyFlow) holdSpell(ctx context.Context) error {
 }
 
 // mayCastNow checks the caster may cast now: on its turn, or, for the spell it readied, as the reaction its open
-// READIED window offers. Metamagic shapes a cast, and a readied spell was cast at Ready: its release takes none.
+// READIED window offers. Metamagic and a grant shape a cast, and a readied spell was cast at Ready: its release takes neither.
 func (f *castFlow) mayCastNow(ctx context.Context) error {
 	if err := f.findReadied(ctx); err != nil {
 		return err
@@ -170,8 +170,8 @@ func (f *castFlow) mayCastNow(ctx context.Context) error {
 	if f.readied == nil {
 		return f.s.mustActNow(ctx, f.c, f.caster)
 	}
-	if len(f.req.GetMetamagic()) > 0 {
-		return connect.NewError(connect.CodeInvalidArgument, errors.New("a readied spell was cast at Ready: its release takes no Metamagic"))
+	if len(f.req.GetMetamagic()) > 0 || f.req.GetGrantedBy() != "" { // a grant would spend a use at the release of a cantrip
+		return connect.NewError(connect.CodeInvalidArgument, errors.New("a readied spell was cast at Ready: its release takes no Metamagic and no granted_by"))
 	}
 	return f.s.mustReactNowOrOnTurn(ctx, f.c, f.caster)
 }
