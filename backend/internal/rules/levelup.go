@@ -199,6 +199,8 @@ type LevelUpOffer struct {
 	// invocation to swap: one may be replaced at each level (SRD 5.1, Warlock,
 	// Eldritch Invocations).
 	CanSwapInvocation bool
+	// InvocationSwaps are the Eldritch Invocations the warlock may take in the place of the one given up.
+	InvocationSwaps []NamedKey `json:"-"`
 	// PickSwaps are the groups of picks the level may swap one in, at a level with an
 	// Ability Score Improvement. The rules always list them; the server leaves them out
 	// unless the table plays with the swap rule.
@@ -458,6 +460,9 @@ func levelUpOptionsWith(b Build, idx int, classKey string, c *content, sub *srd5
 		}
 	}
 
+	if classKey == classWarlock {
+		o.InvocationSwaps = c.invocationPool(b)
+	}
 	o.FeatureSwaps = c.featureSwapGroups(b, classKey, sub, newLevel, newClass)
 
 	// Features the level adds, by name; and the ones the guided flow does not
@@ -682,6 +687,13 @@ func addBlockedReasons(reasons map[string]string, options []ChoiceOption) {
 			reasons[o.Key] = o.ReasonPT
 		}
 	}
+}
+
+// invocationPool are the Eldritch Invocations the sheet does not have: what a warlock may take in the place of one.
+func (c *content) invocationPool(b Build) []NamedKey {
+	g := SwapGroup{Group: SwapGroupInvocation}
+	c.fillChoiceGroup(&g, b)
+	return g.Pool
 }
 
 // isInvocation says whether a key is one of the Warlock's Eldritch Invocations.
