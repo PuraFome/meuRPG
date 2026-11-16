@@ -172,8 +172,9 @@ Its row has no `spell_cast_id` (`heldSpellAttackRow`), and its release is `RollA
 As an `attack` it is refused (`READY_ACTION`): it would hold no concentration.
 A pact slot is spent only when no plain slot of that level is free.
 Targets and range are checked at the release, not at Ready.
-Ready refuses with `READY_SPELL_NOT_RELEASABLE` a spell the window cannot release, decided by what the spell is (`checkReadyReleasable`, never a list of keys): one that summons, that holds an ability or a damage type the caster picks, that revives, that keeps a zone to lay on a map (`zoneDefOfSpell`, in a combat with a map), or that is placed at a point or in a direction on a map.
-Nothing is spent; the answer carries none of those choices, so the spell could only be let pass.
+Ready refuses with `READY_SPELL_NOT_RELEASABLE` a spell no release can carry, decided by what the spell is (`checkReadyReleasable`, never a list of keys): one that summons, that holds an ability or a damage type the caster picks, or that revives.
+Nothing is spent; neither the answer nor `CastSpell` on the map has a picker for those choices, so the spell could only be let pass.
+A spell placed at a point or in a direction on a map, or laying a zone there, is readied: it is released on the map with `CastSpell`.
 Ready spends the slot and the action, and notes the spell cast this turn.
 It sets the readier's concentration to the sentinel `readied` (`concentrationReadied`), even for a spell without concentration.
 A previous concentration ends there, with its line and its dismissed creatures, as a new concentration spell ends it.
@@ -189,8 +190,9 @@ The target named at Ready is used only for a spell that takes named targets (`na
 In the window, a creature named at Ready that cannot be aimed at now is not chosen: the readier picks another or lets it pass.
 `castSpell` checks them as a cast on the caster's turn: the darts of the slot and the number of targets.
 `targets` on another kind of row, on a held spell attack, on a pass or on a window that is not READIED are `invalid_argument` (`badTargets`, with `targetsNotUsed`): an answer never drops what it carries.
-The answer carries no point and no direction: a spell placed on a map (a sphere at a point, a cone, a wall) is refused by the answer, with targets or without, and the window stays open.
-A spell that needs the map (a point, a direction, a wall) is released with `CastSpell` by the readier's player, or the master, while the READIED window is open.
+The answer carries no point and no direction: a spell placed on a map (a sphere at a point, a cone, a wall) or laying a zone there (`laysZoneOnMap`) is refused by the answer, with targets or without, and the window stays open.
+A spell that needs the map (a point, a direction, a wall, a zone) is released with `CastSpell` by the readier's player, or the master, while the READIED window is open ("Soltar no mapa").
+A release with an origin lays the zone of a zone spell at the held slot: `placeArea` refuses a zone only for the answer (`answering`), never for `CastSpell`.
 `PreviewSpellArea` reads the held spell at the slot level of the row while the caster's READIED window holds it (`heldByWindow`).
 That preview takes no free slot of that level and reads no slot from the request; any other preview is checked against the free slots as before.
 In a combat with no map the area is released with the creatures the answer picks, or with nobody.
@@ -198,7 +200,8 @@ The Ready sheet offers the spells the window releases with darts, creatures or n
 It shows with a reason, and does not offer, a spell that asks the caster an ability (Enhance Ability), the creatures of a summon (Conjure Animals) or a damage type (Flame Strike): the answer carries no `ability_key`, `summon` or `damage_type_key`.
 The sheet reads them as the cast sheet does: `needsAbility`, the summon options of the character and the `damage_choice` of the spell's details.
 The server refuses the same spells at Ready, so a client that does not offer them is not the only guard.
-The sheet fails open: a read that fails leaves the spell offered. A revival (Revivify) is told by nothing the web reads, and a spell that lays a zone on a map is still offered by the sheet, so only the server refuses both; the answer of the window refuses a zone spell too (`laysZoneOnMap`, shared with Ready) for a row written before that refusal. The sheet shows the sentence of `READY_SPELL_NOT_RELEASABLE`.
+The sheet fails open: a read that fails leaves the spell offered. A revival (Revivify) is told by nothing the web reads, so only the server refuses it.
+A spell placed on a map or laying a zone is offered by the sheet and released on the map with `CastSpell`. The sheet shows the sentence of `READY_SPELL_NOT_RELEASABLE`.
 While the row waits, `GetTurnOptions.spell_targets` of its readier also lists the targets of the held spell (`heldEntry`), with the darts of its slot, so the window can show them.
 It does so only off the readier's turn, where the window opens and no ordinary entry is listed: on the turn a second action (Action Surge) could list the same spell twice, with nothing to tell the entries apart.
 A held spell attack lists none.
