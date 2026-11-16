@@ -172,6 +172,8 @@ The slot, targets and dice are checked by the server alone: `invalid_argument` c
   A ritual-only grant takes `as_ritual`.
   The use is spent when the cast starts, also for a long casting.
   The cast keeps the source of the grant it started through (`spell_casts.grant_source`), and the end of a long casting reads that grant again from the sheet: its cast level and its numbers.
+  If that grant is no longer on the sheet, the end is refused and the casting stays open; the player can abandon it.
+  Abandoning a long casting through a grant gives back nothing: the use spent at the start stays spent.
   In a combat the same grant is a turn option (`SpellOption.grant`) and `CastSpellRequest.granted_by` picks it; the undo gives the use back.
 - **One cast, two steps when it takes time.** An action, bonus action or reaction takes effect at once.
   A spell of a minute or more, and every ritual (casting time plus 10 minutes, no slot, no higher level: SRD 5.1 "Rituals"), starts in `casting`: nothing is spent and the caster concentrates on the casting from the start.
