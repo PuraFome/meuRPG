@@ -141,7 +141,8 @@ func (n *npcTable) resolved(t *testing.T) (total, cut int32, count int) {
 	return total, cut, count
 }
 
-// TestNpcCheckSettlesWithTheDieOffAndSpendsOneUse: one bard cuts a 4 off a 15: the check settles at 11 and the uses go down by one.
+// TestNpcCheckSettlesWithTheDieOffAndSpendsOneUse: Brisa is asked first, then Lia (the order of the party). Brisa cuts a 4 off a 15 and
+// Lia lets it pass: the check settles at 11, and Brisa's uses go down by one while Lia's stay.
 func TestNpcCheckSettlesWithTheDieOffAndSpendsOneUse(t *testing.T) {
 	t.Parallel()
 	n := newNpcTable(t, charactersv1.CuttingWordsAsk_CUTTING_WORDS_ASK_ALL)
@@ -149,29 +150,26 @@ func TestNpcCheckSettlesWithTheDieOffAndSpendsOneUse(t *testing.T) {
 	if err != nil {
 		t.Fatalf("RollNpcCheck() error = %v", err)
 	}
-	before := n.usesLeft(t)
+	asks := res.GetCheck().GetAsks()
+	if len(asks) != 2 || asks[0].GetCharacterName() != "Brisa" || asks[1].GetCharacterName() != "Lia" {
+		t.Fatalf("the asks = %v, want Brisa then Lia", asks)
+	}
 	hold := res.GetCheck().GetHoldId()
-	u := n.bia
-	if res.GetCheck().GetAsks()[0].GetCharacterName() != "Brisa" {
-		u = n.ana
+	brisaBefore, liaBefore := n.uses(t, n.bri), n.uses(t, n.lia)
+	if _, err := n.answer(t, n.bia, hold, true, 4); err != nil {
+		t.Fatalf("Brisa's answer error = %v", err)
 	}
-	if _, err := n.answer(t, u, hold, true, 4); err != nil {
-		t.Fatalf("answer error = %v", err)
-	}
-	other := n.ana
-	if u == n.ana {
-		other = n.bia
-	}
-	if _, err := n.answer(t, other, hold, false, 0); err != nil {
-		t.Fatalf("second answer error = %v", err)
+	if _, err := n.answer(t, n.ana, hold, false, 0); err != nil {
+		t.Fatalf("Lia's answer error = %v", err)
 	}
 	if total, cut, _ := n.resolved(t); total != 11 || cut != 4 {
 		t.Fatalf("resolved total, cut = %d, %d; want 11, 4", total, cut)
 	}
-	if u == n.bia {
-		if after := n.usesLeft(t); after != before-1 {
-			t.Fatalf("uses left %d -> %d, want one spent", before, after)
-		}
+	if after := n.uses(t, n.bri); after != brisaBefore-1 {
+		t.Errorf("Brisa's uses %d -> %d, want one spent", brisaBefore, after)
+	}
+	if after := n.uses(t, n.lia); after != liaBefore {
+		t.Errorf("Lia's uses %d -> %d, want none spent: she let it pass", liaBefore, after)
 	}
 }
 
@@ -292,13 +290,29 @@ func TestNpcCheckIsMasterOnly(t *testing.T) {
 	wantCode(t, "a player lists the picker", err, connect.CodePermissionDenied)
 }
 
-// TestNpcCheckPickerListsTheCreature: the stage-less NPC is not listed, the SRD key asked is.
+// TestNpcCheckPickerListsTheSRDKey: an NPC with no place on the stage and no token is not listed (there is no "all the living NPCs"); the
+// SRD key asked is, as the one candidate, with its checks.
 func TestNpcCheckPickerListsTheSRDKey(t *testing.T) {
 	t.Parallel()
 	n := newNpcTable(t, charactersv1.CuttingWordsAsk_CUTTING_WORDS_ASK_ALL)
-	res, err := n.master.play.ListNpcCheckPicker(t.Context(), connect.NewRequest(&playv1.ListNpcCheckPickerRequest{CampaignId: n.campaignID, MonsterKey: "monster:wolf"}))
-	if err != nil || len(res.Msg.GetCandidates()) == 0 {
-		t.Fatalf("ListNpcCheckPicker() = %v, %v; want the wolf", res, err)
+	list := func(key string) []*playv1.NpcCheckCandidate {
+		t.Helper()
+		res, err := n.master.play.ListNpcCheckPicker(t.Context(), connect.NewRequest(&playv1.ListNpcCheckPickerRequest{CampaignId: n.campaignID, MonsterKey: key}))
+		if err != nil {
+			t.Fatalf("ListNpcCheckPicker(%q) error = %v", key, err)
+		}
+		return res.Msg.GetCandidates()
+	}
+	if got := list(""); len(got) != 0 {
+		t.Errorf("the picker with no stage, no token and no key = %v, want nobody: the Barão has no place", got)
+	}
+	got := list("monster:wolf")
+	if len(got) != 1 {
+		t.Fatalf("the picker for the wolf = %v, want the wolf alone", got)
+	}
+	if c := got[0]; c.GetMonsterKey() != "monster:wolf" || c.GetSource() != playv1.NpcCheckSource_NPC_CHECK_SOURCE_MONSTER || c.GetCharacterId() != "" ||
+		c.GetName() == "" || !c.GetHasStatBlock() || len(c.GetChecks()) == 0 || c.GetHidden() || c.GetMapMeasures() {
+		t.Errorf("the wolf = %v, want an SRD candidate with a stat block and its checks, not hidden and measured by no map", c)
 	}
 }
 
@@ -374,7 +388,7 @@ func TestNpcCheckAnswerLosesTheRaceWithTheSkip(t *testing.T) {
 			t.Errorf("a racer failed with %v, want success or a neutral refusal", err)
 		}
 	}
-	if _, _, count := n.resolved(t); count > 1 {
-		t.Fatalf("%d resolved events, want at most 1", count)
+	if _, _, count := n.resolved(t); count != 1 {
+		t.Fatalf("%d resolved events, want exactly 1: the check settles once, by the skip or by the last answer", count)
 	}
 }

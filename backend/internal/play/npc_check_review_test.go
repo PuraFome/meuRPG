@@ -449,15 +449,15 @@ func TestNpcCheckSurvivesTheOrphanSweep(t *testing.T) {
 func TestNpcCheckIsForgottenWhenItsSessionEnds(t *testing.T) {
 	t.Parallel()
 	n := newNpcTable(t, charactersv1.CuttingWordsAsk_CUTTING_WORDS_ASK_ALL)
+	settled, err := n.roll(t, 9, false) // a check nobody is asked about is settled from the start: no hold to forget
+	if err != nil || settled.GetHeld() {
+		t.Fatalf("the check with nobody to ask = %v, %v", settled, err)
+	}
 	res, err := n.roll(t, 15, true)
 	if err != nil {
 		t.Fatalf("RollNpcCheck() error = %v", err)
 	}
 	hold := res.GetCheck().GetHoldId()
-	settled, err := n.roll(t, 9, false) // a check nobody is asked about is settled from the start: no hold to forget
-	if err != nil || settled.GetHeld() {
-		t.Fatalf("the check with nobody to ask = %v, %v", settled, err)
-	}
 	n.master.end(t, n.session(t))
 	if _, ok := n.hold(t, hold); ok {
 		t.Error("the hold of the check is still there after the session ended")

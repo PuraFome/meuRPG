@@ -140,8 +140,29 @@ func TestGetNpcCheckEndsWithTheSession(t *testing.T) {
 	}
 }
 
+// genderedWords are the words that give a gender to a player or a character: the pronouns of both languages ("he", "she", "his", "her",
+// "ele", "ela", "dele", "dela" and their plurals) and the player named by a gendered noun or article ("o jogador", "a jogadora",
+// "jogador(a)", "o/a", "o(a)").
+var genderedWords = regexp.MustCompile(`(?i)\b(he|she|his|her|hers|him|himself|herself|ele|ela|eles|elas|dele|dela|deles|delas|jogador|jogadora|jogadores|jogadoras)\b|jogador\(a\)|\b[oa]/[oa]\b|\b[oa]\([oa]\)`)
+
+// TestGenderedWordsFindsTheWordsAndPassesTheNeutralOnes: the search of the refusals sees each gendered form and passes the words that only
+// contain them.
+func TestGenderedWordsFindsTheWordsAndPassesTheNeutralOnes(t *testing.T) {
+	t.Parallel()
+	for text, want := range map[string]bool{
+		"he cannot": true, "She cannot": true, "his turn": true, "her turn": true, "ele não pode": true, "ela não pode": true, "a vez dele": true,
+		"a vez dela": true, "o jogador não": true, "a jogadora não": true, "jogador(a) não": true, "o/a jogador": true, "convidado(a)": false,
+		"o(a) bardo": true, "a pergunta de quem joga o bardo": false, "the roll is not found": false, "other is a word": false,
+		"the check does not exist": false, "ordem da mesa": false, "ela": true, "a rolagem não existe": false,
+	} {
+		if got := genderedWords.MatchString(text); got != want {
+			t.Errorf("genderedWords on %q = %v, want %v", text, got, want)
+		}
+	}
+}
+
 // TestNpcCheckRefusalsGiveGenderToNobody: what the server says when it refuses a roll, a skip, a read or an answer of an NPC's check
-// names no player and no character as "he" or "she" ("ele", "ela"), and none of the words holds a number or a name of the check.
+// names no player and no character with a gender (genderedWords), and none of the words holds a number or a name of the check.
 func TestNpcCheckRefusalsGiveGenderToNobody(t *testing.T) {
 	t.Parallel()
 	n := newNpcTable(t, charactersv1.CuttingWordsAsk_CUTTING_WORDS_ASK_ALL)
@@ -174,11 +195,10 @@ func TestNpcCheckRefusalsGiveGenderToNobody(t *testing.T) {
 	_, refusals["a bard answers after the skip"] = n.answer(t, second, hold, false, 0)
 	n.master.end(t, n.session(t))
 	_, refusals["the master reads with no session"] = n.latestCheck(t, n.master)
-	words := regexp.MustCompile(`(?i)\b(he|she|his|her|hers|him|ele|ela|dele|dela)\b`)
 	for what, err := range refusals {
 		if err == nil {
 			t.Errorf("%s: no refusal", what)
-		} else if msg := err.Error(); words.MatchString(msg) || strings.Contains(msg, "Barão") || strings.Contains(msg, hold) {
+		} else if msg := err.Error(); genderedWords.MatchString(msg) || strings.Contains(msg, "Barão") || strings.Contains(msg, hold) {
 			t.Errorf("%s: %q, want neutral words and nothing of the check", what, msg)
 		}
 	}

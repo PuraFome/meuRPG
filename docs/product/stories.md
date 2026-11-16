@@ -1966,21 +1966,21 @@ The MVP has the three ready-made styles of the "Regras da mesa" page (RN-24); th
 
 ### MR-058: Cutting Words on an NPC's check
 
-**As a** Lore bard's player, **I want** to be asked whether the bard cuts a check the master's creature makes outside a combat, **so that** the Cutting Words chosen for the character keep working when an NPC lies to or presses the party in a scene with no map. **As a** master, **I want** to roll the check and see who may cut it, **so that** the table's bards answer before the result is told.
+**As a** person who plays a Lore bard, **I want** to be asked whether the bard cuts a check the master's creature makes outside a combat, **so that** the Cutting Words chosen for the bard keep working when an NPC lies to or presses the party in a scene with no map. **As a** master, **I want** to roll the check and see who may cut it, **so that** the table's bards answer before the result is told.
 
 - Priority: MVP
 - Rules: RN-10, RN-20, RN-18
 - Modules: play, characters
 
 #### Acceptance criteria
-- **Given** a scene with no combat and a bard set to "todos" with a Bardic Inspiration use left, **when** the master rolls "Teste de um NPC" (Enganação, Persuasão, Intimidação or any check) and ticks "Os bardos veem a criatura e ela os ouve", **then** the roll waits and the bard's player reads one question, "uma criatura" (or the creature's name, when the bard knows it), with the bard's die, and no number of the creature's.
-- **Given** two such bards, **when** the first answers, **then** the second is asked next; **and** only the bard asked reads the question, and the others at the table read nothing.
+- **Given** a scene with no combat and a bard set to "todos" with a Bardic Inspiration use left, **when** the master rolls "Teste de um NPC" (Enganação, Persuasão, Intimidação or any check) and ticks "Os bardos veem a criatura e ela os ouve", **then** the roll waits and whoever plays the bard reads one question, "uma criatura" (or the creature's name, when the bard knows it), with the bard's die, and no number of the creature's.
+- **Given** two such bards, **when** the first answers, **then** the second is asked next; **and** only the bard asked reads the question, and nobody else at the table reads anything.
 - **Given** a bard, **when** the bard cuts, **then** only the use of Bardic Inspiration is spent (no reaction) and the die comes off the total; **when** the bard lets it pass, **then** nothing is spent. A bard who fell to 0 hit points, or whose setting is no longer "todos", since the question was asked can only let it pass.
 - **Given** the bards have not answered, **when** the master taps "Continuar sem esperar", **then** the check settles at the roll, every ask still open closes and a late answer is refused. A combat that starts, the master rolling another NPC's check, or the session that ends, settles it the same way, and the bard asked is told the question is gone. If the bard asked can no longer answer, "Continuar sem esperar" is the way out.
 - **Given** nobody may cut it (the setting, no use left, a creature the bards do not see or that does not hear them, a creature whose token the master hid on the map, whether or not the bard has a token and whether or not the box is ticked, a creature immune to charm), **when** the master rolls, **then** the check settles at once.
 - **Given** a combat is open, **when** the master rolls an NPC's check this way, **then** it is refused with the reason.
 - **Given** the master's picker, **then** it lists the NPCs on the stage (with the mark of the ones hidden from the players), the NPC tokens on the current map and the creature asked from the bestiary, not every living NPC; and it says, for each creature, whether the map can measure it against a bard (both tokens on the current map), so the app asks for the checkbox only when it cannot.
-- **Given** a check that settled, **when** the master opens the table again, **then** the master reads it again (the creature, the check, the roll, who cut with which die, who let it pass, who was skipped, the total) until the next check is rolled or the session ends; no player reads it.
+- **Given** a check that settled, **when** the master opens the table again, **then** the master reads it again (the creature, the check, the roll, who cut with which die, who let it pass, who was skipped, the total) until the next check is rolled or the session ends; nobody but the master reads it.
 
 ### MR-047: More puzzles
 

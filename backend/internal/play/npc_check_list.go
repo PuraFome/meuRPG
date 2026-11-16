@@ -259,14 +259,15 @@ func (s *Service) monsterCandidate(ctx context.Context, campaignID, key string) 
 	return cand, true, s.fillChecks(ctx, campaignID, link.Character{MonsterKey: key}, cand)
 }
 
-// fillChecks lists the creature's checks with what it adds to each.
+// fillChecks lists the creature's checks with what it adds to each, the numbers read once for all the checks.
 func (s *Service) fillChecks(ctx context.Context, campaignID string, c link.Character, cand *playv1.NpcCheckCandidate) error {
-	for _, key := range cutting.CheckKeys() {
-		o, err := s.npcCheckNumbers(ctx, nil, campaignID, c, key)
-		if err != nil {
-			return err
-		}
-		cand.Checks = append(cand.Checks, &playv1.NpcCheckOption{Key: key, Name: s.roster.SceneCheckName(key), Bonus: clamp32(o.Bonus, -heldBonusLimit, heldBonusLimit), Known: o.Known})
+	keys := cutting.CheckKeys()
+	opts, err := s.npcCheckNumbers(ctx, nil, campaignID, c, keys)
+	if err != nil {
+		return err
+	}
+	for i, key := range keys {
+		cand.Checks = append(cand.Checks, &playv1.NpcCheckOption{Key: key, Name: s.roster.SceneCheckName(key), Bonus: clamp32(opts[i].Bonus, -heldBonusLimit, heldBonusLimit), Known: opts[i].Known})
 	}
 	cand.HasStatBlock = c.MonsterKey != "" || slices.ContainsFunc(cand.Checks, func(o *playv1.NpcCheckOption) bool { return o.Known })
 	return nil

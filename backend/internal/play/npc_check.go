@@ -222,10 +222,11 @@ func (c *npcCheckCall) run(ctx context.Context, tx pgx.Tx, h *hints, session pla
 	if err := s.settleOpenNpcChecks(ctx, tc, h, false); err != nil {
 		return err
 	}
-	opt, err := s.npcCheckNumbers(ctx, tx, c.m.CampaignID, npc, c.req.GetCheckKey())
+	opts, err := s.npcCheckNumbers(ctx, tx, c.m.CampaignID, npc, []string{c.req.GetCheckKey()})
 	if err != nil {
 		return err
 	}
+	opt := opts[0]
 	face, res, err := s.dieRoll(c.in, d20Sides)
 	if err != nil {
 		return err
@@ -380,17 +381,25 @@ func (c *npcCheckCall) creature(ctx context.Context, tx pgx.Tx) (link.Character,
 	return npc, nil
 }
 
-// npcCheckNumbers is what the creature adds to the check: its stat block's number when it is an SRD creature, its sheet's otherwise;
-// an NPC typed by hand has none (Known false: it rolls +0).
-func (s *Service) npcCheckNumbers(ctx context.Context, tx pgx.Tx, campaignID string, npc link.Character, key string) (link.SceneOption, error) {
+// npcCheckNumbers is what the creature adds to each of the checks in keys, one option for each, in order: its stat block's number when it
+// is an SRD creature, its sheet's otherwise (read once for all the keys); an NPC typed by hand has none (Known false: it rolls +0).
+func (s *Service) npcCheckNumbers(ctx context.Context, tx pgx.Tx, campaignID string, npc link.Character, keys []string) ([]link.SceneOption, error) {
+	out := make([]link.SceneOption, len(keys))
 	if npc.MonsterKey != "" {
-		return s.roster.CreatureCheck(ctx, tx, campaignID, "", npc.MonsterKey, key)
+		for i, key := range keys {
+			o, err := s.roster.CreatureCheck(ctx, tx, campaignID, "", npc.MonsterKey, key)
+			if err != nil {
+				return nil, err
+			}
+			out[i] = o
+		}
+		return out, nil
 	}
-	opts, err := s.roster.SceneOptions(ctx, tx, campaignID, npc.ID, []string{key})
-	if err != nil || len(opts) != 1 {
-		return link.SceneOption{}, err
+	opts, err := s.roster.SceneOptions(ctx, tx, campaignID, npc.ID, keys)
+	if err != nil || len(opts) != len(keys) {
+		return out, err
 	}
-	return opts[0], nil
+	return opts, nil
 }
 
 // askedBard is a bard that is asked about the check.
