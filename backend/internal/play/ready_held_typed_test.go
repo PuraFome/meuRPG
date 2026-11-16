@@ -1,9 +1,9 @@
 package play
 
 import (
-	"connectrpc.com/connect"
-
 	"testing"
+
+	"connectrpc.com/connect"
 
 	campaignsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/campaigns/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
