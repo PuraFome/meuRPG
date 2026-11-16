@@ -270,6 +270,16 @@ func TestAnEndedShieldIdleNoticeDoesNotComeBackWhenTheGearIsTakenUpAgain(t *test
 			t.Errorf("after taking %s up again: %q, want the notice to stay gone", key, got)
 		}
 	}
+	// The same with a save between the stowing and the taking up.
+	mustSetEquipped(t, tb.owner, read(), rules.ShieldKey, false)
+	current := tb.master.get(t, tb.campaign, tb.pc.GetId())
+	if _, err := tb.master.update(t, current, current.GetName(), current.GetSheet()); err != nil {
+		t.Fatalf("the master's save: %v", err)
+	}
+	mustSetEquipped(t, tb.owner, read(), rules.ShieldKey, true)
+	if got := tb.banner(read()); got != nil {
+		t.Errorf("after a save and taking the shield up again: %q, want the notice to stay gone", got)
+	}
 }
 
 // A weapon the master archived after the edit is still named to the owner: the sheet has it.

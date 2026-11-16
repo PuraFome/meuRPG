@@ -229,7 +229,7 @@ func TestTheShieldIdleNumbersCountAMagicShield(t *testing.T) {
 	}
 }
 
-func TestTwoTableTwoHandedWeaponsGiveTheSameNumbers(t *testing.T) {
+func TestTwoEquippedTableTwoHandedWeaponsRaiseNoNoticeEach(t *testing.T) {
 	t.Parallel()
 	const second = "weapon:machado-grande" + tableSuffix
 	ws := append(ruleWeapons(), TableWeapon{TableEntry: TableEntry{Key: second, NamePT: "Machado Grande"}, Category: "martial", Damage: "1d12", DamageType: "damage-type:slashing", Properties: []string{"weapon-property:heavy", "weapon-property:two-handed"}})
@@ -238,13 +238,8 @@ func TestTwoTableTwoHandedWeaponsGiveTheSameNumbers(t *testing.T) {
 	}
 	c := withOverlay(t, Overlay{Revision: 1, Weapons: ws})
 	d := Derive(withShieldOn(ruleSheet(12, 14, wHeavy, second)), c)
-	if len(d.Notices) != 2 {
-		t.Fatalf("notices = %+v, want one for each table two-handed weapon", d.Notices)
-	}
-	for _, n := range d.Notices {
-		if n.Idle.ACWith != d.ArmorClass+2 || n.Idle.ACWithout != d.ArmorClass {
-			t.Errorf("%s: AC with %d and without %d, want %d and %d", n.Idle.Key, n.Idle.ACWith, n.Idle.ACWithout, d.ArmorClass+2, d.ArmorClass)
-		}
+	if !d.ShieldIdle || len(d.Notices) != 0 {
+		t.Errorf("shield idle %v, notices %+v, want the idle shield and none: stowing either weapon alone leaves it idle", d.ShieldIdle, d.Notices)
 	}
 }
 
