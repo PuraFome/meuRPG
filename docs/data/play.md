@@ -365,7 +365,7 @@ Reroll rule (migration 00306): `reroll_ask` marks the question asked as soon as 
 The check `inspiration_holds_reroll_face_valid` keeps the faces between 1 and 20, the index at 0 or 1 and the cost at 0 or more.
 `die_answer_key` and `die_used` keep the Bardic Inspiration die answered while this question follows, since the row stays open.
 A hold out of a combat is not forgotten when the dice run out; one of a combat only when the round or the combat is over.
-A hold of kind `npc_check` is neither: it waits for the bards' dice, so the sweep of orphans, the forget of an actor's holds and the list of open holds leave it alone; it is settled as a skip when a combat starts, and forgotten when its session ends.
+A hold of kind `npc_check` is neither: it waits for the bards' dice, so the sweep of orphans, the forget of an actor's holds and the list of open holds leave it alone; it is settled as a skip when a combat starts or when the next check is rolled, and forgotten when its session ends.
 
 ## `npc_check_asks`
 
