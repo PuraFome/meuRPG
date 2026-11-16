@@ -100,6 +100,14 @@ A trait with options takes no `choice` of kind `feature` (refused at `.effects[i
 The character picks one option, never more.
 Refused, each at its field: options on a background feature, nested options, options on a class or subclass feature with no `choice` of features, a repeated option name or `from` key, a `from` key of another entry's list, a `choice` inside an option, more options than the limit.
 
+**Swapping an option at a level-up.**
+`TableFeature.swap_levels` (field 10, `FeatureSwapLevels`) on a class or subclass feature that has options (inline, or offered by `table_feature` options) lists the class levels at which a player who levels up in that class may swap a pick of the feature's option pool for another option of the pool.
+`levels` holds 1 to 20, each once; `every_level` means every class level from the feature's own level on; the two are not set together; unset or empty means never.
+The overlay refuses a repeated or out-of-range level (`.swap_levels.levels[i]`, `bad_value`), both fields (`.swap_levels.every_level`, `bad_value`), the field on a feature that is not a class or subclass feature or has no options (`.swap_levels`, `bad_value`), and on an option (`.options[i].swap_levels`).
+The pool is the feature's options plus the options of the entry's other features that share an option with it.
+The table rule "Trocar uma escolha no aumento de atributo" does not matter for it, and the level need not have an improvement.
+Level-up side: [rules-level-up.md](rules-level-up.md).
+
 **Feat options and picks.**
 A feat may carry `TableFeat.options`, at most 60 (`MaxFeatureOptions`), checked like a class feature's option list.
 Each option is a feature with a server-made key (`feature:<stem>--<option name>@mesa`).

@@ -218,6 +218,14 @@ It goes through the same writes, archive mark, switch (`SetOptionSwitches`, `Lis
 A player's copy of an option leaves `offered_by` blank when the offering feature is hidden to the player, (archived or switched off), so its key never reaches a player.
 The choice engine reads it with the SRD options: `GetLevelUpOptions`, `PreviewChoices`, `CompleteCharacterChoices` and the sheet's own save list it in the choice of its set, blocked with its reason when the character lacks a prerequisite, and refuse a pick that does not qualify (`PREREQUISITE_UNMET`) or that the master switched off for the players (`SWITCHED_OFF_CONTENT`).
 
+## Swapping the option of a table feature at a level-up
+
+`TableFeature.swap_levels` travels with the rest of the feature: `tableFeatureOf` copies it into `rules.TableFeature.SwapLevels` (`featureSwapLevelsOf`), and the content pack (`ExportTableContent`, `ImportTableContent`) carries it as protojson, so a pack round-trip keeps it (`TestTheSwapLevelsOfAFeatureTravelInAContentPack`).
+`GetLevelUpOptions` and `PreviewLevelUp` append the feature groups of `LevelUpOffer.FeatureSwaps` to `LevelUpOptions.swap_groups` (group = the feature's key, `name_pt` = its name), after the table rule has cleared the ASI swap groups and before the hide-from-player step.
+`LevelUpChoices.swap_feature_options` (`LevelUpPickSwap`, at most 20) is read by `levelUpChoicesFromProto` into `rules.LevelUpChoices.FeatureSwaps`; `checkLevelUpKeys` bounds its key lengths; `newLevelUpPlan` refuses with `SWAP_NOT_ALLOWED` (`choices.swap_feature_options`) what the offer does not allow.
+`levelUpNames` names the group, the given-up and the taken option, so the level-up's own row names the swap, and earlier `ListLevelUps` rows are not touched.
+`LevelUpCharacter` calls the optional `OptionSwaps` hook (`optionswaps.go`, `Service.SetOptionSwaps`) once per level that swaps at least one such option, in the level-up's transaction right after the sheet and the record are written; its error aborts the level, and nothing is connected by default.
+
 ## Table class features
 
 `TABLE_CONTENT_KIND_CLASS_FEATURE` (`classfeature` rows of `campaign_content`, key `classfeature:<slug>@mesa`, migration 00282) is a feature the master adds to a class at a class level, optionally taking the place of one of the class's own.

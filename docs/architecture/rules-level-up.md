@@ -56,6 +56,17 @@ A group's pool is the options of the features that offered the picks (a fighter'
 A pick lost with nothing in its place is still "an option was removed".
 Whether the table plays with the swap (`tablerules.Rules.PickSwapAllowed`) is for the server to check, as for feats: `GetLevelUpOptions` leaves `swap_groups` empty and `LevelUpCharacter` refuses with `SWAP_NOT_ALLOWED` (`choices.swap_pick`).
 
+**Swapping an option of a table feature.**
+A table class or subclass feature that has options may carry `TableFeature.swap_levels` (`FeatureSwapLevels`: `levels`, the class levels 1 to 20 each at most once, or `every_level`, true for every class level from the feature's own level on; never both).
+The overlay refuses it (`addSwapLevels`, `featureswap.go`, `bad_value`) at `.swap_levels`, `.swap_levels.levels[i]` or `.swap_levels.every_level` on a feature that is not a class or subclass feature, on an option, and on a feature with no options of its own and none offered by another feature; the data is kept in `content.featureSwaps`.
+`LevelUpOffer.FeatureSwaps` lists, for the class that gains the level (a subclass feature needs that subclass chosen), each owned feature whose `swap_levels` allows the new class level and that has something to swap, as a `SwapGroup` whose `Group` is the feature's key, the picks are the character's picks in the pool and the pool is what is offered.
+The pool is the feature's options plus the options of the entry's other owned features that share an option with it, transitively (`poolOptionsOf`, over `groupPools`), without the picks the sheet has and without archived or switched-off options.
+The permission is the feature's own data: it does not depend on `PickSwapAllowed` or on an Ability Score Improvement at the level, and `LevelUpChoices.Swap` and the cantrip swap work at the same level.
+`LevelUpChoices.FeatureSwaps` (`[]PickSwap`) gives up `From` for `To`: at most one per group, `From` values distinct, `To` values distinct, each one of the offer's, else the swap is refused (`SWAP_NOT_ALLOWED`).
+`ApplyLevelUp` replaces the pick in place (the choice engine deals the picks in order); `CheckLevelUp` lets exactly the offered removals through (`unmatchedRemovals`) and judges the new pick on the sheet after the level (prerequisite, no repeat).
+A history record is never rewritten.
+The sheet text of a feature with `swap_levels` carries one more paragraph, "Troca de opção: ...", saying at which class levels a pick may be swapped (`withSwapLine`, in both `Description` and `DescriptionPT`).
+
 ## Multiclassing at level-up
 
 SRD 5.1 "Multiclassing", in `levelup_multiclass.go`.
