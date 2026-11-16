@@ -1,6 +1,9 @@
 package leaktest
 
 import (
+	"bytes"
+	"net/http"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -8,7 +11,11 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 
+	campaignsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/campaigns/v1"
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
+	"github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1/charactersv1connect"
+	progressionv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/progression/v1"
+	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 )
 
 // holdsNeither fails when the answer holds the key or the text of the option no level offers.
@@ -126,5 +133,220 @@ func (w *world) told(t *testing.T, what, body string, master bool, generic strin
 	}
 	if strings.Contains(body, w.unofferedLabel) {
 		t.Errorf("%s: holds the text of the entry: %s", what, shorten([]byte(body)))
+	}
+}
+
+// offerKeys are the keys a level-up of the world's warlock does not offer, one for each way the table can hold a key back, and
+// the keys a request with a nonexistent one is compared with.
+type offerKeys struct {
+	// plain are keys of options; each has its way in its name.
+	plain map[string]string
+	// scoped are, by the owner of the choice, the picks of its choice that no player is offered, by the same ways.
+	scoped map[string]map[string]string
+	// nowhere is the key of an option that does not exist.
+	nowhere string
+}
+
+const (
+	tomeOwner = "feature:pact-of-the-tome#cantrips"
+	bookOwner = "feature:eldritch-invocation-book-of-ancient-secrets#rituals"
+	bookKey   = "feature:eldritch-invocation-book-of-ancient-secrets"
+	nowhere   = "feature:no-such-option-anywhere"
+	noSpell   = "spell:no-such-spell-anywhere"
+)
+
+// warlockOfTheTome makes Pensantus a Pact of the Tome warlock at the end of level 4, with the experience of the next levels.
+func (w *world) warlockOfTheTome() {
+	ctx := w.t.Context()
+	cur := must(w.master.characters.GetCharacter(ctx, rq(&charactersv1.GetCharacterRequest{CampaignId: w.campaign, CharacterId: w.pens.GetId()}))).GetCharacter()
+	const inv = "feature:eldritch-invocation-"
+	sheet := &charactersv1.CharacterSheet{Content: &charactersv1.CharacterSheet_Full{Full: &charactersv1.FullSheet{
+		BaseScores: &rulesv1.AbilityScores{Strength: 15, Dexterity: 14, Constitution: 13, Intelligence: 10, Wisdom: 12, Charisma: 8}, RaceKey: "race:human",
+		Classes:    []*charactersv1.ClassLevel{{ClassKey: "class:warlock", Level: 4, Subclass: &charactersv1.ClassLevel_SubclassKey{SubclassKey: "subclass:fiend"}}},
+		Background: &charactersv1.FullSheet_BackgroundKey{BackgroundKey: "background:acolyte"}, Languages: []string{"Anão", "Élfico", "Gnômico"},
+		FeatureChoiceKeys: []string{
+			"feature:pact-of-the-tome", inv + "devils-sight", inv + "beast-speech",
+			"feature:pact-of-the-tome#cantrips=spell:guidance", "feature:pact-of-the-tome#cantrips=spell:shillelagh", "feature:pact-of-the-tome#cantrips=spell:eldritch-blast",
+		},
+		CantripKeys:      []string{"spell:mage-hand", "spell:chill-touch", "spell:prestidigitation"},
+		KnownSpellKeys:   []string{"spell:charm-person", "spell:expeditious-retreat", "spell:hellish-rebuke", "spell:protection-from-evil-and-good", "spell:darkness"},
+		ExperiencePoints: 14000,
+	}}}
+	must(w.master.characters.UpdateCharacter(ctx, rq(&charactersv1.UpdateCharacterRequest{CampaignId: w.campaign, CharacterId: w.pens.GetId(), Revision: cur.GetRevision(), Name: cur.GetName(), Sheet: sheet})))
+	// The table levels up by milestones: three more reached ones are the levels the warlock has gone up.
+	for i := range 3 {
+		ms := must(w.master.xp.AddMilestone(ctx, rq(&progressionv1.AddMilestoneRequest{CampaignId: w.campaign, Text: "Marco de teste " + strconv.Itoa(i)}))).GetMilestone()
+		must(w.master.xp.MarkMilestoneReached(ctx, rq(&progressionv1.MarkMilestoneReachedRequest{CampaignId: w.campaign, MilestoneId: ms.GetId(), CharacterIds: []string{w.pens.GetId()}, IdempotencyKey: newKey()})))
+	}
+	w.pens = must(w.master.characters.GetCharacter(ctx, rq(&charactersv1.GetCharacterRequest{CampaignId: w.campaign, CharacterId: w.pens.GetId()}))).GetCharacter()
+}
+
+// holdBackKeys makes the keys of offerKeys: the table entries that are switched off, retired, offered by a feature that is,
+// another table's, and one that is visible and not offered.
+func (w *world) holdBackKeys() offerKeys {
+	ctx := w.t.Context()
+	m := w.master
+	entry := func(campaign string, body *rulesv1.CreateTableEntryRequest) *rulesv1.TableEntry {
+		body.CampaignId = campaign
+		return must(m.table.CreateTableEntry(ctx, rq(body))).GetEntry()
+	}
+	subclass := func(campaign, name string) *rulesv1.TableEntry {
+		return entry(campaign, &rulesv1.CreateTableEntryRequest{Body: &rulesv1.CreateTableEntryRequest_TableSubclass{TableSubclass: &rulesv1.TableSubclass{
+			NamePt: name, ClassKey: "class:fighter",
+			Levels: []*rulesv1.TableSubclassLevel{{Level: 3, Features: []*rulesv1.TableFeature{{
+				NamePt: name + ", característica", Effects: []*rulesv1.TableEffect{{Type: "choice", Choice: "feature", Count: 1}},
+				Options: []*rulesv1.TableFeature{{NamePt: name + ", opção"}},
+			}}}},
+		}}})
+	}
+	firstOption := func(e *rulesv1.TableEntry) string {
+		return e.GetTableSubclass().GetLevels()[0].GetFeatures()[0].GetOptions()[0].GetKey()
+	}
+	archive := func(campaign, key string) {
+		must(m.table.ArchiveTableEntry(ctx, rq(&rulesv1.ArchiveTableEntryRequest{CampaignId: campaign, Key: key})))
+	}
+	spell := func(campaign, name string, level int32, ritual bool) string {
+		sp := &rulesv1.TableSpell{
+			NamePt: name, Level: level, Ritual: ritual, SchoolKey: "school:evocation",
+			CastingTime: &rulesv1.TableSpellCastingTime{Unit: rulesv1.CastingTimeUnit_CASTING_TIME_UNIT_ACTION, Amount: 1},
+			Range:       &rulesv1.TableSpellRange{Kind: rulesv1.SpellRangeKind_SPELL_RANGE_KIND_RANGED, DistanceFt: 60},
+			Duration:    &rulesv1.TableSpellDuration{Kind: rulesv1.SpellDurationKind_SPELL_DURATION_KIND_INSTANTANEOUS},
+			Components:  &rulesv1.TableSpellComponents{Verbal: true, Somatic: true},
+			ClassKeys:   []string{"class:wizard"}, DescPt: []string{"Um raio de teste."},
+			Target: &rulesv1.TableSpellTarget{Kind: rulesv1.TableSpellTargetKind_TABLE_SPELL_TARGET_KIND_CREATURE},
+			Attack: "ranged", Damage: []*rulesv1.TableSpellDamage{{DamageTypeKey: "damage-type:force", Dice: "3d6"}},
+		}
+		if ritual {
+			sp.Duration = &rulesv1.TableSpellDuration{Kind: rulesv1.SpellDurationKind_SPELL_DURATION_KIND_TIMED, Amount: 10, Unit: rulesv1.SpellDurationUnit_SPELL_DURATION_UNIT_MINUTE}
+		}
+		return entry(campaign, &rulesv1.CreateTableEntryRequest{Body: &rulesv1.CreateTableEntryRequest_TableSpell{TableSpell: sp}}).GetKey()
+	}
+	liveFeature := subclass(w.campaign, "Escola das Posturas")
+	feature := liveFeature.GetTableSubclass().GetLevels()[0].GetFeatures()[0].GetKey()
+	option := func(name string) string {
+		return entry(w.campaign, &rulesv1.CreateTableEntryRequest{Body: &rulesv1.CreateTableEntryRequest_TableOption{TableOption: &rulesv1.TableOption{
+			NamePt: name, Set: "table_feature", OfferedBy: feature, DescPt: []string{name + "."},
+		}}}).GetKey()
+	}
+	archivedOption, offOption := option("Postura aposentada"), option("Postura desligada")
+	archive(w.campaign, archivedOption)
+	offSubclass := subclass(w.campaign, "Escola desligada")
+	other := must(m.campaigns.CreateCampaign(ctx, rq(&campaignsv1.CreateCampaignRequest{Name: "Outra mesa", XpMode: campaignsv1.XpMode_XP_MODE_MILESTONES}))).GetCampaign().GetId()
+	otherSubclass := subclass(other, "Escola de outra mesa")
+
+	archivedCantrip, archivedRitual := spell(w.campaign, "Truque aposentado", 0, false), spell(w.campaign, "Ritual aposentado", 1, true)
+	archive(w.campaign, archivedCantrip)
+	archive(w.campaign, archivedRitual)
+	otherCantrip, otherRitual := spell(other, "Truque de outra mesa", 0, false), spell(other, "Ritual de outra mesa", 1, true)
+	must(m.table.SetOptionSwitches(ctx, rq(&rulesv1.SetOptionSwitchesRequest{CampaignId: w.campaign, Switches: []*rulesv1.OptionSwitch{
+		{Key: offOption, Off: true}, {Key: offSubclass.GetKey(), Off: true}, {Key: "spell:resistance", Off: true}, {Key: "spell:detect-magic", Off: true},
+	}})))
+	return offerKeys{
+		plain: map[string]string{
+			"switched off": offOption, "archived": archivedOption, "offered by a retired feature": w.unofferedKey,
+			"offered by a switched-off subclass": firstOption(offSubclass), "of another table": firstOption(otherSubclass),
+			"visible and not offered": firstOption(liveFeature), "of the rules and not offered": "feature:pact-of-the-chain",
+		},
+		scoped: map[string]map[string]string{
+			tomeOwner: {"switched off": "spell:resistance", "archived": archivedCantrip, "of another table": otherCantrip, "visible and not offered": "spell:fireball"},
+			bookOwner: {"switched off": "spell:detect-magic", "archived": archivedRitual, "of another table": otherRitual, "visible and not offered": "spell:magic-missile"},
+		},
+		nowhere: nowhere,
+	}
+}
+
+// levelUpAsk is one way of sending a key: the field it goes in, the choices that carry it, the keys to send and the key of the
+// same kind that does not exist.
+type levelUpAsk struct {
+	name, field string
+	choices     func(key string) *charactersv1.LevelUpChoices
+	keys        map[string]string
+	nowhere     string
+}
+
+// A level-up answers every key it does not offer, whatever way the table holds the key back, with what it answers a key that
+// does not exist: the same status, message and details, and no sheet. The key is sent as a pick, as a late pick, as the option
+// a swap takes and as the pick of the choice of an option the character has or takes, to the preview and to the level-up, by the
+// character's player and by those who do not reach it.
+func TestALevelUpAnswersAnyKeyItDoesNotOfferAsAKeyThatDoesNotExist(t *testing.T) {
+	w := newWorld(t)
+	w.warlockOfTheTome()
+	keys := w.holdBackKeys()
+	hp := &charactersv1.LevelUpHitPoints{Method: charactersv1.LevelUpHitPointsMethod_LEVEL_UP_HIT_POINTS_METHOD_AVERAGE}
+	base := func() *charactersv1.LevelUpChoices {
+		return &charactersv1.LevelUpChoices{ClassKey: "class:warlock", HitPoints: hp}
+	}
+	asks := []levelUpAsk{
+		{name: "a pick", field: "choices.feature_choice_keys", keys: keys.plain, nowhere: keys.nowhere, choices: func(k string) *charactersv1.LevelUpChoices {
+			c := base()
+			c.FeatureChoiceKeys = []string{k}
+			return c
+		}},
+		{name: "a late pick", field: "choices.late_choice_keys", keys: keys.plain, nowhere: keys.nowhere, choices: func(k string) *charactersv1.LevelUpChoices {
+			c := base()
+			c.LateChoiceKeys = []string{k}
+			return c
+		}},
+		{name: "the option of a swap", field: "choices.swap_feature_options", keys: keys.plain, nowhere: keys.nowhere, choices: func(k string) *charactersv1.LevelUpChoices {
+			c := base()
+			c.SwapFeatureOptions = []*charactersv1.LevelUpPickSwap{{Group: "feature:eldritch-invocations", FromKey: "feature:eldritch-invocation-devils-sight", ToKey: k}}
+			return c
+		}},
+	}
+	for owner, values := range keys.scoped {
+		owner, withOwner := owner, strings.HasPrefix(owner, bookKey)
+		asks = append(asks, levelUpAsk{name: "a pick of the choice " + owner, field: "choices.feature_choice_keys", keys: values, nowhere: noSpell, choices: func(v string) *charactersv1.LevelUpChoices {
+			c := base()
+			c.FeatureChoiceKeys = []string{owner + "=" + v}
+			if withOwner {
+				c.FeatureChoiceKeys = append([]string{bookKey}, c.FeatureChoiceKeys...)
+			}
+			return c
+		}})
+		asks = append(asks, levelUpAsk{name: "a late pick of the choice " + owner, field: "choices.late_choice_keys", keys: values, nowhere: noSpell, choices: func(v string) *charactersv1.LevelUpChoices {
+			c := base()
+			c.LateChoiceKeys = []string{owner + "=" + v}
+			return c
+		}})
+	}
+	callers := []struct {
+		name   string
+		person *person
+		// reaches says the call lets the caller past authorization to the character.
+		reaches bool
+	}{{"the player", w.ana, true}, {"a member who waits for approval", w.pending, false}, {"someone outside the campaign", w.stranger, false}}
+	procedures := map[string]func(c *charactersv1.LevelUpChoices) proto.Message{
+		charactersv1connect.CharacterServicePreviewLevelUpProcedure: func(c *charactersv1.LevelUpChoices) proto.Message {
+			return &charactersv1.PreviewLevelUpRequest{CampaignId: w.campaign, CharacterId: w.pens.GetId(), Choices: c}
+		},
+		charactersv1connect.CharacterServiceLevelUpCharacterProcedure: func(c *charactersv1.LevelUpChoices) proto.Message {
+			return &charactersv1.LevelUpCharacterRequest{CampaignId: w.campaign, CharacterId: w.pens.GetId(), Revision: w.pens.GetRevision(), Choices: c}
+		},
+	}
+	for procedure, request := range procedures {
+		for _, who := range callers {
+			for _, ask := range asks {
+				control := who.person.call(procedure, request(ask.choices(ask.nowhere)))
+				switch {
+				case who.reaches && procedure == charactersv1connect.CharacterServicePreviewLevelUpProcedure:
+					if !control.ok() || !strings.Contains(string(control.body), ask.field) || strings.Contains(string(control.body), `"after"`) {
+						t.Fatalf("%s, %s, %s: the answer to a key that does not exist is HTTP %d %s, want the refusal of %s alone", procedure, who.name, ask.name, control.status, shorten(control.body), ask.field)
+					}
+				case who.reaches:
+					if control.status != http.StatusPreconditionFailed && control.status != http.StatusBadRequest || !strings.Contains(string(control.body), ask.field) {
+						t.Fatalf("%s, %s, %s: the answer to a key that does not exist is HTTP %d %s, want the refusal of %s", procedure, who.name, ask.name, control.status, shorten(control.body), ask.field)
+					}
+				case control.ok():
+					t.Fatalf("%s, %s, %s: the call went through: %s", procedure, who.name, ask.name, shorten(control.body))
+				}
+				for way, key := range ask.keys {
+					got := who.person.call(procedure, request(ask.choices(key)))
+					if got.status != control.status || !bytes.Equal(got.body, control.body) {
+						t.Errorf("%s, %s, %s, a key %s: HTTP %d %s, want what a key that does not exist is told, HTTP %d %s",
+							procedure, who.name, ask.name, way, got.status, shorten(got.body), control.status, shorten(control.body))
+					}
+				}
+			}
+		}
 	}
 }
