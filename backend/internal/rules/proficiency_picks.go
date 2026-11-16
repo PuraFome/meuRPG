@@ -88,11 +88,11 @@ func hasPick(picks []proficiencyPick, value string) bool {
 
 // toolPickFits says the owner grants a tool pick with room left (taken are the ones made already) and offers the tool.
 func (c *content) toolPickFits(owner, tool string, taken int) bool {
-	picks, from, ok := c.choiceSpec(owner, "tool")
-	if !ok || taken >= picks || !c.isToolKey(tool) {
+	picks, from, open, ok := c.toolSpec(owner)
+	if !ok || taken >= picks {
 		return false
 	}
-	return len(from) == 0 || slices.Contains(from, tool)
+	return slices.Contains(c.toolsOffered(from, open), tool)
 }
 
 // proficiencyPicks reads the language and tool picks of the sheet, once the effects are collected.
@@ -201,11 +201,11 @@ func (cb *choiceBuilder) languageChoice(g *groupBuild, owner string) {
 	cb.answerWithTyped(ch, len(cb.b.Languages), &cb.typedLanguages)
 }
 
-// toolChoice is the pick of the tool proficiencies a `choice` effect of kind tool offers: the ones it lists (any
+// toolChoice is the pick of the tool proficiencies a `choice` effect of kind tool offers: the ones it lists or its filter names (any
 // tool without a list), but the ones the character has already and the ones another pick took.
 func (cb *choiceBuilder) toolChoice(g *groupBuild, owner string) {
 	c := cb.c
-	picks, from, ok := c.choiceSpec(owner, "tool")
+	picks, from, open, ok := c.toolSpec(owner)
 	if !ok {
 		return
 	}
@@ -215,14 +215,7 @@ func (cb *choiceBuilder) toolChoice(g *groupBuild, owner string) {
 		title, hint = "Ferramentas", fmt.Sprintf("%d proficiências com ferramentas à escolha.", picks)
 	}
 	ch := cb.addChoice(g, &Choice{Key: key, FeatureKey: owner, Kind: ChoiceKindOptions, TitlePT: title, HintPT: hint + " As que o personagem já tem não entram.", Picks: picks, family: familyToolPick, Advisory: true})
-	if len(from) == 0 {
-		for k := range c.proficiencies {
-			if c.isToolKey(k) {
-				from = append(from, k)
-			}
-		}
-	}
-	from = slices.DeleteFunc(slices.Clone(from), func(k string) bool { return !c.isToolKey(k) })
+	from = c.toolsOffered(from, open)
 	slices.SortFunc(from, func(a, b string) int {
 		return strings.Compare(foldPT(c.proficiencyNamePT(a)), foldPT(c.proficiencyNamePT(b)))
 	})

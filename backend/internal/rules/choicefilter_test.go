@@ -1,0 +1,163 @@
+package rules
+
+import (
+	"errors"
+	"slices"
+	"strings"
+	"testing"
+)
+
+// A choice of tools that offers every proficiency of some kinds (the filter), and one whose own list names a weapon, a
+// vehicle or a kit. Every name here is invented.
+
+const filterBackground = "background:cais-do-farol" + tableSuffix
+
+// filterBackgroundWith is a table background whose feature carries one choice effect.
+func filterBackgroundWith(e Effect) Overlay {
+	return Overlay{Revision: 1, Backgrounds: []TableBackground{{
+		TableEntry: TableEntry{Key: filterBackground, NamePT: "Cais do farol"},
+		Skills:     []string{"skill:athletics", "skill:history"},
+		Feature: TableFeature{
+			Key: "background-feature:rede-do-cais" + tableSuffix, NamePT: "Rede do cais",
+			DescPT: []string{"Texto de teste."}, Effects: []Effect{e},
+		},
+	}}}
+}
+
+func filterBuild() Build {
+	b := pickBuild("race:human", "")
+	b.Background = filterBackground
+	b.Languages = []string{"Anão"}
+	return b
+}
+
+func filterPickKey() string { return ToolPickKey("background-feature:rede-do-cais" + tableSuffix) }
+
+func toolFilter(kinds ...string) *ChoiceFilter { return &ChoiceFilter{ProficiencyKinds: kinds} }
+
+func sortedOptionKeys(ch Choice) []string {
+	out := optionKeys(ch)
+	slices.Sort(out)
+	return out
+}
+
+func TestAFilterOffersEveryProficiencyOfItsKinds(t *testing.T) {
+	t.Parallel()
+	base := loadForTest(t)
+	cases := map[string][]string{
+		"weapons":               {"weapon"},
+		"tools":                 {"tool"},
+		"the vehicles and kits": {"other"},
+		"tools and kits":        {"tool", "other"},
+		"all three":             {"weapon", "tool", "other"},
+	}
+	for name, kinds := range cases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			c := withOverlayOn(t, base, filterBackgroundWith(Effect{Type: "choice", Choice: "tool", Count: 2, Filter: toolFilter(kinds...)}))
+			ch := choiceOf(t, c.Choices(filterBuild()), filterPickKey())
+			want := c.c.proficiencyKeysOfKinds(kinds...)
+			if got := sortedOptionKeys(ch); !slices.Equal(got, want) || ch.Picks != 2 {
+				t.Errorf("%d options for %d picks, want the %d proficiencies of %v for 2", len(got), ch.Picks, len(want), kinds)
+			}
+		})
+	}
+}
+
+func TestAPickOfAKindTheFilterNamesGivesTheProficiency(t *testing.T) {
+	t.Parallel()
+	c := withOverlayOn(t, loadForTest(t), filterBackgroundWith(Effect{Type: "choice", Choice: "tool", Count: 1, Filter: toolFilter("weapon", "other")}))
+	b := filterBuild()
+	for _, key := range []string{"proficiency:glaives", "proficiency:land-vehicles"} {
+		b.FeatureChoices = []string{ScopedChoice(filterPickKey(), key)}
+		if got := c.Choices(b).NotOffered; len(got) != 0 {
+			t.Errorf("%s: not offered = %v, want it taken", key, got)
+		}
+		d := Derive(b, c)
+		if !slices.ContainsFunc(d.Proficiencies, func(p Proficiency) bool { return p.Key == key }) {
+			t.Errorf("%s: the sheet's proficiencies %v lack it", key, d.Proficiencies)
+		}
+		if openOf(d, OpenChoiceTools) != 0 {
+			t.Errorf("%s: a tool pick is still open", key)
+		}
+	}
+}
+
+// A pick of a proficiency outside the filter's kinds answers as a key the content does not have.
+func TestAPickOutsideTheFilterAnswersAsAKeyThatDoesNotExist(t *testing.T) {
+	t.Parallel()
+	c := withOverlayOn(t, loadForTest(t), filterBackgroundWith(Effect{Type: "choice", Choice: "tool", Count: 1, Filter: toolFilter("weapon")}))
+	answer := func(key string) (ChoiceSet, []Issue) {
+		b := filterBuild()
+		b.FeatureChoices = []string{ScopedChoice(filterPickKey(), key)}
+		return c.Choices(b), Derive(b, c).Issues
+	}
+	for _, key := range []string{"proficiency:thieves-tools", "proficiency:light-armor", "proficiency:skill-arcana"} {
+		set, issues := answer(key)
+		want, wantIssues := answer("proficiency:nao-existe")
+		got := strings.ReplaceAll(jsonText(set), key, "K")
+		if exp := strings.ReplaceAll(jsonText(want), "proficiency:nao-existe", "K"); got != exp {
+			t.Errorf("%s: the choices differ from those of a key that does not exist:\n%s\n%s", key, got, exp)
+		}
+		if len(issues) != len(wantIssues) {
+			t.Errorf("%s: %d issues, a key that does not exist has %d", key, len(issues), len(wantIssues))
+		}
+	}
+}
+
+// A list of a tool choice may name a weapon, a vehicle or a kit; a choice with no list still offers the tools alone.
+func TestAToolListMayNameWeaponsVehiclesAndKits(t *testing.T) {
+	t.Parallel()
+	base := loadForTest(t)
+	from := []string{"proficiency:thieves-tools", "proficiency:land-vehicles", "proficiency:glaives", "proficiency:smiths-tools"}
+	c := withOverlayOn(t, base, filterBackgroundWith(Effect{Type: "choice", Choice: "tool", Count: 1, From: from}))
+	if got := sortedOptionKeys(choiceOf(t, c.Choices(filterBuild()), filterPickKey())); !slices.Equal(got, []string{
+		"proficiency:glaives", "proficiency:land-vehicles", "proficiency:smiths-tools", "proficiency:thieves-tools",
+	}) {
+		t.Errorf("options = %v, want the four listed", got)
+	}
+	b := filterBuild()
+	b.FeatureChoices = []string{ScopedChoice(filterPickKey(), "proficiency:thieves-tools")}
+	if d := Derive(b, c); openOf(d, OpenChoiceTools) != 0 || !slices.ContainsFunc(d.Proficiencies, func(p Proficiency) bool { return p.Key == "proficiency:thieves-tools" }) {
+		t.Errorf("open %d, proficiencies %v; want the thieves' tools taken", openOf(d, OpenChoiceTools), d.Proficiencies)
+	}
+
+	open := withOverlayOn(t, base, filterBackgroundWith(Effect{Type: "choice", Choice: "tool", Count: 1}))
+	keys := sortedOptionKeys(choiceOf(t, open.Choices(filterBuild()), filterPickKey()))
+	for _, k := range keys {
+		if open.c.proficiencies[k].Kind != "tool" {
+			t.Errorf("a choice with no list offers %s of kind %s", k, open.c.proficiencies[k].Kind)
+		}
+	}
+}
+
+func TestAFilterThatDoesNotFitItsChoiceIsRefused(t *testing.T) {
+	t.Parallel()
+	base := loadForTest(t)
+	cases := map[string]Effect{
+		"on a skill":              {Type: "choice", Choice: "skill", Count: 1, Filter: toolFilter("tool")},
+		"on a language":           {Type: "choice", Choice: "language", Count: 1, Filter: toolFilter("tool")},
+		"with a list":             {Type: "choice", Choice: "tool", Count: 1, From: []string{"proficiency:smiths-tools"}, Filter: toolFilter("tool")},
+		"with a feature":          {Type: "choice", Choice: "tool", Count: 1, Filter: toolFilter("tool"), FromFeature: "feature:fighter-fighting-style"},
+		"with no kind":            {Type: "choice", Choice: "tool", Count: 1, Filter: &ChoiceFilter{}},
+		"with an armor kind":      {Type: "choice", Choice: "tool", Count: 1, Filter: toolFilter("armor")},
+		"with a kind twice":       {Type: "choice", Choice: "tool", Count: 1, Filter: toolFilter("tool", "tool")},
+		"with a daily choice":     {Type: "choice", Choice: "tool", Count: 1, Filter: toolFilter("tool"), DailyChoice: true, Duration: "short_rest"},
+		"with a feature offering": {Type: "choice", Choice: "feature", Count: 1, Filter: toolFilter("tool")},
+	}
+	for name, e := range cases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			_, err := base.With(filterBackgroundWith(e))
+			var oe *OverlayError
+			if !errors.As(err, &oe) {
+				t.Fatalf("With: %v, want an overlay error", err)
+			}
+			if !slices.ContainsFunc(oe.Violations(), func(v *OverlayError) bool {
+				return strings.Contains(v.Field, ".filter") || strings.Contains(v.Field, ".from_feature")
+			}) {
+				t.Errorf("no violation at the filter: %v", err)
+			}
+		})
+	}
+}
