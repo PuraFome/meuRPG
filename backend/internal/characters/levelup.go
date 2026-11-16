@@ -178,6 +178,14 @@ type levelUpTarget struct {
 	rules TableRules
 }
 
+// buildOf is the build of a sheet of this character (the one planned, say) with the infusion records the target was read
+// with: the level a character reaches changes what its infusions give.
+func (t levelUpTarget) buildOf(f *charactersv1.FullSheet) rules.Build {
+	b := buildOf(f)
+	b.CharacterID, b.Infusions = t.build.CharacterID, t.build.Infusions
+	return b
+}
+
 // newLevelUpTarget runs the checks every guided level-up call shares, on a
 // row the caller already read (locked, in a write). It answers `not_found` for
 // a character the caller may not see, the CharacterBlocked detail for one
@@ -201,7 +209,10 @@ func (s *Service) newLevelUpTarget(ctx context.Context, tx pgx.Tx, m authz.Membe
 	if err := s.checkLevelUpDue(ctx, tx, row, full, content); err != nil {
 		return levelUpTarget{}, err
 	}
-	build := buildOf(full)
+	build, err := s.withInfusions(ctx, s.queriesIn(tx), row.ID, buildOf(full))
+	if err != nil {
+		return levelUpTarget{}, err
+	}
 	if err := sheetNeedsMaster(build, content); err != nil {
 		return levelUpTarget{}, err
 	}
@@ -572,15 +583,15 @@ func (s *Service) PreviewLevelUp(
 		return connect.NewResponse(&charactersv1.PreviewLevelUpResponse{Refusal: plan.refusal}), nil
 	}
 	res := &charactersv1.PreviewLevelUpResponse{
-		After:   reader{name: t.row.Name, master: isMaster(m)}.derived(rules.Derive(buildOf(plan.sheet), t.content)),
+		After:   reader{name: t.row.Name, master: isMaster(m)}.derived(rules.Derive(t.buildOf(plan.sheet), t.content)),
 		Refusal: plan.refusal,
 	}
 	newClass := ""
 	if t.idx == len(t.build.Classes) {
 		newClass = t.classKey
 	}
-	if sum, ok := rules.MulticlassSummaryOf(t.build, buildOf(plan.sheet), newClass, t.content); ok {
-		res.MulticlassSummary = multiclassSummaryToProto(sum, rules.Derive(buildOf(plan.sheet), t.content))
+	if sum, ok := rules.MulticlassSummaryOf(t.build, t.buildOf(plan.sheet), newClass, t.content); ok {
+		res.MulticlassSummary = multiclassSummaryToProto(sum, rules.Derive(t.buildOf(plan.sheet), t.content))
 	}
 	return connect.NewResponse(res), nil
 }

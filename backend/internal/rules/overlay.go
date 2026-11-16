@@ -143,6 +143,12 @@ type TableFeature struct {
 	// of the pool when leveling up; the zero value is never. Only a class or subclass feature that has options may set
 	// it.
 	SwapLevels FeatureSwapLevels
+	// Infusion is set on an option of a class or subclass feature that has an InfusionRule: the option is an infusion
+	// a character puts on a piece of gear (see TableInfusion). Nil everywhere else.
+	Infusion *TableInfusion
+	// InfusionRule is set on the feature that has the options: how many infusions a character keeps live, by class
+	// level (see TableInfusionRule). Only a class or subclass feature with options has it.
+	InfusionRule *TableInfusionRule
 }
 
 // TableCasting is how a class (or, for a third caster, a subclass) casts.
@@ -1484,6 +1490,7 @@ func (c *content) cloneForOverlay() *content {
 	n.creatureSpecs = map[string]*creatureSpec{}
 	n.optionPrereq = map[string]TableOptionPrerequisite{}
 	n.featureSwaps = map[string]FeatureSwapLevels{}
+	n.infusions = newInfusionBook()
 	n.spells = maps.Clone(c.spells)
 	n.classLevels = maps.Clone(c.classLevels)
 	n.subclassLevels = maps.Clone(c.subclassLevels)

@@ -52,6 +52,7 @@ How the code does it lives in the [architecture docs](../architecture/README.md)
 | RN-41 | **Actions without a roll.** A creature's action that rolls nothing (a power the text describes) is used as a reminder: it spends the action and writes a log line, and the master reads the SRD text. | [Detail](#rn-41-actions-without-a-roll) |
 | RN-42 | **A monster attack with several damage parts.** A hit of a stat block attack deals every damage part of the action (a sword plus fire) as one damage to apply, each part resisted by its own type. | [Detail](#rn-42-a-monster-attack-with-several-damage-parts) |
 | RN-43 | **The master's Inspiration.** The master grants Inspiration to a player character as a reward; a character has it or not, never more than one. Spending it gives advantage on one of that character's own attack rolls, saving throws or ability checks. No other player reads who has it. | [Detail](#rn-43-the-masters-inspiration) |
+| RN-44 | **Artificer infusions.** An artificer puts an infusion it knows on an item. The number of infusions in use is limited by the class level, and one more ends the oldest, or the one the player chooses. The owner and the master read and change them; no other player reads them. | [Detail](#rn-44-artificer-infusions) |
 
 ## RN-01: Sheet lock
 
@@ -1519,6 +1520,74 @@ A player may pass it to another player character of the same campaign only by as
 The master's undo takes back a grant made by mistake.
 A player reads only whether their own characters have it.
 Another player reads neither who has it nor that it moved (RN-10).
+
+## RN-44: Artificer infusions
+
+**Partly built.**
+Built: the server side for an artificer's own items: the records, the limit, the numbers on the sheet, attunement, the stream hint and the table's session events.
+Not built: the screens; an item of another character; the charges of an infused item; the end of an infusion when the level-up swaps the pick.
+This is the intended behaviour:
+
+An artificer (a class of the table's content) knows infusions, picked as options of its class feature, and puts them on items.
+An infusion on an item is one record: which infusion, on which item, since when, and whether the item is attuned.
+The sheet lists the records, valid or not, oldest first, and the numbers an infusion gives are worked out from the record and the class level when the sheet is read.
+The app never checks that a long rest ended: the table decides when an infusion is put on, and the master approves nothing.
+
+**Who.** The owner of the artificer and the master put an infusion on, move it and end it, on a locked sheet too, as equipping works.
+In this version the item is the artificer's own.
+Another player never reads or changes them.
+
+**The item.**
+An infusion goes on the kind of piece it asks for (a weapon, a thrown weapon, a weapon with ammunition, an armor, a shield, or an armor or a shield).
+One that goes on any object, or on a spellcasting focus, goes on an object the player names, which the sheet does not list as a piece.
+The name is one line of 1 to 40 characters, and two objects may have the same name.
+A piece that is already magical (a magic bonus, or the weapon's magical mark) does not take an infusion, and a piece holds one infusion only.
+The list of pieces says, for each, the reason it cannot take it, in words.
+
+**The limit and the oldest ending.**
+The class feature gives how many infusions are in use at once, by class level.
+Putting one on at the limit ends one: the player may choose which (one that counts), and without a choice it is the oldest.
+Putting one on a piece that already has one, and choosing that record to end, replaces it, at the limit or not.
+A write never pushes a valid record out in silence: after putting an infusion on or moving one, every record that was valid is still valid, except the one the call ends.
+With the limit full, the record to end must be one that counts toward the limit.
+Choosing one that is over the limit is refused and nothing changes, because ending it frees no place; the player ends it on its own, which frees no place either.
+With the limit full, putting an infusion on a piece that holds a record over the limit is refused, whether a record is chosen or not, for the same reason.
+With the limit full, moving a record that is not valid now, and would count after the move, is refused: the move begins its time again, so it would become the newest and the oldest valid record would give way with no ending.
+That covers a record over the limit and one whose piece left the sheet.
+With a place free, the same record moves.
+Choosing the record that is on the piece being infused, when it is not valid for another reason (a prerequisite lost, another artificer's), asks for nothing more: it ends as it ends when none is chosen, and the oldest valid record gives way with its ending.
+The sheet never applies more infusions than the limit: when more are valid (the master restored a pick, a prerequisite came back, or a level was taken off), the oldest give way, say "acima do limite", give no number and take no attunement place.
+Nothing ends by itself: the record stays, for the owner or the master to end or keep.
+A text-only infusion, which the app does not calculate, counts as one; the screens will mark its item as text the table applies.
+Moving an infusion to another item begins its time again.
+
+**Numbers.**
+An infusion with a magic bonus follows the rules of the bonus of gear (RN-02): it counts for a piece that is equipped, a shield adds nothing while a two-handed weapon is equipped, and an infusion that asks for attunement adds nothing until the item is attuned.
+The sheet names the infusion on the piece, on its attack and on its lines of modifiers.
+A manual bonus on the same piece wins: the infusion gives no number there, and a new manual bonus on a piece with an infusion is refused.
+A record that is not valid now (the class level, the feature, the piece or a prerequisite is gone, or the limit has no room for it) gives no number and takes no place of the limit.
+An option the master archived or switched off after the pick still infuses.
+
+**Attunement.**
+An infusion that asks for it counts among the three items the character is attuned to (RN-02), as a magic item does, and the player attunes it in the window of a rest, as any item.
+When the owner puts it on, it can be attuned at once, inside that window.
+
+**What ends a record.**
+The player or the master ends it (it goes back to being the plain item).
+A new infusion at the limit ends the one that gives way.
+A piece that leaves the sheet ends its record.
+An old record that is not valid now ends when its piece or its infusion is put to use again.
+An infusion that is not one the level-up lets the character keep ends too, and that waits for the level-up screens.
+A character that dies keeps its records until the master ends them: the master may end one, and the owner may not.
+A dead character takes no new infusion and moves none.
+
+**Who reads what.**
+The owner and the master read the records on the sheet.
+The table's session keeps one event for each change while a session is open, and none when no session is open.
+The combat's log, the highlights and the summary make no line of them, and no player reads them.
+The master's undo does not undo an infusion, and an infusion closes the undo chain.
+The master and the owner are told, with no content, that the infusions changed, and the combat that holds the artificer reads its turn again.
+A copy of the campaign (the package) brings no records: an imported character has none.
 
 ## Flows and states
 

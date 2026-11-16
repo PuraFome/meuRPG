@@ -71,6 +71,11 @@ export interface FeatureDraft {
    * server wrote it: it is pack-only, the editor draws no control for it, and saving the feature must not drop it.
    */
   swapLevels?: TableFeature['swapLevels'];
+   * The infusion data of an option of a feature that has an infusion rule, and the rule on the feature that has the options: the
+   * editor draws no field for either, so each is kept as the server wrote it and saving the feature must not drop it.
+   */
+  infusion?: TableFeature['infusion'];
+  infusionRule?: TableFeature['infusionRule'];
 }
 
 export function emptyFeature(): FeatureDraft {
@@ -97,6 +102,8 @@ export function featureToDraft(f: TableFeature): FeatureDraft {
     summon: f.summon ? summonToDraft(f.summon) : null,
     ...(f.prerequisite ? { prerequisite: f.prerequisite } : {}),
     ...(f.swapLevels ? { swapLevels: f.swapLevels } : {}),
+    ...(f.infusion ? { infusion: f.infusion } : {}),
+    ...(f.infusionRule ? { infusionRule: f.infusionRule } : {}),
   };
 }
 
@@ -112,6 +119,8 @@ export function draftToFeature(f: FeatureDraft, menu: EffectMenuVm): FeatureInit
     ...(f.summon ? { summon: draftToSummon(f.summon) } : {}),
     ...(f.prerequisite ? { prerequisite: f.prerequisite } : {}),
     ...(f.swapLevels ? { swapLevels: f.swapLevels } : {}),
+    ...(f.infusion ? { infusion: f.infusion } : {}),
+    ...(f.infusionRule ? { infusionRule: f.infusionRule } : {}),
     effects: f.effects.map((e) => {
       const effect = draftToEffect(e, menu);
       // A note's own text is the reminder the sheet shows, and it says what the trait says: left empty (folded under
