@@ -161,7 +161,7 @@ func (s *Service) characterToProto(content *rules.Content, row charactersdb.Char
 		r := reader{name: row.Name, master: master}
 		r.tell(c.Derived, der.Issues)
 		c.Derived.Gear = mapToProto(rules.DeriveGear(build, content, der), gearToProto)
-		addChangedContent(c.Derived, der.Issues, content, build, full, r)
+		addChangedContent(c.Derived, der.AllIssues(), content, build, full, r)
 		fillMagicItems(content, c.Sheet.GetFull(), build, der)
 		c.Sheet.GetFull().Infusions = sheetInfusionsOf(row.ID, der, infusions)
 		if !master {

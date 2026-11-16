@@ -1006,6 +1006,8 @@ message ChangedContent {
   // tied to the entry is told with its own sentence in `issues`. What no longer
   // matches, for the sheet of what changed.
   repeated string messages = 7;
+  // The code of each line of `messages`, in the same order: one code per line. A reader who gets the line gets its code.
+  repeated string codes = 8;
 }
 
 // SaveAction is a creature's action that asks for a saving throw.
@@ -1342,6 +1344,10 @@ message GrantedSpell {
   // (1 or more; 0 for an at-will grant).
   bool no_material_components = 14;
   int32 uses_cost = 15;
+  // The level the grant casts the spell at, with no slot: the effect's `cast_level`, or the spell's own
+  // level when it sets none; 0 for a cantrip, which scales with the character. A cast with a slot (a grant
+  // with `also_with_slot`) uses the slot's level.
+  int32 cast_level = 16;
 }
 
 // Attack is an attack with a weapon on the sheet.
@@ -2697,6 +2703,9 @@ message SpellGrantOption {
   // 0 for an at-will grant). A cast works only while `uses_left` covers it.
   bool no_material_components = 10;
   int32 uses_cost = 11;
+  // The level the grant casts the spell at, with no slot: the effect's `cast_level`, or the spell's own
+  // level when it sets none; 0 for a cantrip. A cast with a slot (`also_with_slot`) uses the slot's level.
+  int32 cast_level = 12;
 }
 
 // SpellTableOption is a cast option a table feature offers for a spell (a spell_modifier).

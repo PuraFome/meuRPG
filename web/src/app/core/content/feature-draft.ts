@@ -352,11 +352,36 @@ export function draftToBackground(d: BackgroundDraft, menu: EffectMenuVm): Backg
   };
 }
 
+/** The fields of "O que a opção pede" of an option row at `base`: a refusal lands on its field (a pick of "Outras opções" has none of its own). */
+function askPaths(base: string): string[] {
+  return [
+    `${base}.prerequisite`,
+    ...[
+      'class_level',
+      'class_level.class_key',
+      'class_level.level',
+      'requires_pact',
+      'requires_spell_key',
+      'requires_option_keys',
+    ].map((field) => `${base}.prerequisite.${field}`),
+  ];
+}
+
+/** Every path an option row at `base` draws: what it asks and its own fields. A refusal on any of them is the row's. */
+export function optionRowPaths(base: string, o: FeatureDraft, menu: EffectMenuVm): string[] {
+  return [...askPaths(base), ...featureOwnPaths(base, o, menu)];
+}
+
 /** The paths of the inputs one feature draws, at `base` ("table_class.levels[4].features[0]"): the feature, its name and text and, for
  * each effect, its type and the fields the menu says that type reads. */
 export function featureOwnPaths(base: string, f: FeatureDraft, menu: EffectMenuVm): string[] {
   const out: string[] = [base, `${base}.name_pt`, `${base}.desc_pt`];
-  f.options.forEach((o, k) => out.push(...featureOwnPaths(`${base}.options[${k}]`, o, menu)));
+  f.options.forEach((o, k) => {
+    out.push(
+      ...askPaths(`${base}.options[${k}]`),
+      ...featureOwnPaths(`${base}.options[${k}]`, o, menu),
+    );
+  });
   if (f.summon) {
     out.push(...summonPaths(base));
   }

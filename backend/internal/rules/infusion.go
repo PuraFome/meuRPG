@@ -143,7 +143,8 @@ func (c *content) readInfusions(b Build, manualStands bool) []infusionLine {
 	if len(b.Infusions) == 0 {
 		return nil
 	}
-	return c.infusionLines(b, manualStands, c.lostEntries(b, deriveWith(b, c, nil)))
+	_, lost, _ := c.settleLost(b)
+	return c.infusionLines(b, manualStands, lost)
 }
 
 // limitInfusions makes the valid records beyond the limit of their host not valid: the host's limit at the artificer's class

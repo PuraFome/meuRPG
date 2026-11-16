@@ -724,7 +724,7 @@ var ownFields = map[string][]string{
 	// An aura carries the effect of an aura, and the when that gates it.
 	"aura": {"aura"},
 	// A granted_spell names the spell, from which level, what it spends, and the switches.
-	"granted_spell": {"spell", "from_level", "uses", "ability", "also_with_slot", "ritual_only", "counts_as_known", "no_material_components", "uses_cost"},
+	"granted_spell": {"spell", "from_level", "uses", "ability", "also_with_slot", "ritual_only", "counts_as_known", "no_material_components", "uses_cost", "cast_level"},
 }
 
 // packageOnlyFields are the own fields the editor's menu does not offer: a package (JSON) declares them, the
@@ -815,6 +815,7 @@ var effectFields = []effectField{
 	{"counts_as_known", func(e *Effect) bool { return e.CountsAsKnown }, func(e *Effect) { e.CountsAsKnown = false }},
 	{"no_material_components", func(e *Effect) bool { return e.NoMaterialComponents }, func(e *Effect) { e.NoMaterialComponents = false }},
 	{"uses_cost", func(e *Effect) bool { return e.UsesCost != 0 }, func(e *Effect) { e.UsesCost = 0 }},
+	{"cast_level", func(e *Effect) bool { return e.CastLevel != 0 }, func(e *Effect) { e.CastLevel = 0 }},
 	{"no_fly", func(e *Effect) bool { return e.NoFly }, func(e *Effect) { e.NoFly = false }},
 	{"no_swim", func(e *Effect) bool { return e.NoSwim }, func(e *Effect) { e.NoSwim = false }},
 	{"state_name", func(e *Effect) bool { return e.StateName != "" }, func(e *Effect) { e.StateName = "" }},
@@ -916,6 +917,7 @@ func fieldAttr(attr string) func(*Effect, func(...string) bool) string {
 
 var effectErrorRules = []effectErrorRule{
 	{[]string{"formula "}, formulaAttr, ReasonFormula},
+	{[]string{"cast_level: "}, fieldAttr(".cast_level"), ReasonValue},
 	{[]string{"unknown target"}, func(e *Effect, _ func(...string) bool) string {
 		if e.Type == "roll_mode" {
 			return ".targets"

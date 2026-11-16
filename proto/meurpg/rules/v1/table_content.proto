@@ -144,6 +144,11 @@ message TableWeapon {
   // Weight in ounces (0 to 160000) and price in copper pieces (0 to 100000000). Notes only.
   int32 weight_oz = 11;
   int32 price_cp = 12;
+  // The table revision at which the weapon last became two-handed (the property "weapon-property:two-handed" went on, or the
+  // weapon was made with it): the server's, set on every write and never read from a request. 0 when the weapon is not
+  // two-handed, or was before the server kept it. The sheet that carries the weapon is told "passou a exigir as duas mãos" only
+  // when this is newer than the revision the sheet fits (an edit of the damage tells nothing).
+  int32 two_handed_since_revision = 13;
 }
 
 // TableEffect is one effect of a feature, from the closed menu: what the engine
@@ -311,7 +316,8 @@ message TableEffect {
   // lets the character cast it with a spell slot too, `ritual_only` limits it to the
   // ritual way (a spell with the ritual tag; not with also_with_slot) and
   // `counts_as_known` lists it among the known spells without using any of the
-  // class's picks. A leveled spell cast through the grant is cast at its own level.
+  // class's picks. A leveled spell cast through the grant is cast at its own level, or at
+  // `cast_level` when that is set (see there).
   // The material components are waived only when `no_material_components` is set, and
   // only on the sheet and the cast sheet (the server never enforces components).
   // `uses_cost` is how many uses of the resource each cast spends (0 and 1 are one);
@@ -498,6 +504,11 @@ message TableEffect {
   // choice of a skill or a tool only: the player picks again after each rest of `duration`, apart from the sheet (a
   // locked sheet takes the pick), and what is picked lasts until that rest. Required with `duration`.
   bool daily_choice = 94;
+  // granted_spell only: the level the grant casts the spell at, from the spell's own level to 9 (0:
+  // the spell's own level). The spell scales with that level (damage, healing, targets), and
+  // the cast spends no slot. A cast of the same spell with a slot (`also_with_slot`) uses the slot's
+  // level. Refused on a cantrip, with `ritual_only` and on any other effect type.
+  int32 cast_level = 95;
   // Field 90 is not used.
   reserved 90;
 }

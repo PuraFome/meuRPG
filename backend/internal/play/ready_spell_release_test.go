@@ -184,21 +184,23 @@ func TestAReadiedAreaReleasedWithNoTargetsIsNotAimedAtTheCreatureNamedAtReady(t 
 	}
 }
 
-// A readied spell that lays a zone on a map (Web, Grease, a table spell with a zone) is refused by the answer too: it
-// carries no point, so the release would spend the reaction and lay nothing. The row is written by hand, as above.
+// A readied spell that lays a zone on a map (Web, Grease, a table spell with a zone) is refused by the answer: it
+// carries no point, so the release would spend the reaction and lay nothing. CastSpell releases it instead.
 func TestAReadiedZoneOnAMapIsNotReleasedByTheAnswer(t *testing.T) {
 	t.Parallel()
-	for _, tc := range []struct{ name, spell string }{
-		{"Web", webSpell},
-		{"Grease", greaseKey},
-		{"a table spell with a zone", tableSphereZone},
+	for _, tc := range []struct {
+		name, spell string
+		slot        int32
+	}{
+		{"Web", webSpell, 2},
+		{"Grease", greaseKey, 1},
+		{"a table spell with a zone", tableSphereZone, 2},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			a := newTableReadier(t)
 			e := a.castersFight(t, 1)
-			a.mustReady(t, a.ana, a.readySpell(t, e, readyZoneCaster, tableCasterBall, 1, ""))
-			a.execSQL(t, `UPDATE readied_actions SET action_key = $1 WHERE status = 'waiting'`, tc.spell)
+			a.mustReady(t, a.ana, a.readySpell(t, e, readyZoneCaster, tc.spell, tc.slot, ""))
 			e = a.mustEndTurn(t, a.master, e)
 			w := a.mustFire(t, e, readyZoneCaster)
 			events := a.events(t)
@@ -216,8 +218,7 @@ func TestAReadiedZoneOnAMapIsNotReleasedByTheAnswer(t *testing.T) {
 
 // A readied Sleep on a map is placed at a point, which the answer never carries (CastSpell does): the answer is
 // refused, with targets or without, and the window stays open. The targets are never dropped for the creatures in the area.
-// The row is one written before Ready refused such spells (READY_SPELL_NOT_RELEASABLE): an open combat in production can
-// hold one, so it is made by hand. The answer's own guard refuses it, and that guard's reason is what this test holds.
+// The answer's own guard refuses it, and that guard's reason is what this test holds.
 func TestAReadiedAreaOnAMapIsNotReleasedByTheAnswer(t *testing.T) {
 	t.Parallel()
 	for name, set := range map[string]func(*testing.T, *armed) func(*playv1.AnswerReactionRequest){
@@ -230,8 +231,7 @@ func TestAReadiedAreaOnAMapIsNotReleasedByTheAnswer(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			a := newCasters(t)
-			e := a.readyForRelease(t, magicMissileSpell, 1, "")
-			a.execSQL(t, `UPDATE readied_actions SET action_key = $1 WHERE status = 'waiting'`, sleepSpell)
+			e := a.readyForRelease(t, sleepSpell, 1, "")
 			w := a.mustFire(t, e, "Pensantus")
 			_, err := a.answerReaction(t, a.ana, e, w.GetId(), set(t, a))
 			wantCode(t, "Sleep placed on a map, answered "+name, err, connect.CodeInvalidArgument)
