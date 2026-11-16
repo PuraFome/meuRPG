@@ -82,7 +82,7 @@ func (tb *idleTable) banner(c *charactersv1.Character) []string {
 }
 
 func (tb *idleTable) sentence(name string, with, without int32) string {
-	return fmt.Sprintf("O Machado de Lenhador agora pede as duas mãos: com ele equipado, o escudo de %s fica parado (CA %d → %d).", name, with, without)
+	return fmt.Sprintf("Machado de Lenhador passou a exigir as duas mãos. Com Machado de Lenhador em uso, o escudo de %s não conta na CA (CA %d → %d).", name, with, without)
 }
 
 func issueCodes(c *charactersv1.Character) []string {
@@ -236,7 +236,7 @@ func TestTheShieldIdleNoticeRefusesNothingAndGoesWhenTheGearMoves(t *testing.T) 
 	if leveled.GetSheet().GetFull().GetClasses()[0].GetLevel() != 4 {
 		t.Fatalf("the level-up left the sheet at %v", leveled.GetSheet().GetFull().GetClasses())
 	}
-	if got := tb.banner(read()); len(got) != 1 || !strings.HasPrefix(got[0], "O Machado de Lenhador agora pede as duas mãos: com ele equipado, o escudo de Pensantus fica parado (CA ") {
+	if got := tb.banner(read()); len(got) != 1 || !strings.HasPrefix(got[0], "Machado de Lenhador passou a exigir as duas mãos. Com Machado de Lenhador em uso, o escudo de Pensantus não conta na CA (CA ") {
 		t.Errorf("after the level-up: %q, want the notice to stay", got)
 	}
 
@@ -323,7 +323,7 @@ func TestASheetSavedBeforeTheNoticeIsToldOnlyTheEditThatTurnsTwoHandedOn(t *test
 	}
 	for who, u := range map[string]*user{"the owner": tb.owner, "the master": tb.master} {
 		got := u.get(t, tb.campaign, tb.pc.GetId())
-		if msgs := bannerOf(got, second.GetKey()); len(msgs) != 1 || !strings.HasPrefix(msgs[0], "O Martelo de Ferreiro agora pede as duas mãos: com ele equipado, o escudo de Pensantus fica parado (CA ") {
+		if msgs := bannerOf(got, second.GetKey()); len(msgs) != 1 || !strings.HasPrefix(msgs[0], "Martelo de Ferreiro passou a exigir as duas mãos. Com Martelo de Ferreiro em uso, o escudo de Pensantus não conta na CA (CA ") {
 			t.Errorf("%s reads %q for the second weapon, want the notice", who, msgs)
 		}
 		if msgs := tb.banner(got); msgs != nil {
