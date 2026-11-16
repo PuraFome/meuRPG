@@ -58,7 +58,7 @@ export async function readyMapTable(
   browser: Browser,
   name: string,
   held: Held,
-  view: { width?: number; height?: number; colorScheme?: 'light' | 'dark'; both?: boolean } = {},
+  view: { width?: number; height?: number; colorScheme?: 'light' | 'dark'; both?: boolean; blocker?: boolean } = {},
 ): Promise<ReadyMapTable> {
   const viewport = { width: view.width ?? 1280, height: view.height ?? 900 };
   const master = await newSignedInContext(browser, 'Mestre Teste', { viewport: view.both ? viewport : { width: 1280, height: 900 }, colorScheme: view.colorScheme, ...featShotScale });
@@ -68,7 +68,9 @@ export async function readyMapTable(
   await m.goto('/');
   await p.goto('/');
   const table = await tableForCombat(m, p, `${name} ${Date.now()}`, true, true, fireballKit);
-  const begun = await beginAttackCombatRPC(m, table, mapFaces, mapSquares);
+  // `blocker`: a goblin the player cannot see stands on the square next to Pensantus, on the way east.
+  const at = view.blocker ? { ...mapSquares, 'Goblin 2': [mapSquares['Pensantus'][0] + 1, mapSquares['Pensantus'][1]] as [number, number] } : mapSquares;
+  const begun = await beginAttackCombatRPC(m, table, mapFaces, at, view.blocker ? ['Goblin 2'] : []);
   await openSessionPage(p, table.campaignId);
   await expect(p.getByRole('heading', { name: 'Sua vez, Pensantus' })).toBeVisible();
   const readied = await holdOn(p, table.campaignId, begun, held);

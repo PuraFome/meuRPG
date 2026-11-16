@@ -1,7 +1,6 @@
 import { expect } from '@playwright/test';
 import { test } from './diagnostics';
-import { combatRPC, getEncounterRPC } from './combat-support';
-import { waitForEncounterRevision } from './revision-support';
+import { getEncounterRPC } from './combat-support';
 import { openSessionPage } from './live-session-support';
 import { tapSquare } from './move-support';
 import { fireReadied, masterQueue, moveWindow, placeFireball, readyMapTable, releaseSheet, releaseTexts, spellWindow, undoFire } from './ready-map-support';
@@ -232,13 +231,9 @@ test('o mestre arrasta Pensantus com o movimento preparado na janela: é um pass
 
 test('o movimento preparado barrado no primeiro quadrado: a página fica aberta com "Algo bloqueia o caminho", nada é gasto e outro quadrado vale', { tag: ['@RN-31', '@RN-22', '@RN-21'] }, async ({ browser }) => {
   test.setTimeout(300_000);
-  const { m, p, campaignId, encounter, done } = await readyMapTable(browser, 'Movimento barrado', 'move');
+  const { m, p, campaignId, encounter, done } = await readyMapTable(browser, 'Movimento barrado', 'move', { blocker: true });
   try {
-    // A creature the player cannot see stands on the square next to Pensantus, on the way east.
     const at = encounter.combatants.find((c) => c.label === 'Pensantus')!;
-    const blocker = encounter.combatants.find((c) => c.label === 'Goblin 2')!;
-    await waitForEncounterRevision(m, await combatRPC(m, 'MoveCombatant', { campaignId, encounterId: encounter.id, combatantId: blocker.id, col: (at.col ?? 0) + 1, row: at.row ?? 0 }));
-    await waitForEncounterRevision(p, await combatRPC(m, 'SetCombatantHidden', { campaignId, encounterId: encounter.id, combatantId: blocker.id, hidden: true }));
     await fireReadied(m);
     const win = moveWindow(p);
     await expect(win).toBeVisible();
@@ -246,7 +241,7 @@ test('o movimento preparado barrado no primeiro quadrado: a página fica aberta 
     await expect(p.getByRole('heading', { name: 'Mover Pensantus' })).toBeVisible();
     await tapSquare(p, (at.col ?? 0) + 2, at.row ?? 0);
     await p.getByRole('button', { name: 'Mover para cá' }).click();
-    await expect(p.getByRole('alert')).toContainText('Algo bloqueia o caminho: nada foi gasto. Escolha outro quadrado.');
+    await expect(p.locator('.mr-notice--danger')).toContainText('Algo bloqueia o caminho: nada foi gasto. Escolha outro quadrado.');
     await expect(p.getByRole('heading', { name: 'Mover Pensantus' })).toBeVisible();
     const kept = await getEncounterRPC(m, campaignId);
     expect(kept.reactionWindows ?? []).toHaveLength(1);
@@ -256,7 +251,10 @@ test('o movimento preparado barrado no primeiro quadrado: a página fica aberta 
     await tapSquare(p, at.col ?? 0, (at.row ?? 0) - 2);
     await p.getByRole('button', { name: 'Mover para cá' }).click();
     await expect.poll(async () => (await getEncounterRPC(m, campaignId)).combatants.find((c) => c.label === 'Pensantus')?.row).toBe((at.row ?? 0) - 2);
-    expect((await getEncounterRPC(m, campaignId)).reactionWindows ?? []).toHaveLength(0);
+    // Leaving the blocker's reach opens an opportunity attack of its own: the readied window is the one that is gone.
+    const used = await getEncounterRPC(m, campaignId);
+    expect((used.reactionWindows ?? []).filter((w) => w.kind === 'REACTION_KIND_READIED')).toHaveLength(0);
+    expect(used.combatants.find((c) => c.label === 'Pensantus')?.reactionUsed).toBe(true);
   } finally {
     await done();
   }
