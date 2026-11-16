@@ -3,6 +3,7 @@ package play
 import (
 	"context"
 	"slices"
+	"sync"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -11,6 +12,8 @@ import (
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	maplink "github.com/PuraFome/meuRPG/backend/internal/maps/link"
+	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
 // The held NPC check after the first review: the keys of its answers, the errors of its answer, the rows a session leaves.
@@ -315,5 +318,181 @@ func TestNpcCheckSaysWhyNobodyWasAsked(t *testing.T) {
 				t.Errorf("GetNpcCheck() says %v, want %v and the roll's own read", got.GetNobodyReason(), tc.want)
 			}
 		})
+	}
+}
+
+// blindTo is the sight of a fog map where the players named see no square.
+type blindTo struct {
+	maplink.CombatSight
+	blind map[string]bool
+}
+
+func (b blindTo) Sees(userID string, _ grid.Square) bool { return !b.blind[userID] }
+
+// fogOf is a fog source that gives every map the sight given.
+type fogOf struct {
+	FogSource
+	sight maplink.CombatSight
+}
+
+func (f fogOf) CombatSight(context.Context, string, string) (maplink.CombatSight, error) {
+	return f.sight, nil
+}
+
+// TestNpcCheckOnAFogMapAsksOnlyTheBardsWhosePlayerSeesTheSquare: both bards stand within 60 feet of the creature on a map with fog, and the
+// master's box says nothing the map does not (it is ticked, and is ignored): the bard whose player does not see the creature's square
+// is not asked (no ask row, no hint, no offer); when neither player sees it, nobody is, and the master reads that nobody sees it.
+func TestNpcCheckOnAFogMapAsksOnlyTheBardsWhosePlayerSeesTheSquare(t *testing.T) {
+	t.Parallel()
+	for name, tc := range map[string]struct {
+		blind []string // the users that do not see the square
+		want  []string
+	}{
+		"both players see it":     {nil, []string{"Brisa", "Lia"}},
+		"Ana's player does not":   {[]string{"ana"}, []string{"Brisa"}},
+		"Bia's player does not":   {[]string{"bia"}, []string{"Lia"}},
+		"neither of them sees it": {[]string{"ana", "bia"}, nil},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			n := newNpcTable(t, charactersv1.CuttingWordsAsk_CUTTING_WORDS_ASK_ALL)
+			mapID := n.mapWith(t, gridColumns)
+			n.h.placeToken(mapID, n.bri.GetId(), 250, 250)
+			n.h.placeToken(mapID, n.lia.GetId(), 250, 750)
+			n.h.placeToken(mapID, n.npcID, 3250, 250)
+			users := map[string]*user{"ana": n.ana, "bia": n.bia}
+			blind := map[string]bool{}
+			for _, who := range tc.blind {
+				blind[users[who].id] = true
+			}
+			n.h.svc.fog = fogOf{FogSource: n.h.svc.fog, sight: blindTo{blind: blind}}
+			listeners := map[string]heardBy{"Brisa": listen(t, n.h, n.campaignID, n.bia.id, false), "Lia": listen(t, n.h, n.campaignID, n.ana.id, false)}
+			res, err := n.roll(t, 15, true)
+			if err != nil {
+				t.Fatalf("RollNpcCheck() error = %v", err)
+			}
+			var asked []string
+			for _, a := range res.GetCheck().GetAsks() {
+				asked = append(asked, a.GetCharacterName())
+			}
+			if !slices.Equal(asked, tc.want) || res.GetHeld() != (len(tc.want) > 0) {
+				t.Fatalf("the bards asked = %v (held %v), want %v", asked, res.GetHeld(), tc.want)
+			}
+			if len(tc.want) == 0 {
+				if got := res.GetCheck().GetNobodyReason(); got != playv1.NpcCheckNobodyReason_NPC_CHECK_NOBODY_REASON_NOBODY_SEES {
+					t.Errorf("the reason nobody was asked = %v, want nobody sees it", got)
+				}
+			}
+			for name, u := range map[string]*user{"Brisa": n.bia, "Lia": n.ana} {
+				first := len(tc.want) > 0 && tc.want[0] == name
+				if n.changed(t, listeners[name]) != first || len(n.listHeldRolls(t, u)) != map[bool]int{true: 1}[first] {
+					t.Errorf("%s's player is told and offered the question = %v, want %v: only the bard asked first is", name, !first, first)
+				}
+			}
+		})
+	}
+}
+
+// TestNpcCheckTwoAnswersOfOneBardUnderTwoKeysSpendOnce: the bard's cut is sent twice at once, each under a key of its own: one is
+// taken, the other finds the question answered (failed_precondition), and exactly one use is spent and one die comes off the total.
+func TestNpcCheckTwoAnswersOfOneBardUnderTwoKeysSpendOnce(t *testing.T) {
+	t.Parallel()
+	n := newNpcTable(t, charactersv1.CuttingWordsAsk_CUTTING_WORDS_ASK_ALL)
+	hold, first, second := n.twoAsked(t)
+	before := n.uses(t, n.charOf(first))
+	errs := make([]error, 2)
+	var wg sync.WaitGroup
+	for i, face := range []int32{3, 5} {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_, errs[i] = n.answerAs(first, hold, newKey(), typedCut(face))
+		}()
+	}
+	wg.Wait()
+	won, lost := 0, 0
+	for _, err := range errs {
+		switch connect.CodeOf(err) {
+		case connect.CodeFailedPrecondition:
+			lost++
+		default:
+			if err == nil {
+				won++
+			}
+		}
+	}
+	if won != 1 || lost != 1 {
+		t.Fatalf("the two answers = %v, %v; want one taken and one told the question was answered", errs[0], errs[1])
+	}
+	if after := n.uses(t, n.charOf(first)); after != before-1 {
+		t.Errorf("uses %d -> %d, want exactly one spent", before, after)
+	}
+	if _, err := n.pass(second, hold, newKey()); err != nil {
+		t.Fatalf("the second bard's pass error = %v", err)
+	}
+	if got := n.mustLatest(t); !got.GetSettled() || got.GetCut() != got.GetAsks()[0].GetFace() || got.GetCut() == 0 {
+		t.Errorf("the settled check = %v, want the one die that was taken off, and only that", got)
+	}
+}
+
+// TestNpcCheckAnswerAfterTheSceneClosedStillWorks: the check belongs to the session and was judged when it was rolled (the bard's player
+// was in the scene then), so closing the scene takes nothing from the question: the bard still reads it, with the name it was asked
+// with, and answers it.
+func TestNpcCheckAnswerAfterTheSceneClosedStillWorks(t *testing.T) {
+	t.Parallel()
+	n := newNpcTable(t, charactersv1.CuttingWordsAsk_CUTTING_WORDS_ASK_ALL)
+	point, _ := n.h.newScene(n.h.newMap(n.campaignID, gridColumns), "A clareira", true, 1)
+	n.openFor(t, point, n.ana)
+	if _, err := n.master.play.PutOnStage(t.Context(), connect.NewRequest(&playv1.PutOnStageRequest{CampaignId: n.campaignID, CharacterId: n.npcID})); err != nil {
+		t.Fatalf("PutOnStage() error = %v", err)
+	}
+	res, err := n.roll(t, 15, true)
+	if err != nil || !res.GetHeld() || len(res.GetCheck().GetAsks()) != 1 {
+		t.Fatalf("RollNpcCheck() = %v, %v; want one bard asked (Ana's)", res, err)
+	}
+	if _, err := n.master.play.CloseScene(t.Context(), connect.NewRequest(&playv1.CloseSceneRequest{CampaignId: n.campaignID})); err != nil {
+		t.Fatalf("CloseScene() error = %v", err)
+	}
+	if got := n.listHeldRolls(t, n.ana); len(got) != 1 {
+		t.Fatalf("the bard reads %d offers after the scene closed, want its question", len(got))
+	}
+	if got, err := n.answer(t, n.ana, res.GetCheck().GetHoldId(), true, 4); err != nil || !got.GetCut() {
+		t.Fatalf("the bard's cut after the scene closed = %v, %v; want it taken", got, err)
+	}
+	if got := n.mustLatest(t); !got.GetSettled() || got.GetTotal() != 11 || got.GetCut() != 4 {
+		t.Errorf("the check = %v, want it settled at 11", got)
+	}
+}
+
+// TestNpcCheckOfADeletedCreatureIsNotSettled: the creature's character is deleted (the master's account goes, say) while its check waits
+// after a cut. The hold goes with it (inspiration_holds.character_id cascades) and so do its asks: nobody is asked any more, the cut
+// stays spent (it was the bard's die, rolled for that check), and the master reads the check as neither held nor settled: its total is not
+// an outcome, with no way to skip what is gone; the next check the master rolls goes on as usual.
+func TestNpcCheckOfADeletedCreatureIsNotSettled(t *testing.T) {
+	t.Parallel()
+	n := newNpcTable(t, charactersv1.CuttingWordsAsk_CUTTING_WORDS_ASK_ALL)
+	hold, first, second := n.twoAsked(t)
+	before := n.uses(t, n.charOf(first))
+	if _, err := n.answerAs(first, hold, newKey(), typedCut(4)); err != nil {
+		t.Fatalf("the first bard's cut error = %v", err)
+	}
+	if _, err := n.h.pool.Exec(t.Context(), `DELETE FROM characters WHERE id = $1`, n.npcID); err != nil {
+		t.Fatalf("delete the creature: %v", err)
+	}
+	if after := n.uses(t, n.charOf(first)); after != before-1 {
+		t.Errorf("the first bard's uses %d -> %d, want the cut spent and kept", before, after)
+	}
+	if got := n.listHeldRolls(t, second); len(got) != 0 {
+		t.Errorf("the next bard reads %v, want nothing: the check is gone", got)
+	}
+	_, err := n.pass(second, hold, newKey())
+	wantCode(t, "the next bard's answer to the check of a deleted creature", err, connect.CodeNotFound)
+	_, err = n.skip(n.master, hold, newKey())
+	wantCode(t, "the master's skip of the check of a deleted creature", err, connect.CodeNotFound)
+	if got := n.mustLatest(t); got.GetSettled() || got.GetHoldId() != hold || got.GetD20().GetFaces()[0] != 15 {
+		t.Errorf("GetNpcCheck() = %v, want the check as it was rolled, not settled", got)
+	}
+	if got := n.resolvedCount(t); got != 0 {
+		t.Errorf("%d resolved events, want none: nothing settled it", got)
 	}
 }
