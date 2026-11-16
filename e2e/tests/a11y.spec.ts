@@ -11047,14 +11047,15 @@ async function scanBonusCombatScreens(browser: Browser, colorScheme: 'light' | '
     await crop(block, 'recorte-modificadores-escudo-parado');
     await crop(lineOf(block, 'Escudo'), 'recorte-modificadores-linha-escudo-parado');
 
-    // No bonus on any piece: no block, no chip, and the idle shield is said by the sheet's note, once.
+    // No bonus on any piece: no block, no chip, and the idle shield is said once, by the line under the armor class.
     await masterSetsBonuses(m, campaignId, table.characterId, () => []);
     await openLive(p, route);
     await expect(p.getByRole('heading', { name: 'Modificadores de itens' })).toHaveCount(0);
     await expect(modifiersOf(p)).toHaveCount(0);
     await expect(attacksOf(p).locator('app-bonus-chip')).toHaveCount(0);
-    const note = p.getByRole('note').filter({ hasText: 'O escudo não conta na CA' });
+    const note = p.locator('app-combat-stats').getByText(/^O escudo não conta na CA:/);
     await expect(note).toHaveCount(1);
+    await expect(note).toBeVisible();
     await expectScreenPasses(p, `A ficha sem bônus, sem o bloco ${where}`);
     await shootBonus(p, 'ficha-sem-bonus', width, colorScheme, attacksOf(p));
     await crop(attacksOf(p).getByRole('row').filter({ hasText: 'Espada longa' }), 'recorte-ataques-linha-espada-sem-bonus');
