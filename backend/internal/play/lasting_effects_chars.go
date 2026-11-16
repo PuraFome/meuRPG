@@ -1,6 +1,7 @@
 package play
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
@@ -100,6 +101,7 @@ func characterEffectProto(r playdb.CharacterEffect, name string, names func(stri
 		Id: r.ID, CharacterId: r.CharacterID, CharacterName: name, SourceKey: r.SourceKey, SourceNamePt: names(r.SourceKey),
 		Concentration: r.Concentration, DurationTextPt: gameTimeText(r.SecondsLeft, r.Concentration),
 	}
+	e.TitlePt, e.TotalDurationTextPt = effectTitlePT(r, e.SourceNamePt, content), totalDurationTextPT(r, content)
 	if r.SecondsLeft != nil {
 		e.SecondsLeft = r.SecondsLeft
 		if r.SourceKey == wildShapeEffect {
@@ -128,6 +130,27 @@ func characterEffectProto(r playdb.CharacterEffect, name string, names func(stri
 		e.PlayerVisible, e.Audience = r.PlayerVisible, audienceProto(r.Audience)
 	}
 	return e
+}
+
+// effectTitlePT is the effect's own name: the potion's ("Resistência a fogo"), else the source's.
+func effectTitlePT(r playdb.CharacterEffect, sourceName string, content *rules.Content) string {
+	return cmp.Or(content.PotionTitlePT(r.SourceKey), sourceName)
+}
+
+// totalDurationTextPT is the whole length of an effect with a fixed one ("por 1 hora"): a resistance potion's hour or a timed spell's
+// duration, and "" for an effect that lasts until dismissed or while its caster concentrates.
+func totalDurationTextPT(r playdb.CharacterEffect, content *rules.Content) string {
+	if r.SecondsLeft == nil {
+		return ""
+	}
+	seconds, ok := content.PotionSeconds(r.SourceKey)
+	if !ok {
+		seconds, ok = content.SpellEffectSeconds(r.SourceKey)
+	}
+	if !ok || seconds <= 0 {
+		return ""
+	}
+	return "por " + rules.DurationPT(seconds)
 }
 
 // gameTimeText writes a game time the way the card reads it outside a combat: "dura 1 minuto",
@@ -278,5 +301,8 @@ func effectTagsPT(r playdb.CharacterEffect, content *rules.Content) []string {
 		tags = tagsOfRow(d, mods)
 	}
 	tags = append(append([]string{}, tags...), modifierTagsPT(r.SourceKey, mods)...)
+	if chip := content.PotionChipPT(r.SourceKey); chip != "" {
+		tags = append(tags, chip)
+	}
 	return append(tags, narratedNotesPT(r.SourceKey, mods)...)
 }

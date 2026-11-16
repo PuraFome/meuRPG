@@ -13,7 +13,8 @@
    "sourceNamePt": "Derrubado",
    "tagsPt": [
     "No chão"
-   ]
+   ],
+   "titlePt": "Derrubado"
   },
   {
    "characterId": "\u003cchar:pens\u003e",
@@ -25,7 +26,8 @@
    "id": "\u003ccfx:condition:blinded@pens\u003e",
    "secondsLeft": 61,
    "sourceKey": "condition:blinded",
-   "sourceNamePt": "Cego"
+   "sourceNamePt": "Cego",
+   "titlePt": "Cego"
   },
   {
    "characterId": "\u003cchar:pens\u003e",
@@ -37,7 +39,8 @@
    "id": "\u003ccfx:condition:deafened@pens\u003e",
    "secondsLeft": 7200,
    "sourceKey": "condition:deafened",
-   "sourceNamePt": "Surdo"
+   "sourceNamePt": "Surdo",
+   "titlePt": "Surdo"
   },
   {
    "characterId": "\u003cchar:pens\u003e",
@@ -50,7 +53,9 @@
    "sourceNamePt": "Bênção",
    "tagsPt": [
     "+1d4 em ataques e resistências"
-   ]
+   ],
+   "titlePt": "Bênção",
+   "totalDurationTextPt": "por 1 minuto"
   },
   {
    "characterId": "\u003cchar:pens\u003e",
@@ -62,7 +67,9 @@
    "sourceNamePt": "Orientação",
    "tagsPt": [
     "+1d4 em um teste de habilidade, uma vez"
-   ]
+   ],
+   "titlePt": "Orientação",
+   "totalDurationTextPt": "por 1 minuto"
   },
   {
    "characterId": "\u003cchar:pens\u003e",
@@ -74,7 +81,9 @@
    "sourceNamePt": "Armadura Arcana",
    "tagsPt": [
     "CA base 13 + Destreza, sem armadura"
-   ]
+   ],
+   "titlePt": "Armadura Arcana",
+   "totalDurationTextPt": "por 8 horas"
   }
  ]
 }

@@ -11,9 +11,10 @@ import (
 
 // Charges (SRD 5.1): the maximum of an item comes from the catalog (rules.ItemCharges) and what a character
 // spent from character_item_charges, one row for each entry of the sheet's magic items. A read fills
-// charges_max, charges_left and destroyed on the entries; a save never changes them.
+// charges_max, charges_left and destroyed on the entries, and also effect_pt and consumable (from the content, not the charges); a save never changes them.
 
-// fillItemCharges fills the charges of the character's magic items from the stored state. The caller is the player
+// fillItemCharges fills the charges of the character's magic items from the stored state, and the effect line and the consumable
+// (what a use is and costs) of each entry from the content. The caller is the player
 // the character belongs to or the master (canSee), so the counts reach nobody else (RN-10).
 func (s *Service) fillItemCharges(ctx context.Context, content *rules.Content, c *charactersv1.Character) error {
 	full := c.GetSheet().GetFull()

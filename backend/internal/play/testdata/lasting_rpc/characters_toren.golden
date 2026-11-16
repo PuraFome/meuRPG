@@ -13,7 +13,8 @@
    "sourceNamePt": "Derrubado",
    "tagsPt": [
     "No chão"
-   ]
+   ],
+   "titlePt": "Derrubado"
   },
   {
    "characterId": "\u003cchar:pens\u003e",
@@ -22,7 +23,9 @@
    "id": "\u003ccfx:spell:mage-armor@pens\u003e",
    "secondsLeft": 28800,
    "sourceKey": "spell:mage-armor",
-   "sourceNamePt": "Armadura Arcana"
+   "sourceNamePt": "Armadura Arcana",
+   "titlePt": "Armadura Arcana",
+   "totalDurationTextPt": "por 8 horas"
   },
   {
    "characterId": "\u003cchar:toren\u003e",
@@ -35,7 +38,9 @@
    "sourceNamePt": "Bênção",
    "tagsPt": [
     "+1d4 em ataques e resistências"
-   ]
+   ],
+   "titlePt": "Bênção",
+   "totalDurationTextPt": "por 1 minuto"
   },
   {
    "characterId": "\u003cchar:toren\u003e",
@@ -48,7 +53,9 @@
    "tagsPt": [
     "Vantagem em testes de Força",
     "Força do Touro: a capacidade de carga dobra."
-   ]
+   ],
+   "titlePt": "Aprimorar Habilidade",
+   "totalDurationTextPt": "por 1 hora"
   },
   {
    "characterId": "\u003cchar:toren\u003e",
@@ -59,7 +66,8 @@
    "sourceNamePt": "Passos Longos",
    "tagsPt": [
     "Deslocamento +3 m"
-   ]
+   ],
+   "titlePt": "Passos Longos"
   }
  ]
 }

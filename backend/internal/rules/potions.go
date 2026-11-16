@@ -192,6 +192,31 @@ func (c *Content) PotionEffectLinePT(key string) string {
 	return "Resistência a " + strings.ToLower(c.NamePT(e.DamageType)) + " por " + durationPT(e.Rounds*SecondsPerRound)
 }
 
+// PotionTitlePT is the name of the effect a resistance potion leaves ("Resistência a fogo"), and "" for any other key.
+func (c *Content) PotionTitlePT(key string) string {
+	if e, ok := c.PotionEffect(key); ok && e.Kind == PotionResistance {
+		return "Resistência a " + strings.ToLower(c.NamePT(e.DamageType))
+	}
+	return ""
+}
+
+// PotionChipPT is the short label of the effect a resistance potion leaves ("Resistência: fogo"), and "" for any other key.
+func (c *Content) PotionChipPT(key string) string {
+	if e, ok := c.PotionEffect(key); ok && e.Kind == PotionResistance {
+		return "Resistência: " + strings.ToLower(c.NamePT(e.DamageType))
+	}
+	return ""
+}
+
+// PotionSeconds is how long the effect of a resistance potion lasts in game time, and false for any other key.
+func (c *Content) PotionSeconds(key string) (int, bool) {
+	e, ok := c.PotionEffect(key)
+	return e.Rounds * SecondsPerRound, ok && e.Kind == PotionResistance
+}
+
+// DurationPT is a length of game time in seconds as a sentence says it: whole hours, else whole minutes, else seconds ("1 hora").
+func DurationPT(seconds int) string { return durationPT(seconds) }
+
 // durationPT is a time in seconds as the line says it: whole hours, else whole minutes, else seconds.
 func durationPT(seconds int) string {
 	unit := func(n int, one, many string) string {

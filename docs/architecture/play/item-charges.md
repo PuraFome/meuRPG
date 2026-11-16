@@ -202,6 +202,8 @@ It carries the kind (potion, oil, scroll, other), whether a use costs the action
 A save ignores the field and stores none.
 `ListConsumableTargetsResponse.in_combat` says the user's character is a combatant of a running combat; the target states are set by the same test.
 Only the character's player and the master read both.
+An oil is told from a potion by the SRD key list `oils` in `rules`; table content holds no magic items, so a pack has no oil.
+A pack oil would need a magic-item entry in table content with an oil category.
 `EquipmentPanel` draws one row for every key, with "×2" beside the name and "2 unidades" in visually hidden text, and "Usar" sends the id of the first unit of the group.
 The "Itens mágicos" section shows with a magic item, for who can manage them, and while the notice of a use is on screen.
 The notice of the last unit therefore keeps its heading and the line "Nenhum item mágico.".

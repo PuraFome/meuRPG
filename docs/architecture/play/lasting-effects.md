@@ -135,6 +135,8 @@ Who reads what:
 - The other players read the label alone: the names of the conditions they may read, or `player_label_pt`.
   They read no number behind it, in a combat or out of one.
   Out of a combat, `ListCharacterEffects` leaves out the owner-only conditions (`ownerOnlyConditions`) and the row of an owner-only condition, as the combat does.
+  `CharacterEffect.title_pt` is the effect's own name, else its source's, and `total_duration_text_pt` is the whole fixed length ("por 1 hora"), empty when there is none.
+  A resistance potion's effect carries the chip "Resistência: fogo" in `tags_pt`.
 - An effect the master hides, or whose audience is `owner`, names itself to no one else in the sources of a roll ("Outra fonte"; `hasUnreadEffect`).
 - An effect from a caster the viewer does not see names no caster.
 
