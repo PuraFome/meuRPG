@@ -1187,6 +1187,7 @@ A player reads only their own windows, and the numbers of the trigger (an attack
 
 - **An optional reaction a player does not answer passes after 30 seconds** (Shield, Uncanny Dodge, Hellish Rebuke's cast, Counterspell, Cutting Words, Deflect Missiles, Protection, Feather Fall, Slow Fall, a readied action the master fired, a reaction feature whose trigger happened and an opportunity attack offered to a player). The master's screen counts it ("Passa sozinho em N s"), the player's prompt reads "Se você não responder, passa sozinho em N s.". Never a saving throw, a contest or the master's check.
 - **A player who is rolling gets longer.** While the player rolls a physical die, the window waits up to 2 minutes: "Você está rolando: a mesa espera 2 min", and the master reads "Rolando… passa sozinho em N s". The master can pass it sooner.
+  The same wait is for a player choosing the targets or the darts of a held spell.
 - **Ready** (SRD 5.1, "Ready").
   On its turn a creature spends its action to hold another until a trigger its player writes.
   The held action is an attack, a move, a spell or another standard action.
@@ -1195,6 +1196,10 @@ A player reads only their own windows, and the numbers of the trigger (an attack
   Holding it takes concentration, which ends any other concentration of the creature.
   A cantrip with an attack roll is held this way too.
   Released, the spell takes effect as a reaction and spends no slot again; Counterspell can still stop it.
+  The targets and the split of the darts are chosen when the spell is released, not at Ready.
+  The creature named at Ready is only a suggestion for the release.
+  A spell that asks a point or a direction on a map, an ability, a damage type, the creatures of a summon or a revival cannot be released by the window, and Ready refuses it.
+  In a combat with a map, a spell that lays a zone on it cannot be released by the window either, and Ready refuses it.
   The spell is lost, with its slot, if the concentration ends first, if the creature lets it pass, or when the readied action is lost.
   Hide and Help cannot be held: they have their own calls, which a reaction does not run.
   Dash and Disengage cannot be held either: they last only for the creature's own turn.
@@ -1240,7 +1245,17 @@ One that takes minutes or hours is finished by the master when the game time has
 A cast that is interrupted fails and spends no slot.
 In a combat the spells are cast there.
 
-- **Ritual.** A ritual spell can be cast as a ritual without a slot, taking its casting time plus 10 minutes, and not at a higher level (SRD 5.1, "Rituals"). Only a class with Ritual Casting does it: the bard from the spells known, the cleric and the druid from the prepared ones, the wizard from the spellbook. The warlock of the Pact of the Chain does it only with Find Familiar.
+- **Ritual.** A ritual spell can be cast as a ritual without a slot.
+  It takes its casting time plus 10 minutes and is not cast at a higher level (SRD 5.1, "Rituals").
+  A class with Ritual Casting does it: the bard from the spells known, the cleric and the druid from the prepared ones, the wizard from the spellbook.
+  Two warlock features are the exceptions.
+  The Pact of the Chain casts Find Familiar as a ritual without knowing it.
+  The Book of Ancient Secrets invocation (Livro de Segredos Antigos) keeps two 1st-level rituals of any class in the warlock's Book of Shadows.
+  They are known and not prepared, do not count against the spells known, and are cast only as rituals, never with a slot.
+  The invocation also lets the warlock cast as a ritual a spell it knows that has the ritual tag and is on the character's warlock list, the patron's expanded list included.
+  The book "em mãos" is a reminder in the text: the app tracks no item.
+  The table's switches apply to every spell choice, the book's included: a spell the master switched off is not offered to a player, and a sheet that already has it keeps it.
+  Known gap: the sheet does not say which class knows a spell, so on a sheet with another class a spell on the warlock list casts as a ritual whoever knows it.
 - **A cast that takes time has two steps.** Starting it spends nothing, and the caster concentrates on the casting from the start. When the master concludes it, the slot is spent and the spell takes effect. If the concentration breaks, the cast fails. A combat that starts does not cancel it: the caster spends the action each turn, and the cast can be concluded only outside the combat. The app keeps no clock.
 - **Duration** is game time, never the wall clock. A lasting spell ends when the master ends it, when the caster stops concentrating or casts another concentration spell, or when a rest covers the whole duration (a short rest is 1 hour, a long rest 8). After damage outside a combat, the master's hit point correction returns the concentration DC (RN-22), and 0 hit points ends the concentration.
 - **What the app applies:** healing with one roll for the whole cast (app dice or the typed sum, RN-18), plus the Life Domain features; the temporary hit points of False Life, which do not stack; Mage Armor; and summons, as in a combat. Every other effect is recorded and the master narrates it. Known gap: the maximum hit points of Aid are not raised outside a combat.
@@ -1255,7 +1270,7 @@ See [MR-048](stories.md#mr-048-cast-spells-outside-combat) and [Architecture](..
 
 Every pick a class, subclass or race asks is a choice of the rules engine, with its options, how many picks it takes and what each option asks (a level, a spell, a feature).
 The screen draws what the server lists; nothing on the screen knows what a Fighting Style is.
-The choices cover the SRD 5.1 sections Fighting Style, Draconic Ancestry and Breath Weapon, Dragon Ancestor, Elemental Affinity, Metamagic, Pact Boon, Eldritch Invocations, Mystic Arcanum, Favored Enemy, Natural Explorer, Hunter, Circle of the Land, Ability Score Increase (Half-Elf), the High Elf cantrip, the Fiend's Expanded Spell List, Magical Secrets, the College of Lore, Spell Mastery and Signature Spells.
+The choices cover the SRD 5.1 sections Fighting Style, Draconic Ancestry and Breath Weapon, Dragon Ancestor, Elemental Affinity, Metamagic, Pact Boon, Eldritch Invocations (the Book of Ancient Secrets asks its two rituals), Mystic Arcanum, Favored Enemy, Natural Explorer, Hunter, Circle of the Land, Ability Score Increase (Half-Elf), the High Elf cantrip, the Fiend's Expanded Spell List, Magical Secrets, the College of Lore, Spell Mastery and Signature Spells.
 
 - **Warnings.** The sheet also warns, on the field the player fills and in the master's list of open choices, when an Expertise pick is still open. These are warnings; they do not stop the sheet.
 - **Languages and tools.** The languages a race, a trait or a background lets the player pick (the Half-Elf's extra language, the Acolyte's two) and the tools a trait, background or feature lets the player pick (the Dwarf's artisan's tools, a table background's "one type of artisan's tools") are choices in the step "Escolhas", from the catalog's languages and tools: one each, never a repeat, never one the character already has (it stays in the list, dotted, "Você já fala este idioma." or "Você já tem esta proficiência."). Neither can be taken twice in one round: what one choice took (the race's language, the background's) is not offered to the other the moment it is picked, from the page's own state and before the server answers, with "Você já escolheu esta opção."; a checked option is never disabled, so it can always be unticked; a repeat that exists anyway is shown in its group ("Abissal já foi escolhido em Idioma (raça).") and counts neither in the group nor in "Escolhas feitas", which the server also leaves out. The picks show on the sheet's languages and proficiencies. The free fields "Idiomas" and "Proficiências em ferramentas" stay for what the master adds; what is written there also shows on the sheet, and it still answers the picks the character is owed, so a sheet from before the picks stays complete. While one of these picks is open the step is marked and the sheet says "Falta escolher N idiomas: faça a escolha no passo “Escolhas”"; it is a warning: it does not stop the save, the level-up or the session.
@@ -1265,6 +1280,11 @@ The choices cover the SRD 5.1 sections Fighting Style, Draconic Ancestry and Bre
 - **Options that cannot be taken yet** (an invocation that asks level 5, or a spell the sheet lacks) are listed, dotted, with the reason. Two options that give the same thing (the same resistance twice) are refused.
 - **A locked sheet** whose class gained a choice stays playable. The owner and the master read "N escolhas pendentes", and the player completes only the missing picks, changing nothing else on the sheet (RN-01). The master also reads "N escolhas em aberto" on the campaign page; a player never sees another's.
 - **Level up** also asks the choices left behind ("Escolhas que ficaram para trás") and the new ones of the level, and refuses an invocation whose prerequisite is unmet.
+- **When a pick opens a choice.** A Pact Boon or an invocation can open a choice of its own: the Pact of the Tome's three cantrips and the Book of Ancient Secrets' two rituals.
+  The level that takes it may leave the choice open.
+  The next level asks it first, under "Escolhas que ficaram para trás", and refuses the level without it.
+  A new sheet is not created with it open.
+  Giving up the pick, by an invocation swap or by the table's swap of the Pact Boon, takes its own picks with it.
 - **What a pick gives** (breath weapon, resistance, Fiend spells, the +1s) appears on the sheet.
 - **A shield and a two-handed weapon.** A shield adds +2 to the armor class only while a hand is free for it. The sheet lists the weapons carried and has no hands, so an equipped two-handed weapon takes the shield's bonus away, in the sheet and in the combat; a carried one does not; the sheet says why ("O escudo não conta na CA: há uma arma de duas mãos equipada. Guarde a arma de duas mãos.") and the player gets the bonus back by stowing one of the two. A versatile weapon takes no hand from the shield: its grip follows the gear and the Dueling fighting style. A weapon or a shield marked equipped counts as in hand; a carried one does not. The versatile weapon is held with both hands only while no shield and no other weapon is equipped and the character has no Dueling style, and with one hand otherwise, so a player who wants one hand equips the shield (or another weapon). A character with the Dueling style holds a lone versatile weapon in one hand: the damage is the one-handed one with the style's +2, and the second line gives the two-handed damage without it. The attack rolls the damage of that grip, Great Weapon Fighting rerolls its 1s and 2s only while it is held with both hands, and the combat's attack row and the sheet's attack list say so ("Com duas mãos, sem o escudo: 1d8 + 3" while a shield is equipped; "Com duas mãos, sem o Duelismo: 1d10 + 3" for the lone weapon of a Dueling character; "Com duas mãos; com uma: 1d6 + 3" with both hands free, where the numbers above are the two-handed ones). The Dueling note ("Inclui +2 de … (sem outra arma na mão)") stands only under one-handed damage, and one roll never has both the Dueling bonus and the Great Weapon Fighting reroll. The Protection fighting style (RN-31) needs the shield to count.
 
