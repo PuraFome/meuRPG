@@ -153,6 +153,38 @@ The master can also correct hit points, temporary hit points, spell slots (and p
   An item that does not recharge (a talisman, a scarab) keeps what is left until the master corrects it.
   A save of the sheet never changes the charges, and removing an item from the sheet drops what it spent.
   A player reads the charges of their own characters only, and the master reads all of them.
+- **Using a potion or another consumable (SRD 5.1, "Magic Items": potions and scrolls).**
+  "Usar" spends one unit of a consumable of the sheet: each entry is one unit, and the entry leaves the sheet while the history keeps the use.
+  A potion of healing restores hit points with the dice of its entry (2d4 + 2, 4d4 + 4, 8d4 + 8, 10d4 + 20), never past the maximum, and the answer says what was really regained.
+  A potion of resistance gives one hour of resistance to its damage type, counted in game time like the other effects out of a combat, and only its owner and the master read it.
+  Drinking out of a combat costs no turn.
+  In a combat, every potion costs the action of the user's turn, one that is only text included.
+  Drinking costs the user's action, and giving a potion to a creature within 5 feet costs the giver's action; the potion then acts on the receiver.
+  Activating a potion is an action, not Use an Object, so the extra action of Haste does not pay for it.
+  In a combat that has not begun there is no turn: a potion spends its unit and no action, and a resistance goes on the combatant.
+  Healing a druid in a beast form restores the beast's hit points, in a combat and out of one.
+  A creature at 0 hit points is unconscious and does not act, but another creature may give it a potion, which wakes it.
+  In the log the table reads who used which potion and on whom, and only the master and the two characters' players read the dice and the hit points.
+  A potion may be given to another character: the giver's entry is the one spent, the receiver is healed or resists, and a creature that is dead, or that has failed three death saves, is not given one.
+  The master may use or give a potion for any character, and for a player's character in a running combat he is bound by the same turn, action and 5 feet.
+  A potion of an NPC's sheet is spent and logged as text, and the master tells what it did.
+  An NPC combatant of a running combat is not gated by the turn or the action.
+  Given to a player's character, an NPC's potion heals or gives resistance, except in a running combat, where it is refused as out of reach.
+  "Dar a…" lists only the characters the use would accept.
+  For a potion in a running combat, it lists the player's characters within 5 feet of the giver, with the word of how they stand (on their feet or down), as the order of the combat shows it to everyone.
+  The list follows the word each player already reads: a creature is down at 0 hit points and on its feet above, whatever its death saves, and a death the master confirmed is left out.
+  The master's list leaves out a creature with three failed death saves, and the use refuses it with nothing spent.
+  For such a potion, a giver that is not in the combat gets the characters that are not in it either.
+  For any other consumable, and out of a combat, it lists the other characters of the party that are not dead, without how they stand.
+  The hit points of a player's character are no other player's to read there.
+  At a table of real dice the player types the faces of the healing dice, one for each die.
+  The app applies by itself only the potions of healing and of resistance, the items of its potion list.
+  Every potion costs the turn and the action in a combat, the ones the app applies and the ones that are only text.
+  A potion that is only text is spent and logged as text, and it pays the action.
+  An oil is in the SRD's potion category but is no potion here: applying one takes a minute or ten, so it is spent and logged as text with no turn and no action, and the master judges the time.
+  Every other consumable, a scroll for one, is spent and logged with no turn and no action.
+  Its answer shows its text for the table to apply, and the master rules on its time.
+  A spell scroll is not cast.
 - **Ammunition (SRD 5.1, "Weapons": the ammunition property).**
   Arrows, bolts, sling bullets and blowgun needles are counted on the sheet, one number for each kind.
   The owner sets the count while the sheet is open to editing, and the master at any time.
@@ -923,7 +955,7 @@ A change holds from the next roll, never rewriting what was already rolled.
 - **The critical hit:** doubled dice (the SRD's) or the maximum of the dice plus a roll. It holds on every critical hit in combat (weapon, spell attack, creature, NPC, monster, trap), with a map or in theatre. The damage step states it ("role os dados duas vezes" or "o máximo mais uma rolagem") and a physical-dice player types only the dice rolled. A weapon attack is a critical hit on a natural 20; a Champion fighter also on 19 from level 3 and on 18 from level 15; a table's critical range can widen it further, for weapon attacks, spell attack rolls or both (below); a spell attack needs the 20 unless the table's range lowers it. A barbarian's critical melee hit rolls extra weapon dice at levels 9, 13 and 17 (Brutal Critical), always rolled, named in the damage line ("Crítico Brutal"). The damage of features the app does not roll (Sneak Attack, Divine Smite) is added by hand.
 - **Taking an extra out of a damage.** The master can take an extra (Sneak Attack, for one) out of the damage of a hit with a reason, even when it shares a damage type with another part and one sum covers both. The app takes the damage back as "Desfazer" does (the target's hit points and a save come back) and the roller types the new sum of that damage type alone; what the other damage types rolled stays. The master may do it only while "Desfazer" could take the damage back: after another action in the session it is refused ("nothing to undo"), and if the target's hit points changed meanwhile it is refused ("the target changed"), and nothing is written. What the other parts spent stays spent: a Divine Smite's slot was spent once, when the smite was declared, and the new sum spends nothing (it does not fail for want of a slot); only the use of the extra that came out is given back (the turn's Sneak Attack, Colossus Slayer). If the master discards the damage that waits for the sum, the slot does not come back either: only a correction by the master gives it back. The master and the roller read the reason; another player reads "O mestre tirou" and the name the roll line gave the part ("Outra fonte" when it was hidden from them), and never the reason (RN-10). Taking the extra out cannot be undone. For the master to take an extra out of a damage the app already applied to an NPC or a creature, his screen lists that damage (applied) while the hit is the last action of the session; the player never gets that list.
 - **Reliable Talent** (rogue 11): on an ability check that adds the proficiency bonus, a d20 of 9 or lower counts as 10. It does not apply to attacks, saving throws, initiative or checks without proficiency. The roll keeps the face that came up and says it was treated as 10. It applies to scene checks, trap searches, puzzle hints, group checks, either side of a contest and a Hide. A table's minimum for checks (RN-23) competes with it: the higher counts, and a tie keeps Reliable Talent.
-- **Death saves:** seen by everyone, or only by the owner and the master. When hidden, every other player reads only "Caído" on the combatant, in the order, in the log, in the stream, in the summary and in the highlights. Everyone keeps the result: "Estável" and "Morto". Each roll stores whether it was hidden, so changing the rule never reveals or hides what was already written.
+- **Death saves:** seen by everyone, or only by the owner and the master. When hidden, every other player reads only "Caído" on the combatant, in the order, in the log, in the stream, in the summary and in the highlights. Everyone keeps the result: "Estável" and "Morto". A potion or a scroll given to a character with three failed death saves is refused as dead ("TARGET_DEAD") for every reader, whether or not the death saves are hidden, and spends nothing, as a healing spell is. Each roll stores whether it was hidden, so changing the rule never reveals or hides what was already written.
 - **Area spells and hidden creatures** (RN-23): reveal, keep hidden, or ask each time.
 - **Enemy reactions** (RN-31): "Só quando um inimigo pode reagir" or "Sempre".
 - **Save DC** ("Os jogadores veem a CD dos testes de resistência", off by default): by default only the master reads the DC of a saving throw, and the caster's player the DC of their own spell, which is on their sheet. With the rule on, the player whose creature rolls a save the app asks of them reads its DC too: a zone's, a lasting effect's at the start or end of a turn, a spell cast by an NPC or by another character, a trap's, a rider's (Stunning Strike, Open Hand), the Constitution save to keep a concentration (the DC is also on the damage that threatens it) and the Dexterity save against a Hellish Rebuke an NPC casts on their character (in the log line). Only Turn Undead, rolled by undead creatures alone, has no player's save to show. Nobody who does not roll the save gains it, and what the DC belongs to (a hidden caster, a hidden trap) stays hidden (RN-10, RN-20).
