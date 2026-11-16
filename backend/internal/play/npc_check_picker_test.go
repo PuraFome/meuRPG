@@ -1,9 +1,11 @@
 package play
 
 import (
+	"slices"
 	"testing"
 
 	"connectrpc.com/connect"
+	"google.golang.org/protobuf/proto"
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
@@ -234,5 +236,65 @@ func TestNpcCheckOfACreatureHiddenOnTheMapAsksNoBardWithNoTokenOfTheirs(t *testi
 				}
 			}
 		})
+	}
+}
+
+// TestNpcCheckPickerBonusesAreThoseOfTheRoll: what the picker shows the master for a check, its bonus and whether the creature has a
+// number for it, is what RollNpcCheck then adds to the d20 and reads as modifier_known, for the same key: for a creature with a full
+// sheet, for an NPC typed by hand (no number, +0) and for an SRD creature (read from its stat block).
+func TestNpcCheckPickerBonusesAreThoseOfTheRoll(t *testing.T) {
+	t.Parallel()
+	n := newNpcTable(t, charactersv1.CuttingWordsAsk_CUTTING_WORDS_ASK_ALL)
+	mage := n.master.createCharacter(t, n.campaignID, charactersv1.CharacterKind_CHARACTER_KIND_ENEMY, "Mago")
+	mapID := n.mapWith(t, gridColumns)
+	n.h.placeToken(mapID, n.npcID, 1750, 250)
+	n.h.placeToken(mapID, mage.GetId(), 1750, 750)
+	const wolf = "monster:wolf"
+	res, err := n.master.play.ListNpcCheckPicker(t.Context(), connect.NewRequest(&playv1.ListNpcCheckPickerRequest{CampaignId: n.campaignID, MonsterKey: wolf}))
+	if err != nil {
+		t.Fatalf("ListNpcCheckPicker() error = %v", err)
+	}
+	for name, tc := range map[string]struct {
+		npc       *playv1.RollNpcCheckRequest
+		candidate func(*playv1.NpcCheckCandidate) bool
+		known     bool // what the creature is expected to have a number for, so the test cannot pass with nothing known anywhere
+	}{
+		"a creature with a full sheet": {&playv1.RollNpcCheckRequest{Npc: &playv1.RollNpcCheckRequest_NpcCharacterId{NpcCharacterId: mage.GetId()}},
+			func(c *playv1.NpcCheckCandidate) bool { return c.GetCharacterId() == mage.GetId() }, true},
+		"an NPC typed by hand": {&playv1.RollNpcCheckRequest{Npc: &playv1.RollNpcCheckRequest_NpcCharacterId{NpcCharacterId: n.npcID}},
+			func(c *playv1.NpcCheckCandidate) bool { return c.GetCharacterId() == n.npcID }, false},
+		"an SRD creature": {&playv1.RollNpcCheckRequest{Npc: &playv1.RollNpcCheckRequest_MonsterKey{MonsterKey: wolf}},
+			func(c *playv1.NpcCheckCandidate) bool { return c.GetMonsterKey() == wolf && c.GetCharacterId() == "" }, true},
+	} {
+		cand := slices.IndexFunc(res.Msg.GetCandidates(), tc.candidate)
+		if cand < 0 {
+			t.Fatalf("%s: not listed by the picker", name)
+		}
+		checks := res.Msg.GetCandidates()[cand].GetChecks()
+		for _, key := range []string{"ability:int", "ability:cha", "skill:arcana", "skill:perception", "skill:stealth"} {
+			i := slices.IndexFunc(checks, func(o *playv1.NpcCheckOption) bool { return o.GetKey() == key })
+			if i < 0 {
+				t.Fatalf("%s: the picker has no check %s", name, key)
+			}
+			req := proto.Clone(tc.npc).(*playv1.RollNpcCheckRequest)
+			req.CampaignId, req.CheckKey, req.IdempotencyKey = n.campaignID, key, newKey()
+			req.Roll = &playv1.RollNpcCheckRequest_D20Face{D20Face: 10}
+			rolled, err := n.master.play.RollNpcCheck(t.Context(), connect.NewRequest(req))
+			if err != nil {
+				t.Fatalf("%s: RollNpcCheck(%s) error = %v", name, key, err)
+			}
+			if got, want := checks[i].GetBonus(), rolled.Msg.GetCheck().GetD20().GetModifier(); got != want {
+				t.Errorf("%s, %s: the picker's bonus = %d, the roll adds %d", name, key, got, want)
+			}
+			if got, want := checks[i].GetKnown(), rolled.Msg.GetCheck().GetModifierKnown(); got != want {
+				t.Errorf("%s, %s: the picker's known = %v, the roll's modifier_known = %v", name, key, got, want)
+			}
+			if tc.known && !checks[i].GetKnown() {
+				t.Errorf("%s, %s: no number, want the creature to have one", name, key)
+			}
+			if !tc.known && (checks[i].GetKnown() || checks[i].GetBonus() != 0) {
+				t.Errorf("%s, %s: bonus %d, known %v; want +0 and unknown", name, key, checks[i].GetBonus(), checks[i].GetKnown())
+			}
+		}
 	}
 }
