@@ -1,7 +1,7 @@
 import { ReactionKind, type ReactionWindow } from '../../../gen/meurpg/play/v1/combat_pb';
 import { AUTO_PASS_SECONDS, ROLLING_WAIT_SECONDS, clockText } from './reaction-clock';
 import { readiedSecondsLeft } from './readied-wait';
-import { isOpen } from './reactions';
+import { cameToMaster, isOpen } from './reactions';
 
 export { AUTO_PASS_SECONDS, ROLLING_WAIT_SECONDS, clockText };
 
@@ -16,7 +16,7 @@ function clamp(seconds: number, max: number): number {
  * The reactions a player may leave unanswered: using one is a choice, so not answering is the same as "Deixar passar".
  * A readied action fired by the master (READIED) is one too: its row is then ignored, and the reaction stays.
  * So is a reaction feature whose trigger happened (FEATURE): the player uses it or lets it pass. A hidden creature's window
- * comes with `unanswered` from the start, so it is the master's and nothing passes it.
+ * comes with `unanswered` from the start, so it is the master's and nothing passes it. A readied action's window is never one that came to the master (`cameToMaster`).
  * While a readied attack's roll is held for other reactions, the server sends its window with `answerNow` false: it does not pass.
  */
 const OPTIONAL_KINDS: ReadonlySet<ReactionKind> = new Set([
@@ -46,7 +46,7 @@ export function isOptionalReaction(w: ReactionWindow): boolean {
 /** A window the master's screen passes after `AUTO_PASS_SECONDS`: an optional reaction of a player whose turn to answer it is. */
 export function autoPasses(w: ReactionWindow): boolean {
   // A window that came to the master (`unanswered`) waits for his answer: the server handed it over, nothing passes it by itself.
-  return isOptionalReaction(w) && w.reactorIsPlayer && w.answerNow && !w.unanswered;
+  return isOptionalReaction(w) && w.reactorIsPlayer && w.answerNow && !cameToMaster(w);
 }
 
 /** Where a UUID keeps its version and variant digits ("xxxxxxxx-xxxx-Vxxx-Nxxx-xxxxxxxxxxxx"). */

@@ -99,6 +99,7 @@ export interface ReadiedWindowSheetData {
       display: grid;
       gap: 8px;
       font-size: 0.875rem;
+      line-height: 19px;
     }
     .legend li {
       display: flex;
@@ -110,6 +111,7 @@ export interface ReadiedWindowSheetData {
       font-size: 18px;
       width: 18px;
       height: 18px;
+      margin-top: 1px; /* with the 19px line: the middle of the icon on the middle of the capitals */
     }
   `,
 })

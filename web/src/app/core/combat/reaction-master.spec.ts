@@ -416,6 +416,29 @@ describe("the master's card for an effect's saving throw (RN-22)", () => {
     expect(reactionCards(e(handed)).map((c) => c.type)).toEqual(['effectSave']);
   });
 
+  it("a readied action's window stays a row of the queue after 10 s: it keeps its own wait and its buttons, not the late card (#857)", () => {
+    const e = encounter({
+      combatants,
+      reactionWindows: [
+        reactionWindow({
+          id: 'held',
+          kind: ReactionKind.READIED,
+          reactorId: 'pen',
+          reactorLabel: 'Pensantus',
+          reactorIsPlayer: true,
+          answerNow: true,
+          unanswered: true,
+        } as never),
+      ],
+    } as never);
+    const [card] = reactionCards(e);
+    expect(card.type).toBe('queue');
+    if (card.type === 'queue') {
+      expect(card.rows).toHaveLength(1);
+      expect(card.rows[0].readied).toBeDefined();
+    }
+  });
+
   it("a player's reaction nobody answered in 10 s is a card of its own with the numbers, and the bar asks the master", () => {
     const e = encounter({
       combatants: [...combatants, combatant({ id: 'cg', label: 'Capitão Goblin' })],

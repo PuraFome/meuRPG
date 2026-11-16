@@ -15,7 +15,7 @@ import { type LegendaryResistanceCard, legendaryResistanceCard } from './legenda
 import { featureLateCost, featureWindowFact, isFeatureWindow } from './reaction-feature';
 import { isReadiedWindow, readiedRowFields } from './reaction-readied';
 import { groupSubtitle, groupTitle, reactionName } from './reaction-groups';
-import { REACTION_NAMES, openWindows } from './reactions';
+import { REACTION_NAMES, cameToMaster, openWindows } from './reactions';
 
 export { heldReason, windowsBarText } from './reaction-bar';
 
@@ -354,7 +354,7 @@ function ownCard(e: Encounter, w: ReactionWindow): ReactionCard | null {
 /** The card of one action's windows: an NPC alone is its own card, the others share a queue. */
 function groupCard(e: Encounter, key: string, group: readonly ReactionWindow[]): ReactionCard {
   const rows = group.map((x, i) => rowOf(e, x, group[i - 1]));
-  if (rows.length === 1 && rows[0].isPlayer && group[0].unanswered) {
+  if (rows.length === 1 && rows[0].isPlayer && cameToMaster(group[0])) {
     return {
       type: 'unanswered',
       id: key,

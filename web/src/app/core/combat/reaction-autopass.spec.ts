@@ -47,6 +47,10 @@ describe("the automatic pass of a player's optional reaction", () => {
     expect(autoPasses(win('w', ReactionKind.SHIELD, { unanswered: true }))).toBe(false);
   });
 
+  it('still passes a readied action flagged as unanswered: the server flags every window 10 s old once the combat is sent again (#857)', () => {
+    expect(autoPasses(win('w', ReactionKind.READIED, { unanswered: true }))).toBe(true);
+  });
+
   it("passes a monk's Queda Lenta like any other optional reaction", () => {
     expect(autoPasses(win('w', ReactionKind.SLOW_FALL))).toBe(true);
   });
@@ -192,6 +196,14 @@ describe("the automatic pass of a player's optional reaction", () => {
     expect(playerAutoPassText(24)).toBe('Se você não responder, passa sozinho em 24 s.');
     expect(playerSecondsLeft(Date.now() - 6 * MS, Date.now())).toBe(24);
     expect(playerSecondsLeft(Date.now() - 99 * MS, Date.now())).toBe(0);
+  });
+
+  it("keeps the bar's words for a readied action flagged as unanswered: the table waits for the player, not for the master (#857)", () => {
+    const e = encounter({
+      combatants: [combatant({ id: 'pen', label: 'Pensantus' })],
+      reactionWindows: [win('w1', ReactionKind.READIED, { unanswered: true })],
+    } as never);
+    expect(windowsBarText(e)).toBe('Esperando a reação de Pensantus');
   });
 
   it("goes with the master's bar text", () => {
