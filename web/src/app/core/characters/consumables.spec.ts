@@ -333,7 +333,7 @@ describe('targetRows', () => {
     ]);
     expect(rows.map((r) => [r.id, r.name, r.line, r.down])).toEqual([
       ['id-Brisa', 'Brisa', 'A 1,5\u00a0m · Caída', true],
-      ['id-Jabuti', 'Jabuti', 'A 1,5\u00a0m · Ileso', false],
+      ['id-Jabuti', 'Jabuti', 'A 1,5\u00a0m · De pé', false],
     ]);
   });
 

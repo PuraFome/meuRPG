@@ -210,7 +210,7 @@ export class ActionGroups {
 
   /** The potions and scrolls the character carries, one row for each kind (the "Itens" tab); none: no tab. */
   readonly items = input<readonly CombatItemRowVm[]>([]);
-  /** What the last use of an item said (565-03): the card at the top of "Itens". */
+  /** What the last use of an item said: the card at the top of "Itens". */
   readonly itemsNotice = input<ConsumableNotice | null>(null);
 
   /** "Atacar": the key of the attack, as in `Attack.key`. */

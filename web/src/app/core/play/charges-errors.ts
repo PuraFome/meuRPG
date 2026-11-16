@@ -148,7 +148,8 @@ function combatMessage(
  * What a refused or failed use of a consumable says in the "Usar" sheet, by the typed reason and never by the server's
  * message: the turn and the action of a combat, the receiver out of reach and the item gone (worded for this sheet; the
  * generic sentences of the combat stay for the other callers), then the sentences of the combat and of the character for the
- * rest. Every refusal says that nothing was spent.
+ * rest. The refusals that spend nothing and could leave the player in doubt say so: the receiver gone or dead, the character
+ * dead or no longer at the table, no open session, dice that do not fit the die and a call that did not get through.
  */
 export function consumableErrorMessage(err: unknown, ctx: ConsumableErrorContext): string {
   const words = KIND_WORDS[ctx.kind];

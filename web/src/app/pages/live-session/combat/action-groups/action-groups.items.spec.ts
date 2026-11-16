@@ -64,7 +64,7 @@ const SCROLL = row({
   economy: null,
 });
 
-describe('ActionGroups: the Itens tab (565-03, 565-04)', () => {
+describe('ActionGroups: the Itens tab', () => {
   function setup(
     inputs: {
       items?: readonly CombatItemRowVm[];

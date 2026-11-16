@@ -265,9 +265,7 @@ export class UseConsumableSheet {
         rest: this.canGive() ? ' “Dar a…” lista o grupo todo.' : '',
       };
     }
-    return combat === true
-      ? { mark: true, lead: 'Gasta a sua ação.', rest: '' }
-      : { mark: false, lead: 'Em combate, gasta a ação; fora dele, não gasta a vez.', rest: '' };
+    return { mark: false, lead: 'Em combate, gasta a ação; fora dele, não gasta a vez.', rest: '' };
   });
 
   constructor() {

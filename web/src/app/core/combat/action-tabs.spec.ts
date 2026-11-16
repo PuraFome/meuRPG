@@ -173,7 +173,7 @@ describe('actionTabs', () => {
     expect(actionTabs({ ...counts, attacks: 1 }, 'x')[0].words).toBe('1 ataque');
   });
 
-  it('puts Itens after the class tab and before Outras, with the count of the rows (565-03)', () => {
+  it('puts Itens after the class tab and before Outras, with the count of the rows', () => {
     const tabs = actionTabs({ ...counts, features: 2 }, 'Guerreiro', { items: 5 });
     expect(tabs.map((t) => t.label)).toEqual(['Ataques', 'Magias', 'Guerreiro', 'Itens', 'Outras']);
     expect(tabs.find((t) => t.id === 'items')).toEqual({

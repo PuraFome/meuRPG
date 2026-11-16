@@ -218,7 +218,8 @@ The dashed button is described by the line that says why, or by the error of the
 The line that comes after the read sits in a polite live region that is already on the page, so it is announced.
 The list of receivers is a group of radio rows, and its buttons follow the combat: "Dar a <nome>" and "Beber eu mesmo" in a running combat, "Voltar" and "Dar a <nome>" everywhere else.
 The cost line leads with the mark of the Ação and a bold "Gasta a sua ação." where the use spends it, and with an info icon where it says what it does not spend.
-In a combat the first choice has no cost line for a potion, since the subtitle says "em combate, gasta a ação"; the cost line comes with the list of receivers.
+In a combat the first choice has no cost line for a potion that costs the action, since the subtitle says "em combate, gasta a ação"; the cost line comes with the list of receivers.
+An oil keeps its "Não gasta a ação" line in the first choice.
 `ConsumableNoticeCard` draws the notice in the sheet's live region and in the tab of the combat.
 `itemWords` words an item by its name: a potion is "uma Poção" and drunk, anything else (an oil, a scroll) is used.
 "Beber" and "Dar a…" follow the table's dice (RN-18): the app rolls the dice of a healing potion, or the player types one face for each die.
@@ -226,7 +227,9 @@ The receivers are the server's list.
 A potion that costs the action in a running combat lists the adjacent characters with their distance and how they stand (`stateWord`), and the sheet says "Dar a quem está ao seu lado".
 Any other use lists the party's names with no distance, an oil in a combat included, and the sheet says "Dar a alguém do grupo".
 The character sheet does not know of a combat, so its list says "Dar a quem pode receber".
-`consumableErrorMessage` (`core/play/charges-errors.ts`) words the refusals of a use by the typed reason, and every one says that nothing was spent.
+`consumableErrorMessage` (`core/play/charges-errors.ts`) words the refusals of a use by the typed reason.
+The refusals that spend nothing and could leave the player in doubt say so: the receiver gone or dead, the character dead or no longer at the table, no open session, dice that do not fit the die and a call that did not get through.
+The refusals of the turn, of the action and of an item already used say what blocks the use and not that nothing was spent.
 It words the receiver out of reach ("Brisa não está mais ao seu lado."), the item gone ("Essa poção já foi usada. A ficha foi atualizada.") and the turn and the action.
 The generic sentences of `combat-errors-limits.ts` for the same reasons stay for the other callers.
 `consumableTargetsErrorMessage` words a failed read of the list, and never speaks of typed dice or of a receiver who left.

@@ -11,7 +11,7 @@ import { metersText } from '../units';
 import type { AttunementEntryVm } from './attunement';
 
 /**
- * The consumables of a sheet (potions and scrolls, #565): which magic items are one, the rows that group identical ones,
+ * The consumables of a sheet (potions and scrolls): which magic items are one, the rows that group identical ones,
  * the words of the effect line, the receivers of a gift and the notice of a use. The server words the effect of each item
  * (`SheetMagicItem.effect_pt`) and the use of one (`UseConsumableResponse`); the app only arranges what was sent. Pure,
  * tested without a DOM.
@@ -197,7 +197,7 @@ export function isOil(key: string): boolean {
 
 /**
  * Whether using the item costs the turn and the action in a combat: every potion does, a text-only one included, except the
- * oils. A scroll and any other consumable costs no turn and no action (slice 1: the master rules on what it takes).
+ * oils. A scroll and any other consumable costs no turn and no action.
  */
 export function costsAction(kind: ConsumableKind, key: string): boolean {
   return kind === 'potion' && !isOil(key);
@@ -270,7 +270,7 @@ export function targetRows(targets: readonly ConsumableTarget[]): ConsumableTarg
         down
           ? stateWord(CombatantState.DOWN, t.name)
           : t.state === ConsumableTargetState.OK
-            ? 'Ileso'
+            ? 'De pé'
             : '',
       ].filter((p) => p !== '');
       return {

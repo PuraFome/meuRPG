@@ -137,6 +137,7 @@
   font-size: var(--mr-font-14);
 }
 // The live region is always there, so the line that comes after the read is announced; empty, it takes no room.
+// The 14px cancels the `gap` of `.frame__body` in sheet-frame.scss, which has no token.
 .why:empty {
   margin-bottom: -14px;
 }

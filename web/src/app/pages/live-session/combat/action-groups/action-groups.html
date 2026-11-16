@@ -224,7 +224,7 @@
 
     @if (items().length > 0 || itemsNotice()) {
       <div class="panel" role="tabpanel" [id]="panelId('items')" [attr.aria-labelledby]="tabButtonId('items')" [hidden]="current() !== 'items'">
-        <!-- The potions and scrolls (565-03, 565-04): a row for each, the mark of what using it costs, and "Usar", which opens the same sheet as the character's. -->
+        <!-- The potions and scrolls: a row for each, the mark of what using it costs, and "Usar", which opens the same sheet as the character's. -->
         <div role="status">
           @if (itemsNotice(); as notice) {
             <app-consumable-notice [notice]="notice" />

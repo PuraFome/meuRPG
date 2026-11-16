@@ -10439,7 +10439,7 @@ async function expectConsumableScreen(page: Page, screen: string, options: { gea
 }
 
 /**
- * The potions of the sheet (#565), through the real stack: the owner's locked sheet with its consumable rows (the healing potion twice
+ * The potions of the sheet, through the real stack: the owner's locked sheet with its consumable rows (the healing potion twice
  * as one row "×2", a greater one, a resistance, a potion with no effect of its own, next to a ring with charges), the "Usar" sheet of a
  * healing potion, the typed dice ("Digitar os dados", a face outside the die and then the right ones), the notice of the heal, of the
  * resistance and of the potion with only text, the refusal when the server does not answer and the master's "Usar por <personagem>".
@@ -10547,7 +10547,7 @@ async function scanConsumableScreens(browser: Browser, colorScheme: 'light' | 'd
     await failing.getByRole('button', { name: 'Fechar' }).first().click();
     await expect(failing).toBeHidden();
 
-    // The resistance potion drunk above stands as an effect card in "Seus efeitos" of the live page, as the server words it (565-07 card 6 is richer: its name, clock and damage type).
+    // The resistance potion drunk above stands as an effect card in "Seus efeitos" of the live page, as the server words it (the card in the sheet is richer: its name, clock and damage type).
     await openSessionPage(p, campaignId);
     await openSheetTab(p);
     await expect(p.getByRole('heading', { name: 'Seus efeitos' })).toBeVisible();
@@ -10607,7 +10607,7 @@ for (const [colorScheme, width] of [['light', 1280], ['dark', 390], ['light', 76
 }
 
 /**
- * The potions in a combat (#565), through the real stack: the "Itens" tab on Pensantus's turn (a potion with the mark of the Ação, an
+ * The potions in a combat, through the real stack: the "Itens" tab on Pensantus's turn (a potion with the mark of the Ação, an
  * oil and a potion with no effect of its own with none), the master acting for Pensantus ("Usar por Pensantus"), the "Usar" sheet, the
  * list of who is next to him (Brisa, down, at 1,5 m), the dice typed, the notice of the heal with the tab folded to "Ação · Usada" (the oil
  * stays open), the oil used with no action, and the log lines (the master's, the giver's and the receiver's, with the numbers; the oil's,

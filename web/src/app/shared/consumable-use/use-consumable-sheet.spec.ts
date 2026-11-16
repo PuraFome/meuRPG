@@ -28,7 +28,7 @@ const JABUTI: ConsumableTargetVm = {
   id: 'c3',
   name: 'Jabuti',
   down: false,
-  line: 'A 1,5 m · Ileso',
+  line: 'A 1,5 m · De pé',
 };
 
 describe('UseConsumableSheet', () => {
@@ -146,7 +146,7 @@ describe('UseConsumableSheet', () => {
     await settle();
     expect(flat(el.querySelector('legend'))).toBe('Dar a quem está ao seu lado');
     const rows = Array.from(el.querySelectorAll('.who__row'));
-    expect(rows.map(flat)).toEqual(['B Brisa A 1,5 m · Caída', 'J Jabuti A 1,5 m · Ileso']);
+    expect(rows.map(flat)).toEqual(['B Brisa A 1,5 m · Caída', 'J Jabuti A 1,5 m · De pé']);
     const radios = Array.from(el.querySelectorAll<HTMLInputElement>('input[type=radio]'));
     expect(radios.map((r) => r.checked)).toEqual([true, false]);
     expect(flat(el.querySelector('.dice'))).toContain('O app rola 2d4 + 2 para Brisa.');
@@ -439,7 +439,7 @@ describe('UseConsumableSheet', () => {
     });
   });
 
-  describe('the cost line (565-02, 565-05)', () => {
+  describe('the cost line', () => {
     it('leaves the cost line out of the first choice in a combat: the subtitle says it already', async () => {
       const { el, settle } = render();
       await settle();
@@ -524,7 +524,7 @@ describe('UseConsumableSheet', () => {
     });
   });
 
-  describe('the turn the page knows does not allow it (565-07 card 2)', () => {
+  describe('the turn the page knows does not allow it', () => {
     const dashed = (el: HTMLElement) =>
       Array.from(el.querySelectorAll<HTMLButtonElement>('.foot button'));
 

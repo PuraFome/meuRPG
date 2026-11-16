@@ -4,7 +4,7 @@ import { MatIconModule } from '@angular/material/icon';
 import type { ConsumableNotice } from '../../core/characters/consumables';
 
 /**
- * What a use of a consumable said (565-03): the card with the heal or the resistance and, for an item the app carries out
+ * What a use of a consumable said: the card with the heal or the resistance and, for an item the app carries out
  * nothing for, the item's own text in a dashed box under it. The page that shows it keeps the live region (`role="status"`)
  * around it, so the words are announced when they come.
  */

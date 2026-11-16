@@ -34,7 +34,7 @@ export interface CombatItemsContext {
 }
 
 /**
- * The potions and scrolls of the character on turn, for the combat's "Itens" tab (565-03, 565-04): the character's magic items
+ * The potions and scrolls of the character on turn, for the combat's "Itens" tab: the character's magic items
  * read from its sheet, the consumables among them grouped in rows, and "Usar", which opens the same sheet as the character
  * sheet's with a combat running (`ConsumableUse`). The items are read when the screen's character is known and on the character's
  * turn, and again whenever the turn's economy changes and after a use; a read that fails keeps what is shown.

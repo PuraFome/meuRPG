@@ -3,7 +3,7 @@
 }
 
 .consumable__result {
-  // The neutral look of a use with no effect of its own (565-07 card 7): the border alone; `--good` adds the success colours.
+  // The neutral look of a use with no effect of its own: the border alone; `--good` adds the success colours.
   display: flex;
   align-items: flex-start;
   gap: var(--mr-space-2);
