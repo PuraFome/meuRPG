@@ -9,7 +9,8 @@ import {
 import type { ReleasePlan } from './readied-release';
 import { readiedRefusalText } from './readied-refusal';
 
-const held = (kind: ReadiedKind) => create(ReadiedActionSchema, { id: 'r', kind });
+const held = (kind: ReadiedKind, slotLevel = 1) =>
+  create(ReadiedActionSchema, { id: 'r', kind, slotLevel });
 const planOf = (kind: ReleasePlan['rule']['kind'], rays = false): ReleasePlan => ({
   rule: { kind, max: 3, min: 1, ...(rays ? { rays } : {}) },
   rows: [],
@@ -32,11 +33,22 @@ describe('the refusal of the answer of a readied action (#582)', () => {
       planOf('darts'),
     );
     expect(text).toBe(
-      'Não deu para soltar a magia com essa escolha. Confira os alvos e os dardos. Dá para deixar passar.',
+      'Não deu para soltar a magia com essa escolha. Confira os alvos e os dardos. Deixar passar perde a magia e o espaço.',
     );
     // The answer carries the targets and the darts now: it must not say they are not sent.
     expect(text).not.toContain('ainda não envia');
     expect(text).not.toContain('ponto no mapa');
+  });
+
+  it('does not say a cantrip loses a slot, since it spent none', () => {
+    const text = readiedRefusalText(
+      new ConnectError('x', Code.InvalidArgument),
+      held(ReadiedKind.SPELL, 0),
+      'responder à reação',
+    );
+    expect(text).toBe(
+      'Não deu para soltar a magia com essa escolha. Confira os alvos. Deixar passar perde a magia.',
+    );
   });
 
   it('speaks of rays for a spell that splits rays', () => {
@@ -54,7 +66,7 @@ describe('the refusal of the answer of a readied action (#582)', () => {
     const say = (plan?: ReleasePlan | null) =>
       readiedRefusalText(refused, held(ReadiedKind.SPELL), 'responder à reação', plan);
     const asked =
-      'Não deu para soltar a magia com essa escolha. Confira os alvos. Dá para deixar passar.';
+      'Não deu para soltar a magia com essa escolha. Confira os alvos. Deixar passar perde a magia e o espaço.';
     expect(say(planOf('single'))).toBe(asked);
     expect(say(planOf('multi'))).toBe(asked);
     expect(say(null)).toBe(asked);

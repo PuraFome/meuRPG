@@ -48,7 +48,7 @@ describe('the prompt of a readied window (582-06, 582-07, 582-08)', () => {
 
   it('names a spell and says that passing loses it, and offers to release it', () => {
     const p = readiedPrompt(
-      held({ kind: ReadiedKind.SPELL, actionNamePt: 'Mísseis Mágicos' }),
+      held({ kind: ReadiedKind.SPELL, actionNamePt: 'Mísseis Mágicos', slotLevel: 1 }),
       2,
       'Pensantus',
     );

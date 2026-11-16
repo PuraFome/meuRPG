@@ -12,7 +12,9 @@ import { needsAbility } from '../effects/ability-choice';
  * `damage_type_key`. The cast sheet of a map release has the ability and damage-type pickers and sends them with `CastSpell`, and no
  * summon picker; the Ready sheet leaves all three kinds off for now. Each kind is
  * known the way the cast sheet knows it: the ability by `needsAbility`, the damage type by the spell's details (`damage_choice` with
- * two or more damages), the summon by the character's summon options (`GetSummonOptions`). No spell key is listed here.
+ * two or more damages), the summon by the character's summon options (`GetSummonOptions`). No spell key is listed here. A revival
+ * (Revivify) is not here: nothing in the spell details or the turn options says a spell revives, so the server refuses it at Ready
+ * (`READY_SPELL_NOT_RELEASABLE`) and the sheet shows that sentence.
  */
 
 /** What a spell asks when it is cast. */
@@ -53,7 +55,7 @@ export interface ChoiceReads {
 
 /**
  * The choice each spell the Ready sheet could offer asks (only the ones that ask are in the map). A read that fails leaves the spell
- * as it is: the server refuses a release that lacks what the spell needs, and the player can let it pass.
+ * as it is: Ready itself refuses, with its reason, a spell whose release cannot carry what it needs.
  */
 export async function readyChoices(
   spells: readonly SpellOption[],

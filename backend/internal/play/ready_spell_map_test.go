@@ -64,25 +64,53 @@ func TestAReadierPreviewsTheAreaOfItsHeldSpellWhileTheWindowIsOpen(t *testing.T)
 	}
 }
 
-// A held spell's row carries the slot level it was held with, to the readier's player and the master; a held cantrip
-// carries 0, and another player reads no row.
-func TestTheReadiedRowCarriesTheSlotLevelOfTheHeldSpell(t *testing.T) {
+// A held point spell (Sleep) is released with CastSpell and a point of the map: the held slot, no other slot spent (every
+// slot of the caster is used), the reaction spent, the row fired and the window closed.
+func TestAReadiedPointSpellIsReleasedWithCastSpellAtAPointOfTheMap(t *testing.T) {
 	t.Parallel()
-	a := newCasters(t)
-	e := a.castersFight(t, 1)
-	a.mustReady(t, a.ana, a.readySpell(t, e, "Pensantus", magicMissileSpell, 2, ""))
-	for who, u := range map[string]*user{"the readier's player": a.ana, "the master": a.master} {
-		if got := byLabel(t, a.get(t, u), "Pensantus").GetReadied().GetSlotLevel(); got != 2 {
-			t.Errorf("%s reads slot_level %d, want 2", who, got)
-		}
+	c := newAreaCave(t)
+	e := c.readiedInTheCave(t, sleepSpell)
+	c.mustFire(t, e, "Pensantus")
+	slots := c.slotsOf(t, "Pensantus", 1, 2, 3)
+	if _, err := c.castArea(t, c.ana, "Pensantus", sleepSpell, nil, at(20, 7), nil, poolSum(20)); err != nil {
+		t.Fatalf("CastSpell() error = %v", err)
 	}
-	if got := byLabel(t, a.get(t, a.caio), "Pensantus").GetReadied(); got != nil {
-		t.Errorf("another player reads the row %v", got)
+	if cast := c.castLine(t, e, sleepSpell); cast == nil || cast.GetSpell().GetSlot().GetLevel() != 1 {
+		t.Errorf("the release's line = %v, want Sleep at 1st level", cast)
 	}
-	e = a.passTo(t, e, "Brisa")
-	a.mustReady(t, a.bia, a.readySpell(t, e, "Brisa", sacredFlame, 0, "Goblin"))
-	if row := byLabel(t, a.get(t, a.bia), "Brisa").GetReadied(); row.GetKind() != playv1.ReadiedKind_READIED_KIND_SPELL || row.GetSlotLevel() != 0 {
-		t.Errorf("a held cantrip's row = %v, want a spell with slot_level 0", row)
+	if got := c.slotsOf(t, "Pensantus", 1, 2, 3); !slices.Equal(got, slots) {
+		t.Errorf("slots used by level = %v, want %v: the release spends no slot", got, slots)
+	}
+	if !byLabel(t, c.get(t, c.ana), "Pensantus").GetReactionUsed() || c.readiedStatus(t, "Pensantus") != readiedFired || c.readiedOpen(t, "Pensantus") {
+		t.Errorf("after the release: reaction used %v, row %q, window open %v", byLabel(t, c.get(t, c.ana), "Pensantus").GetReactionUsed(), c.readiedStatus(t, "Pensantus"), c.readiedOpen(t, "Pensantus"))
+	}
+}
+
+// A held spell that lays a zone (Web) is released with CastSpell and an origin: the zone is laid on the map, the held
+// slot is not spent again, the reaction is spent and the row fired. The answer of the window would have refused it.
+func TestAReadiedZoneSpellIsReleasedWithCastSpellAndLaysTheZone(t *testing.T) {
+	t.Parallel()
+	c := zoneCave(t)
+	e := c.zoneFight(t)
+	e = c.passTo(t, e, "Pensantus")
+	c.mustReady(t, c.ana, c.readySpell(t, e, "Pensantus", webKey, 2, ""))
+	e = c.mustEndTurn(t, c.master, e)
+	c.mustFire(t, e, "Pensantus")
+	if zs := zonesOf(c.get(t, c.master), webKey); len(zs) != 0 {
+		t.Fatalf("Ready laid the zones %v", zs)
+	}
+	slots := c.slotsOf(t, "Pensantus", 2, 3)
+	if _, err := c.castArea(t, c.ana, "Pensantus", webKey, nil, at(9, 7), nil); err != nil {
+		t.Fatalf("CastSpell() error = %v", err)
+	}
+	if zs := zonesOf(c.get(t, c.master), webKey); len(zs) != 1 {
+		t.Errorf("zones = %v, want the Web laid by the release", zs)
+	}
+	if got := c.slotsOf(t, "Pensantus", 2, 3); !slices.Equal(got, slots) {
+		t.Errorf("slots used by level = %v, want %v: the release spends no slot", got, slots)
+	}
+	if !byLabel(t, c.get(t, c.ana), "Pensantus").GetReactionUsed() || c.readiedStatus(t, "Pensantus") != readiedFired {
+		t.Errorf("after the release: reaction used %v, row %q", byLabel(t, c.get(t, c.ana), "Pensantus").GetReactionUsed(), c.readiedStatus(t, "Pensantus"))
 	}
 }
 

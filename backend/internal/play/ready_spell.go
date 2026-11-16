@@ -14,6 +14,7 @@ import (
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
+	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/reaction"
 )
@@ -43,7 +44,7 @@ func (f *readyFlow) checkSpell(ctx context.Context) error {
 	if a := spellAttackOf(t.opts, f.call.spellKey); a != nil {
 		return f.checkSpellAttack(ctx, cf, a)
 	}
-	for _, phase := range []func(context.Context) error{cf.findCaster, cf.pickSpell, cf.checkReadyTime, cf.checkEnabled, f.pickReadySlot(cf), cf.pickSlot, cf.checkSilence} {
+	for _, phase := range []func(context.Context) error{cf.findCaster, cf.pickSpell, cf.checkReadyTime, cf.checkEnabled, f.pickReadySlot(cf), cf.readSpellAtSlot, f.checkReadyReleasable(cf), cf.checkSilence} {
 		if err := phase(ctx); err != nil {
 			return err
 		}
@@ -60,8 +61,52 @@ func (f *castFlow) checkReadyTime(context.Context) error {
 	return nil
 }
 
+// checkReadyReleasable refuses a spell no release of the READIED window can carry, decided by what the spell is: the
+// answer carries targets and darts, and CastSpell on the map carries a point, a direction and a wall, but neither has a
+// picker for a summon, an ability, a damage type or the dead creature of a revival. Such a spell could only be let pass,
+// with its slot spent: it is cast on the caster's turn, not held. A spell placed on the map or laying a zone there is held
+// and released with CastSpell; an area in a combat with no map is released by the answer with the creatures it picks.
+func (f *readyFlow) checkReadyReleasable(cf *castFlow) func(context.Context) error {
+	return func(ctx context.Context) error {
+		why, err := cf.unreleasable(ctx)
+		if err != nil || why == "" {
+			return err
+		}
+		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_READY_SPELL_NOT_RELEASABLE, "this spell asks for "+why+": cast it on your turn, it cannot be readied")
+	}
+}
+
+// laysZoneOnMap says casting the spell lays a zone on the map: it keeps one and the combat has a map. The answer of a
+// window refuses such a spell (it carries no point); CastSpell lays it.
+func laysZoneOnMap(sp link.Spell, enc playdb.Encounter) bool {
+	_, keepsZone := zoneDefOfSpell(sp)
+	return keepsZone && !isTheatre(enc)
+}
+
+// unreleasable names what the spell asks that no release can carry, "" when it asks nothing of the kind.
+func (f *castFlow) unreleasable(ctx context.Context) (string, error) {
+	sp := f.sp
+	switch {
+	case sp.Summon:
+		return "the creatures of a summon", nil
+	case sp.DamageChoice != "" && len(sp.DamageTypes) > 0:
+		return "a damage type", nil
+	}
+	asks, err := f.s.spellAsksAbility(ctx, f.c, f.call.spellKey)
+	if err != nil {
+		return "", err
+	}
+	if asks {
+		return "an ability", nil
+	}
+	if castsAsRevival(f.call.spellKey) {
+		return "the dead creature to revive", nil
+	}
+	return "", nil
+}
+
 // pickReadySlot sets the slot the request's slot_level names on the cast: a free slot of that level, a Warlock's pact
-// slot when it has no other; none for a cantrip. pickSlot then checks it as CastSpell's slot.
+// slot when it has no other; none for a cantrip. readSpellAtSlot, which runs next, checks it as CastSpell's slot.
 func (f *readyFlow) pickReadySlot(cf *castFlow) func(context.Context) error {
 	return func(context.Context) error {
 		level := f.call.slotLevel
@@ -134,35 +179,23 @@ func (f *castFlow) findReadied(ctx context.Context) error {
 		return err
 	}
 	if !found {
-		if f.call.release != "" { // the answer's window is closed: the spell is not cast for it
+		if f.call.answering { // the answer's window is closed: the spell is not cast for it
 			return errNotYourTurnToAnswer()
 		}
 		return nil
+	}
+	if f.req.GetGrantedBy() != "" { // a spell is readied from the caster's classes: a grant's charge is no release's to spend
+		return connect.NewError(connect.CodeInvalidArgument, errors.New("a readied spell is released from the source it was readied with: name no grant"))
 	}
 	f.readied, err = readiedUseOf(ctx, f.c, w.ID, f.caster, readiedSpell)
 	return err
 }
 
-// heldByWindow finds the readied spell a combatant's open READIED window holds: the window and its row. A held spell
-// attack is not one (its release is a roll), and found is false when the combatant's windows hold no such spell.
-func heldByWindow(ctx context.Context, q *playdb.Queries, encID, casterID, spellKey string) (w playdb.ReactionWindow, row playdb.ReadiedAction, found bool, err error) {
-	open, err := q.ListOpenReactionWindows(ctx, encID)
-	if err != nil {
-		return w, row, false, fmt.Errorf("list the reaction windows: %w", err)
-	}
-	for _, w := range open {
-		if reaction.Kind(w.Kind) != reaction.Readied || conv.OrZero(w.ReactorID) != casterID {
-			continue
-		}
-		row, err := q.GetReadiedAction(ctx, playdb.GetReadiedActionParams{ID: windowTriggerOf(w).Readied, EncounterID: encID})
-		if err != nil {
-			return w, row, false, fmt.Errorf("read the readied action: %w", err)
-		}
-		if row.Kind == readiedSpell && !heldSpellAttackRow(row) && conv.OrZero(row.ActionKey) == spellKey {
-			return w, row, true, nil
-		}
-	}
-	return w, row, false, nil
+// heldByWindow finds the readied spell a combatant's open READIED window holds: the window and its row. A held spell attack is
+// not one (its release is a roll). It matches the spell's key alone: the caller checks the source (a release takes Ready's).
+func heldByWindow(ctx context.Context, q *playdb.Queries, encID, casterID, spellKey string) (playdb.ReactionWindow, playdb.ReadiedAction, bool, error) {
+	w, row, found, err := openReadied(ctx, q, encID, casterID)
+	return w, row, found && row.Kind == readiedSpell && !heldSpellAttackRow(row) && conv.OrZero(row.ActionKey) == spellKey, err
 }
 
 // chosenSlot is the slot of the cast: the request's, or the one a readied spell spent at Ready. A release names no slot or
@@ -226,8 +259,7 @@ func heldRelease(ctx context.Context, q *playdb.Queries, encID, windowID string,
 
 // useReadiedSpell is "Usar" on a readied spell: CastSpell by the readier, under the answer's key, with the targets the
 // answer names in targets (with their darts) or in creature_ids, else the creature named at Ready (for a spell that
-// takes named targets), and the answer's die, checked as on the caster's turn. A spell placed on the map is released with
-// CastSpell itself, which carries its point. The use is spent once the spell is cast: a cast held by a Counterspell is
+// takes named targets), and the answer's die, checked as on the caster's turn. The use is spent once the spell is cast: a cast held by a Counterspell is
 // used when it happens.
 func (s *Service) useReadiedSpell(ctx context.Context, m authz.Membership, in answerInput, msg *playv1.AnswerReactionRequest, row playdb.ReadiedAction) (*connect.Response[playv1.AnswerReactionResponse], error) {
 	req := &playv1.CastSpellRequest{
@@ -263,7 +295,7 @@ func (s *Service) useReadiedSpell(ctx context.Context, m authz.Membership, in an
 		req.Roll, req.RayRolls = nil, msg.GetRayRolls()
 	}
 	req.RollMode, req.ModeReason = msg.GetRollMode(), msg.GetModeReason()
-	res, err := s.castSpell(ctx, m, connect.NewRequest(req), in.winID)
+	res, err := s.castSpell(ctx, m, connect.NewRequest(req), true)
 	if err != nil {
 		return nil, err
 	}

@@ -382,6 +382,27 @@ describe('ReadySheet (#582)', () => {
     expect(close).not.toHaveBeenCalled();
   });
 
+  it('writes the server reason of a spell the window cannot release, with the sheet left open', async () => {
+    readyAction.mockRejectedValue(
+      new ConnectError('x', Code.FailedPrecondition, undefined, [
+        {
+          desc: EncounterBlockedSchema,
+          value: create(EncounterBlockedSchema, {
+            reason: EncounterBlockedReason.READY_SPELL_NOT_RELEASABLE,
+          }),
+        },
+      ]),
+    );
+    const { el, button, click, type, settle } = render();
+    type('Se a porta abrir');
+    click(button('Preparar'));
+    await settle();
+    expect(flat(el.querySelector('.mr-notice--danger'))).toContain(
+      'Esta magia não pode ser preparada: ela pede uma escolha que só se faz ao conjurar na sua vez. Nada foi gasto.',
+    );
+    expect(close).not.toHaveBeenCalled();
+  });
+
   it('says nothing was spent when the call did not get through, and lets the player try again', async () => {
     readyAction.mockRejectedValue(new ConnectError('down', Code.Unavailable));
     const { el, button, click, type, settle } = render();

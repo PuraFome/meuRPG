@@ -405,7 +405,7 @@ func (s *Service) previewSlotLevel(ctx context.Context, msg *playv1.PreviewSpell
 	if err != nil {
 		return 0, s.dbError(ctx, "find the readied spell", err)
 	}
-	if held {
+	if held && msg.GetGrantedBy() == "" { // a preview that names a grant is the grant's, not the held spell's
 		return int(row.SlotLevel), nil
 	}
 	slot, err := slotOf(msg.GetSlot(), cast)

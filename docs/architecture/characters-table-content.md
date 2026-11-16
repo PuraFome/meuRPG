@@ -71,7 +71,7 @@ A change takes effect at once, also on locked sheets.
 The rules side (`ChangedSince`, `Issue.Keys`, the sentences) is in [Table content](rules-table-content.md#a-classe-mudou).
 This is what the server stores and shows:
 
-- Each sheet stores, inside its own document and written by `checkSheet` (create, edit and level-up; what the client sends is ignored), the content revision (`FullSheet.content_revision`), the notices it already had (`known_issues`, each by code, field and exact sentence) and, for a still-flagged entry, the revision at which the sheet was up to date with it (`content_baselines`).
+- Each sheet stores, inside its own document and written by `checkSheet` (create, edit and level-up; what the client sends is ignored), the content revision (`FullSheet.content_revision`), the notices it already had (`known_issues`, each by its identity, `Issue.ID`: code, field and exact sentence, and for a lost feat or option the code, the list its pick is in and the entry's key, with no sentence) and, for a still-flagged entry, the revision at which the sheet was up to date with it (`content_baselines`). Only the campaign's master receives `known_issues`; `content_baselines` is sent to every reader of the sheet, as it holds only keys of entries the sheet itself uses, which its owner reads, and nothing in the web reads it.
 - On every read, `Content.ChangedSince` lists the table entries the sheet uses that changed later, and the server shows for each changed entry only the new notices whose keys include it: `DerivedSheet.changed_content` (the key, the name, the field, the revisions, the date of the change and the exact sentences) and a `table_content_changed` `Issue` per entry.
 - The notice disappears by itself when nothing remains tied to it; a change that left no new notice on that sheet shows nothing; there is no "dismiss".
 - Saving the sheet does not clear it: on saving, the notices that were flagged and still stand stay out of `known_issues` and the entry stores the base revision in `content_baselines`, so the next read flags them again; only fixing what the notice says clears it.
@@ -87,6 +87,9 @@ This is what the server stores and shows:
   `LevelUpCharacter` and `PreviewLevelUp` refuse with `LEVEL_UP_REFUSAL_REASON_ARCHIVED_CHOICE`.
 - The same for a switched-off key (or a child of a switched-off class or race), but only for a player: `SWITCHED_OFF_CONTENT` and `LEVEL_UP_REFUSAL_REASON_SWITCHED_OFF_CHOICE`.
   The master is not refused: the switch hides the option from players, not from any sheet the master edits.
+- The keys of a sheet include the spell of a scoped pick (`choiceKey=spell:key`), so a pick of a spell counts as the sheet using it.
+  A ritual held in the book that stops being a ritual is an issue at its pick (`spell_level`).
+  Its owner reads the notice of changed content for it.
 - A sheet that already uses the key keeps working (`Derive`, `Validate`, names, level-up), and an unrelated edit is never refused.
 - A sheet with an `@mesa` key does not change campaign: `CheckSheetCanMove` (`failed_precondition`, `TABLE_CONTENT_STAYS`, with the first key) exists for it.
   Nothing calls it yet, since characters are not copied between campaigns; whoever builds that must call it before writing.

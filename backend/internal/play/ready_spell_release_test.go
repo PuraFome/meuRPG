@@ -184,8 +184,41 @@ func TestAReadiedAreaReleasedWithNoTargetsIsNotAimedAtTheCreatureNamedAtReady(t 
 	}
 }
 
+// A readied spell that lays a zone on a map (Web, Grease, a table spell with a zone) is refused by the answer: it
+// carries no point, so the release would spend the reaction and lay nothing. CastSpell releases it instead.
+func TestAReadiedZoneOnAMapIsNotReleasedByTheAnswer(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name, spell string
+		slot        int32
+	}{
+		{"Web", webSpell, 2},
+		{"Grease", greaseKey, 1},
+		{"a table spell with a zone", tableSphereZone, 2},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			a := newTableReadier(t)
+			e := a.castersFight(t, 1)
+			a.mustReady(t, a.ana, a.readySpell(t, e, readyZoneCaster, tc.spell, tc.slot, ""))
+			e = a.mustEndTurn(t, a.master, e)
+			w := a.mustFire(t, e, readyZoneCaster)
+			events := a.events(t)
+			_, err := a.answerReaction(t, a.ana, e, w.GetId(), useSpellAnswer)
+			wantCode(t, tc.name+" answered", err, connect.CodeInvalidArgument)
+			if got, want := err.Error(), "invalid_argument: this spell lays a zone on the map, which the answer cannot place"; got != want {
+				t.Fatalf("%s answered: error = %q, want %q", tc.name, got, want)
+			}
+			if !a.readiedOpen(t, readyZoneCaster) || a.readiedStatus(t, readyZoneCaster) != readiedWaiting || a.events(t) != events {
+				t.Errorf("the refused answer left the window open %v, rows %q, events %d -> %d", a.readiedOpen(t, readyZoneCaster), a.readiedStatus(t, readyZoneCaster), events, a.events(t))
+			}
+		})
+	}
+}
+
 // A readied Sleep on a map is placed at a point, which the answer never carries (CastSpell does): the answer is
 // refused, with targets or without, and the window stays open. The targets are never dropped for the creatures in the area.
+// The answer's own guard refuses it, and that guard's reason is what this test holds.
 func TestAReadiedAreaOnAMapIsNotReleasedByTheAnswer(t *testing.T) {
 	t.Parallel()
 	for name, set := range map[string]func(*testing.T, *armed) func(*playv1.AnswerReactionRequest){
@@ -202,6 +235,9 @@ func TestAReadiedAreaOnAMapIsNotReleasedByTheAnswer(t *testing.T) {
 			w := a.mustFire(t, e, "Pensantus")
 			_, err := a.answerReaction(t, a.ana, e, w.GetId(), set(t, a))
 			wantCode(t, "Sleep placed on a map, answered "+name, err, connect.CodeInvalidArgument)
+			if got, want := err.Error(), "invalid_argument: this spell is placed at a point: set origin"; got != want {
+				t.Fatalf("Sleep placed on a map, answered %s: error = %q, want the area guard's %q", name, got, want)
+			}
 			if !a.readiedOpen(t, "Pensantus") || a.readiedStatus(t, "Pensantus") != readiedWaiting {
 				t.Errorf("the refused answer left the window open %v and rows %q", a.readiedOpen(t, "Pensantus"), a.readiedStatus(t, "Pensantus"))
 			}
