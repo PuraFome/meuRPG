@@ -16389,3 +16389,64 @@ test('a ficha com "A arma mudou." que o mestre lê na ficha do jogador passa no 
   test.setTimeout(240_000);
   await scanAxeTurnedTwoHanded(browser, 'dark', 1280, 'master');
 });
+
+/** The target step of a cast by how many creatures the spell takes (#953, #954): one (Desintegrar), two (Espirro Ácido), six
+ * (Lentidão) and ten (Similaridade), a spell with no creature (Muralha de Energia), and a spell attack (Toque Chocante) with no
+ * enemy in reach and then with one. */
+async function scanSpellTargetScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: 900 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  const look = async (button: string, what: string) => {
+    await openActionTab(p, 'Magias');
+    await p.getByRole('button', { name: button }).click();
+    const sheet = p.getByRole('dialog', { name: button });
+    await viaTargetList(p, sheet);
+    await expect(sheet).toBeVisible();
+    await expectScreenPasses(p, `${what} ${where}`);
+    await p.getByRole('button', { name: 'Fechar' }).click();
+    await expect(sheet).toHaveCount(0);
+  };
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const wizard = {
+      cantripKeys: ['spell:shocking-grasp', 'spell:acid-splash'],
+      knownSpellKeys: ['spell:disintegrate', 'spell:slow', 'spell:seeming', 'spell:wall-of-force'],
+      preparedSpellKeys: ['spell:disintegrate', 'spell:slow', 'spell:seeming', 'spell:wall-of-force'],
+    };
+    const table = await tableForCombat(m, p, `Acessibilidade alvos ${Date.now()}`, true, true, { sheet: wizard, build: { ...pensantus, level: 17 } });
+    campaignId = table.campaignId;
+    // Pensantus far from every enemy, then next to Goblin 1.
+    const begun = await beginAttackCombatRPC(m, table, { Pensantus: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 }, { ...attackCombatSquares, Pensantus: [2, 2] });
+    const pensantusId = begun.combatants.find((c) => c.label === 'Pensantus')!.id;
+    await openSessionPage(m, campaignId);
+    await openSessionPage(p, campaignId);
+
+    await look('Atacar com Toque Chocante', 'Toque Chocante, nenhum inimigo ao alcance');
+    await combatRPC(m, 'MoveCombatant', { campaignId, encounterId: begun.id, combatantId: pensantusId, col: 8, row: 9 });
+    await look('Atacar com Toque Chocante', 'Toque Chocante, um inimigo ao alcance');
+    await look('Conjurar Desintegrar', 'Alvos, uma criatura');
+    await look('Conjurar Espirro Ácido', 'Alvos, até duas criaturas');
+    await look('Conjurar Lentidão', 'Alvos, até seis criaturas');
+    await look('Conjurar Similaridade', 'Alvos, até dez criaturas');
+    await look('Conjurar Muralha de Energia', 'Magia sem criatura');
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+for (const [scheme, width] of [['light', 1280], ['dark', 390]] as const) {
+  test(`os alvos de uma conjuração por quantidade passam no axe e nas conferências de layout no tema ${scheme === 'light' ? 'claro' : 'escuro'}, em ${width}px`, { tag: ['@a11y', '@MR-013', '@RN-20'] }, async ({ browser }) => {
+    test.setTimeout(300_000);
+    await scanSpellTargetScreens(browser, scheme, width);
+  });
+}
