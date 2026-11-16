@@ -2,6 +2,8 @@
 // is that rhythm here, and the parts carry no margin of their own.
 :host {
   --mr-sheet-gap: var(--mr-space-4);
+  // The toggle of the dice row is a 44px target on a 20px line: the body keeps the room it reaches below the line (`sheet-frame`).
+  --mr-sheet-body-end: var(--mr-space-3);
   display: block;
 }
 .effect {
@@ -158,11 +160,15 @@
   height: var(--mr-font-14);
   font-size: var(--mr-font-14);
 }
-// The live regions are always there, so the line that comes after the read is announced; empty, they take no room: a negative
-// margin cancels the frame's gap beside them.
-.why:empty,
-.mr-live:empty {
-  margin-bottom: calc(var(--mr-sheet-gap) * -1);
+// The live regions are always there, so the line that comes after the read is announced (`mr-live` is out of the flow while empty); the
+// ban line's is too, and out of the body's scroll height: a zero-height box at the end of it would count as more to scroll to.
+.why:empty {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
 }
 .none {
   display: flex;
