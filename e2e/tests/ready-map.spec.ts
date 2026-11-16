@@ -123,6 +123,7 @@ test('o mestre solta a Bola de Fogo por Pensantus: o rodapé diz que ele ainda p
     const sheet = releaseSheet(m, true);
     await expect(sheet).toBeVisible();
     await expect(sheet.getByTestId('release-foot')).toHaveText(releaseTexts.masterFoot);
+    await expect(sheet.getByRole('button', { name: 'Fechar' })).toHaveCount(0);
     // The master does not mark the window: the player's screen still reads the plain clock.
     expect((await windowOf(m, campaignId))?.rolling ?? false).toBe(false);
     await sheet.getByRole('button', { name: releaseTexts.back, exact: true }).click();

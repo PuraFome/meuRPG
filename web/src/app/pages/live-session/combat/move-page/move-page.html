@@ -188,7 +188,7 @@
       @if (release()?.foot; as foot) {
         <p class="move__release-foot" role="status" data-testid="release-foot">{{ foot }}</p>
       } @else if (release()?.wait; as wait) {
-        <p class="move__release-foot move__release-foot--wait" role="status" data-testid="release-wait"><mat-icon fontIcon="hourglass_empty" aria-hidden="true"></mat-icon>{{ wait }}</p>
+        <p class="move__release-foot move__release-foot--wait" role="status"><mat-icon aria-hidden="true">hourglass_empty</mat-icon><span data-testid="release-wait">{{ wait }}</span></p>
       }
       @if (trapAsk()) {
         <p class="move__ask" role="alert">{{ trapText() }}</p>

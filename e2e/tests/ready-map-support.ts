@@ -170,10 +170,14 @@ export async function placeFireball(p: Page): Promise<Locator> {
   return sheet;
 }
 
-/** The page scrolled to its end, so the legend and the nudge buttons under the map are in the shot, as the boards draw them. */
-export async function scrollToEnd(page: Page): Promise<void> {
+/** The page scrolled so the legend (and, on a phone, the nudge buttons) under the map is in the shot, as the boards draw them: the end of the page on a phone, the legend at the foot of the window from 1024 px. */
+export async function scrollToLegend(page: Page): Promise<void> {
   await page.evaluate(() => {
     const el = document.scrollingElement ?? document.documentElement;
-    el.scrollTop = el.scrollHeight;
+    if (window.innerWidth < 1024) {
+      el.scrollTop = el.scrollHeight;
+      return;
+    }
+    document.querySelector('app-map-layers-legend')?.scrollIntoView({ block: 'end' });
   });
 }

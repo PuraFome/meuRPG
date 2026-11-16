@@ -101,7 +101,7 @@ import {
 } from './table-sheet-support';
 import { masterLog, openCombatPanel, openMap, openOrderRow, openTurn } from './combat-layout';
 import { waitForEncounterRevision } from './revision-support';
-import { fireReadied, masterQueue, mapSquares, moveWindow, pickFireballPoint, placeFireball, readyMapTable, releaseSheet, releaseTexts, scrollToEnd, spellWindow, undoFire } from './ready-map-support';
+import { fireReadied, masterQueue, mapSquares, moveWindow, pickFireballPoint, placeFireball, readyMapTable, releaseSheet, releaseTexts, scrollToLegend, spellWindow, undoFire } from './ready-map-support';
 import { goblinTrigger, openReadySheet, pensantusReadyKit, readyAttackRPC, readyRPC, readySpellRPC, shootReady, summonOffText } from './ready-support';
 import { WIDTHS, beginVrockFight, pagesFor, shoot, useCreatureActionRPC, viewportOf } from './recharge-support';
 import { chooseRow, openTvPanel, rollForTableRPC, tvRoute } from './table-screen-support';
@@ -15534,7 +15534,7 @@ async function scanReadyMapScreens(browser: Browser, colorScheme: 'light' | 'dar
     // A square picked, as the board draws it: the cost card, the legend and the nudge buttons in view.
     await tapSquare(p, mapSquares.Pensantus[0] + 2, mapSquares.Pensantus[1]);
     await expect(p.locator('app-move-status .status__title')).toHaveText('Mover 3,0 m');
-    await scrollToEnd(p);
+    await scrollToLegend(p);
     await expectScreenPasses(p, `Soltar, a página de movimento do jogador ${where}`);
     await shoot(p, 'mover-jogador');
 
@@ -15552,7 +15552,7 @@ async function scanReadyMapScreens(browser: Browser, colorScheme: 'light' | 'dar
     await expect(m.getByTestId('release-foot')).toHaveText(releaseTexts.masterFoot);
     await tapSquare(m, mapSquares.Pensantus[0] + 2, mapSquares.Pensantus[1]);
     await expect(m.locator('app-move-status .status__title')).toHaveText('Mover 3,0 m');
-    await scrollToEnd(m);
+    await scrollToLegend(m);
     await expectScreenPasses(m, `Soltar, a página de movimento do mestre ${where}`);
     await shoot(m, 'mover-mestre');
     await m.getByRole('button', { name: releaseTexts.back, exact: true }).click();

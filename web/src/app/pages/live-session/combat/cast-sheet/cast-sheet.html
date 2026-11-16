@@ -359,7 +359,7 @@
   @if (!s.done() && !gone() && ar.flow; as f) {
     <div foot>
       @if (release) {
-        <p class="wait" role="status" data-testid="release-wait"><mat-icon fontIcon="hourglass_empty" aria-hidden="true"></mat-icon>{{ waitLine }}</p>
+        <p class="wait" role="status"><mat-icon aria-hidden="true">hourglass_empty</mat-icon><span data-testid="release-wait">{{ waitLine }}</span></p>
       }
       @if (f.step() === 'place') {
         @if (ch.missing()) {

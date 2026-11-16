@@ -1,4 +1,4 @@
-<app-sheet-frame [title]="title" [subtitle]="subtitle()" [icon]="release ? 'alarm' : ''" [phone]="inSheet" (closed)="close()">
+<app-sheet-frame [title]="title" [subtitle]="subtitle()" [icon]="release ? 'alarm' : ''" [phone]="inSheet" [closable]="!release" (closed)="close()">
   @if (band; as b) {
     <app-release-band [band]="b" />
   }
