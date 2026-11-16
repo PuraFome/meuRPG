@@ -370,6 +370,18 @@ ON CONFLICT (character_id) DO UPDATE SET
     updated_at = excluded.updated_at
 RETURNING revision, updated_at;
 
+-- name: GetResourcesUsed :one
+-- The stored used counts of a character's resources, as a JSON object {key: n}. No row when the
+-- character has no vitals row.
+SELECT resources_used FROM character_vitals WHERE character_id = sqlc.arg(character_id);
+
+-- name: SetResourcesUsed :exec
+-- Replaces the stored used counts of a character's resources and moves the vitals' revision. Only
+-- for a character that has a vitals row.
+UPDATE character_vitals
+SET resources_used = sqlc.arg(resources_used)::JSONB, revision = revision + 1, updated_at = sqlc.arg(now)
+WHERE character_id = sqlc.arg(character_id);
+
 -- name: SetVitalsExhaustion :one
 -- Sets a character's level of exhaustion (SRD, Conditions: Exhaustion) and, when the new
 -- hit point maximum cut the hit points, the hit points: the first call creates the row, as

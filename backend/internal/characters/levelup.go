@@ -805,6 +805,9 @@ func (s *Service) levelUpIn(ctx context.Context, tx pgx.Tx, tell sessiontell.Tel
 	if err != nil {
 		return leveledUp{}, err
 	}
+	if err := s.endGivenUpOptions(ctx, tx, current, t, plan); err != nil {
+		return leveledUp{}, err
+	}
 	if err := s.tellOptionSwaps(ctx, tx, tell, m.CampaignID, id, t.classKey, plan); err != nil {
 		return leveledUp{}, err
 	}

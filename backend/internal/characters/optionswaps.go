@@ -2,10 +2,16 @@ package characters
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
+	"slices"
 
 	"github.com/jackc/pgx/v5"
 
+	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/sessiontell"
+	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
 // OptionSwap is one option of a table feature that a level-up gave up for another.
@@ -51,4 +57,75 @@ func (s *Service) tellOptionSwaps(ctx context.Context, tx pgx.Tx, tell sessionte
 		told = append(told, OptionSwap{FeatureKey: sw.GetGroup(), GivenUp: sw.GetFromKey(), Taken: sw.GetToKey(), ClassKey: classKey, ToLevel: plan.toLevel})
 	}
 	return s.optionSwaps.OptionsGivenUp(ctx, tx, campaignID, characterID, told, tell)
+}
+
+// endGivenUpOptions clears what the options a level-up gave up had stored in the character's own tables, in the level-up's
+// transaction: the used counts of the resources the option defined (a resource another feature of the new sheet still
+// defines keeps its count) and the states the option started. An option picked again later starts fresh.
+func (s *Service) endGivenUpOptions(ctx context.Context, tx pgx.Tx, current charactersdb.Character, t levelUpTarget, plan levelUpPlan) error {
+	var givenUp []string
+	for _, sw := range plan.record.GetSwapFeatureOptions() {
+		givenUp = append(givenUp, sw.GetFromKey())
+	}
+	if len(givenUp) == 0 {
+		return nil
+	}
+	before, after := rules.Derive(t.build, t.content), rules.Derive(buildOf(plan.sheet), t.content)
+	var resources, states []string
+	for _, r := range before.Resources {
+		if slices.Contains(givenUp, r.Source) && !slices.ContainsFunc(after.Resources, func(a rules.Resource) bool { return a.Key == r.Key }) {
+			resources = append(resources, r.Key)
+		}
+	}
+	for _, st := range before.States {
+		if slices.Contains(givenUp, st.Source) {
+			states = append(states, st.Key)
+		}
+	}
+	q := s.queries.WithTx(tx)
+	if err := s.clearResourceUses(ctx, q, current.ID, resources); err != nil {
+		return err
+	}
+	return s.clearStates(ctx, tx, current, states)
+}
+
+// clearResourceUses takes the stored used counts of the resources out of the character's vitals row, when it has one.
+func (s *Service) clearResourceUses(ctx context.Context, q *charactersdb.Queries, characterID string, keys []string) error {
+	raw, err := q.GetResourcesUsed(ctx, characterID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil
+	}
+	if err != nil {
+		return wrap("read the used resources", err)
+	}
+	used := storedResourcesUsed(raw)
+	had := len(used)
+	for _, k := range keys {
+		delete(used, k)
+	}
+	if len(used) == had {
+		return nil
+	}
+	doc, err := json.Marshal(used)
+	if err != nil {
+		return wrap("encode the used resources", err)
+	}
+	if err := q.SetResourcesUsed(ctx, charactersdb.SetResourcesUsedParams{CharacterID: characterID, ResourcesUsed: doc, Now: s.now()}); err != nil {
+		return wrap("save the used resources", err)
+	}
+	return nil
+}
+
+// clearStates ends the states with these keys that are on for the character.
+func (s *Service) clearStates(ctx context.Context, tx pgx.Tx, current charactersdb.Character, keys []string) error {
+	stored := parseStoredStates(current.ActiveStates)
+	kept := slices.DeleteFunc(slices.Clone(stored), func(st storedState) bool { return slices.Contains(keys, st.Key) })
+	if len(kept) == len(stored) {
+		return nil
+	}
+	list := make([]*playv1.ActiveState, 0, len(kept))
+	for _, st := range kept {
+		list = append(list, &playv1.ActiveState{Key: st.Key, RoundsLeft: st.RoundsLeft})
+	}
+	return s.writeStates(ctx, tx, current.ID, list)
 }

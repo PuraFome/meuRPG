@@ -1144,6 +1144,19 @@ func (q *Queries) GetMasterNotes(ctx context.Context, arg GetMasterNotesParams) 
 	return i, err
 }
 
+const getResourcesUsed = `-- name: GetResourcesUsed :one
+SELECT resources_used FROM character_vitals WHERE character_id = $1
+`
+
+// The stored used counts of a character's resources, as a JSON object {key: n}. No row when the
+// character has no vitals row.
+func (q *Queries) GetResourcesUsed(ctx context.Context, characterID string) ([]byte, error) {
+	row := q.db.QueryRow(ctx, getResourcesUsed, characterID)
+	var resources_used []byte
+	err := row.Scan(&resources_used)
+	return resources_used, err
+}
+
 const getVitals = `-- name: GetVitals :one
 SELECT c.id, c.name, c.player_user_id, c.sheet,
        v.hit_points_current, v.hit_points_temporary, v.spell_slots_used,
@@ -3969,6 +3982,25 @@ func (q *Queries) SetItemCharges(ctx context.Context, arg SetItemChargesParams) 
 		arg.LastRollPending,
 		arg.Now,
 	)
+	return err
+}
+
+const setResourcesUsed = `-- name: SetResourcesUsed :exec
+UPDATE character_vitals
+SET resources_used = $1::JSONB, revision = revision + 1, updated_at = $2
+WHERE character_id = $3
+`
+
+type SetResourcesUsedParams struct {
+	ResourcesUsed []byte
+	Now           time.Time
+	CharacterID   string
+}
+
+// Replaces the stored used counts of a character's resources and moves the vitals' revision. Only
+// for a character that has a vitals row.
+func (q *Queries) SetResourcesUsed(ctx context.Context, arg SetResourcesUsedParams) error {
+	_, err := q.db.Exec(ctx, setResourcesUsed, arg.ResourcesUsed, arg.Now, arg.CharacterID)
 	return err
 }
 
