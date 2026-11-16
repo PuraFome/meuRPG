@@ -1,14 +1,19 @@
 package play
 
 import (
+	"context"
 	"slices"
+	"sync/atomic"
 	"testing"
 
 	"connectrpc.com/connect"
+	"github.com/jackc/pgx/v5"
 	"google.golang.org/protobuf/proto"
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/play/cutting"
+	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 )
 
 // The picker of the master's check says, for each creature, what the app needs to know before it asks the master anything: whether the
@@ -302,5 +307,37 @@ func TestNpcCheckPickerBonusesAreThoseOfTheRoll(t *testing.T) {
 				t.Errorf("%s, %s: bonus %d, known %v; want +0 and unknown", name, key, checks[i].GetBonus(), checks[i].GetKnown())
 			}
 		}
+	}
+}
+
+// checkCountingRoster counts the reads a roster is asked for the checks of an SRD creature, per call.
+type checkCountingRoster struct {
+	CombatRoster
+	checkCalls, batchCalls atomic.Int32
+}
+
+func (c *checkCountingRoster) CreatureChecks(ctx context.Context, tx pgx.Tx, campaignID, creatureID, monsterKey string, keys []string) ([]link.SceneOption, error) {
+	c.batchCalls.Add(1)
+	return c.CombatRoster.CreatureChecks(ctx, tx, campaignID, creatureID, monsterKey, keys)
+}
+
+func (c *checkCountingRoster) CreatureCheck(ctx context.Context, tx pgx.Tx, campaignID, creatureID, monsterKey, key string) (link.SceneOption, error) {
+	c.checkCalls.Add(1)
+	return c.CombatRoster.CreatureCheck(ctx, tx, campaignID, creatureID, monsterKey, key)
+}
+
+// TestNpcCheckPickerReadsTheChecksOfACreatureOnce: the picker reads the checks of a creature with a monster key in one read, not one for
+// each of its twenty-four checks, and the numbers it lists are the same (TestNpcCheckPickerBonusesAreThoseOfTheRoll).
+func TestNpcCheckPickerReadsTheChecksOfACreatureOnce(t *testing.T) {
+	t.Parallel()
+	n := newNpcTable(t, charactersv1.CuttingWordsAsk_CUTTING_WORDS_ASK_ALL)
+	counter := &checkCountingRoster{CombatRoster: n.h.svc.roster}
+	n.h.svc.roster = counter
+	res, err := n.master.play.ListNpcCheckPicker(t.Context(), connect.NewRequest(&playv1.ListNpcCheckPickerRequest{CampaignId: n.campaignID, MonsterKey: "monster:wolf"}))
+	if err != nil || len(res.Msg.GetCandidates()) != 1 || len(res.Msg.GetCandidates()[0].GetChecks()) != len(cutting.CheckKeys()) {
+		t.Fatalf("the picker with the wolf = %v, %v; want one candidate with all its checks", res, err)
+	}
+	if singles, batches := counter.checkCalls.Load(), counter.batchCalls.Load(); singles != 0 || batches != 1 {
+		t.Errorf("the picker made %d single reads and %d reads of all the checks of the wolf, want one read for the creature", singles, batches)
 	}
 }

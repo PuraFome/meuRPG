@@ -382,20 +382,13 @@ func (c *npcCheckCall) creature(ctx context.Context, tx pgx.Tx) (link.Character,
 }
 
 // npcCheckNumbers is what the creature adds to each of the checks in keys, one option for each, in order: its stat block's number when it
-// is an SRD creature, its sheet's otherwise (one SceneOptions call for all the keys); an NPC typed by hand has none (Known false: it rolls +0).
-// A creature with a monster key is still read key by key (one CreatureCheck call for each).
+// is an SRD creature (one CreatureChecks read for all the keys), its sheet's otherwise (one SceneOptions call for all the keys); an NPC typed
+// by hand has none (Known false: it rolls +0).
 func (s *Service) npcCheckNumbers(ctx context.Context, tx pgx.Tx, campaignID string, npc link.Character, keys []string) ([]link.SceneOption, error) {
-	out := make([]link.SceneOption, len(keys))
 	if npc.MonsterKey != "" {
-		for i, key := range keys {
-			o, err := s.roster.CreatureCheck(ctx, tx, campaignID, "", npc.MonsterKey, key)
-			if err != nil {
-				return nil, err
-			}
-			out[i] = o
-		}
-		return out, nil
+		return s.roster.CreatureChecks(ctx, tx, campaignID, "", npc.MonsterKey, keys)
 	}
+	out := make([]link.SceneOption, len(keys))
 	opts, err := s.roster.SceneOptions(ctx, tx, campaignID, npc.ID, keys)
 	if err != nil || len(opts) != len(keys) {
 		return out, err
