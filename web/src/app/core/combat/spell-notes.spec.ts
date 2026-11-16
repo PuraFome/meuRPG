@@ -24,7 +24,7 @@ describe('the notes of a spell', () => {
 
   it('says what a failed save of Eyebite does, and the retarget, and leaves it to the master', () => {
     expect(spellNotes('spell:eyebite')).toEqual([
-      'Quem falhar na salvaguarda dorme, entra em pânico ou passa mal, à escolha de quem conjura. Em cada turno seguinte, enquanto a magia durar, quem conjura pode usar uma ação para mirar outra criatura. O mestre aplica o efeito.',
+      'Quem falhar no teste de resistência dorme, entra em pânico ou passa mal, à escolha de quem conjura. Em cada turno seguinte, enquanto a magia durar, quem conjura pode usar uma ação para mirar outra criatura. O mestre aplica o efeito.',
     ]);
   });
 
