@@ -59,7 +59,7 @@ describe('npc card view', () => {
   });
 
   it('lists the area spell an NPC has only as an innate grant by its reference, apart from the class option of the same spell', () => {
-    const grant = { sourceKey: 'trait:inato' };
+    const grant = { sourceKey: 'trait:inato', sourceNamePt: 'Dom inato' };
     const o = options({
       options: {
         attacks: [],
@@ -77,8 +77,8 @@ describe('npc card view', () => {
     });
     expect(areaSpellsOf(o, false)).toEqual([
       { key: 'x', name: 'Bola' },
-      { key: 'x#granted=trait:inato', name: 'Bola' },
-      { key: 'w#granted=trait:inato', name: 'Muro' },
+      { key: 'x#granted=trait:inato', name: 'Bola · Dom inato' },
+      { key: 'w#granted=trait:inato', name: 'Muro · Dom inato' },
     ]);
     for (const { key } of areaSpellsOf(o, false)) {
       expect(areaSpellOf(o as never, key)).not.toBeNull();

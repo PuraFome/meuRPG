@@ -298,6 +298,34 @@ describe('the master casting an NPC area spell', () => {
     expect(data.grantedBy).toBe('trait:inato');
   });
 
+  it('sends no slot for a leveled option the NPC has through a grant that allows none, at the grant’s cast level', () => {
+    const o = options(3, []);
+    o.options!.spells[0]!.grant = { sourceKey: 'trait:inato', castLevel: 4 } as never;
+    const data = masterAreaCastData({
+      campaignId: 'c',
+      encounter: enc,
+      caster,
+      key: 'spell:fireball#granted=trait:inato',
+      found: areaSpellOf(o, 'spell:fireball#granted=trait:inato')!,
+      map: { mapName: 'Cripta' } as never,
+      state: new CombatState(),
+    });
+    expect(data.slot).toBeNull();
+    expect(data.level).toBe(4);
+    o.options!.spells[0]!.grant = { sourceKey: 'trait:inato', alsoWithSlot: true } as never;
+    o.options!.spells[0]!.slots = [{ level: 3, pact: false, free: 1 }] as never;
+    const withSlot = masterAreaCastData({
+      campaignId: 'c',
+      encounter: enc,
+      caster,
+      key: 'spell:fireball#granted=trait:inato',
+      found: areaSpellOf(o, 'spell:fireball#granted=trait:inato')!,
+      map: { mapName: 'Cripta' } as never,
+      state: new CombatState(),
+    });
+    expect(withSlot.slot).toEqual({ level: 3, pact: false });
+  });
+
   it("casts with the lowest slot the options offer, or the spell's own level", () => {
     expect(
       dataFor(3, [

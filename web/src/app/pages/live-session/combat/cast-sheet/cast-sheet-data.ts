@@ -14,7 +14,7 @@ import {
   type SpellOption,
   type TurnOptions,
 } from '../../../../../gen/meurpg/rules/v1/rules_pb';
-import { defaultSlot, slotRows } from '../../../../core/combat/cast-flow';
+import { castLevelOf, defaultSlot, slotRows } from '../../../../core/combat/cast-flow';
 import {
   optionOfRef,
   splitCastRef,
@@ -193,6 +193,8 @@ export function masterAreaCastData(req: {
   const { spell, targets, level, name } = req.found;
   const { key, grantedBy } = splitCastRef(req.key);
   const row = defaultSlot(slotRows(level, spell.slots, [], null));
+  // A leveled spell the NPC has through a grant that allows no slot is cast with none, at the grant's cast level.
+  const free = level > 0 && !!spell.grant && !spell.grant.alsoWithSlot;
   return {
     campaignId: req.campaignId,
     encounterId: req.encounter.id,
@@ -200,8 +202,8 @@ export function masterAreaCastData(req: {
     spellKey: key,
     grantedBy,
     name,
-    level,
-    slot: level > 0 ? { level: row?.level ?? level, pact: row?.pact ?? false } : null,
+    level: free ? castLevelOf(null, spell.grant, level) : level,
+    slot: level > 0 && !free ? { level: row?.level ?? level, pact: row?.pact ?? false } : null,
     economy: spell.economy,
     targets,
     map: req.map,

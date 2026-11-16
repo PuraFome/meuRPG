@@ -56,7 +56,14 @@ export function areaSpellsOf(
   return (options.options.spells ?? []).flatMap((s) => {
     const t = targetsOfOption(options.options?.spells ?? [], options.spellTargets ?? [], s);
     return s.spell && s.enabled && t && t.placement !== AreaPlacement.UNSPECIFIED
-      ? [{ key: castRefOf(s), name: s.spell.namePt || s.spell.name }]
+      ? [
+          {
+            key: castRefOf(s),
+            name: [s.spell.namePt || s.spell.name, s.grant?.sourceNamePt]
+              .filter(Boolean)
+              .join(' · '),
+          },
+        ]
       : [];
   });
 }

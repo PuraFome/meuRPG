@@ -27,7 +27,12 @@ const zuk = combatant({ id: 'z', label: 'Zuk', col: 8, row: 1 });
 const toren = combatant({ id: 't', label: 'Toren', kind: CombatantKind.PLAYER, col: 5, row: 4 });
 const g3 = combatant({ id: 'g3', label: 'Goblin 3', hidden: true, col: 6, row: 5 });
 
-async function open(rule: HiddenAreaHitRule, hiddenInside: boolean, grantedBy = '') {
+async function open(
+  rule: HiddenAreaHitRule,
+  hiddenInside: boolean,
+  grantedBy = '',
+  slotless = false,
+) {
   TestBed.resetTestingModule();
   const castSpell = vi.fn().mockResolvedValue({ encounter: encounter(), cast: { targets: [] } });
   const previewSpellArea = vi.fn().mockResolvedValue(
@@ -50,8 +55,8 @@ async function open(rule: HiddenAreaHitRule, hiddenInside: boolean, grantedBy = 
     spellKey: 'spell:fireball',
     grantedBy,
     name: 'Bola de Fogo',
-    level: 3,
-    slot: { level: 3, pact: false },
+    level: slotless ? 4 : 3,
+    slot: slotless ? null : { level: 3, pact: false },
     economy: ActionEconomy.ACTION,
     targets: create(SpellTargetsSchema, {
       placement: AreaPlacement.POINT,
@@ -169,5 +174,19 @@ describe("MasterAreaCast: the master casts an NPC's area spell", () => {
     button('Conjurar Bola de Fogo').click();
     await settle();
     expect(castSpell.mock.calls[0][12]).toMatchObject({ grantedBy: 'trait:inato' });
+  });
+
+  it('previews and casts a grant that allows no slot with a null slot', async () => {
+    const { button, settle, castSpell, previewSpellArea, el } = await open(
+      HiddenAreaHitRule.KEEP_HIDDEN,
+      false,
+      'trait:inato',
+      true,
+    );
+    expect(previewSpellArea.mock.calls.at(-1)?.[4]).toBeNull();
+    expect(plain(el.textContent)).not.toContain('espaço de');
+    button('Conjurar Bola de Fogo').click();
+    await settle();
+    expect(castSpell.mock.calls[0][4]).toBeNull();
   });
 });
