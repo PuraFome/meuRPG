@@ -1,6 +1,7 @@
 package play
 
 import (
+	"slices"
 	"testing"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
@@ -50,12 +51,21 @@ func TestAnOpenWindowOfAnotherKindIsNotAReleaseOfTheHeldSpell(t *testing.T) {
 	a := newCasters(t)
 	_, w := a.heldSave(t) // Hold Person is held, and Pensantus owes the save: no READIED window is open
 	e := a.get(t, a.master)
-	before := a.events(t)
+	levels := []int32{1, 2, 3, 4, 5}
+	slots, before := a.slotsOf(t, "Pensantus", levels...), a.events(t)
 	_, err := a.cast(t, a.ana, e, "Pensantus", holdPerson, slotOfLevel(2), a.at(t, "Capitão Goblin"), noCastRoll)
-	if err == nil {
-		t.Fatal("the cast of the held spell with only a save open was accepted")
+	wantBlockedBy(t, "the cast of the held spell with only a save open", err, blockedNotYourTurn)
+	pens := byLabel(t, a.get(t, a.master), "Pensantus")
+	if n := a.events(t); n != before || a.readiedStatus(t, "Pensantus") != readiedWaiting || a.readiedOpen(t, "Pensantus") || pens.GetReactionUsed() {
+		t.Errorf("after the refusal: events %d (want %d), row %q, READIED window open %v, reaction used %v; want nothing written, the row waiting and no window", n, before, a.readiedStatus(t, "Pensantus"), a.readiedOpen(t, "Pensantus"), pens.GetReactionUsed())
 	}
-	if n := a.events(t); n != before || a.readiedStatus(t, "Pensantus") != readiedWaiting || a.windowOf(t, a.ana, playv1.ReactionKind_REACTION_KIND_CONCENTRATION_SAVE).GetId() != w.GetId() || byLabel(t, a.get(t, a.master), "Pensantus").GetReactionUsed() {
-		t.Errorf("after the refusal: events %d (want %d), row %q; want nothing written, the row waiting and the save open", n, before, a.readiedStatus(t, "Pensantus"))
+	if got := a.slotsOf(t, "Pensantus", levels...); !slices.Equal(got, slots) {
+		t.Errorf("slots after the refusal = %v, want %v: the refused cast spent one", got, slots)
+	}
+	if got := a.storedConcentration(t, "Pensantus"); got != concentrationReadied {
+		t.Errorf("the stored concentration after the refusal = %q, want the sentinel %q", got, concentrationReadied)
+	}
+	if got := a.windowOf(t, a.ana, playv1.ReactionKind_REACTION_KIND_CONCENTRATION_SAVE); got.GetId() != w.GetId() {
+		t.Errorf("the save window after the refusal = %v, want %s still open", got, w.GetId())
 	}
 }

@@ -65,6 +65,20 @@ func (h heldCase) laid(t *testing.T, c *cave) int {
 	return n
 }
 
+// storedConcentration is the concentration the combatant's row holds, as the table keeps it: not what a read tells (a held spell
+// reads as its key to its owner and the master).
+func (a *armed) storedConcentration(t *testing.T, label string) string {
+	t.Helper()
+	var got *string
+	if err := a.h.pool.QueryRow(t.Context(), `SELECT concentration_spell FROM combatants WHERE label = $1`, label).Scan(&got); err != nil {
+		t.Fatalf("read the stored concentration of %s: %v", label, err)
+	}
+	if got == nil {
+		return ""
+	}
+	return *got
+}
+
 func TestTheUndoOfAReleasedHeldSpellHoldsItAgain(t *testing.T) {
 	t.Parallel()
 	for _, tt := range []heldCase{{"Web", webKey, 2}, {"Wall of Fire", wallOfFireKey, 4}, {"Sleep", sleepSpell, 1}} {
@@ -79,6 +93,9 @@ func TestTheUndoOfAReleasedHeldSpellHoldsItAgain(t *testing.T) {
 			}
 			held := byLabel(t, c.get(t, c.master), "Pensantus").GetConcentrationSpell()
 			levels := []int32{1, 2, 3, 4, 5}
+			if got := c.storedConcentration(t, "Pensantus"); got != concentrationReadied {
+				t.Fatalf("the stored concentration while the spell is held = %q, want the sentinel %q", got, concentrationReadied)
+			}
 			slots, laid := c.slotsOf(t, "Pensantus", levels...), tt.laid(t, c)
 			tt.release(t, c)
 			if got := tt.laid(t, c); got <= laid || c.readiedStatus(t, "Pensantus") != readiedFired { // the check can fail: the release did lay something
@@ -93,6 +110,9 @@ func TestTheUndoOfAReleasedHeldSpellHoldsItAgain(t *testing.T) {
 			if pens.GetConcentrationSpell() != held || pens.GetReactionUsed() || c.readiedStatus(t, "Pensantus") != readiedWaiting || !slices.Equal(c.slotsOf(t, "Pensantus", levels...), slots) {
 				t.Errorf("after the undo: concentration %q (want %q), reaction used %v, row %q, slots %v (want %v); want the held spell as it was",
 					pens.GetConcentrationSpell(), held, pens.GetReactionUsed(), c.readiedStatus(t, "Pensantus"), c.slotsOf(t, "Pensantus", levels...), slots)
+			}
+			if got := c.storedConcentration(t, "Pensantus"); got != concentrationReadied {
+				t.Errorf("the stored concentration after the undo = %q, want the sentinel %q", got, concentrationReadied)
 			}
 			if win == nil || win.GetReactorId() != pens.GetId() || win.GetRolling() || win.GetWaitBeganAt() != nil || win.GetWaitedMs() != 0 {
 				t.Errorf("after the undo the READIED window reads %v; want it open with a clean wait", win)
