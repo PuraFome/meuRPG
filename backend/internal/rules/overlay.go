@@ -628,9 +628,17 @@ func (c *Content) ForPlayer() *Content {
 	if !c.c.table || c.c.player {
 		return c
 	}
-	x := *c.c
+	return &Content{c: c.c.asPlayer()}
+}
+
+// asPlayer is the content as a player reads it; the same content when it already is.
+func (c *content) asPlayer() *content {
+	if c.player {
+		return c
+	}
+	x := *c
 	x.player = true
-	return &Content{c: &x}
+	return &x
 }
 
 // AsksOptionsOf says the choice (its key is its feature's) offers the options of another feature, a pool the table
