@@ -239,6 +239,9 @@ type reader struct {
 
 // say is the issue's sentence for the reader.
 func (r reader) say(is rules.Issue) string {
+	if is.Named != "" && r.master {
+		return is.Named
+	}
 	if is.Lost == nil {
 		return is.Message
 	}
@@ -249,7 +252,7 @@ func (r reader) say(is rules.Issue) string {
 // prerequisite to the reader's sentence.
 func (r reader) tell(d *rulesv1.DerivedSheet, issues []rules.Issue) {
 	for i, is := range issues {
-		if is.Lost != nil && i < len(d.GetIssues()) {
+		if (is.Lost != nil || is.Named != "") && i < len(d.GetIssues()) {
 			d.Issues[i].Message = r.say(is)
 		}
 	}

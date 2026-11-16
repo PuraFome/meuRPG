@@ -86,6 +86,7 @@ O servidor monta a ficha nova a partir da guardada e a confere com as regras, en
 - **O mestre acrescenta o resto no editor** ("o mestre acrescenta pelo editor"): multiclasse, uma subclasse própria, o Arcanum Místico do Bruxo, a Maestria de Magias e as Magias Assinatura do Mago, os Segredos Mágicos Adicionais do Colégio do Conhecimento, os inimigos e terrenos favoritos do Patrulheiro, e trocar uma magia conhecida por outra (a subida de nível guiada só acrescenta magias).
 - **Uma ficha guardada que já não passa nas regras de hoje** recebe a recusa que pede ao mestre que corrija a ficha.
 - **Um jogador que não pode subir de nível** (o personagem não "Pode subir de nível", é um NPC ou está no nível 20) também é recusado.
+- **Uma escolha que o nível não oferece.** A subida de nível de um jogador (a prévia e a subida em si) que envia uma opção, ou a opção que uma troca assume, que o nível não oferece àquele personagem é recusada só com a recusa: nenhuma ficha de depois volta. A prévia do mestre continua como antes.
 - **O dado de vida** segue o modo de dados da campanha (RN-18). O dado rolado no app é rolado pelo servidor e guardado para aquele personagem e nível, então pedir de novo devolve o mesmo resultado. Uma campanha que obriga o dado físico recusa o dado do app, e o contrário.
 - **O mestre lê toda subida de nível** em "O que mudou".
 

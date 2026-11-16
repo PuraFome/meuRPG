@@ -568,7 +568,7 @@ func (s *Service) PreviewLevelUp(
 	}
 	// A retired or switched-off choice builds no sheet, whatever else is refused: a
 	// player who guesses such a key must not read its features in `after` (RN-23).
-	if plan.retiredChoice {
+	if plan.retiredChoice || plan.bare {
 		return connect.NewResponse(&charactersv1.PreviewLevelUpResponse{Refusal: plan.refusal}), nil
 	}
 	res := &charactersv1.PreviewLevelUpResponse{

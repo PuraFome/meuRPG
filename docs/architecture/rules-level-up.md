@@ -28,6 +28,7 @@ At the end the new sheet may not have an `Issue` the old one lacked (a spell out
 **Refusals.**
 Each refusal is a `*LevelUpError` with the field (in the proto's names, e.g. `full.cantrip_keys`) and a stable reason code, which the screen translates to Portuguese; the message is never read.
 The codes are the `LevelUpReason*` constants in `levelup.go` and the `LevelUpRefusalReason` enum in `characters.proto` (which adds the ones the server raises itself: the hit point roll, the table's hit point rule, archived and switched-off choices, feats not allowed, `SHEET_NEEDS_MASTER`).
+A player's request whose `feature_choice_keys` or swap `to_key` is not among the options `GetLevelUpOptions` offers that character at that level (after `hideFromPlayer`) is refused before anything is derived (`unofferedRefusal`, `levelup_offered.go`): `PreviewLevelUp` answers the refusal alone, with no `after` and no multiclass summary, and `LevelUpCharacter` refuses it. The master's reads are unchanged.
 
 **One source for the offer and the check.**
 What the options say and what the check demands come from the same numbers (`levelUpOptionsWith`).

@@ -1297,6 +1297,9 @@ type Issue struct {
 	// particular, with no hidden name; the sheet stores neither (known issues hold the issue's ID). Never
 	// in JSON: it may name a hidden entry.
 	Lost *LostPrerequisite `json:"-"`
+	// Named is the sentence the master reads in place of Message when Message names nobody: an issue about an entry the
+	// players may not read tells them a sentence without it. Empty when Message is for every reader. Never in JSON.
+	Named string `json:"-"`
 }
 
 // Issue codes.

@@ -773,11 +773,21 @@ func (col *collector) offeredBy(parent string) {
 func (col *collector) optionNotOffered(field, key string, f *srd51.Feature) {
 	x := col.x
 	c := x.c
-	x.issueChange(IssueUnknownKey, field, "", fmt.Sprintf("a escolha %s não vale mais: nada na ficha oferece essa opção.", c.namePT(key)), fmt.Sprintf("%s não vale para este personagem.", c.namePT(key)))
+	named, change := fmt.Sprintf("%s não vale para este personagem.", c.namePT(key)), fmt.Sprintf("a escolha %s não vale mais: nada na ficha oferece essa opção.", c.namePT(key))
+	x.issueChange(IssueUnknownKey, field, "", change, named)
+	last := &x.d.Issues[len(x.d.Issues)-1]
+	if c.hidden(key) {
+		// The entry is one the players may not read: the sentence names it for the master alone (Issue.Named).
+		last.Named, last.Message = named, "Uma opção não vale para este personagem."
+		last.ChangeMessage = "uma das escolhas não vale mais: nada na ficha oferece essa opção."
+	}
 	if entry := x.tieToOfferers(x.optionParent(key, f.Parent)); entry != "" {
-		last := &x.d.Issues[len(x.d.Issues)-1]
+		last = &x.d.Issues[len(x.d.Issues)-1]
 		last.ChangeSubject = entry
 		last.ChangeMessage = fmt.Sprintf("agora não oferece a escolha %s; ela não vale mais nesta ficha.", c.namePT(key))
+		if last.Named != "" {
+			last.ChangeMessage = "agora não oferece uma das escolhas; ela não vale mais nesta ficha."
+		}
 	}
 }
 

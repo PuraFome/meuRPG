@@ -132,6 +132,8 @@ type levelUpPlan struct {
 	// switched off, whatever the refusal is: the sheet it builds is not theirs to read
 	// (RN-23).
 	retiredChoice bool
+	// bare says a choice is one the level does not offer this player: the answer is the refusal alone, no sheet is built.
+	bare bool
 	// record is what ListLevelUps keeps: the choices, with the hit points
 	// value the level took.
 	record *charactersv1.LevelUpChoices
@@ -154,6 +156,9 @@ func (s *Service) planLevelUp(ctx context.Context, tx pgx.Tx, q *charactersdb.Qu
 	offer, lerr := rules.LevelUpOptions(t.build, t.classKey, t.content)
 	if lerr != nil {
 		return levelUpPlan{}, levelUpRulesError(lerr)
+	}
+	if refusal, err := unofferedRefusal(t, m, choices); err != nil || refusal != nil {
+		return levelUpPlan{refusal: refusal, bare: refusal != nil}, err
 	}
 	plan := newLevelUpPlan(t, choices, offer)
 	hp, err := s.planHitPoints(ctx, tx, q, m, t, choices, offer, &plan)

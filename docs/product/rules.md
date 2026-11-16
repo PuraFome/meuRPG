@@ -86,6 +86,7 @@ The server builds the new sheet from the stored one and checks it with the rules
 - **The master adds the rest in the editor** ("o mestre acrescenta pelo editor"): multiclassing, a custom subclass, the Warlock's Mystic Arcanum, the Wizard's Spell Mastery and Signature Spells, the Additional Magical Secrets of the College of Lore, the Ranger's favored enemies and terrains, and swapping a known spell for another (the guided level-up only adds spells).
 - **A stored sheet that no longer passes today's rules** gets the refusal that asks the master to fix the sheet.
 - **A player who cannot level up** (the character is not "Pode subir de nível", is an NPC or is at level 20) is refused too.
+- **A choice the level does not offer.** A player's level-up (the preview and the level-up itself) that sends an option, or the option a swap takes, which the level does not offer that character is refused with the refusal alone: no sheet of afterwards comes back. The master's preview reads as before.
 - **The hit die** follows the campaign's dice mode (RN-18). The die rolled in the app is rolled by the server and kept for that character and level, so asking again returns the same result. A campaign that forces the physical die refuses the app die, and the reverse.
 - **The master reads every level-up** in "O que mudou".
 
