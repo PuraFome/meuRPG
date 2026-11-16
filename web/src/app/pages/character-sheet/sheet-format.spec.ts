@@ -66,7 +66,7 @@ describe('sheet-format', () => {
     } as const;
     expect(grantedSpellTags({ ...g, castLevel: 2 })).toEqual([
       'Gasta um uso de Usos',
-      'Conjurada no 2º\u00a0nível',
+      'Conjurada no\u00a02º\u00a0nível',
     ]);
     expect(grantedSpellTags(g)).toEqual(['Gasta um uso de Usos']);
     expect(grantedSpellTags({ ...g, level: 0, castLevel: 0 })).toEqual(['Gasta um uso de Usos']);

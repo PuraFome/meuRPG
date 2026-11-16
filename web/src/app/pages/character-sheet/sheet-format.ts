@@ -301,7 +301,7 @@ export function grantedSpellTags(g: GrantedSpellVm): string[] {
   const spent = g.usesCost > 1 ? `Gasta ${g.usesCost} usos de` : 'Gasta um uso de';
   const tags = [g.atWill ? 'À vontade' : `${spent} ${g.resourceNamePt}`];
   if (g.castLevel > g.level) {
-    tags.push(`Conjurada no ${circleLabel(g.castLevel)}`);
+    tags.push(`Conjurada no\u00a0${circleLabel(g.castLevel)}`);
   }
   if (g.alsoWithSlot) {
     tags.push('Também com espaço');

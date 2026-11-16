@@ -92,7 +92,7 @@ test(
       await p.goto(`/campaigns/${campaignId}/characters/${table.characterId}`);
       const row = p.locator('.granted__item', { hasText: 'Bênção' });
       await expect(row.getByText('À vontade', { exact: true })).toBeVisible();
-      await expect(row.getByText('Conjurada no 2º nível', { exact: true })).toBeVisible();
+      await expect(row.getByText('Conjurada no\u00a02º\u00a0nível', { exact: true })).toBeVisible();
     } finally {
       await endOpenSessionRPC(m, campaignId);
       await master.close();
@@ -119,7 +119,7 @@ test(
       await openSessionPage(p, campaignId);
       const sheet = await openCastOf(p, 'Bênção');
       await expect(castSheet(p)).toBeVisible();
-      await expect(sheet.getByText('À vontade · Carisma · CD 12 · ataque +4 · no 2º nível', { exact: true })).toBeVisible();
+      await expect(sheet.getByText('À vontade · Carisma · CD 12 · ataque +4 · no\u00a02º\u00a0nível', { exact: true })).toBeVisible();
     } finally {
       await endOpenSessionRPC(m, campaignId);
       await master.close();
@@ -149,7 +149,7 @@ test(
       await p.getByRole('button', { name: 'Conjurar Bênção' }).click();
       const sheet = p.getByRole('dialog', { name: 'Conjurar Bênção' });
       await viaTargetList(p, sheet);
-      await expect(sheet.getByText('Graça de teste · À vontade · no 2º nível')).toBeVisible();
+      await expect(sheet.getByText('Graça de teste · À vontade · no\u00a02º\u00a0nível')).toBeVisible();
       await expect(sheet.getByText('Escolha até 4 alvos')).toBeVisible();
     } finally {
       await endOpenSessionRPC(m, campaignId);

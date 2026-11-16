@@ -199,7 +199,9 @@ describe('the ways to cast a granted spell', () => {
       grants: [create(CastingGrantSchema, { ...grant, castLevel: 2 })],
     });
     const [, own, withSlot] = wayCardsOf(up);
-    expect(own.detail).toBe('2 usos restantes · Sabedoria · CD 13 · ataque +5 · no 2º\u00a0nível');
+    expect(own.detail).toBe(
+      '2 usos restantes · Sabedoria · CD 13 · ataque +5 · no\u00a02º\u00a0nível',
+    );
     expect(withSlot.detail).not.toContain('nível');
     const same = castingSpell('spell:bless', 'Bênção', 1, {
       grants: [create(CastingGrantSchema, { ...grant, castLevel: 1 })],

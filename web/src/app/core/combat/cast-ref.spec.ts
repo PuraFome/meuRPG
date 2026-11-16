@@ -79,7 +79,7 @@ describe('the line of a granted spell', () => {
         create(SpellGrantOptionSchema, { sourceNamePt: 'Legado', usesLeft: 1, castLevel }),
         level,
       );
-    expect(at(2)).toBe('Legado · 1 uso · no 2º\u00a0nível');
+    expect(at(2)).toBe('Legado · 1 uso · no\u00a02º\u00a0nível');
     expect(at(1)).toBe('Legado · 1 uso');
     expect(at(0, 0)).toBe('Legado · 1 uso');
     const atWill = create(SpellGrantOptionSchema, {
@@ -87,7 +87,7 @@ describe('the line of a granted spell', () => {
       atWill: true,
       castLevel: 3,
     });
-    expect(grantLine(atWill, 1)).toBe('Legado · À vontade · no 3º\u00a0nível');
+    expect(grantLine(atWill, 1)).toBe('Legado · À vontade · no\u00a03º\u00a0nível');
   });
 });
 

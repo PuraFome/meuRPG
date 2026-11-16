@@ -141,7 +141,7 @@ describe('CastSheet: a spell cast through a grant (MR-025)', () => {
 
   it('says the level the cast is at, and previews the dice of that level', async () => {
     const { el } = await open({ castLevel: 2, dice: true });
-    expect(el.querySelector('.grant')?.textContent).toContain('Graça de teste · 1 uso · no 2º');
+    expect(el.querySelector('.grant')?.textContent).toContain('Graça de teste · 1 uso · no\u00a02º');
     expect(el.textContent).toContain('3d6 de radiante');
     expect(el.textContent).not.toContain('2d6 de radiante');
   });
