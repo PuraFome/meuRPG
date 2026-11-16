@@ -3,6 +3,7 @@ package play
 import (
 	"slices"
 	"testing"
+	"time"
 
 	"connectrpc.com/connect"
 	"google.golang.org/protobuf/proto"
@@ -355,5 +356,84 @@ func TestTheWaitOfAReadiedWindowBeginsAtTheFirstMarkAndNeverMoves(t *testing.T) 
 	a.mustAnswer(t, a.ana, e, w.GetId(), withTargets(darts(a, t, "Capitão Goblin", 3)))
 	if a.readiedStatus(t, "Pensantus") != readiedFired {
 		t.Errorf("the window answered after the marks: row %q, want fired", a.readiedStatus(t, "Pensantus"))
+	}
+}
+
+// A READIED window an undo opens again starts its wait clean: the mark and the beginning of the wait the window had
+// before its use (or its pass) are gone, so the master's screen does not pass it at once, and the next mark starts a new
+// wait. The same for the spell's release, the move's and the pass.
+func TestAnUndoThatReopensAReadiedWindowStartsItsWaitClean(t *testing.T) {
+	t.Parallel()
+	type setup struct {
+		a      *armed
+		e      *playv1.Encounter
+		w      *playv1.ReactionWindow
+		player *user
+		use    func() // the use or the pass that closes the window
+	}
+	spell := func(release func(a *armed, e *playv1.Encounter, w *playv1.ReactionWindow)) func(t *testing.T) setup {
+		return func(t *testing.T) setup {
+			a := newCasters(t)
+			e := a.readyForRelease(t, magicMissileSpell, 1, "Capitão Goblin")
+			w := a.mustFire(t, e, "Pensantus")
+			return setup{a, e, w, a.ana, func() { release(a, e, w) }}
+		}
+	}
+	for _, tt := range []struct {
+		name  string
+		setup func(t *testing.T) setup
+	}{
+		{"a spell released with CastSpell", spell(func(a *armed, e *playv1.Encounter, _ *playv1.ReactionWindow) {
+			if _, err := a.cast(t, a.ana, e, "Pensantus", magicMissileSpell, nil, []*playv1.SpellTarget{darts(a, t, "Capitão Goblin", 3)}, noCastRoll); err != nil {
+				t.Fatalf("the release: %v", err)
+			}
+		})},
+		{"a spell released with an answer", spell(func(a *armed, e *playv1.Encounter, w *playv1.ReactionWindow) {
+			a.mustAnswer(t, a.ana, e, w.GetId(), withTargets(darts(a, t, "Capitão Goblin", 3)))
+		})},
+		{"a pass", spell(func(a *armed, e *playv1.Encounter, w *playv1.ReactionWindow) {
+			a.mustAnswer(t, a.master, e, w.GetId(), passAnswer)
+		})},
+		{"a move", func(t *testing.T) setup {
+			a := newArmed(t)
+			e := a.readyMove(t)
+			w := a.mustFire(t, e, "Toren")
+			return setup{a, e, w, a.caio, func() {
+				if _, err := a.frozenMove(t, a.caio, "Toren", 3, 5); err != nil {
+					t.Fatalf("the readied move: %v", err)
+				}
+			}}
+		}},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			s := tt.setup(t)
+			a := s.a
+			if err := a.markRolling(t, s.player, s.e, s.w.GetId()); err != nil {
+				t.Fatalf("the first mark: %v", err)
+			}
+			first := a.windowOf(t, a.master, kindReadied).GetWaitBeganAt()
+			if first == nil || !a.windowOf(t, a.master, kindReadied).GetRolling() {
+				t.Fatalf("the first mark left rolling %v and the wait's beginning %v", a.windowOf(t, a.master, kindReadied).GetRolling(), first)
+			}
+			a.h.clock.advance(time.Minute) // the player keeps the window a while before it uses it
+			s.use()
+			a.mustUndo(t, s.e)
+			for who, u := range map[string]*user{"the master": a.master, "the reactor's player": s.player} {
+				w := a.windowOf(t, u, kindReadied)
+				if w == nil {
+					t.Fatalf("after the undo %s reads no READIED window", who)
+				}
+				if w.GetRolling() || w.GetWaitBeganAt() != nil {
+					t.Errorf("after the undo %s reads rolling %v and the wait began at %v, want a clean wait", who, w.GetRolling(), w.GetWaitBeganAt())
+				}
+			}
+			if err := a.markRolling(t, s.player, s.e, s.w.GetId()); err != nil {
+				t.Fatalf("the mark after the undo: %v", err)
+			}
+			if again := a.windowOf(t, a.master, kindReadied).GetWaitBeganAt(); again == nil || !again.AsTime().After(first.AsTime()) {
+				t.Errorf("the new wait began at %v, want a time after the first wait's %v", again, first)
+			}
+		})
 	}
 }

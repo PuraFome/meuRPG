@@ -128,7 +128,9 @@ A change that ends the row (a held spell broken, a readier defeated) closes its 
 
 The automatic pass of 30 s counts on the master's screen from when the window opened.
 It can pass a window whose player is still choosing a square for a move, or a target: the row is then ignored.
-The readier's player touching the list of creatures or the darts of the window for the first time marks it as being rolled (`MarkReactionRolling`, once), as the dice step of the other optional reactions does: the master's clock then waits 2 minutes instead of 30 s, and the prompt says so.
+The readier's player sets the mark (`MarkReactionRolling`) on the first touch of the list of creatures or the darts in the window, or on entering the map.
+The player can clear it, and the master's wait is 120 s from `wait_began_at`, not the 30 s of the window.
+The prompt says so.
 The master's own touch does not mark it: the mark is the reactor player's alone.
 
 ## The reaction
@@ -211,7 +213,8 @@ A countered release is the use: the row is `fired`, the reaction spent, the conc
 A refused release spends nothing and the window stays open.
 The readier's player sets the mark on entering the map (`MarkReactionRolling`) and clears it on going back (the same call with `clear`).
 The first set starts one wait of 120 s, and no later set or clear restarts it.
-The server records when the wait began, once, in the window's trigger, and never changes it afterwards.
+The server records when the wait began, once, in the window's trigger, and no later mark or clear changes it.
+An undo that reopens the window (of a spell release, a move release or a pass) starts the wait clean: `rolling` false and no `wait_began_at`, so the next mark begins a new wait.
 The master's row reads whether the player is on the map now (`rolling`) and when the wait began (`wait_began_at`).
 The master's screen passes the window when the 120 s end, with `AnswerReaction` PASS: the server runs no timer.
 The reactor's player reads the mark back too (a second device of the same player shows it), `rolling` and `wait_began_at`.
