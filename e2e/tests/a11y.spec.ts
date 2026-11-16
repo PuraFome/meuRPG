@@ -10819,7 +10819,7 @@ async function scanBonusBoards(browser: Browser, colorScheme: 'light' | 'dark', 
     await equipment.getByRole('button', { name: /^Guardar .*Cota de malha/ }).click();
     await expect(equipment.getByRole('button', { name: /^Equipar .*Cota de malha/ })).toBeVisible();
     const idle = equipment.locator('.gear-row--idle');
-    await expect(idle).toContainText('Parado');
+    await expect(idle).toContainText('Não conta na CA');
     await expect(idle.locator('.bonus-chip--idle')).toHaveCount(1);
     await expect(rowOf(p, 'Cota de malha').locator('.bonus-chip--idle')).toHaveCount(1);
     await expectScreenPasses(p, `A ficha do dono, o escudo parado e a armadura carregada ${where}`);

@@ -87,3 +87,8 @@ export function whoLines(change: ChangedContentVm, canEdit: boolean): string[] {
   const kinds = change.messages.map((_, i) => isShieldLine(change, i));
   return [...new Set(kinds)].map((shield) => whoAdjusts(shield, canEdit));
 }
+
+/** A sentence of the server with "CA 13 → 11" tied by no-break spaces, so a line never breaks inside the two numbers. */
+export function tieAcChange(message: string): string {
+  return message.replace(/CA (\d+) → (\d+)/g, 'CA\u00a0$1\u00a0→\u00a0$2');
+}

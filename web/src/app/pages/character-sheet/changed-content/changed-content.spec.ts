@@ -114,8 +114,9 @@ describe('ChangedContentNotice', () => {
     expect(notice.querySelector('.change__text')?.textContent?.replace(/\s+/g, ' ').trim()).toBe(
       'A arma mudou. O mestre mudou a arma Machado de Lenhador em 14/11/2026. Os números da ficha já usam as regras novas. O que não combina mais:',
     );
+    // "CA 18 → 16" is tied with no-break spaces: a line never breaks inside the two numbers.
     expect(Array.from(notice.querySelectorAll('li')).map((li) => li.textContent)).toEqual([
-      sentence,
+      sentence.replace('CA 18 → 16', 'CA\u00a018\u00a0→\u00a016'),
     ]);
     // The board has 8 px between the last line and the button, the gap of the column and nothing more.
     const open = notice.querySelector<HTMLElement>('.change__open')!;
