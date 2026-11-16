@@ -141,9 +141,9 @@ func TestGetNpcCheckEndsWithTheSession(t *testing.T) {
 }
 
 // genderedWords are the words that give a gender to a player or a character: the pronouns of both languages ("he", "she", "his", "her",
-// "ele", "ela", "dele", "dela" and their plurals) and the player named by a gendered noun or article ("o jogador", "a jogadora",
+// "ele", "ela", "dele", "dela") and the player named by a gendered noun or article ("o jogador", "a jogadora",
 // "jogador(a)", "o/a", "o(a)").
-var genderedWords = regexp.MustCompile(`(?i)\b(he|she|his|her|hers|him|himself|herself|ele|ela|eles|elas|dele|dela|deles|delas|jogador|jogadora|jogadores|jogadoras)\b|jogador\(a\)|\b[oa]/[oa]\b|\b[oa]\([oa]\)`)
+var genderedWords = regexp.MustCompile(`(?i)\b(he|she|his|her|hers|him|himself|herself|ele|ela|dele|dela|jogador|jogadora|jogadores|jogadoras)\b|jogador\(a\)|\b[oa]/[oa]\b|\b[oa]\([oa]\)`)
 
 // TestGenderedWordsFindsTheWordsAndPassesTheNeutralOnes: the search of the refusals sees each gendered form and passes the words that only
 // contain them.

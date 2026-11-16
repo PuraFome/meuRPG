@@ -276,7 +276,9 @@ func tokenOf(text, number string) bool {
 			return false
 		}
 		from, to := i+at, i+at+len(number)
-		if !(from > 0 && isWordByte(text[from-1])) && !(to < len(text) && isWordByte(text[to])) {
+		touchesBefore := from > 0 && isWordByte(text[from-1])
+		touchesAfter := to < len(text) && isWordByte(text[to])
+		if !touchesBefore && !touchesAfter {
 			return true
 		}
 		i = from + 1
