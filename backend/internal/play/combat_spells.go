@@ -439,15 +439,17 @@ type spellAttackRolled struct {
 	truth  modeResult
 	choice modeChoice
 	step   gateResult
+	// toHit is the bonus the d20 counts with.
+	toHit int
 }
 
 // spellAttackD20 settles the mode of a spell attack's roll, as RollAttack does, and rolls its d20. The
 // answer to a Bardic Inspiration question brings the mode and the d20 it was held with.
 func (s *Service) spellAttackD20(ctx context.Context, c *combatTx, sp link.Spell, caster, target playdb.Combatant, in rollInput, modes *spellModes) (spellAttackRolled, error) {
 	if pre := modes.pre; pre != nil && pre.target == target.ID {
-		return spellAttackRolled{truth: pre.truth, choice: pre.choice, step: pre.step}, nil
+		return spellAttackRolled{truth: pre.truth, choice: pre.choice, step: pre.step, toHit: pre.toHit}, nil
 	}
-	var r spellAttackRolled
+	r := spellAttackRolled{toHit: sp.ToHit}
 	var err error
 	if r.truth, err = s.spellAttackTruth(ctx, c, modes, sp, caster, target, false); err != nil {
 		return r, err
@@ -544,7 +546,7 @@ func (s *Service) resolveSpellAttack(ctx context.Context, c *combatTx, m authz.M
 		return combat.AttackResult{}, 0, err
 	}
 	hit.Extra = extra
-	result := combat.ResolveAttackFrom(sp.ToHit+bonusFace+extraTotal, targetAC, face, modes.traits.SpellCriticalRange)
+	result := combat.ResolveAttackFrom(rolled.toHit+bonusFace+extraTotal, targetAC, face, modes.traits.SpellCriticalRange)
 	if rolled.step.Stroke != nil && !result.Hit { // Stroke of Luck: the miss the caster turned into a hit
 		result.Hit, result.Fumble = true, false
 	}
@@ -552,7 +554,7 @@ func (s *Service) resolveSpellAttack(ctx context.Context, c *combatTx, m authz.M
 		result.Critical = true
 	}
 	hit.TargetAC = clamp32(targetAC, 0, math.MaxInt32)
-	hit.D20, hit.Modifier, hit.Total, hit.Physical = clamp32(d20.Face(), 1, 20), conv.Int32(sp.ToHit+bonusFace), conv.Int32(result.Total), d20.Physical
+	hit.D20, hit.Modifier, hit.Total, hit.Physical = clamp32(d20.Face(), 1, 20), conv.Int32(rolled.toHit+bonusFace), conv.Int32(result.Total), d20.Physical
 	hit.countedRoll = countedOf(d20)
 	return result, targetAC, nil
 }

@@ -645,8 +645,8 @@ func (f *castFlow) holdForWindow(ctx context.Context) (bool, error) {
 // holdForDie asks the player of a spell attack against one target, when the character holds a Bardic
 // Inspiration die or is a halfling: the d20 is rolled now (and kept, for the die, or for the Lucky question
 // of a 1), before anything is spent, and the player decides before the result is told (inspiration_held.go).
-// The answer runs the cast again with the d20 already rolled. A cast that waited for a reaction window is not
-// asked.
+// The answer runs the cast again with the d20 already rolled. A cast that waited for a reaction window is asked when the
+// window's replay reaches this point, and its question is the window's own (inspiration_held.go).
 func (f *castFlow) holdForDie(ctx context.Context) error {
 	var err error
 	f.out.asked, err = f.s.holdSpellAttack(ctx, f.c, f.m, f.req, f.call.key, f.caster, rayCombatants(f.sp, f.targets, f.targs), f.sp, f.call.in, f.out.modes, f.strokeArmor(ctx))

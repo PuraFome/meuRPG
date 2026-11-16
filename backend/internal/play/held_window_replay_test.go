@@ -3,8 +3,10 @@ package play
 import (
 	"testing"
 
+	"connectrpc.com/connect"
 	"google.golang.org/protobuf/proto"
 
+	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 )
@@ -258,8 +260,8 @@ func (a *armed) wantTheCastOnce(t *testing.T, c *cx) {
 	}
 }
 
-// TestASpellAttackCastThatAWindowHeldAsksForTheDieAndUsesIt: Pensantus holds a Bardic Inspiration die; the d20 is 15 and her bonus +5.
-// The die's 4 is added: 15 + 5 + 4 = 24. The same answer again gives the same cast and rolls nothing; the cast is taken back with the
+// TestASpellAttackCastThatAWindowHeldAsksForTheDieAndUsesIt: Pensantus holds a Bardic Inspiration die; the d20 is 15 and her bonus +6.
+// The die's 4 is added: 15 + 6 + 4 = 25. The same answer again gives the same cast and rolls nothing; the cast is taken back with the
 // die returned, as any cast's.
 func TestASpellAttackCastThatAWindowHeldAsksForTheDieAndUsesIt(t *testing.T) {
 	t.Parallel()
@@ -287,9 +289,9 @@ func TestASpellAttackCastThatAWindowHeldAsksForTheDieAndUsesIt(t *testing.T) {
 	}
 	a.retryTheAnswerOf(t, c.h.roller, a.ana, offer.GetHoldId(), answerKey, dieAnswer(true), out)
 	targets := out.GetSpellCast().GetCast().GetTargets()
-	if len(targets) != 1 || targets[0].GetAttackRoll().GetFaces()[0] != 15 || targets[0].GetAttackRoll().GetTotal() != 24 ||
+	if len(targets) != 1 || targets[0].GetAttackRoll().GetFaces()[0] != 15 || targets[0].GetAttackRoll().GetTotal() != 25 ||
 		len(targets[0].GetBonusDice()) != 1 || targets[0].GetBonusDice()[0].GetFace() != 4 {
-		t.Fatalf("the cast = %v, want the d20 15 + 5 + the die 4 = 24", out.GetSpellCast().GetCast())
+		t.Fatalf("the cast = %v, want the d20 15 + 6 + the die 4 = 25", out.GetSpellCast().GetCast())
 	}
 	a.wantTheCastOnce(t, c)
 	if n := a.countOf(t, `SELECT count(*) FROM combatants WHERE id = $1 AND inspiration_sides IS NOT NULL`, c.id(t, "Pensantus")); n != 0 {
@@ -306,12 +308,15 @@ func TestASpellAttackCastThatAWindowHeldAsksForTheDieAndUsesIt(t *testing.T) {
 	if byLabel(t, a.get(t, a.ana), "Pensantus").GetActionUsed() {
 		t.Error("the undo did not give the action back")
 	}
-	if n := a.countOf(t, `SELECT count(*) FROM session_events WHERE kind = $1 AND NOT COALESCE((payload->'reaction'->>'hold')::bool, false)`, eventSpellCast); n != 0 {
-		t.Errorf("%s events after the undo = %d, want 0", eventSpellCast, n)
+	if n := a.countOf(t, `SELECT count(*) FROM session_events WHERE kind = $1`, eventActionUndone); n != 1 {
+		t.Errorf("%s events = %d, want 1", eventActionUndone, n)
+	}
+	if n := a.countOf(t, `SELECT count(*) FROM pending_damages`); n != 0 {
+		t.Errorf("pending damages after the undo = %d, want 0", n)
 	}
 }
 
-// TestASpellAttackCastThatAWindowHeldAsksForTheDieAndKeepsIt: the player keeps the die: 15 + 5 = 20, and the die stays.
+// TestASpellAttackCastThatAWindowHeldAsksForTheDieAndKeepsIt: the player keeps the die: 15 + 6 = 21, and the die stays.
 func TestASpellAttackCastThatAWindowHeldAsksForTheDieAndKeepsIt(t *testing.T) {
 	t.Parallel()
 	a, c := spellAfterAWindow(t, "race:gnome")
@@ -326,8 +331,8 @@ func TestASpellAttackCastThatAWindowHeldAsksForTheDieAndKeepsIt(t *testing.T) {
 	}
 	a.retryTheAnswerOf(t, c.h.roller, a.ana, offer.GetHoldId(), answerKey, dieAnswer(false), out)
 	targets := out.GetSpellCast().GetCast().GetTargets()
-	if len(targets) != 1 || targets[0].GetAttackRoll().GetTotal() != 20 || len(targets[0].GetBonusDice()) != 0 {
-		t.Fatalf("the cast = %v, want the d20 15 + 5 = 20 and no die", out.GetSpellCast().GetCast())
+	if len(targets) != 1 || targets[0].GetAttackRoll().GetTotal() != 21 || len(targets[0].GetBonusDice()) != 0 {
+		t.Fatalf("the cast = %v, want the d20 15 + 6 = 21 and no die", out.GetSpellCast().GetCast())
 	}
 	a.wantTheCastOnce(t, c)
 	if n := a.countOf(t, `SELECT count(*) FROM combatants WHERE id = $1 AND inspiration_sides IS NOT NULL`, c.id(t, "Pensantus")); n != 1 {
@@ -353,7 +358,7 @@ func TestASpellAttackCastThatAWindowHeldAsksLuckyAboutAOne(t *testing.T) {
 	a.retryTheAnswerOf(t, c.h.roller, a.ana, offer.GetHoldId(), answerKey, luckyAnswer(15), out)
 	targets := out.GetSpellCast().GetCast().GetTargets()
 	if len(targets) != 1 || targets[0].GetAttackRoll().GetFaces()[0] != 15 || targets[0].GetAttackRoll().GetTotal() != 20 {
-		t.Fatalf("the cast = %v, want the 1 rolled again to 15, 15 + 5 = 20", out.GetSpellCast().GetCast())
+		t.Fatalf("the cast = %v, want the 1 rolled again to 15, 15 + 5 = 20 (a halfling has no gnome's Intelligence)", out.GetSpellCast().GetCast())
 	}
 	a.wantTheCastOnce(t, c)
 }
@@ -370,4 +375,75 @@ func TestASpellAttackCastThatAWindowHeldAsksNothingOfACasterWithoutADie(t *testi
 		t.Errorf("inspiration_holds rows = %d, want 0", n)
 	}
 	a.wantTheCastOnce(t, c)
+}
+
+// loreBardEnemy is an enemy with a full sheet that is a bard of the College of Lore, so that it may cut a roll with Cutting Words.
+func loreBardEnemy(t *testing.T, a *armed) *charactersv1.Character {
+	t.Helper()
+	sheet := &charactersv1.CharacterSheet{Content: &charactersv1.CharacterSheet_Full{Full: &charactersv1.FullSheet{
+		BaseScores: abilities(10, 14, 12, 10, 16), RaceKey: "race:human",
+		Classes: []*charactersv1.ClassLevel{classLevel("class:bard", 3, "subclass:lore")}, WeaponKeys: []string{rapier},
+	}}}
+	res, err := a.master.characters.CreateCharacter(t.Context(), connect.NewRequest(&charactersv1.CreateCharacterRequest{
+		CampaignId: a.campaignID, Kind: charactersv1.CharacterKind_CHARACTER_KIND_ENEMY, Name: "Bardo", Sheet: sheet,
+	}))
+	if err != nil {
+		t.Fatalf("CreateCharacter(Bardo) error = %v", err)
+	}
+	return res.Msg.GetCharacter()
+}
+
+// TestASpellAttackCutByAnEnemyBardAsksForTheDieOnTheCutRoll: an enemy bard's Cutting Words holds Pensantus's spell attack, and the master
+// answers it with a 5. The replay keeps the d20 15 with the bard's die off it (15 + 6 - 5), and the question is the window's own; the
+// answer that uses the die 4 settles the cast with the cut still off: 15 + 6 - 5 + 4 = 20, not 25.
+func TestASpellAttackCutByAnEnemyBardAsksForTheDieOnTheCutRoll(t *testing.T) {
+	t.Parallel()
+	var bard *charactersv1.Character
+	a := newArmedWith(t, func(a *armed) {
+		a.toren = a.caio.hero(t, a.campaignID, "Toren", "class:fighter", "race:human", 2, scores16(), []string{battleaxe}, nil)
+		a.pens = a.ana.caster(t, a.campaignID, "Pensantus", "class:wizard", "race:gnome", 3,
+			&rulesv1.AbilityScores{Strength: 10, Dexterity: 14, Constitution: 12, Intelligence: 16, Wisdom: 10, Charisma: 8}, nil, []string{fireBolt},
+			[]string{acidArrow}, []string{acidArrow})
+		a.bri = a.bia.hero(t, a.campaignID, "Brisa", "class:fighter", "race:human", 2, scores16(), []string{rapier}, nil)
+		bard = loreBardEnemy(t, a)
+	})
+	e := a.start(t, plan{
+		npcs:     []*playv1.Participant{{CharacterId: bard.GetId()}},
+		npcRolls: []int{3},
+		players:  map[string]int32{"Toren": 18, "Pensantus": 10, "Brisa": 1},
+		reveal:   []string{"Bardo"},
+		at:       map[string][2]int32{"Toren": {3, 3}, "Bardo": {4, 3}, "Pensantus": {10, 3}, "Brisa": {4, 9}},
+	})
+	e = a.passTo(t, e, "Pensantus")
+	a.giveCombatantDie(t, "Pensantus", e)
+
+	key := newKey()
+	held, err := a.castKey(t, a.ana, e, "Pensantus", acidArrow, slotOfLevel(2), a.at(t, "Bardo"), d20Face(15), key)
+	if err != nil || held.GetCast() != nil || held.GetHeldRollOffer() != nil {
+		t.Fatalf("CastSpell() = %v, %v; want it held in the bard's window", held, err)
+	}
+	w := a.windowOf(t, a.master, playv1.ReactionKind_REACTION_KIND_CUTTING_WORDS)
+	if w == nil {
+		t.Fatalf("the master's windows = %v, want the bard's Cutting Words", a.windows(t, a.master))
+	}
+	a.mustAnswer(t, a.master, e, w.GetId(), func(r *playv1.AnswerReactionRequest) {
+		r.Answer, r.Roll = playv1.ReactionChoice_REACTION_CHOICE_USE, &playv1.AnswerReactionRequest_Typed{Typed: 5}
+	})
+	offers := a.listHeldRolls(t, a.ana)
+	if len(offers) != 1 || offers[0].GetDie() == nil || offers[0].GetD20().GetTotal() != 16 {
+		t.Fatalf("Pensantus's questions after the window = %v, want the die's, about the d20 15 + 6 - 5 = 16", offers)
+	}
+	if n := a.countOf(t, `SELECT count(*) FROM inspiration_holds WHERE idempotency_key = $1 AND window_hold`, key); n != 1 {
+		t.Errorf("the window's holds under the cast's key = %d, want 1", n)
+	}
+
+	a.h.roller.queue(4)
+	out, err := a.answerHeldRoll(t, a.ana, offers[0].GetHoldId(), dieAnswer(true))
+	if err != nil {
+		t.Fatalf("AnswerHeldRoll() error = %v", err)
+	}
+	targets := out.GetSpellCast().GetCast().GetTargets()
+	if len(targets) != 1 || targets[0].GetAttackRoll().GetTotal() != 20 || len(targets[0].GetBonusDice()) != 1 {
+		t.Fatalf("the cast = %v, want the d20 15 + 6 - 5 + the die 4 = 20", out.GetSpellCast().GetCast())
+	}
 }
