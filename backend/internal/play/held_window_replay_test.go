@@ -191,7 +191,7 @@ func TestAHideThatAWindowHeldIsWrittenWhenTheDieIsAnswered(t *testing.T) {
 // window is answered, and a caster that is to be asked about the d20 is asked then, as a weapon attack is: the replay keeps the d20
 // with the request, the question under the request's key and marked as the window's (window_hold), and nothing is spent or written
 // until the player answers. The answer casts the spell with that d20, once, under the answer's own key.
-
+//
 // spellAfterAWindow is Pensantus's turn in the arena, with the master's check asked of every roll against an enemy; race is hers.
 func spellAfterAWindow(t *testing.T, race string) (*armed, *cx) {
 	t.Helper()
@@ -477,5 +477,47 @@ func TestASpellAttackIsRefusedWhileTheCastersOtherQuestionWaits(t *testing.T) {
 	}
 	if out, err := a.answerHeldRoll(t, a.ana, first.GetHeldRollOffer().GetHoldId(), dieAnswer(false)); err != nil || out.GetSpellCast().GetCast() == nil {
 		t.Errorf("the first question's answer = %v, %v; want the cast", out, err)
+	}
+}
+
+// TestACounterspelledSpellAttackAsksNothingAndRollsNothing: Brisa holds a die and casts Guiding Bolt; the Mage's Counterspell holds the cast and
+// counters it. The replay writes the countered cast at once, as it did before the cast asked about its d20 when a window held it: no d20 rolled
+// and kept, no question to the player, one countered cast event, the slot and the action spent once, and no damage.
+func TestACounterspelledSpellAttackAsksNothingAndRollsNothing(t *testing.T) {
+	t.Parallel()
+	a, e := mageFight(t)
+	e = a.passTo(t, e, "Brisa")
+	a.giveCombatantDie(t, "Brisa", e)
+	slotsBefore := a.vitals(t, a.bri).GetSpellSlots()
+
+	held, err := a.cast(t, a.bia, e, "Brisa", guidingBolt, slotOfLevel(1), a.at(t, "Goblin"), d20Face(15))
+	if err != nil || held.GetCast() != nil || held.GetHeldRollOffer() != nil {
+		t.Fatalf("CastSpell() = %v, %v; want it held in the Mage's Counterspell window", held, err)
+	}
+	w := a.windowOf(t, a.master, playv1.ReactionKind_REACTION_KIND_COUNTERSPELL)
+	if w == nil {
+		t.Fatalf("the master's windows = %v, want the Mage's Counterspell", a.windows(t, a.master))
+	}
+	res := a.mustAnswer(t, a.master, e, w.GetId(), useAnswer(3))
+	if c := res.GetResult().GetCounterspell(); !c.GetCountered() {
+		t.Fatalf("the result = %v, want the spell countered", res.GetResult())
+	}
+	if offers := a.listHeldRolls(t, a.bia); len(offers) != 0 {
+		t.Errorf("Brisa's questions after the counter = %v, want none", offers)
+	}
+	if n := a.countOf(t, `SELECT count(*) FROM inspiration_holds`); n != 0 {
+		t.Errorf("inspiration_holds rows = %d, want 0", n)
+	}
+	if n := a.countOf(t, `SELECT count(*) FROM session_events WHERE kind = $1 AND NOT COALESCE((payload->'reaction'->>'hold')::bool, false) AND (payload->'reaction'->>'countered')::bool`, eventSpellCast); n != 1 {
+		t.Errorf("countered %s events = %d, want 1", eventSpellCast, n)
+	}
+	if !byLabel(t, a.get(t, a.bia), "Brisa").GetActionUsed() || sameSlots(a.vitals(t, a.bri).GetSpellSlots(), slotsBefore) {
+		t.Error("the countered cast's action or slot is not spent")
+	}
+	if n := a.countOf(t, `SELECT count(*) FROM pending_damages`); n != 0 {
+		t.Errorf("pending damages = %d, want 0", n)
+	}
+	if n := a.countOf(t, `SELECT count(*) FROM combatants WHERE id = $1 AND inspiration_sides IS NOT NULL`, a.id(t, "Brisa")); n != 1 {
+		t.Error("the countered cast used Brisa's die")
 	}
 }

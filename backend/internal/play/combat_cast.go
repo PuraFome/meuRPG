@@ -664,6 +664,9 @@ func (f *castFlow) heldBlocked(ctx context.Context) error {
 // The answer runs the cast again with the d20 already rolled. A cast that waited for a reaction window is asked when the
 // window's replay reaches this point, and its question is the window's own (inspiration_held.go).
 func (f *castFlow) holdForDie(ctx context.Context) error {
+	if f.c.replay != nil && f.c.replay.countered {
+		return nil // a countered cast rolls nothing: it is written as countered (settleCountered), and an answer would cast it again
+	}
 	var err error
 	f.out.asked, err = f.s.holdSpellAttack(ctx, f.c, f.m, f.req, f.call.key, f.caster, rayCombatants(f.sp, f.targets, f.targs), f.sp, f.call.in, f.out.modes, f.strokeArmor(ctx))
 	return err
