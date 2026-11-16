@@ -441,7 +441,8 @@ func (s *Service) askedBardOf(ctx context.Context, tx pgx.Tx, campaignID string,
 		return askedBard{}, false, err
 	}
 	seen := func(sq grid.Square) bool { return sight == nil || sight.Sees(c.PlayerUserID, sq) }
-	sees := place.SightOf(c.ID, boxSees, seen, place.onStage && place.scene.has(c.PlayerUserID))
+	inScene := place.scene.has(c.PlayerUserID)
+	sees := place.SightOf(c.ID, boxSees, seen, place.onStage && inScene, inScene)
 	if !sees.Sees() {
 		return askedBard{}, false, nil
 	}
@@ -469,7 +470,8 @@ func (s *Service) bardOf(ctx context.Context, tx pgx.Tx, campaignID string, c li
 	return bardWith{level: rs.BardLevel}, bard.Asks(), nil
 }
 
-// npcPlace is where the creature stands for the question of a check: its token on the session's map, the stage and who sees the scene.
+// npcPlace is where the creature stands for the question of a check: its token on the session's map, the stage and who the scene is open
+// to (the whole table when no scene is open).
 type npcPlace struct {
 	cutting.Place
 	onStage bool
@@ -488,12 +490,8 @@ func (s *Service) npcPlacement(ctx context.Context, tx pgx.Tx, q *playdb.Queries
 		return p, fmt.Errorf("list the stage: %w", err)
 	}
 	p.onStage = slices.ContainsFunc(rows, func(r playdb.StageNpc) bool { return r.CharacterID == npcID })
-	if p.onStage {
-		if p.scene, err = sceneViewersOf(ctx, q, session); err != nil {
-			return p, err
-		}
-	}
-	return p, nil
+	p.scene, err = sceneViewersOf(ctx, q, session) // read whether or not the creature is on the stage: the box asks only the scene's players
+	return p, err
 }
 
 // mapTokensOf reads the tokens of the session's current map, none when there is no map. On a map with no grid the tokens are still read

@@ -56,13 +56,17 @@ type Sight struct {
 	TokenHidden bool
 	// Box is the master's "Os bardos veem a criatura e ela os ouve" for a table with no placement of both.
 	Box bool
+	// InScene says the bard's player is one of the viewers of the scene the table is in (the whole table when no scene is open or it is
+	// open to everyone). Only the box path reads it: with no measure of the map, the box says the bards see the creature, and a player
+	// the scene is not open to sees nothing of it.
+	InScene bool
 	// OnStage says the creature is on the stage of the open scene for the bard's player (an NPC the players see).
 	OnStage bool
 }
 
 // Sees says the bard sees the creature within the 60 feet of the reactions and the creature hears it. A creature whose token the master
 // hid is seen by nobody, first of all. Outside a combat nothing says a creature is deafened, so it is the master's box that answers
-// when the map does not measure it.
+// when the map does not measure it, for a bard whose player is among the viewers of the scene.
 func (s Sight) Sees() bool {
 	switch {
 	case s.TokenHidden:
@@ -70,7 +74,7 @@ func (s Sight) Sees() bool {
 	case s.Mapped:
 		return s.DistanceFt <= reaction.RangeFt && s.Seen
 	}
-	return s.Box
+	return s.Box && s.InScene
 }
 
 // Named says the bard's player sees the creature itself, so its question may say who it is: the creature is in the bard's sight on the
@@ -179,11 +183,12 @@ func (p Place) Measures(bard string) bool {
 
 // SightOf is what a bard's question reads of the creature. Its own token comes first: hidden, nobody sees it (the bard needs no token
 // for that, and the map needs no grid). Then the map when it measures both (seen says the bard's player sees the creature's square),
-// the master's box otherwise, and whether the creature is on the stage the bard's player sees (onStage).
-func (p Place) SightOf(bard string, box bool, seen func(grid.Square) bool, onStage bool) Sight {
+// the master's box otherwise (for a bard whose player is among the viewers of the scene: inScene), and whether the creature is on the
+// stage the bard's player sees (onStage).
+func (p Place) SightOf(bard string, box bool, seen func(grid.Square) bool, onStage, inScene bool) Sight {
 	npcTok, bardTok := p.Tokens[p.NPC], p.Tokens[bard]
 	if p.Measures(bard) {
 		return Sight{Mapped: true, DistanceFt: grid.RangeFt(bardTok.Sq, npcTok.Sq), Seen: seen(npcTok.Sq), TokenHidden: npcTok.Hidden}
 	}
-	return Sight{Box: box, OnStage: onStage, TokenHidden: npcTok.Hidden}
+	return Sight{Box: box, OnStage: onStage, InScene: inScene, TokenHidden: npcTok.Hidden}
 }

@@ -2,6 +2,7 @@ package play
 
 import (
 	"context"
+	"slices"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -165,4 +166,84 @@ func TestNpcCheckSettledChecksStayUntilTheSessionEndsAndGoWithIt(t *testing.T) {
 	if rows, asks := n.holdsOfTheCampaign(t, append(holds, last.GetCheck().GetHoldId())...); rows != 0 || asks != 0 {
 		t.Errorf("after the end: %d holds and %d asks, want none", rows, asks)
 	}
+}
+
+// TestNpcCheckAsksOnlyTheBardsOfThePlayersOfTheScene: with no token pair to measure, the master's box says the bards see the creature, and
+// the bard's player must also be one the open scene is open to. A bard whose player is outside the scene has no ask, hears nothing of
+// the check and reads no offer, whether the creature is on the stage or not; with the scene open to everyone both bards are asked.
+// Brisa (Bia's) is asked before Lia (Ana's): the first asked hears the check and reads the offer.
+func TestNpcCheckAsksOnlyTheBardsOfThePlayersOfTheScene(t *testing.T) {
+	t.Parallel()
+	for name, tc := range map[string]struct {
+		to    func(n *npcTable) []*user // nil: the scene is open to the whole table
+		stage bool
+		want  []string
+	}{
+		"open to everyone":              {nil, false, []string{"Brisa", "Lia"}},
+		"open to Ana, off the stage":    {func(n *npcTable) []*user { return []*user{n.ana} }, false, []string{"Lia"}},
+		"open to Ana, on the stage":     {func(n *npcTable) []*user { return []*user{n.ana} }, true, []string{"Lia"}},
+		"open to Bia, off the stage":    {func(n *npcTable) []*user { return []*user{n.bia} }, false, []string{"Brisa"}},
+		"open to Caio, off the stage":   {func(n *npcTable) []*user { return []*user{n.caio} }, false, nil},
+		"open to Ana and Bia, on stage": {func(n *npcTable) []*user { return []*user{n.ana, n.bia} }, true, []string{"Brisa", "Lia"}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			n := newNpcTable(t, charactersv1.CuttingWordsAsk_CUTTING_WORDS_ASK_ALL)
+			point, _ := n.h.newScene(n.h.newMap(n.campaignID, gridColumns), "A clareira", true, 1)
+			if tc.to == nil {
+				n.openScene(t, point)
+			} else {
+				n.openFor(t, point, tc.to(n)...)
+			}
+			if tc.stage {
+				if _, err := n.master.play.PutOnStage(t.Context(), connect.NewRequest(&playv1.PutOnStageRequest{CampaignId: n.campaignID, CharacterId: n.npcID})); err != nil {
+					t.Fatalf("PutOnStage() error = %v", err)
+				}
+			}
+			bards := map[string]*user{"Brisa": n.bia, "Lia": n.ana}
+			listeners := map[string]heardBy{}
+			for name, u := range bards {
+				listeners[name] = listen(t, n.h, n.campaignID, u.id, false)
+			}
+			res, err := n.roll(t, 15, true)
+			if err != nil {
+				t.Fatalf("RollNpcCheck() error = %v", err)
+			}
+			var asked []string
+			for _, a := range res.GetCheck().GetAsks() {
+				asked = append(asked, a.GetCharacterName())
+			}
+			if res.GetHeld() != (len(tc.want) > 0) || !slices.Equal(asked, tc.want) {
+				t.Fatalf("the bards asked = %v (held %v), want %v", asked, res.GetHeld(), tc.want)
+			}
+			if res.GetHeld() {
+				if rows := n.asksOf(t, res.GetCheck().GetHoldId()); rows != len(tc.want) {
+					t.Errorf("the check has %d ask rows, want %d", rows, len(tc.want))
+				}
+			}
+			for name, u := range bards {
+				first := len(tc.want) > 0 && tc.want[0] == name // only the bard asked now hears the check and reads its offer
+				heard := false
+				for _, ev := range listeners[name].heard(t, n.h) {
+					heard = heard || ev.GetHeldRollsChanged() != nil
+				}
+				if heard != first {
+					t.Errorf("%s's player heard the held rolls change = %v, want %v", name, heard, first)
+				}
+				if got := n.listHeldRolls(t, u); len(got) != map[bool]int{true: 1}[first] {
+					t.Errorf("%s's player reads %d offers, want %v", name, len(got), map[bool]int{true: 1}[first])
+				}
+			}
+		})
+	}
+}
+
+// asksOf counts the ask rows of a hold.
+func (n *npcTable) asksOf(t *testing.T, hold string) int {
+	t.Helper()
+	var rows int
+	if err := n.h.pool.QueryRow(t.Context(), `SELECT count(*) FROM npc_check_asks WHERE hold_id = $1`, hold).Scan(&rows); err != nil {
+		t.Fatalf("count the asks: %v", err)
+	}
+	return rows
 }
