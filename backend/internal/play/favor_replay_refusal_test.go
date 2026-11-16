@@ -6,6 +6,8 @@ import (
 
 	"connectrpc.com/connect"
 
+	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
+
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 )
 
@@ -203,5 +205,48 @@ func TestTypedFacesOfARefusedReplayAreNotKept(t *testing.T) {
 				t.Errorf("%d %s events, want the hold's marker alone: the typed faces made no roll", n, p.kind)
 			}
 		})
+	}
+}
+
+// What the window's own answer spent stays spent when the replay it released is refused: the Guardião's Protection uses its reaction
+// before the savepoint, as a reaction used against an attack that then did not happen, while the Inspiração the replay spent comes back.
+func TestAProtectionAnswerStaysSpentWhenTheReplayItReleasedIsRefused(t *testing.T) {
+	t.Parallel()
+	a := newCasters(t)
+	guard, err := a.master.characters.CreateCharacter(t.Context(), connect.NewRequest(&charactersv1.CreateCharacterRequest{
+		CampaignId: a.campaignID, Kind: charactersv1.CharacterKind_CHARACTER_KIND_BOSS, Name: "Guardião", Sheet: protector().sheet(),
+	}))
+	if err != nil {
+		t.Fatalf("CreateCharacter(Guardião) error = %v", err)
+	}
+	e := a.start(t, plan{
+		npcs:     []*playv1.Participant{{CharacterId: a.goblin.GetId()}, {CharacterId: guard.Msg.GetCharacter().GetId()}},
+		npcRolls: []int{3, 2},
+		players:  map[string]int32{"Toren": 18, "Pensantus": 10, "Brisa": 1},
+		reveal:   []string{"Goblin", "Guardião"},
+		at:       map[string][2]int32{"Toren": {3, 3}, "Goblin": {4, 3}, "Guardião": {5, 4}, "Pensantus": {10, 3}, "Brisa": {4, 9}},
+	})
+	f := favorFightOf(t, a, e)
+	f.give(t, a.toren)
+	held, err := favorPaths[0].send(t, f, a.caio, newKey(), true, askedAdvantage(true))
+	if err != nil || !held.heldByWindow {
+		t.Fatalf("the spend with an advantage asked on an attack the Guardião may protect against = %+v, %v, want it held", held, err)
+	}
+	f.setConditions(t, f.e, "Toren", "condition:poisoned")
+	w := a.windowOf(t, a.master, playv1.ReactionKind_REACTION_KIND_PROTECTION)
+	if w == nil {
+		t.Fatalf("the master has no Protection window: %v", a.windows(t, a.master))
+	}
+	if byLabel(t, a.get(t, a.master), "Guardião").GetReactionUsed() {
+		t.Fatal("the Guardião's reaction is spent before it answered")
+	}
+	a.h.roller.queue(3, 17)
+	a.mustAnswer(t, a.master, f.e, w.GetId(), useAnswer(0))
+	f.wantNothingKept(t)
+	if !byLabel(t, a.get(t, a.master), "Guardião").GetReactionUsed() {
+		t.Error("the Guardião's reaction is free again: the answer's own writes must stay, the replay's go")
+	}
+	if n := f.countRows(t, `SELECT count(*) FROM reaction_windows WHERE status = 'answered'`); n != 1 {
+		t.Errorf("%d answered window(s), want the Protection's one", n)
 	}
 }
