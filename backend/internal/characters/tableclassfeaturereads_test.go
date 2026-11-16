@@ -169,8 +169,12 @@ func TestAPlayerStillReadsTheSpellAndFeatTheirSheetKeepsWhenSwitchedOffOrRetired
 func TestAPlayerStillReadsTheOptionTheirSheetKeepsWhenSwitchedOffOrRetired(t *testing.T) {
 	t.Parallel()
 	for name, change := range map[string]func(*testing.T, *choiceTable, string){
-		"switched off": func(t *testing.T, tb *choiceTable, key string) { tb.master.setOff(t, tb.campaign, true, key) },
+		"switched off": func(t *testing.T, tb *choiceTable, key string) {
+			t.Helper()
+			tb.master.setOff(t, tb.campaign, true, key)
+		},
 		"retired": func(t *testing.T, tb *choiceTable, key string) {
+			t.Helper()
 			if _, err := tb.master.table.ArchiveTableEntry(t.Context(), connect.NewRequest(&rulesv1.ArchiveTableEntryRequest{CampaignId: tb.campaign, Key: key})); err != nil {
 				t.Fatalf("ArchiveTableEntry() error = %v", err)
 			}
