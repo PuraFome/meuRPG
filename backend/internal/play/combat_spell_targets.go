@@ -58,10 +58,10 @@ func spellsToList(opts *rulesv1.TurnOptions) []spellTargetEntry {
 // cantrip, who it can target as the viewer sees them, with the distance, whether
 // the spell cannot reach it, how many targets it takes and, for Magic Missile,
 // the darts of each slot level. Spells that cannot be cast now are left out:
-// they carry their reason and need no targets.
-func (s *Service) spellTargetsFor(ctx context.Context, campaignID string, scene spellTargetScene, opts *rulesv1.TurnOptions) ([]*playv1.SpellTargets, error) {
+// they carry their reason and need no targets. entries are the spells to list.
+func (s *Service) spellTargetsFor(ctx context.Context, campaignID string, scene spellTargetScene, entries []spellTargetEntry) ([]*playv1.SpellTargets, error) {
 	var out []*playv1.SpellTargets
-	for _, e := range spellsToList(opts) {
+	for _, e := range entries {
 		sp, err := s.roster.CombatSpell(ctx, nil, campaignID, scene.who.CharacterID, e.key, e.level, "")
 		if err != nil {
 			return nil, err
