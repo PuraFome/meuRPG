@@ -17,7 +17,7 @@
     </p>
   }
   @if (targetsError()) {
-    <p class="mr-notice mr-notice--danger" role="alert">
+    <p class="mr-notice mr-notice--danger" role="alert" [id]="targetsErrorId">
       <mat-icon aria-hidden="true">error</mat-icon><span>{{ targetsError() }}</span>
     </p>
   }
@@ -93,11 +93,13 @@
       }
     </div>
   }
-  @if (phase() === 'choose' && reasonText()) {
-    <p class="none" [id]="whyId">
-      <mat-icon aria-hidden="true">block</mat-icon>{{ reasonText() }}
-    </p>
-  }
+  <div class="why" aria-live="polite">
+    @if (phase() === 'choose' && reasonText()) {
+      <p class="none" [id]="whyId">
+        <mat-icon aria-hidden="true">block</mat-icon>{{ reasonText() }}
+      </p>
+    }
+  </div>
   @if (cost(); as c) {
     <p class="cost mr-muted">
       @if (c.mark) {
@@ -116,7 +118,7 @@
   }
   <div foot class="foot">
     @if (phase() === 'choose') {
-      @if (data.kind === 'potion') {
+      @if (gives) {
         <button
           #give
           matButton="outlined"
@@ -126,10 +128,10 @@
           [class.mr-button--off]="giveOff()"
           [disabled]="busy() || !canGive()"
           disabledInteractive
-          [attr.aria-describedby]="giveOff() && reasonText() ? whyId : null"
+          [attr.aria-describedby]="giveWhyId()"
           (click)="canGive() && openGive()"
         >
-          <mat-icon aria-hidden="true">{{ giveOff() ? 'block' : 'volunteer_activism' }}</mat-icon>Dar a…
+          <mat-icon aria-hidden="true">{{ giveIcon() }}</mat-icon>Dar a…
         </button>
       }
       <button

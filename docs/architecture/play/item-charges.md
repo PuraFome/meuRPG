@@ -204,15 +204,21 @@ A sheet with potions and charges reads "Travada: usar poções e cargas continua
 `ConsumableUse` (`shared/consumable-use/consumable-use.ts`) opens `UseConsumableSheet` with the character the dialog acts for (the master's title reads "Usar por <personagem>"), reads the character after a use and words the result as a notice.
 The sheet's magic items and the combat's "Itens" both build one, with the owner's items and what the page knows of the combat.
 `inCombat` is `null` on the sheet, which says both costs, and `true` in the combat.
+The sheet holds no read of a combat: the character's vitals carry none, and the only thing it learns of one is the `COMBAT_RUNNING` refusal of "Recuperar a metade".
 `turnBlock` is `null` on the sheet; in the combat it is `turn` when the turn is not the character's and `action` when the Action is spent (`turnBlockOf`).
 Every potion costs the action in a combat, a text-only one included, except the oils (`OILS`, the keys of the SRD's three oils).
 An oil, a scroll and any other consumable cost no turn and no action, and the master rules on the time.
 A sheet blocked by the turn dashes both buttons and says "Só na sua vez: beber ou dar gasta a ação." or "Você já usou a ação desta vez."
 It reads no list, sends nothing, and opens blocked only for an item that costs the action.
 `UseConsumableSheet` opens on "Dar a…" outlined and "Beber" filled.
-"Dar a…" is dashed, with a block icon and a line, when nobody may receive the item.
+A scroll has no "Dar a…": the sheet reads no list for it and says nothing of receivers.
+"Dar a…" is dashed when nobody may receive the item or the list could not be read, and then it carries a block icon.
+A blocked sheet keeps the open hand on its dashed "Dar a…".
+The dashed button is described by the line that says why, or by the error of the read.
+The line that comes after the read sits in a polite live region that is already on the page, so it is announced.
 The list of receivers is a group of radio rows, and its buttons follow the combat: "Dar a <nome>" and "Beber eu mesmo" in a running combat, "Voltar" and "Dar a <nome>" everywhere else.
 The cost line leads with the mark of the Ação and a bold "Gasta a sua ação." where the use spends it, and with an info icon where it says what it does not spend.
+In a combat the first choice has no cost line for a potion, since the subtitle says "em combate, gasta a ação"; the cost line comes with the list of receivers.
 `ConsumableNoticeCard` draws the notice in the sheet's live region and in the tab of the combat.
 `itemWords` words an item by its name: a potion is "uma Poção" and drunk, anything else (an oil, a scroll) is used.
 "Beber" and "Dar a…" follow the table's dice (RN-18): the app rolls the dice of a healing potion, or the player types one face for each die.

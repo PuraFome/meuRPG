@@ -236,7 +236,11 @@ describe('UseConsumableSheet', () => {
     });
     await settle();
     expect(flat(el.querySelector('.frame__sub'))).toBe('Resta 1 · em combate, gasta a ação');
-    expect(flat(el.querySelector('.cost'))).toBe('Gasta a sua ação.');
+    Array.from(el.querySelectorAll('button'))
+      .find((b) => label(b) === 'Dar a…')!
+      .click();
+    await settle();
+    expect(flat(el.querySelector('.cost'))).toBe('Gasta a sua ação. A poção age em Brisa.');
   });
 
   it('says an oil costs no action: the master judges the time', async () => {
@@ -273,6 +277,22 @@ describe('UseConsumableSheet', () => {
     expect(labels).not.toContain('Dar a…');
   });
 
+  it('does not read who may receive a scroll, and never says "receber a poção" for it', async () => {
+    loadTargets.mockResolvedValue({ targets: [], error: '' });
+    const { el, settle } = render({
+      kind: 'scroll',
+      effectPt: '',
+      itemName: 'Pergaminho de magia',
+      itemKey: 'item:spell-scroll-1st',
+      inCombat: false,
+    });
+    await settle();
+    expect(loadTargets).not.toHaveBeenCalled();
+    expect(el.querySelector('.none')).toBeNull();
+    expect(flat(el)).not.toContain('receber a poção');
+    expect(el.querySelector('[role=alert]')).toBeNull();
+  });
+
   it('says out of a combat that it costs no turn, and asks for the party', async () => {
     const { el, settle } = render({ inCombat: false, actingFor: 'Tor' });
     await settle();
@@ -302,6 +322,40 @@ describe('UseConsumableSheet', () => {
     const drink = Array.from(el.querySelectorAll('button')).find((b) => label(b) === 'Beber')!;
     expect(drink.getAttribute('aria-disabled')).not.toBe('true');
     expect(drink.disabled).toBe(false);
+  });
+
+  it('describes the dashed "Dar a…" by the error when the list could not be read', async () => {
+    loadTargets.mockResolvedValue({
+      targets: [],
+      error: 'Não deu para ver quem pode receber a poção. Tente de novo.',
+    });
+    const { el, settle } = render();
+    await settle();
+    const give = Array.from(el.querySelectorAll('button')).find((b) => label(b) === 'Dar a…')!;
+    expect(give.getAttribute('aria-disabled')).toBe('true');
+    expect(give.classList).toContain('mr-button--off');
+    const alert = el.querySelector('[role=alert]')!;
+    expect(alert.id).not.toBe('');
+    expect(give.getAttribute('aria-describedby')).toBe(alert.id);
+    expect(el.querySelector('.none')).toBeNull();
+  });
+
+  it('puts the line that comes after the read in a polite live region that was already there', async () => {
+    let finish: (out: { targets: ConsumableTargetVm[]; error: string }) => void = () => undefined;
+    loadTargets.mockReturnValue(
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+    );
+    const { el, settle } = render();
+    await settle();
+    const region = el.querySelector('[aria-live=polite]')!;
+    expect(region).not.toBeNull();
+    expect(region.querySelector('.none')).toBeNull();
+    finish({ targets: [], error: '' });
+    await settle();
+    expect(el.querySelector('[aria-live=polite]')).toBe(region);
+    expect(flat(region)).toBe('Ninguém a 1,5 m de você para receber a poção.');
   });
 
   it('gives the dashed "Dar a…" a block icon, and the live one the open hand', async () => {
@@ -386,8 +440,20 @@ describe('UseConsumableSheet', () => {
   });
 
   describe('the cost line (565-02, 565-05)', () => {
+    it('leaves the cost line out of the first choice in a combat: the subtitle says it already', async () => {
+      const { el, settle } = render();
+      await settle();
+      expect(flat(el.querySelector('.frame__sub'))).toBe('Restam 2 · em combate, gasta a ação');
+      expect(el.querySelector('.cost')).toBeNull();
+      expect(el.querySelector('app-economy-mark')).toBeNull();
+    });
+
     it('leads with the mark of the Ação and "Gasta a sua ação." in bold, in a combat', async () => {
       const { el, settle } = render();
+      await settle();
+      Array.from(el.querySelectorAll('button'))
+        .find((b) => label(b) === 'Dar a…')!
+        .click();
       await settle();
       const cost = el.querySelector('.cost')!;
       expect(cost.querySelector('app-economy-mark')).not.toBeNull();
@@ -472,6 +538,10 @@ describe('UseConsumableSheet', () => {
       }
       expect(flat(el.querySelector('.none'))).toBe('Você já usou a ação desta vez.');
       expect(el.querySelector('.none mat-icon')?.textContent?.trim()).toBe('block');
+      expect(dashed(el).map((b) => b.querySelector('mat-icon')?.textContent?.trim())).toEqual([
+        'volunteer_activism',
+        'science',
+      ]);
       expect(loadTargets).not.toHaveBeenCalled();
       dashed(el).forEach((b) => b.click());
       await settle();

@@ -161,11 +161,30 @@ export class UseConsumableSheet {
   /** The server lists only who is within reach for what costs the action in a running combat; any other use lists the party. */
   private readonly byReach = this.data.inCombat === true && this.costs;
   protected readonly whyId = 'use-consumable-why';
-  protected readonly canGive = computed(() => !this.blocked && (this.targets()?.length ?? 0) > 0);
-  /** "Dar a…" is dashed: the turn does not allow it, or the list is read and has nobody. */
+  protected readonly targetsErrorId = 'use-consumable-targets-error';
+  /** Only a potion is given: a scroll has no "Dar a…", so nobody is listed for it. */
+  protected readonly gives = this.data.kind === 'potion';
+  protected readonly canGive = computed(
+    () => this.gives && !this.blocked && (this.targets()?.length ?? 0) > 0,
+  );
+  /** "Dar a…" is dashed: the turn does not allow it, or the list is read and has nobody (or could not be read). */
   protected readonly giveOff = computed(
     () => !!this.blocked || (this.targets() !== null && !this.canGive()),
   );
+  /** The block icon says there is nobody to give to; a use the turn does not allow keeps the open hand, like "Beber". */
+  protected readonly giveIcon = computed(() =>
+    this.giveOff() && !this.blocked ? 'block' : 'volunteer_activism',
+  );
+  /** What says why "Dar a…" is dashed: the line of the turn or of the empty list, or the error of the read. */
+  protected readonly giveWhyId = computed(() => {
+    if (!this.giveOff()) {
+      return null;
+    }
+    if (this.reasonText()) {
+      return this.whyId;
+    }
+    return this.targetsError() ? this.targetsErrorId : null;
+  });
   protected readonly legend = this.byReach
     ? 'Dar a quem está ao seu lado'
     : this.data.inCombat === null
@@ -200,7 +219,7 @@ export class UseConsumableSheet {
     if (this.blockedText) {
       return this.blockedText;
     }
-    if (this.targets() === null || this.canGive() || this.targetsError()) {
+    if (!this.gives || this.targets() === null || this.canGive() || this.targetsError()) {
       return '';
     }
     return this.byReach
@@ -213,6 +232,10 @@ export class UseConsumableSheet {
   /** What the use costs: the mark of the Ação and a bold lead where it spends it, an info icon where it says what it does not. */
   protected readonly cost = computed((): { mark: boolean; lead: string; rest: string } | null => {
     if (this.blocked) {
+      return null;
+    }
+    if (this.phase() === 'choose' && this.data.inCombat === true && this.costs) {
+      // The subtitle already says it costs the action; the first choice adds only the reason a button is dashed.
       return null;
     }
     const thing = this.data.kind === 'potion' ? 'A poção' : 'O pergaminho';
@@ -248,8 +271,8 @@ export class UseConsumableSheet {
   });
 
   constructor() {
-    if (this.blocked) {
-      // The turn does not allow the use: nobody is listed and the server is not asked.
+    if (this.blocked || !this.gives) {
+      // The turn does not allow the use, or the item is not given: nobody is listed and the server is not asked.
       this.targets.set([]);
       return;
     }
