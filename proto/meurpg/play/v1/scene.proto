@@ -483,6 +483,9 @@ message NpcCheckRead {
   // When settled: the total after the dice the bards took off, and what they took off.
   int32 total = 9;
   int32 cut = 10;
+  // Why nobody was asked, when no bard was (`asks` is empty and the check settled at once): the first reason that applies, in the order
+  // of the enum. UNSPECIFIED when a bard was asked. Stored with the roll, so the master reads it again after a reload (GetNpcCheck).
+  NpcCheckNobodyReason nobody_reason = 11;
 }
 
 // SkipNpcCheckAsksRequest is the master's "Continuar sem esperar": it closes the questions that wait for the bards and settles
@@ -555,6 +558,21 @@ enum NpcCheckSource {
   NPC_CHECK_SOURCE_STAGE = 1;
   NPC_CHECK_SOURCE_TOKEN = 2;
   NPC_CHECK_SOURCE_MONSTER = 3;
+}
+
+// NpcCheckNobodyReason is why a check of the master's side asked no bard. The master reads it; no player does.
+enum NpcCheckNobodyReason {
+  NPC_CHECK_NOBODY_REASON_UNSPECIFIED = 0;
+  // No bard of the party can cut a check: none has Cutting Words with the setting "todos", is awake and has a use of Bardic
+  // Inspiration left.
+  NPC_CHECK_NOBODY_REASON_NO_BARD_CAN_CUT = 1;
+  // The creature is immune to being charmed.
+  NPC_CHECK_NOBODY_REASON_CHARM_IMMUNE = 2;
+  // The master hid the creature's token on the map: no player sees it, whatever the box says.
+  NPC_CHECK_NOBODY_REASON_TOKEN_HIDDEN = 3;
+  // Some bard could cut the check but none sees the creature within 60 feet and is seen by it: the map's distance or fog, or the master's
+  // box and the players the scene is open to.
+  NPC_CHECK_NOBODY_REASON_NOBODY_SEES = 4;
 }
 
 // NpcCheckOption is one check of a creature.

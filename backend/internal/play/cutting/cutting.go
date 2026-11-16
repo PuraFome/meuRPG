@@ -192,3 +192,30 @@ func (p Place) SightOf(bard string, box bool, seen func(grid.Square) bool, onSta
 	}
 	return Sight{Box: box, OnStage: onStage, InScene: inScene, TokenHidden: npcTok.Hidden}
 }
+
+// The reasons no bard is asked about a check, as the event of the check keeps them.
+const (
+	NobodyNoBard      = "no_bard"
+	NobodyCharmImmune = "charm_immune"
+	NobodyTokenHidden = "token_hidden"
+	NobodySees        = "nobody_sees"
+)
+
+// TokenHidden says the master hid the creature's token on the session's map.
+func (p Place) TokenHidden() bool { return p.Tokens[p.NPC].Hidden }
+
+// WhyNobody is why no bard is asked about a check, "" when one is: the first that applies. bards is how many bards of the party could cut a check
+// at all (see Bard.Asks), asked how many of them are asked once the creature and what they see of it are read.
+func WhyNobody(bards, asked int, charmImmune, tokenHidden bool) string {
+	switch {
+	case asked > 0:
+		return ""
+	case bards == 0:
+		return NobodyNoBard
+	case charmImmune:
+		return NobodyCharmImmune
+	case tokenHidden:
+		return NobodyTokenHidden
+	}
+	return NobodySees
+}

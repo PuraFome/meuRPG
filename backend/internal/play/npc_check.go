@@ -61,6 +61,8 @@ type npcCheckEvent struct {
 	Cut         int32             `json:"cut,omitempty"`
 	Asked       []npcCheckAskLine `json:"asked,omitempty"`
 	Skipped     bool              `json:"skipped,omitempty"`
+	// Nobody is why no bard was asked (cutting.Nobody*), kept with the roll so the master reads it again after a reload.
+	Nobody string `json:"nobody,omitempty"`
 }
 
 // The states of an ask as the rows and the history spell them (package cutting).
@@ -89,7 +91,15 @@ func (e npcCheckEvent) read(s *Service, settled bool) *playv1.NpcCheckRead {
 	if settled {
 		out.Total, out.Cut = e.Total, e.Cut
 	}
+	out.NobodyReason = nobodyReasonProto[e.Nobody]
 	return out
+}
+
+var nobodyReasonProto = map[string]playv1.NpcCheckNobodyReason{
+	cutting.NobodyNoBard:      playv1.NpcCheckNobodyReason_NPC_CHECK_NOBODY_REASON_NO_BARD_CAN_CUT,
+	cutting.NobodyCharmImmune: playv1.NpcCheckNobodyReason_NPC_CHECK_NOBODY_REASON_CHARM_IMMUNE,
+	cutting.NobodyTokenHidden: playv1.NpcCheckNobodyReason_NPC_CHECK_NOBODY_REASON_TOKEN_HIDDEN,
+	cutting.NobodySees:        playv1.NpcCheckNobodyReason_NPC_CHECK_NOBODY_REASON_NOBODY_SEES,
 }
 
 // tellNpcCheck collects the hint that the held rolls changed for the master and for the bards whose question changed: nobody else hears
@@ -236,11 +246,12 @@ func (c *npcCheckCall) run(ctx context.Context, tx pgx.Tx, h *hints, session pla
 		Modifier: clamp32(opt.Bonus, -heldBonusLimit, heldBonusLimit), Known: opt.Known, Physical: res.Physical,
 	}
 	ev.Total = ev.D20 + ev.Modifier
-	bards, err := s.npcCheckBards(ctx, tx, q, session, npc, c.req.GetBardSees(), c.sight)
+	bards, nobody, err := s.npcCheckBards(ctx, tx, q, session, npc, c.req.GetBardSees(), c.sight)
 	if err != nil {
 		return err
 	}
-	if len(bards) == 0 { // nobody may cut it: it settles at once
+	if len(bards) == 0 { // nobody may cut it: it settles at once, and the master reads why
+		ev.Nobody = nobody
 		if _, err := insertSceneEvent(ctx, tc, eventNpcCheckResolved, &c.m.UserID, &c.key, ev); err != nil {
 			return err
 		}
@@ -403,50 +414,52 @@ type askedBard struct {
 	named bool
 }
 
-// npcCheckBards lists the bards asked, in the order of the party: nobody when the creature is immune to being charmed.
-func (s *Service) npcCheckBards(ctx context.Context, tx pgx.Tx, q *playdb.Queries, session playdb.GameSession, npc link.Character, boxSees bool, sight maplink.CombatSight) ([]askedBard, error) {
+// npcCheckBards lists the bards asked, in the order of the party: nobody when the creature is immune to being charmed. When it lists
+// none it says why (cutting.WhyNobody).
+func (s *Service) npcCheckBards(ctx context.Context, tx pgx.Tx, q *playdb.Queries, session playdb.GameSession, npc link.Character, boxSees bool, sight maplink.CombatSight) ([]askedBard, string, error) {
 	campaignID := session.CampaignID
 	st, err := s.roster.ReactionStats(ctx, tx, campaignID, npc.ID)
-	if err != nil || st.CharmImmune {
-		return nil, err
+	if err != nil {
+		return nil, "", err
 	}
 	party, err := s.roster.CombatParty(ctx, tx, campaignID)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	place, err := s.npcPlacement(ctx, tx, q, session, npc.ID)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	var out []askedBard
+	qualified := 0
 	for _, c := range party {
 		if !c.Player || c.Reserved || c.PlayerUserID == "" {
 			continue
 		}
-		b, ok, err := s.askedBardOf(ctx, tx, campaignID, c, place, boxSees, sight)
+		b, ok, err := s.bardOf(ctx, tx, campaignID, c)
 		if err != nil {
-			return nil, err
+			return nil, "", err
 		}
-		if ok {
-			out = append(out, b)
+		if !ok {
+			continue
+		}
+		qualified++
+		if asked, ok := askedBardOf(c, b, place, boxSees, sight); ok && !st.CharmImmune {
+			out = append(out, asked)
 		}
 	}
-	return out, nil
+	return out, cutting.WhyNobody(qualified, len(out), st.CharmImmune, place.TokenHidden()), nil
 }
 
-// askedBardOf is the bard asked about the creature, when the character is a bard that may cut it and sees it.
-func (s *Service) askedBardOf(ctx context.Context, tx pgx.Tx, campaignID string, c link.Character, place npcPlace, boxSees bool, sight maplink.CombatSight) (askedBard, bool, error) {
-	b, ok, err := s.bardOf(ctx, tx, campaignID, c)
-	if err != nil || !ok {
-		return askedBard{}, false, err
-	}
+// askedBardOf is the bard asked about the creature, when the bard may cut it and sees it.
+func askedBardOf(c link.Character, b bardWith, place npcPlace, boxSees bool, sight maplink.CombatSight) (askedBard, bool) {
 	seen := func(sq grid.Square) bool { return sight == nil || sight.Sees(c.PlayerUserID, sq) }
 	inScene := place.scene.has(c.PlayerUserID)
 	sees := place.SightOf(c.ID, boxSees, seen, place.onStage && inScene, inScene)
 	if !sees.Sees() {
-		return askedBard{}, false, nil
+		return askedBard{}, false
 	}
-	return askedBard{char: c, sides: cutting.Die(b.level), named: sees.Named()}, true, nil
+	return askedBard{char: c, sides: cutting.Die(b.level), named: sees.Named()}, true
 }
 
 // bardWith is a bard of the party and its level.

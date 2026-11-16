@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"connectrpc.com/connect"
+	"google.golang.org/protobuf/proto"
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
@@ -246,4 +247,73 @@ func (n *npcTable) asksOf(t *testing.T, hold string) int {
 		t.Fatalf("count the asks: %v", err)
 	}
 	return rows
+}
+
+// rollMonster is roll for an SRD creature.
+func (n *npcTable) rollMonster(t *testing.T, key string, face int32, sees bool) (*playv1.RollNpcCheckResponse, error) {
+	t.Helper()
+	res, err := n.master.play.RollNpcCheck(t.Context(), connect.NewRequest(&playv1.RollNpcCheckRequest{
+		CampaignId: n.campaignID, Npc: &playv1.RollNpcCheckRequest_MonsterKey{MonsterKey: key}, CheckKey: deception,
+		Roll: &playv1.RollNpcCheckRequest_D20Face{D20Face: face}, BardSees: sees, IdempotencyKey: newKey(),
+	}))
+	if err != nil {
+		return nil, err
+	}
+	return res.Msg, nil
+}
+
+// TestNpcCheckSaysWhyNobodyWasAsked: a check that settles at once tells the master why, the first reason that applies: no bard can cut a
+// check at all (the setting is not "todos"); the creature is immune to being charmed; its token is hidden on the map; nobody sees it. The
+// roll answers with it, GetNpcCheck reads it again as the roll stored it, and a check that asked a bard has none.
+func TestNpcCheckSaysWhyNobodyWasAsked(t *testing.T) {
+	t.Parallel()
+	const (
+		noBard  = playv1.NpcCheckNobodyReason_NPC_CHECK_NOBODY_REASON_NO_BARD_CAN_CUT
+		charmed = playv1.NpcCheckNobodyReason_NPC_CHECK_NOBODY_REASON_CHARM_IMMUNE
+		hidden  = playv1.NpcCheckNobodyReason_NPC_CHECK_NOBODY_REASON_TOKEN_HIDDEN
+		blind   = playv1.NpcCheckNobodyReason_NPC_CHECK_NOBODY_REASON_NOBODY_SEES
+		none    = playv1.NpcCheckNobodyReason_NPC_CHECK_NOBODY_REASON_UNSPECIFIED
+	)
+	all, attacks := charactersv1.CuttingWordsAsk_CUTTING_WORDS_ASK_ALL, charactersv1.CuttingWordsAsk_CUTTING_WORDS_ASK_ONLY_ATTACKS
+	for name, tc := range map[string]struct {
+		ask     charactersv1.CuttingWordsAsk
+		monster string
+		hideTok bool
+		sees    bool
+		want    playv1.NpcCheckNobodyReason
+	}{
+		"the setting is not todos":               {attacks, "", false, true, noBard},
+		"immune to being charmed":                {all, "monster:black-pudding", false, true, charmed},
+		"the token is hidden":                    {all, "", true, true, hidden},
+		"nobody sees it":                         {all, "", false, false, blind},
+		"no bard and immune: the bard first":     {attacks, "monster:black-pudding", false, true, noBard},
+		"a bard is asked: no reason":             {all, "", false, true, none},
+		"a creature that is not immune is asked": {all, "monster:wolf", false, true, none},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			n := newNpcTable(t, tc.ask)
+			if tc.hideTok {
+				mapID := n.mapWith(t, gridColumns)
+				n.h.placeToken(mapID, n.npcID, 1750, 250)
+				n.hideToken(t, mapID, n.npcID)
+			}
+			var res *playv1.RollNpcCheckResponse
+			var err error
+			if tc.monster != "" {
+				res, err = n.rollMonster(t, tc.monster, 15, tc.sees)
+			} else {
+				res, err = n.roll(t, 15, tc.sees)
+			}
+			if err != nil {
+				t.Fatalf("RollNpcCheck() error = %v", err)
+			}
+			if got := res.GetCheck().GetNobodyReason(); got != tc.want || res.GetHeld() != (tc.want == none) {
+				t.Errorf("the roll says %v (held %v), want %v", got, res.GetHeld(), tc.want)
+			}
+			if got := n.mustLatest(t); got.GetNobodyReason() != tc.want || !proto.Equal(got, res.GetCheck()) && tc.want != none {
+				t.Errorf("GetNpcCheck() says %v, want %v and the roll's own read", got.GetNobodyReason(), tc.want)
+			}
+		})
+	}
 }

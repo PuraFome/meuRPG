@@ -289,3 +289,27 @@ func TestPlaceMeasuresNeedsAGrid(t *testing.T) {
 		t.Error("Measures() = true on a map with no grid, want false")
 	}
 }
+
+func TestWhyNobody(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name                   string
+		bards, asked           int
+		charmImmune, tokenHide bool
+		want                   string
+	}{
+		{"a bard is asked", 2, 1, true, true, ""},
+		{"no bard can cut", 0, 0, true, true, cutting.NobodyNoBard},
+		{"the creature is immune to being charmed", 2, 0, true, true, cutting.NobodyCharmImmune},
+		{"its token is hidden", 2, 0, false, true, cutting.NobodyTokenHidden},
+		{"nobody sees it", 2, 0, false, false, cutting.NobodySees},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			if got := cutting.WhyNobody(tt.bards, tt.asked, tt.charmImmune, tt.tokenHide); got != tt.want {
+				t.Errorf("WhyNobody() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
