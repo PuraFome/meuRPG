@@ -252,6 +252,8 @@ export class ActionSheets {
     );
   }
 
+  private readyOpening = false;
+
   /**
    * "Preparar" (#582): the sheet of the Ready action. It takes what `GetTurnOptions` listed (the attacks, the spells and the standard
    * actions), the creatures of the fight to name in the trigger and where the readier stands (no map, no speed, a concentration).
@@ -261,19 +263,26 @@ export class ActionSheets {
     const own = this.ctx.own();
     const e = this.ctx.encounter();
     const options = this.ctx.options();
-    if (!own || !e || !options?.options) {
+    if (!own || !e || !options?.options || this.readyOpening) {
       return;
     }
+    // The sheet opens after the reads, so a second tap before they end would open a second one.
+    this.readyOpening = true;
     const campaignId = this.ctx.campaignId();
-    const choices = await readyChoices(options.options.spells, {
-      details: (key) => this.ctx.catalog.details(campaignId, key),
-      summons: async () =>
-        new Set(
-          (await this.ctx.creatures.summonOptions(campaignId, own.characterId)).spells
-            .filter((s) => !s.grantedBy)
-            .map((s) => s.spellKey),
-        ),
-    });
+    let choices: Awaited<ReturnType<typeof readyChoices>>;
+    try {
+      choices = await readyChoices(options.options.spells, {
+        details: (key) => this.ctx.catalog.details(campaignId, key),
+        summons: async () =>
+          new Set(
+            (await this.ctx.creatures.summonOptions(campaignId, own.characterId)).spells
+              .filter((s) => !s.grantedBy)
+              .map((s) => s.spellKey),
+          ),
+      });
+    } finally {
+      this.readyOpening = false;
+    }
     const data: ReadySheetData = {
       campaignId: this.ctx.campaignId(),
       encounterId: e.id,

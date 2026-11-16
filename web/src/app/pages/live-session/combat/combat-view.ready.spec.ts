@@ -107,6 +107,26 @@ describe('CombatView: Preparar (#582)', () => {
     expect(m.callsOf('takeAction')).toHaveLength(0);
   });
 
+  it('opens one sheet for a double tap, and the next tap after it opens another', async () => {
+    let release: (v: { spells: never[] }) => void = () => undefined;
+    const reads = new Promise<{ spells: never[] }>((resolve) => (release = resolve));
+    const summonOptions = vi.fn(() => reads);
+    const m = await setup({
+      enc: theatre(),
+      matches: [PHONE_QUERY],
+      turnOptions: turns(),
+      creatures: { summonOptions },
+    });
+    const first = m.view['sheets'].actions.openReady();
+    const second = m.view['sheets'].actions.openReady();
+    release({ spells: [] });
+    await Promise.all([first, second]);
+    expect(m.opened).toHaveLength(1);
+    expect(summonOptions).toHaveBeenCalledTimes(1);
+    await m.view['sheets'].actions.openReady();
+    expect(m.opened).toHaveLength(2);
+  });
+
   it('hands the sheet the spells that ask an ability, creatures or a damage type, read the way the cast sheet reads them', async () => {
     const spell = (key: string) => ({
       enabled: true,
