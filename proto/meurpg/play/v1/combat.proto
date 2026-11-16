@@ -2210,6 +2210,11 @@ enum EncounterBlockedReason {
 
   // UseConsumable and ListConsumableTargets: the entry is not on the sheet (it was used or taken off). Nothing is written.
   ENCOUNTER_BLOCKED_REASON_ITEM_GONE = 147;
+
+  // ReadyService.ReadyAction: the spell asks for a choice that only a cast on the caster's turn carries and the READIED window's
+  // answer does not: a point or a direction on a map, an ability, a damage type, the creatures of a summon, or the dead creature of a
+  // revival. Held, it could only be let pass. Nothing is spent.
+  ENCOUNTER_BLOCKED_REASON_READY_SPELL_NOT_RELEASABLE = 148;
 }
 
 // FamiliarSightBlockedReason says why "Ver pelos olhos do familiar" was refused
@@ -3246,6 +3251,8 @@ message ReadiedAction {
   // The round it was readied in.
   int32 round = 8;
   ReadiedStatus status = 9;
+  // A spell: the slot level it was held with; 0 for a cantrip or another kind.
+  int32 slot_level = 10;
 }
 
 // The trait of a stat block that makes the sun count against a creature's rolls (SRD 5.1, Monsters).
@@ -4274,7 +4281,10 @@ message GetTurnOptionsResponse {
   // For each spell of options.spells, and each save cantrip of options.attacks,
   // who it can target, as the caller sees them: the caster itself and the other
   // combatants that are not defeated (a combatant at 0 hit points can be
-  // healed), with the distance and whether the spell cannot reach it.
+  // healed), with the distance and whether the spell cannot reach it. Off the combatant's turn,
+  // while it holds a readied spell (not a spell attack cantrip), the list also has that spell,
+  // with the targets it is released on and the darts of the slot it was held with (the only
+  // slot listed). On its own turn the list has no held spell, so a key is listed once.
   repeated SpellTargets spell_targets = 5;
   // The table's critical rule (RN-24), read now: what a critical hit of this
   // combatant's attacks and spells will do to the damage dice, so the screen can
@@ -7492,7 +7502,9 @@ message AnswerReactionRequest {
   bool use_racial = 6;
   // Feather Fall: the falling creatures to save, at most the prompt's max_targets.
   // READIED: the one target of a readied attack, when it is not the creature named
-  // at Ready.
+  // at Ready; for a readied spell, the creatures it is released on, with no darts (as
+  // `targets` with each darts left out). `targets` and creature_ids together are
+  // `invalid_argument`.
   repeated string creature_ids = 7;
   // The die the answer needs, when it needs one (Counterspell's check, Cutting
   // Words' die, Deflect Missiles' die, the saving throw of Hellish Rebuke): exactly
@@ -7505,6 +7517,10 @@ message AnswerReactionRequest {
   // A maneuver reduction (ManeuverReducePrompt.options[].key): the one the player uses. Needed
   // to answer USE a REACTION_KIND_MANEUVER_REDUCE window; the roll is the maneuver's die.
   string maneuver_key = 11;
+  // READIED, a readied spell: the targets with the darts of each (Magic Missile,
+  // Scorching Ray), as CastSpellRequest.targets. It replaces creature_ids; the two
+  // together are `invalid_argument`. The server checks them as CastSpell does.
+  repeated SpellTarget targets = 14;
 }
 
 // MarkReactionRollingRequest marks a window as being rolled.
