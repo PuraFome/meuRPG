@@ -134,9 +134,9 @@ func TestAMarkOnAFogMapTellsTheReactorsPlayerTheBlindHint(t *testing.T) {
 		}
 		return got[0]
 	}
-	real := f.get(t, f.master).GetRevision()
-	if got := revisionOf("the master", master); got != real || real == 0 {
-		t.Errorf("the master's hint carries revision %d, want the real %d (not 0)", got, real)
+	actual := f.get(t, f.master).GetRevision()
+	if got := revisionOf("the master", master); got != actual || actual == 0 {
+		t.Errorf("the master's hint carries revision %d, want the real %d (not 0)", got, actual)
 	}
 	if got := revisionOf("the reactor's player", ana); got != 0 {
 		t.Errorf("the reactor's player's hint carries revision %d on a fog map, want 0 (blind)", got)

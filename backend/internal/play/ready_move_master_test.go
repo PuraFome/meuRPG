@@ -139,6 +139,7 @@ func TestWhatHoldsTheReleaseDoesNotHoldTheMastersPlainWalk(t *testing.T) {
 		want func(t *testing.T, err error)
 	}{
 		{"a concentration save", func(t *testing.T, a *armed, e *playv1.Encounter) {
+			t.Helper()
 			a.execSQL(t, `INSERT INTO reaction_windows (encounter_id, group_id, kind, reactor_id, created_at)
 				VALUES ($1, gen_random_uuid(), 'concentration_save', $2, now())`, e.GetId(), a.id(t, "Toren"))
 		}, func(t *testing.T, err error) {
@@ -146,6 +147,7 @@ func TestWhatHoldsTheReleaseDoesNotHoldTheMastersPlainWalk(t *testing.T) {
 			wantBlockedBy(t, "the release while the save waits", err, blockedConcentrationPending)
 		}},
 		{"a hidden reveal", func(t *testing.T, a *armed, e *playv1.Encounter) {
+			t.Helper()
 			a.execSQL(t, `INSERT INTO hidden_reveals (encounter_id, caster_id, spell_key, combatant_ids, origin_col, origin_row, seq, created_at)
 				VALUES ($1, $2, 'spell:burning-hands', ARRAY[$3::UUID], 1, 1, 1, now())`, e.GetId(), a.id(t, "Toren"), a.id(t, "Goblin"))
 		}, func(t *testing.T, err error) {
@@ -153,6 +155,7 @@ func TestWhatHoldsTheReleaseDoesNotHoldTheMastersPlainWalk(t *testing.T) {
 			wantBlockedBy(t, "the release while the master's question waits", err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_HIDDEN_REVEAL_PENDING)
 		}},
 		{"a surprise", func(t *testing.T, a *armed, e *playv1.Encounter) {
+			t.Helper()
 			a.execSQL(t, `INSERT INTO combat_surprised (combatant_id, encounter_id, created_at) VALUES ($1, $2, now())`, a.id(t, "Toren"), e.GetId())
 			a.execSQL(t, `UPDATE combatants SET order_index = 99 WHERE label = 'Toren'`) // his first turn is still to come
 		}, func(t *testing.T, err error) {
