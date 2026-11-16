@@ -70,19 +70,29 @@ type InfusionServiceClient interface {
 	// already keeps as many infusions as the limit allows, `end_infusion_id` names the one that ends in the same call.
 	// The character's player and the master.
 	//
-	// The oldest live infusion ends instead when none is named and the character is at its limit. `attune_now` attunes in
+	// At its limit, the oldest valid infusion of the same feature ends (since, then id) when none is named, and as many
+	// of the oldest as the limit needs when a named one is not enough (normally one). A live record of the same
+	// infusion that the sheet no longer counts ends with it, so what ListCharacterInfusions offers as known can be put on. `attune_now` attunes in
 	// the same call, with the checks of SetAttunement: a refusal of those refuses the whole call and writes nothing.
 	// A retry with the same `idempotency_key` and the same request returns the first answer and writes nothing again.
 	//
-	// Errors: `failed_precondition` with InfusionBlocked: INFUSION_NOT_KNOWN, ITEM_ALREADY_INFUSED, ITEM_NOT_ACCEPTED,
-	// ITEM_CHANGED; with CharacterBlocked: CHARACTER_DEAD and the ATTUNEMENT_* reasons; `invalid_argument` for a parameter
-	// or an object name the infusion does not take, or another holder; `aborted` for a stale `revision`.
+	// Errors: `failed_precondition` with InfusionBlocked: INFUSION_NOT_KNOWN (also for a feature with no limit),
+	// ITEM_ALREADY_INFUSED, ITEM_NOT_ACCEPTED, ITEM_CHANGED (the infusion is in use, or `end_infusion_id` is not a valid
+	// infusion of the character's); with CharacterBlocked: CHARACTER_DEAD and the ATTUNEMENT_* reasons;
+	// `invalid_argument` for a parameter the infusion does not take, an object name that is empty, over 40 characters or
+	// has control or hidden characters, or another holder; `aborted` for a stale `revision`.
 	InfuseItem(context.Context, *connect.Request[v1.InfuseItemRequest]) (*connect.Response[v1.InfuseItemResponse], error)
-	// MoveInfusion moves a live infusion to another piece of the holder, with the same checks as InfuseItem. The time
-	// of the infusion begins again and the attunement is cleared. ITEM_CHANGED when the infusion is not live.
+	// MoveInfusion moves a live infusion to another piece of the holder, or to an object it names, with the checks of
+	// InfuseItem on the item. The time of the infusion begins again and the attunement is cleared.
 	// The character's player and the master.
+	//
+	// Errors: `failed_precondition` with InfusionBlocked: ITEM_CHANGED (the infusion is not live, or not the character's),
+	// INFUSION_NOT_KNOWN, ITEM_NOT_ACCEPTED, ITEM_ALREADY_INFUSED; with CharacterBlocked: CHARACTER_DEAD;
+	// `invalid_argument` for an object name that is not valid, or an item and an object name together; `aborted` for a
+	// stale `revision`. A retry with the same `idempotency_key` and the same request returns the first answer.
 	MoveInfusion(context.Context, *connect.Request[v1.MoveInfusionRequest]) (*connect.Response[v1.MoveInfusionResponse], error)
-	// EndInfusion ends a live infusion. The character's player and the master. ITEM_CHANGED when it is not live.
+	// EndInfusion ends a live infusion. The character's player and the master. It has no idempotency key: a retry of an
+	// infusion that ended answers ITEM_CHANGED. CHARACTER_DEAD for a dead character, `aborted` for a stale `revision`.
 	EndInfusion(context.Context, *connect.Request[v1.EndInfusionRequest]) (*connect.Response[v1.EndInfusionResponse], error)
 }
 
@@ -179,19 +189,29 @@ type InfusionServiceHandler interface {
 	// already keeps as many infusions as the limit allows, `end_infusion_id` names the one that ends in the same call.
 	// The character's player and the master.
 	//
-	// The oldest live infusion ends instead when none is named and the character is at its limit. `attune_now` attunes in
+	// At its limit, the oldest valid infusion of the same feature ends (since, then id) when none is named, and as many
+	// of the oldest as the limit needs when a named one is not enough (normally one). A live record of the same
+	// infusion that the sheet no longer counts ends with it, so what ListCharacterInfusions offers as known can be put on. `attune_now` attunes in
 	// the same call, with the checks of SetAttunement: a refusal of those refuses the whole call and writes nothing.
 	// A retry with the same `idempotency_key` and the same request returns the first answer and writes nothing again.
 	//
-	// Errors: `failed_precondition` with InfusionBlocked: INFUSION_NOT_KNOWN, ITEM_ALREADY_INFUSED, ITEM_NOT_ACCEPTED,
-	// ITEM_CHANGED; with CharacterBlocked: CHARACTER_DEAD and the ATTUNEMENT_* reasons; `invalid_argument` for a parameter
-	// or an object name the infusion does not take, or another holder; `aborted` for a stale `revision`.
+	// Errors: `failed_precondition` with InfusionBlocked: INFUSION_NOT_KNOWN (also for a feature with no limit),
+	// ITEM_ALREADY_INFUSED, ITEM_NOT_ACCEPTED, ITEM_CHANGED (the infusion is in use, or `end_infusion_id` is not a valid
+	// infusion of the character's); with CharacterBlocked: CHARACTER_DEAD and the ATTUNEMENT_* reasons;
+	// `invalid_argument` for a parameter the infusion does not take, an object name that is empty, over 40 characters or
+	// has control or hidden characters, or another holder; `aborted` for a stale `revision`.
 	InfuseItem(context.Context, *connect.Request[v1.InfuseItemRequest]) (*connect.Response[v1.InfuseItemResponse], error)
-	// MoveInfusion moves a live infusion to another piece of the holder, with the same checks as InfuseItem. The time
-	// of the infusion begins again and the attunement is cleared. ITEM_CHANGED when the infusion is not live.
+	// MoveInfusion moves a live infusion to another piece of the holder, or to an object it names, with the checks of
+	// InfuseItem on the item. The time of the infusion begins again and the attunement is cleared.
 	// The character's player and the master.
+	//
+	// Errors: `failed_precondition` with InfusionBlocked: ITEM_CHANGED (the infusion is not live, or not the character's),
+	// INFUSION_NOT_KNOWN, ITEM_NOT_ACCEPTED, ITEM_ALREADY_INFUSED; with CharacterBlocked: CHARACTER_DEAD;
+	// `invalid_argument` for an object name that is not valid, or an item and an object name together; `aborted` for a
+	// stale `revision`. A retry with the same `idempotency_key` and the same request returns the first answer.
 	MoveInfusion(context.Context, *connect.Request[v1.MoveInfusionRequest]) (*connect.Response[v1.MoveInfusionResponse], error)
-	// EndInfusion ends a live infusion. The character's player and the master. ITEM_CHANGED when it is not live.
+	// EndInfusion ends a live infusion. The character's player and the master. It has no idempotency key: a retry of an
+	// infusion that ended answers ITEM_CHANGED. CHARACTER_DEAD for a dead character, `aborted` for a stale `revision`.
 	EndInfusion(context.Context, *connect.Request[v1.EndInfusionRequest]) (*connect.Response[v1.EndInfusionResponse], error)
 }
 

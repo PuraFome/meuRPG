@@ -41,9 +41,9 @@ const objectKindPT = "objeto"
 // alreadyMagicalPT is the sentence of a piece that is a magic item already: bonus is its +N, 0 when it has none.
 func alreadyMagicalPT(bonus int) string {
 	if bonus > 0 {
-		return fmt.Sprintf("Já é mágica (+%d): a infusão pede um item comum.", bonus)
+		return fmt.Sprintf("Já é um item mágico (+%d): a infusão pede um item comum.", bonus)
 	}
-	return "Já é mágica: a infusão pede um item comum."
+	return "Já é um item mágico: a infusão pede um item comum."
 }
 
 // takenPT is the sentence of a piece that already carries an infusion, named.

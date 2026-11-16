@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"slices"
 	"strings"
-	"unicode/utf8"
 
 	"connectrpc.com/connect"
 	"github.com/jackc/pgx/v5"
@@ -17,6 +17,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/names"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/sessiontell"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
@@ -39,6 +40,7 @@ type infusionResult struct {
 	infusion *charactersv1.SheetInfusion
 	endedID  string
 	changed  bool
+	revision int32 // the infuser's sheet revision after the write (or as it stands, for an answer that wrote nothing)
 }
 
 // infusionsChanged is the one call the three writes make after their change. It raises the infuser's revision, so a
@@ -153,7 +155,7 @@ func (s *Service) InfuseItem(
 		logging.Event(ctx, s.logger, "character.infused", slog.String("character_id", id), slog.String("infusion_key", msg.GetInfusionKey()),
 			slog.Bool("by_master", isMaster(m)), slog.String("by_user_id", m.UserID))
 	}
-	return connect.NewResponse(&charactersv1.InfuseItemResponse{Infusion: done.infusion, EndedInfusionId: done.endedID}), nil
+	return connect.NewResponse(&charactersv1.InfuseItemResponse{Infusion: done.infusion, EndedInfusionId: done.endedID, Revision: done.revision}), nil
 }
 
 // infuseIn is the transaction of InfuseItem: the infuser locked, the replay of the key answered, the infusion checked
@@ -172,7 +174,7 @@ func (s *Service) infuseIn(ctx context.Context, tx pgx.Tx, content *rules.Conten
 	if err != nil {
 		return infusionResult{}, err
 	}
-	if err := s.endForInfusion(ctx, w, plan.taken, plan.endID); err != nil {
+	if err := s.endForInfusion(ctx, w, plan.taken, plan.ends); err != nil {
 		return infusionResult{}, err
 	}
 	rec, err := s.insertInfusion(ctx, w.q, newInfusion{
@@ -187,7 +189,7 @@ func (s *Service) infuseIn(ctx context.Context, tx pgx.Tx, content *rules.Conten
 			return infusionResult{}, err
 		}
 	}
-	return s.closeInfusionWrite(ctx, w, current, rec.ID, plan.endID)
+	return s.closeInfusionWrite(ctx, w, current, rec.ID, firstOf(plan.ends))
 }
 
 // infusionTx is what a write works on: the queries of its transaction, the content, the caller, what it tells, and the
@@ -199,6 +201,14 @@ type infusionTx struct {
 	t       sessiontell.Tell
 	key     string
 	hash    *string
+}
+
+// firstOf is the first of the ids, empty when there is none: the one an answer names.
+func firstOf(ids []string) string {
+	if len(ids) == 0 {
+		return ""
+	}
+	return ids[0]
 }
 
 func orEmpty(r *infusionResult) infusionResult {
@@ -229,17 +239,18 @@ func (s *Service) openInfusionWrite(ctx context.Context, w infusionTx, character
 
 // endForInfusion ends the records a write gives up: the ones on the item that are not valid now (`taken`) and the one a new
 // infusion replaces (`replaced`).
-func (s *Service) endForInfusion(ctx context.Context, w infusionTx, taken []string, replacedID string) error {
+func (s *Service) endForInfusion(ctx context.Context, w infusionTx, taken, replaced []string) error {
 	for _, id := range taken {
 		if _, err := s.endInfusion(ctx, w.q, w.m.CampaignID, id, infusionEndedTaken); err != nil {
 			return err
 		}
 	}
-	if replacedID == "" {
-		return nil
+	for _, id := range replaced {
+		if _, err := s.endInfusion(ctx, w.q, w.m.CampaignID, id, infusionEndedReplaced); err != nil {
+			return err
+		}
 	}
-	_, err := s.endInfusion(ctx, w.q, w.m.CampaignID, replacedID, infusionEndedReplaced)
-	return err
+	return nil
 }
 
 // closeInfusionWrite is what every write that changed a record ends with: the seam, the answer kept under the key, and the
@@ -257,7 +268,7 @@ func (s *Service) closeInfusionWrite(ctx context.Context, w infusionTx, current 
 		return infusionResult{}, err
 	}
 	infusion, err := s.infusionAnswerOf(ctx, w.q, after, recordID)
-	return infusionResult{infusion: infusion, endedID: endedID, changed: true}, err
+	return infusionResult{infusion: infusion, endedID: endedID, changed: true, revision: row.Revision}, err
 }
 
 // replayedInfusion answers a retry from what the first call kept, writing nothing.
@@ -270,7 +281,7 @@ func (s *Service) replayedInfusion(ctx context.Context, q *charactersdb.Queries,
 	if err != nil {
 		return infusionResult{}, err
 	}
-	out := infusionResult{infusion: infusion}
+	out := infusionResult{infusion: infusion, revision: current.Revision}
 	if stored.EndedInfusionID != nil {
 		out.endedID = *stored.EndedInfusionID
 	}
@@ -283,7 +294,7 @@ type infusionPlan struct {
 	kind   string
 	choice infusionChoice
 	taken  []string
-	endID  string
+	ends   []string // the valid records that end with `replaced`, the named one first, then the oldest
 }
 
 // planInfuse checks an InfuseItem request against the sheet and its records, in the order the caller is answered: the
@@ -293,8 +304,9 @@ func (v infusionView) planInfuse(msg *charactersv1.InfuseItemRequest) (infusionP
 	if !ok {
 		return infusionPlan{}, errInfusionBlocked(charactersv1.InfusionBlockedReason_INFUSION_BLOCKED_REASON_INFUSION_NOT_KNOWN)
 	}
-	if v.liveOf(msg.GetInfusionKey()) != nil {
-		return infusionPlan{}, errInfusionBlocked(charactersv1.InfusionBlockedReason_INFUSION_BLOCKED_REASON_ITEM_CHANGED)
+	stale, err := v.staleOf(msg.GetInfusionKey())
+	if err != nil {
+		return infusionPlan{}, err
 	}
 	if endID := msg.GetEndInfusionId(); endID != "" && v.liveRecord(endID) == nil {
 		return infusionPlan{}, errInfusionBlocked(charactersv1.InfusionBlockedReason_INFUSION_BLOCKED_REASON_ITEM_CHANGED)
@@ -310,20 +322,44 @@ func (v infusionView) planInfuse(msg *charactersv1.InfuseItemRequest) (infusionP
 	if err != nil {
 		return infusionPlan{}, err
 	}
-	plan := infusionPlan{kind: infusionItemGear, choice: choice, taken: taken}
+	plan := infusionPlan{kind: infusionItemGear, choice: choice, taken: addOnce(taken, stale)}
 	if choice.object() {
 		plan.kind = infusionItemObject
 	}
 	if msg.GetAttuneNow() && !info.RequiresAttunement {
 		return infusionPlan{}, invalidArgument(fieldErr("attune_now", "is for an infusion that asks for attunement"))
 	}
-	plan.endID, err = v.replaced(msg.GetInfusionKey(), msg.GetEndInfusionId())
+	plan.ends, err = v.replaced(msg.GetInfusionKey(), msg.GetEndInfusionId())
 	return plan, err
 }
 
-// replaced says which valid record ends to make room for a new infusion of the host: none under the limit; over it, the
-// one the caller named (a valid record of the same feature) or the oldest one (since, then id).
-func (v infusionView) replaced(infusionKey, named string) (string, error) {
+// staleOf is the live record of the infusion that is not valid now, which a new infusion of the same key ends with `taken`
+// (the list offers such an infusion as known). A valid one means the infusion is in use: ITEM_CHANGED.
+func (v infusionView) staleOf(infusionKey string) (string, error) {
+	live := v.liveOf(infusionKey)
+	if live == nil {
+		return "", nil
+	}
+	for _, st := range v.derived.Infusions {
+		if st.ID == live.ID && !st.Valid {
+			return live.ID, nil
+		}
+	}
+	return "", errInfusionBlocked(charactersv1.InfusionBlockedReason_INFUSION_BLOCKED_REASON_ITEM_CHANGED)
+}
+
+// addOnce adds id to ids unless it is empty or already there.
+func addOnce(ids []string, id string) []string {
+	if id == "" || slices.Contains(ids, id) {
+		return ids
+	}
+	return append(ids, id)
+}
+
+// replaced says which valid records end to make room for a new infusion of the host: none under the limit; at it, the one
+// the caller named (a valid record of the same feature) and then the oldest ones (since, then id) until the host is under its
+// limit, normally one. A host with no limit has no room to make: the character does not know the infusion.
+func (v infusionView) replaced(infusionKey, named string) ([]string, error) {
 	host := v.content.InfusionHost(infusionKey)
 	var limit, used int
 	for _, h := range v.derived.InfusionHosts {
@@ -332,24 +368,37 @@ func (v infusionView) replaced(infusionKey, named string) (string, error) {
 		}
 	}
 	if used < limit {
-		return "", nil
+		return nil, nil
 	}
-	oldest := ""
+	if limit <= 0 {
+		return nil, errInfusionBlocked(charactersv1.InfusionBlockedReason_INFUSION_BLOCKED_REASON_INFUSION_NOT_KNOWN)
+	}
+	var ends []string
+	if named != "" {
+		if !v.validOf(host, named) {
+			return nil, errInfusionBlocked(charactersv1.InfusionBlockedReason_INFUSION_BLOCKED_REASON_ITEM_CHANGED)
+		}
+		ends = append(ends, named)
+	}
 	for _, st := range v.derived.Infusions { // the order of the records: since, then id
-		if !st.Valid || st.HostKey != host {
-			continue
+		if len(ends) >= used-limit+1 {
+			break
 		}
-		if st.ID == named {
-			return named, nil
-		}
-		if oldest == "" {
-			oldest = st.ID
+		if st.Valid && st.HostKey == host {
+			ends = addOnce(ends, st.ID)
 		}
 	}
-	if named != "" || oldest == "" {
-		return "", errInfusionBlocked(charactersv1.InfusionBlockedReason_INFUSION_BLOCKED_REASON_ITEM_CHANGED)
+	return ends, nil
+}
+
+// validOf says whether the record is a valid one of the host.
+func (v infusionView) validOf(host, id string) bool {
+	for _, st := range v.derived.Infusions {
+		if st.ID == id && st.Valid && st.HostKey == host {
+			return true
+		}
 	}
-	return oldest, nil
+	return false
 }
 
 // liveOf is the live record of the infusion, nil when it has none.
@@ -389,16 +438,18 @@ func checkParameter(info rules.TableInfusion, parameter string) error {
 	return invalidArgument(fieldErr("parameter", "must be one of the damage types of the infusion"))
 }
 
-// choiceOf checks the shape of the item of a request: a gear key, or the name of an object (1 to 40 characters).
+// choiceOf checks the shape of the item of a request: a gear key, or the name of an object, cleaned as names are (1 to 40
+// characters, one line, no control or hidden characters, NFC).
 func choiceOf(itemKey, objectName string) (infusionChoice, error) {
-	name := strings.TrimSpace(objectName)
-	switch {
-	case itemKey != "" && name != "":
-		return infusionChoice{}, invalidArgument(fieldErr("object_name_pt", "is for an object: leave it empty when the item is a piece of the sheet"))
-	case itemKey != "":
+	if itemKey != "" {
+		if strings.TrimSpace(objectName) != "" {
+			return infusionChoice{}, invalidArgument(fieldErr("object_name_pt", "is for an object: leave it empty when the item is a piece of the sheet"))
+		}
 		return infusionChoice{gearKey: itemKey}, nil
-	case name == "" || utf8.RuneCountInString(name) > maxObjectNameRunes:
-		return infusionChoice{}, invalidArgument(fieldErr("object_name_pt", "is the name of the object, 1 to %d characters", maxObjectNameRunes))
+	}
+	name, err := names.Clean(objectName, maxObjectNameRunes)
+	if err != nil {
+		return infusionChoice{}, invalidArgument(&fieldError{field: "object_name_pt", err: err})
 	}
 	return infusionChoice{objectName: name}, nil
 }
@@ -517,7 +568,7 @@ func (s *Service) MoveInfusion(
 	if done.changed {
 		logging.Event(ctx, s.logger, "character.infusion_moved", slog.String("character_id", id), slog.Bool("by_master", isMaster(m)), slog.String("by_user_id", m.UserID))
 	}
-	return connect.NewResponse(&charactersv1.MoveInfusionResponse{Infusion: done.infusion}), nil
+	return connect.NewResponse(&charactersv1.MoveInfusionResponse{Infusion: done.infusion, Revision: done.revision}), nil
 }
 
 // liveRecordRow reads the record the request names, locked, and refuses it with ITEM_CHANGED when it is not a live record of
@@ -570,9 +621,9 @@ func (s *Service) moveIn(ctx context.Context, tx pgx.Tx, content *rules.Content,
 	}
 	if !choice.object() && rec.ItemKind == infusionItemGear && rec.ItemKey == choice.gearKey {
 		infusion, err := s.infusionAnswerOf(ctx, w.q, v, rec.ID) // already there: nothing moves
-		return infusionResult{infusion: infusion}, err
+		return infusionResult{infusion: infusion, revision: current.Revision}, err
 	}
-	if err := s.endForInfusion(ctx, w, taken, ""); err != nil {
+	if err := s.endForInfusion(ctx, w, taken, nil); err != nil {
 		return infusionResult{}, err
 	}
 	kind := infusionItemGear
@@ -602,7 +653,7 @@ func (s *Service) EndInfusion(
 	if msg.GetInfusionId() == "" {
 		return nil, invalidArgument(fieldErr("infusion_id", "is required"))
 	}
-	var ended string
+	var ended endedInfusion
 	err = s.inSession(ctx, m.CampaignID, func(tx pgx.Tx, t sessiontell.Tell) error {
 		var err error
 		ended, err = s.endIn(ctx, tx, m, msg, t)
@@ -612,29 +663,33 @@ func (s *Service) EndInfusion(
 		return nil, s.dbError(ctx, "end an infusion", err)
 	}
 	logging.Event(ctx, s.logger, "character.infusion_ended", slog.String("character_id", id), slog.Bool("by_master", isMaster(m)), slog.String("by_user_id", m.UserID))
-	return connect.NewResponse(&charactersv1.EndInfusionResponse{EndedInfusionId: ended}), nil
+	return connect.NewResponse(&charactersv1.EndInfusionResponse{EndedInfusionId: ended.id, Revision: ended.revision}), nil
+}
+
+// endedInfusion is what EndInfusion answers: the record that ended and the infuser's revision after it.
+type endedInfusion struct {
+	id       string
+	revision int32
 }
 
 // endIn is the transaction of EndInfusion.
-func (s *Service) endIn(ctx context.Context, tx pgx.Tx, m authz.Membership, msg *charactersv1.EndInfusionRequest, t sessiontell.Tell) (string, error) {
+func (s *Service) endIn(ctx context.Context, tx pgx.Tx, m authz.Membership, msg *charactersv1.EndInfusionRequest, t sessiontell.Tell) (endedInfusion, error) {
 	q := s.queries.WithTx(tx)
 	id, _ := uid.Canonical(msg.GetCharacterId())
 	current, err := visibleForUpdate(ctx, q, m, id)
 	if err != nil {
-		return "", err
+		return endedInfusion{}, err
 	}
 	if err := checkInfuser(current, msg.GetRevision()); err != nil {
-		return "", err
+		return endedInfusion{}, err
 	}
 	rec, err := s.liveRecordRow(ctx, q, current, msg.GetInfusionId())
 	if err != nil {
-		return "", err
+		return endedInfusion{}, err
 	}
 	if _, err := s.endInfusion(ctx, q, m.CampaignID, rec.ID, infusionEndedEnded); err != nil {
-		return "", err
+		return endedInfusion{}, err
 	}
-	if _, err := s.infusionsChanged(ctx, q, t, m.CampaignID, current); err != nil {
-		return "", err
-	}
-	return rec.ID, nil
+	row, err := s.infusionsChanged(ctx, q, t, m.CampaignID, current)
+	return endedInfusion{id: rec.ID, revision: row.Revision}, err
 }

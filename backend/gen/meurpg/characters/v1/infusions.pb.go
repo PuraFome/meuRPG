@@ -198,9 +198,10 @@ func (x *ListCharacterInfusionsRequest) GetCharacterId() string {
 
 type ListCharacterInfusionsResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The infusions the character keeps live, on its own gear and on the gear of others.
+	// The infusions the character keeps live. In this version the holder is always the infuser, so they are on its own
+	// gear and on objects it names.
 	Active []*SheetInfusion `protobuf:"bytes,1,rep,name=active,proto3" json:"active,omitempty"`
-	// The infusions the character knows now and keeps in no live valid record, in the order of the table's features.
+	// The infusions the character knows now and keeps in no live valid record, in the order of the character's choices.
 	Known []*KnownInfusion `protobuf:"bytes,2,rep,name=known,proto3" json:"known,omitempty"`
 	// How many live infusions the character may keep at its class level; 0 when it has no such class. A character that
 	// has two features that hold infusions gets the sum of their limits.
@@ -428,7 +429,7 @@ type ListInfusionTargetsRequest struct {
 	// The character that infuses.
 	CharacterId string `protobuf:"bytes,2,opt,name=character_id,json=characterId,proto3" json:"character_id,omitempty"`
 	InfusionKey string `protobuf:"bytes,3,opt,name=infusion_key,json=infusionKey,proto3" json:"infusion_key,omitempty"`
-	// The character whose gear is looked at: the infuser itself (any other id is `invalid_argument`).
+	// Required: the character whose gear is looked at, the infuser itself (any other id is `invalid_argument`).
 	HolderCharacterId string `protobuf:"bytes,4,opt,name=holder_character_id,json=holderCharacterId,proto3" json:"holder_character_id,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
@@ -632,7 +633,7 @@ type InfuseItemRequest struct {
 	// The character that infuses.
 	CharacterId string `protobuf:"bytes,2,opt,name=character_id,json=characterId,proto3" json:"character_id,omitempty"`
 	InfusionKey string `protobuf:"bytes,3,opt,name=infusion_key,json=infusionKey,proto3" json:"infusion_key,omitempty"`
-	// The character whose gear takes the infusion: the infuser itself.
+	// Required: the character whose gear takes the infusion, the infuser itself (any other id is `invalid_argument`).
 	HolderCharacterId string `protobuf:"bytes,4,opt,name=holder_character_id,json=holderCharacterId,proto3" json:"holder_character_id,omitempty"`
 	// The gear key of the holder's sheet; empty for an object.
 	ItemKey string `protobuf:"bytes,5,opt,name=item_key,json=itemKey,proto3" json:"item_key,omitempty"`
@@ -765,8 +766,10 @@ type InfuseItemResponse struct {
 	Infusion *SheetInfusion `protobuf:"bytes,1,opt,name=infusion,proto3" json:"infusion,omitempty"`
 	// The id of the infusion that ended in the same call; empty when none did.
 	EndedInfusionId string `protobuf:"bytes,2,opt,name=ended_infusion_id,json=endedInfusionId,proto3" json:"ended_infusion_id,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// The revision of the character's sheet after the write: a follow-up write may send it.
+	Revision      int32 `protobuf:"varint,3,opt,name=revision,proto3" json:"revision,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *InfuseItemResponse) Reset() {
@@ -811,6 +814,13 @@ func (x *InfuseItemResponse) GetEndedInfusionId() string {
 		return x.EndedInfusionId
 	}
 	return ""
+}
+
+func (x *InfuseItemResponse) GetRevision() int32 {
+	if x != nil {
+		return x.Revision
+	}
+	return 0
 }
 
 type MoveInfusionRequest struct {
@@ -908,8 +918,10 @@ func (x *MoveInfusionRequest) GetRevision() int32 {
 }
 
 type MoveInfusionResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Infusion      *SheetInfusion         `protobuf:"bytes,1,opt,name=infusion,proto3" json:"infusion,omitempty"`
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	Infusion *SheetInfusion         `protobuf:"bytes,1,opt,name=infusion,proto3" json:"infusion,omitempty"`
+	// The revision of the character's sheet after the write.
+	Revision      int32 `protobuf:"varint,2,opt,name=revision,proto3" json:"revision,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -949,6 +961,13 @@ func (x *MoveInfusionResponse) GetInfusion() *SheetInfusion {
 		return x.Infusion
 	}
 	return nil
+}
+
+func (x *MoveInfusionResponse) GetRevision() int32 {
+	if x != nil {
+		return x.Revision
+	}
+	return 0
 }
 
 type EndInfusionRequest struct {
@@ -1023,8 +1042,10 @@ func (x *EndInfusionRequest) GetRevision() int32 {
 type EndInfusionResponse struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
 	EndedInfusionId string                 `protobuf:"bytes,1,opt,name=ended_infusion_id,json=endedInfusionId,proto3" json:"ended_infusion_id,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// The revision of the character's sheet after the write.
+	Revision      int32 `protobuf:"varint,2,opt,name=revision,proto3" json:"revision,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *EndInfusionResponse) Reset() {
@@ -1062,6 +1083,13 @@ func (x *EndInfusionResponse) GetEndedInfusionId() string {
 		return x.EndedInfusionId
 	}
 	return ""
+}
+
+func (x *EndInfusionResponse) GetRevision() int32 {
+	if x != nil {
+		return x.Revision
+	}
+	return 0
 }
 
 // InfusionBlocked is the detail of InfusionService's `failed_precondition` for a rule of its own.
@@ -1165,10 +1193,11 @@ const file_meurpg_characters_v1_infusions_proto_rawDesc = "" +
 	"\x0fend_infusion_id\x18\t \x01(\tR\rendInfusionId\x12'\n" +
 	"\x0fidempotency_key\x18\n" +
 	" \x01(\tR\x0eidempotencyKey\x12\x1a\n" +
-	"\brevision\x18\v \x01(\x05R\brevision\"\x81\x01\n" +
+	"\brevision\x18\v \x01(\x05R\brevision\"\x9d\x01\n" +
 	"\x12InfuseItemResponse\x12?\n" +
 	"\binfusion\x18\x01 \x01(\v2#.meurpg.characters.v1.SheetInfusionR\binfusion\x12*\n" +
-	"\x11ended_infusion_id\x18\x02 \x01(\tR\x0fendedInfusionId\"\x80\x02\n" +
+	"\x11ended_infusion_id\x18\x02 \x01(\tR\x0fendedInfusionId\x12\x1a\n" +
+	"\brevision\x18\x03 \x01(\x05R\brevision\"\x80\x02\n" +
 	"\x13MoveInfusionRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12!\n" +
@@ -1178,18 +1207,20 @@ const file_meurpg_characters_v1_infusions_proto_rawDesc = "" +
 	"\bitem_key\x18\x04 \x01(\tR\aitemKey\x12$\n" +
 	"\x0eobject_name_pt\x18\x05 \x01(\tR\fobjectNamePt\x12'\n" +
 	"\x0fidempotency_key\x18\x06 \x01(\tR\x0eidempotencyKey\x12\x1a\n" +
-	"\brevision\x18\a \x01(\x05R\brevision\"W\n" +
+	"\brevision\x18\a \x01(\x05R\brevision\"s\n" +
 	"\x14MoveInfusionResponse\x12?\n" +
-	"\binfusion\x18\x01 \x01(\v2#.meurpg.characters.v1.SheetInfusionR\binfusion\"\x95\x01\n" +
+	"\binfusion\x18\x01 \x01(\v2#.meurpg.characters.v1.SheetInfusionR\binfusion\x12\x1a\n" +
+	"\brevision\x18\x02 \x01(\x05R\brevision\"\x95\x01\n" +
 	"\x12EndInfusionRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12!\n" +
 	"\fcharacter_id\x18\x02 \x01(\tR\vcharacterId\x12\x1f\n" +
 	"\vinfusion_id\x18\x03 \x01(\tR\n" +
 	"infusionId\x12\x1a\n" +
-	"\brevision\x18\x04 \x01(\x05R\brevision\"A\n" +
+	"\brevision\x18\x04 \x01(\x05R\brevision\"]\n" +
 	"\x13EndInfusionResponse\x12*\n" +
-	"\x11ended_infusion_id\x18\x01 \x01(\tR\x0fendedInfusionId\"V\n" +
+	"\x11ended_infusion_id\x18\x01 \x01(\tR\x0fendedInfusionId\x12\x1a\n" +
+	"\brevision\x18\x02 \x01(\x05R\brevision\"V\n" +
 	"\x0fInfusionBlocked\x12C\n" +
 	"\x06reason\x18\x01 \x01(\x0e2+.meurpg.characters.v1.InfusionBlockedReasonR\x06reason*\xb3\x01\n" +
 	"\x14InfusionTargetReason\x12&\n" +

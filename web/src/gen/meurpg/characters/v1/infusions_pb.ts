@@ -20,7 +20,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file meurpg/characters/v1/infusions.proto.
  */
 export const file_meurpg_characters_v1_infusions: GenFile = /*@__PURE__*/
-  fileDesc("CiRtZXVycGcvY2hhcmFjdGVycy92MS9pbmZ1c2lvbnMucHJvdG8SFG1ldXJwZy5jaGFyYWN0ZXJzLnYxIkoKHUxpc3RDaGFyYWN0ZXJJbmZ1c2lvbnNSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhQKDGNoYXJhY3Rlcl9pZBgCIAEoCSKmAQoeTGlzdENoYXJhY3RlckluZnVzaW9uc1Jlc3BvbnNlEjMKBmFjdGl2ZRgBIAMoCzIjLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLlNoZWV0SW5mdXNpb24SMgoFa25vd24YAiADKAsyIy5tZXVycGcuY2hhcmFjdGVycy52MS5Lbm93bkluZnVzaW9uEg0KBWxpbWl0GAMgASgFEgwKBHVzZWQYBCABKAUi8wEKDUtub3duSW5mdXNpb24SFAoMaW5mdXNpb25fa2V5GAEgASgJEg8KB25hbWVfcHQYAiABKAkSFgoOZGVzY3JpcHRpb25fcHQYAyABKAkSMQoHYWNjZXB0cxgEIAEoDjIgLm1ldXJwZy5ydWxlcy52MS5JbmZ1c2lvbkFjY2VwdHMSGwoTcmVxdWlyZXNfYXR0dW5lbWVudBgFIAEoCBIQCghjb21wdXRlZBgGIAEoCBJBCgpwYXJhbWV0ZXJzGAcgAygLMi0ubWV1cnBnLmNoYXJhY3RlcnMudjEuSW5mdXNpb25QYXJhbWV0ZXJPcHRpb24iNwoXSW5mdXNpb25QYXJhbWV0ZXJPcHRpb24SCwoDa2V5GAEgASgJEg8KB25hbWVfcHQYAiABKAkiegoaTGlzdEluZnVzaW9uVGFyZ2V0c1JlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSFAoMY2hhcmFjdGVyX2lkGAIgASgJEhQKDGluZnVzaW9uX2tleRgDIAEoCRIbChNob2xkZXJfY2hhcmFjdGVyX2lkGAQgASgJIlQKG0xpc3RJbmZ1c2lvblRhcmdldHNSZXNwb25zZRI1Cgd0YXJnZXRzGAEgAygLMiQubWV1cnBnLmNoYXJhY3RlcnMudjEuSW5mdXNpb25UYXJnZXQiowEKDkluZnVzaW9uVGFyZ2V0EhAKCGl0ZW1fa2V5GAEgASgJEg8KB25hbWVfcHQYAiABKAkSDwoHa2luZF9wdBgDIAEoCRIOCgZjb3BpZXMYBCABKAUSOgoGcmVhc29uGAUgASgOMioubWV1cnBnLmNoYXJhY3RlcnMudjEuSW5mdXNpb25UYXJnZXRSZWFzb24SEQoJcmVhc29uX3B0GAYgASgJIoYCChFJbmZ1c2VJdGVtUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxjaGFyYWN0ZXJfaWQYAiABKAkSFAoMaW5mdXNpb25fa2V5GAMgASgJEhsKE2hvbGRlcl9jaGFyYWN0ZXJfaWQYBCABKAkSEAoIaXRlbV9rZXkYBSABKAkSFgoOb2JqZWN0X25hbWVfcHQYBiABKAkSEQoJcGFyYW1ldGVyGAcgASgJEhIKCmF0dHVuZV9ub3cYCCABKAgSFwoPZW5kX2luZnVzaW9uX2lkGAkgASgJEhcKD2lkZW1wb3RlbmN5X2tleRgKIAEoCRIQCghyZXZpc2lvbhgLIAEoBSJmChJJbmZ1c2VJdGVtUmVzcG9uc2USNQoIaW5mdXNpb24YASABKAsyIy5tZXVycGcuY2hhcmFjdGVycy52MS5TaGVldEluZnVzaW9uEhkKEWVuZGVkX2luZnVzaW9uX2lkGAIgASgJIqoBChNNb3ZlSW5mdXNpb25SZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhQKDGNoYXJhY3Rlcl9pZBgCIAEoCRITCgtpbmZ1c2lvbl9pZBgDIAEoCRIQCghpdGVtX2tleRgEIAEoCRIWCg5vYmplY3RfbmFtZV9wdBgFIAEoCRIXCg9pZGVtcG90ZW5jeV9rZXkYBiABKAkSEAoIcmV2aXNpb24YByABKAUiTQoUTW92ZUluZnVzaW9uUmVzcG9uc2USNQoIaW5mdXNpb24YASABKAsyIy5tZXVycGcuY2hhcmFjdGVycy52MS5TaGVldEluZnVzaW9uImYKEkVuZEluZnVzaW9uUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxjaGFyYWN0ZXJfaWQYAiABKAkSEwoLaW5mdXNpb25faWQYAyABKAkSEAoIcmV2aXNpb24YBCABKAUiMAoTRW5kSW5mdXNpb25SZXNwb25zZRIZChFlbmRlZF9pbmZ1c2lvbl9pZBgBIAEoCSJOCg9JbmZ1c2lvbkJsb2NrZWQSOwoGcmVhc29uGAEgASgOMisubWV1cnBnLmNoYXJhY3RlcnMudjEuSW5mdXNpb25CbG9ja2VkUmVhc29uKrMBChRJbmZ1c2lvblRhcmdldFJlYXNvbhImCiJJTkZVU0lPTl9UQVJHRVRfUkVBU09OX1VOU1BFQ0lGSUVEEAASIAocSU5GVVNJT05fVEFSR0VUX1JFQVNPTl9UQUtFThABEioKJklORlVTSU9OX1RBUkdFVF9SRUFTT05fQUxSRUFEWV9NQUdJQ0FMEAISJQohSU5GVVNJT05fVEFSR0VUX1JFQVNPTl9XUk9OR19LSU5EEAMq+wEKFUluZnVzaW9uQmxvY2tlZFJlYXNvbhInCiNJTkZVU0lPTl9CTE9DS0VEX1JFQVNPTl9VTlNQRUNJRklFRBAAEjAKLElORlVTSU9OX0JMT0NLRURfUkVBU09OX0lURU1fQUxSRUFEWV9JTkZVU0VEEAESLQopSU5GVVNJT05fQkxPQ0tFRF9SRUFTT05fSVRFTV9OT1RfQUNDRVBURUQQAhIoCiRJTkZVU0lPTl9CTE9DS0VEX1JFQVNPTl9JVEVNX0NIQU5HRUQQAxIuCipJTkZVU0lPTl9CTE9DS0VEX1JFQVNPTl9JTkZVU0lPTl9OT1RfS05PV04QBDK/BAoPSW5mdXNpb25TZXJ2aWNlEoMBChZMaXN0Q2hhcmFjdGVySW5mdXNpb25zEjMubWV1cnBnLmNoYXJhY3RlcnMudjEuTGlzdENoYXJhY3RlckluZnVzaW9uc1JlcXVlc3QaNC5tZXVycGcuY2hhcmFjdGVycy52MS5MaXN0Q2hhcmFjdGVySW5mdXNpb25zUmVzcG9uc2USegoTTGlzdEluZnVzaW9uVGFyZ2V0cxIwLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLkxpc3RJbmZ1c2lvblRhcmdldHNSZXF1ZXN0GjEubWV1cnBnLmNoYXJhY3RlcnMudjEuTGlzdEluZnVzaW9uVGFyZ2V0c1Jlc3BvbnNlEl8KCkluZnVzZUl0ZW0SJy5tZXVycGcuY2hhcmFjdGVycy52MS5JbmZ1c2VJdGVtUmVxdWVzdBooLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLkluZnVzZUl0ZW1SZXNwb25zZRJlCgxNb3ZlSW5mdXNpb24SKS5tZXVycGcuY2hhcmFjdGVycy52MS5Nb3ZlSW5mdXNpb25SZXF1ZXN0GioubWV1cnBnLmNoYXJhY3RlcnMudjEuTW92ZUluZnVzaW9uUmVzcG9uc2USYgoLRW5kSW5mdXNpb24SKC5tZXVycGcuY2hhcmFjdGVycy52MS5FbmRJbmZ1c2lvblJlcXVlc3QaKS5tZXVycGcuY2hhcmFjdGVycy52MS5FbmRJbmZ1c2lvblJlc3BvbnNlQuYBChhjb20ubWV1cnBnLmNoYXJhY3RlcnMudjFCDkluZnVzaW9uc1Byb3RvUAFaSGdpdGh1Yi5jb20vUHVyYUZvbWUvbWV1UlBHL2JhY2tlbmQvZ2VuL21ldXJwZy9jaGFyYWN0ZXJzL3YxO2NoYXJhY3RlcnN2MaICA01DWKoCFE1ldXJwZy5DaGFyYWN0ZXJzLlYxygIUTWV1cnBnXENoYXJhY3RlcnNcVjHiAiBNZXVycGdcQ2hhcmFjdGVyc1xWMVxHUEJNZXRhZGF0YeoCFk1ldXJwZzo6Q2hhcmFjdGVyczo6VjFiBnByb3RvMw", [file_meurpg_characters_v1_characters, file_meurpg_rules_v1_table_content]);
+  fileDesc("CiRtZXVycGcvY2hhcmFjdGVycy92MS9pbmZ1c2lvbnMucHJvdG8SFG1ldXJwZy5jaGFyYWN0ZXJzLnYxIkoKHUxpc3RDaGFyYWN0ZXJJbmZ1c2lvbnNSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhQKDGNoYXJhY3Rlcl9pZBgCIAEoCSKmAQoeTGlzdENoYXJhY3RlckluZnVzaW9uc1Jlc3BvbnNlEjMKBmFjdGl2ZRgBIAMoCzIjLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLlNoZWV0SW5mdXNpb24SMgoFa25vd24YAiADKAsyIy5tZXVycGcuY2hhcmFjdGVycy52MS5Lbm93bkluZnVzaW9uEg0KBWxpbWl0GAMgASgFEgwKBHVzZWQYBCABKAUi8wEKDUtub3duSW5mdXNpb24SFAoMaW5mdXNpb25fa2V5GAEgASgJEg8KB25hbWVfcHQYAiABKAkSFgoOZGVzY3JpcHRpb25fcHQYAyABKAkSMQoHYWNjZXB0cxgEIAEoDjIgLm1ldXJwZy5ydWxlcy52MS5JbmZ1c2lvbkFjY2VwdHMSGwoTcmVxdWlyZXNfYXR0dW5lbWVudBgFIAEoCBIQCghjb21wdXRlZBgGIAEoCBJBCgpwYXJhbWV0ZXJzGAcgAygLMi0ubWV1cnBnLmNoYXJhY3RlcnMudjEuSW5mdXNpb25QYXJhbWV0ZXJPcHRpb24iNwoXSW5mdXNpb25QYXJhbWV0ZXJPcHRpb24SCwoDa2V5GAEgASgJEg8KB25hbWVfcHQYAiABKAkiegoaTGlzdEluZnVzaW9uVGFyZ2V0c1JlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSFAoMY2hhcmFjdGVyX2lkGAIgASgJEhQKDGluZnVzaW9uX2tleRgDIAEoCRIbChNob2xkZXJfY2hhcmFjdGVyX2lkGAQgASgJIlQKG0xpc3RJbmZ1c2lvblRhcmdldHNSZXNwb25zZRI1Cgd0YXJnZXRzGAEgAygLMiQubWV1cnBnLmNoYXJhY3RlcnMudjEuSW5mdXNpb25UYXJnZXQiowEKDkluZnVzaW9uVGFyZ2V0EhAKCGl0ZW1fa2V5GAEgASgJEg8KB25hbWVfcHQYAiABKAkSDwoHa2luZF9wdBgDIAEoCRIOCgZjb3BpZXMYBCABKAUSOgoGcmVhc29uGAUgASgOMioubWV1cnBnLmNoYXJhY3RlcnMudjEuSW5mdXNpb25UYXJnZXRSZWFzb24SEQoJcmVhc29uX3B0GAYgASgJIoYCChFJbmZ1c2VJdGVtUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxjaGFyYWN0ZXJfaWQYAiABKAkSFAoMaW5mdXNpb25fa2V5GAMgASgJEhsKE2hvbGRlcl9jaGFyYWN0ZXJfaWQYBCABKAkSEAoIaXRlbV9rZXkYBSABKAkSFgoOb2JqZWN0X25hbWVfcHQYBiABKAkSEQoJcGFyYW1ldGVyGAcgASgJEhIKCmF0dHVuZV9ub3cYCCABKAgSFwoPZW5kX2luZnVzaW9uX2lkGAkgASgJEhcKD2lkZW1wb3RlbmN5X2tleRgKIAEoCRIQCghyZXZpc2lvbhgLIAEoBSJ4ChJJbmZ1c2VJdGVtUmVzcG9uc2USNQoIaW5mdXNpb24YASABKAsyIy5tZXVycGcuY2hhcmFjdGVycy52MS5TaGVldEluZnVzaW9uEhkKEWVuZGVkX2luZnVzaW9uX2lkGAIgASgJEhAKCHJldmlzaW9uGAMgASgFIqoBChNNb3ZlSW5mdXNpb25SZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhQKDGNoYXJhY3Rlcl9pZBgCIAEoCRITCgtpbmZ1c2lvbl9pZBgDIAEoCRIQCghpdGVtX2tleRgEIAEoCRIWCg5vYmplY3RfbmFtZV9wdBgFIAEoCRIXCg9pZGVtcG90ZW5jeV9rZXkYBiABKAkSEAoIcmV2aXNpb24YByABKAUiXwoUTW92ZUluZnVzaW9uUmVzcG9uc2USNQoIaW5mdXNpb24YASABKAsyIy5tZXVycGcuY2hhcmFjdGVycy52MS5TaGVldEluZnVzaW9uEhAKCHJldmlzaW9uGAIgASgFImYKEkVuZEluZnVzaW9uUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxjaGFyYWN0ZXJfaWQYAiABKAkSEwoLaW5mdXNpb25faWQYAyABKAkSEAoIcmV2aXNpb24YBCABKAUiQgoTRW5kSW5mdXNpb25SZXNwb25zZRIZChFlbmRlZF9pbmZ1c2lvbl9pZBgBIAEoCRIQCghyZXZpc2lvbhgCIAEoBSJOCg9JbmZ1c2lvbkJsb2NrZWQSOwoGcmVhc29uGAEgASgOMisubWV1cnBnLmNoYXJhY3RlcnMudjEuSW5mdXNpb25CbG9ja2VkUmVhc29uKrMBChRJbmZ1c2lvblRhcmdldFJlYXNvbhImCiJJTkZVU0lPTl9UQVJHRVRfUkVBU09OX1VOU1BFQ0lGSUVEEAASIAocSU5GVVNJT05fVEFSR0VUX1JFQVNPTl9UQUtFThABEioKJklORlVTSU9OX1RBUkdFVF9SRUFTT05fQUxSRUFEWV9NQUdJQ0FMEAISJQohSU5GVVNJT05fVEFSR0VUX1JFQVNPTl9XUk9OR19LSU5EEAMq+wEKFUluZnVzaW9uQmxvY2tlZFJlYXNvbhInCiNJTkZVU0lPTl9CTE9DS0VEX1JFQVNPTl9VTlNQRUNJRklFRBAAEjAKLElORlVTSU9OX0JMT0NLRURfUkVBU09OX0lURU1fQUxSRUFEWV9JTkZVU0VEEAESLQopSU5GVVNJT05fQkxPQ0tFRF9SRUFTT05fSVRFTV9OT1RfQUNDRVBURUQQAhIoCiRJTkZVU0lPTl9CTE9DS0VEX1JFQVNPTl9JVEVNX0NIQU5HRUQQAxIuCipJTkZVU0lPTl9CTE9DS0VEX1JFQVNPTl9JTkZVU0lPTl9OT1RfS05PV04QBDK/BAoPSW5mdXNpb25TZXJ2aWNlEoMBChZMaXN0Q2hhcmFjdGVySW5mdXNpb25zEjMubWV1cnBnLmNoYXJhY3RlcnMudjEuTGlzdENoYXJhY3RlckluZnVzaW9uc1JlcXVlc3QaNC5tZXVycGcuY2hhcmFjdGVycy52MS5MaXN0Q2hhcmFjdGVySW5mdXNpb25zUmVzcG9uc2USegoTTGlzdEluZnVzaW9uVGFyZ2V0cxIwLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLkxpc3RJbmZ1c2lvblRhcmdldHNSZXF1ZXN0GjEubWV1cnBnLmNoYXJhY3RlcnMudjEuTGlzdEluZnVzaW9uVGFyZ2V0c1Jlc3BvbnNlEl8KCkluZnVzZUl0ZW0SJy5tZXVycGcuY2hhcmFjdGVycy52MS5JbmZ1c2VJdGVtUmVxdWVzdBooLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLkluZnVzZUl0ZW1SZXNwb25zZRJlCgxNb3ZlSW5mdXNpb24SKS5tZXVycGcuY2hhcmFjdGVycy52MS5Nb3ZlSW5mdXNpb25SZXF1ZXN0GioubWV1cnBnLmNoYXJhY3RlcnMudjEuTW92ZUluZnVzaW9uUmVzcG9uc2USYgoLRW5kSW5mdXNpb24SKC5tZXVycGcuY2hhcmFjdGVycy52MS5FbmRJbmZ1c2lvblJlcXVlc3QaKS5tZXVycGcuY2hhcmFjdGVycy52MS5FbmRJbmZ1c2lvblJlc3BvbnNlQuYBChhjb20ubWV1cnBnLmNoYXJhY3RlcnMudjFCDkluZnVzaW9uc1Byb3RvUAFaSGdpdGh1Yi5jb20vUHVyYUZvbWUvbWV1UlBHL2JhY2tlbmQvZ2VuL21ldXJwZy9jaGFyYWN0ZXJzL3YxO2NoYXJhY3RlcnN2MaICA01DWKoCFE1ldXJwZy5DaGFyYWN0ZXJzLlYxygIUTWV1cnBnXENoYXJhY3RlcnNcVjHiAiBNZXVycGdcQ2hhcmFjdGVyc1xWMVxHUEJNZXRhZGF0YeoCFk1ldXJwZzo6Q2hhcmFjdGVyczo6VjFiBnByb3RvMw", [file_meurpg_characters_v1_characters, file_meurpg_rules_v1_table_content]);
 
 /**
  * @generated from message meurpg.characters.v1.ListCharacterInfusionsRequest
@@ -49,14 +49,15 @@ export const ListCharacterInfusionsRequestSchema: GenMessage<ListCharacterInfusi
  */
 export type ListCharacterInfusionsResponse = Message<"meurpg.characters.v1.ListCharacterInfusionsResponse"> & {
   /**
-   * The infusions the character keeps live, on its own gear and on the gear of others.
+   * The infusions the character keeps live. In this version the holder is always the infuser, so they are on its own
+   * gear and on objects it names.
    *
    * @generated from field: repeated meurpg.characters.v1.SheetInfusion active = 1;
    */
   active: SheetInfusion[];
 
   /**
-   * The infusions the character knows now and keeps in no live valid record, in the order of the table's features.
+   * The infusions the character knows now and keeps in no live valid record, in the order of the character's choices.
    *
    * @generated from field: repeated meurpg.characters.v1.KnownInfusion known = 2;
    */
@@ -194,7 +195,7 @@ export type ListInfusionTargetsRequest = Message<"meurpg.characters.v1.ListInfus
   infusionKey: string;
 
   /**
-   * The character whose gear is looked at: the infuser itself (any other id is `invalid_argument`).
+   * Required: the character whose gear is looked at, the infuser itself (any other id is `invalid_argument`).
    *
    * @generated from field: string holder_character_id = 4;
    */
@@ -301,7 +302,7 @@ export type InfuseItemRequest = Message<"meurpg.characters.v1.InfuseItemRequest"
   infusionKey: string;
 
   /**
-   * The character whose gear takes the infusion: the infuser itself.
+   * Required: the character whose gear takes the infusion, the infuser itself (any other id is `invalid_argument`).
    *
    * @generated from field: string holder_character_id = 4;
    */
@@ -381,6 +382,13 @@ export type InfuseItemResponse = Message<"meurpg.characters.v1.InfuseItemRespons
    * @generated from field: string ended_infusion_id = 2;
    */
   endedInfusionId: string;
+
+  /**
+   * The revision of the character's sheet after the write: a follow-up write may send it.
+   *
+   * @generated from field: int32 revision = 3;
+   */
+  revision: number;
 };
 
 /**
@@ -449,6 +457,13 @@ export type MoveInfusionResponse = Message<"meurpg.characters.v1.MoveInfusionRes
    * @generated from field: meurpg.characters.v1.SheetInfusion infusion = 1;
    */
   infusion?: SheetInfusion | undefined;
+
+  /**
+   * The revision of the character's sheet after the write.
+   *
+   * @generated from field: int32 revision = 2;
+   */
+  revision: number;
 };
 
 /**
@@ -500,6 +515,13 @@ export type EndInfusionResponse = Message<"meurpg.characters.v1.EndInfusionRespo
    * @generated from field: string ended_infusion_id = 1;
    */
   endedInfusionId: string;
+
+  /**
+   * The revision of the character's sheet after the write.
+   *
+   * @generated from field: int32 revision = 2;
+   */
+  revision: number;
 };
 
 /**
@@ -657,13 +679,17 @@ export const InfusionService: GenService<{
    * already keeps as many infusions as the limit allows, `end_infusion_id` names the one that ends in the same call.
    * The character's player and the master.
    *
-   * The oldest live infusion ends instead when none is named and the character is at its limit. `attune_now` attunes in
+   * At its limit, the oldest valid infusion of the same feature ends (since, then id) when none is named, and as many
+   * of the oldest as the limit needs when a named one is not enough (normally one). A live record of the same
+   * infusion that the sheet no longer counts ends with it, so what ListCharacterInfusions offers as known can be put on. `attune_now` attunes in
    * the same call, with the checks of SetAttunement: a refusal of those refuses the whole call and writes nothing.
    * A retry with the same `idempotency_key` and the same request returns the first answer and writes nothing again.
    *
-   * Errors: `failed_precondition` with InfusionBlocked: INFUSION_NOT_KNOWN, ITEM_ALREADY_INFUSED, ITEM_NOT_ACCEPTED,
-   * ITEM_CHANGED; with CharacterBlocked: CHARACTER_DEAD and the ATTUNEMENT_* reasons; `invalid_argument` for a parameter
-   * or an object name the infusion does not take, or another holder; `aborted` for a stale `revision`.
+   * Errors: `failed_precondition` with InfusionBlocked: INFUSION_NOT_KNOWN (also for a feature with no limit),
+   * ITEM_ALREADY_INFUSED, ITEM_NOT_ACCEPTED, ITEM_CHANGED (the infusion is in use, or `end_infusion_id` is not a valid
+   * infusion of the character's); with CharacterBlocked: CHARACTER_DEAD and the ATTUNEMENT_* reasons;
+   * `invalid_argument` for a parameter the infusion does not take, an object name that is empty, over 40 characters or
+   * has control or hidden characters, or another holder; `aborted` for a stale `revision`.
    *
    * @generated from rpc meurpg.characters.v1.InfusionService.InfuseItem
    */
@@ -673,9 +699,14 @@ export const InfusionService: GenService<{
     output: typeof InfuseItemResponseSchema;
   },
   /**
-   * MoveInfusion moves a live infusion to another piece of the holder, with the same checks as InfuseItem. The time
-   * of the infusion begins again and the attunement is cleared. ITEM_CHANGED when the infusion is not live.
+   * MoveInfusion moves a live infusion to another piece of the holder, or to an object it names, with the checks of
+   * InfuseItem on the item. The time of the infusion begins again and the attunement is cleared.
    * The character's player and the master.
+   *
+   * Errors: `failed_precondition` with InfusionBlocked: ITEM_CHANGED (the infusion is not live, or not the character's),
+   * INFUSION_NOT_KNOWN, ITEM_NOT_ACCEPTED, ITEM_ALREADY_INFUSED; with CharacterBlocked: CHARACTER_DEAD;
+   * `invalid_argument` for an object name that is not valid, or an item and an object name together; `aborted` for a
+   * stale `revision`. A retry with the same `idempotency_key` and the same request returns the first answer.
    *
    * @generated from rpc meurpg.characters.v1.InfusionService.MoveInfusion
    */
@@ -685,7 +716,8 @@ export const InfusionService: GenService<{
     output: typeof MoveInfusionResponseSchema;
   },
   /**
-   * EndInfusion ends a live infusion. The character's player and the master. ITEM_CHANGED when it is not live.
+   * EndInfusion ends a live infusion. The character's player and the master. It has no idempotency key: a retry of an
+   * infusion that ended answers ITEM_CHANGED. CHARACTER_DEAD for a dead character, `aborted` for a stale `revision`.
    *
    * @generated from rpc meurpg.characters.v1.InfusionService.EndInfusion
    */

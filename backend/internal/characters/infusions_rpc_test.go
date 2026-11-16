@@ -11,6 +11,7 @@ import (
 	"connectrpc.com/connect"
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
 )
 
@@ -225,7 +226,7 @@ func TestListInfusionTargetsGivesEachPieceItsReason(t *testing.T) {
 		text   string
 		copies int32
 	}{
-		infusionMace:       {charactersv1.InfusionTargetReason_INFUSION_TARGET_REASON_ALREADY_MAGICAL, "Já é mágica: a infusão pede um item comum.", 1},
+		infusionMace:       {charactersv1.InfusionTargetReason_INFUSION_TARGET_REASON_ALREADY_MAGICAL, "Já é um item mágico: a infusão pede um item comum.", 1},
 		infusedDagger:      {charactersv1.InfusionTargetReason_INFUSION_TARGET_REASON_UNSPECIFIED, "", 2},
 		infusionLeather:    {charactersv1.InfusionTargetReason_INFUSION_TARGET_REASON_WRONG_KIND, "Pede uma arma.", 1},
 		infusionShieldGear: {charactersv1.InfusionTargetReason_INFUSION_TARGET_REASON_WRONG_KIND, "Pede uma arma.", 1},
@@ -238,7 +239,7 @@ func TestListInfusionTargetsGivesEachPieceItsReason(t *testing.T) {
 	}
 	// A plate goes on armor or a shield: the shield has a manual +2 (already magical, with its number), the armor is free.
 	by, _ = it.targets(t, it.dona, infusionKeyPlate)
-	if r := by[infusionShieldGear]; r.GetReason() != charactersv1.InfusionTargetReason_INFUSION_TARGET_REASON_ALREADY_MAGICAL || r.GetReasonPt() != "Já é mágica (+2): a infusão pede um item comum." {
+	if r := by[infusionShieldGear]; r.GetReason() != charactersv1.InfusionTargetReason_INFUSION_TARGET_REASON_ALREADY_MAGICAL || r.GetReasonPt() != "Já é um item mágico (+2): a infusão pede um item comum." {
 		t.Errorf("the shield with a +2 = %v, want already magical (+2)", r)
 	}
 	if r := by[infusionMace]; r.GetReason() != charactersv1.InfusionTargetReason_INFUSION_TARGET_REASON_WRONG_KIND || r.GetReasonPt() != "Pede uma armadura ou um escudo." {
@@ -710,11 +711,6 @@ func TestInfuseItemIsIdempotent(t *testing.T) {
 	other.ItemKey, other.IdempotencyKey = infusionShieldGear, key
 	_, err = call(other)
 	wantCode(t, "the same key for another infusion", err, connect.CodeInvalidArgument)
-	// A move with a key too.
-	mv := it.mustInfuseOn(t, infusionKeyBlade, infusionMace).GetInfusion()
-	mreq := &charactersv1.MoveInfusionRequest{CampaignId: it.campaign, CharacterId: it.pc.GetId(), InfusionId: mv.GetId(), ObjectNamePt: "x", IdempotencyKey: uuid.New().String()}
-	_, err = it.dona.infusions.MoveInfusion(t.Context(), connect.NewRequest(mreq))
-	wantInfusionRefusal(t, "the blade moved to an object", err, notAccepted)
 }
 
 // Two infusions that would both pass the limit cannot both succeed: each locks the artificer's row before it counts, so the
@@ -755,10 +751,27 @@ func TestInfuseItemTwoAtTheLimitCannotBothEndTheSameRecord(t *testing.T) {
 	if live := liveRecords(t, it); len(live) != 3 {
 		t.Errorf("live = %v, want the limit of 3", live)
 	}
-	// Without a name each one ends the oldest, one after the other: the count never passes the limit.
+}
+
+// Two infusions on different free places at the limit, with one oldest record to end: each locks the artificer's row, so
+// the second reads the first's result. Each one succeeds or is aborted by the database, and the count is the limit.
+func TestInfuseItemTwoOnDifferentPlacesAtTheLimit(t *testing.T) {
+	t.Parallel()
+	dbtest.PoolSize(t, 6)
+	it := newInfusedTableWith(t, withPicks(infusionKeyFalse, infusionKeyHouse, infusionKeyFocus, infusionKeyBlade, infusionKeyPlate))
+	it.mustInfuseOn(t, infusionKeyFalse, infusionShieldGear)
 	it.h.clock.Advance(time.Minute)
-	errs = make([]error, 2)
-	for i, c := range []struct{ infusion, item string }{{infusionKeyBlade, infusionMace}, {infusionKeyFalse, infusionShieldGear}} {
+	if _, err := it.infuseObject(t, infusionKeyHouse, "Lanterna"); err != nil {
+		t.Fatal(err)
+	}
+	it.h.clock.Advance(time.Minute)
+	if _, err := it.infuseObject(t, infusionKeyFocus, "Cajado"); err != nil {
+		t.Fatal(err)
+	}
+	it.h.clock.Advance(time.Minute)
+	var wg sync.WaitGroup
+	errs := make([]error, 2)
+	for i, c := range []struct{ infusion, item string }{{infusionKeyBlade, infusionMace}, {infusionKeyPlate, infusionLeather}} {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -766,7 +779,213 @@ func TestInfuseItemTwoAtTheLimitCannotBothEndTheSameRecord(t *testing.T) {
 		}()
 	}
 	wg.Wait()
-	if live := liveRecords(t, it); len(live) > 3 {
-		t.Errorf("live = %v after two concurrent infusions (%v), want at most 3", live, errs)
+	ok := 0
+	for _, err := range errs {
+		switch {
+		case err == nil:
+			ok++
+		case connect.CodeOf(err) != connect.CodeAborted:
+			t.Errorf("a concurrent infusion failed with %v, want success or aborted", err)
+		}
 	}
+	if ok == 0 {
+		t.Errorf("no concurrent infusion succeeded: %v", errs)
+	}
+	if live := liveRecords(t, it); len(live) != 3 {
+		t.Errorf("live = %v after two concurrent infusions (%v), want exactly the limit of 3", live, errs)
+	}
+}
+
+// The name of an object is cleaned as the app's names are: control, hidden and bidi characters are refused on
+// object_name_pt, and a name typed with a combining mark is kept in its composed form.
+func TestInfuseItemObjectNameIsCleaned(t *testing.T) {
+	t.Parallel()
+	it := newInfusedTable(t)
+	for name, text := range map[string]string{
+		"a control character": "Lan\x07terna",
+		"a NUL":               "Lan\x00terna",
+		"a newline":           "Lanterna\nvelha",
+		"a zero-width space":  "Lan\u200bterna",
+		"a bidi override":     "Lan\u202eterna",
+	} {
+		_, err := it.infuseObject(t, infusionKeyHouse, text)
+		wantCode(t, name, err, connect.CodeInvalidArgument)
+		if !strings.Contains(err.Error(), "object_name_pt") {
+			t.Errorf("%s: error %q does not name object_name_pt", name, err)
+		}
+	}
+	if live := liveRecords(t, it); len(live) != 0 {
+		t.Fatalf("a refused name left records: %v", live)
+	}
+	res, err := it.infuseObject(t, infusionKeyHouse, "  Lampiao\u0303 de Re\u0301  ")
+	if err != nil {
+		t.Fatalf("a name with combining marks = %v", err)
+	}
+	if got, want := res.GetInfusion().GetObjectNamePt(), "Lampiaõ de Ré"; got != want {
+		t.Errorf("the name kept = %q, want %q (trimmed, NFC)", got, want)
+	}
+	_, err = it.move(it.dona, res.GetInfusion().GetId(), "", "Lan\u202eterna")
+	wantCode(t, "a bidi override on a move", err, connect.CodeInvalidArgument)
+	moved, err := it.move(it.dona, res.GetInfusion().GetId(), "", "Cafe\u0301")
+	if err != nil || moved.GetInfusion().GetObjectNamePt() != "Café" {
+		t.Errorf("a move with combining marks = %v, %v, want Café", moved, err)
+	}
+}
+
+// Each write answers the sheet's revision after it, and a follow-up write that sends it passes; an older one is refused.
+func TestInfusionWritesAnswerTheRevision(t *testing.T) {
+	t.Parallel()
+	it := newInfusedTableWith(t, func(f *charactersv1.FullSheet) { f.WeaponKeys = []string{infusionMace, infusedDagger} })
+	infuse := it.infuseReq(infusionKeyBlade)
+	infuse.ItemKey = infusionMace
+	res, err := it.dona.infusions.InfuseItem(t.Context(), connect.NewRequest(infuse))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := it.read(t).GetRevision(); res.Msg.GetRevision() == 0 || res.Msg.GetRevision() != got {
+		t.Fatalf("InfuseItem revision = %d, the sheet is at %d", res.Msg.GetRevision(), got)
+	}
+	stale := res.Msg.GetRevision()
+	mv, err := it.dona.infusions.MoveInfusion(t.Context(), connect.NewRequest(&charactersv1.MoveInfusionRequest{
+		CampaignId: it.campaign, CharacterId: it.pc.GetId(), InfusionId: res.Msg.GetInfusion().GetId(), ItemKey: infusedDagger, Revision: res.Msg.GetRevision(),
+	}))
+	if err != nil {
+		t.Fatalf("a move with the revision of the infusion: %v", err)
+	}
+	if got := it.read(t).GetRevision(); mv.Msg.GetRevision() <= stale || mv.Msg.GetRevision() != got {
+		t.Fatalf("MoveInfusion revision = %d (was %d), the sheet is at %d", mv.Msg.GetRevision(), stale, got)
+	}
+	_, err = it.dona.infusions.EndInfusion(t.Context(), connect.NewRequest(&charactersv1.EndInfusionRequest{
+		CampaignId: it.campaign, CharacterId: it.pc.GetId(), InfusionId: res.Msg.GetInfusion().GetId(), Revision: stale,
+	}))
+	wantCode(t, "an end with the old revision", err, connect.CodeAborted)
+	end, err := it.dona.infusions.EndInfusion(t.Context(), connect.NewRequest(&charactersv1.EndInfusionRequest{
+		CampaignId: it.campaign, CharacterId: it.pc.GetId(), InfusionId: res.Msg.GetInfusion().GetId(), Revision: mv.Msg.GetRevision(),
+	}))
+	if err != nil {
+		t.Fatalf("an end with the revision of the move: %v", err)
+	}
+	if got := it.read(t).GetRevision(); end.Msg.GetRevision() <= mv.Msg.GetRevision() || end.Msg.GetRevision() != got {
+		t.Errorf("EndInfusion revision = %d, the sheet is at %d", end.Msg.GetRevision(), got)
+	}
+	next := it.infuseReq(infusionKeyBlade)
+	next.ItemKey, next.Revision = infusionMace, end.Msg.GetRevision()
+	if _, err := it.dona.infusions.InfuseItem(t.Context(), connect.NewRequest(next)); err != nil {
+		t.Errorf("an infusion with the revision of the end: %v", err)
+	}
+}
+
+// A live record of the same infusion that the sheet no longer counts does not make the infusion "in use": the list offers
+// the infusion as known, and putting it on ends that record with `taken`.
+func TestInfuseItemEndsAStaleRecordOfTheSameInfusion(t *testing.T) {
+	t.Parallel()
+	it := newInfusedTable(t)
+	stale := it.infuse(t, infusionKeyBlade, infusedDagger) // the dagger is not on the sheet: the record is not valid now
+	known, err := it.list(t, it.dona)
+	if err != nil {
+		t.Fatal(err)
+	}
+	offered := false
+	for _, k := range known.GetKnown() {
+		offered = offered || k.GetInfusionKey() == infusionKeyBlade
+	}
+	if !offered {
+		t.Fatalf("the blade is not offered as known: %v", known.GetKnown())
+	}
+	res, err := it.infuseOn(t, it.dona, infusionKeyBlade, infusionMace)
+	if err != nil || !res.GetInfusion().GetValidNow() {
+		t.Fatalf("InfuseItem over a record that is not valid = %v, %v", res, err)
+	}
+	if endedReason(t, it, stale.ID) != "taken" {
+		t.Errorf("the stale record ended %q, want taken", endedReason(t, it, stale.ID))
+	}
+	_, err = it.infuseOn(t, it.dona, infusionKeyBlade, infusionMace)
+	wantInfusionRefusal(t, "the blade while it is in use", err, itemChangedR)
+}
+
+// Over the limit as many of the oldest valid records end as the host needs to be under it (more than one when the limit fell
+// below what was kept), and a host with no limit refuses the infusion as unknown.
+func TestInfuseItemEndsAsManyAsTheLimitNeeds(t *testing.T) {
+	t.Parallel()
+	it := newInfusedTable(t)
+	first := it.mustInfuseOn(t, infusionKeyBlade, infusionMace).GetInfusion().GetId()
+	it.h.clock.Advance(time.Minute)
+	second := it.mustInfuseOn(t, infusionKeyFalse, infusionShieldGear).GetInfusion().GetId()
+	it.h.clock.Advance(time.Minute)
+	third, err := it.infuseObject(t, infusionKeyHouse, "Lanterna")
+	if err != nil {
+		t.Fatal(err)
+	}
+	it.h.clock.Advance(time.Minute)
+	extra, err := it.h.svc.insertInfusion(t.Context(), it.h.svc.queries, newInfusion{ // a fourth one: the limit fell
+		CampaignID: it.campaign, ArtificerID: it.pc.GetId(), HolderID: it.pc.GetId(), InfusionKey: infusionKeyAsh,
+		ItemKind: infusionItemObject, ObjectName: "Capa velha", Parameter: damageFire,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c, _ := it.list(t, it.dona); c.GetUsed() != 4 {
+		t.Fatalf("used = %d, want 4 to start", c.GetUsed())
+	}
+	it.h.clock.Advance(time.Minute)
+	res, err := it.infuseOn(t, it.dona, infusionKeyPlate, infusionLeather)
+	if err != nil || res.GetEndedInfusionId() != first {
+		t.Fatalf("InfuseItem = %v, %v, want the oldest, %s, as the one answered", res, err, first)
+	}
+	if endedReason(t, it, first) != "replaced" || endedReason(t, it, second) != "replaced" {
+		t.Errorf("the two oldest ended %q and %q, want replaced for both", endedReason(t, it, first), endedReason(t, it, second))
+	}
+	if endedReason(t, it, third.GetInfusion().GetId()) != "" || endedReason(t, it, extra.ID) != "" {
+		t.Error("a newer record ended")
+	}
+	if c, _ := it.list(t, it.dona); c.GetUsed() != 3 {
+		t.Errorf("used = %d, want 3", c.GetUsed())
+	}
+
+	v := it.view(t)
+	v.derived.InfusionHosts = nil
+	_, err = v.replaced(infusionKeyBlade, "")
+	wantInfusionRefusal(t, "a host with no limit", err, notKnown)
+}
+
+// view is the infuser's sheet as a write reads it.
+func (it *infusedTable) view(t *testing.T) infusionView {
+	t.Helper()
+	content, err := it.h.svc.contentFor(t.Context(), nil, it.campaign)
+	if err != nil {
+		t.Fatal(err)
+	}
+	row, err := it.h.svc.queries.GetCharacter(t.Context(), charactersdb.GetCharacterParams{CampaignID: it.campaign, ID: it.pc.GetId()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	v, err := it.h.svc.infusionViewOf(t.Context(), it.h.svc.queries, content, row)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return v
+}
+
+// A move with an idempotency key answers the retry with the first answer and writes nothing again, even after the infusion
+// moved on; another request under the key is refused.
+func TestMoveInfusionIsIdempotent(t *testing.T) {
+	t.Parallel()
+	it := newInfusedTableWith(t, func(f *charactersv1.FullSheet) { f.WeaponKeys = []string{infusionMace, infusedDagger} })
+	blade := it.mustInfuseOn(t, infusionKeyBlade, infusionMace).GetInfusion()
+	req := &charactersv1.MoveInfusionRequest{CampaignId: it.campaign, CharacterId: it.pc.GetId(), InfusionId: blade.GetId(), ItemKey: infusedDagger, IdempotencyKey: uuid.New().String()}
+	first, err := it.dona.infusions.MoveInfusion(t.Context(), connect.NewRequest(req))
+	if err != nil || first.Msg.GetInfusion().GetItemKey() != infusedDagger {
+		t.Fatalf("MoveInfusion() = %v, %v", first, err)
+	}
+	revision := it.read(t).GetRevision()
+	again, err := it.dona.infusions.MoveInfusion(t.Context(), connect.NewRequest(req))
+	if err != nil || again.Msg.GetInfusion().GetId() != blade.GetId() || again.Msg.GetInfusion().GetItemKey() != infusedDagger {
+		t.Fatalf("the retry = %v, %v, want the first answer", again, err)
+	}
+	if again.Msg.GetInfusion().GetSince().AsTime() != first.Msg.GetInfusion().GetSince().AsTime() || it.read(t).GetRevision() != revision {
+		t.Error("the retry wrote: the time or the revision changed")
+	}
+	other := &charactersv1.MoveInfusionRequest{CampaignId: it.campaign, CharacterId: it.pc.GetId(), InfusionId: blade.GetId(), ItemKey: infusionMace, IdempotencyKey: req.GetIdempotencyKey()}
+	_, err = it.dona.infusions.MoveInfusion(t.Context(), connect.NewRequest(other))
+	wantCode(t, "the same key for another move", err, connect.CodeInvalidArgument)
 }
