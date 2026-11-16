@@ -1,7 +1,8 @@
 import { expect } from '@playwright/test';
 import { test } from './diagnostics';
-import { getEncounterRPC } from './combat-support';
-import { openCombatPanel } from './combat-layout';
+import { combatRPC, getEncounterRPC } from './combat-support';
+import { waitForEncounterRevision } from './revision-support';
+import { callRPC } from './support';
 import { openSessionPage } from './live-session-support';
 import { tapSquare } from './move-support';
 import { fireReadied, masterQueue, moveWindow, placeFireball, readyMapTable, releaseSheet, releaseTexts, spellWindow } from './ready-map-support';
@@ -28,7 +29,7 @@ test('o jogador solta a Bola de Fogo preparada no mapa: o ponto, quem está na �
     await expect(win).toBeVisible();
 
     // The window: what it costs (the legend), what the map does, and the way to the map. The master's row waits for the readier.
-    await expect(win.getByTestId('readied-legend')).toContainText('Ação e espaço de 3º');
+    await expect(win.getByTestId('readied-legend')).toContainText('Sem espaço: o de 3º nível foi gasto ao preparar.');
     await expect(win.getByTestId('release-map-notice')).toBeVisible();
     await expect(win.getByTestId('release-to-map')).toHaveText(/Soltar no mapa/);
     await expect(win.getByTestId('readied-clock')).toContainText(/Se você não responder, passa sozinho em/);
@@ -47,12 +48,14 @@ test('o jogador solta a Bola de Fogo preparada no mapa: o ponto, quem está na �
     // The cast: nothing is spent twice (the slot went at Ready), the damage is rolled once and the sheet leaves with "Voltar à sessão".
     await expect(sheet.getByText('3 criaturas', { exact: true })).toBeVisible();
     await sheet.getByRole('button', { name: 'Conjurar Bola de Fogo' }).click();
-    await expect(sheet.getByRole('heading', { name: 'Bola de Fogo conjurada' })).toBeVisible();
-    await sheet.getByRole('button', { name: 'Digitar o resultado' }).click();
-    await sheet.getByLabel(/Role 8d6/).fill('28');
-    await sheet.getByRole('button', { name: 'Confirmar 28' }).click();
-    await sheet.getByRole('button', { name: releaseTexts.done }).click();
-    await expect(sheet).toHaveCount(0);
+    // The dialog is named by its title, which becomes "Bola de Fogo conjurada" with the result.
+    const result = p.getByRole('dialog', { name: 'Bola de Fogo conjurada' });
+    await expect(result.getByRole('heading', { name: 'Bola de Fogo conjurada' })).toBeVisible();
+    await result.getByRole('button', { name: 'Digitar o resultado' }).click();
+    await result.getByLabel(/Role 8d6/).fill('28');
+    await result.getByRole('button', { name: 'Confirmar 28' }).click();
+    await result.getByRole('button', { name: releaseTexts.done }).click();
+    await expect(result).toHaveCount(0);
 
     const after = await getEncounterRPC(m, campaignId);
     expect(after.reactionWindows ?? []).toHaveLength(0);
@@ -186,16 +189,21 @@ test('o mestre move por Pensantus: o rodapé da página de movimento e a volta p
 
 test('o mestre desfaz o gatilho com o mapa aberto: a folha diz que a Bola de Fogo continua preparada e sai com "Voltar à sessão"', { tag: ['@RN-31', '@RN-22'] }, async ({ browser }) => {
   test.setTimeout(300_000);
-  const { m, p, campaignId, done } = await readyMapTable(browser, 'Gatilho desfeito', 'fireball');
+  const { m, p, campaignId, encounter, done } = await readyMapTable(browser, 'Gatilho desfeito', 'fireball');
   try {
     await fireReadied(m);
     await spellWindow(p).getByTestId('release-to-map').click();
     const sheet = releaseSheet(p);
     await expect(sheet).toBeVisible();
 
-    await openCombatPanel(m, 'Registro');
-    await m.getByRole('button', { name: 'Desfazer última ação' }).first().click();
-    await m.getByRole('button', { name: 'Desfazer', exact: true }).click();
+    // The master's own call: the server names the fire as the last action (`undoable_event_id`) and takes the window back, the row waiting
+    // again. The log has no line for a fire whose window is open (the window tells it), so the log's "Desfazer última ação" has no row to show.
+    const log = await callRPC(m, 'meurpg.play.v1.CombatService/ListCombatLog', { campaignId, encounterId: encounter.id });
+    expect(log.ok(), await log.text()).toBeTruthy();
+    const fired = (await log.json()).undoableEventId as string;
+    expect(fired).toBeTruthy();
+    const undone = await combatRPC(m, 'UndoLastAction', { campaignId, encounterId: encounter.id, expectedEventId: fired });
+    await waitForEncounterRevision(m, undone);
 
     const gone = sheet.getByTestId('release-gone');
     await expect(gone).toContainText(releaseTexts.undone);
