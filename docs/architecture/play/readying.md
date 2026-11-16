@@ -168,7 +168,7 @@ No effect of the spell happens: no damage, no lasting effect, no zone, no `spell
 
 ### The release
 
-The release is the spell's cast as a reaction, through `castSpell` with `readied` set (`findReadied`).
+The release is the spell's cast as a reaction, through `castSpell` with `answering` set (`findReadied`).
 `AnswerReaction` "Usar" builds the `CastSpellRequest` from the answer and the row.
 The targets are `targets` (each with its darts), or `creature_ids`, or the target named at Ready.
 `targets` and `creature_ids` together are `invalid_argument`.
@@ -176,8 +176,8 @@ The target named at Ready is used only for a spell that takes named targets (`na
 In the window, a creature named at Ready that cannot be aimed at now is not chosen: the readier picks another or lets it pass.
 `castSpell` checks them as a cast on the caster's turn: the darts of the slot and the number of targets.
 `targets` on another kind of row, on a held spell attack, on a pass or on a window that is not READIED are `invalid_argument` (`badTargets`, with `targetsNotUsed`): an answer never drops what it carries.
-The answer carries no point and no direction: a spell placed on a map (a sphere at a point, a cone, a wall) is refused by the answer, with targets or without, and the window stays open.
-The readier releases it with `CastSpell`, which carries the point, while the READIED window is open.
+The answer carries no point and no direction, and Ready refuses a spell placed on a map (a sphere at a point, a cone, a wall), so no such row is written.
+The answer still refuses one, with targets or without, and keeps the window open: a guard for a row Ready did not check.
 In a combat with no map the area is released with the creatures the answer picks, or with nobody.
 The Ready sheet offers the spells the window releases with darts, creatures or nothing.
 It shows with a reason, and does not offer, a spell that asks the caster an ability (Enhance Ability), the creatures of a summon (Conjure Animals) or a damage type (Flame Strike): the answer carries no `ability_key`, `summon` or `damage_type_key`.

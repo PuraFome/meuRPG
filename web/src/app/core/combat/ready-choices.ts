@@ -54,7 +54,7 @@ export interface ChoiceReads {
 
 /**
  * The choice each spell the Ready sheet could offer asks (only the ones that ask are in the map). A read that fails leaves the spell
- * as it is: the server refuses a release that lacks what the spell needs, and the player can let it pass.
+ * as it is: Ready itself refuses, with its reason, a spell whose release cannot carry what it needs.
  */
 export async function readyChoices(
   spells: readonly SpellOption[],

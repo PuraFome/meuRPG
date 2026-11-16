@@ -412,7 +412,7 @@ describe('ReadySheet (#582)', () => {
     click(button('Preparar'));
     await settle();
     expect(flat(el.querySelector('.mr-notice--danger'))).toContain(
-      'Esta magia não pode ser preparada: ela pede uma escolha que só se faz ao conjurar na sua vez.',
+      'Esta magia não pode ser preparada: ela pede uma escolha que só se faz ao conjurar na sua vez. Nada foi gasto.',
     );
     expect(close).not.toHaveBeenCalled();
   });

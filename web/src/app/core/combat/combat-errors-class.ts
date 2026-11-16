@@ -32,7 +32,7 @@ export const CLASS_BLOCKED_TEXT: ReadonlyMap<EncounterBlockedReason, string> = n
   ],
   [
     EncounterBlockedReason.READY_SPELL_NOT_RELEASABLE,
-    'Esta magia não pode ser preparada: ela pede uma escolha que só se faz ao conjurar na sua vez.',
+    'Esta magia não pode ser preparada: ela pede uma escolha que só se faz ao conjurar na sua vez. Nada foi gasto.',
   ],
   [
     EncounterBlockedReason.READY_OWN_TURN,

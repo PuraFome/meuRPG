@@ -1165,7 +1165,7 @@ Um jogador lê só as próprias janelas, e os números do gatilho (um total de a
   Liberada, a magia tem efeito como reação e não gasta espaço de novo; a Contramágica ainda pode barrá-la.
   Os alvos e a divisão dos dardos são escolhidos ao liberar a magia, não ao preparar.
   A criatura nomeada ao preparar é só uma sugestão para a liberação.
-  Uma magia que pede um ponto ou uma direção no mapa, uma habilidade, um tipo de dano, as criaturas de uma invocação ou uma ressurreição não pode ser liberada pela janela, e o Preparar a recusa.
+  Uma magia que pede um ponto ou uma direção no mapa, uma habilidade, um tipo de dano, as criaturas de uma invocação ou reviver uma criatura morta não pode ser liberada pela janela, e o Preparar a recusa.
   A magia se perde, com o espaço gasto, se a concentração acabar antes, se a criatura a deixar passar ou quando a ação preparada se perde.
   Esconder-se e Ajudar não podem ser guardados: têm chamadas próprias, que uma reação não executa.
   Correr e Desengajar também não: valem só para o turno da própria criatura.

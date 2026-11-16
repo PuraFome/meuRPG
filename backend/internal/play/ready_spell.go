@@ -252,8 +252,7 @@ func heldRelease(ctx context.Context, q *playdb.Queries, encID, windowID string,
 
 // useReadiedSpell is "Usar" on a readied spell: CastSpell by the readier, under the answer's key, with the targets the
 // answer names in targets (with their darts) or in creature_ids, else the creature named at Ready (for a spell that
-// takes named targets), and the answer's die, checked as on the caster's turn. A spell placed on the map is released with
-// CastSpell itself, which carries its point. The use is spent once the spell is cast: a cast held by a Counterspell is
+// takes named targets), and the answer's die, checked as on the caster's turn. The use is spent once the spell is cast: a cast held by a Counterspell is
 // used when it happens.
 func (s *Service) useReadiedSpell(ctx context.Context, m authz.Membership, in answerInput, msg *playv1.AnswerReactionRequest, row playdb.ReadiedAction) (*connect.Response[playv1.AnswerReactionResponse], error) {
 	req := &playv1.CastSpellRequest{
