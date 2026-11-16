@@ -11,7 +11,6 @@ import (
 
 // The pass and the grant in a combat (favor_pass.go, combat_log_favor.go, combat_undo_favor.go): the log's lines, who reads each, the
 // master's undo of the pass and of a grant. Toren is Caio's, Pensantus is Ana's and Brisa is Bia's, all in the casters' combat.
-// Written under the rule that no database test runs in this task: these have not run.
 
 // favorTexts are the sentences about the Inspiration u reads in the combat's log, oldest first.
 func (f *favorFight) favorTexts(t *testing.T, u *user) []string {
