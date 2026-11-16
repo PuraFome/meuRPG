@@ -199,6 +199,7 @@ They are the sheet a client reads, the preview of a sheet, the save check, the a
 A build that reads no such number builds without them.
 `infusions_sites_test.go` lists every build of a sheet in the package and says which it is, so a new one has to say.
 A write reads the records after it locked the character's row.
+A record carries its artificer (`InfusionRecord.ArtificerID`) and a build carries its own `CharacterID`: a record whose artificer is not the build's character is not valid now, so a holder's sheet never judges another character's infusion by its own features.
 `FullSheet.infusions` lists one `SheetInfusion` per live record on every read, valid or not, the oldest first (`since`, then the id).
 Each row has the record, the infusion's name, the piece's or the object's name, whether the app computes it, whether it is valid now, the bonus it gives at the class level and what it asks of attunement.
 A text only record and an object record are rows too.
@@ -207,7 +208,7 @@ A host feature with the typed infusion limit shows no `resource` effect of its o
 A feature with no limit rule keeps its resource.
 
 A save that takes a gear key off the sheet ends the live records on it with the reason `item_gone`.
-The records are ended in the transaction of the save, whoever holds the piece: the artificer's own sheet or another character's.
+The records are ended in the transaction of the save, and it is the holder's save that ends them: the artificer's own save in this version, which reads the holder's live records once and uses them for the check and for the end.
 Moving a piece between equipped and carried keeps the piece listed, so its record stays.
 No other writer takes a key off `armor_key`, `weapon_keys` or `shield`: equipping, the level-up, the choices, the daily choices, attunement, the XP award and the removal of a consumable leave them alone.
 The campaign package brings no records.

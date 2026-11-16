@@ -16,6 +16,10 @@ const (
 // InfusionRecord is one live infusion of the character as holder (Build.Infusions). The holder is the character itself.
 type InfusionRecord struct {
 	ID string
+	// ArtificerID is the character who made the infusion. In this version the holder is always the artificer; a record
+	// whose artificer is not the build's character (Build.CharacterID) is not valid, so a sheet never judges another
+	// character's infusion by its own features.
+	ArtificerID string
 	// InfusionKey is the key of the infusion option (Content.Infusion).
 	InfusionKey string
 	// ItemKind is InfusionItemGear or InfusionItemObject; ItemKey is the gear key, or the object's own key.
@@ -72,6 +76,7 @@ const (
 	reasonInfusionManual  = "A peça já tem um bônus mágico marcado."
 	reasonInfusionLost    = "A infusão perdeu o pré-requisito."
 	reasonInfusionNoPiece = "A peça não está na ficha."
+	reasonInfusionOther   = "A infusão é de outro artífice, e esta ficha não a avalia."
 	reasonInfusionTaken   = "A peça já tem outra infusão, mais antiga."
 )
 
@@ -139,6 +144,8 @@ func (c *content) infusionLine(b Build, r InfusionRecord, manualStands bool, los
 	l.level = level
 	l.onSheet = l.gear() && b.listsGear(r.ItemKey)
 	switch {
+	case r.ArtificerID != b.CharacterID:
+		l.reasonPT = reasonInfusionOther
 	case !hasRule || !owns:
 		l.reasonPT = reasonInfusionNoHost
 	case !slices.Contains(b.FeatureChoices, r.InfusionKey):
@@ -270,7 +277,7 @@ func (x *deriver) infusionNamePT(infusion string) string {
 	if n := x.c.namePT(infusion); n != "" {
 		return n
 	}
-	return infusion
+	return "Infusão que a ficha não conhece"
 }
 
 // repeats says the weapon key makes its own ammunition: a valid repeating infusion on it, attuned when it asks.

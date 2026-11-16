@@ -182,7 +182,7 @@ type levelUpTarget struct {
 // with: the level a character reaches changes what its infusions give.
 func (t levelUpTarget) buildOf(f *charactersv1.FullSheet) rules.Build {
 	b := buildOf(f)
-	b.Infusions = t.build.Infusions
+	b.CharacterID, b.Infusions = t.build.CharacterID, t.build.Infusions
 	return b
 }
 

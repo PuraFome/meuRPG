@@ -25,7 +25,7 @@ func infusionRecordsOf(rows []charactersdb.CharacterInfusion) []rules.InfusionRe
 	for _, r := range rows {
 		out = append(out, rules.InfusionRecord{
 			ID: r.ID, InfusionKey: r.InfusionKey, ItemKind: r.ItemKind, ItemKey: r.ItemKey,
-			ObjectName: r.ObjectName, Parameter: r.Parameter, Attuned: r.Attuned, Since: r.Since,
+			ObjectName: r.ObjectName, ArtificerID: r.ArtificerCharacterID, Parameter: r.Parameter, Attuned: r.Attuned, Since: r.Since,
 		})
 	}
 	return out
@@ -47,7 +47,7 @@ func (s *Service) withInfusions(ctx context.Context, q *charactersdb.Queries, ch
 	if err != nil {
 		return b, err
 	}
-	b.Infusions = records
+	b.CharacterID, b.Infusions = characterID, records
 	return b, nil
 }
 

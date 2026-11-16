@@ -100,7 +100,7 @@ func (s *Service) fullFighter(ctx context.Context, q *charactersdb.Queries, cont
 	if err != nil {
 		return rules.Derived{}, err
 	}
-	d := derive(content, full, beast, active, infusions)
+	d := derive(content, full, beast, active, id, infusions)
 	d.ArmorUntrained = armorTrainingOf(d, kind, beast)
 	if kind != kindPlayer {
 		d = withoutStates(d)

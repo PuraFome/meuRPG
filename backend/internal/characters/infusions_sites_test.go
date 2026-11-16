@@ -27,6 +27,7 @@ var infusionSites = map[string]string{
 	"checkPlannedLevel":              "loads: the planned sheet is built with the target's records",
 	"Service.fullFighter":            "loads: the combat's armor class and attacks",
 	"askOfEntry":                     "given: attuneIn passes the build with the records",
+	"entryStands":                    "given: attuneIn passes the build with the records",
 	"derive":                         "loads: the records come in as an argument; the callers that read no infusion pass nil",
 	"Service.infusedBuild":           "loads: the build with the records of the character",
 	"buildWithStates":                "given: the loaders set Build.Infusions after it",

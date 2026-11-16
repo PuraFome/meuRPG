@@ -5,6 +5,7 @@ import (
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
 // The ash cloak asks attunement: its record is an entry of the character named "infusion:<record id>".
@@ -154,11 +155,11 @@ func TestSetAttunementRefusesWhatIsNoEntryOfTheCharacter(t *testing.T) {
 		_, err := it.attuneEntry(it.master, pc, entry, true)
 		wantEditorRefusal(t, name, err, unknown)
 	}
-	// The holder reaches its own entry, not the artificer's.
+	// The holder reaches no entry of the artificer's record in this version.
 	friendNow := it.caio.get(t, it.campaign, friend.GetId())
-	if _, err := it.attuneEntry(it.master, friendNow, "infusion:"+given.ID, true); err != nil {
-		t.Errorf("the holder's entry on the holder's sheet: %v", err)
-	}
+	// The artificer is another character, so the holder's sheet does not judge the record: no entry to attune.
+	_, err = it.attuneEntry(it.master, friendNow, "infusion:"+given.ID, true)
+	wantEditorRefusal(t, "a record whose artificer is another character", err, unknown)
 	_, err = it.attuneEntry(it.master, friendNow, cloakEntry, true)
 	wantEditorRefusal(t, "the artificer's record on another sheet", err, unknown)
 
@@ -168,4 +169,57 @@ func TestSetAttunementRefusesWhatIsNoEntryOfTheCharacter(t *testing.T) {
 	}
 	_, err = it.attuneEntry(it.master, pc, cloakEntry, true)
 	wantEditorRefusal(t, "an ended record", err, unknown)
+}
+
+// A record that is not valid now is no entry to attune: the piece it sits on is not on the sheet (the record stays live
+// until a write ends it), so the refusal is the one of an unknown entry, and the record is left as it was.
+func TestSetAttunementRefusesARecordThatIsNotValidNow(t *testing.T) {
+	t.Parallel()
+	it := newInfusedTable(t)
+	rec, err := it.h.svc.insertInfusion(t.Context(), it.h.svc.queries, newInfusion{
+		CampaignID: it.campaign, ArtificerID: it.pc.GetId(), HolderID: it.pc.GetId(),
+		InfusionKey: infusionKeyAsh, ItemKind: infusionItemGear, GearKey: "equipment:chain-mail", Parameter: "damage-type:fire",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	pc := it.read(t)
+	it.openWindow(t, pc.GetId(), true)
+	_, err = it.attuneEntry(it.dona, pc, "infusion:"+rec.ID, true)
+	wantEditorRefusal(t, "a record on a piece the sheet does not list", err, `invalid_argument: entry_id is not an entry of the sheet | InvalidField{field="entry_id"}`)
+	if it.record(t, rec.ID).Attuned {
+		t.Error("a refused attunement changed the record")
+	}
+}
+
+// A record whose artificer is another character is not valid on the sheet of a holder who has the host feature: the
+// holder's features do not judge it, so the blade gives no bonus.
+func TestTheSheetOfAHolderDoesNotJudgeAnotherArtificersInfusionRecord(t *testing.T) {
+	t.Parallel()
+	it := newInfusedTable(t)
+	friend := it.caio.create(t, it.campaign, charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, "Amigo", pensantusSheet())
+	if _, err := it.h.svc.insertInfusion(t.Context(), it.h.svc.queries, newInfusion{
+		CampaignID: it.campaign, ArtificerID: friend.GetId(), HolderID: it.pc.GetId(),
+		InfusionKey: infusionKeyBlade, ItemKind: infusionItemGear, GearKey: infusionMace,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	c := it.read(t)
+	list := c.GetSheet().GetFull().GetInfusions()
+	if len(list) != 1 || list[0].GetValidNow() || list[0].GetBonus() != 0 {
+		t.Errorf("the holder's sheet lists %v, want one record, not valid now and no bonus", list)
+	}
+	if a := attackOf(c, infusionMace); a == nil || a.GetMagicBonus() != 0 {
+		t.Errorf("the mace attack = %v, want no infusion bonus", a)
+	}
+}
+
+// entriesOf with records and no content lists the sheet's own entries and no infusion: it has no way to say which ask.
+func TestAttunementEntriesOfRecordsAndNoContentDoNotPanic(t *testing.T) {
+	t.Parallel()
+	records := []rules.InfusionRecord{{ID: "r1", InfusionKey: infusionKeyAsh}}
+	f := &charactersv1.FullSheet{MagicItems: []*charactersv1.SheetMagicItem{{Key: "x"}}}
+	if got := entriesOf(f, records, nil); len(got) != 1 {
+		t.Errorf("entriesOf(records, nil content) = %d entries, want the 1 magic item", len(got))
+	}
 }

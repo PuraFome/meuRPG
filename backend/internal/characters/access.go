@@ -155,7 +155,7 @@ func (s *Service) characterToProto(content *rules.Content, row charactersdb.Char
 	}
 	if full := sheet.GetFull(); full != nil {
 		build := buildWithStates(full, stateKeysOf(row.ActiveStates))
-		build.Infusions = infusions
+		build.CharacterID, build.Infusions = row.ID, infusions
 		der := rules.Derive(build, content)
 		c.Derived = derivedToProto(der)
 		r := reader{name: row.Name, master: master}

@@ -168,6 +168,9 @@ type Build struct {
 	// MagicItems are the catalog magic items of the sheet that are no +N gear (at most MaxMagicItems; a key may repeat, each copy is an entry).
 	// They change no number: the sheet shows them and counts the attuned ones toward MaxAttunements.
 	MagicItems []SheetMagicItem `json:",omitempty"`
+	// CharacterID is the id of the character the build is of; the infusion records are judged against it (infusion.go).
+	// The loader sets it with Infusions; a build with no records needs none.
+	CharacterID string `json:",omitempty"`
 	// Infusions are the live infusion records of the character as holder (infusion.go). The loader sets them; the sheet
 	// never stores them.
 	Infusions []InfusionRecord `json:",omitempty"`

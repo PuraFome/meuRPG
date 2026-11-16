@@ -151,7 +151,7 @@ func TestTheSheetReadShowsTheInfusionsOfTheCharacter(t *testing.T) {
 	if text := list[1]; text.GetValidNow() != true || text.GetComputed() || text.GetBonus() != 0 || text.GetItemKey() != infusionShieldGear {
 		t.Errorf("the text-only entry = %v, want valid, not computed, no bonus, on the shield", text)
 	}
-	if lost := list[2]; lost.GetValidNow() || lost.GetBonus() != 0 || lost.GetNamePt() != "feature:no-longer-there" {
+	if lost := list[2]; lost.GetValidNow() || lost.GetBonus() != 0 || lost.GetNamePt() != "Infusão que a ficha não conhece" {
 		t.Errorf("the entry of an infusion the content lost = %v, want not valid, no bonus", lost)
 	}
 	if obj := list[3]; obj.GetItemKind() != charactersv1.InfusionItemKind_INFUSION_ITEM_KIND_OBJECT || obj.GetObjectNamePt() != "Lanterna" ||
@@ -178,8 +178,8 @@ func TestTheCombatReadsTheInfusionOfTheCharacter(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CombatSheet() error = %v", err)
 	}
-	plateKey := it.infuse(t, infusionKeyPlate, infusionLeather)
-	blade := it.infuse(t, infusionKeyBlade, infusionMace)
+	it.infuse(t, infusionKeyPlate, infusionLeather)
+	it.infuse(t, infusionKeyBlade, infusionMace)
 	after, err := it.h.svc.CombatSheet(t.Context(), nil, it.campaign, it.pc.GetId())
 	if err != nil {
 		t.Fatalf("CombatSheet() error = %v", err)
@@ -203,9 +203,6 @@ func TestTheCombatReadsTheInfusionOfTheCharacter(t *testing.T) {
 	o := attackOptionOf(opts, infusionMace)
 	if o == nil || o.GetAttack().GetInfusionNamePt() != "Gume Vivo" || o.GetMagicBonus() != 1 {
 		t.Fatalf("the mace option = %v, want the name Gume Vivo and +1", o)
-	}
-	if blade.ID == "" || plateKey.ID == "" {
-		t.Fatal("no records")
 	}
 }
 

@@ -40,9 +40,9 @@ const wildShapeAction = "feature:wild-shape"
 // character never loses its own numbers. infusions are the live records of the character as holder: a caller that reads
 // numbers they change (the armor class, the attacks) passes them, and one that reads only the senses, the speeds or the
 // size passes nil.
-func derive(content *rules.Content, full *charactersv1.FullSheet, beast *string, active []byte, infusions []rules.InfusionRecord) rules.Derived {
+func derive(content *rules.Content, full *charactersv1.FullSheet, beast *string, active []byte, characterID string, infusions []rules.InfusionRecord) rules.Derived {
 	b := buildWithStates(full, stateKeysOf(active))
-	b.Infusions = infusions
+	b.CharacterID, b.Infusions = characterID, infusions
 	d := rules.Derive(b, content)
 	if beast == nil || *beast == "" {
 		return d

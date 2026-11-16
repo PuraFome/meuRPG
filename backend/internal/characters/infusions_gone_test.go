@@ -121,3 +121,44 @@ func TestAPieceMovedBetweenEquippedAndCarriedKeepsItsRecord(t *testing.T) {
 		t.Errorf("attuning the cloak ended its record with %q", got)
 	}
 }
+
+// A save that takes a gear key off the sheet ends no object record: an object is no piece of the sheet.
+func TestASaveThatRemovesAGearKeyLeavesAnObjectRecordLive(t *testing.T) {
+	t.Parallel()
+	it := newInfusedTable(t)
+	lantern, err := it.h.svc.insertInfusion(t.Context(), it.h.svc.queries, newInfusion{
+		CampaignID: it.campaign, ArtificerID: it.pc.GetId(), HolderID: it.pc.GetId(),
+		InfusionKey: infusionKeyHouse, ItemKind: infusionItemObject, ObjectName: "Lanterna",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	blade := it.infuse(t, infusionKeyBlade, infusionMace)
+	req := editorSaveOf(it.read(t))
+	req.Sheet.GetFull().WeaponKeys = []string{"equipment:club"}
+	if _, err := editorUpdate(it.dona, req); err != nil {
+		t.Fatalf("the save that trades the mace for a club: %v", err)
+	}
+	if got := endedWith(it.record(t, blade.ID)); got != infusionEndedItemGone {
+		t.Errorf("the record of the mace ended with %q, want %q", got, infusionEndedItemGone)
+	}
+	if got := endedWith(it.record(t, lantern.ID)); got != "" {
+		t.Errorf("the object record ended with %q, want it live", got)
+	}
+}
+
+// A save refused for a stale revision rolls back with the rest: the record of the piece it would have taken off stays live.
+func TestASaveRefusedForAStaleRevisionLeavesTheGearRecordLive(t *testing.T) {
+	t.Parallel()
+	it := newInfusedTable(t)
+	blade := it.infuse(t, infusionKeyBlade, infusionMace)
+	req := editorSaveOf(it.read(t))
+	req.Revision += 5
+	req.Sheet.GetFull().WeaponKeys = []string{"equipment:club"}
+	if _, err := editorUpdate(it.dona, req); err == nil {
+		t.Fatal("the save with a stale revision was accepted")
+	}
+	if got := endedWith(it.record(t, blade.ID)); got != "" {
+		t.Errorf("a refused save ended the record with %q, want it live", got)
+	}
+}

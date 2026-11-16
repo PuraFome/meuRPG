@@ -718,3 +718,31 @@ func TestAStaleManualBonusStandsAndTheRecordIsNotValid(t *testing.T) {
 		t.Errorf("attuned %d", n)
 	}
 }
+
+func TestAnInfusionRecordOfAnotherArtificerIsNotValidNow(t *testing.T) {
+	t.Parallel()
+	c := withOverlay(t, infusionRulesOverlay())
+	b := infBuild(5, infAll...)
+	b.CharacterID, b.Weapons = "me", []string{infSword}
+	own, other := infRec("r1", infGume, infSword), infRec("r2", infGume, infSword)
+	own.ArtificerID, other.ArtificerID = "me", "someone-else"
+	b.Infusions = []InfusionRecord{other}
+	d := Derive(b, c)
+	if s := infStatus(t, d, "r2"); s.Valid || s.ReasonPT != reasonInfusionOther || s.Bonus != 0 || infHostUsed(d) != 0 {
+		t.Errorf("status = %+v used %d, want not valid now: another artificer, no slot", s, infHostUsed(d))
+	}
+	b.Infusions = []InfusionRecord{own}
+	if s := infStatus(t, Derive(b, c), "r1"); !s.Valid {
+		t.Errorf("the character's own record = %+v, want valid", s)
+	}
+}
+
+func TestAnInfusionRecordOfAKeyTheContentLostIsNamedWithoutTheKey(t *testing.T) {
+	t.Parallel()
+	c := withOverlay(t, infusionRulesOverlay())
+	b := infBuild(5, infAll...)
+	b.Infusions = []InfusionRecord{infRec("r1", "feature:gone", infSword)}
+	if s := infStatus(t, Derive(b, c), "r1"); s.NamePT != "Infusão que a ficha não conhece" {
+		t.Errorf("NamePT = %q, want the name of an unknown infusion", s.NamePT)
+	}
+}

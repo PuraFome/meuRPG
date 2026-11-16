@@ -172,6 +172,9 @@ func entriesOf(f *charactersv1.FullSheet, records []rules.InfusionRecord, conten
 		out = append(out, entry{magic: it})
 	}
 	for i := range records {
+		if content == nil {
+			break // no content to say which infusions ask for attunement
+		}
 		if in, ok := content.Infusion(records[i].InfusionKey); ok && in.RequiresAttunement {
 			out = append(out, entry{infusion: &records[i]})
 		}
@@ -310,7 +313,10 @@ func (s *Service) attuneIn(ctx context.Context, tx pgx.Tx, content *rules.Conten
 	}
 	target := entries[i]
 	build := buildOf(next)
-	build.Infusions = records
+	build.CharacterID, build.Infusions = current.ID, records
+	if !entryStands(target, build, content) {
+		return current, false, invalidArgument(fieldErr("entry_id", "is not an entry of the sheet"))
+	}
 	requires, met := askOfEntry(content, target, build, next)
 	if !requires && (in.attuned || !target.attuned()) {
 		return current, false, invalidArgument(fieldErr("entry_id", "is an item that does not ask for attunement"))
@@ -327,6 +333,14 @@ func (s *Service) attuneIn(ctx context.Context, tx pgx.Tx, content *rules.Conten
 	target.set(in.attuned)
 	row, err := s.writeAttunement(ctx, q, m, current, next)
 	return row, err == nil, err
+}
+
+// entryStands says the entry is one to attune: an infusion record that is not valid now is none.
+func entryStands(e entry, build rules.Build, content *rules.Content) bool {
+	if e.infusion == nil {
+		return true
+	}
+	return slices.ContainsFunc(rules.Derive(build, content).Infusions, func(s rules.InfusionStatus) bool { return s.ID == e.infusion.ID && s.Valid })
 }
 
 // askOfEntry says whether the entry asks for attunement and whether the character meets what it asks. A +N piece says it
