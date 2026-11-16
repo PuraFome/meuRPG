@@ -24,7 +24,7 @@ import { MoveSaves } from '../../../core/maps/move-saves';
 import { metersFixed } from '../../../core/units';
 import type { Reach, TokenDrop } from '../../../shared/combat-map/combat-map';
 import type { JumpRequest } from './move-page/move-page';
-import { jumpCall } from './move-jump';
+import { jumpCall, walkCall } from './move-jump';
 import { MoveReleaseFlow } from './move-release-flow';
 
 /** What `MoveFlow` reads from the screen it serves. */
@@ -351,21 +351,7 @@ export class MoveFlow {
     }
     this.moveError.set('');
     const ok = await this.runMove((e) =>
-      this.release.current()?.master
-        ? // The master's "Usar pelo jogador": the walk is the release of the readied move (a plain drag is not).
-          this.ctx.api.moves.move(
-            this.ctx.campaignId(),
-            e.id,
-            own.id,
-            to.col,
-            to.row,
-            undefined,
-            undefined,
-            false,
-            '',
-            true,
-          )
-        : this.ctx.api.moves.move(this.ctx.campaignId(), e.id, own.id, to.col, to.row),
+      walkCall(this.ctx.api, this.ctx.campaignId(), e, own, to, !!this.release.current()?.master),
     );
     this.afterMove(ok);
   }

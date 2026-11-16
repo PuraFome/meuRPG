@@ -185,6 +185,50 @@ test('o mestre move por Pensantus: o rodapé da página de movimento e a volta p
   }
 });
 
+test('o mestre usa o movimento preparado pelo jogador: o movimento gasta a reação e fecha a janela', { tag: ['@RN-31', '@RN-22', '@RN-21'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  const { m, p, campaignId, done } = await readyMapTable(browser, 'Mestre usa o movimento', 'move');
+  try {
+    await fireReadied(m);
+    await expect(moveWindow(p)).toBeVisible();
+    const before = (await getEncounterRPC(m, campaignId)).combatants.find((c) => c.label === 'Pensantus')!;
+    await masterQueue(m).getByRole('button', { name: 'Mover por Pensantus' }).click();
+    await expect(m.getByTestId('release-band')).toContainText('Ação preparada de Pensantus:');
+    await tapSquare(m, (before.col ?? 0) + 2, before.row ?? 0);
+    await m.getByRole('button', { name: 'Mover para cá' }).click();
+    await expect.poll(async () => (await getEncounterRPC(m, campaignId)).combatants.find((c) => c.label === 'Pensantus')?.col).toBe((before.col ?? 0) + 2);
+    const after = await getEncounterRPC(m, campaignId);
+    expect(after.reactionWindows ?? []).toHaveLength(0);
+    expect(after.combatants.find((c) => c.label === 'Pensantus')?.reactionUsed).toBe(true);
+  } finally {
+    await done();
+  }
+});
+
+test('o mestre arrasta Pensantus com o movimento preparado na janela: é um passo comum, a janela continua aberta e a reação livre', { tag: ['@RN-31', '@RN-22'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  const { m, p, campaignId, done } = await readyMapTable(browser, 'Mestre arrasta', 'move');
+  try {
+    await fireReadied(m);
+    await expect(moveWindow(p)).toBeVisible();
+    const before = (await getEncounterRPC(m, campaignId)).combatants.find((c) => c.label === 'Pensantus')!;
+    const map = m.getByRole('group', { name: /Mapa de batalha/ });
+    const box = (await map.boundingBox())!;
+    const from = (await m.locator(`.cm__tk[data-id="${before.id}"]`).boundingBox())!;
+    await m.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+    await m.mouse.down();
+    await m.mouse.move(box.x + (((before.col ?? 0) + 2.5) * box.width) / 20, box.y + (((before.row ?? 0) + 0.5) * box.height) / 14, { steps: 8 });
+    await m.mouse.up();
+    await expect.poll(async () => (await getEncounterRPC(m, campaignId)).combatants.find((c) => c.label === 'Pensantus')?.col).toBe((before.col ?? 0) + 2);
+    const after = await getEncounterRPC(m, campaignId);
+    expect(after.reactionWindows ?? []).toHaveLength(1);
+    expect(after.combatants.find((c) => c.label === 'Pensantus')?.reactionUsed).toBe(false);
+    await expect(moveWindow(p)).toBeVisible();
+  } finally {
+    await done();
+  }
+});
+
 test('o mestre desfaz o gatilho com o mapa aberto: a folha diz que a Bola de Fogo continua preparada e sai com "Voltar à sessão"', { tag: ['@RN-31', '@RN-22'] }, async ({ browser }) => {
   test.setTimeout(300_000);
   const { m, p, campaignId, done } = await readyMapTable(browser, 'Gatilho desfeito', 'fireball');

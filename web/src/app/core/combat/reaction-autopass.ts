@@ -82,7 +82,10 @@ export class AutoPassClock {
    * The readied windows as the screen last read them, with the time of that read: their wait is the server's (`waited_ms` as read,
    * plus the time since), not this screen's clock set against `wait_began_at` (#857).
    */
-  private readonly readied = new Map<string, { readonly w: ReactionWindow; readonly readAt: number }>();
+  private readonly readied = new Map<
+    string,
+    { readonly w: ReactionWindow; readonly readAt: number }
+  >();
   private readonly sent = new Set<string>();
 
   /** Looks at the open windows at `now` (ms): forgets the gone ones, starts the clock of the new ones. */

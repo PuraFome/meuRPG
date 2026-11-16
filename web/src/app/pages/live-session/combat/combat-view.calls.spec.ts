@@ -1521,7 +1521,18 @@ describe('CombatView calls: the master releases a readied move (#857)', () => {
     const { view, callsOf } = mountReleasable();
     view.moves.openRelease('w1');
     await view.moves.confirmMove({ col: 4, row: 2 });
-    expect(callsOf('move')[0].args).toEqual(['c', 'enc', 't', 4, 2, undefined, undefined, false, '', true]);
+    expect(callsOf('move')[0].args).toEqual([
+      'c',
+      'enc',
+      't',
+      4,
+      2,
+      undefined,
+      undefined,
+      false,
+      '',
+      true,
+    ]);
   });
 
   it("the master's ordinary drag of the readier stays a plain walk", async () => {

@@ -35,3 +35,31 @@ export function jumpCall(
         key,
       );
 }
+
+/**
+ * The walk's call of the "Mover" page. The master's page of a readied move ("Usar pelo jogador") sends `release_readied`, so the walk is the
+ * release; every other walk is plain, and a master's drag of the readier stays one (#857).
+ */
+export function walkCall(
+  api: Pick<CombatClient, 'moves'>,
+  campaignId: string,
+  e: Encounter,
+  own: Combatant,
+  to: { readonly col: number; readonly row: number },
+  releasing: boolean,
+): Promise<MoveResult> {
+  return releasing
+    ? api.moves.move(
+        campaignId,
+        e.id,
+        own.id,
+        to.col,
+        to.row,
+        undefined,
+        undefined,
+        false,
+        '',
+        true,
+      )
+    : api.moves.move(campaignId, e.id, own.id, to.col, to.row);
+}
