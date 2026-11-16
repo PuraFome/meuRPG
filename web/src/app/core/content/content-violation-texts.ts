@@ -1,6 +1,7 @@
 import { FEAT_OPTION_TEXTS, PREREQUISITE_TEXTS } from './content-violation-texts-feat';
 import { INFUSION_TEXTS } from './content-violation-texts-infusion';
 import { RACE_FIELD_TEXTS } from './content-violation-texts-race';
+import { SWAP_FIELD_TEXTS } from './content-violation-texts-swap';
 
 /** What the server's reason at a field says in Portuguese: the table `violationText` looks a violation up in (the rest of its words are there). */
 
@@ -406,6 +407,7 @@ export const FIELD_TEXTS: readonly { shape: RegExp; reason?: string; text: strin
   { shape: /\.class_keys\[\]$/, text: 'Esta classe está na lista duas vezes.' },
   ...FEAT_OPTION_TEXTS,
   ...RACE_FIELD_TEXTS,
+  ...SWAP_FIELD_TEXTS,
   // The target of a modifier is a closed list of the menu; one that left it (or never was in it) is refused here. After the feat's own rows, whose option effects read a pick.
   {
     shape: /\.effects\[\]\.target$/,

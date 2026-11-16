@@ -3026,7 +3026,9 @@ type TableFeature struct {
 	// option of the pool; unset or empty means never. The pool is this feature's options, with the options of the
 	// other features of the same class or subclass that share an option with it (a later level's "2 more"). Only a
 	// class or subclass feature that has options may set it (an option may not). Whether the table plays with the rule
-	// "Trocar uma escolha no aumento de atributo" does not matter: the feature's own data decides.
+	// "Trocar uma escolha no aumento de atributo" does not matter: the feature's own data decides. A feature whose
+	// choice offers the options of another feature (`from_feature` on one of its effects) cannot set it: the master's
+	// save is refused at this field, and the master drops the swap levels or gives the feature options of its own.
 	SwapLevels    *FeatureSwapLevels `protobuf:"bytes,10,opt,name=swap_levels,json=swapLevels,proto3" json:"swap_levels,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

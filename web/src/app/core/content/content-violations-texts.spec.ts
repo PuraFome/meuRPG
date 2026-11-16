@@ -104,10 +104,18 @@ const CASES: Record<string, [field: string, reason: string, ctx?: typeof CLASS_C
     'dangling_reference',
   ],
   'choice from feature, other': ['table_class_feature.effects[0].from_feature', 'bad_value'],
+  'swap levels of a feature that cannot swap': [
+    'table_subclass.levels[0].features[0].swap_levels',
+    'bad_value',
+  ],
+  'swap levels of a class feature': ['table_class_feature.swap_levels', 'bad_value'],
   'option offered by, dangling': ['table_option.offered_by', 'dangling_reference'],
   // The editor drops the feature with the set, so this one is defensive: a body from another client can still carry it.
   'option offered by, another set': ['table_option.offered_by', 'bad_value'],
 };
+
+const SWAP_TEXT =
+  'Uma característica que oferece as opções de outra, ou que não tem opções, não pode permitir trocas. Tire as trocas ou escolha opções próprias.';
 
 const EXPECTED: Record<string, string> = {
   'feat options limit': 'O talento passou de 60 opções. Remova uma.',
@@ -218,6 +226,8 @@ const EXPECTED: Record<string, string> = {
     'Esta fórmula não funciona. Use só as funções da lista e confira os parênteses.',
   'creature attack damage bonus':
     'Esta fórmula não funciona. Use só as funções da lista e confira os parênteses.',
+  'swap levels of a feature that cannot swap': SWAP_TEXT,
+  'swap levels of a class feature': SWAP_TEXT,
   'reroll no rolls': 'Marque ao menos uma jogada.',
   'reroll face': 'A face vai de 1 a 20.',
   // The type-less sentence: the picker puts the words of the effect's own type in its place (EFFECT_REFUSAL_TEXTS).

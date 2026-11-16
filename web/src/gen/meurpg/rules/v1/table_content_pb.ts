@@ -1258,7 +1258,9 @@ export type TableFeature = Message<"meurpg.rules.v1.TableFeature"> & {
    * option of the pool; unset or empty means never. The pool is this feature's options, with the options of the
    * other features of the same class or subclass that share an option with it (a later level's "2 more"). Only a
    * class or subclass feature that has options may set it (an option may not). Whether the table plays with the rule
-   * "Trocar uma escolha no aumento de atributo" does not matter: the feature's own data decides.
+   * "Trocar uma escolha no aumento de atributo" does not matter: the feature's own data decides. A feature whose
+   * choice offers the options of another feature (`from_feature` on one of its effects) cannot set it: the master's
+   * save is refused at this field, and the master drops the swap levels or gives the feature options of its own.
    *
    * @generated from field: meurpg.rules.v1.FeatureSwapLevels swap_levels = 10;
    */
