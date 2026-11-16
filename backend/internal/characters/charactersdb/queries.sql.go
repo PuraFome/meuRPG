@@ -1106,6 +1106,31 @@ func (q *Queries) GetCharacterInfusionForUpdate(ctx context.Context, arg GetChar
 	return i, err
 }
 
+const getCharacterInfusionRequest = `-- name: GetCharacterInfusionRequest :one
+SELECT campaign_id, idempotency_key, request_hash, infusion_id, ended_infusion_id, created_at FROM character_infusion_requests
+WHERE campaign_id = $1::UUID AND idempotency_key = $2::UUID
+`
+
+type GetCharacterInfusionRequestParams struct {
+	CampaignID     string
+	IdempotencyKey string
+}
+
+// The answer kept under an idempotency key of the campaign, if any.
+func (q *Queries) GetCharacterInfusionRequest(ctx context.Context, arg GetCharacterInfusionRequestParams) (CharacterInfusionRequest, error) {
+	row := q.db.QueryRow(ctx, getCharacterInfusionRequest, arg.CampaignID, arg.IdempotencyKey)
+	var i CharacterInfusionRequest
+	err := row.Scan(
+		&i.CampaignID,
+		&i.IdempotencyKey,
+		&i.RequestHash,
+		&i.InfusionID,
+		&i.EndedInfusionID,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const getCharacterReview = `-- name: GetCharacterReview :one
 SELECT character_id, campaign_id, player_user_id, status, reason, requested_at, resubmitted_at, request_key, request_hash, resubmit_key, resubmit_hash FROM character_reviews WHERE character_id = $1::UUID
 `
@@ -1762,6 +1787,32 @@ func (q *Queries) InsertCharacterInfusion(ctx context.Context, arg InsertCharact
 		&i.CreatedAt,
 	)
 	return i, err
+}
+
+const insertCharacterInfusionRequest = `-- name: InsertCharacterInfusionRequest :exec
+INSERT INTO character_infusion_requests (campaign_id, idempotency_key, request_hash, infusion_id, ended_infusion_id, created_at)
+VALUES ($1::UUID, $2::UUID, $3, $4::UUID, $5::UUID, $6)
+`
+
+type InsertCharacterInfusionRequestParams struct {
+	CampaignID      string
+	IdempotencyKey  string
+	RequestHash     string
+	InfusionID      string
+	EndedInfusionID *string
+	CreatedAt       time.Time
+}
+
+func (q *Queries) InsertCharacterInfusionRequest(ctx context.Context, arg InsertCharacterInfusionRequestParams) error {
+	_, err := q.db.Exec(ctx, insertCharacterInfusionRequest,
+		arg.CampaignID,
+		arg.IdempotencyKey,
+		arg.RequestHash,
+		arg.InfusionID,
+		arg.EndedInfusionID,
+		arg.CreatedAt,
+	)
+	return err
 }
 
 const insertContentOff = `-- name: InsertContentOff :exec
@@ -4458,6 +4509,55 @@ func (q *Queries) SetWildShape(ctx context.Context, arg SetWildShapeParams) erro
 		arg.Now,
 	)
 	return err
+}
+
+const touchCharacterRevision = `-- name: TouchCharacterRevision :one
+UPDATE characters
+SET revision = revision + 1, updated_at = $1
+WHERE campaign_id = $2::UUID AND id = $3::UUID
+RETURNING id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key, create_hash, reserved, claimed_at, revived_at, death_round, death_encounter_id, revivify_blocked, revive_key, revive_hash, active_states
+`
+
+type TouchCharacterRevisionParams struct {
+	Now        time.Time
+	CampaignID string
+	ID         string
+}
+
+// An infusion changed what the sheet reads: the revision goes up, so an editor that holds the old one is told.
+func (q *Queries) TouchCharacterRevision(ctx context.Context, arg TouchCharacterRevisionParams) (Character, error) {
+	row := q.db.QueryRow(ctx, touchCharacterRevision, arg.Now, arg.CampaignID, arg.ID)
+	var i Character
+	err := row.Scan(
+		&i.ID,
+		&i.CampaignID,
+		&i.Kind,
+		&i.PlayerUserID,
+		&i.MasterUserID,
+		&i.Status,
+		&i.Name,
+		&i.Sheet,
+		&i.Story,
+		&i.StoryEditingAllowed,
+		&i.SheetSchema,
+		&i.Revision,
+		&i.SheetLockedAt,
+		&i.DiedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.CreateKey,
+		&i.CreateHash,
+		&i.Reserved,
+		&i.ClaimedAt,
+		&i.RevivedAt,
+		&i.DeathRound,
+		&i.DeathEncounterID,
+		&i.RevivifyBlocked,
+		&i.ReviveKey,
+		&i.ReviveHash,
+		&i.ActiveStates,
+	)
+	return i, err
 }
 
 const touchVitals = `-- name: TouchVitals :one

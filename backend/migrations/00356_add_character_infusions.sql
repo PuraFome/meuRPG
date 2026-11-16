@@ -55,6 +55,23 @@ CREATE UNIQUE INDEX IF NOT EXISTS character_infusions_one_live_item_idx
 CREATE INDEX IF NOT EXISTS character_infusions_live_by_artificer_idx
     ON character_infusions (artificer_character_id, since, id) WHERE ended_at IS NULL;
 
+-- The answer of an InfuseItem or a MoveInfusion that carried an idempotency key: the key is scoped by the campaign, and
+-- request_hash is the hash of the request, so the same key with another request is refused. infusion_id is the record the
+-- call made or moved; ended_infusion_id is the record that ended in the same call, or NULL. A retry returns that answer and
+-- writes nothing. The rows hold ids and a hash, no text, and go with the record or the campaign.
+CREATE TABLE IF NOT EXISTS character_infusion_requests (
+    campaign_id UUID NOT NULL REFERENCES campaigns (id) ON DELETE CASCADE,
+    idempotency_key UUID NOT NULL,
+    request_hash TEXT NOT NULL,
+    infusion_id UUID NOT NULL REFERENCES character_infusions (id) ON DELETE CASCADE,
+    ended_infusion_id UUID NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (campaign_id, idempotency_key)
+);
+
+-- The ON DELETE CASCADE of the record.
+CREATE INDEX IF NOT EXISTS character_infusion_requests_infusion_id_idx ON character_infusion_requests (infusion_id);
+
 -- The infusions are session events, so the key of a retry finds what it did. Nothing writes them yet.
 INSERT INTO session_event_kinds (kind) VALUES
     ('infusion_infused'),
@@ -66,9 +83,11 @@ ON CONFLICT (kind) DO NOTHING;
 DELETE FROM session_events WHERE kind IN ('infusion_infused', 'infusion_moved', 'infusion_ended');
 DELETE FROM session_event_kinds WHERE kind IN ('infusion_infused', 'infusion_moved', 'infusion_ended');
 -- CASCADE: CockroachDB keeps a unique index as a constraint and refuses to drop it without it.
+DROP INDEX IF EXISTS character_infusion_requests_infusion_id_idx;
 DROP INDEX IF EXISTS character_infusions_one_live_item_idx CASCADE;
 DROP INDEX IF EXISTS character_infusions_live_by_artificer_idx;
 DROP INDEX IF EXISTS character_infusions_artificer_character_id_idx;
 DROP INDEX IF EXISTS character_infusions_holder_character_id_idx;
 DROP INDEX IF EXISTS character_infusions_campaign_id_idx;
+DROP TABLE IF EXISTS character_infusion_requests;
 DROP TABLE IF EXISTS character_infusions;

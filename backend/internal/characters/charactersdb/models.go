@@ -93,6 +93,15 @@ type CharacterInfusion struct {
 	CreatedAt            time.Time
 }
 
+type CharacterInfusionRequest struct {
+	CampaignID      string
+	IdempotencyKey  string
+	RequestHash     string
+	InfusionID      string
+	EndedInfusionID *string
+	CreatedAt       time.Time
+}
+
 type CharacterLevelUp struct {
 	ID          string
 	CampaignID  string

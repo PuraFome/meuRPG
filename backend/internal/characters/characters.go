@@ -261,7 +261,7 @@ type Sessions interface {
 	authz.Caller
 }
 
-// Mount registers CharacterService, ContentService and TableContentService on a mux. handle is
+// Mount registers CharacterService, ContentService, TableContentService and InfusionService on a mux. handle is
 // usually httpserver.Server.Handle or http.ServeMux.Handle.
 //
 // sessions tells who is calling (the identity service in production), and
@@ -279,6 +279,7 @@ func (s *Service) Mount(handle func(pattern string, handler http.Handler), sessi
 	handle(charactersv1connect.NewCharacterServiceHandler(s, opts...))
 	handle(rulesv1connect.NewContentServiceHandler(s, opts...))
 	handle(rulesv1connect.NewTableContentServiceHandler(s, opts...))
+	handle(charactersv1connect.NewInfusionServiceHandler(s, opts...))
 }
 
 // LockSheets locks the sheets of the campaign's living player characters

@@ -11,6 +11,7 @@ The module serves three Connect services:
 | `CharacterService` | Characters, stories, master notes, approval, reserved characters and claims, level-up, character creatures. | This page. |
 | `ContentService` | The rules catalogue and everything public about the SRD (spells, creatures, presets). | [Content service](#content-service). |
 | `TableContentService` | The master's own content, its switches and packs. | [Table content](characters-table-content.md). |
+| `InfusionService` | The infusions of an artificer: what it keeps and knows, the pieces an infusion goes on, putting one on, moving it and ending it. | [Infusion calls](#infusion-calls). |
 
 Related pages: [Table content](characters-table-content.md) (live content, switches, packs, the spell page), [Browser side](characters-web.md) (the editors and screens), [Rules module](rules.md).
 
@@ -92,6 +93,7 @@ What a player may see and change is then decided from the character's row (`canS
 | `ListCharacterCreatures`, `GetSummonOptions`, `ListWildShapeForms` | Yes, any player character | Their own character | `not_found` | `not_found` | `unauthenticated` | `not_found` |
 | `RenameCreature`, `DismissCreature` | Yes | Their own character's creatures | `not_found` | `not_found` | `unauthenticated` | `not_found` |
 | `GiveCreature`, `AdjustCreatureHitPoints` | Yes | `permission_denied` | `permission_denied` | `not_found` | `unauthenticated` | `not_found` |
+| `InfusionService` reads and writes | Yes | Their own character | `not_found` | `not_found` | `unauthenticated` | `not_found` |
 | `ContentService.ListContent`, `GetSpellDetails` | Yes | Yes | Yes | `not_found` | `unauthenticated` | Yes |
 | `ContentService.ListSpells`, `ListMagicItems`, `ListCreatures`, `GetCreature`, `ListTrapPresets`, `ListLightPresets` | Yes | Yes | Yes | `not_found` | `unauthenticated` | `not_found` |
 | `TableContentService.ListTableEntries` | All entries and the counts | Only the entries a player may see, in full, never a count | Same | `not_found` | `unauthenticated` | `not_found` |
@@ -212,6 +214,67 @@ The records are ended in the transaction of the save, and it is the holder's sav
 Moving a piece between equipped and carried keeps the piece listed, so its record stays.
 No other writer takes a key off `armor_key`, `weapon_keys` or `shield`: equipping, the level-up, the choices, the daily choices, attunement, the XP award and the removal of a consumable leave them alone.
 The campaign package brings no records.
+
+## Infusion calls
+
+`InfusionService` (`infusions.proto`) is mounted on `characters.Service` beside the other services.
+Its code is `infusions_read.go` (the two reads), `infusions_write.go` (the three writes) and `infusions_texts.go` (the Portuguese sentences and `InfusionBlocked`).
+Every call needs a member of the campaign.
+The artificer's owner and the master may call all five.
+Another player and a stranger get `not_found`, as for any character they cannot see.
+In this version the holder is the artificer: `holder_character_id` of any other character is `invalid_argument` on that field.
+
+`ListCharacterInfusions` answers the sheet's `SheetInfusion` rows (the same loader and order as the sheet), the known infusions, the limit and the count.
+A known infusion is an option the character picked in a host feature that carries the infusion rule, that the sheet still knows (the content has it, the feature is at its level, the prerequisite is met), with no live valid record.
+The engine says "known" by reading a probe record of each pick (`knownInfusionKeys`), so the read and the writes share one rule.
+Each known infusion has its name, the option's text, what it goes on, whether it asks for attunement, whether the app computes it, and the damage types it offers, with their Portuguese names.
+`limit` and `used` come from `Derived.InfusionHosts`; a character with two host features gets the sum of their limits and of their valid records.
+
+`ListInfusionTargets` has one row for each gear key of the sheet (armor, shield, weapons, equipped or carried), and `copies` says how many times the key is listed.
+The reason of a row, in this order, is `WRONG_KIND`, `ALREADY_MAGICAL` (a manual bonus entry on the key, or the weapon's magical mark; the sentence has the +N when there is one) and `TAKEN` (a valid live record on the key, named in the sentence).
+A record that is not valid now does not take its piece.
+An infusion that goes on any object or on a spellcasting focus has no gear row it can take, because the sheet lists no such gear: its gear rows are `WRONG_KIND`, and one more row has an empty `item_key`, no reason and the kind word "objeto".
+That row means "another object, by name"; the player names it in `InfuseItem`.
+A key that is no infusion of the content lists nothing.
+The list does not ask whether the character knows the infusion; the writes do.
+
+All three writes run under the session funnel (`inSession`), as `SetEquipped` does, and are pinned in `charactersSeamWriters`.
+Each locks the artificer's character row first (`visibleForUpdate`) and reads the records after it, so the count against the limit is made on the rows the write changes.
+A sheet that is locked by a started game session does not stop them, as it does not stop equipping.
+A dead artificer is refused with `CharacterBlocked` `CHARACTER_DEAD`, for the owner and the master, as `SetEquipped` does.
+A request with a `revision` that is not the character's is `aborted`; 0 skips the check.
+The refusals of a rule are `failed_precondition` with an `InfusionBlocked` detail.
+
+`InfuseItem` checks, in this order:
+- `INFUSION_NOT_KNOWN`: the key is not a known infusion (not picked, no host feature, the content lost it, a prerequisite lost).
+- `ITEM_CHANGED`: the infusion already has a live record, or `end_infusion_id` is not a live record of this artificer.
+- `invalid_argument` on `parameter`: a resistance infusion takes one of its damage types, any other takes none.
+- `invalid_argument` on `object_name_pt`: an object name of 1 to 40 characters, and never together with an `item_key`.
+- `ITEM_NOT_ACCEPTED`: the piece is of the wrong kind, already magical or not on the sheet, or an object is named for an infusion that takes none.
+- `ITEM_ALREADY_INFUSED`: a valid live record of any infusion holds the piece.
+- `invalid_argument` on `attune_now` when the infusion asks for no attunement.
+
+A live record on the piece that is not valid now ends with `taken`.
+Over the limit of the infusion's host feature (valid records of that host are at or above it), the record named in `end_infusion_id` ends with `replaced`, or the oldest valid record of that host (`since`, then id) when none is named.
+A named record under the limit is left alone.
+The id of the one that ended is `ended_infusion_id`.
+The new record is written by the store, which makes its id in Go; an object's `item_key` is `object:<id>`, so two objects of one name are two records.
+`attune_now` attunes through `checkAttunement`, the check `SetAttunement` uses: the owner needs the window of a rest and spends it, the master needs none, and a fourth item is refused.
+A refusal of it refuses the whole call, and the transaction writes nothing.
+
+`MoveInfusion` needs a live record of this artificer (`ITEM_CHANGED` otherwise) of an infusion the character still knows, and checks the new item as `InfuseItem` does.
+The record's `since` begins again and its attunement is cleared.
+A move to the piece it is on changes nothing.
+`EndInfusion` needs a live record of this artificer (`ITEM_CHANGED` otherwise) and ends it with `ended`; its answer is the id.
+
+An `idempotency_key` of `InfuseItem` or `MoveInfusion` is a UUID scoped by the campaign.
+The answer is kept in `character_infusion_requests` in the same transaction, with the hash of the request.
+A retry with the same request returns the first answer, even after the record ended, and writes nothing; the same key with another request is `invalid_argument`.
+The replay is checked right after the lock, before the dead, revision and infusion checks.
+
+Every write that changes a record calls `infusionsChanged` (`infusions_write.go`).
+It raises the artificer's `revision`, so an editor that holds the old one is told and an open sheet reads again, and it tells the session through `Touch`.
+It is the one seam the three writes share after their change.
 
 ## Attunement
 

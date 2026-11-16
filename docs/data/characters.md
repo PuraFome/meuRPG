@@ -69,6 +69,11 @@ erDiagram
         uuid artificer_character_id FK
         uuid holder_character_id FK
     }
+    character_infusion_requests {
+        uuid campaign_id PK,FK
+        uuid idempotency_key PK
+        uuid infusion_id FK
+    }
     campaign_content {
         uuid campaign_id PK,FK
         text content_key PK
@@ -98,6 +103,8 @@ erDiagram
     users ||--o{ character_ability_rolls : "user_id"
     campaigns ||--o{ character_creatures : "campaign_id"
     characters ||--o{ character_creatures : "character_id"
+    campaigns ||--o{ character_infusion_requests : "campaign_id"
+    character_infusions ||--o{ character_infusion_requests : "infusion_id"
     campaigns ||--o{ character_infusions : "campaign_id"
     characters ||--o{ character_infusions : "artificer_character_id"
     characters ||--o{ character_infusions : "holder_character_id"
@@ -327,6 +334,17 @@ Plain indexes on the campaign and on each character serve the cascades.
 The record cascades with the campaign and with each of the two characters.
 The campaign package does not carry it: an imported character comes with no infusions.
 
+## `character_infusion_requests`
+
+The answer of an infusion call that carried an idempotency key (`InfuseItem`, `MoveInfusion`).
+The primary key is `(campaign_id, idempotency_key)`: the key is a UUID made by the app, scoped by the campaign.
+`request_hash` is the hash of the whole request, so the same key with another request is refused.
+`infusion_id` is the record the call made or moved, and `ended_infusion_id` the record that ended in the same call, or `NULL`.
+A retry with the same key and the same request returns that answer and writes nothing.
+The row holds ids and a hash, no text.
+A plain index on `infusion_id` serves the cascade.
+The row cascades with the campaign and with its record.
+
 ## Table content
 
 The content the master adds to a campaign (MR-025, RN-23, ADR-0018): classes, subclasses, races, subraces, backgrounds, spells, feats, options, class features and creatures.
@@ -361,3 +379,4 @@ Only names and texts the master writes; no personal data (see [Privacy](../priva
 - `character_item_charges` and `character_ammunition` are read with the sheet: by the owner and the master.
 - `character_creatures` are read by the owner and the master; the creature's name is free text.
 - `character_infusions` are read by the artificer's owner and the master; the name of an object is free text.
+- `character_infusion_requests` are never read by an API: only the call that wrote them reads them back.

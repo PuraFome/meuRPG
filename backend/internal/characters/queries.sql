@@ -1138,3 +1138,19 @@ WHERE campaign_id = sqlc.arg(campaign_id)::UUID AND id = sqlc.arg(id)::UUID AND 
 UPDATE character_infusions
 SET attuned = sqlc.arg(attuned)::BOOLEAN
 WHERE campaign_id = sqlc.arg(campaign_id)::UUID AND id = sqlc.arg(id)::UUID AND ended_at IS NULL;
+
+-- name: TouchCharacterRevision :one
+-- An infusion changed what the sheet reads: the revision goes up, so an editor that holds the old one is told.
+UPDATE characters
+SET revision = revision + 1, updated_at = sqlc.arg(now)
+WHERE campaign_id = sqlc.arg(campaign_id)::UUID AND id = sqlc.arg(id)::UUID
+RETURNING *;
+
+-- name: GetCharacterInfusionRequest :one
+-- The answer kept under an idempotency key of the campaign, if any.
+SELECT * FROM character_infusion_requests
+WHERE campaign_id = sqlc.arg(campaign_id)::UUID AND idempotency_key = sqlc.arg(idempotency_key)::UUID;
+
+-- name: InsertCharacterInfusionRequest :exec
+INSERT INTO character_infusion_requests (campaign_id, idempotency_key, request_hash, infusion_id, ended_infusion_id, created_at)
+VALUES (sqlc.arg(campaign_id)::UUID, sqlc.arg(idempotency_key)::UUID, sqlc.arg(request_hash), sqlc.arg(infusion_id)::UUID, sqlc.narg(ended_infusion_id)::UUID, sqlc.arg(created_at));
