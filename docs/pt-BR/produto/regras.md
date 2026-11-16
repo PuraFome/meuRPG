@@ -1154,6 +1154,7 @@ Um jogador lê só as próprias janelas, e os números do gatilho (um total de a
 
 - **Uma reação opcional que o jogador não responde passa depois de 30 segundos** (Escudo Arcano, Esquiva Sobrenatural, a conjuração da Repreensão Infernal, Contramágica, Palavras de Interrupção, Defletir Projéteis, Proteção, Queda Suave, Queda Lenta, uma ação preparada que o mestre disparou, uma característica com reação cujo gatilho aconteceu e um ataque de oportunidade oferecido a um jogador). A tela do mestre a conta ("Passa sozinho em N s"), o aviso do jogador diz "Se você não responder, passa sozinho em N s.". Nunca um teste de resistência, uma disputa nem o teste do mestre.
 - **Um jogador que está rolando ganha mais tempo.** Enquanto o jogador rola um dado físico, a janela espera até 2 minutos: "Você está rolando: a mesa espera 2 min", e o mestre lê "Rolando… passa sozinho em N s". O mestre pode passá-la antes.
+  A mesma espera vale para o jogador que escolhe os alvos ou os dardos de uma magia preparada.
 - **Preparar** (SRD 5.1, "Ready").
   No próprio turno, uma criatura gasta a ação para guardar outra até um gatilho que o jogador dela escreve.
   A ação guardada é um ataque, um movimento, uma magia ou outra ação padrão.
