@@ -726,7 +726,12 @@ func TestEffectMenuGrantedSpellOffersTheCastLevel(t *testing.T) {
 	if f := mt.Fields[j]; f.Kind != "number" || f.Required || f.Min != 1 || f.Max != MaxGrantCastLevel {
 		t.Errorf("cast_level = %+v, want an optional number from 1 to MaxGrantCastLevel", f)
 	}
-	if !strings.Contains(mt.HintPT, "nível de conjuração") || strings.Contains(mt.HintPT, "é conjurada no próprio nível.") {
-		t.Errorf("granted_spell hint = %q, want it to say the cast level", mt.HintPT)
+	for _, want := range []string{`"nível de conjuração", do nível da magia até o 9`, "com espaço de magia, vale o nível do espaço", `Truque e "só como ritual" não têm nível de conjuração`} {
+		if !strings.Contains(mt.HintPT, want) {
+			t.Errorf("granted_spell hint = %q, want it to say %q", mt.HintPT, want)
+		}
+	}
+	if strings.Contains(mt.HintPT, "é conjurada no próprio nível.") {
+		t.Errorf("granted_spell hint = %q, still says the spell is always cast at its own level", mt.HintPT)
 	}
 }
