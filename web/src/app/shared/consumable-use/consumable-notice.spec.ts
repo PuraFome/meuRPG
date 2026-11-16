@@ -43,7 +43,7 @@ describe('ConsumableNoticeCard', () => {
     expect(el.querySelector('.consumable__text')?.textContent).toBe('Por 1 hora, você escala.');
   });
 
-  it('puts the item\'s text and its caption in one box, the caption heading it', () => {
+  it("puts the item's text and its caption in one box, the caption heading it", () => {
     const el = render({
       tone: 'neutral',
       icon: 'menu_book',

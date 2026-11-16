@@ -1278,7 +1278,7 @@ describe('UseConsumableSheet', () => {
       expect(buttons.map((b) => b.classList.contains('go--wide'))).toEqual([true]);
     });
 
-    it('right-aligns the dialog\'s buttons at their own width, with or without a receiver chosen', async () => {
+    it("right-aligns the dialog's buttons at their own width, with or without a receiver chosen", async () => {
       const { el, settle } = await giveIn({}, false);
       expect(foot(el).classList).not.toContain('foot--phone');
       expect(foot(el).classList).not.toContain('foot--wide');

@@ -31,7 +31,7 @@ const USE_ICON = 'science';
       <span class="row__line">
         @if (economy(); as e) {
           <span class="row__econ" [class.row__econ--spent]="off()"><app-economy-mark [kind]="e" [spent]="off()" />Ação</span>
-          <span aria-hidden="true">·</span>
+          {{ ' ' }}<span aria-hidden="true">·</span>{{ ' ' }}
         }
         <span class="row__detail">{{ detail() }}</span>
       </span>
@@ -51,7 +51,7 @@ const USE_ICON = 'science';
       [attr.aria-describedby]="describedBy()"
       (click)="pressed()"
     >
-      <mat-icon aria-hidden="true">{{ useIcon }}</mat-icon>Usar
+      <mat-icon aria-hidden="true">{{ useIcon }}</mat-icon>{{ ' ' }}Usar
     </button>
   `,
   styleUrl: './item-row.scss',
