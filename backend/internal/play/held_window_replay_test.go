@@ -46,8 +46,14 @@ func (a *armed) countOf(t *testing.T, query string, args ...any) int {
 // outcome (not an error) and rolls nothing (the roller's queue holds a sentinel that must stay there).
 func (a *armed) retryTheAnswer(t *testing.T, roller *scriptedRoller, holdID, key string, first *playv1.AnswerHeldRollResponse) {
 	t.Helper()
+	a.retryTheAnswerOf(t, roller, a.caio, holdID, key, dieAnswer(true), first)
+}
+
+// retryTheAnswerOf is retryTheAnswer for the answer u gave, as edit says.
+func (a *armed) retryTheAnswerOf(t *testing.T, roller *scriptedRoller, u *user, holdID, key string, edit func(*playv1.AnswerHeldRollRequest), first *playv1.AnswerHeldRollResponse) {
+	t.Helper()
 	roller.queue(heldSentinel)
-	again, err := a.answerHeldRollKey(t, a.caio, holdID, key, dieAnswer(true))
+	again, err := a.answerHeldRollKey(t, u, holdID, key, edit)
 	if err != nil {
 		t.Fatalf("the answer again: error = %v, want the stored outcome", err)
 	}
@@ -179,14 +185,16 @@ func TestAHideThatAWindowHeldIsWrittenWhenTheDieIsAnswered(t *testing.T) {
 }
 
 // A cast with a spell attack that the master's window held (a player's spell on an enemy, with "Sempre") is replayed when the
-// window is answered, and its spell attack puts no question to the player: spellMayAsk refuses every replay (c.replay != nil),
-// so heldSpellAttack is never held with Window set, and the replay writes the cast at once, once, with the d20 the request kept.
-// The Bardic Inspiration die is not offered on that roll (nor spent), which this test pins.
-func TestASpellAttackCastThatAWindowHeldIsWrittenByTheReplayWithoutAQuestion(t *testing.T) {
-	t.Parallel()
+// window is answered, and a caster that is to be asked about the d20 is asked then, as a weapon attack is: the replay keeps the d20
+// with the request, the question under the request's key and marked as the window's (window_hold), and nothing is spent or written
+// until the player answers. The answer casts the spell with that d20, once, under the answer's own key.
+
+// spellAfterAWindow is Pensantus's turn in the arena, with the master's check asked of every roll against an enemy; race is hers.
+func spellAfterAWindow(t *testing.T, race string) (*armed, *cx) {
+	t.Helper()
 	a := newArmedWith(t, func(a *armed) {
 		a.toren = a.caio.hero(t, a.campaignID, "Toren", "class:fighter", "race:human", 2, scores16(), []string{battleaxe}, nil)
-		a.pens = a.ana.caster(t, a.campaignID, "Pensantus", "class:wizard", "race:gnome", 3,
+		a.pens = a.ana.caster(t, a.campaignID, "Pensantus", "class:wizard", race, 3,
 			&rulesv1.AbilityScores{Strength: 10, Dexterity: 14, Constitution: 12, Intelligence: 16, Wisdom: 10, Charisma: 8}, nil, []string{fireBolt},
 			[]string{acidArrow}, []string{acidArrow})
 		a.bri = a.bia.hero(t, a.campaignID, "Brisa", "class:fighter", "race:human", 2, scores16(), []string{rapier}, nil)
@@ -194,10 +202,16 @@ func TestASpellAttackCastThatAWindowHeldIsWrittenByTheReplayWithoutAQuestion(t *
 	a.setRules(t, enemyReactionsAlways)
 	c := a.arena(t, arenaPlan{})
 	c.advance(t, "Pensantus")
-	a.giveCombatantDie(t, "Pensantus", c.e)
+	return a, c
+}
 
-	held, err := a.cast(t, a.ana, c.e, "Pensantus", acidArrow, slotOfLevel(2), a.at(t, "Goblin"), d20Face(15))
-	if err != nil || held.GetCast() != nil || held.GetHeldRollOffer() != nil {
+// castInTheWindow casts Acid Arrow at the goblin with the d20 typed, and answers the master's check the cast waits in. It returns the
+// key of the cast.
+func (a *armed) castInTheWindow(t *testing.T, c *cx, face int32) string {
+	t.Helper()
+	key := newKey()
+	held, err := a.castKey(t, a.ana, c.e, "Pensantus", acidArrow, slotOfLevel(2), a.at(t, "Goblin"), d20Face(face), key)
+	if err != nil || held.GetCast() != nil || held.GetHeldRollOffer() != nil || held.GetInspirationOffer() != nil || held.GetLuckyOffer() != nil {
 		t.Fatalf("CastSpell() = %v, %v; want it held in the master's window", held, err)
 	}
 	w := a.windowOf(t, a.master, playv1.ReactionKind_REACTION_KIND_MASTER_CHECK)
@@ -205,17 +219,155 @@ func TestASpellAttackCastThatAWindowHeldIsWrittenByTheReplayWithoutAQuestion(t *
 		t.Fatalf("the master's windows = %v, want the check the cast waits in", a.windows(t, a.master))
 	}
 	a.mustAnswer(t, a.master, c.e, w.GetId(), passAnswer)
+	return key
+}
 
+// wantTheQuestionOfTheReplay checks the replay of the cast put one question to Pensantus's player, kept under the cast's key as the
+// window's own, and that the cast spent and wrote nothing yet. It returns the hold's id.
+func (a *armed) wantTheQuestionOfTheReplay(t *testing.T, c *cx, key string) *playv1.HeldRollOffer {
+	t.Helper()
+	offers := a.listHeldRolls(t, a.ana)
+	if len(offers) != 1 || offers[0].GetKind() != playv1.HeldRollKind_HELD_ROLL_KIND_SPELL_ATTACK {
+		t.Fatalf("Pensantus's questions after the window = %v, want one, about the spell attack", offers)
+	}
+	var kind string
+	var window, unanswered bool
+	if err := a.h.pool.QueryRow(t.Context(), `SELECT kind, window_hold, answer_key IS NULL FROM inspiration_holds WHERE idempotency_key = $1`, key).Scan(&kind, &window, &unanswered); err != nil {
+		t.Fatalf("read the question kept under the cast's key: %v", err)
+	}
+	if kind != string(heldSpellAttack) || !window || !unanswered {
+		t.Errorf("the hold = kind %q, window_hold %v, open %v; want a spell attack, the window's, open", kind, window, unanswered)
+	}
+	if n := a.countOf(t, `SELECT count(*) FROM session_events WHERE kind = $1 AND NOT COALESCE((payload->'reaction'->>'hold')::bool, false)`, eventSpellCast); n != 0 {
+		t.Errorf("%s events before the answer = %d, want 0", eventSpellCast, n)
+	}
+	if byLabel(t, a.get(t, a.ana), "Pensantus").GetActionUsed() {
+		t.Error("the action was spent before the player answered")
+	}
+	return offers[0]
+}
+
+// wantTheCastOnce checks the answer settled the cast once: one event that is no hold, and the action spent.
+func (a *armed) wantTheCastOnce(t *testing.T, c *cx) {
+	t.Helper()
+	if n := a.countOf(t, `SELECT count(*) FROM session_events WHERE kind = $1 AND NOT COALESCE((payload->'reaction'->>'hold')::bool, false)`, eventSpellCast); n != 1 {
+		t.Errorf("%s events = %d, want 1", eventSpellCast, n)
+	}
+	if !byLabel(t, a.get(t, a.ana), "Pensantus").GetActionUsed() {
+		t.Error("the action is not spent after the answer")
+	}
+}
+
+// TestASpellAttackCastThatAWindowHeldAsksForTheDieAndUsesIt: Pensantus holds a Bardic Inspiration die; the d20 is 15 and her bonus +5.
+// The die's 4 is added: 15 + 5 + 4 = 24. The same answer again gives the same cast and rolls nothing; the cast is taken back with the
+// die returned, as any cast's.
+func TestASpellAttackCastThatAWindowHeldAsksForTheDieAndUsesIt(t *testing.T) {
+	t.Parallel()
+	a, c := spellAfterAWindow(t, "race:gnome")
+	a.giveCombatantDie(t, "Pensantus", c.e)
+	key := a.castInTheWindow(t, c, 15)
+	offer := a.wantTheQuestionOfTheReplay(t, c, key)
+	if offer.GetDie() == nil || offer.GetD20().GetFaces()[0] != 15 {
+		t.Errorf("the question = %v, want the die's, about the d20 15", offer)
+	}
+	// The cast again, with the request's key: the answer it had, nothing written.
+	events := a.countOf(t, `SELECT count(*) FROM session_events`)
+	if again, err := a.castKey(t, a.ana, c.e, "Pensantus", acidArrow, slotOfLevel(2), a.at(t, "Goblin"), d20Face(15), key); err != nil || again.GetCast() != nil {
+		t.Errorf("the cast again = %v, %v; want it still held", again, err)
+	}
+	if n := a.countOf(t, `SELECT count(*) FROM session_events`); n != events {
+		t.Errorf("the cast again wrote %d events", n-events)
+	}
+
+	c.h.roller.queue(4)
+	answerKey := newKey()
+	out, err := a.answerHeldRollKey(t, a.ana, offer.GetHoldId(), answerKey, dieAnswer(true))
+	if err != nil {
+		t.Fatalf("AnswerHeldRoll() error = %v", err)
+	}
+	a.retryTheAnswerOf(t, c.h.roller, a.ana, offer.GetHoldId(), answerKey, dieAnswer(true), out)
+	targets := out.GetSpellCast().GetCast().GetTargets()
+	if len(targets) != 1 || targets[0].GetAttackRoll().GetFaces()[0] != 15 || targets[0].GetAttackRoll().GetTotal() != 24 ||
+		len(targets[0].GetBonusDice()) != 1 || targets[0].GetBonusDice()[0].GetFace() != 4 {
+		t.Fatalf("the cast = %v, want the d20 15 + 5 + the die 4 = 24", out.GetSpellCast().GetCast())
+	}
+	a.wantTheCastOnce(t, c)
+	if n := a.countOf(t, `SELECT count(*) FROM combatants WHERE id = $1 AND inspiration_sides IS NOT NULL`, c.id(t, "Pensantus")); n != 0 {
+		t.Error("Pensantus still holds the die she used")
+	}
+	if n := a.countOf(t, `SELECT count(*) FROM inspiration_holds WHERE idempotency_key = $1`, key); n != 1 {
+		t.Errorf("the holds under the cast's key = %d, want 1", n)
+	}
+	// The undo of the cast gives the die and the action back.
+	a.undoLast(t, a.get(t, a.master))
+	if n := a.countOf(t, `SELECT count(*) FROM combatants WHERE id = $1 AND inspiration_sides IS NOT NULL`, c.id(t, "Pensantus")); n != 1 {
+		t.Error("the undo did not give the die back")
+	}
+	if byLabel(t, a.get(t, a.ana), "Pensantus").GetActionUsed() {
+		t.Error("the undo did not give the action back")
+	}
+	if n := a.countOf(t, `SELECT count(*) FROM session_events WHERE kind = $1 AND NOT COALESCE((payload->'reaction'->>'hold')::bool, false)`, eventSpellCast); n != 0 {
+		t.Errorf("%s events after the undo = %d, want 0", eventSpellCast, n)
+	}
+}
+
+// TestASpellAttackCastThatAWindowHeldAsksForTheDieAndKeepsIt: the player keeps the die: 15 + 5 = 20, and the die stays.
+func TestASpellAttackCastThatAWindowHeldAsksForTheDieAndKeepsIt(t *testing.T) {
+	t.Parallel()
+	a, c := spellAfterAWindow(t, "race:gnome")
+	a.giveCombatantDie(t, "Pensantus", c.e)
+	key := a.castInTheWindow(t, c, 15)
+	offer := a.wantTheQuestionOfTheReplay(t, c, key)
+
+	answerKey := newKey()
+	out, err := a.answerHeldRollKey(t, a.ana, offer.GetHoldId(), answerKey, dieAnswer(false))
+	if err != nil {
+		t.Fatalf("AnswerHeldRoll() error = %v", err)
+	}
+	a.retryTheAnswerOf(t, c.h.roller, a.ana, offer.GetHoldId(), answerKey, dieAnswer(false), out)
+	targets := out.GetSpellCast().GetCast().GetTargets()
+	if len(targets) != 1 || targets[0].GetAttackRoll().GetTotal() != 20 || len(targets[0].GetBonusDice()) != 0 {
+		t.Fatalf("the cast = %v, want the d20 15 + 5 = 20 and no die", out.GetSpellCast().GetCast())
+	}
+	a.wantTheCastOnce(t, c)
+	if n := a.countOf(t, `SELECT count(*) FROM combatants WHERE id = $1 AND inspiration_sides IS NOT NULL`, c.id(t, "Pensantus")); n != 1 {
+		t.Error("Pensantus lost the die she kept")
+	}
+}
+
+// TestASpellAttackCastThatAWindowHeldAsksLuckyAboutAOne: a halfling's 1 is asked about when the replay rolls it, and rolled again to 15
+// the cast lands on the 15.
+func TestASpellAttackCastThatAWindowHeldAsksLuckyAboutAOne(t *testing.T) {
+	t.Parallel()
+	a, c := spellAfterAWindow(t, "race:halfling")
+	key := a.castInTheWindow(t, c, 1)
+	offer := a.wantTheQuestionOfTheReplay(t, c, key)
+	if offer.GetLucky() == nil || offer.GetD20().GetFaces()[0] != 1 {
+		t.Fatalf("the question = %v, want Lucky's, about the 1", offer)
+	}
+	answerKey := newKey()
+	out, err := a.answerHeldRollKey(t, a.ana, offer.GetHoldId(), answerKey, luckyAnswer(15))
+	if err != nil {
+		t.Fatalf("AnswerHeldRoll() error = %v", err)
+	}
+	a.retryTheAnswerOf(t, c.h.roller, a.ana, offer.GetHoldId(), answerKey, luckyAnswer(15), out)
+	targets := out.GetSpellCast().GetCast().GetTargets()
+	if len(targets) != 1 || targets[0].GetAttackRoll().GetFaces()[0] != 15 || targets[0].GetAttackRoll().GetTotal() != 20 {
+		t.Fatalf("the cast = %v, want the 1 rolled again to 15, 15 + 5 = 20", out.GetSpellCast().GetCast())
+	}
+	a.wantTheCastOnce(t, c)
+}
+
+// TestASpellAttackCastThatAWindowHeldAsksNothingOfACasterWithoutADie: no die and no Lucky: the replay writes the cast at once, once.
+func TestASpellAttackCastThatAWindowHeldAsksNothingOfACasterWithoutADie(t *testing.T) {
+	t.Parallel()
+	a, c := spellAfterAWindow(t, "race:gnome")
+	a.castInTheWindow(t, c, 15)
 	if offers := a.listHeldRolls(t, a.ana); len(offers) != 0 {
-		t.Errorf("Pensantus's questions after the window = %v, want none: the replay of a cast asks nothing", offers)
+		t.Errorf("Pensantus's questions after the window = %v, want none", offers)
 	}
 	if n := a.countOf(t, `SELECT count(*) FROM inspiration_holds`); n != 0 {
 		t.Errorf("inspiration_holds rows = %d, want 0", n)
 	}
-	if n := a.countOf(t, `SELECT count(*) FROM session_events WHERE kind = $1 AND NOT COALESCE((payload->'reaction'->>'hold')::bool, false)`, eventSpellCast); n != 1 {
-		t.Errorf("%s events = %d, want 1", eventSpellCast, n)
-	}
-	if n := a.countOf(t, `SELECT count(*) FROM combatants WHERE id = $1 AND inspiration_sides IS NOT NULL`, c.id(t, "Pensantus")); n != 1 {
-		t.Error("Pensantus's die was spent by a roll that did not ask for it")
-	}
+	a.wantTheCastOnce(t, c)
 }
