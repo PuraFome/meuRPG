@@ -197,6 +197,7 @@ Under a spend `d20_face_2` is not read, and on any skill but Perception it is ne
 A window that would hold an attack or a cast checks the spend without making it: the row stays.
 A spend the replay would refuse (no Inspiration, nothing to add, a worse `roll_mode`) is refused at hold time: the call errors and nothing is held.
 The replay is the real roll and spends the row.
+When the `roll_mode` the replay asks is worse than the mode the Inspiração gives (judged on the sources the roller reads, as at hold time: `favorAgainstBeforeSpend`), the replay refuses it with `invalid_argument` before it spends: the refusal drops the held roll, and the Inspiração stays with the character, never taken.
 A replay whose Inspiration is gone, or whose sources changed so that it adds nothing, does not drop the roll: it is made without the Inspiração, in the normal mode of its real sources, and nothing is spent (so nothing is given back).
 The roll's event says `favor` false and `favor_lost` ("gone" or "adds_nothing").
 The master and the roller's own player read a line in Portuguese: in the combat log of an attack or a cast ("<name> não tinha mais a Inspiração: a rolagem foi feita sem ela." or "A Inspiração de <name> não mudaria mais a rolagem: ela foi guardada e a rolagem foi feita sem ela."), and as a note of the roll for a check, a contest or a Hide ("Inspiração não usada: não estava mais com você" or "Inspiração guardada: não mudaria mais a rolagem").
