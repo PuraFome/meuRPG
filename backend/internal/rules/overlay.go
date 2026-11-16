@@ -633,6 +633,10 @@ func (c *Content) ForPlayer() *Content {
 	return &Content{c: &x}
 }
 
+// AsksOptionsOf says the choice (its key is its feature's) offers the options of another feature, a pool the table
+// keeps some options out of for the reader (from_feature).
+func (c *Content) AsksOptionsOf(choiceKey string) bool { return c.c.fromFeature[choiceKey] != "" }
+
 // SheetHas says the build has the key: its race, subrace, background, class or subclass, a feat, a
 // pick, or a trait, feature or option of one of those entries (unless the key is retired or switched off itself). A hidden key the sheet has is not
 // hidden from it (ADR-0018, section 7).
@@ -1490,7 +1494,7 @@ func (c *content) cloneForOverlay() *content {
 	n.namesEN = maps.Clone(c.namesEN)
 	n.listFrom = map[string]string{}
 	n.offeredBy = map[string][]string{}
-	n.fromFeature, n.optionSource = map[string]string{}, map[string]string{}
+	n.fromFeature, n.askedBy = map[string]string{}, map[string][]string{}
 	n.archived = map[string]bool{}
 	n.off = map[string]bool{}
 	n.entryRevision = map[string]int{}

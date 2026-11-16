@@ -184,9 +184,11 @@ type content struct {
 	listFrom      map[string]string
 	offeredBy     map[string][]string
 	// fromFeature maps a table feature whose choice offers the options of another feature (from_feature) to that
-	// feature, and optionSource each of those options to the feature whose list it is in.
-	fromFeature, optionSource map[string]string
-	archived                  map[string]bool
+	// feature, and askedBy each of those options to the features that ask for it. A feature that asks for an option
+	// is no owner of it: it lends its pool, not its place in the table.
+	fromFeature map[string]string
+	askedBy     map[string][]string
+	archived    map[string]bool
 	// off are the keys (the SRD's and the table's) the master switched off for the
 	// players ("Opções para os jogadores", RN-23); empty without a table layer.
 	off          map[string]bool

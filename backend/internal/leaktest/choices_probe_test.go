@@ -1,6 +1,7 @@
 package leaktest
 
 import (
+	"regexp"
 	"slices"
 	"strings"
 	"testing"
@@ -119,9 +120,17 @@ func optionsOf(res *charactersv1.PreviewChoicesResponse, suffix string) []string
 	return out
 }
 
-// sameAnswer says the two answers are one, but for the key each names.
+// sameAnswer says the two answers are one, but for the key each names. The encoded detail of an error holds the key too
+// (with its length), so the comparison reads the plain form of the detail that comes with it.
 func sameAnswer(a reply, keyA string, b reply, keyB string) bool {
-	return a.status == b.status && strings.ReplaceAll(string(a.body), keyA, "K") == strings.ReplaceAll(string(b.body), keyB, "K")
+	return a.status == b.status && keyless(a.body, keyA) == keyless(b.body, keyB)
+}
+
+// encodedDetail is the packed form of an error detail, which the same answer also gives in the clear (its debug field).
+var encodedDetail = regexp.MustCompile(`"value":"[A-Za-z0-9_-]*",?`)
+
+func keyless(body []byte, key string) string {
+	return strings.ReplaceAll(encodedDetail.ReplaceAllString(string(body), ""), key, "K")
 }
 
 // createClassShowing is createClass that says why the table refuses the class.

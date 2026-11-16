@@ -216,6 +216,9 @@ type ChoiceSet struct {
 	Groups []ChoiceGroup
 	// NotOffered are the stored picks that no choice of this character offers.
 	NotOffered []string
+	// KeptOut are the picks of the sheet that the pool of a choice of the options of another feature keeps out of its
+	// offer, and the sheet holds all the same (the server refuses the new ones).
+	KeptOut []string `json:"-"`
 }
 
 // Counts is how many selections are made and how many the sheet asks: the
@@ -378,6 +381,8 @@ type choiceBuilder struct {
 	typedLanguages, typedTools int
 	// legacyTaken counts the surplus cantrips choices already claimed.
 	legacyTaken int
+	// keptOut are the picks the pool of a choice of another feature's options keeps out, though the sheet holds them.
+	keptOut []string
 }
 
 func (c *content) choiceSet(b Build) ChoiceSet {
@@ -456,9 +461,13 @@ func (cb *choiceBuilder) labelOf(g *groupBuild, ch *Choice) string {
 // picks of its pool.
 func (cb *choiceBuilder) optionChoice(g *groupBuild, featureKey string, choose int, options []string) *optionEntry {
 	title := choiceTitle(cb.c, featureKey)
-	options = cb.c.visibleOptions(cb.b, options)
-	// A pool with no option left asks nothing of the sheet: no pick could answer it.
-	ch := cb.addChoice(g, &Choice{Key: featureKey, FeatureKey: featureKey, Kind: ChoiceKindOptions, TitlePT: title, Picks: choose, plain: true, Advisory: len(options) == 0})
+	if shown := cb.c.visibleOptions(cb.b, featureKey, options); len(shown) < len(options) {
+		// The pool lists what the sheet may pick, and asks for no more than that: the answer says nothing of the rest. A
+		// pool with no option left asks nothing of the sheet, as no pick could answer it.
+		options, choose = shown, min(choose, len(shown))
+	}
+	cb.keptOut = append(cb.keptOut, cb.c.keptOutPicks(cb.b, featureKey, options)...)
+	ch := cb.addChoice(g, &Choice{Key: featureKey, FeatureKey: featureKey, Kind: ChoiceKindOptions, TitlePT: title, Picks: choose, plain: true, Advisory: len(options) == 0 && cb.c.fromFeature[featureKey] != ""})
 	cb.order++
 	e := &optionEntry{choice: ch, choose: choose, options: options, level: g.Level, order: cb.order}
 	cb.entries = append(cb.entries, e)
@@ -540,6 +549,7 @@ func (cb *choiceBuilder) finish() ChoiceSet {
 	}
 	slices.Sort(set.NotOffered)
 	set.NotOffered = slices.Compact(set.NotOffered)
+	set.KeptOut = slices.Compact(slices.Sorted(slices.Values(cb.keptOut)))
 	cb.results(&set)
 	return set
 }
