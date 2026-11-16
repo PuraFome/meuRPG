@@ -28,8 +28,8 @@ func TestARowInTheOldWordingIsTheLostIssueWhateverTheEntryIsCalledNow(t *testing
 		{"the identity of an entry", feat, "feat_prerequisite|full.feat_keys|lost:feat:y@mesa", false},
 	}
 	for _, tc := range cases {
-		if got := tc.is.LegacyLostID(tc.stored); got != tc.want {
-			t.Errorf("%s: LegacyLostID(%q) = %v, want %v", tc.name, tc.stored, got, tc.want)
+		if got := KnownIssues([]string{tc.stored}, []Issue{tc.is})[0]; got != tc.want {
+			t.Errorf("%s: KnownIssues([%q]) = %v, want %v", tc.name, tc.stored, got, tc.want)
 		}
 	}
 }

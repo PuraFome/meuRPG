@@ -103,13 +103,6 @@ const IssueTableContentChanged = "table_content_changed"
 // the code, the list its pick is in and the entry's key.
 func issueID(is rules.Issue) string { return is.ID() }
 
-// knows says the stored identities known hold the issue: its identity, or a row in the wording the code before
-// rules.Issue.ID wrote for a lost prerequisite (rules.Issue.LegacyLostID), so a row saved then is not read as having
-// a new issue.
-func knows(known []string, is rules.Issue) bool {
-	return slices.Contains(known, issueID(is)) || is.Lost != nil && slices.ContainsFunc(known, is.LegacyLostID)
-}
-
 // issueIDs is a set of issues as the sheet stores it: sorted, no repeats.
 func issueIDs(issues []rules.Issue) []string {
 	var out []string
@@ -142,12 +135,12 @@ func flags(content *rules.Content, full *charactersv1.FullSheet, build rules.Bui
 	if len(changed) == 0 {
 		return nil
 	}
-	known := full.GetKnownIssues()
+	known := rules.KnownIssues(full.GetKnownIssues(), issues)
 	var out []flag
 	for _, ch := range changed {
 		f := flag{entry: ch}
-		for _, is := range issues {
-			if slices.Contains(is.Keys, ch.Key) && !knows(known, is) {
+		for i, is := range issues {
+			if slices.Contains(is.Keys, ch.Key) && !known[i] {
 				f.issues = append(f.issues, is)
 			}
 		}
@@ -163,8 +156,10 @@ func flags(content *rules.Content, full *charactersv1.FullSheet, build rules.Bui
 // "Fichas com aviso".
 func issuesTiedTo(content *rules.Content, full *charactersv1.FullSheet, key string) []rules.Issue {
 	var out []rules.Issue
-	for _, is := range rules.Derive(buildOf(full), content).Issues {
-		if slices.Contains(is.Keys, key) && !knows(full.GetKnownIssues(), is) {
+	issues := rules.Derive(buildOf(full), content).Issues
+	known := rules.KnownIssues(full.GetKnownIssues(), issues)
+	for i, is := range issues {
+		if slices.Contains(is.Keys, key) && !known[i] {
 			out = append(out, is)
 		}
 	}

@@ -126,13 +126,13 @@ func listOf(field string) string {
 // entry after it, and the rest was the sentence's own.
 const legacyLostStart = "O personagem não cumpre mais o pré-requisito de "
 
-// LegacyLostID says a stored identity is this lost prerequisite as the code before Issue.ID wrote it: the code, the
+// legacyLostID says a stored identity is this lost prerequisite as the code before Issue.ID wrote it: the code, the
 // field and the old sentence, which began the same for every reader and named the entry. It is matched by the code,
 // the list the field is in and the fixed start of the sentence, not by the entry's name, which the master may have
 // changed before the sheet was saved again, nor by the pick's place, which a swap may have moved (a feat taken
 // through a choice was stored without one). A sheet that holds two such rows of one code in one list takes either
 // row for any lost prerequisite of that list: it can hide the notice of a second one, and never shows a false one.
-func (is Issue) LegacyLostID(stored string) bool {
+func (is Issue) legacyLostID(stored string) bool {
 	if is.Lost == nil {
 		return false
 	}
@@ -142,6 +142,16 @@ func (is Issue) LegacyLostID(stored string) bool {
 	}
 	field, sentence, ok := strings.Cut(rest, "|")
 	return ok && listOf(field) == listOf(is.Field) && strings.HasPrefix(sentence, legacyLostStart)
+}
+
+// KnownIssues says, for each of issues, whether the stored identities hold it: the sheet's known issues, which are
+// what an issue is told "new" against.
+func KnownIssues(stored []string, issues []Issue) []bool {
+	known := make([]bool, len(issues))
+	for i, is := range issues {
+		known[i] = slices.Contains(stored, is.ID()) || is.Lost != nil && slices.ContainsFunc(stored, is.legacyLostID)
+	}
+	return known
 }
 
 // retold is the lost prerequisite said over the sheet d: the same conditions, with what the character has there.
