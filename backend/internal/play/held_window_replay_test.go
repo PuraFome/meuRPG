@@ -534,3 +534,69 @@ func (a *armed) stableVitals(t *testing.T) string {
 	v.Revision, v.UpdatedAt = 0, nil
 	return asJSON(t, v)
 }
+
+// TestASpellAttackAnswerSettlesOnTheBonusItWasHeldWith: no window holds Brisa's spell attack; her d20 waits for the die's question with her
+// bonus as it was when it was rolled. A roll bonus that lands on her before she answers (a Bênção, say) does not count: the answer settles the
+// roll she was asked about, as the answer of a weapon attack does (rollHeldAttack).
+func TestASpellAttackAnswerSettlesOnTheBonusItWasHeldWith(t *testing.T) {
+	t.Parallel()
+	f := newFavorFight(t)
+	f.e = f.passTo(t, f.e, "Brisa")
+	f.giveCombatantDie(t, "Brisa", f.e)
+	held, err := f.cast(t, f.bia, f.e, "Brisa", guidingBolt, slotOfLevel(1), f.at(t, "Goblin"), d20Face(4))
+	offer := held.GetHeldRollOffer()
+	if err != nil || offer.GetDie() == nil {
+		t.Fatalf("CastSpell() = %v, %v; want the die's question", held, err)
+	}
+	heldTotal := offer.GetD20().GetTotal()
+	f.hiddenEffect(t, "Brisa", true, `[{"kind":"roll_bonus","value":2,"applies_to":["attack"]}]`)
+	out, err := f.answerHeldRoll(t, f.bia, offer.GetHoldId(), dieAnswer(false))
+	if err != nil {
+		t.Fatalf("AnswerHeldRoll() error = %v", err)
+	}
+	targets := out.GetSpellCast().GetCast().GetTargets()
+	if len(targets) != 1 || targets[0].GetAttackRoll().GetTotal() != heldTotal {
+		t.Errorf("the answered roll = %v, want the total it was held with, %d", targets, heldTotal)
+	}
+}
+
+// TestLuckyThenTheDieOnASpellAttackAWindowHeld: a halfling that holds a die rolls a 1 in the replay of a cast a window held. Lucky asks first,
+// and the die's question follows on the same hold: one row, the cast written once, under the last answer, with the slot and the action
+// spent once and the die gone.
+func TestLuckyThenTheDieOnASpellAttackAWindowHeld(t *testing.T) {
+	t.Parallel()
+	a, c := spellAfterAWindow(t, "race:halfling")
+	a.giveCombatantDie(t, "Pensantus", c.e)
+	key := a.castInTheWindow(t, c, 1)
+	offer := a.wantTheQuestionOfTheReplay(t, c, key)
+	if offer.GetLucky() == nil {
+		t.Fatalf("the first question = %v, want Lucky's", offer)
+	}
+	lucky, err := a.answerHeldRollKey(t, a.ana, offer.GetHoldId(), newKey(), luckyAnswer(15))
+	if err != nil || lucky.GetNext().GetDie() == nil || lucky.GetSpellCast().GetCast() != nil {
+		t.Fatalf("the Lucky answer = %v, %v; want the die's question next and no cast", lucky, err)
+	}
+	if n := a.countOf(t, `SELECT count(*) FROM session_events WHERE kind = $1 AND NOT COALESCE((payload->'reaction'->>'hold')::bool, false)`, eventSpellCast); n != 0 {
+		t.Fatalf("%s events after Lucky's answer = %d, want 0", eventSpellCast, n)
+	}
+	c.h.roller.queue(4)
+	answerKey := newKey()
+	out, err := a.answerHeldRollKey(t, a.ana, offer.GetHoldId(), answerKey, dieAnswer(true))
+	if err != nil {
+		t.Fatalf("the die's answer error = %v", err)
+	}
+	targets := out.GetSpellCast().GetCast().GetTargets()
+	if len(targets) != 1 || targets[0].GetAttackRoll().GetTotal() != 24 || len(targets[0].GetBonusDice()) != 1 {
+		t.Fatalf("the cast = %v, want the 1 rolled again to 15, 15 + 5 + the die 4 = 24", out.GetSpellCast().GetCast())
+	}
+	a.wantTheCastOnce(t, c)
+	if n := a.countOf(t, `SELECT count(*) FROM inspiration_holds WHERE idempotency_key = $1`, key); n != 1 {
+		t.Errorf("the holds under the cast's key = %d, want 1", n)
+	}
+	if n := a.countOf(t, `SELECT count(*) FROM combatants WHERE id = $1 AND inspiration_sides IS NOT NULL`, c.id(t, "Pensantus")); n != 0 {
+		t.Error("Pensantus still holds the die she used")
+	}
+	if n := a.countOf(t, `SELECT count(*) FROM session_events WHERE kind = $1 AND payload->>'d20_reroll' IS NOT NULL AND NOT COALESCE((payload->'reaction'->>'hold')::bool, false)`, eventSpellCast); n > 1 {
+		t.Errorf("cast events with the reroll = %d, want at most 1", n)
+	}
+}
