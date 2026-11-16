@@ -323,7 +323,9 @@ func (s *Service) planFinish(ctx context.Context, c *combatTx, m authz.Membershi
 	plan := castPlan{g: g, osp: osp, spell: row.SpellKey, ritual: row.Ritual, slot: slotOfRow(row), minutes: int(row.CastingMinutes)}
 	i := osp.GrantIndex(row.GrantSource, row.Ritual)
 	switch {
-	case row.GrantSource != "" && i >= 0 && plan.slot == nil: // a casting finishes through the grant it started through
+	case row.GrantSource != "" && i < 0:
+		return plan, badCast("the grant the casting started through is gone")
+	case row.GrantSource != "": // a casting finishes through the grant it started through
 		return s.finishWithGrant(ctx, c, m, plan, i)
 	case row.Ritual:
 		if !osp.CanRitual && !osp.GrantedRitual() {
@@ -333,7 +335,6 @@ func (s *Service) planFinish(ctx context.Context, c *combatTx, m authz.Membershi
 			return s.finishWithGrant(ctx, c, m, plan, i)
 		}
 	case !osp.Prepared && plan.slot == nil && osp.GrantedWithoutSlot():
-		// A long casting through a grant: the use was spent when it started.
 		return s.finishWithGrant(ctx, c, m, plan, i)
 	case !osp.Prepared:
 		return plan, badCast("spell_key is not one of the caster's spells")

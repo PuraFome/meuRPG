@@ -31,10 +31,21 @@ func newClericGrants(t *testing.T, castLevels ...int32) (a *armed, feats []strin
 		}
 		feats = append(feats, res.Msg.GetEntry().GetKey())
 	}
+	a.bri = a.briWithFeats(t, feats, true)
+	return a, feats
+}
+
+// briWithFeats is Brisa after the master sets the feats of her sheet.
+func (a *armed) briWithFeats(t *testing.T, feats []string, prayerPrepared bool) *charactersv1.Character {
+	t.Helper()
+	prepared := []string{cureWounds, healingWord, detectMagicKey, blessKey, aidSpell}
+	if prayerPrepared {
+		prepared = append(prepared, prayerKey)
+	}
 	sheet := &charactersv1.CharacterSheet{Content: &charactersv1.CharacterSheet_Full{Full: &charactersv1.FullSheet{
 		BaseScores: &rulesv1.AbilityScores{Strength: 10, Dexterity: 16, Constitution: 14, Intelligence: 10, Wisdom: 16, Charisma: 8},
 		RaceKey:    "race:human", Classes: []*charactersv1.ClassLevel{classLevel("class:cleric", 3, "subclass:life")},
-		CantripKeys: []string{sacredFlame}, PreparedSpellKeys: []string{cureWounds, healingWord, prayerKey, detectMagicKey, blessKey, aidSpell},
+		CantripKeys: []string{sacredFlame}, PreparedSpellKeys: prepared,
 		FeatKeys: feats,
 	}}}
 	upd, err := a.master.characters.UpdateCharacter(t.Context(), connect.NewRequest(&charactersv1.UpdateCharacterRequest{
@@ -43,8 +54,7 @@ func newClericGrants(t *testing.T, castLevels ...int32) (a *armed, feats []strin
 	if err != nil {
 		t.Fatalf("UpdateCharacter(Brisa gets the feats) error = %v", err)
 	}
-	a.bri = upd.Msg.GetCharacter()
-	return a, feats
+	return upd.Msg.GetCharacter()
 }
 
 // prayerAt starts a long casting of Prayer of Healing through the grant, finishes it as the master and says how many
@@ -88,5 +98,40 @@ func TestMR025_TwoGrantsOfOneSpellFinishEachAtItsOwnLevel(t *testing.T) {
 	}
 	if got := a.prayerAt(t, feats[0]); got != 3 {
 		t.Errorf("dice of the casting through the first grant = %d, want 3", got)
+	}
+}
+
+// startPrayer starts a long casting of Prayer of Healing through the grant and returns the cast's id.
+func (a *armed) startPrayer(t *testing.T, feat string) string {
+	t.Helper()
+	return a.mustCastOut(t, a.bia, a.bri, prayerKey, nil, false, []*charactersv1.Character{a.toren}, grantedBy(feat)).GetCast().GetId()
+}
+
+// A casting whose grant is gone before the master finishes it is refused, and the cast goes on: with another grant of the
+// spell left (prepared or not), and with the spell prepared and no grant left.
+func TestMR025_ALongCastWhoseGrantIsGoneIsRefusedAtTheFinish(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name   string
+		levels []int32
+		keep   int
+		own    bool
+	}{
+		{"another grant of the spell is left", []int32{3, 5}, 1, true},
+		{"the spell is not prepared and another grant is left", []int32{3, 5}, 1, false},
+		{"the spell is prepared and no grant is left", []int32{4}, 0, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			a, feats := newClericGrants(t, tc.levels...)
+			a.bri = a.briWithFeats(t, feats, tc.own) // started with every feat; the first goes
+			id := a.startPrayer(t, feats[0])
+			a.bri = a.briWithFeats(t, feats[1:1+tc.keep], tc.own)
+			_, err := a.finish(t, a.master, id)
+			wantRefusal(t, "finish with the grant gone", err, connect.CodeInvalidArgument, "the grant the casting started through is gone")
+			if c := a.castByID(t, a.master, id); c.GetStatus() != playv1.OutsideCastStatus_OUTSIDE_CAST_STATUS_CASTING {
+				t.Errorf("cast after the refused finish = %v, want it still being cast", c.GetStatus())
+			}
+		})
 	}
 }

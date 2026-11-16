@@ -356,7 +356,6 @@ func (s *Service) castOutside(ctx context.Context, c *combatTx, m authz.Membersh
 		return castOutcome{}, err
 	}
 	long := plan.minutes > 0
-	// A use of a grant is spent when the cast starts, a long casting included.
 	spent, err := s.spendGrantUse(ctx, c, plan)
 	if err != nil {
 		return castOutcome{}, err
