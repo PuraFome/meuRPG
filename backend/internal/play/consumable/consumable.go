@@ -96,14 +96,13 @@ func Target(id, name string, distanceFt int32, state playv1.ConsumableTargetStat
 
 // Standing says whether a player's combatant is on a list of receivers and whether it is down, as the viewer reads it: the word the
 // order of the combat gives every player. A confirmed death (gone: the combatant defeated, or its character marked dead) is on no
-// list. A creature with three failed death saves that the master has not confirmed reads as down to a player, as any down ally
-// does, and is left out of the master's list; the use refuses it either way (TARGET_DEAD). v are the character's vitals.
+// list. A creature with three failed death saves that the master has not confirmed stays on a player's list, down only at 0 hit
+// points as any other creature (the order shows it the same way), and is left out of the master's list; the use refuses it either
+// way (TARGET_DEAD). v are the character's vitals.
 func Standing(gone bool, deathFailures int32, master bool, v *playv1.CharacterVitals) (listed, down bool) {
 	switch {
-	case gone:
+	case gone, master && deathFailures >= combat.DeathSaveGoal:
 		return false, false
-	case deathFailures >= combat.DeathSaveGoal:
-		return !master, !master
 	}
 	return true, v.GetHitPointsMax() > 0 && v.GetHitPointsCurrent() == 0
 }

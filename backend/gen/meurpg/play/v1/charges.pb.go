@@ -96,8 +96,7 @@ const (
 	ConsumableTargetState_CONSUMABLE_TARGET_STATE_UNSPECIFIED ConsumableTargetState = 0
 	// On its feet: above 0 hit points.
 	ConsumableTargetState_CONSUMABLE_TARGET_STATE_OK ConsumableTargetState = 1
-	// At 0 hit points (unconscious): it cannot act, and a potion given to it wakes it. A player reads a creature with three
-	// failed death saves that the master has not confirmed as down too.
+	// At 0 hit points (unconscious): it cannot act, and a potion given to it wakes it.
 	ConsumableTargetState_CONSUMABLE_TARGET_STATE_DOWN ConsumableTargetState = 2
 )
 

@@ -659,6 +659,37 @@ func (s *stocked) fourthHero(t *testing.T, name string) *charactersv1.Character 
 		&rulesv1.AbilityScores{Strength: 10, Dexterity: 14, Constitution: 12, Intelligence: 16, Wisdom: 10, Charisma: 8}, nil, []string{fireBolt})
 }
 
+// At a table that hides the death saves a potion or a scroll given to a creature with three failed death saves is refused as dead
+// for every reader all the same, and spends nothing: trying to heal is how the table learns.
+func TestAGiftToThreeFailedDeathSavesIsRefusedAtATableThatHidesThem(t *testing.T) {
+	t.Parallel()
+	f := newPotionFight(t, potionCommon, scrollFirst)
+	f.setRules(t, hiddenDeath)
+	f.hurt(t, f.pens, 0)
+	f.execSQL(t, `UPDATE combatants SET death_failures = 3 WHERE id = $1`, f.id(t, "Pensantus"))
+	for _, key := range []string{potionCommon, scrollFirst} {
+		_, err := f.use(t, f.caio, f.toren, key, giveTo(f.pens))
+		wantBlockedBy(t, key+" to the creature with three failed death saves", err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_TARGET_DEAD)
+		if !f.holds(t, f.toren, key) {
+			t.Errorf("the refused %s was spent", key)
+		}
+	}
+}
+
+// A creature with three failed death saves that is above 0 hit points (an exhaustion of level 6 sets the failures and keeps the hit
+// points) is on its feet in the order, so a player's list says so too, and the use is refused as dead.
+func TestTheTargetsSayOnItsFeetForThreeFailuresAboveZeroHitPoints(t *testing.T) {
+	t.Parallel()
+	f := newPotionFight(t, potionCommon)
+	f.execSQL(t, `UPDATE combatants SET death_failures = 3 WHERE id = $1`, f.id(t, "Pensantus"))
+	got := f.targets(t, f.caio, f.toren, potionCommon)
+	if len(got) != 1 || got[0].GetCharacterId() != f.pens.GetId() || got[0].GetState() != playv1.ConsumableTargetState_CONSUMABLE_TARGET_STATE_OK || got[0].GetDistanceFt() != 5 {
+		t.Errorf("a player reads %v, want Pensantus, 5 ft, on its feet", got)
+	}
+	_, err := f.use(t, f.caio, f.toren, potionCommon, giveTo(f.pens))
+	wantBlockedBy(t, "a potion to the creature with three failed death saves", err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_TARGET_DEAD)
+}
+
 // While the combat is in setup it has no turn and no distance: the list of an item of Toren is the party's characters that are not
 // dead. A creature with three failed death saves (on its combatant) that the master has not confirmed reads as a down ally to a
 // player, with no state word as for every target outside a running combat, and the master's list leaves it out; a creature the

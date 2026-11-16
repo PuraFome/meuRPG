@@ -63,17 +63,17 @@ func (s *Service) openFight(ctx context.Context, tx pgx.Tx, q *playdb.Queries, h
 	if err != nil || !found {
 		return nil, err
 	}
+	c, err := s.openTx(ctx, combatTx{tx: tx, q: q, session: session, enc: enc, now: s.now(), hints: h, actorUserID: use.m.UserID, svc: s})
+	if err != nil {
+		return nil, err
+	}
 	giver, recv := wearerIn(cs, use.charText), wearerIn(cs, use.target)
 	if giver == nil && (recv == nil || !potion) { // the combat has no part in it: no effect on a combatant and no line of the user's, but a dead receiver is refused
-		return nil, s.refuseTheDeadReceiver(ctx, tx, session, recv)
+		return nil, s.refuseTheDeadReceiver(ctx, c, recv)
 	}
 	acts := potion && enc.Status == statusActive
 	if acts && (giver == nil || recv == nil) {
 		return nil, errNotAdjacent()
-	}
-	c, err := s.openTx(ctx, combatTx{tx: tx, q: q, session: session, enc: enc, now: s.now(), hints: h, actorUserID: use.m.UserID, svc: s})
-	if err != nil {
-		return nil, err
 	}
 	f := &consumableFight{c: c, cs: cs, giver: giver, recv: recv}
 	if err := s.gateConsumable(ctx, f, acts); err != nil {
@@ -93,7 +93,7 @@ func (s *Service) gateConsumable(ctx context.Context, f *consumableFight, acts b
 			return errNotAdjacent()
 		}
 	}
-	if err := s.refuseTheDeadReceiver(ctx, f.c.tx, f.c.session, f.recv); err != nil {
+	if err := s.refuseTheDeadReceiver(ctx, f.c, f.recv); err != nil {
 		return err
 	}
 	if acts {
@@ -104,13 +104,9 @@ func (s *Service) gateConsumable(ctx context.Context, f *consumableFight, acts b
 
 // refuseTheDeadReceiver refuses a receiver that is a combatant and dead (three failed death saves): no item reaches it, whether or not
 // the user fights in the combat. A nil receiver is no combatant of it, and nothing is refused.
-func (s *Service) refuseTheDeadReceiver(ctx context.Context, tx pgx.Tx, session playdb.GameSession, recv *playdb.Combatant) error {
+func (s *Service) refuseTheDeadReceiver(ctx context.Context, c *combatTx, recv *playdb.Combatant) error {
 	if recv == nil {
 		return nil
-	}
-	c, err := s.openTx(ctx, combatTx{tx: tx, session: session}) // the table's rules, as every combat transaction reads them
-	if err != nil {
-		return err
 	}
 	return s.refuseTheDead(ctx, c, []playdb.Combatant{*recv})
 }
