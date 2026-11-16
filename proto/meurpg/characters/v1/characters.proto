@@ -1697,6 +1697,16 @@ message SheetMagicItem {
   // charges. Filled by the server on every read from the catalog; a save ignores it. Read by the same
   // people as the charges: the character's player and the master.
   ItemRecharge recharge = 13;
+  // The effect "Usar" carries out for this consumable, as the sheet shows it ("Cura 2d4 + 2", "Resistência a fogo por 1
+  // hora"); empty for an item with no automatic effect (its text is all there is). Filled by the server from the
+  // catalog on every read; a save ignores it. Read by the same people as the charges: the character's player and the
+  // master.
+  string effect_pt = 14;
+  // The spell a scroll casts (the catalog's key, "spell:fireball") and its name in Portuguese. Filled by the server on every
+  // read for a scroll that casts its spell; empty for every other item, a spell scroll that is only text included. A save
+  // ignores them.
+  string spell_key = 15;
+  string spell_name_pt = 16;
 }
 
 // ItemRecharge is the catalog's charge rules of one item (SRD 5.1: each wand, staff, ring and

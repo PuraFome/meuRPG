@@ -325,18 +325,31 @@ func callerKeys(ctx context.Context, q *charactersdb.Queries, m authz.Membership
 		if err != nil {
 			return nil, err
 		}
-		if full := sheet.GetFull(); full != nil {
-			b := buildOf(full)
-			for _, kf := range rules.BuildKeys(b) {
-				out[kf.Key] = true
-			}
-			// A table class feature is no key of the build: the sheet has it through its class and level.
-			for _, kf := range content.ClassFeatureKeys(b) {
-				out[kf.Key] = true
-			}
+		for _, k := range sheetContentKeys(content, sheet) {
+			out[k] = true
 		}
 	}
 	return out, nil
+}
+
+// sheetContentKeys are the content keys a sheet uses. A table class feature is no key of the build: the sheet has it
+// through its class and level, unless the master switched it off, and then the sheet no longer has it.
+func sheetContentKeys(content *rules.Content, sheet *charactersv1.CharacterSheet) []string {
+	full := sheet.GetFull()
+	if full == nil {
+		return nil
+	}
+	b := buildOf(full)
+	var keys []string
+	for _, kf := range rules.BuildKeys(b) {
+		keys = append(keys, kf.Key)
+	}
+	for _, kf := range content.ClassFeatureKeys(b) {
+		if !content.Off(kf.Key) {
+			keys = append(keys, kf.Key)
+		}
+	}
+	return keys
 }
 
 // callerUses says whether one of the caller's own characters uses the key.
