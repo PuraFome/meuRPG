@@ -144,7 +144,7 @@
               <mat-icon aria-hidden="true">{{ r.open ? 'expand_more' : 'chevron_right' }}</mat-icon>
               <span class="opt__text">
                 <span class="opt__title">{{ r.title }}</span>
-                <span class="opt__sub">{{ r.summary }}@if (r.bad) { <span class="opt__bad"> · <mat-icon aria-hidden="true">error</mat-icon>Precisa de ajuste</span> }</span>
+                <span class="opt__sub">{{ r.summary }}@if (r.bad) { <span class="opt__bad">@if (r.summary) { · }<mat-icon aria-hidden="true">error</mat-icon>Precisa de ajuste</span> }</span>
               </span>
             </button>
             @if (rows().length > 1) {
