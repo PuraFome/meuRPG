@@ -17,7 +17,7 @@ The browser draws what the server sends and computes no rule: multiclass prerequ
   Under that, the marks and the chip drop together to a second line under the name, at the name's x; the "⋮" and the button stay at the right edge, on the middle of the whole row.
   A row has the kind icon, the name (it ellipsizes first), "×N" for equal copies and "duas mãos" (dropped when there is no room).
   A carried two-handed weapon that would leave the shield idle has a ⚠.
-  The shield it idles has a dashed "Parado" tag.
+  The shield it idles has a dashed "Não conta na CA" tag.
   The weapon's marks are 22 px icon-only chips, each named by its word.
   A row ends with the magic bonus chip, the "⋮" and an outlined 44 px "Equipar" or "Guardar" of equal width in every row.
   The bonus chip is "+N" with a spark.
