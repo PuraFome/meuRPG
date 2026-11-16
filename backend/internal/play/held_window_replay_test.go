@@ -214,7 +214,7 @@ func (a *armed) castInTheWindow(t *testing.T, c *cx, face int32) string {
 	t.Helper()
 	key := newKey()
 	held, err := a.castKey(t, a.ana, c.e, "Pensantus", acidArrow, slotOfLevel(2), a.at(t, "Goblin"), d20Face(face), key)
-	if err != nil || held.GetCast() != nil || held.GetHeldRollOffer() != nil || held.GetInspirationOffer() != nil || held.GetLuckyOffer() != nil {
+	if err != nil || held.GetCast() != nil || held.GetHeldRollOffer() != nil {
 		t.Fatalf("CastSpell() = %v, %v; want it held in the master's window", held, err)
 	}
 	w := a.windowOf(t, a.master, playv1.ReactionKind_REACTION_KIND_MASTER_CHECK)
@@ -227,7 +227,7 @@ func (a *armed) castInTheWindow(t *testing.T, c *cx, face int32) string {
 
 // wantTheQuestionOfTheReplay checks the replay of the cast put one question to Pensantus's player, kept under the cast's key as the
 // window's own, and that the cast spent and wrote nothing yet. It returns the hold's id.
-func (a *armed) wantTheQuestionOfTheReplay(t *testing.T, c *cx, key string) *playv1.HeldRollOffer {
+func (a *armed) wantTheQuestionOfTheReplay(t *testing.T, _ *cx, key string) *playv1.HeldRollOffer {
 	t.Helper()
 	offers := a.listHeldRolls(t, a.ana)
 	if len(offers) != 1 || offers[0].GetKind() != playv1.HeldRollKind_HELD_ROLL_KIND_SPELL_ATTACK {
@@ -251,7 +251,7 @@ func (a *armed) wantTheQuestionOfTheReplay(t *testing.T, c *cx, key string) *pla
 }
 
 // wantTheCastOnce checks the answer settled the cast once: one event that is no hold, and the action spent.
-func (a *armed) wantTheCastOnce(t *testing.T, c *cx) {
+func (a *armed) wantTheCastOnce(t *testing.T, _ *cx) {
 	t.Helper()
 	if n := a.countOf(t, `SELECT count(*) FROM session_events WHERE kind = $1 AND NOT COALESCE((payload->'reaction'->>'hold')::bool, false)`, eventSpellCast); n != 1 {
 		t.Errorf("%s events = %d, want 1", eventSpellCast, n)
@@ -460,7 +460,7 @@ func TestASpellAttackIsRefusedWhileTheCastersOtherQuestionWaits(t *testing.T) {
 	})
 	a.giveCombatantDie(t, "Pensantus", c.e)
 	first, err := a.cast(t, a.ana, c.e, "Pensantus", acidArrow, slotOfLevel(2), a.at(t, "Goblin"), d20Face(15))
-	if err != nil || first.GetInspirationOffer() == nil {
+	if err != nil || first.GetHeldRollOffer() == nil {
 		t.Fatalf("the first CastSpell() = %v, %v; want the die's question", first, err)
 	}
 	a.setRules(t, enemyReactionsAlways)
@@ -475,7 +475,7 @@ func TestASpellAttackIsRefusedWhileTheCastersOtherQuestionWaits(t *testing.T) {
 	if n := a.countOf(t, `SELECT count(*) FROM inspiration_holds WHERE answer_key IS NULL`); n != 1 {
 		t.Errorf("open questions = %d, want the first alone", n)
 	}
-	if out, err := a.answerHeldRoll(t, a.ana, first.GetInspirationOffer().GetHoldId(), dieAnswer(false)); err != nil || out.GetSpellCast().GetCast() == nil {
+	if out, err := a.answerHeldRoll(t, a.ana, first.GetHeldRollOffer().GetHoldId(), dieAnswer(false)); err != nil || out.GetSpellCast().GetCast() == nil {
 		t.Errorf("the first question's answer = %v, %v; want the cast", out, err)
 	}
 }
