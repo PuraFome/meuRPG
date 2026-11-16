@@ -2,10 +2,13 @@ package play
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"sync"
 	"testing"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
@@ -27,12 +30,12 @@ func TestASpendAndTheAnswerOfARefundPromptRace(t *testing.T) {
 		start.Add(1)
 		wg.Go(func() { start.Wait(); _, ansErr = f.answerRefund(f.master, p.GetId(), true, newKey()) })
 		for i := range spenders {
-			wg.Go(func() { start.Wait(); spent[i] = f.tryFavorLocked(f.ask(combat.ModeNormal)) })
+			wg.Go(func() { start.Wait(); spent[i] = f.tryFavorLocked(i, f.ask(combat.ModeNormal)) })
 		}
 		start.Done()
 		wg.Wait()
 		if ansErr != nil {
-			t.Fatalf("the answer error = %v", ansErr)
+			t.Fatalf("%s", failureOf("the master's answer", ansErr))
 		}
 		won := spendsThatWon(t, spent)
 		if won > 1 {
@@ -93,7 +96,7 @@ func spendsThatWon(t *testing.T, spent []spendTry) int {
 		case s.use.Spent && s.err == nil:
 			won++
 		case !isBlockedBy(s.err, playv1.FavorBlockedReason_FAVOR_BLOCKED_REASON_HAS_NONE):
-			t.Errorf("spend %d = %+v, want spent or HAS_NONE", i, s)
+			t.Errorf("%s, want spent or HAS_NONE (the spend = %+v)", failureOf(fmt.Sprintf("spend %d", i), s.err), s.use)
 		}
 	}
 	return won
@@ -102,14 +105,27 @@ func spendsThatWon(t *testing.T, spent []spendTry) int {
 // tryFavorLocked is tryFavor on the transaction every call of the service runs in (Service.tx), which takes the session's lock first: the
 // spend and the master's answer take turns, so a spend races the answer by the order of the lock and never by a conflict between two
 // transactions that read the same rows. Nothing is repeated: a transaction that fails is an error of the test.
-func (f *favorParty) tryFavorLocked(a favorAsk) spendTry {
+func (f *favorParty) tryFavorLocked(i int, a favorAsk) spendTry {
 	var out spendTry
 	err := f.h.svc.tx(context.Background(), f.sessionID, func(tx pgx.Tx, _ *hints) error {
 		out.use, out.err = f.h.svc.useFavor(context.Background(), f.h.svc.outsideGate(tx, f.h.svc.queries.WithTx(tx), nil), a)
 		return nil
 	})
 	if err != nil {
-		f.h.t.Errorf("the transaction of the spend failed: %v", err)
+		f.h.t.Errorf("%s", failureOf(fmt.Sprintf("the transaction of spend %d", i), err))
 	}
 	return out
+}
+
+// failureOf says which side of the race returned the error and its SQLSTATE (or that it has none), so that a failure read in a CI log
+// names the side and the database's own code: a serialization failure (40001), a deadlock (40P01) or the service's own refusal.
+func failureOf(side string, err error) string {
+	if err == nil {
+		return side + " returned no error"
+	}
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) {
+		return fmt.Sprintf("%s returned an error with SQLSTATE %s: %v", side, pgErr.Code, err)
+	}
+	return fmt.Sprintf("%s returned an error with no SQLSTATE: %v", side, err)
 }
