@@ -505,7 +505,8 @@ func (s *Service) openReadiedMove(ctx context.Context, d *encounterData, who pla
 }
 
 // spendReadiedMove spends the reaction of a readied move and writes its use. A walk that went nowhere (stopped before its
-// first square) is no use: nothing is spent, the row waits and its window stays open.
+// first square) is no use: moveInTx stops it before anything is written (idle), so nothing is spent, the row waits and its
+// window stays open.
 func (s *Service) spendReadiedMove(ctx context.Context, a *moveAttempt) error {
 	if a.readied == nil || a.length == 0 {
 		return nil

@@ -96,7 +96,9 @@ The fire event (`readied_fired` with `opened`) writes no log line.
   A move that stops short (a wall, a creature in the way, a trap) after at least one square is still the use, and the window ends.
   So does a walk shorter than the budget: the first move is the whole use, and a second one is an ordinary move off turn (`NOT_YOUR_TURN`).
   A walk that goes nowhere, stopped before its first square (a creature the player cannot see blocks it), has length 0 and is no use (`spendReadiedMove`): nothing is spent, the row waits and the window stays open.
-  The answer says `stopped_early`, as a walk on a turn does.
+  Such a release writes no session event (the undo's next target stays what it was) and tells nobody; only its own reply says `stopped_early`, as a walk on a turn does (`moveAttempt.idle`).
+  The master's release to the square the readier stands on is the same walk of length 0.
+  A walk on the mover's own turn that stops at its first step still writes its event and sends the moved hint: that is not changed.
   The move is a line of the log, after the `readied_fired` line.
   It offers opportunity attacks as any walk does: only a forced move or a teleport would not.
   A Disengage does not cover it: Disengage lasts only for the turn it was taken on (SRD 5.1).
@@ -231,6 +233,8 @@ The readier's player sets the mark on entering the map (`MarkReactionRolling`) a
 The first set starts one wait of 120 s, and no later set or clear restarts it.
 A set or a clear that changes nothing (already set, already clear) writes nothing and tells nothing.
 One that changes the mark tells the master and the reactor's player alone, through `Audience{Master, UserID}`: no other player counts the hints of a wait they do not read.
+It is two events, one to the master and one to the reactor's player, each an encounter hint.
+On a fog map the player's copy is blind (revision 0), as every player's hint is there; the master's carries the real revision.
 The server records when the wait began, once, in the window's trigger, and no later mark or clear changes it.
 An undo that reopens the window (of a spell release, a move release or a pass) starts the wait clean: `rolling` false and no `wait_began_at`, so the next mark begins a new wait.
 The master's row reads whether the player is on the map now (`rolling`), when the wait began (`wait_began_at`) and how long it has run (`waited_ms`).

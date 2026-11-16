@@ -370,6 +370,9 @@ type moveAttempt struct {
 	// readied is the readied move the mover makes off its turn while its READIED window is open (ready_answer.go): it
 	// pays its way and offers opportunity attacks as a walk on its turn does.
 	readied *readiedUse
+	// idle is a readied move that went nowhere (length 0): the call writes no event and tells nobody; only its reply says it
+	// stopped early.
+	idle bool
 	// made is the move's event.
 	made actionEvent
 	// what the publishers read after the commit.
@@ -443,6 +446,10 @@ func (s *Service) moveInTx(ctx context.Context, a *moveAttempt) (any, error) {
 	}
 	if err := s.planMove(ctx, a); err != nil {
 		return nil, err
+	}
+	if a.readied != nil && a.length == 0 { // a release that went nowhere is no move: nothing is written, nothing is told (idle)
+		a.idle, a.made.StoppedEarly = true, true
+		return nil, nil
 	}
 	if err := s.writeMove(ctx, a); err != nil {
 		return nil, err
@@ -947,6 +954,9 @@ func (a *moveAttempt) describeMove() {
 
 // publishMove tells the streams about the move, after the commit.
 func (s *Service) publishMove(ctx context.Context, campaignID string, d *encounterData, a *moveAttempt) {
+	if a.idle {
+		return
+	}
 	s.publishCombatantMoved(ctx, campaignID, d.enc, a.moved, squareOfState(a.made.From))
 	if a.draggedMoved != nil { // the creature it dragged moved too
 		s.publishCombatantMoved(ctx, campaignID, d.enc, *a.draggedMoved, a.draggedFrom)

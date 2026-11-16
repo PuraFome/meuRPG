@@ -113,6 +113,58 @@ func TestAReadiedMoveStoppedAtItsFirstStepSpendsNothing(t *testing.T) {
 	}
 }
 
+// A release that went nowhere is no move: it writes no session event (so the master's next undo is still the one it was
+// before, not an entry that undoes nothing) and tells nobody, the master and the other players included. Only its own reply says
+// "stopped early".
+func TestAReadiedMoveStoppedAtItsFirstStepWritesNoEventAndTellsNobody(t *testing.T) {
+	t.Parallel()
+	a := newArmed(t)
+	e := a.readyMove(t)
+	a.mustFire(t, e, "Toren")
+	a.execSQL(t, `UPDATE combatants SET hidden = true WHERE label = 'Goblin'`) // east of Toren, on the way
+	var sid string
+	if err := a.h.pool.QueryRow(t.Context(), `SELECT id FROM game_sessions WHERE campaign_id = $1 AND ended_at IS NULL`, a.campaignID).Scan(&sid); err != nil {
+		t.Fatalf("find the open session: %v", err)
+	}
+	master, caio := listen(t, a.h, a.campaignID, a.master.id, true), listen(t, a.h, a.campaignID, a.caio.id, false)
+	master.heard(t, a.h)
+	caio.heard(t, a.h)
+	events, undoable, seq, rev := a.events(t), a.lastEventID(t, e), a.h.hintSeq(t, sid), a.get(t, a.master).GetRevision()
+	res, err := a.frozenMove(t, a.caio, "Toren", 6, 3)
+	if err != nil || !res.GetStoppedEarly() {
+		t.Fatalf("the walk into the hidden goblin = %v, %v; want stopped early", res, err)
+	}
+	m, p := eventKinds(master.heard(t, a.h)), eventKinds(caio.heard(t, a.h))
+	if n, id := a.events(t), a.lastEventID(t, e); n != events || id != undoable {
+		t.Errorf("after the walk: %d events (was %d), the undo targets %s (was %s); want both as they were", n, events, id, undoable)
+	}
+	if len(m)+len(p) != 0 || a.h.hintSeq(t, sid) != seq || a.get(t, a.master).GetRevision() != rev {
+		t.Errorf("after the walk: the master heard %v, the player %v, hint number %d (was %d), revision %d (was %d); want nothing told and nothing written",
+			m, p, a.h.hintSeq(t, sid), seq, a.get(t, a.master).GetRevision(), rev)
+	}
+}
+
+// The master's release to the square the readier stands on is a walk of length 0: it spends nothing, the window stays open and
+// the row waits, and it writes nothing, as the player's walk stopped at its first step does.
+func TestTheMastersReleaseToTheReadiersOwnSquareSpendsNothing(t *testing.T) {
+	t.Parallel()
+	a := newArmed(t)
+	e := a.readyMove(t)
+	a.mustFire(t, e, "Toren")
+	events, undoable := a.events(t), a.lastEventID(t, e)
+	res, err := a.frozenMove(t, a.master, "Toren", 3, 3, release)
+	if err != nil || !res.GetStoppedEarly() {
+		t.Fatalf("the master's release to the readier's own square = %v, %v; want stopped early", res, err)
+	}
+	if got := a.squareOf(t, "Toren"); got != [2]int32{3, 3} {
+		t.Errorf("Toren is at %v, want (3,3)", got)
+	}
+	if n, id := a.events(t), a.lastEventID(t, e); n != events || id != undoable {
+		t.Errorf("after the release: %d events (was %d), the undo targets %s (was %s); want both as they were", n, events, id, undoable)
+	}
+	a.untouched(t, e, "the master's release to the readier's own square")
+}
+
 func TestAReadiedMoveStoppedAfterASquareIsTheUse(t *testing.T) {
 	t.Parallel()
 	a := newArmed(t)
