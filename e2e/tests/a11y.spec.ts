@@ -15590,7 +15590,7 @@ async function expectLostRows(page: Page, table: LostTable, kind: LostKind, wher
   expect(banner.below, `16 px abaixo de "Pré-requisito perdido." ${where}`).toBe(16);
 }
 
-async function scanLostPrerequisite(browser: Browser, colorScheme: 'light' | 'dark', width: number, reader: 'owner' | 'master'): Promise<void> {
+async function scanLostPrerequisite(browser: Browser, colorScheme: 'light' | 'dark', width: number, reader: 'owner' | 'master' | 'locked-owner'): Promise<void> {
   const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport: sizeOf(width) });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport: sizeOf(width) });
   const m = await master.newPage();
@@ -16078,16 +16078,22 @@ async function issueRows(page: Page): Promise<number> {
   return page.getByRole('note', { name: 'Pendências de regra' }).locator('li').count();
 }
 
-async function scanAxeTurnedTwoHanded(browser: Browser, colorScheme: 'light' | 'dark', width: number, reader: 'owner' | 'master'): Promise<void> {
+async function scanAxeTurnedTwoHanded(browser: Browser, colorScheme: 'light' | 'dark', width: number, reader: 'owner' | 'master' | 'locked-owner'): Promise<void> {
   const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport: sizeOf(width) });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport: sizeOf(width) });
   const m = await master.newPage();
   const p = await player.newPage();
-  const where = `(${reader === 'owner' ? 'dono' : 'mestre'}, ${colorScheme}, ${width}px)`;
+  const where = `(${reader === 'master' ? 'mestre' : reader === 'owner' ? 'dono' : 'dono, ficha travada'}, ${colorScheme}, ${width}px)`;
+  let campaignId = '';
   try {
     await Promise.all([m.goto('/'), p.goto('/')]);
     const table = await axeAndShieldTable(m, p, `Acessibilidade arma de duas mãos ${Date.now()}`);
-    const page = reader === 'owner' ? p : m;
+    campaignId = table.campaignId;
+    // A table in play locks the owner's sheet: the master adjusts what the rules say, the owner still equips and stows.
+    if (reader === 'locked-owner') {
+      await startSessionRPC(m, table.campaignId);
+    }
+    const page = reader === 'master' ? m : p;
     const route = `/campaigns/${table.campaignId}/characters/${table.characterId}`;
     // The sheet fits the table as it stands: no notice, and the rows of "Pendências de regra" are the ones it already has.
     await open(page, route);
@@ -16134,11 +16140,22 @@ async function scanAxeTurnedTwoHanded(browser: Browser, colorScheme: 'light' | '
     const sheet = page.locator('app-changed-content-sheet');
     await expect(sheet.getByRole('heading', { name: `O que mudou: ${AXE_NAME}` })).toBeVisible();
     await expect(sheet.locator('li').first()).toHaveText(sentence);
-    await expect(sheet).toContainText('Quem ajusta: você, na ficha.');
+    // The shield notice is about gear: the sheet's owner stows the shield or the weapon, locked sheet or not, and the notice ends then.
+    await expect(sheet.locator('.sheet__who'), `quem ajusta e quando o aviso some ${where}`).toHaveText(
+      'Quem ajusta: o dono da ficha, guardando o escudo ou a arma. O aviso some quando um dos dois deixa de estar em uso.',
+    );
+    await expect(sheet).not.toContainText('o mestre, na ficha');
+    await expect(sheet).not.toContainText('voltam a combinar');
     await expectScreenPasses(page, `O que mudou na arma ${where}`);
     await sheet.locator('.sheet__action').click();
     await expect(sheet).toHaveCount(0);
+    if (reader === 'locked-owner') {
+      await expect(page.getByText('Travada: equipar e guardar continuam valendo'), `a ficha do dono está travada ${where}`).toBeVisible();
+    }
   } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId).catch(() => undefined);
+    }
     await Promise.all([master.close(), player.close()]);
   }
 }
@@ -16151,6 +16168,16 @@ test('a ficha com "A arma mudou." porque o mestre pôs "Duas mãos" no machado, 
 test('a ficha com "A arma mudou." porque o mestre pôs "Duas mãos" no machado, que o dono lê com a CA de antes e de depois, passa no axe e nas conferências de layout no tema escuro, no tablet', { tag: ['@a11y', '@MR-025', '@MR-040', '@RN-23'] }, async ({ browser }) => {
   test.setTimeout(240_000);
   await scanAxeTurnedTwoHanded(browser, 'dark', 768, 'owner');
+});
+
+test('a ficha travada com "A arma mudou." diz ao dono, em "Ver o que mudou", que ele guarda o escudo ou a arma, no tema claro, no tablet', { tag: ['@a11y', '@MR-025', '@MR-040', '@RN-23'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanAxeTurnedTwoHanded(browser, 'light', 768, 'locked-owner');
+});
+
+test('a ficha travada com "A arma mudou." diz ao dono, em "Ver o que mudou", que ele guarda o escudo ou a arma, no tema escuro, no celular', { tag: ['@a11y', '@MR-025', '@MR-040', '@RN-23'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanAxeTurnedTwoHanded(browser, 'dark', 390, 'locked-owner');
 });
 
 test('a ficha com "A arma mudou." que o mestre lê na ficha do jogador passa no axe e nas conferências de layout no tema escuro, no desktop', { tag: ['@a11y', '@MR-025', '@MR-040', '@RN-23'] }, async ({ browser }) => {
