@@ -281,7 +281,7 @@ func (f *castFlow) prepare(ctx context.Context) error {
 	}
 	f.aimAtCaster()
 	f.aimAtSteed()
-	for _, phase := range []func(context.Context) error{f.checkHitTargets, f.checkPool, f.readModes, f.checkSpellAttack, f.checkFavor} {
+	for _, phase := range []func(context.Context) error{f.checkHitTargets, f.checkReleaseDice, f.checkPool, f.readModes, f.checkSpellAttack, f.checkFavor} {
 		if err := phase(ctx); err != nil {
 			return err
 		}
@@ -562,6 +562,23 @@ func (f *castFlow) aimAtCaster() {
 	if len(f.targs) == 0 && selfOnly(f.sp) {
 		f.targs, f.targets = []playdb.Combatant{f.caster}, []castAim{{id: f.caster.ID}}
 	}
+}
+
+// checkReleaseDice refuses, on the release of a readied spell, the dice the spell does not use: a cast leaves them out
+// (pool_sum on a spell with no pool, d20_faces or a mode on a spell with no attack roll or pool), an answer never drops
+// what it carries. The d20_face of an old client is left out: the cast ignores it for a spell with no attack roll.
+func (f *castFlow) checkReleaseDice(context.Context) error {
+	if f.readied == nil {
+		return nil
+	}
+	pool := f.sp.HP != nil && (f.sp.HP.Kind == rules.SpellKindHPPool || f.sp.HP.Kind == rules.SpellKindTempHP)
+	switch {
+	case f.call.in.pool && !pool:
+		return connect.NewError(connect.CodeInvalidArgument, errors.New("pool_sum is for a spell that rolls a pool of dice"))
+	case f.sp.AttackType == "" && (len(f.req.GetD20Faces()) > 0 || f.req.GetRollMode() != playv1.RollMode_ROLL_MODE_UNSPECIFIED || f.req.GetModeReason() != ""):
+		return connect.NewError(connect.CodeInvalidArgument, errors.New("this spell rolls no d20: leave d20_faces and the mode out"))
+	}
+	return nil
 }
 
 // checkPool checks the pool of a spell that rolls one was set.

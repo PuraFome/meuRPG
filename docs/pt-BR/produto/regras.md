@@ -1164,6 +1164,7 @@ Um jogador lê só as próprias janelas, e os números do gatilho (um total de a
   Um truque com jogada de ataque é guardado do mesmo jeito.
   Liberada, a magia tem efeito como reação e não gasta espaço de novo; a Contramágica ainda pode barrá-la.
   Os alvos e a divisão dos dardos são escolhidos ao liberar a magia, não ao preparar.
+  Numa mesa com dados físicos, uma ação preparada liberada pela janela usa as faces digitadas, como no turno do jogador: o d20 (o par, com vantagem ou desvantagem) de um ataque e a soma dos dados de uma magia que rola um conjunto (Sono, Leque Cromático).
   A criatura nomeada ao preparar é só uma sugestão para a liberação.
   A magia se perde, com o espaço gasto, se a concentração acabar antes, se a criatura a deixar passar ou quando a ação preparada se perde.
   Esconder-se e Ajudar não podem ser guardados: têm chamadas próprias, que uma reação não executa.
