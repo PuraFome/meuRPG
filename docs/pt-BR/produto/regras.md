@@ -510,6 +510,7 @@ Se não deixa, todos usam o tipo que o mestre define.
 - A regra cobre a iniciativa, as rolagens de ataque e de dano, os ataques de magia, o dano e a cura de magias, o Retomar o Fôlego, os testes contra a morte, o d20 de uma ação de cena de RP, a busca por armadilhas, as dicas de quebra-cabeça, o teste em grupo, os dois lados de uma disputa, o Esconder-se, o teste de habilidade da Contramágica e os valores de habilidade em 4d6 de uma ficha nova. Um modo que o mestre forçou recusa o outro jeito com "A campanha mudou a forma de rolar os dados. Recarregue a página.".
 - Os dados do amanhecer dos itens mágicos, rolados pelo mestre pela mesa toda, são sempre rolados pelo app, como as exceções de "rolar de novo" acima.
 - O teste de resistência de um alvo de magia é sempre rolado pelo app com o bônus da ficha.
+- Uma magia com várias jogadas de ataque (raios: Raio Ardente) pede um d20 digitado por jogada numa mesa com dados físicos, ou o par quando aquela jogada tem vantagem ou desvantagem: uma entrada para cada jogada, na ordem dos alvos e dos raios de cada alvo. Vale também quando a magia é liberada pela janela de uma ação preparada. Um d20 só não serve para várias jogadas de ataque.
 - O "rolar de novo?" de uma característica da mesa (RN-23) é rolado pelo app mesmo quando o mestre força os dados físicos: é o único d20 que o jogador não pode digitar.
 - Os PV rolados quando um personagem é criado não fazem parte desta regra.
 - Telas: o painel "Dados" do mestre, o "Como você rola os dados" do jogador, e as folhas de rolagem, que mostram "Rolar no app" e "Digitar o resultado" na ordem da preferência, ou só o jeito que um modo forçado permite.
@@ -1200,6 +1201,7 @@ Um jogador lê só as próprias janelas, e os números do gatilho (um total de a
   Um truque com jogada de ataque é guardado do mesmo jeito.
   Liberada, a magia tem efeito como reação e não gasta espaço de novo; a Contramágica ainda pode barrá-la.
   Os alvos e a divisão dos dardos são escolhidos ao liberar a magia, não ao preparar.
+  Numa mesa com dados físicos, uma ação preparada liberada pela janela usa as faces digitadas, como no turno do jogador: o d20 (o par, com vantagem ou desvantagem) de um ataque e a soma dos dados de uma magia que rola um conjunto (Sono, Leque Cromático); uma magia com vários raios (Raio Ardente) pede um d20, ou um par, para cada raio.
   A criatura nomeada ao preparar é só uma sugestão para a liberação.
   Uma magia que pede uma habilidade, um tipo de dano, as criaturas de uma invocação ou a volta de uma criatura morta à vida não pode ser liberada, e o Preparar a recusa.
   Uma magia colocada no mapa (um ponto, uma direção, uma parede) ou que deixa uma zona nele é liberada no mapa enquanto a janela está aberta, lançando a magia ali, e não respondendo à janela.
