@@ -23,6 +23,7 @@ const (
 	potionSupreme  = "item:potion-of-healing-supreme"  // 10d4+20
 	potionFire     = "item:potion-of-resistance-fire"
 	potionClimb    = "item:potion-of-climbing" // no automatic effect
+	oilSharpness   = "item:oil-of-sharpness"   // an oil of the potion category: applied, not drunk
 	scrollFirst    = "item:spell-scroll-1st"   // no automatic effect: it is not cast
 )
 

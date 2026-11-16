@@ -723,8 +723,8 @@ func itemUseKind(eventKind string, use itemUseEvent) playv1.CombatLogKind {
 	return playv1.CombatLogKind_COMBAT_LOG_KIND_ITEM_CHARGE_SPENT
 }
 
-// ownerLineKinds are the lines the master and the character's owner read and no other player does, whatever the fog says: the
-// owner's own lines (RN-10, RN-29).
+// ownerLineKinds are the lines the owner of the acting combatant reads whatever the fog says (RN-10, RN-29), and for a consumable's
+// use the receiver's owner too; the other players read a line by the table's visibility, the whole table a CONSUMABLE_USED line.
 var ownerLineKinds = map[playv1.CombatLogKind]bool{
 	playv1.CombatLogKind_COMBAT_LOG_KIND_RECHARGE_ROLLED:         true,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_GEAR_SWAPPED:            true,
@@ -1236,9 +1236,6 @@ func (e *logEntry) commonFields(c *logViewing, visible bool, lastID string) *pla
 	return out
 }
 
-// deathSaveCount is how many successes make a character stable and how many failures make it dying.
-const deathSaveCount = 3
-
 // logFiller writes the fields of one kind of entry, and says false when the viewer has
 // nothing of it to read after all.
 type logFiller func(e *logEntry, c *logViewing, out *playv1.CombatLogEntry) bool
@@ -1603,7 +1600,7 @@ func (e *logEntry) fillDeathSave(c *logViewing, out *playv1.CombatLogEntry) bool
 		// The table keeps the road to the owner and the master (RN-24): a save that
 		// went on is no line for anybody else, and the one that made the character
 		// stable says only that it did, a result the table sees.
-		if after.Successes < deathSaveCount || e.ev.DeathOutcome != deathSuccess {
+		if after.Successes < combat.DeathSaveGoal || e.ev.DeathOutcome != deathSuccess {
 			return false
 		}
 		out.DeathSave = &playv1.CombatLogDeathSave{Stable: true}
@@ -1611,7 +1608,7 @@ func (e *logEntry) fillDeathSave(c *logViewing, out *playv1.CombatLogEntry) bool
 	}
 	out.DeathSave = &playv1.CombatLogDeathSave{
 		Outcome: deathOutcomeToProto[e.ev.DeathOutcome], Successes: after.Successes, Failures: after.Failures,
-		Stable: after.Successes >= deathSaveCount, Dying: v.master && after.Failures >= deathSaveCount,
+		Stable: after.Successes >= combat.DeathSaveGoal, Dying: v.master && after.Failures >= combat.DeathSaveGoal,
 	}
 	if v.master || v.owns(c.actor) {
 		out.DeathSave.Roll = deathRoll(e.ev)

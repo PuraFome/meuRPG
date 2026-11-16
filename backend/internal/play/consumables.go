@@ -104,8 +104,7 @@ func (s *Service) useConsumableTx(ctx context.Context, tx pgx.Tx, h *hints, sess
 	if err != nil {
 		return err
 	}
-	_, isPotion := content.PotionEffect(item.GetKey())
-	fight, err := s.openFight(ctx, tx, q, h, session, use, isPotion)
+	fight, err := s.openFight(ctx, tx, q, h, session, use, content.IsPotion(item.GetKey()))
 	if err != nil {
 		return err
 	}

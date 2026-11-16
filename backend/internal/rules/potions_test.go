@@ -134,3 +134,50 @@ func TestPotionEffectLinePT(t *testing.T) {
 		}
 	}
 }
+
+// IsPotion follows the SRD category of the item: every potion of the catalog is one, whether or not the app applies it, the oils
+// the SRD files with the potions are not (applying one takes a minute or ten, not an action), and a scroll, another item and a key
+// that is no item are not.
+func TestIsPotionFollowsTheCategoryOfTheItemExceptTheOils(t *testing.T) {
+	t.Parallel()
+	c := loadForTest(t)
+	for key, want := range map[string]bool{
+		"item:potion-of-healing-common":  true,
+		"item:potion-of-resistance-fire": true,
+		"item:potion-of-healing":         true,
+		"item:potion-of-climbing":        true, // text only: still a potion
+		"item:oil-of-etherealness":       false,
+		"item:oil-of-sharpness":          false,
+		"item:oil-of-slipperiness":       false,
+		"item:spell-scroll-1st":          false,
+		"item:bag-of-holding":            false,
+		"item:no-such-item":              false,
+		"":                               false,
+	} {
+		if got := c.IsPotion(key); got != want {
+			t.Errorf("IsPotion(%q) = %v, want %v", key, got, want)
+		}
+	}
+	for _, key := range sortedKeys(c.c.magicItems) {
+		m := c.c.magicItems[key]
+		if want := m.Category == "potion" && !strings.HasPrefix(key, "item:oil-"); c.IsPotion(key) != want {
+			t.Errorf("IsPotion(%q) = %v for the category %q, want %v", key, c.IsPotion(key), m.Category, want)
+		}
+	}
+}
+
+// Every oil the code names is an item of the potion category: a renamed key of the catalog is found here.
+func TestTheOilsAreItemsOfThePotionCategory(t *testing.T) {
+	t.Parallel()
+	c := loadForTest(t)
+	for key := range oils {
+		if m, ok := c.c.magicItems[key]; !ok || m.Category != magicCategoryPotion {
+			t.Errorf("%s is not a potion of the catalog", key)
+		}
+	}
+	for _, key := range sortedKeys(c.c.magicItems) {
+		if strings.HasPrefix(key, "item:oil-") && !oils[key] {
+			t.Errorf("%s is an oil the code does not name", key)
+		}
+	}
+}

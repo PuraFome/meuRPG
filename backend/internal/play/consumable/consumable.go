@@ -12,6 +12,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dice"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
+	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 )
 
 // ErrFaces is a list of typed faces that is not the potion's dice: the wrong number, or a face off its die.
@@ -91,4 +92,18 @@ func FightState(down bool) playv1.ConsumableTargetState {
 // when the table does not read it). A listed character may receive.
 func Target(id, name string, distanceFt int32, state playv1.ConsumableTargetState) *playv1.ConsumableTarget {
 	return &playv1.ConsumableTarget{CharacterId: id, Name: name, DistanceFt: distanceFt, State: state, MayReceive: true}
+}
+
+// Standing says whether a player's combatant is on a list of receivers and whether it is down, as the viewer reads it: the word the
+// order of the combat gives every player. A confirmed death (gone: the combatant defeated, or its character marked dead) is on no
+// list. A creature with three failed death saves that the master has not confirmed reads as down to a player, as any down ally
+// does, and is left out of the master's list; the use refuses it either way (TARGET_DEAD). v are the character's vitals.
+func Standing(gone bool, deathFailures int32, master bool, v *playv1.CharacterVitals) (listed, down bool) {
+	switch {
+	case gone:
+		return false, false
+	case deathFailures >= combat.DeathSaveGoal:
+		return !master, !master
+	}
+	return true, v.GetHitPointsMax() > 0 && v.GetHitPointsCurrent() == 0
 }

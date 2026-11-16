@@ -158,24 +158,31 @@ The master can also correct hit points, temporary hit points, spell slots (and p
   A potion of healing restores hit points with the dice of its entry (2d4 + 2, 4d4 + 4, 8d4 + 8, 10d4 + 20), never past the maximum, and the answer says what was really regained.
   A potion of resistance gives one hour of resistance to its damage type, counted in game time like the other effects out of a combat, and only its owner and the master read it.
   Drinking out of a combat costs no turn.
-  In a combat, drinking costs the action of the user's turn, and giving a potion to a creature within 5 feet costs the giver's action; the potion then acts on the receiver.
+  In a combat, every potion costs the action of the user's turn, one that is only text included.
+  Drinking costs the user's action, and giving a potion to a creature within 5 feet costs the giver's action; the potion then acts on the receiver.
   Activating a potion is an action, not Use an Object, so the extra action of Haste does not pay for it.
-  In a combat that has not begun there is no turn: a potion costs nothing, and a resistance goes on the combatant.
+  In a combat that has not begun there is no turn: a potion spends its unit and no action, and a resistance goes on the combatant.
   Healing a druid in a beast form restores the beast's hit points, in a combat and out of one.
   A creature at 0 hit points is unconscious and does not act, but another creature may give it a potion, which wakes it.
   In the log the table reads who used which potion and on whom, and only the master and the two characters' players read the dice and the hit points.
   A potion may be given to another character: the giver's entry is the one spent, the receiver is healed or resists, and a creature that is dead, or that has failed three death saves, is not given one.
   The master may use or give a potion for any character, and for a player's character in a running combat he is bound by the same turn, action and 5 feet.
-  A potion of an NPC's sheet is spent and logged, and the master tells what it did; the turn and the action of a combat do not gate it, and given to a player's character it heals or gives resistance, except in a running combat, where it is refused as out of reach.
+  A potion of an NPC's sheet is spent and logged as text, and the master tells what it did.
+  An NPC combatant of a running combat is not gated by the turn or the action.
+  Given to a player's character, an NPC's potion heals or gives resistance, except in a running combat, where it is refused as out of reach.
   "Dar a…" lists only the characters the use would accept.
-  For a healing or resistance potion in a running combat, it lists the player's characters within 5 feet of the giver, with the word of how they stand (on their feet or down), as the order of the combat shows it to everyone.
+  For a potion in a running combat, it lists the player's characters within 5 feet of the giver, with the word of how they stand (on their feet or down), as the order of the combat shows it to everyone.
+  The list follows the word each player already reads: a creature with three failed death saves that the master has not confirmed reads as down, like any down ally, and a death the master confirmed is left out.
+  The master's list leaves out a creature with three failed death saves, and the use refuses it with nothing spent.
   For such a potion, a giver that is not in the combat gets the characters that are not in it either.
-  For any other consumable, and out of a combat, it lists the other living characters of the party, without how they stand.
+  For any other consumable, and out of a combat, it lists the other characters of the party that are not dead, without how they stand.
   The hit points of a player's character are no other player's to read there.
   At a table of real dice the player types the faces of the healing dice, one for each die.
   The app applies by itself only the potions of healing and of resistance, the items of its potion list.
-  Only those potions cost the turn and the action in a combat.
-  Every other consumable, a potion that is only text included, is spent and logged with no turn and no action.
+  Every potion costs the turn and the action in a combat, the ones the app applies and the ones that are only text.
+  A potion that is only text is spent and logged as text, and it pays the action.
+  An oil is in the SRD's potion category but is no potion here: applying one takes a minute or ten, so it is spent and logged as text with no turn and no action, and the master judges the time.
+  Every other consumable, a scroll for one, is spent and logged with no turn and no action.
   Its answer shows its text for the table to apply, and the master rules on its time.
   A spell scroll is not cast.
 - **Ammunition (SRD 5.1, "Weapons": the ammunition property).**
