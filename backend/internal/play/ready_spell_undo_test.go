@@ -31,7 +31,9 @@ func TestTheUndoOfAReleasedHeldSpellHoldsItAgain(t *testing.T) {
 			},
 			func(c *cave, t *testing.T) int { return len(zonesOf(c.get(t, c.master), wallOfFireKey)) }},
 		{"Sleep", sleepSpell, 1, newAreaCave, (*cave).areaFight,
-			func(c *cave, t *testing.T) { c.mustCastArea(t, c.ana, "Pensantus", sleepSpell, nil, at(20, 7), nil, poolSum(20)) },
+			func(c *cave, t *testing.T) {
+				c.mustCastArea(t, c.ana, "Pensantus", sleepSpell, nil, at(20, 7), nil, poolSum(20))
+			},
 			func(c *cave, t *testing.T) int {
 				n := 0
 				for _, cb := range c.get(t, c.master).GetCombatants() {
