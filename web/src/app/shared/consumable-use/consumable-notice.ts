@@ -13,11 +13,7 @@ import type { ConsumableNotice } from '../../core/characters/consumables';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [MatIconModule],
   template: `
-    <div
-      class="consumable__result"
-      [class.consumable__result--good]="notice().tone === 'good'"
-      [class.consumable__result--neutral]="notice().tone === 'neutral'"
-    >
+    <div class="consumable__result" [class.consumable__result--good]="notice().tone === 'good'">
       <mat-icon aria-hidden="true">{{ notice().icon }}</mat-icon>
       <p>
         <strong>{{ notice().headline }}</strong>

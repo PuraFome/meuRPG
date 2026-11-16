@@ -1,6 +1,7 @@
 import { afterNextRender, computed, Directive, effect, inject, untracked } from '@angular/core';
 
 import { MagicCategories } from '../../../core/characters/attunement';
+import { turnBlockOf } from '../../../core/characters/consumables';
 import { focusWithRing } from '../../../core/creatures/focus-ring';
 import { ChargesClient } from '../../../core/play/charges-client';
 import { openUseConsumable } from '../../../shared/consumable-use/use-consumable-sheet';
@@ -25,6 +26,9 @@ export abstract class CombatViewItemsDirective extends CombatViewPartsDirective 
       const o = this.own();
       return o ? `${this.encounter()?.currentCombatantId}|${o.actionUsed}` : '';
     },
+    // The Action of the turn is spent (the row sits folded under "Ação · Usada"), or the turn is not the character's: the sheet says so.
+    turnBlock: () =>
+      turnBlockOf({ myTurn: this.myTurn(), actionUsed: this.own()?.actionUsed ?? false }),
     dice: () => Promise.resolve({ mode: this.diceMode(), preference: this.dicePreference() }),
     openUse: (data) => openUseConsumable(this.dialog, this.bottomSheet, data),
     // The row of the potion is folded or gone once the Action is spent: the tab takes the focus then.

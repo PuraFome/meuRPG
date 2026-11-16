@@ -42,7 +42,7 @@ const HEAL = row({
   key: 'item:potion-of-healing',
   namePt: 'Poção de cura',
   count: 2,
-  detail: 'cura 2d4 + 2 · 2 unidades',
+  detail: 'cura 2d4 + 2',
 });
 const FIRE = row({
   key: 'item:potion-of-resistance-fire',
@@ -145,7 +145,7 @@ describe('ActionGroups: the Itens tab (565-03, 565-04)', () => {
     expect(p.hidden).toBe(false);
     expect(names(p)).toEqual(['Poção de cura', 'Poção de resistência']);
     expect([...p.querySelectorAll('.row__detail')].map(text)).toEqual([
-      'cura 2d4 + 2 · 2 unidades',
+      'cura 2d4 + 2',
       'resistência a fogo por 1 hora',
     ]);
     const buttons = [...p.querySelectorAll<HTMLButtonElement>('.row__btn')];
@@ -154,6 +154,18 @@ describe('ActionGroups: the Itens tab (565-03, 565-04)', () => {
       'Usar Poção de resistência',
     ]);
     expect(buttons.map(text)).toEqual(['science Usar', 'science Usar']);
+  });
+
+  it('says "×2" beside the name of a group, and reads it as "2 unidades"', () => {
+    const { panel, open } = setup({ items: [HEAL, FIRE] });
+    open();
+    const rows = [...panel()!.querySelectorAll('app-action-row')];
+    const times = rows[0].querySelector('.row__times')!;
+    expect(text(times.querySelector('[aria-hidden="true"]'))).toBe('×2');
+    expect(times.hasAttribute('aria-label')).toBe(false);
+    expect(text(times.querySelector('.mr-visually-hidden'))).toBe(', 2 unidades');
+    expect(names(rows[0])).toEqual(['Poção de cura']);
+    expect(rows[1].querySelector('.row__times')).toBeNull();
   });
 
   it('marks the Ação on a potion and nothing on an oil or a scroll', () => {

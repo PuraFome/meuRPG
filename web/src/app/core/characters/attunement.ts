@@ -48,8 +48,6 @@ export interface AttunementEntryVm {
   readonly charges?: ItemChargesVm;
   /** What "Usar" does for a consumable, as the server words it ("Cura 2d4 + 2"); empty for an item with no automatic effect. */
   readonly effectPt?: string;
-  /** The spell of a spell scroll, in Portuguese; empty for every other item. */
-  readonly spellNamePt?: string;
 }
 
 /** The attunement of a sheet: the entries in the order the sheet lists them (pieces, then magic items). */
@@ -73,7 +71,6 @@ export function magicEntryOf(m: SheetMagicItem): AttunementEntryVm {
     sameItemAttuned: m.sameItemAttuned,
     charges: chargesOf(m),
     effectPt: m.effectPt,
-    spellNamePt: m.spellNamePt,
   };
 }
 

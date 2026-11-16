@@ -236,6 +236,7 @@ export function createSheetMagicItems(d: SheetMagicItemsDeps): SheetMagicItems {
     },
     // The sheet does not know whether a combat is running: the "Usar" sheet says both costs.
     inCombat: () => null,
+    turnBlock: () => null,
     reload: d.reload,
     dice: () => items.charges.tableDice(),
     categoryOf: (key) => categories.categoryOf(key),

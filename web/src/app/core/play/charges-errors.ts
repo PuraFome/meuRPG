@@ -5,7 +5,7 @@ import {
   CharacterBlockedSchema,
   type ItemRecharge,
 } from '../../../gen/meurpg/characters/v1/characters_pb';
-import type { ConsumableKind } from '../characters/consumables';
+import type { ConsumableKind, TurnBlock } from '../characters/consumables';
 import { blockedMessage, encounterBlocked, sessionClosed } from '../combat/combat-errors';
 import { EncounterBlockedReason } from '../../../gen/meurpg/play/v1/combat_pb';
 import { noChargesWithRecharge } from '../characters/recharge-text';
@@ -103,35 +103,52 @@ export interface ConsumableErrorContext {
   readonly actingFor?: string;
 }
 
-const KIND_WORDS: Record<ConsumableKind, { use: string }> = {
-  potion: { use: 'a poção' },
-  scroll: { use: 'o pergaminho' },
+const KIND_WORDS: Record<ConsumableKind, { use: string; goneUsed: string }> = {
+  potion: { use: 'a poção', goneUsed: 'Essa poção já foi usada' },
+  scroll: { use: 'o pergaminho', goneUsed: 'Esse pergaminho já foi usado' },
 };
 
-/** What a refusal of the combat says: the turn, the action, the receiver down or dead, and the reasons the combat has sentences for. */
+/** The line of a turn that does not allow the use, the one the server's refusals say too: "Só na sua vez…", "Você já usou a ação desta vez.". */
+export function turnBlockMessage(block: TurnBlock, actingFor: string | null): string {
+  return block === 'turn'
+    ? `Só na ${actingFor ? `vez de ${actingFor}` : 'sua vez'}: beber ou dar gasta a ação.`
+    : `${actingFor ?? 'Você'} já usou a ação desta vez.`;
+}
+
+/** The sentence of an item that is no longer on the sheet: the sheet is read again after it. */
+function itemGoneMessage(words: { goneUsed: string }): string {
+  return `${words.goneUsed}. A ficha foi atualizada.`;
+}
+
+/** What a refusal of the combat says: the turn, the action, the receiver out of reach, down or dead, the item gone, and the reasons the combat has sentences for. */
 function combatMessage(
   encounter: NonNullable<ReturnType<typeof encounterBlocked>>,
   ctx: ConsumableErrorContext,
-  words: { use: string },
+  words: { use: string; goneUsed: string },
 ): string {
   switch (encounter.reason) {
     case EncounterBlockedReason.NOT_YOUR_TURN:
-      return `Só na ${ctx.actingFor ? `vez de ${ctx.actingFor}` : 'sua vez'}: beber ou dar gasta a ação.`;
+      return turnBlockMessage('turn', ctx.actingFor ?? null);
     case EncounterBlockedReason.ACTION_USED:
-      return `${ctx.actingFor ?? 'Você'} já usou a ação desta vez.`;
+      return turnBlockMessage('action', ctx.actingFor ?? null);
     case EncounterBlockedReason.COMBATANT_DOWN:
       return 'Quem está caído não age, mas ainda pode receber uma poção.';
     // A creature at three failed death saves still reads "Caída" in the list of a player, and the server refuses it.
     case EncounterBlockedReason.TARGET_DEAD:
       return `${ctx.targetName ?? 'Quem ia receber'} já morreu: não dá para dar ${words.use} a quem morreu. Nada foi gasto.`;
+    case EncounterBlockedReason.TARGET_NOT_ADJACENT:
+      return `${ctx.targetName ?? 'Quem ia receber'} não está mais ${ctx.actingFor ? `ao lado de ${ctx.actingFor}` : 'ao seu lado'}. Nada foi gasto.`;
+    case EncounterBlockedReason.ITEM_GONE:
+      return itemGoneMessage(words);
   }
   return blockedMessage(encounter);
 }
 
 /**
  * What a refused or failed use of a consumable says in the "Usar" sheet, by the typed reason and never by the server's
- * message: the turn and the action of a combat, then
- * the sentences of the combat (the receiver out of reach and the item gone among them) and of the character for the rest. Every refusal says that nothing was spent.
+ * message: the turn and the action of a combat, the receiver out of reach and the item gone (worded for this sheet; the
+ * generic sentences of the combat stay for the other callers), then the sentences of the combat and of the character for the
+ * rest. Every refusal says that nothing was spent.
  */
 export function consumableErrorMessage(err: unknown, ctx: ConsumableErrorContext): string {
   const words = KIND_WORDS[ctx.kind];
@@ -159,4 +176,28 @@ export function consumableErrorMessage(err: unknown, ctx: ConsumableErrorContext
     return `Não deu para usar ${words.use}. Nada foi gasto. Tente de novo.`;
   }
   return describeCharacterError(err);
+}
+
+/**
+ * What a failed read of who may receive the item says, by the typed reason: the item is gone, the character is dead or no
+ * longer at the table, and for anything else that the list could not be read. It never speaks of typed dice or of a
+ * receiver, which the list read has none of.
+ */
+export function consumableTargetsErrorMessage(err: unknown, ctx: ConsumableErrorContext): string {
+  const words = KIND_WORDS[ctx.kind];
+  if (encounterBlocked(err)?.reason === EncounterBlockedReason.ITEM_GONE) {
+    return itemGoneMessage(words);
+  }
+  const connectErr = ConnectError.from(err, Code.Unavailable);
+  if (
+    connectErr.code === Code.FailedPrecondition &&
+    connectErr.findDetails(CharacterBlockedSchema)[0]?.reason ===
+      CharacterBlockedReason.CHARACTER_DEAD
+  ) {
+    return 'Esse personagem está morto: não usa nem recebe itens.';
+  }
+  if (connectErr.code === Code.NotFound) {
+    return 'Esse personagem não está mais na mesa.';
+  }
+  return `Não deu para ver quem pode receber ${words.use}. Tente de novo.`;
 }

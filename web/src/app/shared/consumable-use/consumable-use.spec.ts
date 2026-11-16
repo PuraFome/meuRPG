@@ -14,6 +14,7 @@ import {
   EncounterBlockedSchema,
 } from '../../../gen/meurpg/play/v1/combat_pb';
 import type { AttunementEntryVm } from '../../core/characters/attunement';
+import type { TurnBlock } from '../../core/characters/consumables';
 import type { ChargesClient } from '../../core/play/charges-client';
 import { ConsumableUse, type ConsumableUseHost } from './consumable-use';
 import type { UseConsumableData } from './use-consumable-sheet';
@@ -47,11 +48,13 @@ describe('ConsumableUse', () => {
   let isMaster: boolean;
   let consumables: ConsumableUse;
   let inCombat: boolean | null;
+  let turnBlock: TurnBlock | null;
 
   beforeEach(() => {
     opened = undefined;
     isMaster = false;
     inCombat = null;
+    turnBlock = null;
     entries = [entry('p1'), entry('p2'), entry('r1', { key: 'item:ring', namePt: 'Anel' })];
     Object.values(client).forEach((f) => f.mockReset());
     reload.mockReset().mockResolvedValue(true);
@@ -65,6 +68,7 @@ describe('ConsumableUse', () => {
       campaignId: () => 'camp',
       owner: () => ({ id: 'c1', name: 'Tor', byMaster: isMaster, entries }),
       inCombat: () => inCombat,
+      turnBlock: () => turnBlock,
       reload,
       dice,
       focusConsumable,
@@ -93,6 +97,7 @@ describe('ConsumableUse', () => {
       left: 2,
       actingFor: null,
       inCombat: null,
+      blockedBy: null,
       canApp: true,
       canType: true,
       preferApp: true,
@@ -131,9 +136,7 @@ describe('ConsumableUse', () => {
     const out = await data.loadTargets();
     expect(client.listConsumableTargets).toHaveBeenCalledWith('camp', 'c1', 'p1');
     expect(out).toEqual({
-      targets: [
-        { id: 'c2', name: 'Brisa', distanceFt: 5, down: true, line: 'A 1,5\u00a0m · Caída' },
-      ],
+      targets: [{ id: 'c2', name: 'Brisa', down: true, line: 'A 1,5\u00a0m · Caída' }],
       error: '',
     });
   });
@@ -143,8 +146,38 @@ describe('ConsumableUse', () => {
     const data = await open();
     expect(await data.loadTargets()).toEqual({
       targets: [],
-      error: 'Esse item não está mais na ficha: alguém já o usou ou o tirou. Nada foi gasto.',
+      error: 'Essa poção já foi usada. A ficha foi atualizada.',
     });
+    expect(reload).toHaveBeenCalled();
+  });
+
+  it('words a list that could not be read as that, never as dice or as a receiver who left', async () => {
+    client.listConsumableTargets.mockRejectedValue(new ConnectError('x', Code.InvalidArgument));
+    const data = await open();
+    expect(await data.loadTargets()).toEqual({
+      targets: [],
+      error: 'Não deu para ver quem pode receber a poção. Tente de novo.',
+    });
+    client.listConsumableTargets.mockRejectedValue(new ConnectError('x', Code.Unavailable));
+    expect((await data.loadTargets()).error).toBe(
+      'Não deu para ver quem pode receber a poção. Tente de novo.',
+    );
+  });
+
+  it('keeps the use a potion costs from a sheet that knows the turn does not allow it', async () => {
+    turnBlock = 'action';
+    expect((await open()).blockedBy).toBe('action');
+  });
+
+  it('says it is not the turn when the page knows', async () => {
+    turnBlock = 'turn';
+    expect((await open()).blockedBy).toBe('turn');
+  });
+
+  it('blocks nothing for an item that costs no action, whatever the turn', async () => {
+    turnBlock = 'action';
+    entries = [entry('o1', { key: 'item:oil-of-sharpness', namePt: 'Óleo de afiar' })];
+    expect((await open(entries[0])).blockedBy).toBeNull();
   });
 
   it('drinks: sends the id of one entry of the group, reads the sheet and says what happened', async () => {
@@ -193,7 +226,6 @@ describe('ConsumableUse', () => {
         target: {
           id: 'c2',
           name: 'Brisa',
-          distanceFt: 5,
           down: true,
           line: 'A 1,5\u00a0m · Caída',
         },
@@ -226,26 +258,22 @@ describe('ConsumableUse', () => {
     client.useConsumable.mockRejectedValue(gone(EncounterBlockedReason.ITEM_GONE));
     const data = await open();
     const why = await data.use({ target: null, roll: { inApp: true } }, 'k1');
-    expect(why).toBe(
-      'Esse item não está mais na ficha: alguém já o usou ou o tirou. Nada foi gasto.',
-    );
+    expect(why).toBe('Essa poção já foi usada. A ficha foi atualizada.');
     expect(reload).toHaveBeenCalled();
     expect(consumables.result()).toBeNull();
   });
 
-  it('says the receiver is out of reach with the sentence of the combat', async () => {
+  it('says the receiver is no longer at the side, by name', async () => {
     client.useConsumable.mockRejectedValue(gone(EncounterBlockedReason.TARGET_NOT_ADJACENT));
     const data = await open();
     const why = await data.use(
       {
-        target: { id: 'c2', name: 'Brisa', distanceFt: 5, down: false, line: '' },
+        target: { id: 'c2', name: 'Brisa', down: false, line: '' },
         roll: { inApp: true },
       },
       'k1',
     );
-    expect(why).toBe(
-      'Quem recebe o item precisa estar a até 1,5 m de quem o dá, e os dois na luta ou os dois fora dela. Nada foi gasto.',
-    );
+    expect(why).toBe('Brisa não está mais ao seu lado. Nada foi gasto.');
   });
 
   it('names the character the master acts for when it is not their turn', async () => {

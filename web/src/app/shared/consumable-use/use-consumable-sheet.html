@@ -1,0 +1,179 @@
+<app-sheet-frame
+  [title]="title"
+  titleId="use-consumable-t"
+  [subtitle]="subtitle"
+  [phone]="inSheet"
+  (closed)="close()"
+>
+  <p class="effect">
+    <mat-icon aria-hidden="true">{{ effectIconName }}</mat-icon><b>{{ effectText }}</b>
+  </p>
+  @if (explain) {
+    <p class="explain">{{ explain }}</p>
+  }
+  @if (error()) {
+    <p class="mr-notice mr-notice--danger" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon><span>{{ error() }}</span>
+    </p>
+  }
+  @if (targetsError()) {
+    <p class="mr-notice mr-notice--danger" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon><span>{{ targetsError() }}</span>
+    </p>
+  }
+  @if (phase() === 'give') {
+    <fieldset class="who">
+      <legend class="who__legend">{{ legend }}</legend>
+      @for (t of targets(); track t.id) {
+        <label class="who__row" [class.who__row--on]="chosen() === t.id">
+          <input
+            #radio
+            type="radio"
+            name="use-consumable-target"
+            class="who__radio"
+            [value]="t.id"
+            [checked]="chosen() === t.id"
+            [disabled]="busy()"
+            (change)="chosen.set(t.id)"
+          />
+          <span class="who__avatar" aria-hidden="true">{{ t.name.charAt(0) }}</span>{{ ' ' }}
+          <span class="who__text">
+            <b>{{ t.name }}</b>{{ ' ' }}
+            @if (t.line) {
+              <span class="mr-muted">{{ t.line }}</span>
+            }
+          </span>
+        </label>
+      }
+    </fieldset>
+  }
+  @if (dice; as d) {
+    <div class="dice">
+      @if (!typing()) {
+        <p class="dice__line">
+          O app rola {{ d.text }}{{ receiverName() ? ' para ' + receiverName() : '' }}.
+          @if (data.canType) {
+            <button type="button" class="dice__switch" (click)="typing.set(true)">Digitar os dados</button>
+          }
+        </p>
+      } @else {
+        <p class="dice__line">
+          Digite o que saiu em cada dado.
+          @if (d.modifier !== 0) {
+            O {{ signedModifier }} o app soma.
+          }
+          @if (data.canApp) {
+            <button type="button" class="dice__switch" (click)="typing.set(false)">Rolar no app</button>
+          }
+        </p>
+        <div class="dice__fields">
+          @for (n of numbers; track n) {
+            <div class="dice__one">
+              <label class="dice__label" [for]="'use-consumable-face-' + n">Dado {{ n + 1 }} (d{{ d.sides }})</label>
+              <input
+                [id]="'use-consumable-face-' + n"
+                class="dice__field"
+                type="text"
+                inputmode="numeric"
+                maxlength="3"
+                autocomplete="off"
+                [value]="faces()[n]"
+                [attr.aria-invalid]="invalid()[n] ? 'true' : null"
+                [attr.aria-describedby]="invalid()[n] ? 'use-consumable-face-err-' + n : null"
+                (input)="onFace(n, $event)"
+              />
+              @if (invalid()[n]) {
+                <span class="dice__err" [id]="'use-consumable-face-err-' + n">
+                  <mat-icon aria-hidden="true">error</mat-icon>Digite um número de 1 a {{ d.sides }}
+                </span>
+              }
+            </div>
+          }
+        </div>
+      }
+    </div>
+  }
+  @if (phase() === 'choose' && reasonText()) {
+    <p class="none" [id]="whyId">
+      <mat-icon aria-hidden="true">block</mat-icon>{{ reasonText() }}
+    </p>
+  }
+  @if (cost(); as c) {
+    <p class="cost mr-muted">
+      @if (c.mark) {
+        <app-economy-mark kind="action" />
+      } @else {
+        <mat-icon aria-hidden="true">info</mat-icon>
+      }
+      <span>
+        @if (c.mark) {
+          <strong>{{ c.lead }}</strong>
+        } @else {
+          {{ c.lead }}
+        }{{ c.rest }}
+      </span>
+    </p>
+  }
+  <div foot class="foot">
+    @if (phase() === 'choose') {
+      @if (data.kind === 'potion') {
+        <button
+          #give
+          matButton="outlined"
+          type="button"
+          class="give"
+          [class.give--off]="giveOff()"
+          [class.mr-button--off]="giveOff()"
+          [disabled]="busy() || !canGive()"
+          disabledInteractive
+          [attr.aria-describedby]="giveOff() && reasonText() ? whyId : null"
+          (click)="canGive() && openGive()"
+        >
+          <mat-icon aria-hidden="true">{{ giveOff() ? 'block' : 'volunteer_activism' }}</mat-icon>Dar a…
+        </button>
+      }
+      <button
+        matButton="filled"
+        type="button"
+        class="go"
+        [class.go--off]="!canSend()"
+        [class.mr-button--off]="!!blocked"
+        [disabled]="!canSend()"
+        disabledInteractive
+        [attr.aria-describedby]="blocked ? whyId : null"
+        (click)="send(null)"
+      >
+        <mat-icon aria-hidden="true">{{ data.kind === 'potion' ? 'science' : 'description' }}</mat-icon>{{ busy() ? 'Usando...' : drinkWord }}
+      </button>
+    } @else {
+      @if (data.inCombat !== true) {
+        <button matButton="outlined" type="button" class="go--half" [disabled]="busy()" disabledInteractive (click)="back()">Voltar</button>
+      }
+      <button
+        matButton="filled"
+        type="button"
+        class="go"
+        [class.go--wide]="data.inCombat === true"
+        [class.go--half]="data.inCombat !== true"
+        [class.go--off]="!canSend()"
+        [disabled]="!canSend()"
+        disabledInteractive
+        (click)="send(receiver())"
+      >
+        <mat-icon aria-hidden="true">volunteer_activism</mat-icon>{{ busy() ? 'Usando...' : 'Dar a ' + receiverName() }}
+      </button>
+      @if (data.inCombat === true) {
+        <button
+          matButton="outlined"
+          type="button"
+          class="go--wide"
+          [disabled]="!canSend()"
+          disabledInteractive
+          (click)="send(null)"
+        >
+          <mat-icon aria-hidden="true">science</mat-icon>Beber eu mesmo
+        </button>
+      }
+    }
+  </div>
+</app-sheet-frame>

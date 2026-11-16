@@ -21,6 +21,8 @@ import {
   chargesBlockedMessage,
   chargesErrorMessage,
   consumableErrorMessage,
+  consumableTargetsErrorMessage,
+  turnBlockMessage,
 } from './charges-errors';
 
 describe('charges errors', () => {
@@ -121,14 +123,26 @@ describe('consumableErrorMessage', () => {
     ]);
   const potion = { kind: 'potion' as const, targetName: 'Brisa' };
 
-  it('leaves the receiver out of reach and the item gone to the sentences of the combat, the same everywhere', () => {
-    expect(
-      consumableErrorMessage(encounter(EncounterBlockedReason.TARGET_NOT_ADJACENT), potion),
-    ).toBe(
-      'Quem recebe o item precisa estar a até 1,5 m de quem o dá, e os dois na luta ou os dois fora dela. Nada foi gasto.',
+  it("says the receiver is no longer at the giver's side, by name, and that nothing was spent", () => {
+    const away = encounter(EncounterBlockedReason.TARGET_NOT_ADJACENT);
+    expect(consumableErrorMessage(away, potion)).toBe(
+      'Brisa não está mais ao seu lado. Nada foi gasto.',
     );
-    expect(consumableErrorMessage(encounter(EncounterBlockedReason.ITEM_GONE), potion)).toBe(
-      'Esse item não está mais na ficha: alguém já o usou ou o tirou. Nada foi gasto.',
+    expect(consumableErrorMessage(away, { ...potion, actingFor: 'Tor' })).toBe(
+      'Brisa não está mais ao lado de Tor. Nada foi gasto.',
+    );
+    expect(consumableErrorMessage(away, { kind: 'potion' })).toBe(
+      'Quem ia receber não está mais ao seu lado. Nada foi gasto.',
+    );
+  });
+
+  it('says the item is already used and the sheet was read again, by the noun of its kind', () => {
+    const gone = encounter(EncounterBlockedReason.ITEM_GONE);
+    expect(consumableErrorMessage(gone, potion)).toBe(
+      'Essa poção já foi usada. A ficha foi atualizada.',
+    );
+    expect(consumableErrorMessage(gone, { kind: 'scroll' })).toBe(
+      'Esse pergaminho já foi usado. A ficha foi atualizada.',
     );
   });
 
@@ -216,6 +230,62 @@ describe('consumableErrorMessage', () => {
     );
     expect(consumableErrorMessage(down, { kind: 'scroll' })).toBe(
       'Não deu para usar o pergaminho. Nada foi gasto. Tente de novo.',
+    );
+  });
+});
+
+describe('turnBlockMessage', () => {
+  it('says the turn is not theirs, for the player and for the master', () => {
+    expect(turnBlockMessage('turn', null)).toBe('Só na sua vez: beber ou dar gasta a ação.');
+    expect(turnBlockMessage('turn', 'Tor')).toBe('Só na vez de Tor: beber ou dar gasta a ação.');
+  });
+
+  it('says the action of the turn is spent, for the player and for the master', () => {
+    expect(turnBlockMessage('action', null)).toBe('Você já usou a ação desta vez.');
+    expect(turnBlockMessage('action', 'Tor')).toBe('Tor já usou a ação desta vez.');
+  });
+});
+
+describe('consumableTargetsErrorMessage', () => {
+  const encounter = (reason: EncounterBlockedReason) =>
+    new ConnectError('x', Code.FailedPrecondition, undefined, [
+      { desc: EncounterBlockedSchema, value: create(EncounterBlockedSchema, { reason }) },
+    ]);
+  const potion = { kind: 'potion' as const };
+
+  it('says the list could not be read when the call did not get through, and never speaks of dice', () => {
+    expect(consumableTargetsErrorMessage(new ConnectError('x', Code.Unavailable), potion)).toBe(
+      'Não deu para ver quem pode receber a poção. Tente de novo.',
+    );
+    expect(consumableTargetsErrorMessage(new ConnectError('x', Code.InvalidArgument), potion)).toBe(
+      'Não deu para ver quem pode receber a poção. Tente de novo.',
+    );
+    expect(
+      consumableTargetsErrorMessage(new ConnectError('x', Code.Unavailable), { kind: 'scroll' }),
+    ).toBe('Não deu para ver quem pode receber o pergaminho. Tente de novo.');
+  });
+
+  it('says the character is not at the table any more, without a receiver in the words', () => {
+    expect(consumableTargetsErrorMessage(new ConnectError('x', Code.NotFound), potion)).toBe(
+      'Esse personagem não está mais na mesa.',
+    );
+  });
+
+  it('says the item is already used when the entry is gone', () => {
+    expect(consumableTargetsErrorMessage(encounter(EncounterBlockedReason.ITEM_GONE), potion)).toBe(
+      'Essa poção já foi usada. A ficha foi atualizada.',
+    );
+  });
+
+  it('says a dead character neither uses nor receives', () => {
+    const dead = new ConnectError('x', Code.FailedPrecondition, undefined, [
+      {
+        desc: CharacterBlockedSchema,
+        value: create(CharacterBlockedSchema, { reason: CharacterBlockedReason.CHARACTER_DEAD }),
+      },
+    ]);
+    expect(consumableTargetsErrorMessage(dead, potion)).toBe(
+      'Esse personagem está morto: não usa nem recebe itens.',
     );
   });
 });

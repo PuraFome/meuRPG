@@ -3,7 +3,8 @@ import {
   ConsumableTargetState,
   type UseConsumableResponse,
 } from '../../../gen/meurpg/play/v1/charges_pb';
-import { ConsumableUseOutcome } from '../../../gen/meurpg/play/v1/combat_pb';
+import { CombatantState, ConsumableUseOutcome } from '../../../gen/meurpg/play/v1/combat_pb';
+import { stateWord } from '../combat/state-word';
 import { article } from '../format/article';
 import { upFirst } from '../format/text';
 import { metersText } from '../units';
@@ -116,7 +117,7 @@ export interface CombatItemRowVm {
   readonly namePt: string;
   readonly kind: ConsumableKind;
   readonly icon: string;
-  /** The line under the name: what the item does, in lower case, and "2 unidades" for a group. */
+  /** The line under the name: what the item does, in lower case (the group's "×N" is the row's `count`). */
   readonly detail: string;
   readonly count: number;
   /** The Ação, for what costs it in a combat (`costsAction`); none for what costs no action. */
@@ -142,9 +143,7 @@ export function combatItemRows(
         namePt: c.namePt,
         kind: c.kind,
         icon: c.icon,
-        detail: [lowerFirst(c.effectLine), c.count > 1 ? `${c.count} unidades` : '']
-          .filter((p) => p !== '')
-          .join(' · '),
+        detail: lowerFirst(c.effectLine),
         count: c.count,
         economy: costsAction(c.kind, c.key) ? ('action' as const) : null,
         first: c.first,
@@ -234,19 +233,30 @@ export function subtitleOf(input: {
   return parts.join(' · ');
 }
 
+/** What the page knows keeps a use from the Action: it is not the user's turn, or the Action of the turn is spent. */
+export type TurnBlock = 'turn' | 'action';
+
+/**
+ * What the combat knows that keeps a potion from the Action: it is not the character's turn (the turn comes before the Action),
+ * or the Action of the turn is spent. `null` while both are there. Only an item that costs the action asks (`costsAction`).
+ */
+export function turnBlockOf(input: {
+  readonly myTurn: boolean;
+  readonly actionUsed: boolean;
+}): TurnBlock | null {
+  if (!input.myTurn) {
+    return 'turn';
+  }
+  return input.actionUsed ? 'action' : null;
+}
+
 /** A character the consumable may be given to, as the radio list reads. */
 export interface ConsumableTargetVm {
   readonly id: string;
   readonly name: string;
-  readonly distanceFt: number;
   readonly down: boolean;
   /** "A 1,5 m · Caída" in a combat, empty out of one (the server tells how a character stands only in a running combat). */
   readonly line: string;
-}
-
-/** The word for who is at 0 hit points, in the gender of the name ("Brisa" is "Caída"). */
-function downWord(name: string): string {
-  return article(name) === 'a' ? 'Caída' : 'Caído';
 }
 
 /** The receivers the server sent that may receive it now, with the words of their line. */
@@ -257,12 +267,15 @@ export function targetRows(targets: readonly ConsumableTarget[]): ConsumableTarg
       const down = t.state === ConsumableTargetState.DOWN;
       const parts = [
         t.distanceFt > 0 ? `A ${metersText(t.distanceFt)}` : '',
-        down ? downWord(t.name) : t.state === ConsumableTargetState.OK ? 'Ileso' : '',
+        down
+          ? stateWord(CombatantState.DOWN, t.name)
+          : t.state === ConsumableTargetState.OK
+            ? 'Ileso'
+            : '',
       ].filter((p) => p !== '');
       return {
         id: t.characterId,
         name: t.name,
-        distanceFt: t.distanceFt,
         down,
         line: parts.join(' · '),
       };

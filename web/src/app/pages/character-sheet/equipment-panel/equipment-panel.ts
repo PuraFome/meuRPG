@@ -155,10 +155,31 @@ export class EquipmentPanel {
   );
   /** Some magic item holds charges: the lock line then names what still works on a locked sheet. */
   protected readonly hasCharges = computed(() => this.magicItems().some((e) => e.charges));
-  /** Some row is a potion or a scroll, which "Usar" works for on a locked sheet too. */
-  protected readonly hasConsumables = computed(() =>
-    this.rows().some((r) => r.type === 'consumable'),
-  );
+  /**
+   * What "Usar" keeps working for on a locked sheet, by what the sheet holds: potions, scrolls and charges, in that order,
+   * worded as a list ("poções e cargas", "poções, pergaminhos e cargas"). A sheet with none of them says what equipping keeps.
+   */
+  protected readonly lockLine = computed(() => {
+    const kinds = new Set(
+      this.rows().flatMap((r) => (r.type === 'consumable' ? [r.row.kind] : [])),
+    );
+    const words = [
+      kinds.has('potion') ? 'poções' : '',
+      kinds.has('scroll') ? 'pergaminhos' : '',
+      this.hasCharges() ? 'cargas' : '',
+    ].filter((w) => w !== '');
+    if (words.length === 0) {
+      return 'Travada: equipar e guardar continuam valendo; marcas, bônus e itens mágicos, só o mestre muda.';
+    }
+    if (words.length === 1 && words[0] === 'cargas') {
+      return 'Travada: usar cargas continua valendo, o resto, só o mestre muda.';
+    }
+    const list =
+      words.length === 1
+        ? words[0]
+        : `${words.slice(0, -1).join(', ')} e ${words[words.length - 1]}`;
+    return `Travada: usar ${list} continua valendo; o resto, só o mestre muda.`;
+  });
   /** The header "Sintonizados: N de 3" shows when anything on the sheet asks for attunement or is attuned. */
   protected readonly hasAttunement = computed(() =>
     this.sheet().attunement.entries.some((e) => e.asks || e.attuned),

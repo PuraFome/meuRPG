@@ -93,7 +93,7 @@ describe('attunementOf, the charges', () => {
 });
 
 describe('attunementOf, the consumables', () => {
-  it('carries the line of what "Usar" does for a magic item, and the spell of a scroll', () => {
+  it('carries the line of what "Usar" does for a magic item, and none for the others', () => {
     const a = attunementOf(
       create(FullSheetSchema, {
         magicItems: [
@@ -107,11 +107,9 @@ describe('attunementOf, the consumables', () => {
         ],
       }),
     );
-    expect(a.entries.map((e) => [e.effectPt, e.spellNamePt])).toEqual([
-      ['Cura 2d4 + 2', ''],
-      ['', 'Bola de Fogo'],
-      ['', ''],
-    ]);
+    expect(a.entries.map((e) => e.effectPt)).toEqual(['Cura 2d4 + 2', '', '']);
+    // The scroll's spell is not read until the scroll has a screen of its own.
+    expect(Object.keys(a.entries[1])).not.toContain('spellNamePt');
   });
 });
 

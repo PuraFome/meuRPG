@@ -8,7 +8,9 @@ import {
   type ConsumableNotice,
   type ConsumableTargetVm,
   consumableKind,
+  costsAction,
   targetRows,
+  type TurnBlock,
   useNotice,
 } from '../../core/characters/consumables';
 import { effectivePreference } from '../../core/campaigns/dice-labels';
@@ -17,7 +19,11 @@ import {
   type ConsumableRoll,
   type TableDice,
 } from '../../core/play/charges-client';
-import { chargesDidNotGetThrough, consumableErrorMessage } from '../../core/play/charges-errors';
+import {
+  chargesDidNotGetThrough,
+  consumableErrorMessage,
+  consumableTargetsErrorMessage,
+} from '../../core/play/charges-errors';
 import type {
   TargetsOutcome,
   UseConsumableData,
@@ -42,6 +48,8 @@ export interface ConsumableUseHost {
   readonly owner: () => ConsumableOwner | null;
   /** Whether a combat is running, when the page knows (the combat's "Itens" does); `null` on the sheet, which says both costs. */
   readonly inCombat: () => boolean | null;
+  /** What the page knows keeps a potion from the Action (the turn is not the character's, or the Action is spent); `null` where it does not know, as on the sheet. */
+  readonly turnBlock: () => TurnBlock | null;
   /** Reads what the page holds of the character again without the loading state; `true` when the new read is on screen. */
   readonly reload: () => Promise<boolean>;
   /** The table's dice and the player's choice (RN-18), read once from the campaign. */
@@ -84,6 +92,7 @@ export class ConsumableUse {
           left,
           actingFor: vm.byMaster ? vm.name : null,
           inCombat: this.host.inCombat(),
+          blockedBy: costsAction(kind, entry.key) ? this.host.turnBlock() : null,
           canApp: dice.mode !== DiceMode.PHYSICAL,
           canType: dice.mode !== DiceMode.APP,
           preferApp: effectivePreference(dice.mode, dice.preference) === DicePreference.APP,
@@ -110,7 +119,10 @@ export class ConsumableUse {
       }
       return {
         targets: [],
-        error: consumableErrorMessage(err, { kind, actingFor: vm.byMaster ? vm.name : undefined }),
+        error: consumableTargetsErrorMessage(err, {
+          kind,
+          actingFor: vm.byMaster ? vm.name : undefined,
+        }),
       };
     }
   }

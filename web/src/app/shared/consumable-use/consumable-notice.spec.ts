@@ -37,9 +37,8 @@ describe('ConsumableNoticeCard', () => {
       detail: '',
       text: ['Por 1 hora, você escala.'],
     });
-    expect(el.querySelector('.consumable__result')?.classList).toContain(
-      'consumable__result--neutral',
-    );
+    // The card with only the border is the neutral look of the board: there is no class for it.
+    expect(el.querySelector('.consumable__result')?.className).toBe('consumable__result');
     expect(el.querySelector('.consumable__detail')).toBeNull();
     expect(el.querySelector('.consumable__text')?.textContent).toBe('Por 1 hora, você escala.');
   });

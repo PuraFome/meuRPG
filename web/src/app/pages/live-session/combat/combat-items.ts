@@ -2,7 +2,7 @@ import { computed, effect, signal, untracked } from '@angular/core';
 import type { Observable } from 'rxjs';
 
 import { type AttunementEntryVm, magicEntryOf } from '../../../core/characters/attunement';
-import { combatItemRows } from '../../../core/characters/consumables';
+import { combatItemRows, type TurnBlock } from '../../../core/characters/consumables';
 import type { ChargesClient, TableDice } from '../../../core/play/charges-client';
 import { ConsumableUse } from '../../../shared/consumable-use/consumable-use';
 import type { UseConsumableData } from '../../../shared/consumable-use/use-consumable-sheet';
@@ -25,6 +25,8 @@ export interface CombatItemsContext {
   readonly enabled: () => boolean;
   /** What of the combat changes what the items are or may cost (the turn, the Action): they are read again only when it changes. */
   readonly signature: () => string;
+  /** What the combat knows that keeps a potion from the Action (`turnBlockOf`): the sheet then says so and offers nothing. */
+  readonly turnBlock: () => TurnBlock | null;
   readonly dice: () => Promise<TableDice>;
   readonly openUse: (data: UseConsumableData) => Observable<boolean | undefined>;
   /** Puts the focus back on the item's "Usar" once the page has drawn it again (or on the tab, when the item is gone or folded). */
@@ -61,6 +63,7 @@ export class CombatItems {
           : null;
       },
       inCombat: () => true,
+      turnBlock: ctx.turnBlock,
       reload: () => this.read(),
       dice: ctx.dice,
       categoryOf: (key) => ctx.categories.categoryOf(key),

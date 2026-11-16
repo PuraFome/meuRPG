@@ -104,7 +104,7 @@
       }
     </section>
   }
-  @if (magicItems().length > 0 || canManageMagic()) {
+  @if (magicItems().length > 0 || canManageMagic() || consumableResult()) {
     <section class="magic" aria-labelledby="magic-heading">
       <h3 id="magic-heading" class="magic__title" tabindex="-1">
         <mat-icon aria-hidden="true">diamond</mat-icon>Itens mágicos
@@ -125,7 +125,7 @@
                   <span class="magic-row__head">
                     <span class="magic-row__name">{{ c.namePt }}</span>
                     @if (c.count > 1) {
-                      <span class="magic-row__times mr-muted" [attr.aria-label]="c.count + ' unidades'">×{{ c.count }}</span>
+                      <span class="magic-row__times mr-muted"><span aria-hidden="true">×{{ c.count }}</span><span class="mr-visually-hidden">, {{ c.count }} unidades</span></span>
                     }
                   </span>
                   <span class="magic-row__line mr-muted">
@@ -281,15 +281,7 @@
   @if (!canMark() && !canManageMagic() && canEquip()) {
     <p class="gear__lock mr-muted">
       <mat-icon aria-hidden="true">lock</mat-icon>
-      @if (hasCharges() && hasConsumables()) {
-        Travada: usar poções e cargas continua valendo; o resto, só o mestre muda.
-      } @else if (hasConsumables()) {
-        Travada: usar poções continua valendo; o resto, só o mestre muda.
-      } @else if (hasCharges()) {
-        Travada: usar cargas continua valendo, o resto, só o mestre muda.
-      } @else {
-        Travada: equipar e guardar continuam valendo; marcas, bônus e itens mágicos, só o mestre muda.
-      }
+      {{ lockLine() }}
     </p>
   }
   <ul class="gear">

@@ -21,14 +21,12 @@ const flat = (n: Element | null | undefined) => {
 const BRISA: ConsumableTargetVm = {
   id: 'c2',
   name: 'Brisa',
-  distanceFt: 5,
   down: true,
   line: 'A 1,5 m · Caída',
 };
 const JABUTI: ConsumableTargetVm = {
   id: 'c3',
   name: 'Jabuti',
-  distanceFt: 5,
   down: false,
   line: 'A 1,5 m · Ileso',
 };
@@ -53,6 +51,7 @@ describe('UseConsumableSheet', () => {
       left: 2,
       actingFor: null,
       inCombat: true,
+      blockedBy: null,
       canApp: true,
       canType: true,
       preferApp: true,
@@ -300,9 +299,215 @@ describe('UseConsumableSheet', () => {
     expect(flat(el.querySelector('[role=alert]'))).toBe(
       'Esse item não está mais na ficha: alguém já o usou ou o tirou. Nada foi gasto.',
     );
-    expect(
-      Array.from(el.querySelectorAll('button')).find((b) => label(b) === 'Beber'),
-    ).toBeTruthy();
+    const drink = Array.from(el.querySelectorAll('button')).find((b) => label(b) === 'Beber')!;
+    expect(drink.getAttribute('aria-disabled')).not.toBe('true');
+    expect(drink.disabled).toBe(false);
+  });
+
+  it('gives the dashed "Dar a…" a block icon, and the live one the open hand', async () => {
+    const live = render();
+    await live.settle();
+    const giveOf = (el: HTMLElement) =>
+      Array.from(el.querySelectorAll('button')).find((b) => label(b) === 'Dar a…')!;
+    expect(giveOf(live.el).querySelector('mat-icon')?.textContent?.trim()).toBe(
+      'volunteer_activism',
+    );
+    TestBed.resetTestingModule();
+    loadTargets.mockResolvedValue({ targets: [], error: '' });
+    const empty = render();
+    await empty.settle();
+    expect(giveOf(empty.el).querySelector('mat-icon')?.textContent?.trim()).toBe('block');
+    expect(giveOf(empty.el).classList).toContain('mr-button--off');
+  });
+
+  it('describes the dashed "Dar a…" by the line that says nobody is by', async () => {
+    loadTargets.mockResolvedValue({ targets: [], error: '' });
+    const { el, settle } = render();
+    await settle();
+    const give = Array.from(el.querySelectorAll('button')).find((b) => label(b) === 'Dar a…')!;
+    const why = el.querySelector('.none')!;
+    expect(why.id).not.toBe('');
+    expect(give.getAttribute('aria-describedby')).toBe(why.id);
+  });
+
+  describe('the phase of the list', () => {
+    const buttons = (el: HTMLElement) => Array.from(el.querySelectorAll('button')).map(label);
+    const press = async (el: HTMLElement, settle: () => Promise<void>, name: string) => {
+      Array.from(el.querySelectorAll('button'))
+        .find((b) => label(b) === name)!
+        .click();
+      await settle();
+    };
+
+    it('offers "Dar a Brisa" and "Beber eu mesmo" in a combat, and no way back', async () => {
+      const { el, settle } = render();
+      await settle();
+      await press(el, settle, 'Dar a…');
+      const foot = Array.from(el.querySelectorAll('.foot button')).map((b) =>
+        label(b as HTMLButtonElement),
+      );
+      expect(foot).toEqual(['Dar a Brisa', 'Beber eu mesmo']);
+      expect(buttons(el)).not.toContain('Voltar');
+    });
+
+    it('offers "Voltar" and "Dar a Brisa" out of a combat, and "Voltar" shows the first choice again', async () => {
+      const { el, settle } = render({ inCombat: false });
+      await settle();
+      await press(el, settle, 'Dar a…');
+      const foot = Array.from(el.querySelectorAll('.foot button')).map((b) =>
+        label(b as HTMLButtonElement),
+      );
+      expect(foot).toEqual(['Voltar', 'Dar a Brisa']);
+      await press(el, settle, 'Voltar');
+      expect(el.querySelector('input[type=radio]')).toBeNull();
+      expect(
+        Array.from(el.querySelectorAll('.foot button')).map((b) => label(b as HTMLButtonElement)),
+      ).toEqual(['Dar a…', 'Beber']);
+    });
+
+    it('offers "Voltar" when the page does not know whether there is a combat', async () => {
+      const { el, settle } = render({ inCombat: null });
+      await settle();
+      await press(el, settle, 'Dar a…');
+      expect(
+        Array.from(el.querySelectorAll('.foot button')).map((b) => label(b as HTMLButtonElement)),
+      ).toEqual(['Voltar', 'Dar a Brisa']);
+    });
+
+    it('puts the focus on "Dar a…" again when "Voltar" is pressed', async () => {
+      const { el, settle } = render({ inCombat: false });
+      await settle();
+      await press(el, settle, 'Dar a…');
+      await press(el, settle, 'Voltar');
+      await settle();
+      const give = Array.from(el.querySelectorAll('button')).find((b) => label(b) === 'Dar a…')!;
+      expect(document.activeElement).toBe(give);
+    });
+  });
+
+  describe('the cost line (565-02, 565-05)', () => {
+    it('leads with the mark of the Ação and "Gasta a sua ação." in bold, in a combat', async () => {
+      const { el, settle } = render();
+      await settle();
+      const cost = el.querySelector('.cost')!;
+      expect(cost.querySelector('app-economy-mark')).not.toBeNull();
+      expect(flat(cost.querySelector('strong'))).toBe('Gasta a sua ação.');
+      expect(cost.querySelector('mat-icon')).toBeNull();
+    });
+
+    it('says what the potion does to the receiver after the bold lead', async () => {
+      const { el, settle } = render();
+      await settle();
+      Array.from(el.querySelectorAll('button'))
+        .find((b) => label(b) === 'Dar a…')!
+        .click();
+      await settle();
+      const cost = el.querySelector('.cost')!;
+      expect(flat(cost.querySelector('strong'))).toBe('Gasta a sua ação.');
+      expect(flat(cost)).toBe('Gasta a sua ação. A poção age em Brisa.');
+    });
+
+    it('has an info icon and no bold lead for what costs nothing or says "Fora de combate"', async () => {
+      const out = render({ inCombat: false });
+      await out.settle();
+      const cost = out.el.querySelector('.cost')!;
+      expect(cost.querySelector('mat-icon')?.textContent?.trim()).toBe('info');
+      expect(cost.querySelector('strong')).toBeNull();
+      expect(cost.querySelector('app-economy-mark')).toBeNull();
+    });
+
+    it('has the info icon for an oil, which costs no action', async () => {
+      const { el, settle } = render({
+        effectPt: '',
+        itemName: 'Óleo de afiar',
+        itemKey: 'item:oil-of-sharpness',
+        left: 1,
+      });
+      await settle();
+      const cost = el.querySelector('.cost')!;
+      expect(cost.querySelector('mat-icon')?.textContent?.trim()).toBe('info');
+      expect(cost.querySelector('app-economy-mark')).toBeNull();
+    });
+  });
+
+  describe('the list of an item with no gate', () => {
+    const oil = {
+      effectPt: '',
+      itemName: 'Óleo de afiar',
+      itemKey: 'item:oil-of-sharpness',
+      left: 1,
+    };
+
+    it('asks for anyone in the party, not for who is at the side, in a running combat', async () => {
+      const { el, settle } = render(oil);
+      await settle();
+      Array.from(el.querySelectorAll('button'))
+        .find((b) => label(b) === 'Dar a…')!
+        .click();
+      await settle();
+      expect(flat(el.querySelector('legend'))).toBe('Dar a alguém do grupo');
+    });
+
+    it('says nobody is left in the party, not that nobody is at 1,5 m, when the list is empty', async () => {
+      loadTargets.mockResolvedValue({ targets: [], error: '' });
+      const { el, settle } = render(oil);
+      await settle();
+      expect(flat(el.querySelector('.none'))).toBe(
+        'Não há mais ninguém no grupo para receber a poção.',
+      );
+    });
+  });
+
+  describe('the turn the page knows does not allow it (565-07 card 2)', () => {
+    const dashed = (el: HTMLElement) =>
+      Array.from(el.querySelectorAll<HTMLButtonElement>('.foot button'));
+
+    it('dashes both buttons and says the action is spent, with no call to the server', async () => {
+      const { el, settle } = render({ blockedBy: 'action' });
+      await settle();
+      expect(dashed(el).map(label)).toEqual(['Dar a…', 'Beber']);
+      for (const b of dashed(el)) {
+        expect(b.getAttribute('aria-disabled')).toBe('true');
+        expect(b.classList).toContain('mr-button--off');
+      }
+      expect(flat(el.querySelector('.none'))).toBe('Você já usou a ação desta vez.');
+      expect(el.querySelector('.none mat-icon')?.textContent?.trim()).toBe('block');
+      expect(loadTargets).not.toHaveBeenCalled();
+      dashed(el).forEach((b) => b.click());
+      await settle();
+      expect(use).not.toHaveBeenCalled();
+      expect(el.querySelector('input[type=radio]')).toBeNull();
+    });
+
+    it('says it is not their turn', async () => {
+      const { el, settle } = render({ blockedBy: 'turn' });
+      await settle();
+      expect(flat(el.querySelector('.none'))).toBe('Só na sua vez: beber ou dar gasta a ação.');
+      expect(dashed(el).every((b) => b.getAttribute('aria-disabled') === 'true')).toBe(true);
+    });
+
+    it('names the character the master acts for', async () => {
+      const { el, settle } = render({ blockedBy: 'action', actingFor: 'Tor' });
+      await settle();
+      expect(flat(el.querySelector('.none'))).toBe('Tor já usou a ação desta vez.');
+    });
+
+    it('describes both buttons by that line and leaves the cost line out', async () => {
+      const { el, settle } = render({ blockedBy: 'turn' });
+      await settle();
+      const why = el.querySelector('.none')!;
+      expect(why.id).not.toBe('');
+      expect(dashed(el).map((b) => b.getAttribute('aria-describedby'))).toEqual([why.id, why.id]);
+      expect(el.querySelector('.cost')).toBeNull();
+    });
+
+    it('still shows the effect of the item and can be closed', async () => {
+      const { el, settle } = render({ blockedBy: 'action' });
+      await settle();
+      expect(flat(el.querySelector('.effect'))).toContain('Cura 2d4 + 2');
+      el.querySelector<HTMLButtonElement>('button[aria-label="Fechar"]')!.click();
+      expect(close).toHaveBeenCalled();
+    });
   });
 
   describe('the dice (RN-18)', () => {
@@ -387,8 +592,9 @@ describe('UseConsumableSheet', () => {
       await settle();
       expect(el.querySelectorAll('.dice input')).toHaveLength(2);
       expect(
-        Array.from(el.querySelectorAll('button')).find((b) => label(b) === 'Rolar no app'),
-      ).toBeTruthy();
+        Array.from(el.querySelectorAll('button')).find((b) => label(b) === 'Rolar no app')
+          ?.disabled,
+      ).toBe(false);
     });
 
     it('offers no typing when the table forces the app', async () => {
@@ -458,7 +664,7 @@ describe('UseConsumableSheet', () => {
       .click();
     await settle();
     const busy = Array.from(el.querySelectorAll('button')).find((b) => label(b) === 'Usando...')!;
-    expect(busy).toBeTruthy();
+    expect(busy.getAttribute('aria-disabled')).toBe('true');
     busy.click();
     expect(use).toHaveBeenCalledTimes(1);
     done('');

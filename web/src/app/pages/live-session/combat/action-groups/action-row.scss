@@ -31,6 +31,14 @@
   gap: 0 8px;
 }
 
+// "×2" beside the name of a group of identical items (the same mark as the sheet's rows).
+.row__times {
+  font-family: var(--mr-font-sans);
+  font-size: var(--mr-font-14);
+  font-weight: 400;
+  color: var(--mr-ink-muted);
+}
+
 // The count of a weapon's ammunition: a pill like the tags; the warning has its icon and the empty one a dashed red line, so the
 // state is never the color alone.
 .row__ammo {

@@ -21,6 +21,7 @@ import {
   OILS,
   subtitleOf,
   targetRows,
+  turnBlockOf,
   useNotice,
 } from './consumables';
 
@@ -174,10 +175,10 @@ describe('combatItemRows', () => {
     ]);
   });
 
-  it('says what the item does in the line under the name, and how many the group holds', () => {
+  it('says what the item does in the line under the name, and leaves how many the group holds to its count', () => {
     const rows = combatItemRows(units, cats);
     expect(rows.map((r) => r.detail)).toEqual([
-      'cura 2d4 + 2 · 2 unidades',
+      'cura 2d4 + 2',
       'resistência a fogo por 1 hora',
       'só mostra o texto',
       'só mostra o texto',
@@ -200,6 +201,21 @@ describe('combatItemRows', () => {
 
   it('is empty with no consumable, and so is the tab', () => {
     expect(combatItemRows([units[1]], cats)).toEqual([]);
+  });
+});
+
+describe('turnBlockOf', () => {
+  it('says it is not the turn before it says anything of the Action', () => {
+    expect(turnBlockOf({ myTurn: false, actionUsed: true })).toBe('turn');
+    expect(turnBlockOf({ myTurn: false, actionUsed: false })).toBe('turn');
+  });
+
+  it('says the Action is spent on the turn of the character', () => {
+    expect(turnBlockOf({ myTurn: true, actionUsed: true })).toBe('action');
+  });
+
+  it('blocks nothing while the turn and the Action are there', () => {
+    expect(turnBlockOf({ myTurn: true, actionUsed: false })).toBeNull();
   });
 });
 
@@ -319,6 +335,19 @@ describe('targetRows', () => {
       ['id-Brisa', 'Brisa', 'A 1,5\u00a0m · Caída', true],
       ['id-Jabuti', 'Jabuti', 'A 1,5\u00a0m · Ileso', false],
     ]);
+  });
+
+  it('says "Caído" for a name of a man and "Caída" for a name of a woman, as the combat does', () => {
+    const rows = targetRows([
+      target('Toren', 5, ConsumableTargetState.DOWN),
+      target('Brisa', 5, ConsumableTargetState.DOWN),
+    ]);
+    expect(rows.map((r) => r.line)).toEqual(['A 1,5\u00a0m · Caído', 'A 1,5\u00a0m · Caída']);
+  });
+
+  it('keeps what the list needs of a receiver and nothing of how far they are', () => {
+    const [row] = targetRows([target('Brisa', 5, ConsumableTargetState.DOWN)]);
+    expect(Object.keys(row).sort()).toEqual(['down', 'id', 'line', 'name']);
   });
 
   it('says nothing of a distance or of how they stand out of a combat, where the server tells neither', () => {

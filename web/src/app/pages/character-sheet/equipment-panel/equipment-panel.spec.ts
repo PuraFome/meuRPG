@@ -820,10 +820,11 @@ describe('EquipmentPanel, the potions and the scrolls', () => {
     const { el, host } = render((h) => h.sheet.set(sheetWith([potion('p1'), potion('p2')])));
     const rows = rowsOf(el);
     expect(rows).toHaveLength(1);
-    expect(plain(rows[0].querySelector('.magic-row__times'))).toBe('×2');
-    expect(rows[0].querySelector('.magic-row__times')?.getAttribute('aria-label')).toBe(
-      '2 unidades',
-    );
+    const times = rows[0].querySelector('.magic-row__times')!;
+    expect(plain(times.querySelector('[aria-hidden=true]'))).toBe('×2');
+    // A plain span has no role: its aria-label would not be read. Visually hidden text is.
+    expect(times.hasAttribute('aria-label')).toBe(false);
+    expect(plain(times.querySelector('.mr-visually-hidden'))).toBe(', 2 unidades');
     rows[0].querySelector<HTMLButtonElement>('.magic-row__use')!.click();
     expect(host.consumed).toEqual(['p1']);
   });
@@ -891,6 +892,75 @@ describe('EquipmentPanel, the potions and the scrolls', () => {
     );
   });
 
+  it('says on a locked sheet with scrolls only that using them keeps working, and not potions', () => {
+    const { el } = render((h) =>
+      h.sheet.set(
+        sheetWith([potion('s1', { key: 'item:spell-scroll', namePt: 'Pergaminho de magia' })]),
+      ),
+    );
+    expect(plain(el.querySelector('.gear__lock'))).toContain(
+      'Travada: usar pergaminhos continua valendo; o resto, só o mestre muda.',
+    );
+    expect(plain(el.querySelector('.gear__lock'))).not.toContain('poções');
+  });
+
+  it('names potions and scrolls both when the sheet holds both', () => {
+    const { el } = render((h) =>
+      h.sheet.set(
+        sheetWith([
+          potion('p1'),
+          potion('s1', { key: 'item:spell-scroll', namePt: 'Pergaminho de magia' }),
+        ]),
+      ),
+    );
+    expect(plain(el.querySelector('.gear__lock'))).toContain(
+      'Travada: usar poções e pergaminhos continua valendo; o resto, só o mestre muda.',
+    );
+  });
+
+  it('names scrolls and charges, and potions, scrolls and charges, by what the sheet holds', () => {
+    const wand = entry({
+      id: 'w1',
+      key: 'item:wand',
+      namePt: 'Varinha',
+      charges: { max: 7, left: 5, state: 'ready' },
+    });
+    const scroll = potion('s1', { key: 'item:spell-scroll', namePt: 'Pergaminho de magia' });
+    const scrollAndWand = render((h) => h.sheet.set(sheetWith([scroll, wand])));
+    expect(plain(scrollAndWand.el.querySelector('.gear__lock'))).toContain(
+      'Travada: usar pergaminhos e cargas continua valendo; o resto, só o mestre muda.',
+    );
+    const all = render((h) => h.sheet.set(sheetWith([potion('p1'), scroll, wand])));
+    expect(plain(all.el.querySelector('.gear__lock'))).toContain(
+      'Travada: usar poções, pergaminhos e cargas continua valendo; o resto, só o mestre muda.',
+    );
+  });
+
+  it('keeps the heading, the empty line and the notice when the last potion was drunk on a locked sheet', () => {
+    const { el } = render((h) => {
+      h.sheet.set(sheetWith([]));
+      h.consumableResult.set({
+        tone: 'good',
+        icon: 'favorite',
+        headline: 'Tor recebeu 7 PV.',
+        detail: '2d4 + 2: 3 + 2 + 2 = 7. Era a última unidade.',
+        text: [],
+      });
+    });
+    const section = el.querySelector('section.magic')!;
+    expect(plain(section.querySelector('#magic-heading'))).toBe('Itens mágicos');
+    expect(plain(section.querySelector('p.mr-muted'))).toBe('Nenhum item mágico.');
+    const notice = section.querySelector('.consumable__result')!;
+    expect(plain(notice)).toContain('Era a última unidade.');
+    expect(notice.closest('[role=status]')).not.toBeNull();
+    expect(section.querySelector('.magic__add')).toBeNull();
+  });
+
+  it('draws no section for a locked sheet with no magic item and nothing to say', () => {
+    const { el } = render((h) => h.sheet.set(sheetWith([])));
+    expect(el.querySelector('section.magic')).toBeNull();
+  });
+
   it('shows the notice of a heal in the live region, with the line of the dice', () => {
     const { el } = render((h) => {
       h.sheet.set(sheetWith([potion('p1')]));
@@ -921,7 +991,8 @@ describe('EquipmentPanel, the potions and the scrolls', () => {
       });
     });
     const notice = el.querySelector('.consumable__result')!;
-    expect(notice.classList).toContain('consumable__result--neutral');
+    expect(notice.classList).not.toContain('consumable__result--good');
+    expect(notice.className).toBe('consumable__result');
     expect(plain(el.querySelector('.consumable__text'))).toBe(
       'Por 1 hora, você escala com o mesmo deslocamento.',
     );

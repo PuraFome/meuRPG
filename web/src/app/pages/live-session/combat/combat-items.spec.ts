@@ -7,6 +7,7 @@ import { DiceMode, DicePreference } from '../../../../gen/meurpg/campaigns/v1/ca
 import { SheetMagicItemSchema } from '../../../../gen/meurpg/characters/v1/characters_pb';
 import { UseConsumableResponseSchema } from '../../../../gen/meurpg/play/v1/charges_pb';
 import { ConsumableUseOutcome } from '../../../../gen/meurpg/play/v1/combat_pb';
+import type { TurnBlock } from '../../../core/characters/consumables';
 import type { ChargesClient } from '../../../core/play/charges-client';
 import type { UseConsumableData } from '../../../shared/consumable-use/use-consumable-sheet';
 import { CombatItems } from './combat-items';
@@ -28,6 +29,7 @@ describe('CombatItems', () => {
   const byMaster = signal(false);
   const signature = signal('1');
   const enabled = signal(true);
+  const turnBlock = signal<TurnBlock | null>(null);
 
   function build() {
     return TestBed.runInInjectionContext(
@@ -41,6 +43,7 @@ describe('CombatItems', () => {
           byMaster,
           enabled,
           signature,
+          turnBlock,
           dice: () =>
             Promise.resolve({ mode: DiceMode.PLAYERS_CHOOSE, preference: DicePreference.APP }),
           openUse: (data) => {
@@ -63,6 +66,7 @@ describe('CombatItems', () => {
     byMaster.set(false);
     signature.set('1');
     enabled.set(true);
+    turnBlock.set(null);
     Object.values(client).forEach((f) => f.mockReset());
     load.mockReset().mockResolvedValue(undefined);
     focusItem.mockReset();
@@ -126,6 +130,32 @@ describe('CombatItems', () => {
       actingFor: 'Tor',
     });
     expect(focusItem).toHaveBeenCalledWith('item:potion-of-healing');
+  });
+
+  it('tells the sheet the Action is spent when the combat says so, for the row folded under "Ação · Usada"', async () => {
+    const items = build();
+    await settle();
+    turnBlock.set('action');
+    items.open(items.rows()[0].first);
+    await vi.waitFor(() => expect(opened).toBeDefined());
+    expect(opened?.blockedBy).toBe('action');
+  });
+
+  it('tells the sheet it is not the turn of the character', async () => {
+    const items = build();
+    await settle();
+    turnBlock.set('turn');
+    items.open(items.rows()[0].first);
+    await vi.waitFor(() => expect(opened).toBeDefined());
+    expect(opened?.blockedBy).toBe('turn');
+  });
+
+  it('opens the sheet live while the turn and the Action are the character’s', async () => {
+    const items = build();
+    await settle();
+    items.open(items.rows()[0].first);
+    await vi.waitFor(() => expect(opened).toBeDefined());
+    expect(opened?.blockedBy).toBeNull();
   });
 
   it('reads the items again after a use and says what it did, with one unit less', async () => {

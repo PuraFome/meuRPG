@@ -8,6 +8,7 @@ import {
   effect,
   inject,
   signal,
+  viewChild,
   viewChildren,
 } from '@angular/core';
 import { MatBottomSheet } from '@angular/material/bottom-sheet';
@@ -24,9 +25,12 @@ import {
   effectLine,
   healingDice,
   subtitleOf,
+  type TurnBlock,
 } from '../../core/characters/consumables';
 import { ActionKey } from '../../core/connect/idempotency';
 import type { ConsumableRoll } from '../../core/play/charges-client';
+import { turnBlockMessage } from '../../core/play/charges-errors';
+import { EconomyMark } from '../economy-shapes/economy-shapes';
 import { SheetFrame } from '../sheet/sheet-frame/sheet-frame';
 import { injectSheet, openSheet } from '../sheet/sheet-host';
 
@@ -56,6 +60,8 @@ export interface UseConsumableData {
   readonly actingFor: string | null;
   /** Whether a combat is running, when the page knows (the combat's "Itens" does); `null` on the sheet, which says both costs. */
   readonly inCombat: boolean | null;
+  /** What the page knows keeps the use from the Action (it is not the turn, or the Action is spent): both buttons are dashed and the sheet says why, with no call to the server. Only for an item that costs the action. */
+  readonly blockedBy: TurnBlock | null;
   /** The app may roll the dice (the table did not force real dice). */
   readonly canApp: boolean;
   /** Typing the faces of real dice is allowed (the table did not force the app). */
@@ -103,161 +109,8 @@ function signed(modifier: number): string {
 @Component({
   selector: 'app-use-consumable-sheet',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [MatButtonModule, MatIconModule, SheetFrame],
-  template: `
-    <app-sheet-frame
-      [title]="title"
-      titleId="use-consumable-t"
-      [subtitle]="subtitle"
-      [phone]="inSheet"
-      (closed)="close()"
-    >
-      <p class="effect">
-        <mat-icon aria-hidden="true">{{ effectIconName }}</mat-icon><b>{{ effectText }}</b>
-      </p>
-      @if (explain) {
-        <p class="explain">{{ explain }}</p>
-      }
-      @if (error()) {
-        <p class="mr-notice mr-notice--danger" role="alert">
-          <mat-icon aria-hidden="true">error</mat-icon><span>{{ error() }}</span>
-        </p>
-      }
-      @if (targetsError()) {
-        <p class="mr-notice mr-notice--danger" role="alert">
-          <mat-icon aria-hidden="true">error</mat-icon><span>{{ targetsError() }}</span>
-        </p>
-      }
-      @if (phase() === 'give') {
-        <fieldset class="who">
-          <legend class="who__legend">{{ legend }}</legend>
-          @for (t of targets(); track t.id) {
-            <label class="who__row" [class.who__row--on]="chosen() === t.id">
-              <input
-                #radio
-                type="radio"
-                name="use-consumable-target"
-                class="who__radio"
-                [value]="t.id"
-                [checked]="chosen() === t.id"
-                [disabled]="busy()"
-                (change)="chosen.set(t.id)"
-              />
-              <span class="who__avatar" aria-hidden="true">{{ t.name.charAt(0) }}</span>{{ ' ' }}
-              <span class="who__text">
-                <b>{{ t.name }}</b>{{ ' ' }}
-                @if (t.line) {
-                  <span class="mr-muted">{{ t.line }}</span>
-                }
-              </span>
-            </label>
-          }
-        </fieldset>
-      }
-      @if (dice; as d) {
-        <div class="dice">
-          @if (!typing()) {
-            <p class="dice__line">
-              O app rola {{ d.text }}{{ receiverName() ? ' para ' + receiverName() : '' }}.
-              @if (data.canType) {
-                <button type="button" class="dice__switch" (click)="typing.set(true)">Digitar os dados</button>
-              }
-            </p>
-          } @else {
-            <p class="dice__line">
-              Digite o que saiu em cada dado.
-              @if (d.modifier !== 0) {
-                O {{ signedModifier }} o app soma.
-              }
-              @if (data.canApp) {
-                <button type="button" class="dice__switch" (click)="typing.set(false)">Rolar no app</button>
-              }
-            </p>
-            <div class="dice__fields">
-              @for (n of numbers; track n) {
-                <div class="dice__one">
-                  <label class="dice__label" [for]="'use-consumable-face-' + n">Dado {{ n + 1 }} (d{{ d.sides }})</label>
-                  <input
-                    [id]="'use-consumable-face-' + n"
-                    class="dice__field"
-                    type="text"
-                    inputmode="numeric"
-                    maxlength="3"
-                    autocomplete="off"
-                    [value]="faces()[n]"
-                    [attr.aria-invalid]="invalid()[n] ? 'true' : null"
-                    [attr.aria-describedby]="invalid()[n] ? 'use-consumable-face-err-' + n : null"
-                    (input)="onFace(n, $event)"
-                  />
-                  @if (invalid()[n]) {
-                    <span class="dice__err" [id]="'use-consumable-face-err-' + n">
-                      <mat-icon aria-hidden="true">error</mat-icon>Digite um número de 1 a {{ d.sides }}
-                    </span>
-                  }
-                </div>
-              }
-            </div>
-          }
-        </div>
-      }
-      @if (phase() === 'choose' && noneText()) {
-        <p class="none">
-          <mat-icon aria-hidden="true">block</mat-icon>{{ noneText() }}
-        </p>
-      }
-      <p class="cost mr-muted">{{ costText() }}</p>
-      <div foot class="foot">
-        @if (phase() === 'choose') {
-          @if (data.kind === 'potion') {
-            <button
-              matButton="outlined"
-              type="button"
-              class="give"
-              [class.give--off]="!canGive()"
-              [disabled]="busy() || !canGive()"
-              disabledInteractive
-              (click)="canGive() && openGive()"
-            >
-              <mat-icon aria-hidden="true">volunteer_activism</mat-icon>Dar a…
-            </button>
-          }
-          <button
-            matButton="filled"
-            type="button"
-            class="go"
-            [class.go--off]="!canSend()"
-            [disabled]="!canSend()"
-            disabledInteractive
-            (click)="send(null)"
-          >
-            <mat-icon aria-hidden="true">{{ data.kind === 'potion' ? 'science' : 'description' }}</mat-icon>{{ busy() ? 'Usando...' : drinkWord }}
-          </button>
-        } @else {
-          <button
-            matButton="filled"
-            type="button"
-            class="go go--wide"
-            [class.go--off]="!canSend()"
-            [disabled]="!canSend()"
-            disabledInteractive
-            (click)="send(receiver())"
-          >
-            <mat-icon aria-hidden="true">volunteer_activism</mat-icon>{{ busy() ? 'Usando...' : 'Dar a ' + receiverName() }}
-          </button>
-          <button
-            matButton="outlined"
-            type="button"
-            class="go--wide"
-            [disabled]="!canSend()"
-            disabledInteractive
-            (click)="send(null)"
-          >
-            <mat-icon aria-hidden="true">science</mat-icon>Beber eu mesmo
-          </button>
-        }
-      </div>
-    </app-sheet-frame>
-  `,
+  imports: [EconomyMark, MatButtonModule, MatIconModule, SheetFrame],
+  templateUrl: './use-consumable-sheet.html',
   styleUrl: './use-consumable-sheet.scss',
 })
 export class UseConsumableSheet {
@@ -266,6 +119,7 @@ export class UseConsumableSheet {
   protected readonly inSheet = this.sheet.inSheet;
   private readonly injector = inject(Injector);
   private readonly radios = viewChildren<ElementRef<HTMLInputElement>>('radio');
+  private readonly giveButton = viewChild('give', { read: ElementRef<HTMLButtonElement> });
 
   protected readonly title = this.data.actingFor
     ? `Usar por ${this.data.actingFor}`
@@ -299,13 +153,24 @@ export class UseConsumableSheet {
   protected readonly receiverName = computed(() =>
     this.phase() === 'give' ? (this.receiver()?.name ?? '') : '',
   );
-  protected readonly canGive = computed(() => (this.targets()?.length ?? 0) > 0);
-  protected readonly legend =
-    this.data.inCombat === true
-      ? 'Dar a quem está ao seu lado'
-      : this.data.inCombat === false
-        ? 'Dar a alguém do grupo'
-        : 'Dar a quem pode receber';
+  /** What the page knows keeps the use from the Action: no list is read and nothing is offered. */
+  protected readonly blocked = this.data.blockedBy;
+  private readonly blockedText = this.blocked
+    ? turnBlockMessage(this.blocked, this.data.actingFor)
+    : '';
+  /** The server lists only who is within reach for what costs the action in a running combat; any other use lists the party. */
+  private readonly byReach = this.data.inCombat === true && this.costs;
+  protected readonly whyId = 'use-consumable-why';
+  protected readonly canGive = computed(() => !this.blocked && (this.targets()?.length ?? 0) > 0);
+  /** "Dar a…" is dashed: the turn does not allow it, or the list is read and has nobody. */
+  protected readonly giveOff = computed(
+    () => !!this.blocked || (this.targets() !== null && !this.canGive()),
+  );
+  protected readonly legend = this.byReach
+    ? 'Dar a quem está ao seu lado'
+    : this.data.inCombat === null
+      ? 'Dar a quem pode receber'
+      : 'Dar a alguém do grupo';
 
   /** The player rolls their own dice: the fields open first (the table's mode and the choice of the player, RN-18). */
   protected readonly typing = signal(
@@ -325,52 +190,80 @@ export class UseConsumableSheet {
 
   protected readonly busy = signal(false);
   protected readonly error = signal('');
-  protected readonly canSend = computed(() => !this.busy() && this.rolled());
+  protected readonly canSend = computed(() => !this.blocked && !this.busy() && this.rolled());
   /** A request in the air: Esc and the backdrop do not close the sheet under it. */
   protected readonly lockWhileBusy = effect(() => this.sheet.lock(this.busy()));
   private readonly key = new ActionKey();
 
-  protected readonly noneText = computed(() => {
+  /** Why the first state offers less than two buttons: the turn does not allow it, or the list is read and has nobody. */
+  protected readonly reasonText = computed(() => {
+    if (this.blockedText) {
+      return this.blockedText;
+    }
     if (this.targets() === null || this.canGive() || this.targetsError()) {
       return '';
     }
-    return this.data.inCombat === true
+    return this.byReach
       ? 'Ninguém a 1,5 m de você para receber a poção.'
-      : this.data.inCombat === false
-        ? 'Não há mais ninguém no grupo para receber a poção.'
-        : 'Ninguém por perto para receber a poção.';
+      : this.data.inCombat === null
+        ? 'Ninguém por perto para receber a poção.'
+        : 'Não há mais ninguém no grupo para receber a poção.';
   });
 
-  protected readonly costText = computed(() => {
+  /** What the use costs: the mark of the Ação and a bold lead where it spends it, an info icon where it says what it does not. */
+  protected readonly cost = computed((): { mark: boolean; lead: string; rest: string } | null => {
+    if (this.blocked) {
+      return null;
+    }
     const thing = this.data.kind === 'potion' ? 'A poção' : 'O pergaminho';
     const who = this.receiverName();
     const acts = who ? ` ${thing} age em ${who}.` : '';
     const combat = this.data.inCombat;
     if (!this.costs && combat !== false) {
-      return `Não gasta a ação: o mestre decide o tempo que isso leva.${acts}`;
+      return {
+        mark: false,
+        lead: 'Não gasta a ação: o mestre decide o tempo que isso leva.',
+        rest: acts,
+      };
     }
     if (this.phase() === 'give') {
-      const lead =
-        combat === false
-          ? 'Fora de combate, não gasta a vez.'
-          : combat === true
-            ? 'Gasta a sua ação.'
-            : 'Em combate, gasta a sua ação.';
-      return `${lead}${acts}`;
+      return combat === false
+        ? { mark: false, lead: 'Fora de combate, não gasta a vez.', rest: acts }
+        : {
+            mark: true,
+            lead: combat === true ? 'Gasta a sua ação.' : 'Em combate, gasta a sua ação.',
+            rest: acts,
+          };
     }
-    return combat === false
-      ? `Fora de combate: não gasta a vez.${this.canGive() ? ' “Dar a…” lista o grupo todo.' : ''}`
-      : combat === true
-        ? 'Gasta a sua ação.'
-        : 'Em combate, gasta a ação; fora dele, não gasta a vez.';
+    if (combat === false) {
+      return {
+        mark: false,
+        lead: 'Fora de combate: não gasta a vez.',
+        rest: this.canGive() ? ' “Dar a…” lista o grupo todo.' : '',
+      };
+    }
+    return combat === true
+      ? { mark: true, lead: 'Gasta a sua ação.', rest: '' }
+      : { mark: false, lead: 'Em combate, gasta a ação; fora dele, não gasta a vez.', rest: '' };
   });
 
   constructor() {
+    if (this.blocked) {
+      // The turn does not allow the use: nobody is listed and the server is not asked.
+      this.targets.set([]);
+      return;
+    }
     void this.data.loadTargets().then((out) => {
       this.targets.set(out.targets);
       this.targetsError.set(out.error);
       this.chosen.set(out.targets[0]?.id ?? '');
     });
+  }
+
+  /** "Voltar": the first choice again, with the focus on "Dar a…". */
+  protected back(): void {
+    this.phase.set('choose');
+    afterNextRender(() => this.giveButton()?.nativeElement.focus(), { injector: this.injector });
   }
 
   protected openGive(): void {
@@ -410,7 +303,6 @@ export class UseConsumableSheet {
       if (why) {
         this.error.set(why);
       } else {
-        this.key.renew();
         this.sheet.close(true);
       }
     } finally {

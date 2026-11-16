@@ -146,8 +146,27 @@
   font-size: var(--mr-font-18);
 }
 .cost {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--mr-space-2);
   margin: 0;
   font-size: var(--mr-font-14);
+}
+.cost .mat-icon {
+  flex: none;
+  width: var(--mr-font-18);
+  height: var(--mr-font-18);
+  font-size: var(--mr-font-18);
+}
+// The mark of the Ação (the same circle as the turn's) sits in the 18 px column the info icon takes.
+.cost app-economy-mark {
+  flex: none;
+  box-sizing: content-box;
+  padding: 2px calc((var(--mr-font-18) - var(--mr-font-14)) / 2);
+  font-size: var(--mr-font-14);
+}
+.cost strong {
+  color: var(--mr-ink);
 }
 .foot {
   display: flex;
@@ -159,14 +178,21 @@
   min-height: 48px;
 }
 .give--off {
-  border-style: dashed;
-  opacity: 0.7;
   cursor: default;
 }
 .go--off {
   opacity: 0.6;
   cursor: default;
 }
+// A dashed button (`mr-button--off`) says its reason in a line near it and keeps its own muted colours.
+.mr-button--off.go--off {
+  opacity: 1;
+}
 .go--wide {
   flex: 1 1 100%;
+}
+// "Voltar" and "Dar a …" side by side.
+.go--half {
+  flex: 1 1 0;
+  min-width: 0;
 }
