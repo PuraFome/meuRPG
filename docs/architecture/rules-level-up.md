@@ -36,6 +36,10 @@ What a chosen subclass adds (the Lore College's three skills, the Circle of the 
 `LevelUpSubclass` also says whether the table archived it (`Archived`) or switched it off (`Off`, its own switch only).
 
 - The Warlock's new invocations come from the `invocations_known` column of the class table (corrected in `effects/corrections.json`).
+- Swapping an invocation away takes its picks with it: the Book of Ancient Secrets' two rituals go with the invocation, and the swap stays one removal.
+- Removing one of those picks alone is refused.
+- A plain option the level picks (the Pact of the Tome, the Book of Ancient Secrets) opens a choice of its own, and the level may leave it open: `checkChoiceProblems` lets a missing choice through when the sheet before did not ask it and the option that opens it is new.
+  The next level lists it in `LateChoices` and refuses the level without its picks (`late_choice`).
 - The Bard's Magical Secrets (levels 10, 14 and 18) let some of the new spells come from any class's list (`AnyClassSpells`); `Derive` stops flagging those spells as off-list.
 - `MasterAdds` lists features of the level whose choice the guided level-up does not cover and the master adds in the editor.
 - **Not covered** by the guided level-up: a custom multiclass or subclass, and **swapping a known spell for another**, which the SRD allows Bard, Ranger, Sorcerer and Warlock.
@@ -55,6 +59,10 @@ Whether the table allows feats (`tablerules.Rules.FeatsAllowed`) is for the serv
 A group's pool is the options of the features that offered the picks (a fighter's styles, not the paladin's), the table's options included, without the picks the sheet has; a warlock's offer leaves out `invocation` because its own swap covers it.
 `LevelUpChoices.Swap` gives up `From` for `To`: `ApplyLevelUp` removes one and adds the other, and `CheckLevelUp` finds the swap by the pick the new sheet lost (`swapOf`), lets that one removal through (the cantrip count rises by one) and judges the new pick like any other: the choice engine's `prerequisite` and `not_offered` problems, the spell list.
 A pick lost with nothing in its place is still "an option was removed".
+A swap of the `pact_boon` or of the `invocation` takes the picks of the choice the pick opened with it (`ownPick`).
+Swapping the Pact of the Tome away drops its `#cantrips` picks.
+Swapping the Book of Ancient Secrets away drops its `#rituals` picks.
+The swap stays one change.
 Whether the table plays with the swap (`tablerules.Rules.PickSwapAllowed`) is for the server to check, as for feats: `GetLevelUpOptions` leaves `swap_groups` empty and `LevelUpCharacter` refuses with `SWAP_NOT_ALLOWED` (`choices.swap_pick`).
 
 **Swapping an option of a table feature.**

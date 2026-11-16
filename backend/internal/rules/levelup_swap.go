@@ -2,6 +2,7 @@ package rules
 
 import (
 	"slices"
+	"strings"
 )
 
 // The groups of picks an Ability Score Improvement level may swap, when the table plays
@@ -128,8 +129,24 @@ func applySwap(after *Build, s PickSwap) {
 	if s.Group == SwapGroupCantrip {
 		list = &after.Cantrips
 	}
-	*list = slices.DeleteFunc(*list, func(k string) bool { return k == s.From })
+	*list = slices.DeleteFunc(*list, func(k string) bool { return k == s.From || ownPick(s.From, k) })
 	*list = append(*list, s.To)
+}
+
+// ownPick says the stored pick k is a pick of the choice that belongs to the option `from`
+// (the two rituals of the Book of Ancient Secrets), which goes away with it.
+func ownPick(from, k string) bool {
+	return strings.HasPrefix(k, from+textSeparator)
+}
+
+// ownedByAnyOf says the stored pick k belongs to the choice of one of the options in keys.
+func ownedByAnyOf(keys []string, k string) bool {
+	choiceKey, _, ok := SplitScopedChoice(k)
+	if !ok {
+		return false
+	}
+	owner, _, _ := strings.Cut(choiceKey, textSeparator)
+	return slices.Contains(keys, owner)
 }
 
 // swapOf finds the swap the new sheet shows: a group of the offer in which the sheet gave
