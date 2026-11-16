@@ -81,7 +81,7 @@ describe('OpenDown', () => {
     select.disabled = true;
     select.open();
     expect(select.panelOpen).toBe(false);
-    expect(Element.prototype.scrollIntoView).not.toHaveBeenCalled();
+    expect(scrollIntoView).not.toHaveBeenCalled();
   });
 
   it('does not scroll the field when the list is already open', () => {
@@ -91,6 +91,6 @@ describe('OpenDown', () => {
     expect(select.panelOpen).toBe(true);
     vi.mocked(selectElement.getBoundingClientRect).mockReturnValue({ bottom: 800 } as DOMRect);
     select.open();
-    expect(Element.prototype.scrollIntoView).not.toHaveBeenCalled();
+    expect(scrollIntoView).not.toHaveBeenCalled();
   });
 });
