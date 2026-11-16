@@ -472,7 +472,7 @@ func (f *castFlow) placeArea(ctx context.Context) error {
 	if f.wall, err = f.wallOfRequest(); err != nil {
 		return err
 	}
-	if f.readied != nil && laysZoneOnMap(f.sp, f.c.enc) { // the answer carries no point to lay it at (ready_spell.go)
+	if f.call.answering && laysZoneOnMap(f.sp, f.c.enc) { // the answer carries no point to lay it at (ready_spell.go)
 		return badArea("this spell lays a zone on the map, which the answer cannot place")
 	}
 	// A spell that keeps its area on the map lays it only when the request chooses a point: a cast without one is the
