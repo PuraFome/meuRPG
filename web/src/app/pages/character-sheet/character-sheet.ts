@@ -377,17 +377,28 @@ export class CharacterSheetPage {
     apply: (characterId, vm) => this.applyWrite(characterId, vm),
   });
 
-  /** Reads the character again without the loading state, so the page does not blink; `true` when the new sheet is on screen. */
-  private async reloadQuietly(): Promise<boolean> {
+  /** The newest quiet read: a read that a newer one supersedes answers with the newer one's result. */
+  private newestQuiet: { readonly seq: number; readonly run: Promise<boolean> } | null = null;
+
+  /** Reads the character again without the loading state, so the page does not blink; `true` when the newest sheet is on screen. */
+  private reloadQuietly(): Promise<boolean> {
     const campaignId = this.campaignId();
     if (!campaignId || !this.characterId) {
-      return false;
+      return Promise.resolve(false);
     }
     const seq = ++this.sheetSeq;
+    const run = this.readQuietly(seq, campaignId);
+    this.newestQuiet = { seq, run };
+    return run;
+  }
+
+  private async readQuietly(seq: number, campaignId: string): Promise<boolean> {
     try {
       const vm = await this.source.getCharacterSheet(campaignId, this.characterId);
       if (seq !== this.sheetSeq) {
-        return true; // a newer read owns the screen (a stream's, a tab's): the sheet shown is at least as new
+        // A newer quiet read owns the screen: the answer is its own, once it has landed. A page load that took over has its own state.
+        const newest = this.newestQuiet;
+        return newest !== null && newest.seq > seq ? newest.run : false;
       }
       if (this.state().status === 'ready') {
         this.state.set({ status: 'ready', vm });

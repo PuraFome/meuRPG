@@ -1449,6 +1449,55 @@ describe('CharacterSheetPage', () => {
       openSessions.set([]);
     });
 
+    it('waits for the stream’s newer reload before a change says what the sheet holds, not the old sheet', async () => {
+      configure();
+      openSessions.set([
+        {
+          sessionId: 's1',
+          campaignId: 'camp-1',
+          campaignName: 'Mirathel',
+          sessionNumber: 5,
+          startedAt: new Date(),
+          isMaster: false,
+        },
+      ]);
+      let reads = 0;
+      let stowed = false;
+      const pending: Array<(v: CharacterSheetVm) => void> = [];
+      fake.setEquippedFn = () => {
+        stowed = true;
+        return Promise.resolve();
+      };
+      fake.getCharacterSheetFn = () => {
+        reads++;
+        if (reads >= 2) {
+          return new Promise((res) => pending.push(res)); // the change's own reload, then the stream's
+        }
+        return Promise.resolve(withGear(!stowed, 12));
+      };
+
+      const el = await render();
+      const onCharacter = xpWatcher.follow.mock.calls.at(-1)![6]!;
+      button(el, 'Guardar Espada longa').click();
+      await nextTurn();
+      onCharacter('char-1'); // the stream's reload starts while the change's own is in flight
+      await nextTurn();
+      expect(pending).toHaveLength(2);
+      pending[0](withGear(false, 10)); // the older read lands first: the sheet is still the old one
+      await nextTurn();
+      await Promise.resolve();
+      const section = sectionTitled(el, 'Equipamento');
+      expect(section.textContent).not.toContain('Guardado: Espada longa');
+      pending[1](withGear(false, 10));
+      await nextTurn();
+      await Promise.resolve();
+
+      expect(section.querySelector('[role="status"]')!.textContent).toContain(
+        'Guardado: Espada longa. Classe de armadura 10.',
+      );
+      openSessions.set([]);
+    });
+
     it('clears the previous notice when the next change starts', async () => {
       configure();
       let stowed = false;

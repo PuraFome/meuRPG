@@ -1,6 +1,7 @@
 import { create } from '@bufbuild/protobuf';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { Code, ConnectError } from '@connectrpc/connect';
 import { of } from 'rxjs';
 
 import { DiceMode, DicePreference } from '../../../../gen/meurpg/campaigns/v1/campaigns_pb';
@@ -9,7 +10,11 @@ import {
   SheetMagicItemSchema,
 } from '../../../../gen/meurpg/characters/v1/characters_pb';
 import { UseConsumableResponseSchema } from '../../../../gen/meurpg/play/v1/charges_pb';
-import { ConsumableUseOutcome } from '../../../../gen/meurpg/play/v1/combat_pb';
+import {
+  ConsumableUseOutcome,
+  EncounterBlockedReason,
+  EncounterBlockedSchema,
+} from '../../../../gen/meurpg/play/v1/combat_pb';
 import type { TurnBlock } from '../../../core/characters/consumables';
 import type { ChargesClient } from '../../../core/play/charges-client';
 import type { UseConsumableData } from '../../../shared/consumable-use/use-consumable-sheet';
@@ -212,6 +217,63 @@ describe('CombatItems', () => {
     const items = build();
     await settle();
     expect(items.rows().map((r) => r.namePt)).toEqual(['Poção sem campo']);
+  });
+
+  it('says what is left even when the combat starts a read of its own while the use reads the items', async () => {
+    const items = build();
+    await settle();
+    client.useConsumable.mockResolvedValue(
+      create(UseConsumableResponseSchema, {
+        outcome: ConsumableUseOutcome.HEALED,
+        diceText: '2d4+2',
+        faces: [3, 2],
+        rollTotal: 7,
+        healed: 7,
+      }),
+    );
+    const reads: Array<(sheet: unknown) => void> = [];
+    client.sheetOf.mockImplementation(
+      () => new Promise((resolve) => reads.push(resolve as (sheet: unknown) => void)),
+    );
+    items.open(items.rows()[0].first);
+    await vi.waitFor(() => expect(opened).toBeDefined());
+    const used = opened!.use({ target: null, roll: { inApp: true } }, 'k1');
+    // The use's own read is under way when the action spent changes the signature, and the screen reads again.
+    await vi.waitFor(() => expect(reads).toHaveLength(1));
+    signature.set('2');
+    await vi.waitFor(() => expect(reads).toHaveLength(2));
+    const after = { magicItems: [potion('p2')], ammunition: [] };
+    reads[0](after);
+    reads[1](after);
+    expect(await used).toEqual({ refusal: null });
+    expect(items.notice()?.detail).toBe('2d4 + 2: 3 + 2 + 2 = 7. Resta 1 Poção de cura.');
+  });
+
+  it('waits for the newest read before it says a unit was refused, so the sheet rebinds to what is left', async () => {
+    const items = build();
+    await settle();
+    client.useConsumable.mockRejectedValue(
+      new ConnectError('gone', Code.FailedPrecondition, undefined, [
+        {
+          desc: EncounterBlockedSchema,
+          value: create(EncounterBlockedSchema, { reason: EncounterBlockedReason.ITEM_GONE }),
+        },
+      ]),
+    );
+    const reads: Array<(sheet: unknown) => void> = [];
+    client.sheetOf.mockImplementation(
+      () => new Promise((resolve) => reads.push(resolve as (sheet: unknown) => void)),
+    );
+    items.open(items.rows()[0].first);
+    await vi.waitFor(() => expect(opened).toBeDefined());
+    const used = opened!.use({ target: null, roll: { inApp: true } }, 'k1');
+    await vi.waitFor(() => expect(reads).toHaveLength(1));
+    signature.set('2');
+    await vi.waitFor(() => expect(reads).toHaveLength(2));
+    reads[0]({ magicItems: [potion('p1'), potion('p2')], ammunition: [] }); // the older read
+    reads[1]({ magicItems: [potion('p2')], ammunition: [] });
+    const answer = await used;
+    expect(answer).toMatchObject({ left: 1, rebound: true });
   });
 
   it('forgets what the last use said', async () => {

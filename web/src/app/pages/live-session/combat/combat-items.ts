@@ -84,8 +84,17 @@ export class CombatItems {
     this.use.result.set(null);
   }
 
-  /** Reads the items of the screen's character; `true` when what it read is on screen. */
-  private async read(): Promise<boolean> {
+  /** The newest read: a read that a newer one supersedes answers with the newer one's result. */
+  private newest: Promise<boolean> = Promise.resolve(false);
+
+  /** Reads the items of the screen's character; `true` when the newest read of them is on screen. */
+  private read(): Promise<boolean> {
+    const run = this.fetch();
+    this.newest = run;
+    return run;
+  }
+
+  private async fetch(): Promise<boolean> {
     const characterId = this.ctx.characterId();
     if (!characterId) {
       return false;
@@ -98,7 +107,8 @@ export class CombatItems {
     try {
       const sheet = await this.ctx.client().sheetOf(this.ctx.campaignId(), characterId);
       if (seq !== this.seq || characterId !== this.ctx.characterId()) {
-        return false; // a newer read, or another character, owns the screen
+        // A newer read owns the screen: the answer is its own, not a refusal to say "on screen".
+        return characterId === this.ctx.characterId() ? this.newest : false;
       }
       this.entries.set(sheet.magicItems.map(magicEntryOf));
       return true;
