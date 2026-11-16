@@ -206,8 +206,9 @@ func TestNpcCheckRefusalsGiveGenderToNobody(t *testing.T) {
 
 // TestNpcCheckRolledWhileAnotherIsHeldSettlesTheFirstAsASkip: the master rolls a second check while the first still waits for its bards:
 // the first settles as a skip at its own d20 (its resolved event is written, its asks close), the bard that was asked and the master are
-// told the question is gone, the second is held and GetNpcCheck reads the second, not the first whose resolved event came later. The
-// retry of the key of either roll replays it and settles nothing.
+// told the question is gone, the second is held and GetNpcCheck reads the second. The retry of the key of either roll replays it and
+// settles nothing. (The master and the bard are told by the second hold as well: the case that settles the second at once is
+// TestNpcCheckSettledAtOnceWhileAnotherIsHeldTellsWhoWasAsked.)
 func TestNpcCheckRolledWhileAnotherIsHeldSettlesTheFirstAsASkip(t *testing.T) {
 	t.Parallel()
 	n := newNpcTable(t, charactersv1.CuttingWordsAsk_CUTTING_WORDS_ASK_ALL)
@@ -261,8 +262,51 @@ func TestNpcCheckRolledWhileAnotherIsHeldSettlesTheFirstAsASkip(t *testing.T) {
 	}
 }
 
+// TestNpcCheckSettledAtOnceWhileAnotherIsHeldTellsWhoWasAsked: the second check opens no question (no bard sees the creature), so its own
+// roll tells nobody; the settle of the first, as a skip, is then the only thing that tells the master and the bard that was being asked
+// that the question is gone. The other bard, who was not being asked, and a player with no bard hear nothing.
+func TestNpcCheckSettledAtOnceWhileAnotherIsHeldTellsWhoWasAsked(t *testing.T) {
+	t.Parallel()
+	n := newNpcTable(t, charactersv1.CuttingWordsAsk_CUTTING_WORDS_ASK_ALL)
+	a, err := n.roll(t, 15, true)
+	if err != nil || !a.GetHeld() {
+		t.Fatalf("the first RollNpcCheck() = %v, %v; want a held check", a, err)
+	}
+	first, second := n.firstAsked(a), n.ana
+	if first == n.ana {
+		second = n.bia
+	}
+	master, asked, notAsked, elsewhere := listen(t, n.h, n.campaignID, n.master.id, true), listen(t, n.h, n.campaignID, first.id, false),
+		listen(t, n.h, n.campaignID, second.id, false), listen(t, n.h, n.campaignID, n.caio.id, false)
+	b, err := n.roll(t, 9, false)
+	if err != nil || b.GetHeld() || !b.GetCheck().GetSettled() || b.GetCheck().GetTotal() != 9 {
+		t.Fatalf("the second RollNpcCheck() = %v, %v; want a check settled at once", b, err)
+	}
+	if got := n.resolvedEvents(t); len(got) != 2 || !got[0].skipped || got[0].total != 15 || got[1].skipped || got[1].total != 9 {
+		t.Errorf("the resolved events = %+v, want the first check skipped at its 15, then the second settled at its 9", got)
+	}
+	for who, h := range map[string]heardBy{"the master": master, "the bard that was asked": asked} {
+		heard := false
+		for _, ev := range h.heard(t, n.h) {
+			heard = heard || ev.GetHeldRollsChanged() != nil
+		}
+		if !heard {
+			t.Errorf("%s heard no held rolls change", who)
+		}
+	}
+	for who, h := range map[string]heardBy{"the bard that was not asked": notAsked, "a player that is no bard": elsewhere} {
+		for _, ev := range h.heard(t, n.h) {
+			if ev.GetHeldRollsChanged() != nil {
+				t.Errorf("%s heard the held rolls change", who)
+			}
+		}
+	}
+}
+
 // TestGetNpcCheckReadsTheLatestRolledCheckNotTheLatestEvent: the check that was rolled last is the one GetNpcCheck reads, even when an
-// earlier check's resolved event has a higher seq (a settle written after the next roll, as it happens with two checks held at once).
+// earlier check's resolved event has a higher seq (a settle written after the next roll). The server cannot reach that order: a roll
+// settles the check still held before it writes its own event, so the hold_id clause of GetLatestNpcCheckEvent is defensive, and the test
+// moves the seq by hand to hold it.
 func TestGetNpcCheckReadsTheLatestRolledCheckNotTheLatestEvent(t *testing.T) {
 	t.Parallel()
 	n := newNpcTable(t, charactersv1.CuttingWordsAsk_CUTTING_WORDS_ASK_ALL)
