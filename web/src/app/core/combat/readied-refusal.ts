@@ -21,7 +21,7 @@ export function readiedRefusalText(
     err instanceof ConnectError &&
     err.code === Code.InvalidArgument
   ) {
-    return `Não deu para soltar a magia com essa escolha. Confira ${asked(plan)}. Dá para deixar passar.`;
+    return `Não deu para soltar a magia com essa escolha. Confira ${asked(plan)}. Deixar passar perde a magia e o espaço.`;
   }
   return combatErrorMessage(err, doing);
 }

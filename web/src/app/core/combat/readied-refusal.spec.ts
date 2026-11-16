@@ -25,7 +25,7 @@ describe('the refusal of the answer of a readied action (#582)', () => {
       planOf('darts'),
     );
     expect(text).toBe(
-      'Não deu para soltar a magia com essa escolha. Confira os alvos e os dardos. Dá para deixar passar.',
+      'Não deu para soltar a magia com essa escolha. Confira os alvos e os dardos. Deixar passar perde a magia e o espaço.',
     );
     // The answer carries the targets and the darts now: it must not say they are not sent.
     expect(text).not.toContain('ainda não envia');
@@ -47,7 +47,7 @@ describe('the refusal of the answer of a readied action (#582)', () => {
     const say = (plan?: ReleasePlan | null) =>
       readiedRefusalText(refused, held(ReadiedKind.SPELL), 'responder à reação', plan);
     const asked =
-      'Não deu para soltar a magia com essa escolha. Confira os alvos. Dá para deixar passar.';
+      'Não deu para soltar a magia com essa escolha. Confira os alvos. Deixar passar perde a magia e o espaço.';
     expect(say(planOf('single'))).toBe(asked);
     expect(say(planOf('multi'))).toBe(asked);
     expect(say(null)).toBe(asked);
