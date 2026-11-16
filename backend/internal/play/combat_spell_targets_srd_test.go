@@ -11,7 +11,7 @@ import (
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 )
 
-// Whom an SRD spell takes for a player the number of creatures, how close
+// Whom an SRD spell takes for a player: the number of creatures, how close
 // they must be to the first, and the spells that name no creature at all. These tests
 // need the database (MEURPG_TEST_DATABASE_URL).
 
