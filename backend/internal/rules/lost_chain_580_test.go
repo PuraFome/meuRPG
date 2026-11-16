@@ -97,3 +97,37 @@ func TestAFeatPickedThroughALostFeatsChoiceIsLostToo(t *testing.T) {
 		t.Errorf("initiative %d, want %d: the feat given by a lost feat gives nothing", d.Initiative, Derive(plain, c).Initiative)
 	}
 }
+
+// Two entries that wait for each other: options cannot (the table refuses the cycle at the first option), and a feat that
+// asks for the option its own choice offers, while it is lost for another condition, ends with both lost, each saying what
+// is true of the other, in one pass for each entry.
+func TestTwoEntriesThatNeedEachOtherAreRefusedOrEndLost(t *testing.T) {
+	t.Parallel()
+	const defense = "feature:ranger-fighting-style-defense"
+	feat := TableFeat{
+		TableEntry: TableEntry{Key: "feat:estilo-emprestado" + tableSuffix, NamePT: "Estilo emprestado"}, DescPT: []string{"Texto."},
+		Prerequisite: FeatPrerequisite{Level: 20, RequiresOptions: []string{defense}},
+		Effects:      []Effect{{Type: "choice", Choice: "feature", Count: 1, From: []string{defense}}},
+	}
+	c := withOverlay(t, Overlay{Revision: 1, Feats: []TableFeat{feat}})
+	b := postureBuild(3, defense)
+	b.Classes[0].Subclass = ""
+	b.Armor, b.Feats = "equipment:chain-mail", []string{feat.Key}
+	d, rounds := deriveRounds(b, c.c)
+	if got := lostKeys(d); !slices.Equal(got, []string{feat.Key, defense}) {
+		t.Fatalf("lost = %v, want the feat and the style it offers", got)
+	}
+	if rounds > 3 {
+		t.Errorf("the sheet was made %d times, want at most one for each entry and the first", rounds)
+	}
+	is, _ := lostIssueOf(d, feat.Key)
+	want := "Estilo emprestado pede nível 20, e Tor está no 3 e " + optionLabel(c.c.namePT(defense)) + ", que Tor não aplica agora: o talento só vale de novo quando Tor cumprir."
+	if got := is.Lost.SentencePT("Tor", false); got != want {
+		t.Errorf("the feat's sentence = %q, want %q", got, want)
+	}
+	style, _ := lostIssueOf(d, defense)
+	want = c.c.namePT(defense) + " pede o talento Estilo emprestado, que Tor não aplica agora: a opção só vale de novo quando Tor cumprir."
+	if got := style.Lost.SentencePT("Tor", false); got != want {
+		t.Errorf("the style's sentence = %q, want %q", got, want)
+	}
+}
