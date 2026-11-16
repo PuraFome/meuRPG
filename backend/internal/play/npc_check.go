@@ -382,7 +382,8 @@ func (c *npcCheckCall) creature(ctx context.Context, tx pgx.Tx) (link.Character,
 }
 
 // npcCheckNumbers is what the creature adds to each of the checks in keys, one option for each, in order: its stat block's number when it
-// is an SRD creature, its sheet's otherwise (read once for all the keys); an NPC typed by hand has none (Known false: it rolls +0).
+// is an SRD creature, its sheet's otherwise (one SceneOptions call for all the keys); an NPC typed by hand has none (Known false: it rolls +0).
+// A creature with a monster key is still read key by key (one CreatureCheck call for each).
 func (s *Service) npcCheckNumbers(ctx context.Context, tx pgx.Tx, campaignID string, npc link.Character, keys []string) ([]link.SceneOption, error) {
 	out := make([]link.SceneOption, len(keys))
 	if npc.MonsterKey != "" {

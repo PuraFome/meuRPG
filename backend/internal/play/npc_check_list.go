@@ -262,7 +262,9 @@ func (s *Service) monsterCandidate(ctx context.Context, campaignID, key string) 
 	return cand, true, s.fillChecks(ctx, campaignID, link.Character{MonsterKey: key}, cand)
 }
 
-// fillChecks lists the creature's checks with what it adds to each, the numbers read once for all the checks.
+// fillChecks lists the creature's checks with what it adds to each. The picker makes one SceneOptions call for each NPC of the table (all
+// its checks together); a creature with a monster key (an SRD creature, or an NPC made from one) is still read key by key, one CreatureCheck
+// call for each check.
 func (s *Service) fillChecks(ctx context.Context, campaignID string, c link.Character, cand *playv1.NpcCheckCandidate) error {
 	keys := cutting.CheckKeys()
 	opts, err := s.npcCheckNumbers(ctx, nil, campaignID, c, keys)
