@@ -141,8 +141,8 @@ export function conditionsText(e: CombatLogEntry): string {
 
 /** What a standard action reads as in the log, by its key. */
 export function actionText(e: CombatLogEntry): string {
-  // The heal a spell gives its caster (Toque Vampírico): the amount, and the spell it came from. Only who may read the
-  // numbers gets the damage, so the others read the plain line below.
+  // The heal a spell gives its caster (Toque Vampírico): the amount and the spell.
+  // Only who may read the numbers gets the damage, so the others read the plain line below.
   if (e.damage?.healing && e.key.startsWith('spell:')) {
     return ` recupera ${e.damage.amount} PV${e.keyNamePt ? ` (${e.keyNamePt})` : ''}`;
   }

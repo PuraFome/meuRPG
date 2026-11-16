@@ -16390,9 +16390,9 @@ test('a ficha com "A arma mudou." que o mestre lê na ficha do jogador passa no 
   await scanAxeTurnedTwoHanded(browser, 'dark', 1280, 'master');
 });
 
-/** The target step of a cast by how many creatures the spell takes (#953, #954): one (Desintegrar), two (Espirro Ácido), six
- * (Lentidão) and ten (Similaridade), a spell with no creature (Muralha de Energia), and a spell attack (Toque Chocante) with no
- * enemy in reach and then with one. */
+/** The target step of a cast by how many creatures the spell takes: one, two, six and ten.
+ * A spell with no creature.
+ * A spell attack with no enemy in reach, then with one. */
 async function scanSpellTargetScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = { width, height: 900 };
   const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
@@ -16401,14 +16401,14 @@ async function scanSpellTargetScreens(browser: Browser, colorScheme: 'light' | '
   const p = await player.newPage();
   const where = `(${colorScheme}, ${width}px)`;
   let campaignId = '';
-  const look = async (button: string, what: string) => {
-    await openActionTab(p, 'Magias');
+  const look = async (tab: 'Ataques' | 'Magias', button: string, what: string) => {
+    await openActionTab(p, tab);
     await p.getByRole('button', { name: button }).click();
     const sheet = p.getByRole('dialog', { name: button });
     await viaTargetList(p, sheet);
     await expect(sheet).toBeVisible();
     await expectScreenPasses(p, `${what} ${where}`);
-    await p.getByRole('button', { name: 'Fechar' }).click();
+    await sheet.getByRole('button', { name: 'Fechar' }).click();
     await expect(sheet).toHaveCount(0);
   };
   try {
@@ -16427,14 +16427,15 @@ async function scanSpellTargetScreens(browser: Browser, colorScheme: 'light' | '
     await openSessionPage(m, campaignId);
     await openSessionPage(p, campaignId);
 
-    await look('Atacar com Toque Chocante', 'Toque Chocante, nenhum inimigo ao alcance');
+    await look('Ataques', 'Atacar com Toque Chocante', 'Toque Chocante, nenhum inimigo ao alcance');
     await combatRPC(m, 'MoveCombatant', { campaignId, encounterId: begun.id, combatantId: pensantusId, col: 8, row: 9 });
-    await look('Atacar com Toque Chocante', 'Toque Chocante, um inimigo ao alcance');
-    await look('Conjurar Desintegrar', 'Alvos, uma criatura');
-    await look('Conjurar Espirro Ácido', 'Alvos, até duas criaturas');
-    await look('Conjurar Lentidão', 'Alvos, até seis criaturas');
-    await look('Conjurar Similaridade', 'Alvos, até dez criaturas');
-    await look('Conjurar Muralha de Energia', 'Magia sem criatura');
+    await openSessionPage(p, campaignId); // reload, so the state is not the stale one
+    await look('Ataques', 'Atacar com Toque Chocante', 'Toque Chocante, um inimigo ao alcance');
+    await look('Magias', 'Conjurar Desintegrar', 'Alvos, uma criatura');
+    await look('Ataques', 'Conjurar Espirro Ácido', 'Alvos, até duas criaturas');
+    await look('Magias', 'Conjurar Lentidão', 'Alvos, até seis criaturas');
+    await look('Magias', 'Conjurar Similaridade', 'Alvos, até dez criaturas');
+    await look('Magias', 'Conjurar Muralha de Energia', 'Magia sem criatura');
   } finally {
     if (campaignId) {
       await endOpenSessionRPC(m, campaignId);

@@ -195,7 +195,7 @@ describe('the refusal of a target too far', () => {
       missingFt: 15,
     } as never;
     expect(blockedMessage(blocked)).toBe(
-      `Longe demais: a distância passa do limite em ${metersText(15)}.`,
+      `Longe demais: a distância ultrapassa o limite em ${metersText(15)}.`,
     );
   });
 });
