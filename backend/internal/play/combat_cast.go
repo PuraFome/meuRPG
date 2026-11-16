@@ -49,7 +49,9 @@ type castCall struct {
 	// grantedBy is the source of the granted_spell effect that casts the spell; "" for the character's classes.
 	grantedBy string
 	targets   []castAim
-	release   string // the READIED window an answer casts for, which must be open; "" for a cast that is no answer
+	// answering says the cast is the answer of a READIED window (AnswerReaction "Usar"): the window must be open, else the
+	// spell is not cast for it. false for CastSpell and for a cast a window held.
+	answering bool
 	// in is how the dice come; rolled says the request sets them at all.
 	in     rollInput
 	rolled bool
@@ -151,12 +153,12 @@ type castOut struct {
 
 // castSpell is CastSpell for a member already authorized: the replay of a held action calls it
 // with the member who made the request (combat_reaction_hold.go).
-func (s *Service) castSpell(ctx context.Context, m authz.Membership, req *connect.Request[playv1.CastSpellRequest], release string) (*connect.Response[playv1.CastSpellResponse], error) {
+func (s *Service) castSpell(ctx context.Context, m authz.Membership, req *connect.Request[playv1.CastSpellRequest], answering bool) (*connect.Response[playv1.CastSpellResponse], error) {
 	call, err := readCastIDs(req.Msg)
 	if err != nil {
 		return nil, err
 	}
-	call.release = release
+	call.answering = answering
 	if call.spellKey == revivifyKey { // brings the dead back: its own target, its own checks (revivify.go)
 		return s.castRevivify(ctx, req)
 	}
@@ -383,17 +385,10 @@ func (f *castFlow) checkEnabled(ctx context.Context) error {
 // pickSlot checks the slot the caster chose and reads the spell as it is at that level, with the damage type
 // and the ability the caster picked.
 func (f *castFlow) pickSlot(ctx context.Context) error {
+	if err := f.readSpellAtSlot(ctx); err != nil {
+		return err
+	}
 	var err error
-	if f.slot, err = f.chosenSlot(); err != nil {
-		return err
-	}
-	f.slotLevel = int(f.cast.level)
-	if f.slot != nil {
-		f.slotLevel = int(f.slot.Level)
-	}
-	if f.sp, err = f.s.roster.GrantedCombatSpell(ctx, f.c.tx, f.m.CampaignID, f.caster.CharacterID, f.call.spellKey, f.call.grantedBy, f.slotLevel, f.req.GetDamageTypeKey()); err != nil {
-		return err
-	}
 	if f.abilityKey, err = f.s.abilityChoiceOf(ctx, f.c, f.call.spellKey, f.req.GetAbilityKey()); err != nil {
 		return err
 	}
@@ -404,6 +399,21 @@ func (f *castFlow) pickSlot(ctx context.Context) error {
 		return connect.NewError(connect.CodeInvalidArgument, errors.New("damage_type_key must be one of the damage types of a spell that lets the caster choose"))
 	}
 	return nil
+}
+
+// readSpellAtSlot checks the slot the caster chose and reads the spell as it is at that level, with the damage type the
+// caster picked.
+func (f *castFlow) readSpellAtSlot(ctx context.Context) error {
+	var err error
+	if f.slot, err = f.chosenSlot(); err != nil {
+		return err
+	}
+	f.slotLevel = int(f.cast.level)
+	if f.slot != nil {
+		f.slotLevel = int(f.slot.Level)
+	}
+	f.sp, err = f.s.roster.GrantedCombatSpell(ctx, f.c.tx, f.m.CampaignID, f.caster.CharacterID, f.call.spellKey, f.call.grantedBy, f.slotLevel, f.req.GetDamageTypeKey())
+	return err
 }
 
 // applyTableOptions gives the spell what the options of the caster's table features change in its damage.

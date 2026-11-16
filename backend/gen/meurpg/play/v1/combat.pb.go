@@ -1043,6 +1043,10 @@ const (
 	// RollAttack: the attack fires ammunition (a bow, a crossbow, a sling, a blowgun) and the character has a count for the kind
 	// (a row, even at 0) with none left. Nothing is written. A kind with no count is not counted and the shot goes. The melee line of the weapon, and a thrown weapon, spend no ammunition.
 	EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_AMMUNITION_EMPTY EncounterBlockedReason = 145
+	// ReadyService.ReadyAction: the spell asks for a choice that only a cast on the caster's turn carries and the READIED window's
+	// answer does not: a point or a direction on a map, an ability, a damage type, the creatures of a summon, or the dead creature of a
+	// revival. Held, it could only be let pass. Nothing is spent.
+	EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_READY_SPELL_NOT_RELEASABLE EncounterBlockedReason = 148
 )
 
 // Enum value maps for EncounterBlockedReason.
@@ -1174,6 +1178,7 @@ var (
 		142: "ENCOUNTER_BLOCKED_REASON_MOUNT_ACTION_LIMITED",
 		143: "ENCOUNTER_BLOCKED_REASON_MOUNT_SAVE_PENDING",
 		145: "ENCOUNTER_BLOCKED_REASON_AMMUNITION_EMPTY",
+		148: "ENCOUNTER_BLOCKED_REASON_READY_SPELL_NOT_RELEASABLE",
 	}
 	EncounterBlockedReason_value = map[string]int32{
 		"ENCOUNTER_BLOCKED_REASON_UNSPECIFIED":                      0,
@@ -1302,6 +1307,7 @@ var (
 		"ENCOUNTER_BLOCKED_REASON_MOUNT_ACTION_LIMITED":             142,
 		"ENCOUNTER_BLOCKED_REASON_MOUNT_SAVE_PENDING":               143,
 		"ENCOUNTER_BLOCKED_REASON_AMMUNITION_EMPTY":                 145,
+		"ENCOUNTER_BLOCKED_REASON_READY_SPELL_NOT_RELEASABLE":       148,
 	}
 )
 
@@ -26997,7 +27003,7 @@ type AnswerReactionRequest struct {
 	// READIED, a readied spell: the targets with the darts of each (Magic Missile,
 	// Scorching Ray), as CastSpellRequest.targets. It replaces creature_ids; the two
 	// together are `invalid_argument`. The server checks them as CastSpell does.
-	Targets       []*SpellTarget `protobuf:"bytes,14,rep,name=targets,proto3" json:"targets,omitempty"` // Field numbers 12, 13, 15 and 16 are held by the orchestrator's number ledger.
+	Targets       []*SpellTarget `protobuf:"bytes,14,rep,name=targets,proto3" json:"targets,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -31990,7 +31996,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x14COMBATANT_STATE_DOWN\x10\x05\x12\x19\n" +
 	"\x15COMBATANT_STATE_DYING\x10\x06\x12\x1a\n" +
 	"\x16COMBATANT_STATE_STABLE\x10\a\x12\x18\n" +
-	"\x14COMBATANT_STATE_DEAD\x10\b*\xe3/\n" +
+	"\x14COMBATANT_STATE_DEAD\x10\b*\x9d0\n" +
 	"\x16EncounterBlockedReason\x12(\n" +
 	"$ENCOUNTER_BLOCKED_REASON_UNSPECIFIED\x10\x00\x123\n" +
 	"/ENCOUNTER_BLOCKED_REASON_ENCOUNTER_ALREADY_OPEN\x10\x01\x12+\n" +
@@ -32118,7 +32124,8 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	",ENCOUNTER_BLOCKED_REASON_NO_ROOM_TO_DISMOUNT\x10\x8d\x01\x122\n" +
 	"-ENCOUNTER_BLOCKED_REASON_MOUNT_ACTION_LIMITED\x10\x8e\x01\x120\n" +
 	"+ENCOUNTER_BLOCKED_REASON_MOUNT_SAVE_PENDING\x10\x8f\x01\x12.\n" +
-	")ENCOUNTER_BLOCKED_REASON_AMMUNITION_EMPTY\x10\x91\x01*\x91\x03\n" +
+	")ENCOUNTER_BLOCKED_REASON_AMMUNITION_EMPTY\x10\x91\x01\x128\n" +
+	"3ENCOUNTER_BLOCKED_REASON_READY_SPELL_NOT_RELEASABLE\x10\x94\x01*\x91\x03\n" +
 	"\x1aFamiliarSightBlockedReason\x12-\n" +
 	")FAMILIAR_SIGHT_BLOCKED_REASON_UNSPECIFIED\x10\x00\x12-\n" +
 	")FAMILIAR_SIGHT_BLOCKED_REASON_NO_FAMILIAR\x10\x01\x12,\n" +

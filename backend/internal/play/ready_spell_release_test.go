@@ -186,6 +186,8 @@ func TestAReadiedAreaReleasedWithNoTargetsIsNotAimedAtTheCreatureNamedAtReady(t 
 
 // A readied Sleep on a map is placed at a point, which the answer never carries (CastSpell does): the answer is
 // refused, with targets or without, and the window stays open. The targets are never dropped for the creatures in the area.
+// Ready refuses such a spell (READY_SPELL_NOT_RELEASABLE), so the row is made by hand: it is the answer's own guard, which
+// stays as a defence in depth for a row the server did not write, that this test holds.
 func TestAReadiedAreaOnAMapIsNotReleasedByTheAnswer(t *testing.T) {
 	t.Parallel()
 	for name, set := range map[string]func(*testing.T, *armed) func(*playv1.AnswerReactionRequest){
@@ -198,7 +200,8 @@ func TestAReadiedAreaOnAMapIsNotReleasedByTheAnswer(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			a := newCasters(t)
-			e := a.readyForRelease(t, sleepSpell, 1, "")
+			e := a.readyForRelease(t, magicMissileSpell, 1, "")
+			a.execSQL(t, `UPDATE readied_actions SET action_key = $1 WHERE status = 'waiting'`, sleepSpell)
 			w := a.mustFire(t, e, "Pensantus")
 			_, err := a.answerReaction(t, a.ana, e, w.GetId(), set(t, a))
 			wantCode(t, "Sleep placed on a map, answered "+name, err, connect.CodeInvalidArgument)

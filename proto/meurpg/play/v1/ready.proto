@@ -33,7 +33,8 @@ service ReadyService {
   //     other refusals of a turn; READY_TRIGGER (an empty trigger, or one longer than 200 characters); READY_ACTION (an
   //     attack the combatant does not have, a spell attack as an ATTACK, a standard action that cannot be held (Attack,
   //     Cast a Spell, Ready, Hide, Help, Dash, Disengage), a move in a combat without a map or with no speed, a spell
-  //     with no key, or an action readied already); READY_SPELL_TIME (a spell whose casting time is not 1 action); the refusals of CastSpell
+  //     with no key, or an action readied already); READY_SPELL_TIME (a spell whose casting time is not 1 action); READY_SPELL_NOT_RELEASABLE (a spell the window cannot release:
+  //     it asks a point or a direction on a map, an ability, a damage type, a summon's creatures or a revival); the refusals of CastSpell
   //     for the spell (NO_SLOT, a spell the caster does not have or a slot that does not fit as `invalid_argument`).
   //     Nothing is spent.
   //

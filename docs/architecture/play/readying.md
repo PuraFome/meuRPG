@@ -158,6 +158,8 @@ Its row has no `spell_cast_id` (`heldSpellAttackRow`), and its release is `RollA
 As an `attack` it is refused (`READY_ACTION`): it would hold no concentration.
 A pact slot is spent only when no plain slot of that level is free.
 Targets and range are checked at the release, not at Ready.
+Ready refuses with `READY_SPELL_NOT_RELEASABLE` a spell the window cannot release, decided by what the spell is (`checkReadyReleasable`, never a list of keys): one that summons, that holds an ability or a damage type the caster picks, that revives, or that is placed at a point or in a direction on a map.
+Nothing is spent; the answer carries none of those choices, so the spell could only be let pass.
 Ready spends the slot and the action, and notes the spell cast this turn.
 It sets the readier's concentration to the sentinel `readied` (`concentrationReadied`), even for a spell without concentration.
 A previous concentration ends there, with its line and its dismissed creatures, as a new concentration spell ends it.
@@ -179,6 +181,7 @@ In a combat with no map the area is released with the creatures the answer picks
 The Ready sheet offers the spells the window releases with darts, creatures or nothing.
 It shows with a reason, and does not offer, a spell that asks the caster an ability (Enhance Ability), the creatures of a summon (Conjure Animals) or a damage type (Flame Strike): the answer carries no `ability_key`, `summon` or `damage_type_key`.
 The sheet reads them as the cast sheet does: `needsAbility`, the summon options of the character and the `damage_choice` of the spell's details.
+The server refuses the same spells at Ready, so a client that does not offer them is not the only guard.
 While the row waits, `GetTurnOptions.spell_targets` of its readier also lists the targets of the held spell (`heldEntry`), with the darts of its slot, so the window can show them.
 It does so only off the readier's turn, where the window opens and no ordinary entry is listed: on the turn a second action (Action Surge) could list the same spell twice, with nothing to tell the entries apart.
 A held spell attack lists none.
