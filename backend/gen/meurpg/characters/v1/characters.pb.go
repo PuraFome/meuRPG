@@ -4152,8 +4152,14 @@ type SheetConsumable struct {
 	HealDiceCount int32 `protobuf:"varint,3,opt,name=heal_dice_count,json=healDiceCount,proto3" json:"heal_dice_count,omitempty"`
 	HealDiceSides int32 `protobuf:"varint,4,opt,name=heal_dice_sides,json=healDiceSides,proto3" json:"heal_dice_sides,omitempty"`
 	HealBonus     int32 `protobuf:"varint,5,opt,name=heal_bonus,json=healBonus,proto3" json:"heal_bonus,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// The title of the lasting effect a use leaves on the receiver ("Resistência a fogo"), as CharacterEffect.title_pt gives it for
+	// the same potion drunk. Empty when the use starts no lasting effect (a healing potion, an oil, a scroll, an item that is only text).
+	EffectTitlePt string `protobuf:"bytes,6,opt,name=effect_title_pt,json=effectTitlePt,proto3" json:"effect_title_pt,omitempty"`
+	// The whole length of that effect as a sentence part ("por 1 hora"), as CharacterEffect.total_duration_text_pt gives it for the
+	// same potion drunk. Empty when the use starts no lasting effect.
+	EffectDurationTextPt string `protobuf:"bytes,7,opt,name=effect_duration_text_pt,json=effectDurationTextPt,proto3" json:"effect_duration_text_pt,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
 }
 
 func (x *SheetConsumable) Reset() {
@@ -4219,6 +4225,20 @@ func (x *SheetConsumable) GetHealBonus() int32 {
 		return x.HealBonus
 	}
 	return 0
+}
+
+func (x *SheetConsumable) GetEffectTitlePt() string {
+	if x != nil {
+		return x.EffectTitlePt
+	}
+	return ""
+}
+
+func (x *SheetConsumable) GetEffectDurationTextPt() string {
+	if x != nil {
+		return x.EffectDurationTextPt
+	}
+	return ""
 }
 
 // ItemRecharge is the catalog's charge rules of one item (SRD 5.1: each wand, staff, ring and
@@ -14709,14 +14729,16 @@ const file_meurpg_characters_v1_characters_proto_rawDesc = "" +
 	"\rspell_name_pt\x18\x10 \x01(\tR\vspellNamePt\x12E\n" +
 	"\n" +
 	"consumable\x18\x11 \x01(\v2%.meurpg.characters.v1.SheetConsumableR\n" +
-	"consumable\"\xdd\x01\n" +
+	"consumable\"\xbc\x02\n" +
 	"\x0fSheetConsumable\x128\n" +
 	"\x04kind\x18\x01 \x01(\x0e2$.meurpg.characters.v1.ConsumableKindR\x04kind\x12!\n" +
 	"\fcosts_action\x18\x02 \x01(\bR\vcostsAction\x12&\n" +
 	"\x0fheal_dice_count\x18\x03 \x01(\x05R\rhealDiceCount\x12&\n" +
 	"\x0fheal_dice_sides\x18\x04 \x01(\x05R\rhealDiceSides\x12\x1d\n" +
 	"\n" +
-	"heal_bonus\x18\x05 \x01(\x05R\thealBonus\"\xc7\x02\n" +
+	"heal_bonus\x18\x05 \x01(\x05R\thealBonus\x12&\n" +
+	"\x0feffect_title_pt\x18\x06 \x01(\tR\reffectTitlePt\x125\n" +
+	"\x17effect_duration_text_pt\x18\a \x01(\tR\x14effectDurationTextPt\"\xc7\x02\n" +
 	"\fItemRecharge\x12:\n" +
 	"\x04kind\x18\x01 \x01(\x0e2&.meurpg.characters.v1.ItemRechargeKindR\x04kind\x12\x1f\n" +
 	"\vregain_dice\x18\x02 \x01(\tR\n" +
