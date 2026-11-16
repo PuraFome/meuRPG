@@ -1149,6 +1149,9 @@ func CheckLevelUp(before, after Build, c *Content) error {
 // excused only by a swap of a table feature's options that ch sent for it (or by the warlock's invocation swap), not
 // by one the offer merely allows.
 func CheckLevelUpOf(before, after Build, ch LevelUpChoices, c *Content) error {
+	if ch.SwapInvocation != "" && ch.Class != classWarlock {
+		return refuse(levelUpChoicesField, LevelUpReasonFeatureChoice, "an option was removed")
+	}
 	if err := checkLevelUp(before, after, sentSwaps{known: true, swaps: ch.FeatureSwaps}, c.c); err != nil {
 		return err
 	}
