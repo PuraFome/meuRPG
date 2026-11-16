@@ -628,10 +628,10 @@ func (f *castFlow) holdForWindow(ctx context.Context) (bool, error) {
 	if f.sp.FeatureSummon {
 		return false, nil // a feature's summon is no spell to counter
 	}
-	if err := f.checkFavorHeld(ctx); err != nil { // the replay would refuse it: refuse it now, before anything is held
+	if err := f.heldBlocked(ctx); err != nil {
 		return false, err
 	}
-	if err := f.heldBlocked(ctx); err != nil {
+	if err := f.checkFavorHeld(ctx); err != nil { // the replay would refuse it: refuse it now, before anything is held
 		return false, err
 	}
 	held, ok, err := f.s.holdCast(ctx, f.c, f.m, f.req, f.cs, f.caster, f.call.spellKey, int32(f.slotLevel), f.targs, f.sp.AttackType != "") //nolint:gosec // a slot level, 0 to 9

@@ -464,13 +464,18 @@ func TestASpellAttackIsRefusedWhileTheCastersOtherQuestionWaits(t *testing.T) {
 		t.Fatalf("the first CastSpell() = %v, %v; want the die's question", first, err)
 	}
 	a.setRules(t, enemyReactionsAlways)
-	_, err = a.cast(t, a.ana, c.e, "Pensantus", acidArrow, slotOfLevel(2), a.at(t, "Goblin"), d20Face(12))
+	before := a.stableVitals(t)
+	// The spend of an Inspiração the caster has none of would be refused too, but the open question comes first, as it does for an attack.
+	_, err = a.cast(t, a.ana, c.e, "Pensantus", acidArrow, slotOfLevel(2), a.at(t, "Goblin"), func(r *playv1.CastSpellRequest) { d20Face(12)(r); r.SpendFavor = true })
 	wantResourceBlocked(t, err, playv1.ResourceBlockedReason_RESOURCE_BLOCKED_REASON_INSPIRATION_PENDING)
 	if w := a.windowOf(t, a.master, playv1.ReactionKind_REACTION_KIND_MASTER_CHECK); w != nil {
 		t.Errorf("the refused cast left the window %v", w)
 	}
 	if byLabel(t, a.get(t, a.ana), "Pensantus").GetActionUsed() {
 		t.Error("the action was spent by a cast that waits")
+	}
+	if got := a.stableVitals(t); got != before {
+		t.Errorf("the refused cast changed her vitals (slots, resources, hit points):\nbefore %s\nafter  %s", before, got)
 	}
 	if n := a.countOf(t, `SELECT count(*) FROM inspiration_holds WHERE answer_key IS NULL`); n != 1 {
 		t.Errorf("open questions = %d, want the first alone", n)
@@ -520,4 +525,12 @@ func TestACounterspelledSpellAttackAsksNothingAndRollsNothing(t *testing.T) {
 	if n := a.countOf(t, `SELECT count(*) FROM combatants WHERE id = $1 AND inspiration_sides IS NOT NULL`, a.id(t, "Brisa")); n != 1 {
 		t.Error("the countered cast used Brisa's die")
 	}
+}
+
+// stableVitals is Pensantus's vitals as JSON, without what moves by itself (the revision and the time), to see a refused change left them alone.
+func (a *armed) stableVitals(t *testing.T) string {
+	t.Helper()
+	v := a.vitals(t, a.pens)
+	v.Revision, v.UpdatedAt = 0, nil
+	return asJSON(t, v)
 }
