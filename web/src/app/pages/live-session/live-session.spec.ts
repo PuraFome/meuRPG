@@ -593,10 +593,10 @@ describe('LiveSession', () => {
       expect(resources.listHeldRolls.mock.calls.length).toBeGreaterThan(reads);
     });
 
-    it('does not list them for a player', async () => {
+    it('does not show the master’s panel to a player, whose only read is the NPC check question of the bards (#591)', async () => {
       const el = await render();
       expect(el.querySelector('app-held-rolls-panel')).toBeNull();
-      expect(resources.listHeldRolls).not.toHaveBeenCalled();
+      expect(el.querySelector('app-npc-cut-host')).not.toBeNull();
     });
   });
 
