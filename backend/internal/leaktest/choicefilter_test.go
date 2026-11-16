@@ -13,6 +13,7 @@ import (
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
+	"github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1/rulesv1connect"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
@@ -399,5 +400,34 @@ func (td *tides) expectNone(t *testing.T, what string, body []byte, keys, names 
 		if strings.Contains(string(body), n) {
 			t.Errorf("%s name the option %q the table keeps out", what, n)
 		}
+	}
+}
+
+// The entries a player lists name no feature of a class the table keeps out: the asking choice of another class carries
+// no key of it. The master reads the key.
+func TestTheEntriesAPlayerListsNameNoFeatureOfAnEntryTheTableKeepsOut(t *testing.T) {
+	for _, way := range tideWays[:2] {
+		t.Run(way, func(t *testing.T) {
+			td := newTides(t, way)
+			w := td.p.w
+			list := &rulesv1.ListTableEntriesRequest{CampaignId: w.campaign}
+			if r := w.master.call(rulesv1connect.TableContentServiceListTableEntriesProcedure, list); !r.ok() || !strings.Contains(string(r.body), td.feature) {
+				t.Fatalf("the master's entries before the table closes the class: HTTP %d, want the feature %s named", r.status, td.feature)
+			}
+			td.close(t)
+			if r := w.master.call(rulesv1connect.TableContentServiceListTableEntriesProcedure, list); !r.ok() || !strings.Contains(string(r.body), td.feature) {
+				t.Errorf("the master's entries: HTTP %d, want the feature %s named", r.status, td.feature)
+			}
+			for _, who := range []*person{w.ana, w.caio} {
+				r := who.call(rulesv1connect.TableContentServiceListTableEntriesProcedure, list)
+				if !r.ok() {
+					t.Errorf("%s: HTTP %d %s", who.name, r.status, shorten(r.body))
+					continue
+				}
+				if strings.Contains(string(r.body), td.feature) || !strings.Contains(string(r.body), td.asking) {
+					t.Errorf("%s: the entries name the feature %s (or leave out the asking class %s)", who.name, td.feature, td.asking)
+				}
+			}
+		})
 	}
 }
