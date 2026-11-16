@@ -184,15 +184,18 @@ describe('ContentList', () => {
   describe('the active kind of the strip', () => {
     const scrolled = vi.fn();
     const proto = HTMLElement.prototype;
-    const original = proto.scrollIntoView;
     let wide = true;
 
     beforeEach(() => {
       wide = true;
       scrolled.mockReset();
-      proto.scrollIntoView = function (this: HTMLElement, arg?: boolean | ScrollIntoViewOptions) {
+      // The mock of Element.prototype that test-setup.ts gives every test: the strip's scrolls are told to `scrolled`.
+      vi.mocked(Element.prototype.scrollIntoView).mockImplementation(function (
+        this: Element,
+        arg?: boolean | ScrollIntoViewOptions,
+      ) {
         scrolled(this, arg);
-      };
+      });
       for (const k of ['scrollWidth', 'clientWidth']) {
         Object.defineProperty(proto, k, {
           configurable: true,
@@ -201,7 +204,6 @@ describe('ContentList', () => {
       }
     });
     afterEach(() => {
-      proto.scrollIntoView = original;
       for (const k of ['scrollWidth', 'clientWidth']) {
         delete (proto as unknown as Record<string, unknown>)[k];
       }
