@@ -127,10 +127,12 @@ func newTides(t *testing.T, way string) *tides {
 	switch way {
 	case tideWays[0]:
 		td.close = func(t *testing.T) {
+			t.Helper()
 			must(w.master.table.SetOptionSwitches(t.Context(), rq(&rulesv1.SetOptionSwitchesRequest{CampaignId: w.campaign, Switches: []*rulesv1.OptionSwitch{{Key: source.GetKey(), Off: true}}})))
 		}
 	case tideWays[1]:
 		td.close = func(t *testing.T) {
+			t.Helper()
 			must(w.master.table.ArchiveTableEntry(t.Context(), rq(&rulesv1.ArchiveTableEntryRequest{CampaignId: w.campaign, Key: source.GetKey()})))
 		}
 	default:
@@ -141,6 +143,7 @@ func newTides(t *testing.T, way string) *tides {
 		}))).GetEntry()
 		td.out, td.names = []string{extra.GetKey()}, []string{"Maré Cheia"}
 		td.close = func(t *testing.T) {
+			t.Helper()
 			must(w.master.table.SetOptionSwitches(t.Context(), rq(&rulesv1.SetOptionSwitchesRequest{CampaignId: w.campaign, Switches: []*rulesv1.OptionSwitch{{Key: extra.GetKey(), Off: true}}})))
 		}
 	}
@@ -350,7 +353,7 @@ func (td *tides) checkHeldPick(t *testing.T, holder *charactersv1.Character) {
 		t.Fatalf("the level-up of the sheet that holds %s: %v", td.live, err)
 	}
 	if !slices.Contains(level.Msg.GetCharacter().GetSheet().GetFull().GetFeatureChoiceKeys(), td.live) {
-		t.Errorf("the levelled sheet lost the pick %s", td.live)
+		t.Errorf("the sheet at the next level lost the pick %s", td.live)
 	}
 	// A live option is taken by a sheet that does not hold it, where the table keeps none out of the offer.
 	if td.liveStays {

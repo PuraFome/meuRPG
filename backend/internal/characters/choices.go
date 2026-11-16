@@ -544,24 +544,33 @@ func applyChoicePicksFor(content, view *rules.Content, full *charactersv1.FullSh
 // withoutKeptOut takes out of the choices that offer the options of another feature the options that the reader's
 // view keeps out of their pools: the choices stay as they are, and a pick of one of those options is not one they list.
 func withoutKeptOut(set rules.ChoiceSet, view *rules.Content, b rules.Build) rules.ChoiceSet {
-	shown := map[string][]string{}
-	for _, g := range view.Choices(b).Groups {
-		for _, ch := range g.Choices {
-			if view.AsksOptionsOf(ch.Key) {
-				for _, o := range ch.Options {
-					shown[ch.Key] = append(shown[ch.Key], o.Key)
-				}
-			}
-		}
-	}
+	shown := shownOptions(view, b)
 	for _, g := range set.Groups {
 		for i, ch := range g.Choices {
-			if keys, ok := shown[ch.Key]; ok || view.AsksOptionsOf(ch.Key) {
+			if keys, ok := shown[ch.Key]; ok {
 				g.Choices[i].Options = slices.DeleteFunc(slices.Clone(ch.Options), func(o rules.ChoiceOption) bool { return !slices.Contains(keys, o.Key) })
 			}
 		}
 	}
 	return set
+}
+
+// shownOptions are the keys of the options the view lists in each choice that offers the options of another feature,
+// each such choice named even when it lists none.
+func shownOptions(view *rules.Content, b rules.Build) map[string][]string {
+	shown := map[string][]string{}
+	for _, g := range view.Choices(b).Groups {
+		for _, ch := range g.Choices {
+			if !view.AsksOptionsOf(ch.Key) {
+				continue
+			}
+			shown[ch.Key] = []string{}
+			for _, o := range ch.Options {
+				shown[ch.Key] = append(shown[ch.Key], o.Key)
+			}
+		}
+	}
+	return shown
 }
 
 // applyChoicePick checks one pick against its open choice and returns the choice and

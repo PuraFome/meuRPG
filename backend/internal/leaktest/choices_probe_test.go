@@ -133,12 +133,6 @@ func keyless(body []byte, key string) string {
 	return strings.ReplaceAll(encodedDetail.ReplaceAllString(string(body), ""), key, "K")
 }
 
-// createClassShowing is createClass that says why the table refuses the class.
-func (p *choicesProbe) createClassShowing(t *testing.T, c *rulesv1.TableClass) string {
-	t.Helper()
-	return p.createEntry(t, c).GetKey()
-}
-
 // createEntry creates the class and gives the entry.
 func (p *choicesProbe) createEntry(t *testing.T, c *rulesv1.TableClass) *rulesv1.TableEntry {
 	t.Helper()
