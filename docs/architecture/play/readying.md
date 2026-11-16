@@ -115,9 +115,10 @@ That happens when the readier is defeated or incapacitated, spends its reaction 
 A change that ends the row (a held spell broken, a readier defeated) closes its window in the same call, a correction to 0 hit points too: the table does not wait for it.
 
 The automatic pass of 30 s counts on the master's screen from when the window opened.
-It can pass a window whose player is still choosing a square for a move, or a target: the row is then ignored.
+A window the readier's player has not touched passes by itself after 30 s, even while the player is choosing a square for a move or a target: the row is then ignored.
 The readier's player touching the list of creatures or the darts of the window for the first time marks it as being rolled (`MarkReactionRolling`, once), as the dice step of the other optional reactions does: the master's clock then waits 2 minutes instead of 30 s, and the prompt says so.
-The master's own touch does not mark it: the mark is the reactor player's alone.
+The master's own touch does not mark it: the mark is the reactor player's alone, and the server refuses the master's.
+So the master's queue row does not mark the window, and a master choosing darts for the player has the ordinary 30 s.
 
 ## The reaction
 
