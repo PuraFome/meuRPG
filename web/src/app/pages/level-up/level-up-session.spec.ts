@@ -8,6 +8,10 @@ import {
   LevelUpOptionsSchema,
   type LevelUpOptions,
 } from '../../../gen/meurpg/characters/v1/characters_pb';
+import {
+  LevelUpNamedKeySchema,
+  LevelUpSwapGroupSchema,
+} from '../../../gen/meurpg/characters/v1/characters_pb';
 import { PactMagicSchema } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { LevelUpDraft } from '../../core/levelup/levelup-draft';
 import {
@@ -171,5 +175,28 @@ describe('LevelUpSession', () => {
     expect(s.rollOtherClass()).toContain('O dado deste nível já foi rolado para outra classe (4)');
     void s.rollInApp();
     expect(client.rollHitPoints).not.toHaveBeenCalled();
+  });
+
+  it('adds a row for each whole swap to the changes of the side column and the summary', () => {
+    const named = (key: string, namePt: string) => create(LevelUpNamedKeySchema, { key, namePt });
+    const group = create(LevelUpSwapGroupSchema, {
+      group: 'feature:posturas@mesa',
+      namePt: 'Posturas',
+      picks: [named('a', 'Postura da Garça')],
+      pool: [named('b', 'Postura do Lobo')],
+    });
+    const s = session(opts({ swapGroups: [group] }));
+    const before = s.rows().length;
+    s.draft.swap.setGroup('feature:posturas@mesa');
+    s.draft.swap.setFrom('a');
+    expect(s.rows()).toHaveLength(before);
+    s.draft.swap.setTo('b');
+    expect(s.rows().at(-1)).toEqual({
+      key: 'swap:feature:posturas@mesa',
+      label: 'Posturas',
+      before: 'Postura da Garça',
+      after: 'Postura do Lobo',
+      sub: '',
+    });
   });
 });

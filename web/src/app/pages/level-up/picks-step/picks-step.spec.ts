@@ -38,7 +38,7 @@ describe('PicksStep: "Trocar uma escolha"', () => {
   it('shows the swap panel, with the table feature group, at a level without the ability step', () => {
     const el = render(false);
     expect(el.querySelector('app-swap-picker')).not.toBeNull();
-    expect(el.textContent).toContain('Trocar uma escolha');
+    expect(el.textContent).toContain('Trocar escolhas');
     expect(el.textContent).toContain('Infusões');
   });
 

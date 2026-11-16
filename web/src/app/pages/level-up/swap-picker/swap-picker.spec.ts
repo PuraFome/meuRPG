@@ -142,7 +142,10 @@ describe('LevelUpSwap and SwapPicker', () => {
       },
     ]);
     expect(swap.pick()).toBeUndefined();
-    expect(swap.summaries()).toEqual(['Trocar Escudo por Radiante', 'Trocar X por Y']);
+    expect(swap.rows()).toEqual([
+      { key: `swap:${FEATURE}`, label: 'Infusões', before: 'Escudo', after: 'Radiante', sub: '' },
+      { key: 'swap:feature:outra@mesa', label: 'Outra', before: 'X', after: 'Y', sub: '' },
+    ]);
   });
 
   it('tells a table feature group from a rule group by the feature: key, and sends them apart', () => {
@@ -227,7 +230,97 @@ describe('LevelUpSwap and SwapPicker', () => {
     expect(
       Array.from(el.querySelectorAll('label'))
         .find((l) => l.textContent?.includes('Infusões'))
-        ?.classList.contains('opt--on'),
+        ?.classList.contains('opt--open'),
     ).toBe(false);
+  });
+
+  it('lists the chosen swaps under the group chips, one line each, and says they count when the level is confirmed', () => {
+    const swap = bothOf();
+    const fixture = render(swap);
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.textContent).not.toContain('Trocas escolhidas');
+    swap.setGroup(FEATURE);
+    swap.setFrom(`${FEATURE}:Escudo`);
+    swap.setTo(`${FEATURE}:Radiante`);
+    swap.setGroup('feature:outra@mesa');
+    swap.setFrom('feature:outra@mesa:X');
+    fixture.detectChanges();
+    expect(el.querySelectorAll('.chosen__row')).toHaveLength(1);
+    swap.setTo('feature:outra@mesa:Y');
+    fixture.detectChanges();
+    const lines = Array.from(el.querySelectorAll('.chosen__row')).map((l) =>
+      l.textContent?.replace(/\s+/g, ' ').trim(),
+    );
+    expect(lines).toEqual(['Infusões: Escudo → Radiante', 'Outra: X → Y']);
+    expect(el.querySelector('.chosen__note')?.textContent).toBe('Vale ao confirmar o nível.');
+    expect(el.querySelector('#swap-chosen')?.textContent).toBe('Trocas escolhidas');
+  });
+
+  it('checks a group only when it has a swap, marks an open group by border and fill, and tags what leaves and what comes', () => {
+    const swap = bothOf();
+    const fixture = render(swap);
+    const el = fixture.nativeElement as HTMLElement;
+    const label = (text: string) =>
+      Array.from(el.querySelectorAll('label')).find((l) => l.textContent?.includes(text))!;
+    expect(label('Não trocar').classList.contains('opt--done')).toBe(true);
+    radio(el, 'swap-group', 'Infusões').click();
+    fixture.detectChanges();
+    expect(label('Infusões').classList.contains('opt--open')).toBe(true);
+    expect(label('Infusões').classList.contains('opt--done')).toBe(false);
+    expect(label('Não trocar').classList.contains('opt--done')).toBe(false);
+    radio(el, 'swap-from', 'Escudo').click();
+    radio(el, 'swap-to', 'Radiante').click();
+    fixture.detectChanges();
+    expect(label('Infusões').classList.contains('opt--done')).toBe(true);
+    const tag = (name: string, text: string) =>
+      label(text).closest(`[aria-labelledby="${name}"]`)?.querySelector('.opt__tag')?.textContent;
+    expect(tag('swap-from', 'Escudo')).toBe('sai');
+    expect(tag('swap-to', 'Radiante')).toBe('entra');
+    expect(label('Bumerangue').querySelector('.opt__tag')).toBeNull();
+  });
+
+  it('keeps the status region in the page before its text and gives the hint a bold lead', () => {
+    const swap = bothOf();
+    const fixture = render(swap);
+    const el = fixture.nativeElement as HTMLElement;
+    const status = el.querySelector('[role="status"]');
+    expect(status).not.toBeNull();
+    expect(status?.textContent?.trim()).toBe('');
+    swap.setGroup(FEATURE);
+    fixture.detectChanges();
+    expect(el.querySelector('[role="status"]')).toBe(status);
+    expect(status?.querySelector('strong')?.textContent).toBe('Falta escolher.');
+    expect(status?.textContent).toContain('abrir mão');
+    expect(status?.textContent).toContain('pegar no lugar');
+  });
+
+  it('does not let the same pick be given up in two groups', () => {
+    const shared = named('shared', 'Comum');
+    const group = (key: string, namePt: string) =>
+      create(LevelUpSwapGroupSchema, {
+        group: key,
+        namePt,
+        picks: [shared, named(`${key}:p`, `P ${namePt}`)],
+        pool: [named(`${key}:q`, `Q ${namePt}`)],
+      });
+    const swap = new LevelUpSwap(
+      create(LevelUpOptionsSchema, {
+        swapGroups: [group('feature:a@mesa', 'A'), group('feature:b@mesa', 'B')],
+      }),
+    );
+    swap.setGroup('feature:a@mesa');
+    swap.setFrom('shared');
+    swap.setGroup('feature:b@mesa');
+    expect(swap.givenUpElsewhere('shared')).toBe(true);
+    swap.setFrom('shared');
+    expect(swap.fromKey()).toBe('');
+    swap.setFrom('feature:b@mesa:p');
+    expect(swap.fromKey()).toBe('feature:b@mesa:p');
+    const fixture = render(swap);
+    const el = fixture.nativeElement as HTMLElement;
+    expect(radio(el, 'swap-from', 'Comum').disabled).toBe(true);
+    swap.setGroup('feature:a@mesa');
+    fixture.detectChanges();
+    expect(radio(el, 'swap-from', 'Comum').disabled).toBe(false);
   });
 });

@@ -6,6 +6,7 @@ import type {
   LevelUpSwapGroup,
 } from '../../../gen/meurpg/characters/v1/characters_pb';
 import type { LevelUpChoicesInit } from './levelup-client';
+import type { ChangeRow } from './levelup-summary-rows';
 
 /** One swap of one group: the pick to give up and the pick to take (either may still be empty). */
 interface Selection {
@@ -80,11 +81,21 @@ export class LevelUpSwap {
     swapFeatureOptions: this.featurePicks(),
   }));
 
-  /** "Trocar Defesa por Duelismo", one line for each whole swap. */
-  readonly summaries = computed<string[]>(() =>
+  /** One row for each whole swap, for the lists "O que muda até aqui" and the summary: the group, the pick given up → the pick taken. */
+  readonly rows = computed<ChangeRow[]>(() =>
     this.whole().flatMap((w) => {
       const g = this.groups().find((x) => x.group === w.group);
-      return g ? [`Trocar ${nameIn(g.picks, w.fromKey)} por ${nameIn(g.pool, w.toKey)}`] : [];
+      return g
+        ? [
+            {
+              key: `swap:${w.group}`,
+              label: g.namePt,
+              before: nameIn(g.picks, w.fromKey),
+              after: nameIn(g.pool, w.toKey),
+              sub: '',
+            },
+          ]
+        : [];
     }),
   );
 
@@ -98,6 +109,12 @@ export class LevelUpSwap {
   /** Whether the swap of this group is whole (the panel marks the group). */
   isWhole(group: string): boolean {
     return this.whole().some((w) => w.group === group);
+  }
+
+  /** The pick is already given up in another group: the same pick cannot leave twice. */
+  givenUpElsewhere(key: string): boolean {
+    const open = this.groupKey();
+    return Object.entries(this.selections()).some(([g, s]) => g !== open && s.from === key);
   }
 
   /** Some part of a swap was chosen: leaving the level then asks first. */
@@ -115,6 +132,9 @@ export class LevelUpSwap {
   }
 
   setFrom(key: string): void {
+    if (this.givenUpElsewhere(key)) {
+      return;
+    }
     this.choose('from', this.group()?.picks.some((p) => p.key === key) ? key : '');
   }
 
