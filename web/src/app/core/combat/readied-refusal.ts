@@ -21,7 +21,7 @@ export function readiedRefusalText(
     err instanceof ConnectError &&
     err.code === Code.InvalidArgument
   ) {
-    return `Não deu para soltar a magia com essa escolha. Confira ${asked(plan)}. Deixar passar perde a magia e o espaço.`;
+    return `Não deu para soltar a magia com essa escolha. Confira ${asked(plan)}. ${lossText(readied.slotLevel)}`;
   }
   return combatErrorMessage(err, doing);
 }
@@ -32,4 +32,9 @@ function asked(plan: ReleasePlan | null): string {
     return 'os alvos';
   }
   return plan.rule.rays ? 'os alvos e os raios' : 'os alvos e os dardos';
+}
+
+/** What passing costs: the spell, and the slot only when one was spent (a cantrip spent none). */
+function lossText(slotLevel: number): string {
+  return slotLevel > 0 ? 'Deixar passar perde a magia e o espaço.' : 'Deixar passar perde a magia.';
 }
