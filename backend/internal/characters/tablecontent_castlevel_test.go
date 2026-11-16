@@ -1,6 +1,7 @@
 package characters
 
 import (
+	"connectrpc.com/connect"
 	"testing"
 
 	"google.golang.org/protobuf/proto"
@@ -66,5 +67,26 @@ func TestMR025_ACastLevelRoundTripsThroughTheStoredRowAndThePack(t *testing.T) {
 	pt.apply(t, pt.to, pack, "")
 	if got := castLevelOf(pt.master.entries(t, pt.to)[made.GetKey()]); got != 4 {
 		t.Errorf("the imported entry has cast level %d, want 4", got)
+	}
+}
+
+// Raising the level of a table spell above the cast level of a grant of it is refused, at the grant's field in the
+// feat that is left behind with a cast level below the spell's own; the spell keeps its level.
+func TestMR025_RaisingATableSpellAboveAGrantsCastLevelIsRefused(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t)
+	master := h.newUser("Samuel")
+	campaign := h.newCampaign(master, "Mirathel")
+	spell := master.addEntry(t, campaign, testSpell("Raio de Teste", "class:wizard"))
+	master.addEntry(t, campaign, castLevelGrantFeat("Graça do raio", &rulesv1.TableEffect{Spell: spell.GetKey(), CastLevel: 2}))
+	higher := proto.Clone(spell.GetTableSpell()).(*rulesv1.TableSpell)
+	higher.Level = 3
+	_, err := master.table.UpdateTableEntry(t.Context(), connect.NewRequest(updateReq(campaign, spell.GetKey(), spell.GetRevision(), cloneWithKeys(higher, bodyMessage(spell)))))
+	vs := violationsOfErr(t, err)
+	if len(vs) != 1 || vs[0].GetField() != "table_feat.effects[0].cast_level" || vs[0].GetReason() != "bad_value" {
+		t.Fatalf("violations %v, want one at table_feat.effects[0].cast_level (bad_value)", vs)
+	}
+	if got := master.entries(t, campaign)[spell.GetKey()].GetTableSpell().GetLevel(); got != 1 {
+		t.Errorf("the spell has level %d after the refused edit, want 1", got)
 	}
 }
