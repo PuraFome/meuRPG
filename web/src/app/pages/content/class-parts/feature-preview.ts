@@ -13,6 +13,7 @@ import { type EntryRead as Read, featureItem } from '../../../core/content/conte
 import type { EffectMenuVm } from '../../../core/content/effect-draft';
 import type { LevelFeature } from '../../../core/content/class-draft';
 import { type FeatureDraft, draftToFeature } from '../../../core/content/feature-draft';
+import { featureForPlayers, hiddenFrom } from '../../../core/content/player-view';
 import { requirableOptions } from '../../../core/content/requirable-options';
 import { EntryRead } from '../entry-read/entry-read';
 
@@ -20,7 +21,7 @@ import { EntryRead } from '../entry-read/entry-read';
  * "Como os jogadores veem" for the open feature of a class or subclass (board 580-03): the name with "Da mesa", the choice it
  * asks ("Escolha 3 de 5 opções") and its options, each with the muted "Pede …" line. It is written by the functions of the
  * players' page (`featureItem`, `featChoiceRows`) from the feature as the save would send it, so an option with no name (not sent)
- * is not here, and the sentence of what an option asks is the one `optionAsksPhrase` words for every reader.
+ * is not here, a class, pact, spell or option that is off or archived is not named (the players' copy drops it), and the sentence of what an option asks is the one `optionAsksPhrase` words for every reader.
  */
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -85,7 +86,10 @@ export class FeaturePreview {
     if (!f) {
       return { rows: [], sections: [], text: [] };
     }
-    const sent = create(TableFeatureSchema, draftToFeature(f, this.menu()));
+    const sent = featureForPlayers(
+      create(TableFeatureSchema, draftToFeature(f, this.menu())),
+      hiddenFrom(this.entries()),
+    );
     const nameOf = askKeyNamer(
       f.options,
       this.catalog(),

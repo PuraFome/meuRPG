@@ -2,7 +2,10 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { create } from '@bufbuild/protobuf';
 
-import { TableContentKind, TableEntrySchema } from '../../../../gen/meurpg/rules/v1/table_content_pb';
+import {
+  TableContentKind,
+  TableEntrySchema,
+} from '../../../../gen/meurpg/rules/v1/table_content_pb';
 import { catalog } from '../../../core/content/content-testing';
 import { menu } from '../../../core/content/content-testing-menu';
 import { emptyEffect } from '../../../core/content/effect-draft';
@@ -91,8 +94,11 @@ describe('"Como os jogadores veem" for the open feature (#580, board 580-03)', (
   });
 
   describe('reads what a player reads: a class, pact, spell or option that is off or archived is not named (#580)', () => {
-    const entry = (key: string, kind: TableContentKind, over: { off?: boolean; archived?: boolean }) =>
-      create(TableEntrySchema, { key, kind, namePt: key, ...over });
+    const entry = (
+      key: string,
+      kind: TableContentKind,
+      over: { off?: boolean; archived?: boolean },
+    ) => create(TableEntrySchema, { key, kind, namePt: key, ...over });
     const asking = (): FeatureDraft => {
       const f = feature();
       f.options[1] = withAsks(f.options[1], {
