@@ -127,3 +127,90 @@ func TestAReadiedMoveStoppedAfterASquareIsTheUse(t *testing.T) {
 		t.Errorf("after the walk cut short: row %q, window open %v; want the use", a.readiedStatus(t, "Toren"), a.readiedOpen(t, "Toren"))
 	}
 }
+
+// What holds the release of a readied move back (a concentration save the readier owes, a question the master owes about a hidden
+// creature, the readier's surprise) holds the master's release_readied as it holds the player's, and does not touch the master's
+// plain walk of the token: that is a token moved, with none of the release's checks.
+func TestWhatHoldsTheReleaseDoesNotHoldTheMastersPlainWalk(t *testing.T) {
+	t.Parallel()
+	for _, tt := range []struct {
+		name string
+		hold func(t *testing.T, a *armed, e *playv1.Encounter)
+		want func(t *testing.T, err error)
+	}{
+		{"a concentration save", func(t *testing.T, a *armed, e *playv1.Encounter) {
+			a.execSQL(t, `INSERT INTO reaction_windows (encounter_id, group_id, kind, reactor_id, created_at)
+				VALUES ($1, gen_random_uuid(), 'concentration_save', $2, now())`, e.GetId(), a.id(t, "Toren"))
+		}, func(t *testing.T, err error) {
+			t.Helper()
+			wantBlockedBy(t, "the release while the save waits", err, blockedConcentrationPending)
+		}},
+		{"a hidden reveal", func(t *testing.T, a *armed, e *playv1.Encounter) {
+			a.execSQL(t, `INSERT INTO hidden_reveals (encounter_id, caster_id, spell_key, combatant_ids, origin_col, origin_row, seq, created_at)
+				VALUES ($1, $2, 'spell:burning-hands', ARRAY[$3::UUID], 1, 1, 1, now())`, e.GetId(), a.id(t, "Toren"), a.id(t, "Goblin"))
+		}, func(t *testing.T, err error) {
+			t.Helper()
+			wantBlockedBy(t, "the release while the master's question waits", err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_HIDDEN_REVEAL_PENDING)
+		}},
+		{"a surprise", func(t *testing.T, a *armed, e *playv1.Encounter) {
+			a.execSQL(t, `INSERT INTO combat_surprised (combatant_id, encounter_id, created_at) VALUES ($1, $2, now())`, a.id(t, "Toren"), e.GetId())
+			a.execSQL(t, `UPDATE combatants SET order_index = 99 WHERE label = 'Toren'`) // his first turn is still to come
+		}, func(t *testing.T, err error) {
+			t.Helper()
+			wantContestBlocked(t, "the release of a surprised readier", err, playv1.ContestBlockedReason_CONTEST_BLOCKED_REASON_SURPRISED)
+		}},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			a := newArmed(t)
+			e := a.readyMoveFrom(t, 1, 5)
+			a.mustFire(t, e, "Toren")
+			tt.hold(t, a, e)
+			before := a.events(t)
+			_, err := a.frozenMove(t, a.master, "Toren", 4, 5, release)
+			tt.want(t, err)
+			if n := a.events(t); n != before || a.squareOf(t, "Toren") != [2]int32{1, 5} {
+				t.Fatalf("the refused release wrote: events %d (want %d), at %v", n, before, a.squareOf(t, "Toren"))
+			}
+			if _, err := a.frozenMove(t, a.master, "Toren", 12, 5); err != nil {
+				t.Fatalf("the master's plain walk of the readier: %v", err)
+			}
+			if got := a.squareOf(t, "Toren"); got != [2]int32{12, 5} {
+				t.Errorf("Toren after the walk is at %v, want (12,5)", got)
+			}
+			a.untouched(t, e, "the master's plain walk")
+		})
+	}
+}
+
+// release_readied with an open READIED window that holds no move (an attack, a spell) is no release: NOT_YOUR_TURN as with no
+// window at all, nothing written, and the window and its row as they were.
+func TestReleaseReadiedOnAWindowOfAnotherKindOfActionIsRefused(t *testing.T) {
+	t.Parallel()
+	t.Run("an attack", func(t *testing.T) {
+		t.Parallel()
+		a := newArmed(t)
+		e := a.readyThenPass(t, nil)
+		a.mustFire(t, e, "Toren")
+		before := a.events(t)
+		from := a.squareOf(t, "Toren")
+		_, err := a.frozenMove(t, a.master, "Toren", from[0], from[1]+2, release)
+		wantBlockedBy(t, "the release of a window that holds an attack", err, blockedNotYourTurn)
+		if n := a.events(t); n != before || a.squareOf(t, "Toren") != from || a.readiedStatus(t, "Toren") != readiedWaiting || !a.readiedOpen(t, "Toren") || byLabel(t, a.get(t, a.master), "Toren").GetReactionUsed() {
+			t.Errorf("after the refusal: events %d (want %d), at %v, row %q, window open %v", n, before, a.squareOf(t, "Toren"), a.readiedStatus(t, "Toren"), a.readiedOpen(t, "Toren"))
+		}
+	})
+	t.Run("a spell", func(t *testing.T) {
+		t.Parallel()
+		a := newCasters(t)
+		e := a.readyHoldPerson(t)
+		a.mustFire(t, e, "Pensantus")
+		before := a.events(t)
+		from := a.squareOf(t, "Pensantus")
+		_, err := a.frozenMove(t, a.master, "Pensantus", from[0], from[1]+1, release)
+		wantBlockedBy(t, "the release of a window that holds a spell", err, blockedNotYourTurn)
+		if n := a.events(t); n != before || a.squareOf(t, "Pensantus") != from || a.readiedStatus(t, "Pensantus") != readiedWaiting || !a.readiedOpen(t, "Pensantus") {
+			t.Errorf("after the refusal: events %d (want %d), at %v, row %q, window open %v", n, before, a.squareOf(t, "Pensantus"), a.readiedStatus(t, "Pensantus"), a.readiedOpen(t, "Pensantus"))
+		}
+	})
+}
