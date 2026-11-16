@@ -389,9 +389,7 @@ export class CharacterSheetPage {
         return false;
       }
       // A read that fails keeps what is on screen: the next change reads again.
-      const vm = await this.source
-        .getCharacterSheet(campaignId, characterId)
-        .catch(() => null);
+      const vm = await this.source.getCharacterSheet(campaignId, characterId).catch(() => null);
       if (!this.reads.holds(characterId, seq)) {
         // A newer read of this character owns the screen: the answer is its own, once it has landed (a page load that took over has its own state).
         return this.reads.overtaken(characterId, seq);

@@ -231,8 +231,8 @@ describe('ConsumableUse', () => {
       const out = await data.loadTargets();
       expect(out).toMatchObject({ targets: [], inCombat: null });
       expect(out.error).toMatchObject({
-        lead: 'A poção acabou.',
-        text: 'Essa poção já foi usada. A ficha foi atualizada.',
+        lead: 'Essa poção já foi usada.',
+        text: 'A ficha foi atualizada.',
       });
       expect(reload).toHaveBeenCalled();
     });
@@ -489,7 +489,7 @@ describe('ConsumableUse', () => {
       expect(answer.refusal).toMatchObject({
         look: 'ban',
         block: 'turn',
-        lead: 'Só na vez de Tor:',
+        lead: 'Só na vez de Tor.',
       });
     });
 

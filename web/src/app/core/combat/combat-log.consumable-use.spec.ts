@@ -193,7 +193,12 @@ describe('CONSUMABLE_USED in the log', () => {
         ),
       ).toBe('Tor bebeu um Elixir azul');
       expect(
-        said(entry('Tor', { itemNamePt: 'Poção de escalada', outcome: ConsumableUseOutcome.TEXT_ONLY })),
+        said(
+          entry('Tor', {
+            itemNamePt: 'Poção de escalada',
+            outcome: ConsumableUseOutcome.TEXT_ONLY,
+          }),
+        ),
       ).toBe('Tor usou uma Poção de escalada');
     });
   });

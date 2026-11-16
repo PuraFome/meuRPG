@@ -70,5 +70,10 @@ export function consumableOf(c: SheetConsumable | undefined): ConsumableVm | und
   const lasting = c.effectTitlePt
     ? { title: c.effectTitlePt, length: c.effectDurationTextPt }
     : undefined;
-  return { kind: kindOf(c.kind) ?? 'other', costsAction: c.costsAction, heal, ...(lasting && { lasting }) };
+  return {
+    kind: kindOf(c.kind) ?? 'other',
+    costsAction: c.costsAction,
+    heal,
+    ...(lasting && { lasting }),
+  };
 }

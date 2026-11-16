@@ -11,7 +11,9 @@ describe('NewestRead', () => {
     const reads = new NewestRead();
     const older = deferred();
     const newer = deferred();
-    const first = reads.start('c1', (seq) => older.promise.then((v) => v || reads.overtaken('c1', seq)));
+    const first = reads.start('c1', (seq) =>
+      older.promise.then((v) => v || reads.overtaken('c1', seq)),
+    );
     const second = reads.start('c1', () => newer.promise);
     let answered = false;
     void first.then(() => (answered = true));
@@ -35,8 +37,12 @@ describe('NewestRead', () => {
 
   it('follows the newest of three', async () => {
     const reads = new NewestRead();
-    const a = reads.start('c1', (seq) => Promise.resolve(false).then(() => reads.overtaken('c1', seq)));
-    const b = reads.start('c1', (seq) => Promise.resolve(false).then(() => reads.overtaken('c1', seq)));
+    const a = reads.start('c1', (seq) =>
+      Promise.resolve(false).then(() => reads.overtaken('c1', seq)),
+    );
+    const b = reads.start('c1', (seq) =>
+      Promise.resolve(false).then(() => reads.overtaken('c1', seq)),
+    );
     const c = reads.start('c1', () => Promise.resolve(true));
     expect(await Promise.all([a, b, c])).toEqual([true, true, true]);
   });
@@ -62,9 +68,10 @@ describe('NewestRead', () => {
   it('answers an overtaken read with the newer read of the same character only', async () => {
     const reads = new NewestRead();
     const older = reads.next('c1');
-    reads.start('c2', () => Promise.resolve(true));
+    const another = reads.start('c2', () => Promise.resolve(true));
     expect(await reads.overtaken('c1', older)).toBe(false);
-    reads.start('c1', () => Promise.resolve(true));
+    const newer = reads.start('c1', () => Promise.resolve(true));
     expect(await reads.overtaken('c1', older)).toBe(true);
+    expect([await another, await newer]).toEqual([true, true]);
   });
 });
