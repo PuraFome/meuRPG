@@ -27,6 +27,9 @@ func (b *overlayBuilder) checkFromFeature(site effectSite, e *Effect) error {
 	case len(e.From) > 0 || e.Set != "":
 		return site.fail(".from_feature", ReasonValue, "a choice offers a list, a set, a filter or the options of a feature, not several")
 	}
+	if b.featureChoices(site.owner) > 1 {
+		return site.fail(".from_feature", ReasonValue, "a feature that offers the options of another feature asks for no other choice of features")
+	}
 	src, err := b.fromFeatureSource(site, e.FromFeature)
 	if err != nil {
 		return err
@@ -36,6 +39,22 @@ func (b *overlayBuilder) checkFromFeature(site effectSite, e *Effect) error {
 	}
 	e.From = slices.Clone(src.Options)
 	return nil
+}
+
+// featureChoices counts the choices of features that the owner makes, whatever their order.
+func (b *overlayBuilder) featureChoices(owner string) int {
+	n := 0
+	for _, p := range b.pending {
+		if p.owner != owner {
+			continue
+		}
+		for i := range p.effects {
+			if isFeatureChoice(&p.effects[i]) {
+				n++
+			}
+		}
+	}
+	return n
 }
 
 // fromFeatureSource is the feature a choice offers the options of, when it is one that may be offered.
@@ -80,30 +99,58 @@ func (b *overlayBuilder) offerFromFeatures() {
 		}
 		f.Options, f.OptionsChoose = slices.Clone(src.Options), e.Count
 		for _, o := range src.Options {
-			n.offeredBy[o] = append(n.offeredBy[o], owner)
-			n.optionSource[o] = e.FromFeature
+			n.askedBy[o] = append(n.askedBy[o], owner)
 		}
 	}
 }
 
-// optionHidden says the table keeps the option out of a sheet's pools: it is one of the options another feature offers,
-// and it is retired or switched off itself, or the feature it belongs to is hidden and the sheet holds none of that
-// feature's entries.
-func (c *content) optionHidden(b Build, option string) bool {
-	source := c.optionSource[option]
-	if source == "" {
-		return false
-	}
-	if c.archived[option] || c.off[option] {
-		return true
-	}
-	return c.hidden(source) && !slices.ContainsFunc(c.entryOwners(source, 0), func(owner string) bool { return c.sheetHolds(b, owner) })
+// offerers are the features whose choice lists the option: the ones it belongs to, and the ones that ask for it.
+func (c *content) offerers(key string) []string {
+	return append(slices.Clone(c.offeredBy[key]), c.askedBy[key]...)
 }
 
-// visibleOptions are the options a sheet's pool offers: the list without what the table keeps out of it.
-func (c *content) visibleOptions(b Build, options []string) []string {
-	if len(c.optionSource) == 0 {
+// optionFilter says, for the pool of the choice that owner makes, which options the table keeps out of a sheet's offer: an
+// option that is retired, one that is switched off (for a player) and, for a player, the options of a feature whose
+// entry is switched off while the sheet holds none of it; an entry that is retired closes its feature for everyone.
+// Only a choice that offers the options of another feature has a filter: every other pool is as it was. The filter
+// says nothing of what the sheet holds, which keepsPick does.
+func (c *content) optionFilter(b Build, owner string) func(option string) bool {
+	src := c.fromFeature[owner]
+	if src == "" {
+		return nil
+	}
+	closed := c.sourceClosed(b, src)
+	return func(o string) bool { return c.archived[o] || (c.player && c.off[o]) || closed }
+}
+
+// sourceClosed says the feature whose options a choice offers is out of the sheet's reach: its entry is retired, or
+// (for a player) switched off, and the sheet holds none of it.
+func (c *content) sourceClosed(b Build, source string) bool {
+	view := c
+	if !c.player {
+		x := *c
+		x.off = nil // the master reads what is switched off
+		view = &x
+	}
+	return view.hidden(source) && !slices.ContainsFunc(view.entryOwners(source, 0), func(owner string) bool { return c.sheetHolds(b, owner) })
+}
+
+// visibleOptions are the options the pool of the choice that owner makes offers a sheet: the list without what the table
+// keeps out of it. A pick the sheet already holds stays.
+func (c *content) visibleOptions(b Build, owner string, options []string) []string {
+	out := c.optionFilter(b, owner)
+	if out == nil {
 		return options
 	}
-	return slices.DeleteFunc(slices.Clone(options), func(o string) bool { return c.optionHidden(b, o) })
+	return slices.DeleteFunc(slices.Clone(options), func(o string) bool { return out(o) && !slices.Contains(b.FeatureChoices, o) })
+}
+
+// keptOutPicks are the picks of the sheet that the pool of the choice that owner makes keeps out, and the sheet holds all
+// the same.
+func (c *content) keptOutPicks(b Build, owner string, options []string) []string {
+	out := c.optionFilter(b, owner)
+	if out == nil {
+		return nil
+	}
+	return slices.DeleteFunc(slices.Clone(options), func(o string) bool { return !out(o) || !slices.Contains(b.FeatureChoices, o) })
 }

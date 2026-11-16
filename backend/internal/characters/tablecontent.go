@@ -1480,6 +1480,9 @@ func (v playerView) dropEffects(fs []*rulesv1.TableFeature) {
 			if v.hidden(ef.Spell) {
 				ef.Spell = "" // a granted spell the players do not see is not named to them
 			}
+			if v.hidden(ef.FromFeature) {
+				ef.FromFeature = "" // nor the feature whose options a choice offers
+			}
 		}
 		v.stripOptionPrerequisite(f.GetPrerequisite())
 		v.dropEffects(f.GetOptions())

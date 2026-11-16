@@ -748,8 +748,6 @@ func (col *collector) options() {
 	for i, key := range x.b.FeatureChoices {
 		field := fmt.Sprintf("full.feature_choice_keys[%d]", i)
 		switch {
-		case x.c.optionHidden(x.b, key):
-			x.issue(IssueUnknownKey, field, "A opção escolhida não existe no conteúdo %s.", x.c.version)
 		case x.c.choiceValueOK(key):
 			// A pick of the choice engine (choicegroups.go), which checks it.
 		case strings.HasPrefix(key, featureKeyPrefix), strings.HasPrefix(key, OptionKeyPrefix):
@@ -801,7 +799,7 @@ func (col *collector) featureOption(field, key string, pickedNames map[string]bo
 // lostOfferer is the lost feat (or option) whose choice offers the option key, or "": the pick is not one nothing offers,
 // its feat is there and does not apply.
 func (x *deriver) lostOfferer(key string, f *srd51.Feature) string {
-	for _, p := range append([]string{x.optionParent(key, f.Parent)}, x.c.offeredBy[key]...) {
+	for _, p := range append([]string{x.optionParent(key, f.Parent)}, x.c.offerers(key)...) {
 		if p != "" && x.inactiveFeats[p] {
 			return p
 		}
@@ -942,7 +940,7 @@ func (x *deriver) optionParent(key, parent string) string {
 // offeredParent finds the table feature the character owns that offers option
 // key, or "".
 func (x *deriver) offeredParent(key string, owned map[string]bool) string {
-	for _, p := range x.c.offeredBy[key] {
+	for _, p := range x.c.offerers(key) {
 		if owned[p] {
 			return p
 		}

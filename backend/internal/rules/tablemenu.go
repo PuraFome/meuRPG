@@ -121,6 +121,9 @@ const (
 	ListSkills            = "skills"
 	ListLanguages         = "languages"
 	ListTools             = "tools"
+	// ListToolChoices are the proficiencies the list of a choice of tools may name: the tools, vehicles and kits of
+	// ListTools and the weapons (a background's tools, the other user of ListTools, name no weapon).
+	ListToolChoices = "tool_choices"
 	// ListProficiencyKinds are the kinds a filter of a choice of tools names, and ListWeaponProficiencies,
 	// ListToolProficiencies and ListOtherProficiencies the proficiencies of each kind, so the editor counts what a filter
 	// matches with no other call.
@@ -696,6 +699,13 @@ func (c *content) menuProficiencies() (profs, skills, tools []MenuValue) {
 	return profs, skills, tools
 }
 
+// menuToolChoices are the tools and the weapons a choice of tools may list, by Portuguese name.
+func (c *content) menuToolChoices(tools []MenuValue) []MenuValue {
+	out := append(slices.Clone(tools), c.menuProficienciesOfKind(filterKindWeapon)...)
+	sortMenuByName(out)
+	return out
+}
+
 // sortMenuByName sorts values by their Portuguese name, ignoring case.
 func sortMenuByName(vs []MenuValue) {
 	slices.SortStableFunc(vs, func(a, b MenuValue) int { return strings.Compare(strings.ToLower(a.NamePT), strings.ToLower(b.NamePT)) })
@@ -754,6 +764,7 @@ func (c *content) menuLists() []MenuList {
 		{Name: ListSkills, Values: skills},
 		{Name: ListLanguages, Values: languages},
 		{Name: ListTools, Values: tools},
+		{Name: ListToolChoices, Values: c.menuToolChoices(tools)},
 		{Name: ListProficiencyKinds, Values: namedMenu(filterKinds, func(k string) string { return proficiencyKindNames[k] })},
 		{Name: ListWeaponProficiencies, Values: c.menuProficienciesOfKind(filterKindWeapon)},
 		{Name: ListToolProficiencies, Values: c.menuProficienciesOfKind(filterKindTool)},
