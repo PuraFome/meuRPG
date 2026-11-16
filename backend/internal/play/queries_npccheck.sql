@@ -48,3 +48,10 @@ LIMIT 1;
 -- name: ListNpcCheckHolds :many
 -- Every NPC check hold of the campaign, settled or not: the session that ends deletes them all.
 SELECT * FROM inspiration_holds WHERE campaign_id = $1 AND kind = 'npc_check' ORDER BY created_at, id;
+
+-- name: PassNpcCheckAsk :one
+-- The bard's question is let pass with no answer of the bard: its character is no longer in play (reserve, dead, deleted, no player).
+UPDATE npc_check_asks
+SET state = 'passed', answered_at = $2
+WHERE id = $1 AND state = 'asked'
+RETURNING *;

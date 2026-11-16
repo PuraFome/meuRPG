@@ -281,6 +281,9 @@ func (s *Service) ListHeldRolls(
 	if err != nil {
 		return nil, err
 	}
+	if err := s.keepNpcChecks(ctx, m.CampaignID); err != nil {
+		return nil, err
+	}
 	holds, err := s.openHeldRolls(ctx, m.CampaignID)
 	if err != nil {
 		return nil, s.dbError(ctx, "list the held rolls", err)

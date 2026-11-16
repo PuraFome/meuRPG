@@ -56,15 +56,26 @@ func (l *heldList) npcCheckOffer(ctx context.Context, h heldRoll) (*playv1.HeldR
 	if cur < 0 {
 		return nil, nil
 	}
-	mine, err := s.isMyCharacter(ctx, l.m, asks[cur].BardCharacterID)
+	if asks[cur].BardCharacterID == nil {
+		return nil, nil // the bard's character is gone: the next read or answer lets the question pass
+	}
+	bard := *asks[cur].BardCharacterID
+	mine, err := s.isMyCharacter(ctx, l.m, bard)
 	if err != nil || !mine {
 		return nil, err
 	}
-	vit, err := s.vitals.GetVitals(ctx, h.CampaignID, asks[cur].BardCharacterID)
+	vit, err := s.vitals.GetVitals(ctx, h.CampaignID, bard)
 	if err != nil {
 		return nil, s.dbError(ctx, "read the bard's vitals", err)
 	}
-	offer.RollerLabel = cutting.Label(ev.Name, asks[cur].CreatureSeen)
+	stage, token, err := s.npcHiddenNow(ctx, session, h.CharacterID)
+	if err != nil {
+		return nil, s.dbError(ctx, "read where the creature stands", err)
+	}
+	if token {
+		return nil, nil // hidden since the keep read the check: the next read settles it
+	}
+	offer.RollerLabel = cutting.Label(ev.Name, asks[cur].CreatureSeen && !stage) // the name is as the bard's player may know it now
 	offer.Question = &playv1.HeldRollOffer_CuttingWords{CuttingWords: &playv1.CuttingWordsQuestion{Sides: asks[cur].Sides, UsesLeft: bardUsesLeft(vit)}}
 	return offer, nil
 }
@@ -112,6 +123,9 @@ func (s *Service) ListNpcCheckPicker(ctx context.Context, req *connect.Request[p
 func (s *Service) GetNpcCheck(ctx context.Context, req *connect.Request[playv1.GetNpcCheckRequest]) (*connect.Response[playv1.GetNpcCheckResponse], error) {
 	m, err := authz.RequireCampaignRole(ctx, req.Msg.GetCampaignId(), authz.RoleMaster)
 	if err != nil {
+		return nil, err
+	}
+	if err := s.keepNpcChecks(ctx, m.CampaignID); err != nil {
 		return nil, err
 	}
 	var read *playv1.NpcCheckRead

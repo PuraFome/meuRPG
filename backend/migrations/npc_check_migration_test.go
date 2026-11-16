@@ -101,8 +101,30 @@ func TestNpcCheckMigration(t *testing.T) {
 		if err := ask(id, bard2, 1, "cut"); err != nil {
 			t.Errorf("round %d: second ask = %v", round, err)
 		}
-		if _, err := db.ExecContext(ctx, `DELETE FROM inspiration_holds WHERE id = $1`, id); err != nil {
-			t.Fatalf("round %d: forget the hold: %v", round, err)
+		// A bard whose character is deleted keeps its question, with no character: more than one may, for the same check.
+		var gone1, gone2 string
+		character("Sai", &gone1)
+		character("Foi", &gone2)
+		other, err := hold("npc_check")
+		if err != nil {
+			t.Fatalf("round %d: second hold of kind npc_check = %v", round, err)
+		}
+		if err := ask(other, gone1, 0, "asked"); err != nil {
+			t.Errorf("round %d: ask of a bard to be deleted = %v", round, err)
+		}
+		if err := ask(other, gone2, 1, "asked"); err != nil {
+			t.Errorf("round %d: ask of a second bard to be deleted = %v", round, err)
+		}
+		if _, err := db.ExecContext(ctx, `DELETE FROM characters WHERE id IN ($1, $2)`, gone1, gone2); err != nil {
+			t.Fatalf("round %d: delete the bards' characters: %v", round, err)
+		}
+		var kept, nobody int
+		scan(fmt.Sprintf(`SELECT count(*), count(*) FILTER (WHERE bard_character_id IS NULL) FROM npc_check_asks WHERE hold_id = '%s'`, other), &kept, &nobody)
+		if kept != 2 || nobody != 2 {
+			t.Errorf("round %d: %d asks, %d with no character after the bards' characters were deleted; want 2 and 2", round, kept, nobody)
+		}
+		if _, err := db.ExecContext(ctx, fmt.Sprintf(`DELETE FROM inspiration_holds WHERE id IN ('%s', '%s')`, id, other)); err != nil {
+			t.Fatalf("round %d: forget the holds: %v", round, err)
 		}
 		var left int
 		scan(`SELECT count(*) FROM npc_check_asks`, &left)

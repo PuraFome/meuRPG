@@ -415,7 +415,7 @@ type InspirationHold struct {
 type NpcCheckAsk struct {
 	ID              string
 	HoldID          string
-	BardCharacterID string
+	BardCharacterID *string
 	Position        int32
 	State           string
 	Sides           int32

@@ -13,6 +13,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/play/cutting"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
@@ -168,8 +169,11 @@ func requireNoOpenCombat(ctx context.Context, q *playdb.Queries, sessionID strin
 }
 
 // bardUser is the player of a bard's character.
-func (s *Service) bardUser(ctx context.Context, tx pgx.Tx, campaignID, characterID string) string {
-	cs, err := s.roster.CombatCharacters(ctx, tx, campaignID, []string{characterID})
+func (s *Service) bardUser(ctx context.Context, tx pgx.Tx, campaignID string, characterID *string) string {
+	if characterID == nil {
+		return "" // the bard's character was deleted
+	}
+	cs, err := s.roster.CombatCharacters(ctx, tx, campaignID, []string{*characterID})
 	if err != nil || len(cs) != 1 {
 		return ""
 	}
@@ -245,6 +249,9 @@ func (s *Service) answerNpcCheck(ctx context.Context, m authz.Membership, req *p
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("set roll_in_app or typed_face to cut"))
 		}
 	}
+	if err := s.keepNpcChecks(ctx, m.CampaignID); err != nil { // what changed since the question was asked settles first, in its own transaction
+		return nil, err
+	}
 	var out *playv1.CuttingWordsAnswered
 	err := s.txOpen(ctx, m.CampaignID, func(tx pgx.Tx, h *hints, session playdb.GameSession) error {
 		out = nil
@@ -287,7 +294,9 @@ func (a *npcAnswer) run(ctx context.Context, holdID string) (*playv1.CuttingWord
 	if err != nil {
 		return nil, err
 	}
-	mine := slices.IndexFunc(asks, func(k playdb.NpcCheckAsk) bool { return has && k.BardCharacterID == who.ID })
+	mine := slices.IndexFunc(asks, func(k playdb.NpcCheckAsk) bool {
+		return has && k.BardCharacterID != nil && *k.BardCharacterID == who.ID
+	})
 	if mine < 0 {
 		return nil, errHeldNotFound() // not a bard of this check: it does not exist for them
 	}
@@ -406,7 +415,7 @@ func (a *npcAnswer) answered(ctx context.Context, k playdb.NpcCheckAsk) (*playv1
 	if hashDiffers(k.AnswerHash, a.hash) {
 		return nil, errKeyReused() // the key answered another cut, or a pass
 	}
-	vit, err := a.s.vitals.GetVitalsTx(ctx, a.tx, a.m.CampaignID, k.BardCharacterID)
+	vit, err := a.s.vitals.GetVitalsTx(ctx, a.tx, a.m.CampaignID, conv.OrZero(k.BardCharacterID))
 	if err != nil {
 		return nil, err
 	}

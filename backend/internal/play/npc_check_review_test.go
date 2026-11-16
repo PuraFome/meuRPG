@@ -77,7 +77,7 @@ func (n *npcTable) plant(t *testing.T, campaignID, characterID, userID, kind str
 	}
 	for i, b := range asks {
 		if _, err := n.h.svc.queries.InsertNpcCheckAsk(t.Context(), playdb.InsertNpcCheckAskParams{
-			HoldID: row.ID, BardCharacterID: b.GetId(), Position: int32(i), Sides: 6, CreatedAt: at,
+			HoldID: row.ID, BardCharacterID: new(b.GetId()), Position: int32(i), Sides: 6, CreatedAt: at,
 		}); err != nil {
 			t.Fatalf("plant an ask: %v", err)
 		}

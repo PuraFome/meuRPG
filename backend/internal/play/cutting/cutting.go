@@ -219,3 +219,31 @@ func WhyNobody(bards, asked int, charmImmune, tokenHidden bool) string {
 	}
 	return NobodySees
 }
+
+// Move is what a check that waits needs as things stand when it is read or answered.
+type Move int
+
+// The moves: leave it, close every question as a skip (the creature is hidden), let the question at the index pass (its bard is no longer
+// in play), or settle it as the last answer does (no question is open any more).
+const (
+	Stand Move = iota
+	Skip
+	Pass
+	Finish
+)
+
+// NextMove says what a check that waits needs now. states are the questions in the order they are asked, inPlay says for each whether its
+// bard is still a character in play of a member, and tokenHidden whether the master hid the creature's token since the roll. The index is
+// the question to let pass, -1 for any other move. A hidden creature closes the check whatever the bards are.
+func NextMove(states []State, inPlay []bool, tokenHidden bool) (Move, int) {
+	cur := Current(states)
+	switch {
+	case tokenHidden:
+		return Skip, -1
+	case cur < 0:
+		return Finish, -1
+	case cur < len(inPlay) && !inPlay[cur]:
+		return Pass, cur
+	}
+	return Stand, -1
+}

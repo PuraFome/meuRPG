@@ -149,7 +149,7 @@ RETURNING id, hold_id, bard_character_id, position, state, sides, creature_seen,
 
 type InsertNpcCheckAskParams struct {
 	HoldID          string
-	BardCharacterID string
+	BardCharacterID *string
 	Position        int32
 	Sides           int32
 	CreatureSeen    bool
@@ -362,4 +362,38 @@ func (q *Queries) ListOpenNpcCheckHolds(ctx context.Context, campaignID string) 
 		return nil, err
 	}
 	return items, nil
+}
+
+const passNpcCheckAsk = `-- name: PassNpcCheckAsk :one
+UPDATE npc_check_asks
+SET state = 'passed', answered_at = $2
+WHERE id = $1 AND state = 'asked'
+RETURNING id, hold_id, bard_character_id, position, state, sides, creature_seen, die_face, physical, answer_key, answer_hash, created_at, answered_at
+`
+
+type PassNpcCheckAskParams struct {
+	ID         string
+	AnsweredAt *time.Time
+}
+
+// The bard's question is let pass with no answer of the bard: its character is no longer in play (reserve, dead, deleted, no player).
+func (q *Queries) PassNpcCheckAsk(ctx context.Context, arg PassNpcCheckAskParams) (NpcCheckAsk, error) {
+	row := q.db.QueryRow(ctx, passNpcCheckAsk, arg.ID, arg.AnsweredAt)
+	var i NpcCheckAsk
+	err := row.Scan(
+		&i.ID,
+		&i.HoldID,
+		&i.BardCharacterID,
+		&i.Position,
+		&i.State,
+		&i.Sides,
+		&i.CreatureSeen,
+		&i.DieFace,
+		&i.Physical,
+		&i.AnswerKey,
+		&i.AnswerHash,
+		&i.CreatedAt,
+		&i.AnsweredAt,
+	)
+	return i, err
 }

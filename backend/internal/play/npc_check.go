@@ -277,7 +277,7 @@ func (c *npcCheckCall) hold(ctx context.Context, tc *combatTx, h *hints, ev npcC
 	ev.HoldID = row.ID
 	for i, b := range bards {
 		if _, err := tc.q.InsertNpcCheckAsk(ctx, playdb.InsertNpcCheckAskParams{
-			HoldID: row.ID, BardCharacterID: b.char.ID, Position: conv.Int32(i), Sides: conv.Int32(b.sides), CreatureSeen: b.named, CreatedAt: tc.now,
+			HoldID: row.ID, BardCharacterID: &b.char.ID, Position: conv.Int32(i), Sides: conv.Int32(b.sides), CreatureSeen: b.named, CreatedAt: tc.now,
 		}); err != nil {
 			return fmt.Errorf("ask a bard: %w", err)
 		}
@@ -347,8 +347,8 @@ func (e npcCheckEvent) withAsks(asks []playdb.NpcCheckAsk, settled bool) npcChec
 	e.Asked = slices.Clone(e.Asked)
 	var dice []int
 	for _, a := range asks {
-		i := slices.IndexFunc(e.Asked, func(l npcCheckAskLine) bool { return l.Bard == a.BardCharacterID })
-		if i < 0 {
+		i := int(a.Position) // the asks are in the order of the event's lines: the bard's character may be gone
+		if i < 0 || i >= len(e.Asked) {
 			continue
 		}
 		e.Asked[i].State = a.State

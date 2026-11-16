@@ -313,3 +313,33 @@ func TestWhyNobody(t *testing.T) {
 		})
 	}
 }
+
+func TestNextMove(t *testing.T) {
+	t.Parallel()
+	asked, cut := cutting.Waiting, cutting.Cut
+	tests := []struct {
+		name       string
+		states     []cutting.State
+		inPlay     []bool
+		hidden     bool
+		want       cutting.Move
+		wantAtSlot int
+	}{
+		{"the bard asked is in play", []cutting.State{asked, asked}, []bool{true, true}, false, cutting.Stand, -1},
+		{"the bard asked left play", []cutting.State{asked, asked}, []bool{false, true}, false, cutting.Pass, 0},
+		{"a bard that is not asked may be out of play", []cutting.State{asked, asked}, []bool{true, false}, false, cutting.Stand, -1},
+		{"the second bard asked left play", []cutting.State{cut, asked}, []bool{true, false}, false, cutting.Pass, 1},
+		{"no question is open any more", []cutting.State{cut, cutting.Passed}, []bool{true, true}, false, cutting.Finish, -1},
+		{"a hidden creature closes the check whatever the bards are", []cutting.State{asked}, []bool{false}, true, cutting.Skip, -1},
+		{"a hidden creature closes a check with no question open", []cutting.State{cut}, []bool{true}, true, cutting.Skip, -1},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			got, at := cutting.NextMove(tt.states, tt.inPlay, tt.hidden)
+			if got != tt.want || at != tt.wantAtSlot {
+				t.Errorf("NextMove() = %v, %d; want %v, %d", got, at, tt.want, tt.wantAtSlot)
+			}
+		})
+	}
+}

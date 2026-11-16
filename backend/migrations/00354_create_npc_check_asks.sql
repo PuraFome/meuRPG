@@ -17,10 +17,12 @@ ALTER TABLE inspiration_holds
 -- master went on without the bard, or it could not answer any more). creature_seen says the bard's player sees the creature, so
 -- its question names it ('uma criatura' otherwise). answer_key is the key of the answer that closed the question and answer_hash the
 -- hash of the request that gave it, so a retry with the same key and another body is told from a true retry.
+-- bard_character_id is NULL once the bard's character is deleted: the question stays (with its place in the order, and the
+-- master's read of it) and is let pass when its turn comes or the next read finds it.
 CREATE TABLE IF NOT EXISTS npc_check_asks (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     hold_id UUID NOT NULL REFERENCES inspiration_holds (id) ON DELETE CASCADE,
-    bard_character_id UUID NOT NULL REFERENCES characters (id) ON DELETE CASCADE,
+    bard_character_id UUID NULL REFERENCES characters (id) ON DELETE SET NULL,
     position INT4 NOT NULL CHECK (position >= 0),
     state TEXT NOT NULL DEFAULT 'asked' CHECK (state IN ('asked', 'cut', 'passed', 'closed')),
     sides INT4 NOT NULL CHECK (sides IN (6, 8, 10, 12)),
