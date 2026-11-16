@@ -98,7 +98,8 @@ import {
 } from './table-sheet-support';
 import { masterLog, openCombatPanel, openMap, openOrderRow, openTurn } from './combat-layout';
 import { waitForEncounterRevision } from './revision-support';
-import { goblinTrigger, moveOffText, openReadySheet, pensantusReadyKit, readyAttackRPC, readyRPC, readySpellRPC, shootReady, spellOffText } from './ready-support';
+import { fireReadied, masterQueue, moveWindow, placeFireball, readyMapTable, releaseSheet, releaseTexts, spellWindow } from './ready-map-support';
+import { goblinTrigger, openReadySheet, pensantusReadyKit, readyAttackRPC, readyRPC, readySpellRPC, shootReady } from './ready-support';
 import { WIDTHS, beginVrockFight, pagesFor, shoot, useCreatureActionRPC, viewportOf } from './recharge-support';
 import { chooseRow, openTvPanel, rollForTableRPC, tvRoute } from './table-screen-support';
 import { LIT, WIDTHS as SUN_WIDTHS, sunSpot as sunBar, mapCard as sunMapCard, paintStatus as sunPaintStatus, setSunlightRPC, shoot as shootSun, sunSwitch, sunlightTable, viewportOf as sunViewport } from './sunlight-support';
@@ -14881,9 +14882,9 @@ async function scanReadyScreens(browser: Browser, colorScheme: 'light' | 'dark',
     await expectScreenPasses(p, `Preparar, o gatilho longo demais ${where}`);
     await shoot(p, 'preparar-campo');
 
-    // A spell: the circle to hold it with, and the warning that it is the concentration.
+    // A spell: the level to hold it with, and the warning that it is the concentration.
     await sheet.getByRole('button', { name: 'Magia', exact: true }).click();
-    await expect(sheet.locator('label', { hasText: 'Sono' })).toContainText(spellOffText);
+    await expect(sheet.locator('label', { hasText: 'Sono' })).not.toContainText('Soltar pela janela');
     await sheet.locator('label', { hasText: 'Enfeitiçar Pessoa' }).click();
     await expect(sheet.getByRole('group', { name: 'Com que espaço' })).toBeVisible();
     await field.fill('Se o goblin sair da sombra do pilar');
@@ -14891,9 +14892,8 @@ async function scanReadyScreens(browser: Browser, colorScheme: 'light' | 'dark',
     await shoot(p, 'preparar-magia');
 
     await sheet.getByRole('button', { name: 'Mover', exact: true }).click();
-    await expect(sheet.getByText(moveOffText)).toBeVisible();
-    await expect(sheet.getByRole('button', { name: 'Preparar', exact: true })).toBeDisabled();
-    await expectScreenPasses(p, `Preparar, a folha do movimento, desligada ${where}`);
+    await expect(sheet.getByText(/Você anda até .+ quando o mestre disparar\./)).toBeVisible();
+    await expectScreenPasses(p, `Preparar, a folha do movimento ${where}`);
     await shoot(p, 'preparar-mover');
 
     await sheet.getByRole('button', { name: 'Outra', exact: true }).click();
@@ -15104,7 +15104,7 @@ async function scanReadyWindowScreens(browser: Browser, colorScheme: 'light' | '
     await prompt.getByRole('button', { name: 'Fechar' }).click();
     await expect(prompt).toHaveCount(0);
 
-    // A readied move cannot be released from the prompt yet: it only lets it pass.
+    // A readied move: the prompt asks, and "Mover agora" sends it to the map (the screens of the release are in `scanReadyMapScreens`).
     const round3 = await passTurnsToAndWait(m, campaignId, 'Pensantus', [m, p]);
     await waitForEncounterRevision(
       p,
@@ -15169,6 +15169,153 @@ for (const [colorScheme, theme] of [
     test(`as janelas e os avisos da ação preparada passam no axe e nas conferências de layout no tema ${theme}, em ${width}`, { tag: ['@a11y', '@RN-31'] }, async ({ browser }) => {
       test.setTimeout(420_000);
       await scanReadyWindowScreens(browser, colorScheme, width);
+    });
+  }
+}
+
+/**
+ * A held spell and a held move released on the map (#857, #856, boards 857-01 to 857-09), both sides: the window with its way to the map, the
+ * master's row before and while the player is on the map, the cast sheet and the Mover page in release mode, the master's own dialog and
+ * page with their footer, the window a second device reads, the move that cannot be made (grappled), and the sheet that read the trigger undone.
+ */
+async function scanReadyMapScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const where = `(${colorScheme}, ${width}px)`;
+  const view = { ...featViewport(width), colorScheme, both: true };
+  const shoot = async (page: Page, screen: string): Promise<void> => shootReady(page, screen, width, colorScheme, '857-ready-map');
+
+  // The spell: the window, the master's row, the map, the area, the way back and the master's dialog.
+  const spell = await readyMapTable(browser, 'Acessibilidade soltar magia', 'fireball', view);
+  try {
+    const { m, p, campaignId } = spell;
+    m.setDefaultTimeout(20_000);
+    p.setDefaultTimeout(20_000);
+    await fireReadied(m);
+    const win = spellWindow(p);
+    await expect(win).toBeVisible();
+    await expect(win.getByTestId('release-to-map')).toBeVisible();
+    await expectScreenPasses(p, `Soltar, a janela da magia preparada com o caminho do mapa ${where}`);
+    await shoot(p, 'janela-magia');
+    const queue = masterQueue(m);
+    await expect(queue.locator('.btns button')).toHaveText(['Deixar passar', 'Soltar por Pensantus']);
+    await queue.scrollIntoViewIfNeeded();
+    await expectScreenPasses(m, `Soltar, a fila do mestre esperando o jogador ${where}`);
+    await shoot(m, 'fila-espera');
+
+    await win.getByTestId('release-to-map').click();
+    const sheet = releaseSheet(p);
+    await expect(sheet.getByTestId('release-band')).toBeVisible();
+    await expect(sheet.getByTestId('release-wait')).toHaveText(releaseTexts.onMap);
+    await expectScreenPasses(p, `Soltar, o mapa da magia com a faixa da ação preparada ${where}`);
+    await shoot(p, 'mapa-magia');
+    await expect(queue.getByTestId('readied-wait')).toContainText(/No mapa · passa sozinho em/);
+    await queue.scrollIntoViewIfNeeded();
+    await expectScreenPasses(m, `Soltar, a fila do mestre com o jogador no mapa ${where}`);
+    await shoot(m, 'fila-no-mapa');
+    await sheet.getByRole('button', { name: releaseTexts.back, exact: true }).click();
+    await expect(win).toBeVisible();
+
+    // A second device of the player reads where the table waits while the map is open on the first.
+    const area = await placeFireball(p);
+    await expectScreenPasses(p, `Soltar, quem está na área da magia ${where}`);
+    await shoot(p, 'area-magia');
+    const other = await spell.player.newPage();
+    other.setDefaultTimeout(20_000);
+    await openSessionPage(other, campaignId);
+    await expect(spellWindow(other).getByTestId('readied-clock')).toContainText(releaseTexts.otherDevice);
+    await expectScreenPasses(other, `Soltar, a janela lida no outro aparelho ${where}`);
+    await shoot(other, 'janela-outro-aparelho');
+    await other.close();
+    await area.getByRole('button', { name: 'Mudar o local' }).click();
+    await area.getByRole('button', { name: releaseTexts.back, exact: true }).click();
+    await expect(win).toBeVisible();
+
+    // The master releases for the player: his dialog with the footer.
+    await expect(queue.getByRole('button', { name: 'Soltar por Pensantus' })).toBeVisible();
+    await queue.getByRole('button', { name: 'Soltar por Pensantus' }).click();
+    const masterSheet = releaseSheet(m, true);
+    await expect(masterSheet.getByTestId('release-foot')).toHaveText(releaseTexts.masterFoot);
+    await expectScreenPasses(m, `Soltar, a janela do mestre para a magia ${where}`);
+    await shoot(m, 'mestre-magia');
+    await masterSheet.getByRole('button', { name: releaseTexts.back, exact: true }).click();
+    await expect(masterSheet).toHaveCount(0);
+  } finally {
+    await spell.done();
+  }
+
+  // The move: the window with the speed at 0 (grappled), then the Mover page of the player and of the master, and the undone trigger.
+  const move = await readyMapTable(browser, 'Acessibilidade soltar movimento', 'move', view);
+  try {
+    const { m, p, campaignId, encounter } = move;
+    m.setDefaultTimeout(20_000);
+    p.setDefaultTimeout(20_000);
+    await waitForEncounterRevision([m, p], await setConditionsRPC(m, campaignId, encounter, 'Pensantus', ['condition:grappled']));
+    await fireReadied(m);
+    const win = moveWindow(p);
+    await expect(win).toBeVisible();
+    await expect(win.getByTestId('release-to-map')).toHaveAttribute('aria-disabled', 'true');
+    await expect(win.getByText('Você está Agarrado: o seu deslocamento é 0. Dá para deixar passar.')).toBeVisible();
+    await expectScreenPasses(p, `Soltar, a janela do movimento que não dá para fazer, Agarrado ${where}`);
+    await shoot(p, 'janela-mover-agarrado');
+    await win.getByRole('button', { name: 'Deixar passar' }).click();
+    await expect(win).toHaveCount(0);
+
+    // The next round: free again, the move is held anew and fired.
+    const freed = await setConditionsRPC(m, campaignId, await getEncounterRPC(m, campaignId), 'Pensantus', []);
+    const round2 = await passTurnsToAndWait(m, campaignId, 'Pensantus', [m, p]);
+    expect(freed.id).toBe(round2.id);
+    await expect(p.getByRole('heading', { name: 'Sua vez, Pensantus' })).toBeVisible();
+    await waitForEncounterRevision(
+      p,
+      await readyRPC(p, 'ReadyAction', { campaignId, encounterId: round2.id, combatantId: round2.combatants.find((c) => c.label === 'Pensantus')!.id, triggerText: goblinTrigger, kind: 'READIED_KIND_MOVE' }),
+    );
+    await passTurnsToAndWait(m, campaignId, 'Capitão Goblin', [m, p]);
+    await fireReadied(m);
+    await expect(win).toBeVisible();
+    await expect(win.getByTestId('release-map-notice')).toBeVisible();
+    await expectScreenPasses(p, `Soltar, a janela do movimento preparado ${where}`);
+    await shoot(p, 'janela-mover');
+    const queue = masterQueue(m);
+    await expect(queue.locator('.btns button')).toHaveText(['Deixar passar', 'Mover por Pensantus']);
+    await queue.scrollIntoViewIfNeeded();
+    await expectScreenPasses(m, `Soltar, a fila do mestre com o movimento preparado ${where}`);
+    await shoot(m, 'fila-mover');
+
+    await win.getByTestId('release-to-map').click();
+    await expect(p.getByRole('heading', { name: 'Mover Pensantus' })).toBeVisible();
+    await expect(p.getByTestId('release-note')).toBeVisible();
+    await expectScreenPasses(p, `Soltar, a página de movimento do jogador ${where}`);
+    await shoot(p, 'mover-jogador');
+
+    // The master undoes the trigger with the page open: the page says so and leaves with "Voltar à sessão".
+    await openCombatPanel(m, 'Registro');
+    await m.getByRole('button', { name: 'Desfazer última ação' }).first().click();
+    await m.getByRole('button', { name: 'Desfazer', exact: true }).click();
+    await expect(p.getByTestId('release-gone')).toContainText('O mestre desfez o gatilho');
+    await expectScreenPasses(p, `Soltar, a página de movimento depois que o mestre desfez o gatilho ${where}`);
+    await shoot(p, 'mover-desfeito');
+    await p.getByTestId('release-done').click();
+
+    // The master's own page for the player's move, with the footer.
+    await fireReadied(m);
+    await expect(moveWindow(p)).toBeVisible();
+    await masterQueue(m).getByRole('button', { name: 'Mover por Pensantus' }).click();
+    await expect(m.getByTestId('release-foot')).toHaveText(releaseTexts.masterFoot);
+    await expectScreenPasses(m, `Soltar, a página de movimento do mestre ${where}`);
+    await shoot(m, 'mover-mestre');
+    await m.getByRole('button', { name: releaseTexts.back, exact: true }).click();
+  } finally {
+    await move.done();
+  }
+}
+
+for (const [colorScheme, theme] of [
+  ['light', 'claro'],
+  ['dark', 'escuro'],
+] as const) {
+  for (const width of [390, 768, 1280]) {
+    test(`soltar a ação preparada no mapa passa no axe e nas conferências de layout no tema ${theme}, em ${width}`, { tag: ['@a11y', '@RN-31'] }, async ({ browser }) => {
+      test.setTimeout(600_000);
+      await scanReadyMapScreens(browser, colorScheme, width);
     });
   }
 }

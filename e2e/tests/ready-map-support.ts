@@ -1,0 +1,148 @@
+import { expect, type Browser, type BrowserContext, type Locator, type Page } from '@playwright/test';
+import { beginAttackCombatRPC, passTurnsToAndWait, pensantusCasting, tableForCombat, type Encounter } from './combat-support';
+import { featShotScale } from './feat-options-support';
+import { endOpenSessionRPC, openSessionPage } from './live-session-support';
+import { goblinTrigger, readyAttackRPC, readyRPC, readySpellRPC } from './ready-support';
+import { waitForEncounterRevision } from './revision-support';
+import { newSignedInContext, pensantus } from './support';
+
+/**
+ * Support of the screens that release a readied spell or move on the map (#857, #856, boards 857-01 to 857-09): a table where Pensantus
+ * holds a Bola de Fogo or a move and the master has fired it, with both screens open on the session.
+ */
+
+/** Pensantus at level 5 with Bola de Fogo (a 3rd-level slot) beside the casting list of the other specs. */
+export const fireballKit = {
+  build: { ...pensantus, level: 5 },
+  sheet: {
+    ...pensantusCasting,
+    knownSpellKeys: [...pensantusCasting.knownSpellKeys, 'spell:fireball'],
+    preparedSpellKeys: [...pensantusCasting.preparedSpellKeys, 'spell:fireball'],
+  },
+};
+
+/** The squares: Pensantus well in range of the three goblins, who stand close together so the ball reaches all of them. */
+export const mapSquares: Record<string, [number, number]> = { Pensantus: [3, 6], 'Capitão Goblin': [12, 3], 'Goblin 1': [12, 7], 'Goblin 2': [13, 8] };
+export const mapFaces = { Pensantus: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 };
+
+/** What the player's page and the master's page say of the window, in the words of the boards. */
+export const releaseTexts = {
+  spellDialog: 'Soltar Bola de Fogo',
+  spellButton: 'Soltar no mapa',
+  moveDialog: 'Ação preparada: mover',
+  moveButton: 'Mover agora',
+  back: 'Voltar',
+  done: 'Voltar à sessão',
+  onMap: 'A mesa espera você: até 2 min.',
+  masterFoot: 'Pensantus ainda pode responder no próprio aparelho: vale a primeira resposta.',
+  undone: 'O mestre desfez o gatilho: a Bola de Fogo continua preparada.',
+  otherDevice: /Você abriu o mapa em outro aparelho\. Passa sozinho em/,
+} as const;
+
+/** What the player holds: the Bola de Fogo (3rd-level slot), a move of the speed it has, or a dagger (the attack the release rows replace). */
+export type Held = 'fireball' | 'move' | 'attack';
+
+export interface ReadyMapTable {
+  master: BrowserContext;
+  player: BrowserContext;
+  m: Page;
+  p: Page;
+  campaignId: string;
+  /** The combat as it was read when the turn went to the Capitão, with Pensantus's readied action waiting. */
+  encounter: Encounter;
+  done: () => Promise<void>;
+}
+
+/** The table: Pensantus readied `held` on his turn, and the turn is the Capitão's. Nothing is fired yet. */
+export async function readyMapTable(
+  browser: Browser,
+  name: string,
+  held: Held,
+  view: { width?: number; height?: number; colorScheme?: 'light' | 'dark'; both?: boolean } = {},
+): Promise<ReadyMapTable> {
+  const viewport = { width: view.width ?? 1280, height: view.height ?? 900 };
+  const master = await newSignedInContext(browser, 'Mestre Teste', { viewport: view.both ? viewport : { width: 1280, height: 900 }, colorScheme: view.colorScheme, ...featShotScale });
+  const player = await newSignedInContext(browser, 'Jogador Teste', { viewport, colorScheme: view.colorScheme, ...featShotScale });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  await m.goto('/');
+  await p.goto('/');
+  const table = await tableForCombat(m, p, `${name} ${Date.now()}`, true, true, fireballKit);
+  const begun = await beginAttackCombatRPC(m, table, mapFaces, mapSquares);
+  await openSessionPage(p, table.campaignId);
+  await expect(p.getByRole('heading', { name: 'Sua vez, Pensantus' })).toBeVisible();
+  const readied = await holdOn(p, table.campaignId, begun, held);
+  await waitForEncounterRevision(p, readied);
+  await openSessionPage(m, table.campaignId);
+  const encounter = await passTurnsToAndWait(m, table.campaignId, 'Capitão Goblin', [m, p]);
+  return {
+    master,
+    player,
+    m,
+    p,
+    campaignId: table.campaignId,
+    encounter,
+    done: async () => {
+      await endOpenSessionRPC(m, table.campaignId);
+      await master.close();
+      await player.close();
+    },
+  };
+}
+
+/** The player's own call that holds `held`, with the trigger of the boards. */
+export async function holdOn(player: Page, campaignId: string, encounter: Encounter, held: Held): Promise<Encounter> {
+  if (held === 'fireball') {
+    return readySpellRPC(player, campaignId, encounter, 'Pensantus', 'spell:fireball', 3);
+  }
+  if (held === 'attack') {
+    return readyAttackRPC(player, campaignId, encounter, 'Pensantus', 'Capitão Goblin');
+  }
+  return readyRPC(player, 'ReadyAction', {
+    campaignId,
+    encounterId: encounter.id,
+    combatantId: encounter.combatants.find((c) => c.label === 'Pensantus')!.id,
+    triggerText: goblinTrigger,
+    kind: 'READIED_KIND_MOVE',
+  });
+}
+
+/** "Disparar" of the fold on the master's page: the window opens for the readier. */
+export async function fireReadied(m: Page): Promise<void> {
+  const button = m.locator('app-readied-fold').getByRole('button', { name: 'Disparar a ação de Pensantus' });
+  await expect(button).toBeEnabled();
+  await button.click();
+}
+
+/** The window of the held Bola de Fogo on the player's page, once the master fired. */
+export function spellWindow(p: Page): Locator {
+  return p.getByRole('alertdialog', { name: releaseTexts.spellDialog });
+}
+
+/** The window of the held move on the player's page. */
+export function moveWindow(p: Page): Locator {
+  return p.getByRole('alertdialog', { name: releaseTexts.moveDialog });
+}
+
+/** The cast sheet of the release (the player's) or the master's area dialog: the dialog titled "Soltar Bola de Fogo" (+ " por Pensantus" for the master). */
+export function releaseSheet(page: Page, master = false): Locator {
+  return page.getByRole('dialog', { name: master ? 'Soltar Bola de Fogo por Pensantus' : releaseTexts.spellDialog });
+}
+
+/** The master's row of the readied window in the queue. */
+export function masterQueue(m: Page): Locator {
+  return m.locator('app-reaction-queue[part="rest"]');
+}
+
+/** Opens the map from the player's window and picks the point on the creature "Goblin 1" with the keyboard ("C" opens "Centrar em…"); stops at the "Quem está na área" step. */
+export async function placeFireball(p: Page): Promise<Locator> {
+  await spellWindow(p).getByTestId('release-to-map').click();
+  const sheet = releaseSheet(p);
+  const map = sheet.getByRole('application', { name: 'Mapa: escolha o ponto da Bola de Fogo' });
+  await expect(map).toBeFocused();
+  await map.press('c');
+  await sheet.getByRole('listbox', { name: 'Centrar em…' }).getByRole('option', { name: /Goblin 1/ }).click();
+  await map.press('Enter');
+  await expect(sheet.getByRole('heading', { name: 'Quem está na área' })).toBeFocused();
+  return sheet;
+}
