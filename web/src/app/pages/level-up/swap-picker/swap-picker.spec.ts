@@ -25,7 +25,7 @@ function bothOf(): LevelUpSwap {
   return new LevelUpSwap(
     create(LevelUpOptionsSchema, {
       swapGroups: [
-        group('fighting_style', 'Estilo de luta', 'Defesa', ['Duelismo']),
+        group('fighting_style', 'Estilo de Luta', 'Defesa', ['Duelismo']),
         group('cantrip', 'Truque', 'Luz', ['Chama']),
         group(FEATURE, 'Infusões', 'Escudo', ['Radiante', 'Bumerangue']),
         group('feature:outra@mesa', 'Outra', 'X', ['Y']),
@@ -41,7 +41,7 @@ function swapOf(withGroups = true): LevelUpSwap {
         ? [
             create(LevelUpSwapGroupSchema, {
               group: 'fighting_style',
-              namePt: 'Estilo de luta',
+              namePt: 'Estilo de Luta',
               picks: [named('feature:fighter-fighting-style-defense', 'Defesa')],
               pool: [
                 named('feature:fighter-fighting-style-dueling', 'Duelismo'),
@@ -83,7 +83,7 @@ describe('LevelUpSwap and SwapPicker', () => {
     const swap = swapOf();
     const fixture = render(swap);
     const el = fixture.nativeElement as HTMLElement;
-    radio(el, 'swap-group', 'Estilo de luta').click();
+    radio(el, 'swap-group', 'Estilo de Luta').click();
     fixture.detectChanges();
     radio(el, 'swap-from', 'Defesa').click();
     fixture.detectChanges();
@@ -219,7 +219,7 @@ describe('LevelUpSwap and SwapPicker', () => {
     expect(el.querySelector('[role="status"]')?.textContent).toContain(
       'Trocar Escudo por Bumerangue',
     );
-    radio(el, 'swap-group', 'Estilo de luta').click();
+    radio(el, 'swap-group', 'Estilo de Luta').click();
     fixture.detectChanges();
     expect(
       Array.from(el.querySelectorAll('label')).find((l) => l.textContent?.includes('Infusões'))

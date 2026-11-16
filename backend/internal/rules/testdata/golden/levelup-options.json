@@ -594,7 +594,7 @@
     "PickSwaps": [
       {
         "Group": "fighting_style",
-        "NamePT": "Estilo de luta",
+        "NamePT": "Estilo de Luta",
         "Picks": [
           {
             "Key": "feature:fighter-fighting-style-defense",

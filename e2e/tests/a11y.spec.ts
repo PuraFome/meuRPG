@@ -3584,7 +3584,7 @@ test('o subir de nível passa no axe e nas conferências de layout no tema claro
   await scanLevelUpScreens(browser, 'light', 320);
 });
 
-// "Trocar uma escolha" with a table feature's group (#715): at a level with no ability step the one panel sits in "Escolhas"
+// "Trocar escolhas" with a table feature's group (#715): at a level with no ability step the one panel sits in "Escolhas"
 // (closed, a group open, half chosen, whole, then the summary); at an Ability Score Improvement level it holds the table rule's
 // group and the feature's together. Doran, Guerreiro 4 of the table's "Mestre das Posturas", goes to 5 and then to 6.
 async function scanOptionSwapScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
@@ -3608,9 +3608,9 @@ async function scanOptionSwapScreens(browser: Browser, colorScheme: 'light' | 'd
     await passClassStep(p);
     await p.getByRole('button', { name: 'Próximo' }).click();
     await expect(p.getByText('Passo 3 de 4 · Escolhas')).toBeVisible();
-    const panel = p.getByRole('region', { name: 'Trocar uma escolha' });
+    const panel = p.getByRole('region', { name: 'Trocar escolhas' });
     await expect(panel).toBeVisible();
-    await expectScreenPasses(p, `Escolhas, o painel "Trocar uma escolha" sem troca ${where}`);
+    await expectScreenPasses(p, `Escolhas, o painel "Trocar escolhas" sem troca ${where}`);
     await panel.getByText('Posturas', { exact: true }).click();
     await expect(panel.getByRole('radiogroup', { name: 'Abrir mão de' })).toBeVisible();
     await expectScreenPasses(p, `Escolhas, a troca da característica aberta ${where}`);
@@ -3631,14 +3631,14 @@ async function scanOptionSwapScreens(browser: Browser, colorScheme: 'light' | 'd
     await p.goto(`${sheet}/level-up`);
     await passClassStep(p);
     await expect(p.getByText('Passo 2 de 4 · Habilidades')).toBeVisible();
-    const both = p.getByRole('region', { name: 'Trocar uma escolha' });
-    await expect(both.getByRole('radio', { name: 'Estilo de luta' })).toBeVisible();
+    const both = p.getByRole('region', { name: 'Trocar escolhas' });
+    await expect(both.getByRole('radio', { name: 'Estilo de Luta' })).toBeVisible();
     await expect(both.getByRole('radio', { name: 'Posturas' })).toBeVisible();
     await expectScreenPasses(p, `Habilidades, o painel com o conjunto da regra e o da característica ${where}`);
     await both.locator('label.opt').filter({ hasText: 'Posturas' }).click();
     await both.getByRole('radiogroup', { name: 'Abrir mão de' }).getByText('Postura do Touro').click();
     await both.getByRole('radiogroup', { name: 'Pegar no lugar' }).getByText('Postura do Urso').click();
-    await both.getByText('Estilo de luta', { exact: true }).click();
+    await both.getByText('Estilo de Luta', { exact: true }).click();
     await both.getByRole('radiogroup', { name: 'Abrir mão de' }).getByText('Defesa').click();
     await both.getByRole('radiogroup', { name: 'Pegar no lugar' }).getByText('Duelismo').click();
     await both.locator('label.opt').filter({ hasText: 'Posturas' }).click();
