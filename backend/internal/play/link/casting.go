@@ -107,6 +107,23 @@ func (g *OutsideGrant) LevelOr(own int) int {
 	return max(g.CastLevel, own)
 }
 
+// GrantIndex is the place among the spell's grants of the one a casting finishes through: the grant of that source
+// when there is one, or (for a casting that remembers none) the first that casts it the way the casting is, as a
+// ritual or not. It is -1 when there is none.
+func (o OutsideSpell) GrantIndex(source string, ritual bool) int {
+	return slices.IndexFunc(o.Grants, func(g OutsideGrant) bool {
+		return g.RitualOnly == ritual && (source == "" || g.Source == source)
+	})
+}
+
+// SourceOf is the source of the grant a cast goes through: "" when there is no grant (a nil g).
+func (g *OutsideGrant) SourceOf() string {
+	if g == nil {
+		return ""
+	}
+	return g.Source
+}
+
 // ScorchingRays is how many rays Scorching Ray makes at a slot level: 3 at its own level, one more for each level above.
 func (sp Spell) ScorchingRays(slotLevel int) int {
 	const baseRays = 3

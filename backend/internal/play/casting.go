@@ -356,8 +356,7 @@ func (s *Service) castOutside(ctx context.Context, c *combatTx, m authz.Membersh
 		return castOutcome{}, err
 	}
 	long := plan.minutes > 0
-	// A use of a grant is spent when the cast starts, a long casting included: the casting does
-	// not say afterwards which grant it went through.
+	// A use of a grant is spent when the cast starts, a long casting included.
 	spent, err := s.spendGrantUse(ctx, c, plan)
 	if err != nil {
 		return castOutcome{}, err
@@ -481,7 +480,7 @@ func (s *Service) insertCast(ctx context.Context, c *combatTx, m authz.Membershi
 		CampaignID: m.CampaignID, GameSessionID: c.session.ID, CasterID: plan.g.caster.ID, SpellKey: plan.spell, Ritual: plan.ritual,
 		SlotLevel: castSlotLevel(plan.slot), SlotPact: plan.slot != nil && plan.slot.Pact, Status: castCasting, Concentrating: long,
 		CastingMinutes: clamp32(plan.minutes, 0, 1_000_000), Lasts: plan.osp.Lasts,
-		DurationSeconds: durationOf(plan.osp), RestEnds: restOf(plan.osp), Secret: plan.g.secret, StartedAt: c.now,
+		DurationSeconds: durationOf(plan.osp), RestEnds: restOf(plan.osp), Secret: plan.g.secret, StartedAt: c.now, GrantSource: plan.grant.SourceOf(),
 	})
 	if err != nil {
 		return playdb.SpellCast{}, fmt.Errorf("insert the cast: %w", err)
