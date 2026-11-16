@@ -717,6 +717,7 @@ type SpellCast struct {
 	StartedAt          time.Time
 	CastAt             *time.Time
 	EndedAt            *time.Time
+	GrantSource        string
 }
 
 type SpellZone struct {

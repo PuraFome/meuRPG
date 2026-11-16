@@ -9,6 +9,7 @@ import {
 } from '../../../gen/meurpg/rules/v1/table_content_pb';
 import { abilities, feature } from './content-testing';
 import { menu } from './content-testing-menu';
+import { inputFor } from './content-violations';
 import {
   backgroundToDraft,
   bonusText,
@@ -309,6 +310,33 @@ describe('the option list of a feature (a table feature the player picks from)',
     const draft = featureToDraft(withOptions());
     const paths = featurePaths('table_subclass.levels[0].features', [draft], m);
     expect(paths).toContain('table_subclass.levels[0].features[0].options[1].name_pt');
+  });
+});
+
+describe('the fields an option row of a feature asks at (#580, board 580-03)', () => {
+  it('names each field of "O que a opção pede" for each option, so a refusal lands on its field and not on the option', () => {
+    const f = { ...emptyFeature(), options: [emptyFeature(), { ...emptyFeature(), name: 'B' }] };
+    const paths = featureOwnPaths('t', f, menu());
+    for (const field of [
+      'class_level',
+      'class_level.class_key',
+      'class_level.level',
+      'requires_pact',
+      'requires_spell_key',
+      'requires_option_keys',
+    ]) {
+      expect(paths).toContain(`t.options[1].prerequisite.${field}`);
+    }
+    expect(paths).not.toContain('t.prerequisite.requires_pact');
+  });
+
+  it('places the refusal of one picked option on the list, since each pick has no field of its own', () => {
+    const known = new Set(
+      featureOwnPaths('t', { ...emptyFeature(), options: [emptyFeature()] }, menu()),
+    );
+    expect(inputFor('t.options[0].prerequisite.requires_option_keys[1]', (p) => known.has(p))).toBe(
+      't.options[0].prerequisite.requires_option_keys',
+    );
   });
 });
 

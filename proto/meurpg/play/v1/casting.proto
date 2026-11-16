@@ -344,6 +344,8 @@ message CastingSpell {
   CastingEffectKind effect = 12;
   // Whether the cast rolls dice (a healing spell, False Life): it needs `roll_in_app` or
   // `typed_sum`. `roll_dice` is the dice at the spell's own level, "2d8".
+  // A cast through a grant rolls the dice at the grant's `cast_level` (`grants[].cast_level`), so a client that
+  // rolls physical dice reads the count at that level, not this one.
   bool rolls_dice = 13;
   string roll_dice = 14;
   // How many targets the spell takes at its own level (0: any number, an area; the
@@ -392,6 +394,10 @@ message CastingGrant {
   // The uses a cast spends of `resource` (1 or more; 0 for an at-will grant). A cast works
   // only while `uses_left` covers it.
   int32 uses_cost = 13;
+  // The level the grant casts the spell at, with no slot: the effect's `cast_level`, or the spell's own
+  // level when it sets none; 0 for a cantrip. A cast with a slot (`also_with_slot`) uses the slot's level.
+  // The dice a cast with no slot rolls are those at this level, in the app or typed from physical dice.
+  int32 cast_level = 14;
 }
 
 // CastingEffectKind is what a spell does that the server applies, from the spell alone.
@@ -600,8 +606,8 @@ message OutsideCast {
   OutsideCastStatus status = 7;
   // Cast as a ritual (no slot, 10 minutes more).
   bool ritual = 8;
-  // The slot level the spell was cast at (0: a cantrip or a ritual, the spell's own
-  // level) and whether it was a pact magic slot.
+  // The slot level the spell was cast at (0: no slot, for a cantrip, a ritual or a cast through a grant, which is
+  // at the grant's `cast_level`) and whether it was a pact magic slot.
   int32 slot_level = 9;
   bool slot_pact = 10;
   // The minutes the casting takes (the ritual's 10 included); 0 when it was cast at once.
