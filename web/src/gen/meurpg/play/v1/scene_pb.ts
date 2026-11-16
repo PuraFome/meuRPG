@@ -1399,7 +1399,8 @@ export type NpcCheckCandidate = Message<"meurpg.play.v1.NpcCheckCandidate"> & {
 
   /**
    * True for an NPC the master marked hidden from the players on the stage ("Escondido dos jogadores"), or whose token is hidden
-   * on the map: the app starts the checkbox unticked for it.
+   * on the session's current map: when the creature is both on the stage and on the map, either one makes it true (it is listed
+   * once, as a stage creature). The app starts the checkbox unticked for it.
    *
    * @generated from field: bool hidden = 6;
    */

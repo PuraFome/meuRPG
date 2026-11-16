@@ -189,7 +189,8 @@ func (s *Service) pickMonster(ctx context.Context, campaignID, key string, out *
 	return nil
 }
 
-// pickStageAndTokens offers the NPCs on the stage, the hidden ones marked, and those with a token on the session's current map.
+// pickStageAndTokens offers the NPCs on the stage, the hidden ones marked, and those with a token on the session's current map. A creature
+// in both places is offered once, as a stage one (the first source wins), and is hidden when the stage mark or its token hides it.
 func (s *Service) pickStageAndTokens(ctx context.Context, campaignID string, session playdb.GameSession, add func(link.Character, playv1.NpcCheckSource, bool) error) error {
 	rows, err := s.queries.ListStage(ctx, session.ID)
 	if err != nil {
@@ -199,30 +200,32 @@ func (s *Service) pickStageAndTokens(ctx context.Context, campaignID string, ses
 	if err != nil {
 		return err
 	}
+	var tokens []link.TokenPosition
+	if session.CurrentMapID != nil {
+		if tokens, err = s.maps.MapTokens(ctx, nil, *session.CurrentMapID); err != nil {
+			return fmt.Errorf("read the tokens: %w", err)
+		}
+	}
+	tokenHidden := map[string]bool{}
+	for _, t := range tokens {
+		tokenHidden[t.CharacterID] = t.Hidden
+	}
 	for _, r := range rows {
 		if c, ok := chars[r.CharacterID]; ok && !c.CombatOnly {
-			if err := add(c, playv1.NpcCheckSource_NPC_CHECK_SOURCE_STAGE, r.Hidden); err != nil {
+			if err := add(c, playv1.NpcCheckSource_NPC_CHECK_SOURCE_STAGE, r.Hidden || tokenHidden[c.ID]); err != nil {
 				return err
 			}
 		}
 	}
-	if session.CurrentMapID == nil {
-		return nil
-	}
-	return s.pickTokens(ctx, campaignID, *session.CurrentMapID, add)
+	return s.pickTokens(ctx, campaignID, tokens, tokenHidden, add)
 }
 
 // pickTokens offers the NPCs with a token on the map.
-func (s *Service) pickTokens(ctx context.Context, campaignID, mapID string, add func(link.Character, playv1.NpcCheckSource, bool) error) error {
-	tokens, err := s.maps.MapTokens(ctx, nil, mapID)
-	if err != nil {
-		return fmt.Errorf("read the tokens: %w", err)
-	}
+func (s *Service) pickTokens(ctx context.Context, campaignID string, tokens []link.TokenPosition, hidden map[string]bool, add func(link.Character, playv1.NpcCheckSource, bool) error) error {
 	var ids []string
-	hidden := map[string]bool{}
 	for _, t := range tokens {
 		if t.CharacterID != "" {
-			ids, hidden[t.CharacterID] = append(ids, t.CharacterID), t.Hidden
+			ids = append(ids, t.CharacterID)
 		}
 	}
 	living, err := s.roster.CombatCharacters(ctx, nil, campaignID, ids)

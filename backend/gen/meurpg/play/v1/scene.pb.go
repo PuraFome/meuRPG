@@ -2555,7 +2555,8 @@ type NpcCheckCandidate struct {
 	// Where it was found, and whether the players do not see it (the stage or the token hides it).
 	Source NpcCheckSource `protobuf:"varint,5,opt,name=source,proto3,enum=meurpg.play.v1.NpcCheckSource" json:"source,omitempty"`
 	// True for an NPC the master marked hidden from the players on the stage ("Escondido dos jogadores"), or whose token is hidden
-	// on the map: the app starts the checkbox unticked for it.
+	// on the session's current map: when the creature is both on the stage and on the map, either one makes it true (it is listed
+	// once, as a stage creature). The app starts the checkbox unticked for it.
 	Hidden bool `protobuf:"varint,6,opt,name=hidden,proto3" json:"hidden,omitempty"`
 	// The checks, with the bonus the master sees: six abilities and the skills, in the sheet's order.
 	Checks []*NpcCheckOption `protobuf:"bytes,7,rep,name=checks,proto3" json:"checks,omitempty"`

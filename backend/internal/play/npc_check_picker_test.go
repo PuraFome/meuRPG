@@ -129,6 +129,27 @@ func TestNpcCheckPickerMarksTheCreaturesHiddenFromThePlayers(t *testing.T) {
 			t.Errorf("the creature with a hidden token = %v, want it listed as hidden", c)
 		}
 	})
+	// A creature on the stage with a token on the current map is listed once, as a stage candidate: it is hidden when either hides it.
+	for name, tc := range map[string]struct{ stage, token bool }{
+		"shown on the stage, hidden token": {false, true},
+		"hidden on the stage, shown token": {true, false},
+		"shown on the stage, shown token":  {false, false},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			n := newNpcTable(t, charactersv1.CuttingWordsAsk_CUTTING_WORDS_ASK_ALL)
+			n.putOnStage(t, tc.stage)
+			mapID := n.mapWith(t)
+			n.h.placeToken(mapID, n.npcID, 1750, 250)
+			if tc.token {
+				n.hideToken(t, mapID, n.npcID)
+			}
+			c := n.candidate(t, n.npcID)
+			if c == nil || c.GetSource() != playv1.NpcCheckSource_NPC_CHECK_SOURCE_STAGE || c.GetHidden() != (tc.stage || tc.token) {
+				t.Errorf("the creature on the stage and on the map = %v, want a stage candidate, hidden %v", c, tc.stage || tc.token)
+			}
+		})
+	}
 	t.Run("a creature of the bestiary", func(t *testing.T) {
 		t.Parallel()
 		n := newNpcTable(t, charactersv1.CuttingWordsAsk_CUTTING_WORDS_ASK_ALL)
