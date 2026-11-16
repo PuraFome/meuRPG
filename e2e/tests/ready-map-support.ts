@@ -156,6 +156,8 @@ export async function placeFireball(p: Page): Promise<Locator> {
   await expect(map).toBeFocused();
   await map.press('c');
   await sheet.getByRole('listbox', { name: 'Centrar em…' }).getByRole('option', { name: /Goblin 1/ }).click();
+  // Enter confirms the point the map holds: it is read once the pick has been placed, as a table sees it.
+  await expect(sheet.getByText('Toque de novo no mesmo ponto')).toBeVisible();
   await map.press('Enter');
   await expect(sheet.getByRole('heading', { name: 'Quem está na área' })).toBeFocused();
   return sheet;
