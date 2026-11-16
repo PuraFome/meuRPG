@@ -141,6 +141,31 @@ func TestAFromFeatureThatIsNotAFeatureWithOptionsIsRefused(t *testing.T) {
 	}
 }
 
+// A feature that offers the options of another feature makes no other choice of features, in whatever order they are written.
+func TestAFeatureThatOffersAnotherFeaturesOptionsMakesNoOtherChoiceOfFeatures(t *testing.T) {
+	t.Parallel()
+	base := loadForTest(t)
+	other := Effect{Type: "choice", Choice: "feature", Count: 1, From: []string{postureHeron, postureBull}}
+	for name, effects := range map[string][]Effect{
+		"the offer first": {askPostures(1), other},
+		"the offer last":  {other, askPostures(1)},
+		"two offers":      {askPostures(1), askPostures(1)},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			o := fromFeatureOverlay(askPostures(1))
+			o.Subclasses[1].Levels[0].Features[0].Effects = effects
+			_, err := base.With(o)
+			var oe *OverlayError
+			if !errors.As(err, &oe) || !slices.ContainsFunc(oe.Violations(), func(v *OverlayError) bool {
+				return strings.Contains(v.Message, "no other choice of features") || strings.Contains(v.Message, "offers one choice of options")
+			}) {
+				t.Errorf("With: %v, want the several choices refused", err)
+			}
+		})
+	}
+}
+
 // Only a class or a subclass feature offers the options of another feature.
 func TestAFromFeatureOnAnotherKindOfOwnerIsRefused(t *testing.T) {
 	t.Parallel()

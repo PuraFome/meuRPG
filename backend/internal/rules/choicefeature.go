@@ -27,6 +27,9 @@ func (b *overlayBuilder) checkFromFeature(site effectSite, e *Effect) error {
 	case len(e.From) > 0 || e.Set != "":
 		return site.fail(".from_feature", ReasonValue, "a choice offers a list, a set, a filter or the options of a feature, not several")
 	}
+	if b.featureChoices(site.owner) > 1 {
+		return site.fail(".from_feature", ReasonValue, "a feature that offers the options of another feature asks for no other choice of features")
+	}
 	src, err := b.fromFeatureSource(site, e.FromFeature)
 	if err != nil {
 		return err
@@ -36,6 +39,22 @@ func (b *overlayBuilder) checkFromFeature(site effectSite, e *Effect) error {
 	}
 	e.From = slices.Clone(src.Options)
 	return nil
+}
+
+// featureChoices counts the choices of features that the owner makes, whatever their order.
+func (b *overlayBuilder) featureChoices(owner string) int {
+	n := 0
+	for _, p := range b.pending {
+		if p.owner != owner {
+			continue
+		}
+		for i := range p.effects {
+			if isFeatureChoice(&p.effects[i]) {
+				n++
+			}
+		}
+	}
+	return n
 }
 
 // fromFeatureSource is the feature a choice offers the options of, when it is one that may be offered.
