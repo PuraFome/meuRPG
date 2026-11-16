@@ -110,7 +110,7 @@ func (c *content) lostOffered(key, feat string) *LostPrerequisite {
 		what = "o talento "
 	}
 	return &LostPrerequisite{Key: key, EntryPT: c.namePT(key), Option: true, offeredBy: feat, Conditions: []LostCondition{
-		{AskPT: what + c.namePT(feat), LinkPT: "que", HasPT: "não aplica agora"},
+		{AskPT: what + c.namePT(feat), LinkPT: "que", HasPT: lostListedPT},
 	}}
 }
 
@@ -265,6 +265,9 @@ func (c *content) lostCondition(u FeatUnmet, b Build, d Derived) LostCondition {
 	case FeatUnmetClassLevel, FeatUnmetPact, FeatUnmetSpell, FeatUnmetOption, FeatUnmetLacksFeature:
 		lc.Hidden = c.hiddenOn(b, u.Key)
 	}
+	if (u.Kind == FeatUnmetPact || u.Kind == FeatUnmetOption) && ownedBy(b, d)(u.Key) {
+		lc.HasPT = lostListedPT // the sheet lists it and does not apply it: it is lost itself
+	}
 	if lc.Hidden && c.player {
 		lc.AskPT = "" // a player's view holds no name of it, whoever reads the sentence
 	}
@@ -287,6 +290,9 @@ func (c *content) lostAsk(u FeatUnmet, b Build, d Derived) LostCondition {
 	}
 	return LostCondition{AskPT: c.lostAskPT(u), LinkPT: "que", HasPT: lostHasPT[u.Kind]}
 }
+
+// lostListedPT is what is said of a pact or an option the sheet still lists and does not apply, told after "que <name>".
+const lostListedPT = "não aplica agora"
 
 // lostHasPT is what the character has of a condition that is plainly missing, told after "que <name>".
 var lostHasPT = map[string]string{
