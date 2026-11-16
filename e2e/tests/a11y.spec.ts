@@ -15686,6 +15686,15 @@ async function scanWeaponsList(browser: Browser, colorScheme: 'light' | 'dark', 
     await select.scrollIntoViewIfNeeded();
     await select.click();
     await expect(p.getByRole('option', { name: /Machado de Lenhador/ })).toBeVisible();
+    // The panel is in the page, and visible, a few frames before the overlay places it (it is at the top of the window until then):
+    // measure once it stands under the helper line, which is where the list is placed.
+    await expect.poll(
+      () => p.evaluate(() => {
+        const hint = [...document.querySelectorAll('mat-hint')].find((h) => h.textContent?.includes('Escolha quantas quiser'))!;
+        return document.querySelector('.mr-weapons-panel')!.getBoundingClientRect().top - hint.getBoundingClientRect().bottom;
+      }),
+      { message: `a lista é posicionada abaixo da linha de ajuda ${where}`, timeout: 10_000 },
+    ).toBeGreaterThanOrEqual(0);
     const list = await p.evaluate(() => {
       const label = (g: Element) => g.querySelector('.mat-mdc-optgroup-label')!;
       const groups = [...document.querySelectorAll('.mr-weapons-panel mat-optgroup')];
