@@ -1847,7 +1847,9 @@ Não construído: um item de outro personagem, as cargas de um item infundido e 
 - **Dado** que mudo uma infusão para outra peça, **então** o tempo dela recomeça e a sintonização é limpa; **dado** que a encerro, **então** a peça volta a ser uma peça comum.
 - **Dado** que a peça sai da ficha, **quando** salvo, **então** a infusão dela termina.
 - **Dado** o mesmo pedido com a mesma chave, **então** a resposta é a primeira e nada é escrito duas vezes.
-- **Dado** um personagem morto, **então** toda escrita é recusada; **dado** uma ficha trancada pela sessão, **então** as escritas ainda funcionam.
+- **Dado** que o limite foi atingido e ponho uma na peça que já tem uma, escolhendo essa para encerrar, **então** ela é substituída, e a ficha lê uma só mudança.
+- **Dado** que mais infusões valem do que o limite (uma escolha devolvida, ou um nível tirado), **então** as mais antigas dizem "acima do limite", não dão número nem ocupam lugar de sintonização, e nenhuma termina sozinha.
+- **Dado** um personagem morto, **então** pôr uma infusão e mudá-la de peça são recusados para todos; **dado** o mestre, **então** encerrar um registro é permitido, e **dado** o dono, **então** é recusado; **dado** uma ficha trancada pela sessão, **então** as escritas ainda funcionam.
 - **Dado** um combate que tem o artífice, **quando** uma infusão muda, **então** as telas abertas do combate leem o turno e os ataques de novo; **dado** que o artífice está escondido, **então** só o mestre é avisado.
 - **Dado** que sou jogador de outro personagem, **então** nunca leio a infusão, o resultado de um ataque nunca a nomeia, e nenhuma transmissão me diz que ela mudou (RN-44).
 

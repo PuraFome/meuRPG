@@ -1848,7 +1848,9 @@ Not built: an item of another character, the charges of an infused item, and the
 - **Given** I move an infusion to another piece, **then** its time begins again and its attunement is cleared; **given** I end it, **then** the piece is a plain piece again.
 - **Given** the piece leaves the sheet, **when** I save, **then** its infusion ends.
 - **Given** the same request with the same key, **then** the answer is the first one and nothing is written twice.
-- **Given** a dead character, **then** every write is refused; **given** a sheet locked by the session, **then** the writes still work.
+- **Given** the limit is reached and I put one on the piece that already has one, choosing that one to end, **then** it is replaced, and the sheet reads one change.
+- **Given** more infusions are valid than the limit (a pick restored, or a level taken off), **then** the oldest say "acima do limite", give no number and take no attunement place, and none ends by itself.
+- **Given** a dead character, **then** putting on and moving are refused for everyone; **given** the master, **then** ending a record is allowed, and **given** the owner, **then** it is refused; **given** a sheet locked by the session, **then** the writes still work.
 - **Given** a combat that holds the artificer, **when** an infusion changes, **then** the combat's open screens read the turn and the attacks again; **given** the artificer is hidden, **then** only the master is told.
 - **Given** I am a player of another character, **then** I never read the infusion, an attack's result never names it, and no stream tells me it changed (RN-44).
 

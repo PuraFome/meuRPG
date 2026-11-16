@@ -79,7 +79,8 @@ func checkInfusionHolder(holder, infuser string) error {
 
 // knownInfusionKeys are the infusions the sheet picked that it knows now, in the order of its choices: the content has
 // them, the character has their feature at its level, still meets their prerequisite and picked them. The engine says it by
-// reading a record of each on an object: a record counts exactly when the infusion is known.
+// reading a record of each on an object: a record counts exactly when the infusion is known (one the limit pushes out is
+// still known).
 func knownInfusionKeys(content *rules.Content, raw rules.Build, characterID string) []string {
 	var picks []string
 	for _, k := range raw.FeatureChoices {
@@ -96,7 +97,7 @@ func knownInfusionKeys(content *rules.Content, raw rules.Build, characterID stri
 	}
 	var out []string
 	for _, st := range rules.Derive(probe, content).Infusions {
-		if st.Valid {
+		if st.Valid || st.OverLimit {
 			out = append(out, strings.TrimPrefix(st.ID, "probe:"))
 		}
 	}

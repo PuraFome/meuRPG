@@ -86,6 +86,18 @@ func checkInfuser(current charactersdb.Character, revision int32) error {
 	return nil
 }
 
+// checkEndInfuser is checkInfuser for ending a record: the infusions of a dead artificer stay until the master ends them, so
+// the master may end one; the owner is refused as for any write.
+func checkEndInfuser(m authz.Membership, current charactersdb.Character, revision int32) error {
+	if current.Status == statusDead && isMaster(m) {
+		if revision != 0 && revision != current.Revision {
+			return errStaleRevision()
+		}
+		return nil
+	}
+	return checkInfuser(current, revision)
+}
+
 // infusionKeyOf checks the idempotency key of a request: empty is none, anything else is a UUID.
 func infusionKeyOf(raw string) (string, error) {
 	key, err := idem.Clean(raw)
@@ -317,12 +329,12 @@ func (s *Service) replayedInfusion(ctx context.Context, q *charactersdb.Queries,
 }
 
 // infusionPlan is what a request's checks decide: where the record goes, which records end (the ones that are not valid now
-// on the item, with `taken`, and the one a new infusion replaces over the limit).
+// on the item, with `taken`, and the one a new infusion replaces).
 type infusionPlan struct {
 	kind   string
 	choice infusionChoice
 	taken  []string
-	ends   []string // the valid records that end with `replaced`, the named one first, then the oldest
+	ends   []string // the valid records that end with `replaced`: the one the caller named on the piece, or the one that makes room
 }
 
 // planInfuse checks an InfuseItem request against the sheet and its records, in the order the caller is answered: the
@@ -346,7 +358,9 @@ func (v infusionView) planInfuse(msg *charactersv1.InfuseItemRequest) (infusionP
 	if err != nil {
 		return infusionPlan{}, err
 	}
-	taken, err := v.checkItem(info, choice, "")
+	// A record named on the very piece is a replacement: the new infusion goes on the piece in its place.
+	here := v.validOnPiece(msg.GetEndInfusionId(), choice)
+	taken, err := v.checkItem(info, choice, here)
 	if err != nil {
 		return infusionPlan{}, err
 	}
@@ -358,7 +372,23 @@ func (v infusionView) planInfuse(msg *charactersv1.InfuseItemRequest) (infusionP
 		return infusionPlan{}, invalidArgument(fieldErr("attune_now", "is for an infusion that asks for attunement"))
 	}
 	plan.ends, err = v.replaced(msg.GetInfusionKey(), msg.GetEndInfusionId())
+	if here != "" {
+		plan.ends = append([]string{here}, slices.DeleteFunc(plan.ends, func(id string) bool { return id == here })...)
+	}
 	return plan, err
+}
+
+// validOnPiece is the id when it names a valid record that sits on the gear piece of the choice, "" otherwise.
+func (v infusionView) validOnPiece(id string, c infusionChoice) string {
+	if id == "" || c.object() {
+		return ""
+	}
+	for _, st := range v.derived.Infusions {
+		if st.ID == id && st.Valid && st.ItemKind == rules.InfusionItemGear && st.ItemKey == c.gearKey {
+			return id
+		}
+	}
+	return ""
 }
 
 // staleOf is the live record of the infusion that is not valid now, which a new infusion of the same key ends with `taken`
@@ -384,9 +414,10 @@ func addOnce(ids []string, id string) []string {
 	return append(ids, id)
 }
 
-// replaced says which valid records end to make room for a new infusion of the host: none under the limit; at it, the one
-// the caller named (a valid record of the same feature) and then the oldest ones (since, then id) until the host is under its
-// limit, normally one. A host with no limit has no room to make: the character does not know the infusion.
+// replaced says which valid record ends to make room for a new infusion of the host: none under the limit; at it, the one the
+// caller named (a valid record of the same feature), else the oldest (since, then id). The derivation never counts more valid
+// records than the limit, so one makes room; a record the limit pushed out stays live and ends by no write of its own. A host
+// with no limit has no room to make: the character does not know the infusion.
 func (v infusionView) replaced(infusionKey, named string) ([]string, error) {
 	host := v.content.InfusionHost(infusionKey)
 	var limit, used int
@@ -401,22 +432,18 @@ func (v infusionView) replaced(infusionKey, named string) ([]string, error) {
 	if limit <= 0 {
 		return nil, errInfusionBlocked(charactersv1.InfusionBlockedReason_INFUSION_BLOCKED_REASON_INFUSION_NOT_KNOWN)
 	}
-	var ends []string
 	if named != "" {
 		if !v.validOf(host, named) {
 			return nil, errInfusionBlocked(charactersv1.InfusionBlockedReason_INFUSION_BLOCKED_REASON_ITEM_CHANGED)
 		}
-		ends = append(ends, named)
+		return []string{named}, nil
 	}
 	for _, st := range v.derived.Infusions { // the order of the records: since, then id
-		if len(ends) >= used-limit+1 {
-			break
-		}
 		if st.Valid && st.HostKey == host {
-			ends = addOnce(ends, st.ID)
+			return []string{st.ID}, nil
 		}
 	}
-	return ends, nil
+	return nil, nil
 }
 
 // validOf says whether the record is a valid one of the host.
@@ -711,7 +738,7 @@ func (s *Service) endIn(ctx context.Context, tx pgx.Tx, m authz.Membership, msg 
 	if err != nil {
 		return endedInfusion{}, err
 	}
-	if err := checkInfuser(current, msg.GetRevision()); err != nil {
+	if err := checkEndInfuser(m, current, msg.GetRevision()); err != nil {
 		return endedInfusion{}, err
 	}
 	rec, err := s.liveRecordRow(ctx, q, current, msg.GetInfusionId())

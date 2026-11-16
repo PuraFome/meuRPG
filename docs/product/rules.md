@@ -1541,6 +1541,9 @@ The list of pieces says, for each, the reason it cannot take it, in words.
 **The limit and the oldest ending.**
 The class feature gives how many infusions are in use at once, by class level.
 Putting one on at the limit ends one: the player may choose which, and without a choice it is the oldest.
+Putting one on a piece that already has one, and choosing that record to end, replaces it, at the limit or not.
+The sheet never applies more infusions than the limit: when more are valid (the master restored a pick, a prerequisite came back, or a level was taken off), the oldest give way, say "acima do limite", give no number and take no attunement place.
+Nothing ends by itself: the record stays, for the owner or the master to end or keep.
 A text-only infusion, which the app does not calculate, counts as one; the screens will mark its item as text the table applies.
 Moving an infusion to another item begins its time again.
 
@@ -1548,7 +1551,8 @@ Moving an infusion to another item begins its time again.
 An infusion with a magic bonus follows the rules of the bonus of gear (RN-02): it counts for a piece that is equipped, a shield adds nothing while a two-handed weapon is equipped, and an infusion that asks for attunement adds nothing until the item is attuned.
 The sheet names the infusion on the piece, on its attack and on its lines of modifiers.
 A manual bonus on the same piece wins: the infusion gives no number there, and a new manual bonus on a piece with an infusion is refused.
-A record that is not valid now (the class level, the feature, the piece or a prerequisite is gone) gives no number and takes no place of the limit.
+A record that is not valid now (the class level, the feature, the piece or a prerequisite is gone, or the limit has no room for it) gives no number and takes no place of the limit.
+An option the master archived or switched off after the pick still infuses.
 
 **Attunement.**
 An infusion that asks for it counts among the three items the character is attuned to (RN-02), as a magic item does, and the player attunes it in the window of a rest, as any item.
@@ -1560,7 +1564,8 @@ A new infusion at the limit ends the one that gives way.
 A piece that leaves the sheet ends its record.
 An old record that is not valid now ends when its piece or its infusion is put to use again.
 An infusion that is not one the level-up lets the character keep ends too, and that waits for the level-up screens.
-A character that dies keeps its records.
+A character that dies keeps its records until the master ends them: the master may end one, and the owner may not.
+A dead character takes no new infusion and moves none.
 
 **Who reads what.**
 The owner and the master read the records on the sheet.

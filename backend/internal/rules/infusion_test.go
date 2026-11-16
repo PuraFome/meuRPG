@@ -355,7 +355,7 @@ func TestTheLimitFollowsTheClassLevelAndTheUsedCountIgnoresInvalidRecords(t *tes
 func TestAnInfusionWithOtherEffectsLeavesTheNumbersAndNamesThePiece(t *testing.T) {
 	t.Parallel()
 	c := withOverlay(t, infusionRulesOverlay())
-	b := infBuild(5, infAll...)
+	b := infBuild(6, infAll...) // three records fit the limit of level 6
 	b.Weapons = []string{infAxe, infSword}
 	b.Armor = infArmor
 	plainD := Derive(b, c)

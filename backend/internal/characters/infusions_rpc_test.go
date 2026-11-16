@@ -931,9 +931,9 @@ func TestInfuseItemEndsAStaleRecordOfTheSameInfusion(t *testing.T) {
 	wantInfusionRefusal(t, "the blade while it is in use", err, itemChangedR)
 }
 
-// Over the limit as many of the oldest valid records end as the host needs to be under it (more than one when the limit fell
-// below what was kept), and a host with no limit refuses the infusion as unknown.
-func TestInfuseItemEndsAsManyAsTheLimitNeeds(t *testing.T) {
+// A limit that fell below what was kept leaves the oldest record live and over the limit; a new infusion ends one valid record
+// (the oldest valid), not the one that gave way, and a host with no limit refuses the infusion as unknown.
+func TestInfuseItemAfterTheLimitFellEndsOneValidRecord(t *testing.T) {
 	t.Parallel()
 	it := newInfusedTable(t)
 	first := it.mustInfuseOn(t, infusionKeyBlade, infusionMace).GetInfusion().GetId()
@@ -952,16 +952,16 @@ func TestInfuseItemEndsAsManyAsTheLimitNeeds(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if c, _ := it.list(t, it.dona); c.GetUsed() != 4 {
-		t.Fatalf("used = %d, want 4 to start", c.GetUsed())
+	if c, _ := it.list(t, it.dona); c.GetUsed() != 3 || len(c.GetActive()) != 4 {
+		t.Fatalf("used = %d with %d live, want 3 used (the oldest gave way) and 4 live to start", c.GetUsed(), len(c.GetActive()))
 	}
 	it.h.clock.Advance(time.Minute)
 	res, err := it.infuseOn(t, it.dona, infusionKeyPlate, infusionLeather)
-	if err != nil || res.GetEndedInfusionId() != first {
-		t.Fatalf("InfuseItem = %v, %v, want the oldest, %s, as the one answered", res, err, first)
+	if err != nil || res.GetEndedInfusionId() != second {
+		t.Fatalf("InfuseItem = %v, %v, want the oldest valid record, %s, as the one answered", res, err, second)
 	}
-	if endedReason(t, it, first) != "replaced" || endedReason(t, it, second) != "replaced" {
-		t.Errorf("the two oldest ended %q and %q, want replaced for both", endedReason(t, it, first), endedReason(t, it, second))
+	if endedReason(t, it, second) != "replaced" || endedReason(t, it, first) != "" {
+		t.Errorf("the oldest valid ended %q and the one over the limit %q, want replaced and live", endedReason(t, it, second), endedReason(t, it, first))
 	}
 	if endedReason(t, it, third.GetInfusion().GetId()) != "" || endedReason(t, it, extra.ID) != "" {
 		t.Error("a newer record ended")

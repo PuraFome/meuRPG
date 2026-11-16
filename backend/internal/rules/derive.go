@@ -110,19 +110,7 @@ type activeEffect struct {
 
 func derive(b Build, c *content) Derived {
 	d := deriveWith(b, c, nil)
-	if len(b.Feats) == 0 && len(b.FeatureChoices) == 0 {
-		return d
-	}
-	// A character that loses a feat's prerequisite cannot use the feat until it has the
-	// prerequisite again (SRD 5.1, Feats). What the character has is judged with the
-	// feats in place, and the sheet is made again without the ones that no longer fit.
-	why := c.lostFeats(b, d)
-	for k, l := range c.lostOptions(b, d) {
-		if why == nil {
-			why = map[string]*LostPrerequisite{}
-		}
-		why[k] = l
-	}
+	why := c.lostEntries(b, d)
 	if len(why) == 0 {
 		return d
 	}
@@ -135,6 +123,24 @@ func derive(b Build, c *content) Derived {
 		}
 	}
 	return out
+}
+
+// lostEntries are the feats and options the build owns whose prerequisite the sheet d, derived with them in place, no longer
+// meets: what derive leaves out of the sheet. A character without feats or picks loses nothing.
+// A character that loses a feat's prerequisite cannot use the feat until it has the prerequisite again (SRD 5.1, Feats). What
+// the character has is judged with the feats in place, and the sheet is made again without the ones that no longer fit.
+func (c *content) lostEntries(b Build, d Derived) map[string]*LostPrerequisite {
+	if len(b.Feats) == 0 && len(b.FeatureChoices) == 0 {
+		return nil
+	}
+	why := c.lostFeats(b, d)
+	for k, l := range c.lostOptions(b, d) {
+		if why == nil {
+			why = map[string]*LostPrerequisite{}
+		}
+		why[k] = l
+	}
+	return why
 }
 
 // deriveWith is derive with the feats and options in lost (by key) listed but not applied; each is told with what

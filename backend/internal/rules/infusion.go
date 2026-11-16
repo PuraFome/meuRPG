@@ -2,6 +2,7 @@ package rules
 
 import (
 	"slices"
+	"strings"
 	"time"
 )
 
@@ -45,10 +46,12 @@ type InfusionStatus struct {
 	// Computed says the app handles the infusion (a number or a mark); false is a text only one, which the table applies.
 	Computed bool
 	// Valid says the record counts: the content knows the infusion, the character has its feature, picked it and still
-	// meets its prerequisite, a gear piece is on the sheet with no older infusion, and a manual bonus does not stand on
-	// the same piece. ReasonPT says why it does not.
+	// meets its prerequisite, a gear piece is on the sheet with no older infusion, a manual bonus does not stand on the same
+	// piece, and the host's limit has room for it. ReasonPT says why it does not.
 	Valid    bool
 	ReasonPT string
+	// OverLimit says the record would count but for the host's limit: the oldest of the valid ones give way to the newest.
+	OverLimit bool
 	// Bonus is the size of the number the infusion gives at the class level, 0 when it gives none or the record is not
 	// valid; Counts says the number holds now (the piece is equipped and, when asked, attuned).
 	Bonus  int
@@ -78,6 +81,7 @@ const (
 	reasonInfusionNoPiece = "A peça não está na ficha."
 	reasonInfusionOther   = "A infusão é de outro artífice, e esta ficha não a avalia."
 	reasonInfusionTaken   = "A peça já tem outra infusão, mais antiga."
+	reasonInfusionOver    = "A infusão está acima do limite."
 )
 
 // infusionLine is a record read against the content and the sheet.
@@ -105,6 +109,7 @@ func (l infusionLine) gear() bool { return l.rec.ItemKind == InfusionItemGear }
 // item bonus infusion makes the record not valid (the manual one stands); a save that asks whether the piece may take a
 // manual bonus passes false, because the bonus it asks about is the one in b. lost are the options the character no
 // longer meets the prerequisite of: their records are not valid.
+// The valid records beyond the host's limit are not valid either (limitInfusions).
 // Two valid records on one gear key cannot be live (one live record per piece): the oldest stands and the other is not
 // valid, the one that comes first in b.Infusions when they began together.
 func (c *content) infusionLines(b Build, manualStands bool, lost map[string]*LostPrerequisite) []infusionLine {
@@ -128,7 +133,43 @@ func (c *content) infusionLines(b Build, manualStands bool, lost map[string]*Los
 			out[i].valid, out[i].reasonPT, out[i].bonus = false, reasonInfusionTaken, 0
 		}
 	}
+	c.limitInfusions(out)
 	return out
+}
+
+// readInfusions reads the records of b the way the sheet does, with the options whose prerequisite the character lost
+// (what Derive leaves out): every count reads the same validity as the sheet.
+func (c *content) readInfusions(b Build, manualStands bool) []infusionLine {
+	if len(b.Infusions) == 0 {
+		return nil
+	}
+	return c.infusionLines(b, manualStands, c.lostEntries(b, deriveWith(b, c, nil)))
+}
+
+// limitInfusions makes the valid records beyond the limit of their host not valid: the host's limit at the artificer's class
+// level, the newest keeping their place and the oldest giving way (since, then id, the order the write uses). Nothing ends.
+func (c *content) limitInfusions(lines []infusionLine) {
+	byHost := map[string][]int{}
+	for i, l := range lines {
+		if l.valid {
+			byHost[l.host] = append(byHost[l.host], i)
+		}
+	}
+	for host, at := range byHost {
+		limit := c.infusions.rules[host].ActiveAt(lines[at[0]].level)
+		if len(at) <= limit {
+			continue
+		}
+		slices.SortFunc(at, func(x, y int) int {
+			if d := lines[x].rec.Since.Compare(lines[y].rec.Since); d != 0 {
+				return d
+			}
+			return strings.Compare(lines[x].rec.ID, lines[y].rec.ID)
+		})
+		for _, i := range at[:len(at)-limit] {
+			lines[i].valid, lines[i].reasonPT, lines[i].bonus = false, reasonInfusionOver, 0
+		}
+	}
 }
 
 func (c *content) infusionLine(b Build, r InfusionRecord, manualStands bool, lost map[string]*LostPrerequisite) infusionLine {
@@ -182,7 +223,7 @@ func (c *content) infusionHostLevel(b Build, host string) (int, bool) {
 // infusesBonusOf says a valid record with an item bonus sits on the gear key, whatever manual bonus the key has: the
 // key takes no manual bonus.
 func (c *content) infusesBonusOf(b Build, key string) bool {
-	for _, l := range c.infusionLines(b, false, nil) {
+	for _, l := range c.readInfusions(b, false) {
 		if l.valid && l.gear() && l.rec.ItemKey == key && l.in.Effect == InfusionEffectItemBonus {
 			return true
 		}
@@ -193,7 +234,7 @@ func (c *content) infusesBonusOf(b Build, key string) bool {
 // attunedInfusions is how many valid records ask for attunement and are attuned.
 func (c *content) attunedInfusions(b Build) int {
 	n := 0
-	for _, l := range c.infusionLines(b, true, nil) {
+	for _, l := range c.readInfusions(b, true) {
 		if l.valid && l.in.RequiresAttunement && l.rec.Attuned {
 			n++
 		}
@@ -360,7 +401,7 @@ func (x *deriver) usedOf(host string) int {
 func (x *deriver) statusOf(l infusionLine, counts bool) InfusionStatus {
 	s := InfusionStatus{
 		ID: l.rec.ID, InfusionKey: l.rec.InfusionKey, NamePT: x.infusionNamePT(l.rec.InfusionKey), ItemKind: l.rec.ItemKind, ItemKey: l.rec.ItemKey,
-		Parameter: l.rec.Parameter, Valid: l.valid, ReasonPT: l.reasonPT, Counts: counts, Attuned: l.rec.Attuned,
+		Parameter: l.rec.Parameter, Valid: l.valid, ReasonPT: l.reasonPT, OverLimit: l.reasonPT == reasonInfusionOver, Counts: counts, Attuned: l.rec.Attuned,
 		HostKey: l.host, ItemNamePT: l.rec.ObjectName,
 	}
 	if l.gear() {

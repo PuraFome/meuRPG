@@ -203,6 +203,10 @@ A build that reads no such number builds without them.
 A write reads the records after it locked the character's row.
 A record carries its artificer (`InfusionRecord.ArtificerID`) and a build carries its own `CharacterID`: a record whose artificer is not the build's character is not valid now, so a holder's sheet never judges another character's infusion by its own features.
 `FullSheet.infusions` lists one `SheetInfusion` per live record on every read, valid or not, the oldest first (`since`, then the id).
+The derivation never counts more valid records of a host than its limit at the class level.
+Of the valid records the oldest give way (`since`, then the id), and each says so as not valid now: "A infusão está acima do limite.".
+A record that gave way stays live and ends by no write of its own.
+The attunement count and the manual bonus check read the records as the sheet does, lost prerequisites and the limit included (`readInfusions`).
 Each row has the record, the infusion's name, the piece's or the object's name, whether the app computes it, whether it is valid now, the bonus it gives at the class level and what it asks of attunement.
 A text only record and an object record are rows too.
 The server fills the list and a save ignores it.
@@ -235,6 +239,7 @@ The sheet must still know it: the content has it, the feature is at its level an
 It also has no live valid record.
 The known infusions come in the order of the character's choices.
 The engine says "known" by reading a probe record of each pick (`knownInfusionKeys`), so the read and the writes share one rule.
+A probe the limit pushes out (`InfusionStatus.OverLimit`) is still a known infusion.
 Each known infusion has its name and the option's text.
 It also says what the infusion goes on, whether it asks for attunement and whether the app computes it.
 It lists the damage types it offers, with their Portuguese names.
@@ -263,7 +268,8 @@ They are pinned in `charactersSeamWriters`.
 Each locks the artificer's character row first (`visibleForUpdate`) and reads the records after it.
 The count against the limit is made on the rows the write changes.
 A sheet that is locked by a started game session does not stop them, as it does not stop equipping.
-A dead artificer is refused with `CharacterBlocked` `CHARACTER_DEAD`, for the owner and the master, as `SetEquipped` does.
+`InfuseItem` and `MoveInfusion` refuse a dead artificer with `CharacterBlocked` `CHARACTER_DEAD`, for the owner and the master, as `SetEquipped` does.
+`EndInfusion` refuses it for the owner only: the infusions of a dead artificer stay until the master ends them.
 A request with a `revision` that is not the character's is `aborted`; 0 skips the check.
 Each answer carries `revision`, the sheet's revision after the write, and a follow-up write may send it.
 The refusals of a rule are `failed_precondition` with an `InfusionBlocked` detail.
@@ -274,16 +280,17 @@ The refusals of a rule are `failed_precondition` with an `InfusionBlocked` detai
 - `invalid_argument` on `parameter`: a resistance infusion takes one of its damage types, any other takes none.
 - `invalid_argument` on `object_name_pt`: a name cleaned as the app's names are (1 to 40 characters, one line, no control, hidden or bidi characters, NFC), and never together with an `item_key`.
 - `ITEM_NOT_ACCEPTED`: the piece is of the wrong kind, already magical or not on the sheet, or an object is named for an infusion that takes none.
-- `ITEM_ALREADY_INFUSED`: a valid live record of any infusion holds the piece.
+- `ITEM_ALREADY_INFUSED`: a valid live record of any infusion holds the piece, unless `end_infusion_id` names that record: the call is then a replacement.
 - `invalid_argument` on `attune_now` when the infusion asks for no attunement.
 
 A live record of the same infusion that is not valid now does not refuse the call.
 It ends with `taken`, so what the list offers as known can be put on.
 A live record on the piece that is not valid now ends with `taken` too.
-At the limit of the infusion's host feature (valid records of that host at or above it), the old ones end with `replaced`.
-The record named in `end_infusion_id` ends first, and then the oldest valid records of that host (`since`, then id) until the host is under its limit.
-Normally that is one record.
-A named record under the limit is left alone.
+The record named in `end_infusion_id` that sits on the piece being infused ends with `replaced`, whether the limit is full or not, and the new record goes on the piece.
+At the limit of the infusion's host feature (valid records of that host equal to it), one valid record ends with `replaced`.
+It is the record named in `end_infusion_id`, or the oldest valid one of that host (`since`, then id).
+A record the limit pushed out is not one of them.
+A named record elsewhere, under the limit, is left alone.
 A host with no limit has no room to make, and the call is `INFUSION_NOT_KNOWN`.
 `ended_infusion_id` is the first record that ended.
 The new record is written by the store, which makes its id in Go.
@@ -298,6 +305,7 @@ The record's `since` begins again and its attunement is cleared.
 A move to the piece it is on changes nothing.
 
 `EndInfusion` needs a live record of this artificer (`ITEM_CHANGED` otherwise) and ends it with `ended`.
+The master may end the record of a dead artificer.
 Its answer is the id and the revision.
 It has no idempotency key, so a retry of an infusion that ended answers `ITEM_CHANGED`.
 

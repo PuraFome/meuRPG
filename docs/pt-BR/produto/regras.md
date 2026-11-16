@@ -1541,6 +1541,9 @@ A lista de peças diz, para cada uma, o motivo de ela não poder recebê-la, em 
 **O limite e o fim da mais antiga.**
 A característica da classe diz quantas infusões ficam em uso ao mesmo tempo, por nível na classe.
 Pôr uma no limite encerra uma: o jogador pode escolher qual, e sem escolha é a mais antiga.
+Pôr uma numa peça que já tem uma, escolhendo esse registro para encerrar, a substitui, no limite ou não.
+A ficha nunca aplica mais infusões do que o limite: quando mais registros valem (o mestre devolveu uma escolha, um pré-requisito voltou, ou um nível foi tirado), os mais antigos cedem, dizem "acima do limite", não dão número e não ocupam lugar de sintonização.
+Nada termina sozinho: o registro fica, para o dono ou o mestre encerrar ou manter.
 Uma infusão só de texto, que o app não calcula, conta como uma; as telas vão marcar o item como texto que a mesa aplica.
 Mudar uma infusão para outro item começa a contar o tempo de novo.
 
@@ -1548,7 +1551,8 @@ Mudar uma infusão para outro item começa a contar o tempo de novo.
 Uma infusão com bônus mágico segue as regras do bônus mágico do equipamento (RN-02): vale para uma peça equipada, um escudo não soma nada enquanto uma arma de duas mãos está equipada, e uma infusão que pede sintonização não soma nada até o item estar sintonizado.
 A ficha nomeia a infusão na peça, no ataque dela e nas linhas de modificadores.
 Um bônus manual na mesma peça vence: a infusão não dá número ali, e um bônus manual novo numa peça com infusão é recusado.
-Um registro que não vale agora (o nível na classe, a característica, a peça ou um pré-requisito sumiu) não dá número e não ocupa lugar do limite.
+Um registro que não vale agora (o nível na classe, a característica, a peça ou um pré-requisito sumiu, ou o limite não tem lugar para ele) não dá número e não ocupa lugar do limite.
+Uma opção que o mestre arquivou ou desligou depois da escolha continua infundindo.
 
 **Sintonização.**
 Uma infusão que a pede conta entre os três itens a que o personagem está sintonizado (RN-02), como um item mágico, e o jogador a sintoniza na janela de um descanso, como qualquer item.
@@ -1560,7 +1564,8 @@ Uma infusão nova no limite encerra a que cede lugar.
 Uma peça que sai da ficha encerra o registro dela.
 Um registro antigo que não vale agora termina quando a peça dele ou a infusão dele é posta em uso de novo.
 Uma infusão que a subida de nível não deixa o personagem manter também encerra, e isso espera as telas da subida de nível.
-Um personagem que morre mantém os registros.
+Um personagem que morre mantém os registros até o mestre encerrá-los: o mestre pode encerrar um, e o dono não.
+Um personagem morto não recebe infusão nova nem muda nenhuma de peça.
 
 **Quem lê o quê.**
 O dono e o mestre leem os registros na ficha.
