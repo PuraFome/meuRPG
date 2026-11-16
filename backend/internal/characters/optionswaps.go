@@ -38,3 +38,17 @@ type OptionSwaps interface {
 // SetOptionSwaps connects the module that hears the swaps of a table feature's options. It is optional: nil, the
 // default, calls nobody.
 func (s *Service) SetOptionSwaps(h OptionSwaps) { s.optionSwaps = h }
+
+// tellOptionSwaps calls the module that hears the swaps of a table feature's options, in the level-up's transaction, for a level
+// that made at least one. A nil module, or a level with no swap, calls nobody.
+func (s *Service) tellOptionSwaps(ctx context.Context, tx pgx.Tx, tell sessiontell.Tell, campaignID, characterID, classKey string, plan levelUpPlan) error {
+	swaps := plan.record.GetSwapFeatureOptions()
+	if s.optionSwaps == nil || len(swaps) == 0 {
+		return nil
+	}
+	told := make([]OptionSwap, 0, len(swaps))
+	for _, sw := range swaps {
+		told = append(told, OptionSwap{FeatureKey: sw.GetGroup(), GivenUp: sw.GetFromKey(), Taken: sw.GetToKey(), ClassKey: classKey, ToLevel: plan.toLevel})
+	}
+	return s.optionSwaps.OptionsGivenUp(ctx, tx, campaignID, characterID, told, tell)
+}

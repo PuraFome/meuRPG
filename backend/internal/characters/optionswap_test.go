@@ -458,6 +458,9 @@ func TestTheModuleThatHearsTheSwapsIsToldInTheLevelUpTransaction(t *testing.T) {
 	if _, err := f.levelUp(f.other, plain, swapped); err == nil {
 		t.Fatal("the level-up went through though the module refused")
 	}
+	if len(spy.calls) != 1 {
+		t.Fatalf("calls = %d for the level the module refused, want 1", len(spy.calls))
+	}
 	if again := f.other.get(t, f.campaign, plain.GetId()); again.GetRevision() != plain.GetRevision() || again.GetSheet().GetFull().GetClasses()[0].GetLevel() != 5 {
 		t.Errorf("the aborted level changed the sheet: revision %d (was %d), level %d", again.GetRevision(), plain.GetRevision(), again.GetSheet().GetFull().GetClasses()[0].GetLevel())
 	}
@@ -471,10 +474,10 @@ func TestTheModuleThatHearsTheSwapsIsToldInTheLevelUpTransaction(t *testing.T) {
 	if _, err := f.levelUp(f.other, plain, swapped); err != nil {
 		t.Fatalf("level 6 with two swaps: %v", err)
 	}
-	if len(spy.calls) != 2 {
-		t.Fatalf("calls = %d (the aborted one and this), want 2", len(spy.calls))
+	if len(spy.calls) != 1 {
+		t.Fatalf("calls = %d for the level that went through, want 1", len(spy.calls))
 	}
-	got := spy.calls[1]
+	got := spy.calls[0]
 	want := []OptionSwap{
 		{FeatureKey: f.postures.GetKey(), GivenUp: f.bull, Taken: f.hawk, ClassKey: "class:fighter", ToLevel: 6},
 		{FeatureKey: f.dodges.GetKey(), GivenUp: f.short, Taken: f.long, ClassKey: "class:fighter", ToLevel: 6},

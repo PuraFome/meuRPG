@@ -135,13 +135,12 @@ func (o LevelUpOffer) AllowsFeatureSwaps(swaps []PickSwap) bool {
 }
 
 // applyFeatureSwap gives up the option s.From for s.To, which takes its place among the sheet's picks: the choices deal the
-// picks in order, so the new option stays with the choice that had the old one. An option that is not a pick is added.
+// picks in order, so the new option stays with the choice that had the old one. A swap of an option that is not a pick changes
+// nothing (the offer never lets one through).
 func applyFeatureSwap(after *Build, s PickSwap) {
 	if i := slices.Index(after.FeatureChoices, s.From); i >= 0 {
 		after.FeatureChoices[i] = s.To
-		return
 	}
-	after.FeatureChoices = append(after.FeatureChoices, s.To)
 }
 
 // unmatchedRemovals are the removed picks that no feature group takes in: a group takes in at most one pick of its own, and a
