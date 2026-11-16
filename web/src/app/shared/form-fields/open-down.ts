@@ -22,6 +22,8 @@ export class OpenDown {
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
 
   constructor() {
+    // `_positions` is private to Material (no public input sets where the list opens). The spec test "keeps only the
+    // positions under the field" (open-down.spec.ts) fails when Material renames or removes it, so an upgrade says so.
     this.select._positions = this.select._positions.filter((p) => p.originY === 'bottom');
     const opened = this.select.openedChange.subscribe((open) => {
       if (open && window.innerHeight - this.host.getBoundingClientRect().bottom < ROOM_BELOW) {
