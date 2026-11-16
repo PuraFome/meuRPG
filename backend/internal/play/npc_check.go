@@ -219,7 +219,7 @@ func (c *npcCheckCall) run(ctx context.Context, tx pgx.Tx, h *hints, session pla
 	}
 	// A check still held for the bards ends where the next one is rolled: the master has one question at a time (a retry of a key
 	// replayed above and never gets here).
-	if err := s.settleOpenNpcChecks(ctx, tc, h, false); err != nil {
+	if err := s.settleOpenNpcChecks(ctx, tc, h); err != nil {
 		return err
 	}
 	opts, err := s.npcCheckNumbers(ctx, tx, c.m.CampaignID, npc, []string{c.req.GetCheckKey()})

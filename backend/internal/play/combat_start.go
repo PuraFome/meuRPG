@@ -152,7 +152,7 @@ func (s *Service) startWrite(ctx context.Context, c *combatTx, p startPlan) (any
 		return nil, err
 	}
 	// A check held for the bards ends where the combat begins: the dice are the combat's from now on.
-	if err := s.settleOpenNpcChecks(ctx, c, c.hints, false); err != nil {
+	if err := s.settleOpenNpcChecks(ctx, c, c.hints); err != nil {
 		return nil, err
 	}
 	// The mode is chosen here, for good (RN-25): the request's, or the table's rule

@@ -44,3 +44,7 @@ WHERE game_session_id = $1
   AND (kind = 'npc_check_held' OR (kind = 'npc_check_resolved' AND coalesce(payload->>'hold_id', '') = ''))
 ORDER BY seq DESC
 LIMIT 1;
+
+-- name: ListNpcCheckHolds :many
+-- Every NPC check hold of the campaign, settled or not: the session that ends deletes them all.
+SELECT * FROM inspiration_holds WHERE campaign_id = $1 AND kind = 'npc_check' ORDER BY created_at, id;

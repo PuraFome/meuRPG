@@ -110,28 +110,40 @@ func (s *Service) skipNpcCheck(ctx context.Context, tc *combatTx, h *hints, hold
 }
 
 // settleOpenNpcChecks settles, as a skip, every check of the session that still waits for its bards: a combat that opens leaves no one
-// to answer it (the bards' questions are out of combat), and the session that ends leaves no one at all. With forget the holds go too,
-// asks and all: nothing can read them afterwards. A hold of an earlier session is forgotten without a word: its events are not this
-// session's.
-func (s *Service) settleOpenNpcChecks(ctx context.Context, tc *combatTx, h *hints, forget bool) error {
+// to answer it (the bards' questions are out of combat), and the session that ends leaves no one at all. The holds stay: a settled check
+// is read again (GetNpcCheck) until the session ends, and forgetNpcChecks deletes them then. A hold of an earlier session is left as it is,
+// without a word: its events are not this session's.
+func (s *Service) settleOpenNpcChecks(ctx context.Context, tc *combatTx, h *hints) error {
 	holds, err := tc.q.ListOpenNpcCheckHolds(ctx, tc.session.CampaignID)
 	if err != nil {
 		return fmt.Errorf("list the checks held for the bards: %w", err)
 	}
 	for _, hold := range holds {
-		if !hold.CreatedAt.Before(tc.session.StartedAt) {
-			asks, err := tc.q.ListNpcCheckAsks(ctx, hold.ID)
-			if err != nil {
-				return fmt.Errorf("list the asks of the check: %w", err)
-			}
-			if _, err := s.skipNpcCheck(ctx, tc, h, hold, asks, uuid.NewString()); err != nil {
-				return err
-			}
+		if hold.CreatedAt.Before(tc.session.StartedAt) {
+			continue
 		}
-		if forget {
-			if err := forgetHold(ctx, tc.q, hold.ID); err != nil {
-				return err
-			}
+		asks, err := tc.q.ListNpcCheckAsks(ctx, hold.ID)
+		if err != nil {
+			return fmt.Errorf("list the asks of the check: %w", err)
+		}
+		if _, err := s.skipNpcCheck(ctx, tc, h, hold, asks, uuid.NewString()); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// forgetNpcChecks deletes every NPC check hold of the campaign, settled or not, asks and all: the session that ends leaves nothing that
+// can read or answer them (the history keeps the events), and no hold of the kind outlives its session. The open ones are settled first
+// (settleOpenNpcChecks).
+func forgetNpcChecks(ctx context.Context, q *playdb.Queries, campaignID string) error {
+	holds, err := q.ListNpcCheckHolds(ctx, campaignID)
+	if err != nil {
+		return fmt.Errorf("list the NPC check holds: %w", err)
+	}
+	for _, hold := range holds {
+		if err := forgetHold(ctx, q, hold.ID); err != nil {
+			return err
 		}
 	}
 	return nil

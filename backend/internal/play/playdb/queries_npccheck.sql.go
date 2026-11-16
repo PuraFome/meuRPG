@@ -226,6 +226,75 @@ func (q *Queries) ListNpcCheckAsks(ctx context.Context, holdID string) ([]NpcChe
 	return items, nil
 }
 
+const listNpcCheckHolds = `-- name: ListNpcCheckHolds :many
+SELECT id, campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, answer_key, created_at, round, lucky_index, lucky_answer_key, lucky_to, combatant_id, encounter_id, window_hold, indomitable_ask, indomitable_failed, indomitable_answer_key, indomitable_from, indomitable_to, die_answer_key, die_used, stroke_ask, stroke_failed, stroke_answer_key, stroke_from, reroll_ask, reroll_index, reroll_at_most, reroll_resource, reroll_cost, reroll_source, reroll_answer_key, reroll_from, reroll_to, counted_by, favor_spent FROM inspiration_holds WHERE campaign_id = $1 AND kind = 'npc_check' ORDER BY created_at, id
+`
+
+// Every NPC check hold of the campaign, settled or not: the session that ends deletes them all.
+func (q *Queries) ListNpcCheckHolds(ctx context.Context, campaignID string) ([]InspirationHold, error) {
+	rows, err := q.db.Query(ctx, listNpcCheckHolds, campaignID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []InspirationHold
+	for rows.Next() {
+		var i InspirationHold
+		if err := rows.Scan(
+			&i.ID,
+			&i.CampaignID,
+			&i.CharacterID,
+			&i.UserID,
+			&i.Kind,
+			&i.IdempotencyKey,
+			&i.Request,
+			&i.Faces,
+			&i.Modifier,
+			&i.Total,
+			&i.Counted,
+			&i.Physical,
+			&i.AnswerKey,
+			&i.CreatedAt,
+			&i.Round,
+			&i.LuckyIndex,
+			&i.LuckyAnswerKey,
+			&i.LuckyTo,
+			&i.CombatantID,
+			&i.EncounterID,
+			&i.WindowHold,
+			&i.IndomitableAsk,
+			&i.IndomitableFailed,
+			&i.IndomitableAnswerKey,
+			&i.IndomitableFrom,
+			&i.IndomitableTo,
+			&i.DieAnswerKey,
+			&i.DieUsed,
+			&i.StrokeAsk,
+			&i.StrokeFailed,
+			&i.StrokeAnswerKey,
+			&i.StrokeFrom,
+			&i.RerollAsk,
+			&i.RerollIndex,
+			&i.RerollAtMost,
+			&i.RerollResource,
+			&i.RerollCost,
+			&i.RerollSource,
+			&i.RerollAnswerKey,
+			&i.RerollFrom,
+			&i.RerollTo,
+			&i.CountedBy,
+			&i.FavorSpent,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listOpenNpcCheckHolds = `-- name: ListOpenNpcCheckHolds :many
 SELECT id, campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, answer_key, created_at, round, lucky_index, lucky_answer_key, lucky_to, combatant_id, encounter_id, window_hold, indomitable_ask, indomitable_failed, indomitable_answer_key, indomitable_from, indomitable_to, die_answer_key, die_used, stroke_ask, stroke_failed, stroke_answer_key, stroke_from, reroll_ask, reroll_index, reroll_at_most, reroll_resource, reroll_cost, reroll_source, reroll_answer_key, reroll_from, reroll_to, counted_by, favor_spent FROM inspiration_holds WHERE campaign_id = $1 AND kind = 'npc_check' AND answer_key IS NULL ORDER BY created_at, id
 `

@@ -105,3 +105,64 @@ func TestNpcCheckRerunSettlesNothing(t *testing.T) {
 		t.Errorf("%d resolved events after the rerun, want none", got)
 	}
 }
+
+// holdsOfTheCampaign counts the NPC check holds of the table and the asks of the holds given.
+func (n *npcTable) holdsOfTheCampaign(t *testing.T, holds ...string) (rows, asks int) {
+	t.Helper()
+	if err := n.h.pool.QueryRow(t.Context(), `SELECT count(*) FROM inspiration_holds WHERE campaign_id = $1 AND kind = 'npc_check'`, n.campaignID).Scan(&rows); err != nil {
+		t.Fatalf("count the holds: %v", err)
+	}
+	if err := n.h.pool.QueryRow(t.Context(), `SELECT count(*) FROM npc_check_asks WHERE hold_id = ANY($1::UUID[])`, holds).Scan(&asks); err != nil {
+		t.Fatalf("count the asks: %v", err)
+	}
+	return rows, asks
+}
+
+// TestNpcCheckSettledChecksStayUntilTheSessionEndsAndGoWithIt: a settled check keeps its hold and its asks while the session is open (the
+// master reads it again with GetNpcCheck), whichever way it settled (the bards' answers, the skip, the next roll); the session that ends
+// deletes every NPC check hold of the campaign, the settled ones too, and their asks go with them.
+func TestNpcCheckSettledChecksStayUntilTheSessionEndsAndGoWithIt(t *testing.T) {
+	t.Parallel()
+	n := newNpcTable(t, charactersv1.CuttingWordsAsk_CUTTING_WORDS_ASK_ALL)
+	answered, err := n.roll(t, 15, true) // settled by the answers of both bards
+	if err != nil || !answered.GetHeld() {
+		t.Fatalf("the first RollNpcCheck() = %v, %v; want a held check", answered, err)
+	}
+	first, second := n.firstAsked(answered), n.bia
+	if first == n.bia {
+		second = n.ana
+	}
+	for _, u := range []*user{first, second} {
+		if _, err := n.pass(u, answered.GetCheck().GetHoldId(), newKey()); err != nil {
+			t.Fatalf("a bard's pass error = %v", err)
+		}
+	}
+	skipped, err := n.roll(t, 14, true) // settled by the master's skip
+	if err != nil || !skipped.GetHeld() {
+		t.Fatalf("the second RollNpcCheck() = %v, %v; want a held check", skipped, err)
+	}
+	if _, err := n.skip(n.master, skipped.GetCheck().GetHoldId(), newKey()); err != nil {
+		t.Fatalf("SkipNpcCheckAsks() error = %v", err)
+	}
+	next, err := n.roll(t, 13, true) // settled by the roll that follows it
+	if err != nil || !next.GetHeld() {
+		t.Fatalf("the third RollNpcCheck() = %v, %v; want a held check", next, err)
+	}
+	last, err := n.roll(t, 12, true)
+	if err != nil || !last.GetHeld() {
+		t.Fatalf("the fourth RollNpcCheck() = %v, %v; want a held check", last, err)
+	}
+	holds := []string{answered.GetCheck().GetHoldId(), skipped.GetCheck().GetHoldId(), next.GetCheck().GetHoldId()}
+	for _, id := range holds {
+		if row, ok := n.hold(t, id); !ok || !row.answered {
+			t.Fatalf("the hold %s = %+v, %v before the session ends; want it kept, settled", id, row, ok)
+		}
+	}
+	if rows, asks := n.holdsOfTheCampaign(t, holds...); rows != 4 || asks != 6 {
+		t.Fatalf("before the end: %d holds and %d asks of the three settled checks, want 4 and 6", rows, asks)
+	}
+	n.master.end(t, n.session(t))
+	if rows, asks := n.holdsOfTheCampaign(t, append(holds, last.GetCheck().GetHoldId())...); rows != 0 || asks != 0 {
+		t.Errorf("after the end: %d holds and %d asks, want none", rows, asks)
+	}
+}
