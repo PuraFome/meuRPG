@@ -10936,7 +10936,7 @@ async function scanConsumableCombatScreens(browser: Browser, colorScheme: 'light
       await held;
       await r.fulfill({ status: 503, contentType: 'application/json', body: '{"code":"unavailable","message":"x"}' });
     });
-    await outside.getByRole('button', { name: 'Usar', exact: true }).click();
+    await outside.getByRole('button', { name: 'Beber', exact: true }).click();
     const using = outside.getByRole('button', { name: 'Usando...' });
     await expect(using).toBeVisible();
     await expect(using).toHaveAttribute('aria-disabled', 'true');
