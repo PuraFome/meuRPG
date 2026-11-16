@@ -724,8 +724,7 @@ func itemUseKind(eventKind string, use itemUseEvent) playv1.CombatLogKind {
 }
 
 // ownerLineKinds are the lines the owner of the acting combatant reads whatever the fog says (RN-10, RN-29), and for a consumable's
-// use the receiver's owner too. The other players read a line by the table's visibility: a charge, gear or recharge line is not
-// theirs, and the whole table reads a CONSUMABLE_USED line, with no numbers, while the combatants in it are visible.
+// use the receiver's owner too; the other players read a line by the table's visibility, the whole table a CONSUMABLE_USED line.
 var ownerLineKinds = map[playv1.CombatLogKind]bool{
 	playv1.CombatLogKind_COMBAT_LOG_KIND_RECHARGE_ROLLED:         true,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_GEAR_SWAPPED:            true,
