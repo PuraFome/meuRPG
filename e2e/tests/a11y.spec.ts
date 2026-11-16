@@ -75,6 +75,7 @@ import { combatWithTwoDown, reviveRPC, tableWithDead } from './revivify-support'
 import { brisa, brisaAidSheet, brisaSheet, dalila, dalilaSheet, ragna, ragnaSheet } from './combat-support';
 import { createPrerequisiteFeatsRPC } from './feat-prerequisites-support';
 import { lostPrerequisiteTable, type LostKind, type LostTable } from './lost-prerequisite-support';
+import { AXE_NAME, axeAndShieldTable, editAxe } from './two-handed-support';
 import { createFeatsRPC, createNightRaceRPC, createSnowSubraceRPC, tor } from './editor-races-support';
 import { beginCrowdedCombatRPC, boxIn, callFeatBody, chamadosFeatBody, elementFeatBody, endSessionOf, haloFeatBody, haloSquares, markFeatBody, volleyFeatBody } from './feature-use-support';
 import { createFeatOptionsRPC, expectInViewport, featShotScale, featViewport, openSelect, shootFeat, type FeatOptionsTable } from './feat-options-support';
@@ -16068,3 +16069,91 @@ for (const [scheme, width, label] of [['light', 390, 'no tema claro, no celular'
     await scanWeaponsList(browser, scheme, width, 600);
   });
 }
+
+// "A arma mudou." on the sheet of a character who carries the table's axe and a shield (#580, board 580-16, state 8): the master puts
+// "Duas mãos" on the axe, so the shield stands idle. The owner and the master read it in the changed-content notice, with the AC
+// before and after (the "after" is the number the sheet shows now), and "Pendências de regra" gets no new row. A change of damage
+// alone says nothing.
+async function issueRows(page: Page): Promise<number> {
+  return page.getByRole('note', { name: 'Pendências de regra' }).locator('li').count();
+}
+
+async function scanAxeTurnedTwoHanded(browser: Browser, colorScheme: 'light' | 'dark', width: number, reader: 'owner' | 'master'): Promise<void> {
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport: sizeOf(width) });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport: sizeOf(width) });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${reader === 'owner' ? 'dono' : 'mestre'}, ${colorScheme}, ${width}px)`;
+  try {
+    await Promise.all([m.goto('/'), p.goto('/')]);
+    const table = await axeAndShieldTable(m, p, `Acessibilidade arma de duas mãos ${Date.now()}`);
+    const page = reader === 'owner' ? p : m;
+    const route = `/campaigns/${table.campaignId}/characters/${table.characterId}`;
+    // The sheet fits the table as it stands: no notice, and the rows of "Pendências de regra" are the ones it already has.
+    await open(page, route);
+    await expect(page.getByText('A arma mudou.')).toHaveCount(0);
+    const rowsBefore = await issueRows(page);
+    // A change of damage alone is no change the sheet has to say.
+    await editAxe(m, table, 'damage');
+    await open(page, route);
+    await expect(page.getByText('A arma mudou.'), `a mudança só do dano não avisa ${where}`).toHaveCount(0);
+    await editAxe(m, table, 'two-handed');
+    await open(page, route);
+
+    const notice = page.locator('app-changed-content section.change');
+    await expect(notice).toHaveCount(1);
+    await expect(notice.locator('.change__text strong')).toHaveText('A arma mudou.');
+    await expect(notice.locator('.change__text')).toContainText(`O mestre mudou a arma ${AXE_NAME} em `);
+    await expect(notice.locator('.change__text')).toContainText('Os números da ficha já usam as regras novas. O que não combina mais:');
+    const sentence = await notice.locator('li').innerText();
+    const ac = /^O Machado de Lenhador agora pede as duas mãos: com ele equipado, o escudo de Toren fica parado \(CA (\d+) → (\d+)\)\.$/.exec(sentence);
+    expect(ac, `a frase do quadro, lida: "${sentence}" ${where}`).not.toBeNull();
+    const [withShield, withoutShield] = [Number(ac![1]), Number(ac![2])];
+    expect(withShield - withoutShield, `o escudo vale 2 de CA ${where}`).toBe(2);
+    await expect(page.locator('.shield__number'), `a CA da ficha é a de depois ${where}`).toHaveText(String(withoutShield));
+    // Not a pending issue: the rows of "Pendências de regra" are the same as before the edit.
+    expect(await issueRows(page), `"Pendências de regra" não ganha linha ${where}`).toBe(rowsBefore);
+    await expect(page.getByRole('note', { name: 'Pendências de regra' }).getByText(/duas mãos|escudo/)).toHaveCount(0);
+
+    // The board's rhythm: 8 px between the lines, the sentence and the button.
+    const gaps = await notice.evaluate((el) => {
+      const top = (n: Element) => n.getBoundingClientRect().top;
+      const bottom = (n: Element) => n.getBoundingClientRect().bottom;
+      const text = el.querySelector('.change__text')!;
+      const list = el.querySelector('ul')!;
+      const button = el.querySelector('button')!;
+      return { textToList: top(list) - bottom(text), listToButton: top(button) - bottom(list), buttonHeight: button.getBoundingClientRect().height };
+    });
+    expect(gaps.textToList, `8 px entre a frase e a lista ${where}`).toBe(8);
+    expect(gaps.listToButton, `8 px entre a lista e o botão ${where}`).toBe(8);
+    expect(gaps.buttonHeight, `o botão tem 44 px ${where}`).toBe(44);
+    await expectScreenPasses(page, `Ficha com "A arma mudou." ${where}`);
+
+    // "Ver o que mudou" says the same sentence, who adjusts and when the notice goes.
+    await notice.getByRole('button', { name: 'Ver o que mudou' }).click();
+    const sheet = page.locator('app-changed-content-sheet');
+    await expect(sheet.getByRole('heading', { name: `O que mudou: ${AXE_NAME}` })).toBeVisible();
+    await expect(sheet.locator('li').first()).toHaveText(sentence);
+    await expect(sheet).toContainText('Quem ajusta: você, na ficha.');
+    await expectScreenPasses(page, `O que mudou na arma ${where}`);
+    await sheet.locator('.sheet__action').click();
+    await expect(sheet).toHaveCount(0);
+  } finally {
+    await Promise.all([master.close(), player.close()]);
+  }
+}
+
+test('a ficha com "A arma mudou." porque o mestre pôs "Duas mãos" no machado, que o dono lê com a CA de antes e de depois, passa no axe e nas conferências de layout no tema claro, no celular', { tag: ['@a11y', '@MR-025', '@MR-040', '@RN-23'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanAxeTurnedTwoHanded(browser, 'light', 390, 'owner');
+});
+
+test('a ficha com "A arma mudou." porque o mestre pôs "Duas mãos" no machado, que o dono lê com a CA de antes e de depois, passa no axe e nas conferências de layout no tema escuro, no tablet', { tag: ['@a11y', '@MR-025', '@MR-040', '@RN-23'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanAxeTurnedTwoHanded(browser, 'dark', 768, 'owner');
+});
+
+test('a ficha com "A arma mudou." que o mestre lê na ficha do jogador passa no axe e nas conferências de layout no tema escuro, no desktop', { tag: ['@a11y', '@MR-025', '@MR-040', '@RN-23'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanAxeTurnedTwoHanded(browser, 'dark', 1280, 'master');
+});
