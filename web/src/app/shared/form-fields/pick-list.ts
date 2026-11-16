@@ -3,6 +3,7 @@ import { NgTemplateOutlet } from '@angular/common';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatIconModule } from '@angular/material/icon';
+import { MatMenuModule } from '@angular/material/menu';
 
 import { FieldNote } from './field-note';
 import type { SelectOption } from './select-field';
@@ -23,11 +24,18 @@ export interface ChipName {
  */
 @Component({
   selector: 'app-pick-list',
-  imports: [FieldNote, MatFormFieldModule, MatInputModule, MatIconModule, NgTemplateOutlet],
+  imports: [
+    FieldNote,
+    MatFormFieldModule,
+    MatInputModule,
+    MatIconModule,
+    MatMenuModule,
+    NgTemplateOutlet,
+  ],
   template: `
     <div class="pick" role="group" [attr.aria-label]="label()" [attr.data-field]="path() || null">
       @for (key of values(); track key) {
-        <span class="chip" [class.chip--bad]="isFlagged(key)" [attr.data-flagged]="isFlagged(key) ? '' : null">
+        <span class="chip" [class.chip--square]="menuAdd()" [class.chip--bad]="isFlagged(key)" [attr.data-flagged]="isFlagged(key) ? '' : null">
           @if (isFlagged(key)) {
             <mat-icon class="chip__bad" aria-hidden="true">error</mat-icon>
           }
@@ -64,6 +72,21 @@ export interface ChipName {
     }
     <ng-template #adder>
       @if (available().length > 0 && (max() === 0 || values().length < max())) {
+        @if (menuAdd()) {
+          <button type="button" class="pick__addbtn" [disabled]="disabled()" [matMenuTriggerFor]="addMenu" [attr.aria-describedby]="describedBy()">
+            <mat-icon aria-hidden="true">add</mat-icon>{{ addLabel() }}
+          </button>
+          <mat-menu #addMenu="matMenu" class="pick-menu">
+            @for (o of available(); track o.value) {
+              <button type="button" mat-menu-item [disabled]="o.disabled" (click)="added.emit(o.value)">
+                <span class="pick-menu__name">{{ chipLabel(o) }}</span>
+                @if (originOf(o); as origin) {
+                  <span class="mr-tag mr-tag--compact">{{ origin }}</span>
+                }
+              </button>
+            }
+          </mat-menu>
+        } @else {
         <mat-form-field class="pick__add" appearance="outline" subscriptSizing="dynamic">
           <mat-label>{{ addLabel() }}</mat-label>
           <select matNativeControl [disabled]="disabled()" [attr.aria-describedby]="describedBy()" (change)="add($event)">
@@ -82,6 +105,7 @@ export interface ChipName {
             }
           </select>
         </mat-form-field>
+        }
       }
     </ng-template>
     <ng-template #items let-items>
@@ -154,6 +178,10 @@ export interface ChipName {
       box-shadow: inset 0 0 0 1px var(--mr-danger-ink);
     }
 
+    .chip--square {
+      border-radius: var(--mr-radius-sm);
+    }
+
     .chip__bad {
       flex: none;
       width: 18px;
@@ -161,6 +189,35 @@ export interface ChipName {
       margin-right: -4px;
       font-size: var(--mr-font-18);
       color: var(--mr-danger-ink);
+    }
+
+    // The board's "Adicionar opção": an outlined button with a plus, in the row of the chips.
+    .pick__addbtn {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--mr-space-2);
+      min-height: 46px;
+      box-sizing: border-box;
+      padding: 0 16px;
+      border: 1px solid var(--mr-control-line);
+      border-radius: var(--mr-radius-sm);
+      background: var(--mr-surface);
+      color: var(--mr-accent-text);
+      font: inherit;
+      font-size: var(--mr-font-16);
+      font-weight: 700;
+      cursor: pointer;
+
+      &:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+      }
+
+      .mat-icon {
+        width: 20px;
+        height: 20px;
+        font-size: var(--mr-font-20);
+      }
     }
 
     .pick__add {
@@ -201,6 +258,8 @@ export class PickList {
   readonly flagged = input<readonly string[]>([]);
   /** A count for the end of the row ("1 de 10"), apart from the hint. */
   readonly count = input('');
+  /** The add control is a button that opens the system's menu panel (each choice with its origin), not a select: the board's "Adicionar opção". */
+  readonly menuAdd = input(false);
   /** A line at the end of the add list that cannot be picked. */
   readonly footer = input('');
   readonly added = output<string>();
@@ -211,6 +270,15 @@ export class PickList {
   protected readonly stacked = computed(
     () => this.flagged().length > 0 && this.issues().length > 0,
   );
+
+  protected chipLabel(o: SelectOption): string {
+    return o.label.endsWith(TABLE_WORDS) ? o.label.slice(0, -TABLE_WORDS.length) : o.label;
+  }
+
+  /** Where a choice comes from: "Opção 2" for a sibling, "Da mesa", or "SRD". */
+  protected originOf(o: SelectOption): string {
+    return o.badge || o.side || (o.label.endsWith(TABLE_WORDS) ? 'Da mesa' : 'SRD');
+  }
 
   protected isFlagged(key: string): boolean {
     return this.flagged().includes(key);

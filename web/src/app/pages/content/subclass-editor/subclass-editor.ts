@@ -16,7 +16,6 @@ import { MatIconModule } from '@angular/material/icon';
 import type {
   TableContentViolation,
   GetClassTableDefaultsResponse,
-  OptionSwitchEntry,
   TableEntry,
 } from '../../../../gen/meurpg/rules/v1/table_content_pb';
 import type { CatalogVm } from '../../../core/content/catalog';
@@ -106,9 +105,6 @@ export class SubclassEditor {
   readonly catalog = input.required<CatalogVm>();
   readonly defaults = input.required<GetClassTableDefaultsResponse>();
   readonly entries = input<readonly TableEntry[]>([]);
-  /** The master's switches, for the preview of what the players read. */
-  readonly switches = input<readonly OptionSwitchEntry[]>([]);
-  readonly switchesUnread = input(false);
   readonly saveBlocked = input('');
   /** The rules refuse this entry on read (it is left out of the campaign): the violation, to put on its field. */
   readonly leftOut = input<TableContentViolation | null>(null);

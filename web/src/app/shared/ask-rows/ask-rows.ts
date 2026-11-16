@@ -113,7 +113,7 @@ function filled(kind: AskKind, d: Asks): boolean {
               <app-search-pick label="Magia" placeholder="Procurar magia" emptyText="Nenhuma magia com esse nome." [single]="true" [options]="spellSearch()" [chips]="spellChips()" [path]="at('requires_spell_key')" [issues]="issues(at('requires_spell_key'))" (added)="asksChange.emit({ requiresSpell: $event })" (removed)="asksChange.emit({ requiresSpell: '' })" />
             }
             @default {
-              <app-pick-list label="Outras opções" addLabel="Adicionar opção" [options]="requirable()" [values]="value().requiresOptions" [max]="optionsMax" [path]="at('requires_option_keys')" [issues]="issues(at('requires_option_keys'))" [hint]="optionsHint()" [count]="optionsCount()" [flagged]="flaggedOptions()" (added)="asksChange.emit({ requiresOptions: [...value().requiresOptions, $event] })" (removed)="asksChange.emit({ requiresOptions: value().requiresOptions.filter((k) => k !== $event) })" />
+              <app-pick-list label="Outras opções" addLabel="Adicionar opção" [menuAdd]="true" [options]="requirable()" [values]="value().requiresOptions" [max]="optionsMax" [path]="at('requires_option_keys')" [issues]="issues(at('requires_option_keys'))" [hint]="optionsHint()" [count]="optionsCount()" [flagged]="flaggedOptions()" (added)="asksChange.emit({ requiresOptions: [...value().requiresOptions, $event] })" (removed)="asksChange.emit({ requiresOptions: value().requiresOptions.filter((k) => k !== $event) })" />
             }
           }
         </div>

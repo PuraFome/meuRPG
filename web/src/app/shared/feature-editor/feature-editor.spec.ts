@@ -346,7 +346,9 @@ describe('FeatureEditor (a trait, a feature)', () => {
       expect(el.querySelector('.options')).toBeNull();
       fixture.componentRef.setInput('allowOptions', true);
       fixture.detectChanges();
-      expect(text(el.querySelector('.options')!)).toContain('Ponha na característica um efeito');
+      expect(text(el.querySelector('.options')!)).toContain(
+        'Quantas ele escolhe é o efeito de escolha da característica que diz.',
+      );
     });
   });
 
@@ -422,7 +424,7 @@ describe('FeatureEditor (a trait, a feature)', () => {
       const sentence = pick.querySelector('app-field-note')!;
       expect(text(sentence)).toContain('Duas opções não podem pedir uma à outra.');
       expect(
-        sentence.compareDocumentPosition(pick.querySelector('.pick__add')!) &
+        sentence.compareDocumentPosition(pick.querySelector('.pick--add')!) &
           Node.DOCUMENT_POSITION_FOLLOWING,
       ).toBeTruthy();
     });
@@ -485,15 +487,23 @@ describe('FeatureEditor (a trait, a feature)', () => {
         .click();
       fixture.detectChanges();
     };
-    const choices = (row: HTMLElement) =>
-      Array.from(row.querySelectorAll('app-pick-list select option')).map((o) => text(o).trim());
+    // The add control is a button that opens the system's menu panel: each choice is a menu item with its origin as a tag.
+    const choices = (row: HTMLElement) => {
+      row.querySelector<HTMLButtonElement>('app-pick-list .pick__addbtn')!.click();
+      fixture.detectChanges();
+      return Array.from(document.querySelectorAll('.pick-menu .mat-mdc-menu-item')).map((o) =>
+        text(o).trim(),
+      );
+    };
 
     it('offers the saved siblings with their "Opção N", never the option itself or one not saved', () => {
       setup(parent(), { allowOptions: true });
       const row = open(2);
       addAsk(row);
       const all = choices(row);
-      expect(all).toContain('Golpe do Corvo · Opção 1');
+      // Every choice carries its origin: a sibling its place, an option of the table "Da mesa", an SRD one "SRD".
+      expect(all).toContain('Golpe do CorvoOpção 1');
+      expect(all.every((o) => /(Opção \d|Da mesa|SRD)$/.test(o))).toBe(true);
       expect(all.some((o) => o.startsWith('Asa Partida'))).toBe(false);
       expect(all.some((o) => o.startsWith('Bico de Ferro'))).toBe(false);
     });

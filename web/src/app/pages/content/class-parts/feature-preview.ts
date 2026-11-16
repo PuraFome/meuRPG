@@ -1,9 +1,8 @@
-import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
 import { create } from '@bufbuild/protobuf';
 import { MatIconModule } from '@angular/material/icon';
 
 import {
-  type OptionSwitchEntry,
   type TableEntry,
   TableFeatureSchema,
 } from '../../../../gen/meurpg/rules/v1/table_content_pb';
@@ -15,6 +14,7 @@ import type { EffectMenuVm } from '../../../core/content/effect-draft';
 import type { LevelFeature } from '../../../core/content/class-draft';
 import { type FeatureDraft, draftToFeature } from '../../../core/content/feature-draft';
 import { featureForPlayers, hiddenFrom } from '../../../core/content/player-view';
+import { SwitchesStore } from '../../../core/content/switches-store';
 import { requirableOptions } from '../../../core/content/requirable-options';
 import { EntryRead } from '../entry-read/entry-read';
 
@@ -92,10 +92,9 @@ export class FeaturePreview {
   readonly menu = input.required<EffectMenuVm>();
   readonly catalog = input<CatalogVm | null>(null);
   readonly entries = input<readonly TableEntry[]>([]);
-  /** The master's list of switches (SRD and table): what the players do not receive, even through an owner that is off. */
-  readonly switches = input<readonly OptionSwitchEntry[]>([]);
-  /** The list could not be read: the panel says so, in one line. */
-  readonly switchesUnread = input(false);
+  /** What the master's switches say the players do not receive (SRD included, and through an owner that is off); the page provides it. */
+  private readonly store = inject(SwitchesStore, { optional: true });
+  protected readonly switchesUnread = computed(() => this.store?.unread() ?? false);
   /** A refusal stands on the entry: what is read here is the form's, not the saved one. */
   readonly unsaved = input(false);
 
@@ -109,7 +108,7 @@ export class FeaturePreview {
     }
     const sent = featureForPlayers(
       create(TableFeatureSchema, draftToFeature(f, this.menu())),
-      hiddenFrom(this.entries(), this.switches()),
+      hiddenFrom(this.entries(), this.store?.options() ?? []),
     );
     const nameOf = askKeyNamer(
       f.options,

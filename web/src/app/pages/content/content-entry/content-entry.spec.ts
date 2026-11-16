@@ -31,6 +31,7 @@ import {
   mirathel,
 } from '../../../core/content/content-testing';
 import { menuResponse } from '../../../core/content/content-testing-menu';
+import { SwitchesStore } from '../../../core/content/switches-store';
 import { ContentEntry } from './content-entry';
 import { settle } from '../../../../test-settle';
 
@@ -98,7 +99,9 @@ describe('ContentEntry', () => {
     })) as never;
     TestBed.resetTestingModule();
     watcher = fakeContentWatcher();
-    TestBed.overrideComponent(ContentEntry, { set: { providers: [watcher.provider] } });
+    TestBed.overrideComponent(ContentEntry, {
+      set: { providers: [watcher.provider, SwitchesStore] },
+    });
     TestBed.configureTestingModule({
       providers: [
         provideRouter([]),

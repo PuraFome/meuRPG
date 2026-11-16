@@ -10,6 +10,7 @@ import {
 import { catalog } from '../../../core/content/content-testing';
 import { menu } from '../../../core/content/content-testing-menu';
 import { emptyEffect } from '../../../core/content/effect-draft';
+import { SwitchesStore } from '../../../core/content/switches-store';
 import { emptySummon } from '../../../core/content/summon-draft';
 import { emptyFeature, type FeatureDraft, withAsks } from '../../../core/content/feature-draft';
 import { FeaturePreview } from './feature-preview';
@@ -46,6 +47,7 @@ describe('"Como os jogadores veem" for the open feature (#580, board 580-03)', (
 
   function setup(f: FeatureDraft | null): void {
     TestBed.resetTestingModule();
+    TestBed.configureTestingModule({ providers: [SwitchesStore] });
     fixture = TestBed.createComponent(FeaturePreview);
     setFeature(f);
     fixture.componentRef.setInput('menu', menu());
@@ -172,7 +174,7 @@ describe('"Como os jogadores veem" for the open feature (#580, board 580-03)', (
 
     it('does not name an SRD class the master switched off, read from the switch list', () => {
       setup(asking());
-      fixture.componentRef.setInput('switches', [sw('class:paladin', { off: true, hidden: true })]);
+      TestBed.inject(SwitchesStore).options.set([sw('class:paladin', { off: true, hidden: true })]);
       fixture.detectChanges();
       expect(text()).not.toContain('Paladino');
       expect(text()).toContain('Pede Golpe do Corvo.');
@@ -180,7 +182,7 @@ describe('"Como os jogadores veem" for the open feature (#580, board 580-03)', (
 
     it('leaves out an entry hidden through its owner, though its own switch is on', () => {
       setup(asking());
-      fixture.componentRef.setInput('switches', [
+      TestBed.inject(SwitchesStore).options.set([
         sw('feature:golpe@mesa', { off: false, hidden: true }),
       ]);
       fixture.detectChanges();
@@ -191,7 +193,7 @@ describe('"Como os jogadores veem" for the open feature (#580, board 580-03)', (
     it('says in one line that the switches could not be read, and only then', () => {
       setup(asking());
       expect(text()).not.toContain('Não deu para ler');
-      fixture.componentRef.setInput('switchesUnread', true);
+      TestBed.inject(SwitchesStore).unread.set(true);
       fixture.detectChanges();
       expect(text()).toContain('Não deu para ler quais opções do SRD estão desligadas');
     });

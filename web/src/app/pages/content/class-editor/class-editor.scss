@@ -107,6 +107,11 @@
   gap: var(--mr-space-3);
   align-items: start;
 
+  // One select whose label is a sentence ("A subclasse se escolhe no nível"): a column wide enough to read it whole at every width.
+  &--level {
+    grid-template-columns: minmax(0, 340px);
+  }
+
   @media (min-width: 768px) {
     &--4 {
       grid-template-columns: repeat(4, minmax(0, 1fr));

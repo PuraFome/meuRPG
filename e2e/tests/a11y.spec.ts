@@ -15929,13 +15929,17 @@ async function scanOptionRows(browser: Browser, colorScheme: 'light' | 'dark', w
     const row3 = rows.nth(2);
     await row3.getByRole('button', { name: 'Adicionar pré-requisito' }).click();
     await m.getByRole('menuitem', { name: /Outras opções/ }).click();
-    const choices = row3.locator('app-pick-list select option');
-    await expect(choices.filter({ hasText: 'Golpe do Corvo · Opção 1' })).toHaveCount(1);
-    await expect(choices.filter({ hasText: 'Asa Partida · Opção 2' })).toHaveCount(1);
+    // The add control is the board's "Adicionar opção" button; it opens the system's menu panel, each choice with its origin.
+    await row3.getByRole('button', { name: 'Adicionar opção' }).click();
+    const choices = m.getByRole('menuitem');
+    await expect(choices.filter({ hasText: 'Golpe do Corvo' }).filter({ hasText: 'Opção 1' })).toHaveCount(1);
+    await expect(choices.filter({ hasText: 'Asa Partida' }).filter({ hasText: 'Opção 2' })).toHaveCount(1);
     await expect(choices.filter({ hasText: /^Bico de Ferro/ }), `nunca a própria opção ${where}`).toHaveCount(0);
+    await expect(m.locator('.pick-menu .mat-mdc-menu-item:not(:has(.mr-tag))'), `toda escolha leva a sua origem ${where}`).toHaveCount(0);
     await expect(row3).toContainText('Nunca a própria opção.');
     await expect(row3).not.toContainText('depois de salvar a característica');
-    await row3.locator('app-pick-list select').selectOption({ label: 'Golpe do Corvo · Opção 1' });
+    await choices.filter({ hasText: 'Golpe do Corvo' }).click();
+    await expect(row3.locator('.pick__count'), `a contagem fica no fim da linha ${where}`).toHaveText('1 de 10');
     await expect(row3.locator('app-pick-list .chip', { hasText: 'Golpe do Corvo' }).locator('.mr-tag')).toHaveText('Opção 1');
     const chipGap = await row3.locator('app-pick-list .chip', { hasText: 'Golpe do Corvo' }).evaluate((chip) => {
       const tag = chip.querySelector('.mr-tag')!;
@@ -15978,7 +15982,8 @@ async function scanOptionRows(browser: Browser, colorScheme: 'light' | 'dark', w
     await toggle(1).click();
     await rows.nth(0).getByRole('button', { name: 'Adicionar pré-requisito' }).click();
     await m.getByRole('menuitem', { name: /Outras opções/ }).click();
-    await rows.nth(0).locator('app-pick-list select').selectOption({ label: 'Asa Partida · Opção 2' });
+    await rows.nth(0).getByRole('button', { name: 'Adicionar opção' }).click();
+    await m.getByRole('menuitem').filter({ hasText: 'Asa Partida' }).click();
     await m.getByRole('button', { name: 'Salvar subclasse' }).click();
     // The two options that wait for each other are marked, and no other: option 1 (asked Asa Partida) and option 2 (asks Golpe do Corvo).
     const waiting = 'Esta opção e a que ela pede esperam uma pela outra: nenhuma das duas poderia ser escolhida. Tire um dos pedidos.';
@@ -15988,26 +15993,39 @@ async function scanOptionRows(browser: Browser, colorScheme: 'light' | 'dark', w
     for (const n of [3, 4, 5]) {
       await expect(rows.nth(n - 1).locator('.opt__bad'), `a opção ${n} não é marcada ${where}`).toHaveCount(0);
     }
-    // Layout of a refused row: the arrows and the "⋮" keep the width of the rows below, and the dot ends the line of the summary
-    // (never starts one, never touches the name) with the tag after it.
+    // Layout of a refused row: the arrows and the "⋮" keep the width of the rows below, and the tag is a no-wrap item after the name on the
+    // title line, outside the summary, with no dot; the refused row has the danger border and tint.
     const refusedLayout = await m.evaluate(() => {
       const rowsEl = [...document.querySelectorAll('section.options > [role="group"]')];
       const widths = rowsEl.map((r) => [...r.querySelectorAll('.opt__head > button.act')].map((b) => Math.round(b.getBoundingClientRect().width)));
-      const sub = rowsEl[0].querySelector('.opt__sub')!;
-      const dot = sub.querySelector('.opt__dot')!;
-      const tag = sub.querySelector('.opt__bad')!;
-      const before = document.createRange();
-      before.setStart(sub, 0);
-      before.setEndBefore(dot);
-      const lines = [...before.getClientRects()];
-      const last = lines[lines.length - 1];
-      const d = dot.getBoundingClientRect();
-      return { widths, dotInTag: tag.contains(dot), sameLine: Math.abs(d.top - last.top) < 4, dotAfterText: d.left >= last.right - 0.5, tagAfterDot: tag.getBoundingClientRect().left > d.right - 0.5 || tag.getBoundingClientRect().top > d.top };
+      const line = rowsEl[0].querySelector('.opt__line')!;
+      const name = line.querySelector('.opt__title')!.getBoundingClientRect();
+      const tag = line.querySelector('.opt__bad')!;
+      const t = tag.getBoundingClientRect();
+      return {
+        widths,
+        inSummary: !!rowsEl[0].querySelector('.opt__sub .opt__bad'),
+        dot: !!rowsEl[0].querySelector('.opt__dot'),
+        sameLine: Math.abs(t.top + t.height / 2 - (name.top + name.height / 2)) < 12,
+        gap: t.left - name.right,
+        noWrap: getComputedStyle(tag).whiteSpace,
+        border: getComputedStyle(rowsEl[0].querySelector('.opt__head')!).borderTopColor,
+        plain: getComputedStyle(rowsEl[2].querySelector('.opt__head')!).borderTopColor,
+      };
     });
     for (const w of refusedLayout.widths) expect(w, `as setas e o "⋮" têm o mesmo tamanho em todas as linhas ${where}`).toEqual(refusedLayout.widths[2]);
-    expect(refusedLayout.dotInTag, `o ponto fica fora da marca ${where}`).toBe(false);
-    expect(refusedLayout.sameLine, `o ponto fecha a linha do resumo, não começa uma ${where}`).toBe(true);
-    expect(refusedLayout.dotAfterText && refusedLayout.tagAfterDot, `o ponto vem depois do resumo e antes da marca ${where}`).toBe(true);
+    expect(refusedLayout.inSummary, `a marca fica fora do resumo ${where}`).toBe(false);
+    expect(refusedLayout.dot, `sem ponto ${where}`).toBe(false);
+    expect(refusedLayout.sameLine, `a marca fica na linha do nome ${where}`).toBe(true);
+    expect(refusedLayout.gap, `a marca não encosta no nome ${where}`).toBeGreaterThanOrEqual(7.5);
+    expect(refusedLayout.noWrap, `a marca não quebra ${where}`).toBe('nowrap');
+    expect(refusedLayout.border, `a linha recusada tem a borda de perigo ${where}`).not.toBe(refusedLayout.plain);
+    await expect(rows.nth(0), `a linha recusada leva a classe de recusa ${where}`).toHaveClass(/opt--bad/);
+    // The chip the refusal names (Asa Partida, which asks for this option in turn) is drawn flagged, and the sentence stands under the chips.
+    const flagged = rows.nth(0).locator('app-pick-list .chip[data-flagged]');
+    await expect(flagged, `o chip da recusa é marcado ${where}`).toHaveCount(1);
+    await expect(flagged).toContainText('Asa Partida');
+    await expect(flagged.locator('.mr-visually-hidden')).toHaveText(', com problema');
     // The first row opens and says why at the field of the pick, in words; the generic sentence is gone.
     await expect(toggle(1)).toHaveAttribute('aria-expanded', 'true');
     const note = rows.nth(0).locator('app-ask-rows app-field-note').filter({ hasText: waiting });

@@ -19,7 +19,6 @@ import { PlayersSwitch } from '../players-switch/players-switch';
 import type {
   TableContentViolation,
   GetClassTableDefaultsResponse,
-  OptionSwitchEntry,
   TableEntry,
 } from '../../../../gen/meurpg/rules/v1/table_content_pb';
 import type { CatalogVm } from '../../../core/content/catalog';
@@ -84,6 +83,7 @@ import {
   editedRows,
   emptyDefaults,
   gridRowsOf,
+  hasFeature,
   isKnownPath,
   movedRequirement,
   questionTextOf,
@@ -140,9 +140,6 @@ export class ClassEditor {
   readonly catalog = input.required<CatalogVm>();
   readonly defaults = input.required<GetClassTableDefaultsResponse>();
   readonly entries = input<readonly TableEntry[]>([]);
-  /** The master's switches, for the preview of what the players read. */
-  readonly switches = input<readonly OptionSwitchEntry[]>([]);
-  readonly switchesUnread = input(false);
   readonly saveBlocked = input('');
   /** The rules refuse this entry on read (it is left out of the campaign): the violation, to put on its field. */
   readonly leftOut = input<TableContentViolation | null>(null);
@@ -156,9 +153,7 @@ export class ClassEditor {
   protected readonly nameMax = NAME_MAX;
   protected readonly draft = signal<ClassDraft>(emptyClass(emptyDefaults()));
   protected readonly openFeature = signal('');
-  protected readonly previewing = computed(() =>
-    this.draft().features.some((f) => f.id === this.openFeature()),
-  );
+  protected readonly previewing = computed(() => hasFeature(this.draft(), this.openFeature()));
   protected readonly question = signal<TableAsk | null>(null);
   protected readonly allCircles = signal(false);
   protected readonly status = signal('');
@@ -208,14 +203,13 @@ export class ClassEditor {
   protected readonly gridRows = computed<GridRowVm[]>(() => gridRowsOf(this.draft()));
 
   /** "Preenchida com a tabela do SRD de Paladino": says where the numbers come from, in the server's words. */
+  protected readonly nameOf = (k: string) => this.catalog().nameOf(k);
   protected readonly tableNote = computed(() =>
-    tableNoteOf(this.casting(), this.defaults(), (k) => this.catalog().nameOf(k)),
+    tableNoteOf(this.casting(), this.defaults(), this.nameOf),
   );
 
   protected readonly questionText = computed(() =>
-    questionTextOf(this.question(), this.casting(), this.defaults(), (k) =>
-      this.catalog().nameOf(k),
-    ),
+    questionTextOf(this.question(), this.casting(), this.defaults(), this.nameOf),
   );
 
   constructor() {
