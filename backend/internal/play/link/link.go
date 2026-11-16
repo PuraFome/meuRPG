@@ -644,6 +644,9 @@ type Spell struct {
 	// come from the same fields of rules.SpellTarget.
 	TargetCount    int
 	TargetPerLevel int
+	// WithinFt, when set, is how far every target after the first may be from
+	// the first.
+	WithinFt int
 	// CasterOnly says there is nobody to pick: the spell reaches the caster alone,
 	// or no creature at all (a point, an object, a place), whatever its range.
 	CasterOnly bool

@@ -68,6 +68,7 @@ type spellTargetOverride struct {
 	PerSlotLevel int    `json:"per_slot_level,omitempty"`
 	Shape        string `json:"shape,omitempty"`
 	SizeFt       int    `json:"size_ft,omitempty"`
+	WithinFt     int    `json:"within_ft,omitempty"`
 	LabelPT      string `json:"label_pt,omitempty"`
 }
 
@@ -77,6 +78,8 @@ const (
 	maxTargetPerSlotLevel = 10
 	targetSizeStepFt      = 5
 	maxTargetLabel        = 80
+	minTargetWithinFt     = 5
+	maxTargetWithinFt     = 120
 )
 
 // targetShapes are the shapes of an area target.
@@ -99,7 +102,7 @@ func (c *content) loadSpellTargets(fsys fs.FS) error {
 		if msg := checkSpellTarget(in); msg != "" {
 			return fmt.Errorf("effects/spell_targets.json: %s: %s", key, msg)
 		}
-		c.srdTargets[key] = SpellTarget{Kind: in.Kind, Count: in.Count, PerSlotLevel: in.PerSlotLevel, Shape: in.Shape, SizeFt: in.SizeFt, Label: in.LabelPT}
+		c.srdTargets[key] = SpellTarget{Kind: in.Kind, Count: in.Count, PerSlotLevel: in.PerSlotLevel, WithinFt: in.WithinFt, Shape: in.Shape, SizeFt: in.SizeFt, Label: in.LabelPT}
 	}
 	return nil
 }
@@ -133,7 +136,7 @@ func checkSpellTargetKind(in spellTargetOverride) string {
 // checkSingleTarget: self, none and creature take no other field, but a
 // creature may take more per slot level.
 func checkSingleTarget(in spellTargetOverride) string {
-	if in.Count != 0 || in.Shape != "" || in.SizeFt != 0 || (in.Kind != TargetCreature && in.PerSlotLevel != 0) {
+	if in.Count != 0 || in.Shape != "" || in.SizeFt != 0 || in.WithinFt != 0 || (in.Kind != TargetCreature && in.PerSlotLevel != 0) {
 		return fmt.Sprintf("a %s target takes no other field", in.Kind)
 	}
 	return ""
@@ -143,11 +146,14 @@ func checkCreaturesOverride(in spellTargetOverride) string {
 	if in.Count < 1 || in.Count > maxTargetCount || in.PerSlotLevel < 0 || in.PerSlotLevel > maxTargetPerSlotLevel || in.Shape != "" || in.SizeFt != 0 {
 		return "creatures: a count of 1 to 20 and 0 to 10 more per slot level"
 	}
+	if in.WithinFt != 0 && (in.WithinFt < minTargetWithinFt || in.WithinFt > maxTargetWithinFt || in.WithinFt%targetSizeStepFt != 0) {
+		return "creatures: within_ft is a multiple of 5, from 5 to 120"
+	}
 	return ""
 }
 
 func checkAreaOverride(in spellTargetOverride) string {
-	if !slices.Contains(targetShapes, in.Shape) || in.SizeFt < targetSizeStepFt || in.SizeFt%targetSizeStepFt != 0 || in.Count != 0 || in.PerSlotLevel != 0 {
+	if !slices.Contains(targetShapes, in.Shape) || in.SizeFt < targetSizeStepFt || in.SizeFt%targetSizeStepFt != 0 || in.Count != 0 || in.PerSlotLevel != 0 || in.WithinFt != 0 {
 		return "an area is a cone, cube, cylinder, line or sphere of a multiple of 5 ft"
 	}
 	return ""

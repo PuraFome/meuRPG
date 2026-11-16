@@ -151,6 +151,9 @@ type SpellTarget struct {
 	// level, and PerSlotLevel how many more for each slot level above it.
 	Count        int
 	PerSlotLevel int
+	// WithinFt, when set, is how far every creature after the first may be
+	// from the first (a player's cast on a map).
+	WithinFt int
 	// Shape (a Shape* constant) and SizeFt, in 5-foot steps, are the area of a
 	// TargetArea spell: the cone's length, the cube's side, the cylinder's and
 	// the sphere's radius, the line's length.

@@ -293,6 +293,9 @@ func (s *Service) checkTargets(v combatViewer, terrain grid.Terrain, cs []playdb
 	if v.master {
 		return nil
 	}
+	if err := checkTargetsClose(sp, targs, theatre); err != nil {
+		return err
+	}
 	reach, limited := reachOf(sp)
 	for _, t := range targs {
 		// A target behind total cover (a wall on the line, or the master's mark)
@@ -306,6 +309,25 @@ func (s *Service) checkTargets(v combatViewer, terrain grid.Terrain, cs []playdb
 		}
 		if err := checkTargetReach(caster, t, reach); err != nil {
 			return err
+		}
+	}
+	return nil
+}
+
+// checkTargetsClose checks, on a map, that every target after the first is within the
+// spell's WithinFt of the first (Acid Splash's 5 ft, Chain Lightning's 30 ft).
+func checkTargetsClose(sp link.Spell, targs []playdb.Combatant, theatre bool) error {
+	if sp.WithinFt == 0 || theatre || len(targs) < 2 {
+		return nil
+	}
+	within := clamp32(sp.WithinFt, 0, math.MaxInt32)
+	for _, t := range targs[1:] {
+		if !placed(targs[0]) || !placed(t) {
+			return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_PLACED, "the targets must be on the map")
+		}
+		if dist, _ := distanceFt(targs[0], t); dist > within {
+			return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_TARGET_OUT_OF_REACH, "the target is too far from the first target",
+				func(b *playv1.EncounterBlocked) { b.MissingFt = dist - within })
 		}
 	}
 	return nil
