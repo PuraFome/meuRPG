@@ -476,6 +476,38 @@ describe('ReadiedWindowSheet (#582, boards 582-06 to 582-08)', () => {
     expect(close).not.toHaveBeenCalled();
   });
 
+  it('names the darts in the refusal of a held Magic Missile', async () => {
+    answerReaction.mockRejectedValue(new ConnectError('não', Code.InvalidArgument));
+    const dart = setup({
+      row: {
+        kind: ReadiedKind.SPELL,
+        actionKey: 'spell:magic-missile',
+        actionNamePt: 'Mísseis Mágicos',
+        targetCombatantId: 'z1',
+      },
+      spellTargets: {
+        spellKey: 'spell:magic-missile',
+        maxTargets: 3,
+        darts: [{ slotLevel: 1, darts: 3 }],
+        targets: [reach('z1', 'Zumbi 1', 5)],
+      },
+    });
+    await dart.settle();
+    (
+      dart.el.querySelector('button[aria-label="Pôr um dardo em Zumbi 1"]') as HTMLButtonElement
+    ).click();
+    (
+      dart.el.querySelector('button[aria-label="Pôr um dardo em Zumbi 1"]') as HTMLButtonElement
+    ).click();
+    (
+      dart.el.querySelector('button[aria-label="Pôr um dardo em Zumbi 1"]') as HTMLButtonElement
+    ).click();
+    await dart.settle();
+    dart.button('Soltar').click();
+    await dart.settle();
+    expect(flat(dart.el.querySelector('[role=alert]'))).toContain('Confira os alvos e os dardos.');
+  });
+
   it('says only that the window closed when it did before the clock ran out, and only closes', async () => {
     const { el, settle, button } = setup({ gone: true });
     await settle();
