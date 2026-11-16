@@ -188,6 +188,9 @@ type Service struct {
 	// reviewHost is package play, connected by SetReviewHost: the streams a review or a
 	// revival is told on, and the combat a revived character goes back to. Nil until then.
 	reviewHost ReviewHost
+	// optionSwaps hears the swaps of a table feature's options a level-up makes, connected by SetOptionSwaps. Optional:
+	// nil calls nobody.
+	optionSwaps OptionSwaps
 	// maxCharacters is the cap on a campaign's characters (RN-30).
 	maxCharacters int
 	// claims limits PreviewClaim and ClaimCharacter (claims.go), and

@@ -203,6 +203,10 @@ type LevelUpOffer struct {
 	// Ability Score Improvement. The rules always list them; the server leaves them out
 	// unless the table plays with the swap rule.
 	PickSwaps []SwapGroup
+	// FeatureSwaps are the groups of picks of a table feature's options the level may swap one in: one group for
+	// each class or subclass feature that allows a swap at this class level (FeatureSwapLevels), with the feature's
+	// key as the group. They are listed at any level, whatever the table's swap rule.
+	FeatureSwaps []SwapGroup
 
 	// Automatic.
 
@@ -307,6 +311,9 @@ type LevelUpChoices struct {
 	// Swap is one pick given up for another of the same group, at a level with an
 	// Ability Score Improvement (the table's rule); zero for none.
 	Swap PickSwap
+	// FeatureSwaps are the swaps of a table feature's options, at most one for each feature (the group is the
+	// feature's key): the pick given up and the option of the feature's pool taken in its place.
+	FeatureSwaps []PickSwap
 	// HitPoints is the gain of this level.
 	HitPoints LevelUpHitPoints
 	// Instrument is the musical instrument (a proficiency key) that taking the Bard

@@ -440,7 +440,13 @@ func tableFeatureOf(f *rulesv1.TableFeature) rules.TableFeature {
 	return rules.TableFeature{
 		Key: f.GetKey(), NamePT: f.GetNamePt(), DescPT: f.GetDescPt(), Effects: tableEffectsOf(f.GetEffects()),
 		Options: tableFeaturesOf(f.GetOptions()), Summon: tableSummonOf(f.GetSummon()), Prerequisite: optionPrerequisiteOf(f.GetPrerequisite()),
+		SwapLevels: featureSwapLevelsOf(f.GetSwapLevels()),
 	}
+}
+
+// featureSwapLevelsOf is the engine's swap levels of a stored feature's; the zero value for none.
+func featureSwapLevelsOf(s *rulesv1.FeatureSwapLevels) rules.FeatureSwapLevels {
+	return rules.FeatureSwapLevels{Levels: intsOf(s.GetLevels()), EveryLevel: s.GetEveryLevel()}
 }
 
 // optionPrerequisiteOf is the engine's prerequisite of a stored option's.

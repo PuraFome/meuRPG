@@ -139,6 +139,10 @@ type TableFeature struct {
 	// Prerequisite is what an option of a class or subclass feature (or of a feat) asks of the character; only an
 	// entry of Options has it. An option whose prerequisite is not met is listed in the choice, blocked.
 	Prerequisite TableOptionPrerequisite
+	// SwapLevels says at which class levels a player may swap a pick of the feature's option pool for another option
+	// of the pool when leveling up; the zero value is never. Only a class or subclass feature that has options may set
+	// it.
+	SwapLevels FeatureSwapLevels
 }
 
 // TableCasting is how a class (or, for a third caster, a subclass) casts.
@@ -1474,6 +1478,7 @@ func (c *content) cloneForOverlay() *content {
 	n.weaponOf = map[string]WeaponTableEntry{}
 	n.creatureSpecs = map[string]*creatureSpec{}
 	n.optionPrereq = map[string]TableOptionPrerequisite{}
+	n.featureSwaps = map[string]FeatureSwapLevels{}
 	n.spells = maps.Clone(c.spells)
 	n.classLevels = maps.Clone(c.classLevels)
 	n.subclassLevels = maps.Clone(c.subclassLevels)
