@@ -188,11 +188,12 @@ func (s *Service) releaseHold(ctx context.Context, c *combatTx, h playdb.Reactio
 	if err != nil {
 		return fmt.Errorf("guard the replay of a held action: %w", err)
 	}
-	before := *c
+	before, marked := *c, c.hints.mark()
 	err = s.replayHeld(withAmbient(ctx, c), m, h)
 	if err != nil && clientError(err) {
 		_ = sp.Rollback(ctx) // the transaction decides what a failed rollback means: the next statement fails with it
 		*c = before
+		c.hints.rewind(marked) // hints is a pointer: the restore above leaves what the replay told, and the streams would hear of writes rolled back
 	} else if cerr := sp.Commit(ctx); cerr != nil {
 		return fmt.Errorf("release the guard of the replay of a held action: %w", cerr)
 	}

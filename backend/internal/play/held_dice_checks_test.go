@@ -124,7 +124,25 @@ func TestARayOfTheWrongSizeIsOnlyMetAtTheReplayAndTheDroppedCastLeavesNothing(t 
 		if err != nil || res.GetCast() != nil {
 			t.Fatalf("the cast = %v, %v; want it held for the Counterspell: its third ray types one face for a pair, which only the replay can tell", res, err)
 		}
+		heard := []heardBy{
+			listen(t, a.h, a.campaignID, a.master.id, true),
+			listen(t, a.h, a.campaignID, a.ana.id, false),
+		}
+		for _, w := range heard {
+			w.heard(t, a.h) // what the hold itself told
+		}
 		a.mustAnswer(t, a.master, e, a.windowOf(t, a.master, playv1.ReactionKind_REACTION_KIND_COUNTERSPELL).GetId(), passAnswer)
+		for i, w := range heard {
+			// The rays the replay rolled before it met the third one were rolled back: no stream hears of their damage, hit points or cast.
+			got := w.heard(t, a.h)
+			for _, ev := range got {
+				switch ev.GetEvent().(type) {
+				case *playv1.WatchGameSessionResponse_HiddenHitPending_, *playv1.WatchGameSessionResponse_AttackHit_,
+					*playv1.WatchGameSessionResponse_VitalsChanged_, *playv1.WatchGameSessionResponse_SpellCastsChanged_:
+					t.Errorf("stream %d heard %T of a cast that was dropped; want nothing of its rolled-back rays", i, ev.GetEvent())
+				}
+			}
+		}
 		if got := a.holdStates(t); got != "cast:dropped" {
 			t.Errorf("the holds = %q, want the cast dropped", got)
 		}
