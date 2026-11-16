@@ -592,7 +592,7 @@ describe('ConsumableUse', () => {
         const answer = await data.use(apply, 'k1');
         expect(reload).toHaveBeenCalledTimes(1);
         expect(`${answer.refusal?.lead} ${answer.refusal?.text}`).toBe(
-          'Não sabemos se foi usada: confira a ficha.',
+          'Não sabemos se a unidade foi usada: confira a ficha.',
         );
       },
     );
@@ -614,7 +614,7 @@ describe('ConsumableUse', () => {
       const answer = await data.use(apply, 'k1');
       expect(answer.close).toBe(true);
       expect(consumables.result()).toMatchObject({
-        headline: 'Não sabemos se foi usada:',
+        headline: 'Não sabemos se a unidade foi usada:',
         detail: 'confira a ficha.',
       });
     });

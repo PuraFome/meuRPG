@@ -303,11 +303,9 @@ describe('ActionGroups: the Itens tab', () => {
     const heal = rows.find((r) => text(r).includes('Poção de cura'))!;
     const oil = rows.find((r) => text(r).includes('Óleo de afiar'))!;
     expect(text(heal)).toContain('Atordoado: não pode agir.');
-    const button = heal.querySelector<HTMLButtonElement>('.row__btn');
-    expect(!button || button.getAttribute('aria-disabled') === 'true' || button.disabled).toBe(
-      true,
-    );
-    button?.click();
+    const button = heal.querySelector<HTMLButtonElement>('.row__btn')!;
+    expect(button.getAttribute('aria-disabled')).toBe('true');
+    button.click();
     expect(used).toEqual([]);
     expect(text(oil)).not.toContain('não pode agir');
     oil.querySelector<HTMLButtonElement>('.row__btn')!.click();

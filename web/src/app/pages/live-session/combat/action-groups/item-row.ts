@@ -47,8 +47,7 @@ const USE_ICON = 'science';
       </span>
       <span class="row__line">
         @if (economy(); as e) {
-          <span class="row__econ" [class.row__econ--spent]="off()"><app-economy-mark [kind]="e" [spent]="off()" />Ação</span>
-          {{ ' ' }}<span aria-hidden="true">·</span>{{ ' ' }}
+          <span class="row__lead"><span class="row__econ" [class.row__econ--spent]="off()"><app-economy-mark [kind]="e" [spent]="off()" />Ação</span>{{ ' ' }}<span aria-hidden="true">·</span></span>{{ ' ' }}
         }
         <span class="row__detail">{{ detail() }}</span>
       </span>

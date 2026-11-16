@@ -214,7 +214,7 @@ A sheet with potions and charges reads "Travada: usar poções e cargas continua
 The sheet's magic items and the combat's "Itens" both build one, with the owner's items and what the page knows of the combat.
 An entry without `consumable` is no consumable row, whatever its name or its effect line says.
 The web keeps no list of oils, no category read and no parsing of `effect_pt` for dice: the verb, the icon, the noun, the Ação mark, the pre-block and the dice read `consumable`.
-`inCombat` is `true` or `false` in the combat's "Itens" and `null` on the sheet.
+`inCombat` is always `true` in the combat's "Itens" tab, which exists only in a running combat, and `null` on the sheet.
 The sheet learns the combat from `ListConsumableTargetsResponse.in_combat` and says nothing of the cost until that read answers.
 A scroll or another item that is not given has no targets read, so the sheet uses what the page knows, and `costs_action` is false for it anyway.
 `turnBlock` is `null` on the sheet; in the combat it is `turn` when the turn is not the character's and `action` when the Action is spent (`turnBlockOf`).
@@ -242,7 +242,7 @@ Any other case lists the party's names with no distance, and the sheet says "Dar
 An empty list says "Ninguém a 1,5 m de <nome> para receber…" in a combat, with the name of the character the master acts for, and "Ninguém mais no grupo para receber…" out of one.
 `consumableRefusal` (`core/play/charges-errors.ts`) words the refusals of a use by the typed reason, each with a bold lead ("Brisa morreu.", "A poção acabou.", "Longe demais.").
 The refusals that spend nothing say so: the receiver gone or dead, the character dead or no longer at the table, no open session, dice that do not fit the die and a call that never left ("Tente de novo" sends the same call under the same key).
-`Unknown`, `Internal` and `DeadlineExceeded` may have spent the unit, so they say "Não sabemos se foi usada: confira a ficha."
+`Unknown`, `Internal` and `DeadlineExceeded` may have spent the unit, so they say "Não sabemos se a unidade foi usada: confira a ficha."
 `CHARACTER_DEAD` names the character that died, and `InvalidArgument` speaks of dice only when the player typed them.
 The refusals of the turn, of the action and of an item already used say what blocks the use and not that nothing was spent.
 The generic sentences of `combat-errors-limits.ts` for the same reasons stay for the other callers.

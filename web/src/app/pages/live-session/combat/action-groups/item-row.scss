@@ -1,7 +1,9 @@
+@use 'row-parts' as row;
+
 // The same columns as the other tabs' rows: the text, then the 112px action column, so the buttons line up down every tab.
 :host {
   display: grid;
-  grid-template-columns: var(--mr-font-20) minmax(0, 1fr) 112px;
+  grid-template-columns: var(--mr-font-20) minmax(0, 1fr) row.$button-width;
   align-items: center;
   column-gap: var(--mr-space-2);
   padding: var(--mr-space-3) 0;
@@ -53,6 +55,11 @@
   color: var(--mr-ink-muted);
 }
 
+// The mark and the separator stay together: on a wrap the detail goes to the next line, never the dot alone.
+.row__lead {
+  white-space: nowrap;
+}
+
 // The mark of the Ação in the economy row's ink; its spent look (dashed, muted) only when the row is spent.
 .row__econ {
   display: inline-flex;
@@ -67,14 +74,8 @@
 }
 
 .row__why {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+  @include row.why-line;
   margin-top: var(--mr-space-1);
-  font-size: var(--mr-font-14);
-  font-weight: 500;
-  line-height: 19px;
-  color: var(--mr-ink);
 
   .mat-icon {
     flex: none;
@@ -85,13 +86,8 @@
 }
 
 .row__btn {
-  grid-column: 3;
-  --mat-button-outlined-container-height: 48px;
-  --mat-button-outlined-label-text-color: var(--mr-ink);
-  --mat-button-outlined-outline-color: var(--mr-control-line);
+  @include row.action-button;
   width: 100%;
-  min-width: 0;
-  padding: 0;
 
   .mat-icon {
     flex: none;

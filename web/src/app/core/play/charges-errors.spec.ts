@@ -273,7 +273,7 @@ describe('consumableRefusal', () => {
   it('does not say nothing was spent when the call may have been carried out', () => {
     for (const code of [Code.Unknown, Code.Internal, Code.DeadlineExceeded]) {
       const r = consumableRefusal(new ConnectError('x', code), potion);
-      expect(said(r)).toBe('Não sabemos se foi usada: confira a ficha.');
+      expect(said(r)).toBe('Não sabemos se a unidade foi usada: confira a ficha.');
       expect(r.retry).toBe(false);
       expect(said(r)).not.toContain('Nada foi gasto');
     }

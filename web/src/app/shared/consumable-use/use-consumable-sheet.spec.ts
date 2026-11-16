@@ -1117,7 +1117,7 @@ describe('UseConsumableSheet', () => {
     });
 
     it('keeps the same key for the same call when nothing changed', async () => {
-      use.mockResolvedValueOnce(refused('Não sabemos se foi usada:', 'confira a ficha.'));
+      use.mockResolvedValueOnce(refused('Não sabemos se a unidade foi usada:', 'confira a ficha.'));
       const { el, settle } = render();
       await settle();
       const drink = () =>
@@ -1132,7 +1132,7 @@ describe('UseConsumableSheet', () => {
     });
 
     it('says an unknown outcome and does not claim nothing was spent', async () => {
-      use.mockResolvedValueOnce(refused('Não sabemos se foi usada:', 'confira a ficha.'));
+      use.mockResolvedValueOnce(refused('Não sabemos se a unidade foi usada:', 'confira a ficha.'));
       const { el, settle } = render();
       await settle();
       Array.from(el.querySelectorAll('button'))
@@ -1140,7 +1140,7 @@ describe('UseConsumableSheet', () => {
         .click();
       await settle();
       expect(flat(el.querySelector('[role=alert]'))).toBe(
-        'Não sabemos se foi usada: confira a ficha.',
+        'Não sabemos se a unidade foi usada: confira a ficha.',
       );
       expect(close).not.toHaveBeenCalled();
     });

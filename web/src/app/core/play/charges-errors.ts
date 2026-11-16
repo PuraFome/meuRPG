@@ -203,7 +203,7 @@ export function consumableNeedsReload(err: unknown): boolean {
 /**
  * What a refused or failed use of a consumable says in the "Usar" sheet, by the typed reason and never by the server's
  * message: a bold lead and the sentence. The refusals that spend nothing say so; a call that was cut off or failed on the
- * server says "Não sabemos se foi usada: confira a ficha", since it may have spent the unit; one that never left says nothing
+ * server says "Não sabemos se a unidade foi usada: confira a ficha", since it may have spent the unit; one that never left says nothing
  * was spent and can be sent again. The turn and the action of a combat are ban lines.
  */
 export function consumableRefusal(err: unknown, ctx: ConsumableErrorContext): ConsumableRefusal {
@@ -265,7 +265,7 @@ function codeRefusal(
     case Code.Unknown:
     case Code.Internal:
     case Code.DeadlineExceeded:
-      return refusal('Não sabemos se foi usada:', 'confira a ficha.');
+      return refusal('Não sabemos se a unidade foi usada:', 'confira a ficha.');
   }
   return refusal('Não foi possível.', describeCharacterError(err));
 }
