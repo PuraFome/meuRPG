@@ -639,12 +639,18 @@ func concentrationEndOf(row playdb.ListRecentSessionEventsRow, group string) (ev
 
 // takeBackDrain takes back the heal a drain spell's damage gave its caster.
 // The heal is found by its link to the pending damage, whatever else the landing wrote.
+// A heal an earlier undo took back is skipped.
 // The caster's hit points are as they were, and the line goes.
 func (s *Service) takeBackDrain(ctx context.Context, c *combatTx, run *undoRun, recent []playdb.ListRecentSessionEventsRow, last playdb.ListRecentSessionEventsRow, pending string) error {
 	at := slices.IndexFunc(recent, func(e playdb.ListRecentSessionEventsRow) bool { return e.ID == last.ID })
+	undone := map[string]bool{}
 	for _, older := range recent[at+1:] {
+		if older.Kind == eventActionUndone {
+			markUndone(undone, older.Payload)
+			continue
+		}
 		pe, ok := drainOf(older, pending)
-		if !ok {
+		if !ok || undone[older.ID] {
 			continue
 		}
 		cs, err := listCombatants(ctx, c)
@@ -659,6 +665,7 @@ func (s *Service) takeBackDrain(ctx context.Context, c *combatTx, run *undoRun, 
 		}
 		run.vitals = append(run.vitals, u.vitals...)
 		run.alsoUndone = append(append(run.alsoUndone, older.ID), pe.linesBefore()...)
+		return nil // a landing wrote one heal: older ones were taken back already
 	}
 	return nil
 }

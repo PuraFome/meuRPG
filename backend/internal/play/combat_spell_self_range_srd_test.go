@@ -282,6 +282,46 @@ func TestSRDVampiricTouchHealGuards(t *testing.T) {
 			}
 		}
 	})
+	t.Run("an undone roll rolled again undoes only its own heal", func(t *testing.T) {
+		t.Parallel()
+		for _, tc := range []struct {
+			name    string
+			rerolls func(t *testing.T, a *armed, e *playv1.Encounter) int32
+		}{
+			{"that heals again", func(*testing.T, *armed, *playv1.Encounter) int32 { return 9 }},
+			{"that heals nothing", func(t *testing.T, a *armed, e *playv1.Encounter) int32 {
+				t.Helper()
+				if _, err := a.adjustHP(t, e, "Capitão Goblin", damageHP(500)); err != nil {
+					t.Fatalf("AdjustCombatantHitPoints() error = %v", err)
+				}
+				return 5
+			}},
+		} {
+			t.Run(tc.name, func(t *testing.T) {
+				a := newSrdParty(t)
+				e := a.rangeFight(t, "Mago", near)
+				a.correct(t, a.pens, hpIs(10))
+				id := a.takesWith(t, e, "Mago", vampiricTouch, slotOfLevel(3), []string{"Capitão Goblin"}).GetTargets()[0].GetPendingDamageId()
+				a.h.roller.queue(3, 3, 3)
+				a.mustDamage(t, a.ana, e, id, inAppDamage)
+				a.undoLast(t, e)
+				a.correct(t, a.pens, hpIs(5))
+				want := tc.rerolls(t, a, e)
+				a.h.roller.queue(3, 3, 3)
+				a.mustDamage(t, a.ana, e, id, inAppDamage)
+				if got := a.vitals(t, a.pens).GetHitPointsCurrent(); got != want {
+					t.Fatalf("Mago has %d hit points after the second roll, want %d", got, want)
+				}
+				a.undoLast(t, e)
+				if got := a.vitals(t, a.pens).GetHitPointsCurrent(); got != 5 {
+					t.Errorf("Mago has %d hit points after the second undo, want the 5 he had", got)
+				}
+				if n := len(a.drainLines(t, a.master, e, "Mago", vampiricTouch)); n != 0 {
+					t.Errorf("the log keeps %d lines of the heal, want none", n)
+				}
+			})
+		}
+	})
 	t.Run("a hidden target keeps the line from the other players", func(t *testing.T) {
 		t.Parallel()
 		a := newSrdParty(t)
@@ -447,9 +487,11 @@ func TestSRDVampiricTouchHealFollowsTheModifiers(t *testing.T) {
 		e := a.rangeFight(t, "Mago", far)
 		ghost := a.monsterNextTo(t, e, "monster:ghost", [2]int32{2, 4})
 		a.correct(t, a.pens, hpIs(10))
-		id := a.takesWith(t, e, "Mago", vampiricTouch, slotOfLevel(3), []string{ghost}).GetTargets()[0].GetPendingDamageId()
+		cast := a.mustCast(t, a.ana, e, "Mago", vampiricTouch, slotOfLevel(3), a.at(t, ghost), spellAttackHits)
+		id := cast.GetCast().GetTargets()[0].GetPendingDamageId()
 		a.h.roller.queue(3, 3, 3)
-		a.mustDamage(t, a.ana, e, id, inAppDamage)
+		rolled := a.mustDamage(t, a.ana, e, id, inAppDamage)
+		noModifierWords(t, "Mago's player (answers)", cast, rolled)
 		if got := a.vitals(t, a.pens).GetHitPointsCurrent(); got != 10 {
 			t.Errorf("Mago has %d hit points, want 10", got)
 		}
