@@ -13276,8 +13276,12 @@ async function scanTraitOptions(browser: Browser, colorScheme: 'light' | 'dark',
     const night = await createNightRaceRPC(m, campaignId);
     await open(m, entryRoute(campaignId, night.race));
     const options = m.getByRole('region', { name: 'Opções para escolher de Sentidos da noite' });
-    await expect(options.getByLabel('Nome da opção')).toHaveCount(2);
-    await expect(options.getByLabel('Nome da opção').nth(1)).toHaveValue('Passo de pena');
+    // The options are closed rows, one open at a time: the second opens to show its name.
+    const optionRows = options.getByRole('group', { name: /^Opção \d/ });
+    await expect(optionRows).toHaveCount(2);
+    await expect(optionRows.nth(1)).toContainText('Passo de pena');
+    await optionRows.nth(1).getByRole('button', { expanded: false }).first().click();
+    await expect(options.getByLabel('Nome da opção')).toHaveValue('Passo de pena');
     await expectScreenPasses(m, `Editor de raça, o traço com opções para escolher ${where}`);
     // A trait with no options says so, and a new option with no name says it is not saved.
     const planar = m.getByRole('region', { name: 'Opções para escolher de Planar' });
@@ -15826,7 +15830,7 @@ async function scanOptionAsks(browser: Browser, colorScheme: 'light' | 'dark', w
     await m.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
     await expectScreenPasses(m, `Editor de subclasse, a opção que pede nível e opção ${where}`);
 
-    await option.getByRole('button', { name: /^Mais ações de/ }).click();
+    await option.getByRole('button', { name: /^Mais ações da opção/ }).click();
     await expect(m.getByRole('menuitem', { name: 'Remover opção' })).toBeVisible();
     await expectScreenPasses(m, `Editor de subclasse, o menu da opção ${where}`);
     await m.keyboard.press('Escape');
