@@ -7913,7 +7913,7 @@ export type CastSpellRequest = Message<"meurpg.play.v1.CastSpellRequest"> & {
   /**
    * How the d20 of a spell attack comes: exactly one for a spell with an attack
    * roll, ignored by the others. roll_in_app rolls one d20 for each target;
-   * d20_face is the face of a physical die and fits a single ray (several rays take ray_rolls).
+   * d20_face is the face of a physical die and fits a single attack roll (several take ray_rolls).
    *
    * @generated from oneof meurpg.play.v1.CastSpellRequest.roll
    */
@@ -8142,11 +8142,13 @@ export type CastSpellRequest = Message<"meurpg.play.v1.CastSpellRequest"> & {
   alsoSteed: boolean;
 
   /**
-   * At a table that rolls physical dice, a spell with several rays (Scorching Ray) takes the physical d20s of each ray: one entry per
-   * ray, in the order of the targets and, for each target, of the rays it takes (its darts). The request's roll_mode applies to every
-   * ray, as d20_faces does for every target: each entry holds one face, or two where the ray is rolled with advantage or disadvantage.
-   * Required for such a cast (d20_face and d20_faces fit a single ray); `invalid_argument` for any other cast: a single ray,
-   * a roll_in_app, a spell with no attack roll. A wrong count of entries or of faces, or a face outside 1 to 20, is `invalid_argument`.
+   * At a table that rolls physical dice, a spell with several attack rolls (rays: Scorching Ray's, or one for each target of a spell
+   * that attacks several) takes the physical d20s of each: one entry per attack roll, in the order of the targets and, for each
+   * target, of the rays it takes (its darts). The request's roll_mode applies to every one, as d20_faces does for every target:
+   * each entry holds one face, or two where that roll is made with advantage or disadvantage.
+   * Required for such a cast (d20_face and d20_faces fit a single attack roll); `invalid_argument` for any other cast: a single
+   * attack roll, a roll_in_app, a spell with no attack roll. A wrong count of entries or of faces, or a face outside 1 to 20, is
+   * `invalid_argument`.
    *
    * @generated from field: repeated meurpg.play.v1.RayRoll ray_rolls = 38;
    */
@@ -13933,9 +13935,9 @@ export type AnswerReactionRequest = Message<"meurpg.play.v1.AnswerReactionReques
   modeReason: string;
 
   /**
-   * READIED, a readied spell with several rays (Scorching Ray) at a table that rolls physical dice: the physical d20s of
-   * each ray, as CastSpellRequest.ray_rolls (one entry per ray, in the order of the targets and of the rays each target
-   * takes). Copied one to one into the request the release builds, which checks it as it does. `invalid_argument` on a
+   * READIED, a readied spell with several attack rolls (rays: Scorching Ray's) at a table that rolls physical dice: the physical
+   * d20s of each, as CastSpellRequest.ray_rolls (one entry per attack roll, in the order of the targets and of the rays each
+   * target takes). Copied one to one into the request the release builds, which checks it as it does. `invalid_argument` on a
    * pass, on another kind of window, or on a row that is not a spell.
    *
    * Field numbers 12, 13, 15 and 16 are held by the orchestrator's number ledger.
