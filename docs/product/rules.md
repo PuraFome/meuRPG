@@ -507,6 +507,7 @@ If it does not, everyone uses the type the master picks.
 - With a physical die the player types the sum of the dice without the modifier (the d20 face, 1 to 20), and the app adds the modifier. The sum must fit between the minimum and the maximum of the dice.
 - The rule covers initiative, attack and damage rolls, spell attacks, spell damage and healing, Second Wind, death saves, the d20 of an RP scene action, searching for traps, puzzle hints, the group check, both sides of a contest, Hide, the ability check of Counterspell and the 4d6 ability scores of a new sheet. A mode the master forced refuses the other way with "A campanha mudou a forma de rolar os dados. Recarregue a página.".
 - The dice of the magic items' dawn, rolled by the master for the whole table, are always rolled by the app, like the reroll exceptions above.
+- A spell with several rays (Raio Ardente) takes one typed d20 per ray at a table with physical dice, or the pair when that ray has advantage or disadvantage: one roll for each ray, in the order of the targets and of the rays each target takes. The same holds when the spell is released from a readied action's window. A single d20 cannot stand for several rays.
 - A spell target's saving throw is always rolled by the app with the sheet's bonus.
 - A table feature's reroll ("rolar de novo?", RN-23) is rolled by the app even when the master forces physical dice: it is the one d20 the player cannot type.
 - The hit points rolled when a character is created are not part of this rule.
@@ -1197,7 +1198,7 @@ A player reads only their own windows, and the numbers of the trigger (an attack
   A cantrip with an attack roll is held this way too.
   Released, the spell takes effect as a reaction and spends no slot again; Counterspell can still stop it.
   The targets and the split of the darts are chosen when the spell is released, not at Ready.
-  At a table with physical dice, a readied action released from the window takes the faces typed, as on the player's turn: the d20 (the pair for advantage or disadvantage) of an attack, and the sum of the dice of a spell that rolls a pool (Sleep, Color Spray).
+  At a table with physical dice, a readied action released from the window takes the faces typed, as on the player's turn: the d20 (the pair for advantage or disadvantage) of an attack, and the sum of the dice of a spell that rolls a pool (Sleep, Color Spray); a spell with several rays (Scorching Ray) takes one typed d20, or pair, for each ray.
   The creature named at Ready is only a suggestion for the release.
   A spell that asks an ability, a damage type, the creatures of a summon or a revival cannot be released, and Ready refuses it.
   A spell placed on the map (a point, a direction, a wall) or that lays a zone there is released on the map while the window is open, by casting the spell there, not by answering the window.

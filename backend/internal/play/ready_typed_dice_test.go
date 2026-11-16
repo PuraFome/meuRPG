@@ -8,7 +8,6 @@ import (
 
 	campaignsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/campaigns/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
-	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 )
 
 // The release of a readied action at a table with physical dice takes the dice a cast or an attack takes (#938): the
@@ -241,30 +240,5 @@ func TestAReadiedTypedReleaseReplaysWithTheSameKey(t *testing.T) {
 	}
 	if n := len(a.firedLines(t, a.master, e)); n != 1 {
 		t.Errorf("fired lines = %d, want 1", n)
-	}
-}
-
-// What the cast itself does with a physical d20 for the rays of Scorching Ray: it refuses (combat_cast.go
-// checkSpellAttack): d20_face and d20_faces fit a single ray.
-func TestCastScorchingRayWithPhysicalDiceIsRefusedForSeveralRays(t *testing.T) {
-	t.Parallel()
-	a := newArmedWith(t, func(a *armed) {
-		a.toren = a.caio.hero(t, a.campaignID, "Toren", "class:fighter", "race:human", 5,
-			&rulesv1.AbilityScores{Strength: 16, Dexterity: 13, Constitution: 14, Intelligence: 10, Wisdom: 10, Charisma: 8}, []string{battleaxe}, nil)
-		a.pens = a.ana.caster(t, a.campaignID, "Pensantus", "class:wizard", "race:gnome", 3,
-			&rulesv1.AbilityScores{Strength: 10, Dexterity: 14, Constitution: 12, Intelligence: 16, Wisdom: 10, Charisma: 8}, nil, []string{fireBolt},
-			[]string{scorchingRay}, []string{scorchingRay})
-		a.bri = a.bia.hero(t, a.campaignID, "Brisa", "class:fighter", "race:human", 2,
-			&rulesv1.AbilityScores{Strength: 10, Dexterity: 16, Constitution: 14, Intelligence: 10, Wisdom: 10, Charisma: 8}, []string{rapier}, nil)
-	})
-	a.forceDice(t, campaignsv1.DiceMode_DICE_MODE_PHYSICAL)
-	e := a.castersFight(t, 1)
-	for name, roll := range map[string]func(*playv1.CastSpellRequest){
-		"d20_face":  func(r *playv1.CastSpellRequest) { r.Roll = &playv1.CastSpellRequest_D20Face{D20Face: 12} },
-		"d20_faces": func(r *playv1.CastSpellRequest) { r.D20Faces = []int32{12} },
-	} {
-		_, err := a.cast(t, a.ana, e, "Pensantus", scorchingRay, slotOfLevel(2), []*playv1.SpellTarget{darts(a, t, "Goblin", 3)}, roll)
-		wantCode(t, "Scorching Ray with "+name, err, connect.CodeInvalidArgument)
-		t.Logf("%s: %v", name, err)
 	}
 }

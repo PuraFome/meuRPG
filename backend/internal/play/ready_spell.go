@@ -291,6 +291,9 @@ func (s *Service) useReadiedSpell(ctx context.Context, m authz.Membership, in an
 	if len(msg.GetD20Faces()) > 0 { // the table's dice instead of the app's: the cast reads them as it reads its own
 		req.Roll, req.D20Faces = nil, msg.GetD20Faces()
 	}
+	if len(msg.GetRayRolls()) > 0 { // the table's dice for each ray: the cast checks them as it checks its own
+		req.Roll, req.RayRolls = nil, msg.GetRayRolls()
+	}
 	req.RollMode, req.ModeReason = msg.GetRollMode(), msg.GetModeReason()
 	res, err := s.castSpell(ctx, m, connect.NewRequest(req), true)
 	if err != nil {

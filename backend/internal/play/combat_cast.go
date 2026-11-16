@@ -111,6 +111,9 @@ func (call *castCall) readTargets(req *playv1.CastSpellRequest) error {
 // readCastRoll reads how the dice come: rolled in the app, one typed face, a typed pool or the typed faces
 // of a pair; rolled says any of them was set.
 func readCastRoll(req *playv1.CastSpellRequest) (in rollInput, rolled bool, err error) {
+	if len(req.GetRayRolls()) > 0 {
+		return readRayRolls(req)
+	}
 	switch roll := req.GetRoll().(type) {
 	case *playv1.CastSpellRequest_RollInApp:
 		if !roll.RollInApp {
@@ -133,6 +136,23 @@ func readCastRoll(req *playv1.CastSpellRequest) (in rollInput, rolled bool, err 
 		}
 	}
 	return in, rolled, nil
+}
+
+// readRayRolls reads the physical d20s of each ray of a spell with several rays (ray_rolls): they take the place of every
+// other way of rolling, and each entry holds one face or the pair of a mode with two dice, 1 to 20 each. Whether the
+// spell has that many rays is checked with the spell (checkSpellAttack).
+func readRayRolls(req *playv1.CastSpellRequest) (in rollInput, rolled bool, err error) {
+	if req.GetRoll() != nil || len(req.GetD20Faces()) > 0 {
+		return in, false, connect.NewError(connect.CodeInvalidArgument, errors.New("ray_rolls take the place of roll_in_app, d20_face, pool_sum and d20_faces"))
+	}
+	for i, r := range req.GetRayRolls() {
+		faces, err := typedD20Faces(r.GetD20Faces())
+		if err != nil {
+			return in, false, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("ray_rolls[%d] takes one d20 face, or two for advantage or disadvantage, 1 to 20 each", i))
+		}
+		in.rays = append(in.rays, faces)
+	}
+	return in, true, nil
 }
 
 // castOut is what the transaction of a cast leaves for its answer.
@@ -610,10 +630,28 @@ func (f *castFlow) readModes(ctx context.Context) error {
 	return err
 }
 
+// checkRayRolls checks the physical d20s of the rays of a spell attack: a single ray takes d20_face or d20_faces, several take a
+// ray_rolls entry each (the in-app roll takes none). The faces of each entry are checked against the mode of its ray
+// when it is rolled (d20With).
+func checkRayRolls(in rollInput, rays int) error {
+	switch {
+	case len(in.rays) > 0 && rays < 2:
+		return connect.NewError(connect.CodeInvalidArgument, errors.New("ray_rolls are for a spell with several rays: use d20_face for a single ray"))
+	case len(in.rays) > 0 && len(in.rays) != rays:
+		return connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("ray_rolls takes one entry for each of the %d rays, got %d", rays, len(in.rays)))
+	case !in.inApp && rays != 1 && len(in.rays) == 0:
+		return connect.NewError(connect.CodeInvalidArgument, errors.New("d20_face fits a single ray: type ray_rolls for several, or use roll_in_app"))
+	}
+	return nil
+}
+
 // checkSpellAttack checks the dice of a spell attack: a d20 for each target, and the way the caller rolls
 // (RN-18).
 func (f *castFlow) checkSpellAttack(ctx context.Context) error {
 	if f.sp.AttackType == "" {
+		if len(f.call.in.rays) > 0 {
+			return connect.NewError(connect.CodeInvalidArgument, errors.New("this spell rolls no d20: leave ray_rolls out"))
+		}
 		return nil
 	}
 	in := f.call.in
@@ -623,8 +661,8 @@ func (f *castFlow) checkSpellAttack(ctx context.Context) error {
 	if !f.call.rolled {
 		return connect.NewError(connect.CodeInvalidArgument, errors.New("set roll_in_app or d20_face for a spell attack"))
 	}
-	if !in.inApp && len(raysAt(f.sp, f.targets)) != 1 {
-		return connect.NewError(connect.CodeInvalidArgument, errors.New("d20_face fits a single target: use roll_in_app for several"))
+	if err := checkRayRolls(in, len(raysAt(f.sp, f.targets))); err != nil {
+		return err
 	}
 	if f.v.master {
 		return nil
@@ -891,9 +929,9 @@ func (f *castFlow) affect(ctx context.Context) error {
 	if def, ok := zoneDefOfSpell(f.sp); ok && f.sp.ZoneLaid { // the area stays on the map (zones_cast.go)
 		return f.affectZone(ctx, def)
 	}
-	for _, i := range raysAt(f.sp, f.targets) { // a ray of Scorching Ray is an attack of its own
-		if err := f.hitTarget(ctx, i, f.targs[i]); err != nil {
-			return err
+	for k, i := range raysAt(f.sp, f.targets) { // a ray of Scorching Ray is an attack of its own
+		if err := f.hitTarget(ctx, i, f.targs[i], f.rayInput(k)); err != nil {
+			return f.rayError(k, err)
 		}
 	}
 	if err := f.offerResistance(ctx); err != nil { // a target with Legendary Resistance and a use left: the master decides first
@@ -920,8 +958,26 @@ func (f *castFlow) affectHitPoints(ctx context.Context) error {
 	return nil
 }
 
-// hitTarget is the spell on one target: its cover, and the attack or the save it asks.
-func (f *castFlow) hitTarget(ctx context.Context, i int, t playdb.Combatant) error {
+// rayInput is how the d20 of the k-th ray comes: the cast's own, or, with ray_rolls, the physical d20s typed for that ray.
+func (f *castFlow) rayInput(k int) rollInput {
+	in := f.call.in
+	if k < len(in.rays) {
+		in.typed, in.typedFaces = 0, in.rays[k]
+	}
+	return in
+}
+
+// rayError names the ray a refused roll was for, when the faces of ray_rolls were typed for it.
+func (f *castFlow) rayError(k int, err error) error {
+	var ce *connect.Error
+	if len(f.call.in.rays) == 0 || !errors.As(err, &ce) || ce.Code() != connect.CodeInvalidArgument {
+		return err
+	}
+	return connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("ray_rolls[%d]: %s", k, ce.Message()))
+}
+
+// hitTarget is the spell on one target: its cover, and the attack or the save it asks. in is how its d20 comes.
+func (f *castFlow) hitTarget(ctx context.Context, i int, t playdb.Combatant, in rollInput) error {
 	hit := castHit{Target: t.ID, Darts: shownDarts(f.sp, f.targets[i])}
 	var cp coverPair
 	if f.placedArea {
@@ -932,7 +988,7 @@ func (f *castFlow) hitTarget(ctx context.Context, i int, t playdb.Combatant) err
 			return err
 		}
 	}
-	if err := f.s.resolveOnTarget(ctx, f.c, f.m, f.sp, f.caster, t, f.slotLevel, f.call.in, cp, &hit, f.out.modes, &f.out.made); err != nil {
+	if err := f.s.resolveOnTarget(ctx, f.c, f.m, f.sp, f.caster, t, f.slotLevel, in, cp, &hit, f.out.modes, &f.out.made); err != nil {
 		return err
 	}
 	f.out.made.Hits = append(f.out.made.Hits, hit)
