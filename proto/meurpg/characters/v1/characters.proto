@@ -1707,6 +1707,36 @@ message SheetMagicItem {
   // ignores them.
   string spell_key = 15;
   string spell_name_pt = 16;
+  // What a use of this entry is, present only on an entry that ChargesService.UseConsumable accepts and empty for every other
+  // item. Filled by the server on every read, from the same rules the use follows, on the campaign's content; a save ignores it.
+  // The sheet and the combat's item list read it instead of deciding what a use does or costs. Read by the same people as the
+  // charges: the character's player and the master.
+  SheetConsumable consumable = 17;
+}
+
+// ConsumableKind is what kind of consumable an entry of the sheet is.
+enum ConsumableKind {
+  CONSUMABLE_KIND_UNSPECIFIED = 0;
+  // A potion that is drunk or given.
+  CONSUMABLE_KIND_POTION = 1;
+  // An oil: applied in a minute or ten, not as an action.
+  CONSUMABLE_KIND_OIL = 2;
+  // A scroll.
+  CONSUMABLE_KIND_SCROLL = 3;
+  // Any other single-use item (a dust, a token, a bead, a manual).
+  CONSUMABLE_KIND_OTHER = 4;
+}
+
+// SheetConsumable is what using a consumable entry of the sheet does and costs, as the server's rules say it.
+message SheetConsumable {
+  ConsumableKind kind = 1;
+  // Using it in a running combat costs the user's action (and needs the user's turn and a receiver within reach). False for
+  // everything but a potion, and always false outside a running combat's rules (a combat in setup has no turn).
+  bool costs_action = 2;
+  // The healing roll of the use, such as 2, 4, 2 for 2d4 + 2. All three are zero when the use rolls nothing.
+  int32 heal_dice_count = 3;
+  int32 heal_dice_sides = 4;
+  int32 heal_bonus = 5;
 }
 
 // ItemRecharge is the catalog's charge rules of one item (SRD 5.1: each wand, staff, ring and

@@ -1337,8 +1337,12 @@ func (x *ListConsumableTargetsRequest) GetEntryId() string {
 }
 
 type ListConsumableTargetsResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Targets       []*ConsumableTarget    `protobuf:"bytes,1,rep,name=targets,proto3" json:"targets,omitempty"`
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	Targets []*ConsumableTarget    `protobuf:"bytes,1,rep,name=targets,proto3" json:"targets,omitempty"`
+	// The user's character is a combatant of a combat that is running (not in setup) in the campaign's open session. The same
+	// test sets the target states and the reach of a potion, so the answer never disagrees with them. The web reads it instead
+	// of reading the combat. Read by the character's player and the master.
+	InCombat      bool `protobuf:"varint,2,opt,name=in_combat,json=inCombat,proto3" json:"in_combat,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1378,6 +1382,13 @@ func (x *ListConsumableTargetsResponse) GetTargets() []*ConsumableTarget {
 		return x.Targets
 	}
 	return nil
+}
+
+func (x *ListConsumableTargetsResponse) GetInCombat() bool {
+	if x != nil {
+		return x.InCombat
+	}
+	return false
 }
 
 // ConsumableTarget is a character the consumable may be given to.
@@ -1565,9 +1576,10 @@ const file_meurpg_play_v1_charges_proto_rawDesc = "" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12!\n" +
 	"\fcharacter_id\x18\x02 \x01(\tR\vcharacterId\x12\x19\n" +
-	"\bentry_id\x18\x03 \x01(\tR\aentryId\"[\n" +
+	"\bentry_id\x18\x03 \x01(\tR\aentryId\"x\n" +
 	"\x1dListConsumableTargetsResponse\x12:\n" +
-	"\atargets\x18\x01 \x03(\v2 .meurpg.play.v1.ConsumableTargetR\atargets\"\xc8\x01\n" +
+	"\atargets\x18\x01 \x03(\v2 .meurpg.play.v1.ConsumableTargetR\atargets\x12\x1b\n" +
+	"\tin_combat\x18\x02 \x01(\bR\binCombat\"\xc8\x01\n" +
 	"\x10ConsumableTarget\x12!\n" +
 	"\fcharacter_id\x18\x01 \x01(\tR\vcharacterId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x1f\n" +

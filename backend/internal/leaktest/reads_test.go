@@ -537,6 +537,21 @@ var reads = []read{
 		},
 	},
 
+	{
+		procedure: charactersv1connect.CharacterServiceGetCharacterProcedure, label: "Toren's sheet holding a potion and a scroll", allow: onlyCaio, why: "the sheet's consumable (kind, cost of the action, healing dice) is the owner's and the master's, like the charges beside it",
+		req: func(w *world) proto.Message {
+			w.withPotions()
+			return &charactersv1.GetCharacterRequest{CampaignId: w.campaign, CharacterId: w.toren.GetId()}
+		},
+	},
+	{
+		procedure: charactersv1connect.CharacterServiceGetCharacterProcedure, label: "Pensantus's sheet holding a potion", allow: onlyAna, why: "the same fields on Ana's character: no other player reads them",
+		req: func(w *world) proto.Message {
+			w.withPotions()
+			return &charactersv1.GetCharacterRequest{CampaignId: w.campaign, CharacterId: w.pens.GetId()}
+		},
+	},
+
 	// ===== TableScreenService
 	tvScreenRead,
 

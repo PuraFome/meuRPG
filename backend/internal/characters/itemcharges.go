@@ -5,6 +5,7 @@ import (
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
@@ -29,6 +30,7 @@ func (s *Service) fillItemCharges(ctx context.Context, content *rules.Content, c
 	}
 	for _, it := range full.GetMagicItems() {
 		it.EffectPt = content.PotionEffectLinePT(it.GetKey())
+		it.Consumable = sheetConsumableOf(content, it.GetKey())
 		ic, ok := content.ItemCharges(it.GetKey())
 		if !ok {
 			continue
@@ -38,6 +40,30 @@ func (s *Service) fillItemCharges(ctx context.Context, content *rules.Content, c
 		it.Recharge = itemRechargeOf(ic)
 	}
 	return nil
+}
+
+// sheetConsumableOf is what a use of the catalog item is and costs, from the rules the use of a consumable follows, and nil for
+// an item the use refuses.
+func sheetConsumableOf(content *rules.Content, key string) *charactersv1.SheetConsumable {
+	c, ok := content.ConsumableOf(key)
+	if !ok {
+		return nil
+	}
+	out := &charactersv1.SheetConsumable{
+		CostsAction:   c.CostsAction,
+		HealDiceCount: conv.Int32(c.Heal.Count), HealDiceSides: conv.Int32(c.Heal.Sides), HealBonus: conv.Int32(c.Heal.Bonus),
+	}
+	switch c.Kind {
+	case rules.ConsumablePotion:
+		out.Kind = charactersv1.ConsumableKind_CONSUMABLE_KIND_POTION
+	case rules.ConsumableOil:
+		out.Kind = charactersv1.ConsumableKind_CONSUMABLE_KIND_OIL
+	case rules.ConsumableScroll:
+		out.Kind = charactersv1.ConsumableKind_CONSUMABLE_KIND_SCROLL
+	default:
+		out.Kind = charactersv1.ConsumableKind_CONSUMABLE_KIND_OTHER
+	}
+	return out
 }
 
 // applyItemCharges fills the charge fields of an entry from the catalog's numbers and the stored row (set says the

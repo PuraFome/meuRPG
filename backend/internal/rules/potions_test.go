@@ -181,3 +181,66 @@ func TestTheOilsAreItemsOfThePotionCategory(t *testing.T) {
 		}
 	}
 }
+
+// ConsumableOf is the one decision of what a use of a catalog item is: it agrees with the catalog's consumables, the potion
+// rule and the potion table for every item of the SRD.
+func TestConsumableOfAgreesWithTheCatalogForEveryItem(t *testing.T) {
+	t.Parallel()
+	c := loadForTest(t)
+	for _, key := range sortedKeys(c.c.magicItems) {
+		m := c.c.magicItems[key]
+		got, ok := c.ConsumableOf(key)
+		if want := c.c.consumables[key]; ok != want {
+			t.Errorf("ConsumableOf(%q) ok = %v, want %v", key, ok, want)
+			continue
+		}
+		if !ok {
+			continue
+		}
+		if got.CostsAction != c.IsPotion(key) {
+			t.Errorf("%s: CostsAction = %v, IsPotion = %v", key, got.CostsAction, c.IsPotion(key))
+		}
+		want := ConsumableOther
+		switch {
+		case oils[key]:
+			want = ConsumableOil
+		case m.Category == "potion":
+			want = ConsumablePotion
+		case m.Category == "scroll":
+			want = ConsumableScroll
+		}
+		if got.Kind != want {
+			t.Errorf("%s: Kind = %v, want %v", key, got.Kind, want)
+		}
+		wantHeal := DiceFormula{}
+		if e, has := c.PotionEffect(key); has && e.Kind == PotionHeal {
+			wantHeal = e.Heal
+		}
+		if got.Heal != wantHeal {
+			t.Errorf("%s: Heal = %+v, want %+v", key, got.Heal, wantHeal)
+		}
+	}
+}
+
+func TestConsumableOfNamesTheKindsAndTheCosts(t *testing.T) {
+	t.Parallel()
+	c := loadForTest(t)
+	for key, want := range map[string]Consumable{
+		"item:potion-of-healing-common":  {Kind: ConsumablePotion, CostsAction: true, Heal: DiceFormula{Count: 2, Sides: 4, Bonus: 2}},
+		"item:potion-of-resistance-fire": {Kind: ConsumablePotion, CostsAction: true},
+		"item:potion-of-climbing":        {Kind: ConsumablePotion, CostsAction: true},
+		"item:oil-of-sharpness":          {Kind: ConsumableOil},
+		"item:spell-scroll-1st":          {Kind: ConsumableScroll},
+		"item:feather-token-bird":        {Kind: ConsumableOther},
+	} {
+		got, ok := c.ConsumableOf(key)
+		if !ok || got != want {
+			t.Errorf("ConsumableOf(%q) = %+v, %v, want %+v", key, got, ok, want)
+		}
+	}
+	for _, key := range []string{"item:bag-of-holding", "item:no-such-item", ""} {
+		if _, ok := c.ConsumableOf(key); ok {
+			t.Errorf("ConsumableOf(%q) is a consumable", key)
+		}
+	}
+}

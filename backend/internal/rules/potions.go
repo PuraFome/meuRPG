@@ -21,6 +21,9 @@ const (
 // magicCategoryPotion is the category of the SRD magic items that are potions (the oils are filed with them).
 const magicCategoryPotion = "potion"
 
+// magicCategoryScroll is the category of the SRD magic items that are scrolls.
+const magicCategoryScroll = "scroll"
+
 // PotionResistanceRounds is the hour the resistance potions last, in the rounds the lasting effects count (6 seconds).
 const PotionResistanceRounds = 600
 
@@ -124,6 +127,52 @@ var oils = map[string]bool{
 func (c *Content) IsPotion(key string) bool {
 	m, ok := c.c.magicItems[key]
 	return ok && m.Category == magicCategoryPotion && !oils[key]
+}
+
+// ConsumableKind is what kind of consumable an item is.
+type ConsumableKind int
+
+// The kinds of consumable.
+const (
+	// ConsumablePotion is a potion that is drunk or given.
+	ConsumablePotion ConsumableKind = iota + 1
+	// ConsumableOil is an oil: applied in a minute or ten, not as an action.
+	ConsumableOil
+	// ConsumableScroll is a scroll.
+	ConsumableScroll
+	// ConsumableOther is any other single-use item.
+	ConsumableOther
+)
+
+// Consumable is what the use of a consumable item is and costs: the one decision both the use and the sheet follow.
+type Consumable struct {
+	Kind ConsumableKind
+	// CostsAction says the use is the user's action in a running combat (IsPotion).
+	CostsAction bool
+	// Heal is the dice of the hit points the use restores; the zero value when it rolls nothing.
+	Heal DiceFormula
+}
+
+// ConsumableOf says whether the item is a consumable the sheet holds and what its use is. It is the test the use of a
+// consumable applies to an entry of the sheet.
+func (c *Content) ConsumableOf(key string) (Consumable, bool) {
+	m, ok := c.c.magicItems[key]
+	if !ok || !c.c.consumables[key] {
+		return Consumable{}, false
+	}
+	out := Consumable{CostsAction: c.IsPotion(key), Kind: ConsumableOther}
+	switch {
+	case oils[key]:
+		out.Kind = ConsumableOil
+	case m.Category == magicCategoryPotion:
+		out.Kind = ConsumablePotion
+	case m.Category == magicCategoryScroll:
+		out.Kind = ConsumableScroll
+	}
+	if e, has := c.PotionEffect(key); has && e.Kind == PotionHeal {
+		out.Heal = e.Heal
+	}
+	return out, true
 }
 
 // PotionEffectLinePT is the line the sheet shows for what the potion does ("Cura 2d4 + 2", "Resistência a fogo por 1

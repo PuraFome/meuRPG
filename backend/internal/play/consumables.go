@@ -104,7 +104,7 @@ func (s *Service) useConsumableTx(ctx context.Context, tx pgx.Tx, h *hints, sess
 	if err != nil {
 		return err
 	}
-	fight, err := s.openFight(ctx, tx, q, h, session, use, content.IsPotion(item.GetKey()))
+	fight, err := s.openFight(ctx, tx, q, h, session, use, costsAction(content, item.GetKey()))
 	if err != nil {
 		return err
 	}
@@ -344,4 +344,10 @@ func (s *Service) consumableRetry(ctx context.Context, tx pgx.Tx, h *hints, done
 	h.replay()
 	s.tellVitalsAfter(h, use.m.CampaignID, slices.Compact([]string{use.charText, use.target})...)
 	return nil
+}
+
+// costsAction says the use of the item is the user's action in a running combat, as the sheet reads it (SheetConsumable.costs_action).
+func costsAction(content *rules.Content, key string) bool {
+	c, ok := content.ConsumableOf(key)
+	return ok && c.CostsAction
 }

@@ -303,6 +303,10 @@ message ListConsumableTargetsRequest {
 
 message ListConsumableTargetsResponse {
   repeated ConsumableTarget targets = 1;
+  // The user's character is a combatant of a combat that is running (not in setup) in the campaign's open session. The same
+  // test sets the target states and the reach of a potion, so the answer never disagrees with them. The web reads it instead
+  // of reading the combat. Read by the character's player and the master.
+  bool in_combat = 2;
 }
 
 // ConsumableTarget is a character the consumable may be given to.

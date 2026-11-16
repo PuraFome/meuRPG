@@ -195,7 +195,13 @@ The ammunition kinds (`AMMUNITION_KINDS`) also name the catalog weapons that fir
 
 `ChargesClient.useConsumable` and `listConsumableTargets` wrap the two consumable calls, and a use sends one idempotency key for the request it carries.
 `core/characters/consumables.ts` holds the pure parts: the rows that group identical consumables, the effect line, the dice of a healing line, the receivers, the turn block and the notice of a use.
-A magic item is a consumable when the catalog category (`MagicCategories.categoryOf`) is a potion or a scroll and the item holds no charges.
+The server says what an entry is and costs, and the web reads it instead of deciding.
+`SheetMagicItem.consumable` (`SheetConsumable`) is on every entry that `UseConsumable` accepts and empty on every other item.
+It carries the kind (potion, oil, scroll, other), whether a use costs the action in a running combat, and the healing dice (count, sides, bonus; zero when the use rolls nothing).
+`rules.Content.ConsumableOf` decides it, and `UseConsumable`, `ListConsumableTargets` and the sheet's read all call it.
+A save ignores the field and stores none.
+`ListConsumableTargetsResponse.in_combat` says the user's character is a combatant of a running combat; the target states are set by the same test.
+Only the character's player and the master read both.
 `EquipmentPanel` draws one row for every key, with "×2" beside the name and "2 unidades" in visually hidden text, and "Usar" sends the id of the first unit of the group.
 The "Itens mágicos" section shows with a magic item, for who can manage them, and while the notice of a use is on screen.
 The notice of the last unit therefore keeps its heading and the line "Nenhum item mágico.".

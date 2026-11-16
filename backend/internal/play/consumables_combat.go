@@ -189,11 +189,11 @@ func (s *Service) ListConsumableTargets(ctx context.Context, req *connect.Reques
 	if err != nil {
 		return nil, err
 	}
-	rows, err := s.consumableTargets(ctx, m.CampaignID, charID, potion, m.Role == authz.RoleMaster)
+	rows, inCombat, err := s.consumableTargets(ctx, m.CampaignID, charID, potion, m.Role == authz.RoleMaster)
 	if err != nil {
 		return nil, s.dbError(ctx, "list the consumable's targets", err)
 	}
-	return connect.NewResponse(&playv1.ListConsumableTargetsResponse{Targets: rows}), nil
+	return connect.NewResponse(&playv1.ListConsumableTargetsResponse{Targets: rows, InCombat: inCombat}), nil
 }
 
 // entryIsAPotion says whether the entry of the character's sheet is a potion (rules.Content.IsPotion), the one consumable that is
@@ -209,7 +209,7 @@ func (s *Service) entryIsAPotion(ctx context.Context, campaignID, characterID, e
 		if err != nil {
 			return err
 		}
-		potion = content.IsPotion(item.GetKey())
+		potion = costsAction(content, item.GetKey())
 		return nil
 	})
 	if connect.CodeOf(err) == connect.CodeNotFound {
@@ -220,36 +220,40 @@ func (s *Service) entryIsAPotion(ctx context.Context, campaignID, characterID, e
 
 // consumableTargets are the receivers the use of the item would accept from the character, as the viewer reads them (master). A
 // potion in a running combat is an action within reach: from a combatant it goes to the player's characters it reaches, and from a
-// character that does not fight to none that does. Any other case has no distance and no turn: the party's characters not dead.
-func (s *Service) consumableTargets(ctx context.Context, campaignID, characterID string, potion, master bool) ([]*playv1.ConsumableTarget, error) {
+// character that does not fight to none that does. Any other case has no distance and no turn: the party's characters not dead. It also
+// says whether the character is a combatant of a running combat (ListConsumableTargetsResponse.in_combat), the test that sets the states.
+func (s *Service) consumableTargets(ctx context.Context, campaignID, characterID string, potion, master bool) (out []*playv1.ConsumableTarget, inCombat bool, err error) {
 	enc, cs, found := playdb.Encounter{}, []playdb.Combatant(nil), false
 	open, err := s.queries.GetOpenGameSession(ctx, campaignID)
 	if err == nil {
 		enc, cs, found, err = openCombatants(ctx, s.queries, open.ID)
 	}
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-		return nil, err
+		return nil, false, err
 	}
-	fight := potion && found && enc.Status == statusActive // the potion is an action in a running combat
-	if giver := wearerIn(cs, characterID); fight && giver != nil {
-		return s.fightTargets(ctx, campaignID, enc, cs, *giver, master)
+	running := found && enc.Status == statusActive
+	giver := wearerIn(cs, characterID)
+	inCombat = running && giver != nil
+	fight := potion && running // the potion is an action in a running combat
+	if fight && giver != nil {
+		out, err = s.fightTargets(ctx, campaignID, enc, cs, *giver, master)
+		return out, inCombat, err
 	}
 	party, err := s.roster.CombatParty(ctx, nil, campaignID)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
-	var out []*playv1.ConsumableTarget
 	for _, p := range party {
 		if p.ID == characterID {
 			continue
 		}
 		if ok, err := s.partyMayReceive(ctx, campaignID, wearerIn(cs, p.ID), fight, master); err != nil {
-			return nil, err
+			return nil, false, err
 		} else if ok {
 			out = append(out, consumable.Target(p.ID, p.Name, 0, playv1.ConsumableTargetState_CONSUMABLE_TARGET_STATE_UNSPECIFIED))
 		}
 	}
-	return out, nil
+	return out, inCombat, nil
 }
 
 // partyMayReceive says whether a character of the party that is not the user's combatant may be given the item: one that fights is
