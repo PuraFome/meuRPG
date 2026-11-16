@@ -162,31 +162,46 @@ func (r sentenceRow) named(is Issue) bool {
 // no row names (the entry may have been renamed, its pick moved), the one at the row's own place first, in the
 // order of the issues. held[i] is the issue a stored row went to, and -1 for a row that holds no issue by its sentence.
 func knownIssues(stored []string, issues []Issue) (known []bool, held []int) {
-	known = make([]bool, len(issues))
-	held = make([]int, len(stored))
-	for i := range held {
-		held[i] = -1
+	m := rowMatch{stored: stored, issues: issues, known: make([]bool, len(issues)), held: make([]int, len(stored))}
+	for i := range m.held {
+		m.held[i] = -1
 	}
 	for i, is := range issues {
-		known[i] = slices.Contains(stored, is.ID())
+		m.known[i] = slices.Contains(stored, is.ID())
 	}
-	lost := func(take func(is Issue, r sentenceRow) bool, skipKnown bool) {
-		for i, is := range issues {
-			if is.Lost == nil || skipKnown && known[i] {
-				continue
-			}
-			for _, r := range is.sentenceRows(stored) {
-				if held[r.index] < 0 && take(is, r) {
-					held[r.index], known[i] = i, true
-					break
-				}
-			}
+	m.assign(func(is Issue, r sentenceRow) bool { return r.named(is) }, false)
+	m.assign(func(is Issue, r sentenceRow) bool { return r.field == is.Field }, true)
+	m.assign(func(Issue, sentenceRow) bool { return true }, true)
+	return m.known, m.held
+}
+
+// rowMatch is knownIssues' state: which issues are known, and the issue each stored row went to.
+type rowMatch struct {
+	stored []string
+	issues []Issue
+	known  []bool
+	held   []int
+}
+
+// assign gives, to each lost prerequisite in turn (the known ones too unless skipKnown), the first row left that take
+// accepts.
+func (m *rowMatch) assign(take func(Issue, sentenceRow) bool, skipKnown bool) {
+	for i, is := range m.issues {
+		if is.Lost != nil && (!skipKnown || !m.known[i]) {
+			m.takeRow(i, take)
 		}
 	}
-	lost(func(is Issue, r sentenceRow) bool { return r.named(is) }, false)
-	lost(func(is Issue, r sentenceRow) bool { return r.field == is.Field }, true)
-	lost(func(Issue, sentenceRow) bool { return true }, true)
-	return known, held
+}
+
+// takeRow gives issue i the first row left of its code and list that take accepts.
+func (m *rowMatch) takeRow(i int, take func(Issue, sentenceRow) bool) {
+	is := m.issues[i]
+	for _, r := range is.sentenceRows(m.stored) {
+		if m.held[r.index] < 0 && take(is, r) {
+			m.held[r.index], m.known[i] = i, true
+			return
+		}
+	}
 }
 
 // KnownIssues says, for each of issues, whether the stored identities hold it: the sheet's known issues, which are
