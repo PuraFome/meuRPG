@@ -1,13 +1,11 @@
 package play
 
 import (
-	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"slices"
-	"strings"
 
 	"connectrpc.com/connect"
 	"github.com/jackc/pgx/v5"
@@ -17,6 +15,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
+	"github.com/PuraFome/meuRPG/backend/internal/play/effecttext"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
@@ -99,9 +98,9 @@ func playerReadsCharacterEffect(r playdb.CharacterEffect, own bool) bool {
 func characterEffectProto(r playdb.CharacterEffect, name string, names func(string) string, content *rules.Content, master, own bool) *playv1.CharacterEffect {
 	e := &playv1.CharacterEffect{
 		Id: r.ID, CharacterId: r.CharacterID, CharacterName: name, SourceKey: r.SourceKey, SourceNamePt: names(r.SourceKey),
-		Concentration: r.Concentration, DurationTextPt: gameTimeText(r.SecondsLeft, r.Concentration),
+		Concentration: r.Concentration, DurationTextPt: effecttext.GameTime(r.SecondsLeft, r.Concentration),
 	}
-	e.TitlePt, e.TotalDurationTextPt = effectTitlePT(r, e.SourceNamePt, content), totalDurationTextPT(r, content)
+	e.TitlePt, e.TotalDurationTextPt = effecttext.EffectTitle(content, r.SourceKey, e.SourceNamePt), effecttext.TotalDuration(content, r.SourceKey, r.SourceKind, r.SourceCharacterID != nil, r.SecondsLeft != nil)
 	if r.SecondsLeft != nil {
 		e.SecondsLeft = r.SecondsLeft
 		if r.SourceKey == wildShapeEffect {
@@ -130,57 +129,6 @@ func characterEffectProto(r playdb.CharacterEffect, name string, names func(stri
 		e.PlayerVisible, e.Audience = r.PlayerVisible, audienceProto(r.Audience)
 	}
 	return e
-}
-
-// effectTitlePT is the effect's own name: the potion's ("Resistência a fogo"), else the source's.
-func effectTitlePT(r playdb.CharacterEffect, sourceName string, content *rules.Content) string {
-	return cmp.Or(content.PotionTitlePT(r.SourceKey), sourceName)
-}
-
-// totalDurationTextPT is the whole length of an effect with a fixed one ("por 1 hora"): a resistance potion's hour or a timed spell's
-// duration, and "" for an effect that lasts until dismissed or while its caster concentrates.
-func totalDurationTextPT(r playdb.CharacterEffect, content *rules.Content) string {
-	if r.SecondsLeft == nil {
-		return ""
-	}
-	seconds, ok := content.PotionSeconds(r.SourceKey)
-	if !ok {
-		seconds, ok = content.SpellEffectSeconds(r.SourceKey)
-	}
-	if !ok || seconds <= 0 {
-		return ""
-	}
-	return "por " + rules.DurationPT(seconds)
-}
-
-// gameTimeText writes a game time the way the card reads it outside a combat: "dura 1 minuto",
-// "dura 54 segundos", "dura 8 horas" (a round is 6 seconds; the app has no wall clock).
-func gameTimeText(seconds *int32, concentration bool) string {
-	if seconds == nil {
-		if concentration {
-			return "Dura enquanto quem a conjurou se concentrar"
-		}
-		return "Dura até o mestre encerrar"
-	}
-	left := int(*seconds)
-	var parts []string
-	unit := func(n int, one, many string) {
-		if n == 0 {
-			return
-		}
-		if n == 1 {
-			parts = append(parts, "1 "+one)
-			return
-		}
-		parts = append(parts, fmt.Sprintf("%d %s", n, many))
-	}
-	unit(left/3600, "hora", "horas")
-	unit(left%3600/60, "minuto", "minutos")
-	unit(left%60, "segundo", "segundos")
-	if len(parts) == 0 {
-		return "Dura menos de um segundo"
-	}
-	return "Dura " + strings.Join(parts, " e ")
 }
 
 // endCharacterEnd is what the transaction of endCharacterEffect leaves for the answer: how many effects ended.
@@ -301,8 +249,5 @@ func effectTagsPT(r playdb.CharacterEffect, content *rules.Content) []string {
 		tags = tagsOfRow(d, mods)
 	}
 	tags = append(append([]string{}, tags...), modifierTagsPT(r.SourceKey, mods)...)
-	if chip := content.PotionChipPT(r.SourceKey); chip != "" {
-		tags = append(tags, chip)
-	}
-	return append(tags, narratedNotesPT(r.SourceKey, mods)...)
+	return append(append(tags, content.PotionChipsPT(r.SourceKey)...), narratedNotesPT(r.SourceKey, mods)...)
 }

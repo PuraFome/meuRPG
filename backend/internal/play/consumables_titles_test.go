@@ -85,8 +85,8 @@ func TestAResistancePotionsEffectIsTitledAndLongAndCarriesItsChip(t *testing.T) 
 	}
 }
 
-// Every effect has a title, whatever its source: the source's name when the content gives the effect none; the total length only
-// when it is fixed.
+// Every effect has a title, whatever its source: the source's name when the content gives the effect none. The total length is told
+// only for the length the catalog gave: a master's own seconds, shorter or longer, never read as the catalog's.
 func TestACharacterEffectIsTitledByItsSourceAndSaysItsFixedLength(t *testing.T) {
 	t.Parallel()
 	c, err := rules.LoadSRD()
@@ -94,16 +94,20 @@ func TestACharacterEffectIsTitledByItsSourceAndSaysItsFixedLength(t *testing.T) 
 		t.Fatal(err)
 	}
 	names := func(k string) string {
-		return map[string]string{"spell:bless": "Bênção", "effect:dodging": "Esquiva"}[k]
+		return map[string]string{"spell:bless": "Bênção", "effect:dodging": "Esquiva", potionFire: "Poção de resistência a fogo"}[k]
 	}
-	one := int32(60)
+	secs := func(n int32) *int32 { return &n }
+	caster := "c1"
 	for name, tc := range map[string]struct {
 		row          playdb.CharacterEffect
 		title, total string
 	}{
-		"a timed spell":   {playdb.CharacterEffect{SourceKey: "spell:bless", SecondsLeft: &one}, "Bênção", "por 1 minuto"},
-		"a concentration": {playdb.CharacterEffect{SourceKey: "spell:bless", Concentration: true}, "Bênção", ""},
-		"until dismissed": {playdb.CharacterEffect{SourceKey: "effect:dodging"}, "Esquiva", ""},
+		"a spell cast by a character":              {playdb.CharacterEffect{SourceKey: "spell:bless", SourceKind: "spell", SourceCharacterID: &caster, SecondsLeft: secs(40)}, "Bênção", "por 1 minuto"},
+		"a spell the master gave a shorter length": {playdb.CharacterEffect{SourceKey: "spell:bless", SourceKind: "spell", SecondsLeft: secs(30)}, "Bênção", ""},
+		"a spell the master gave a longer length":  {playdb.CharacterEffect{SourceKey: "spell:bless", SourceKind: "spell", SecondsLeft: secs(7200)}, "Bênção", ""},
+		"a concentration":                          {playdb.CharacterEffect{SourceKey: "spell:bless", SourceKind: "spell", SourceCharacterID: &caster, Concentration: true}, "Bênção", ""},
+		"until dismissed":                          {playdb.CharacterEffect{SourceKey: "effect:dodging", SourceKind: "master"}, "Esquiva", ""},
+		"a potion drunk":                           {playdb.CharacterEffect{SourceKey: potionFire, SourceKind: "item", SecondsLeft: secs(600)}, "Resistência a fogo", "por 1 hora"},
 	} {
 		e := characterEffectProto(tc.row, "Toren", names, c, true, true)
 		if e.GetTitlePt() != tc.title || e.GetTotalDurationTextPt() != tc.total {

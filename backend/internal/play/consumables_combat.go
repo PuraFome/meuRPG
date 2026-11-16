@@ -209,7 +209,7 @@ func (s *Service) entryCostsAction(ctx context.Context, campaignID, characterID,
 		if err != nil {
 			return err
 		}
-		costs = costsAction(content, item.GetKey())
+		costs = content.CostsAction(item.GetKey())
 		return nil
 	})
 	if connect.CodeOf(err) == connect.CodeNotFound {
@@ -220,8 +220,8 @@ func (s *Service) entryCostsAction(ctx context.Context, campaignID, characterID,
 
 // consumableTargets are the receivers the use of the item would accept from the character, as the viewer reads them (master). A
 // potion in a running combat is an action within reach: from a combatant it goes to the player's characters it reaches, and from a
-// character that does not fight to none that does. Any other case has no distance and no turn: the party's characters not dead. It also
-// says whether the character is a combatant of a running combat (ListConsumableTargetsResponse.in_combat), the test that sets the states.
+// character that does not fight to none that does. Any other case has no distance and no turn: the party's characters not dead. It also says
+// whether the character fights in a running combat (ListConsumableTargetsResponse.in_combat).
 func (s *Service) consumableTargets(ctx context.Context, campaignID, characterID string, costs, master bool) (out []*playv1.ConsumableTarget, inCombat bool, err error) {
 	enc, cs, found := playdb.Encounter{}, []playdb.Combatant(nil), false
 	open, err := s.queries.GetOpenGameSession(ctx, campaignID)

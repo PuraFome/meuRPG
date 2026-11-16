@@ -28,7 +28,6 @@ import { CONNECT_TRANSPORT } from '../connect/transport';
 export type LastChargeRoll =
   { readonly inApp: true } | { readonly face: number; readonly regainFace?: number };
 
-/** How the healing dice of a potion come (RN-18): the app rolls them, or the player typed one face for each die. */
 /** The answer of `listConsumableTargets`. */
 export interface ConsumableTargets {
   readonly targets: ConsumableTarget[];
@@ -36,6 +35,7 @@ export interface ConsumableTargets {
   readonly inCombat: boolean;
 }
 
+/** How the healing dice of a potion come (RN-18): the app rolls them, or the player typed one face for each die. */
 export type ConsumableRoll = { readonly inApp: true } | { readonly faces: readonly number[] };
 
 /** The table's dice setting and the player's own choice, which decide whether a die is typed or rolled in the app. */

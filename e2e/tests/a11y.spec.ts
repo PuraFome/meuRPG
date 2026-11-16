@@ -10535,7 +10535,7 @@ async function scanConsumableScreens(browser: Browser, colorScheme: 'light' | 'd
     const notice = gear.locator('.consumable__result');
     await expect(notice).toContainText('Toren recebeu 7 PV.');
     await expect(notice).toContainText('2d4 + 2: 3 + 2 + 2 = 7. Resta 1 Poção de cura.');
-    await expect(notice.locator('.consumable__result--good')).toHaveCount(0);
+    await expect(notice).toHaveClass(/consumable__result--good/);
     await expect(gear.locator('.consumable__result--good')).toHaveCount(1);
     // The focus goes back to the potion's "Usar".
     await expect(rowOf('item:potion-of-healing-common').getByRole('button', { name: 'Usar Poção de cura' })).toBeFocused();
@@ -10758,8 +10758,8 @@ async function scanConsumableCombatScreens(browser: Browser, colorScheme: 'light
     await moveBrisa(4, 7);
     const hiddenGoblin = begun.combatants.find((c) => c.label === 'Goblin 1')!.id;
     await combatRPC(m, 'MoveCombatant', { campaignId, encounterId: begun.id, combatantId: hiddenGoblin, col: 5, row: 8 });
-    // eslint-disable-next-line meurpg/rpc-revision-wait -- a change the page does not show as a revision (a move; a hidden creature) and the sheet asks the server for its list when it opens or sends
-    await combatRPC(m, 'SetCombatantHidden', { campaignId, encounterId: begun.id, combatantId: hiddenGoblin, hidden: true });
+    const hidden = await combatRPC(m, 'SetCombatantHidden', { campaignId, encounterId: begun.id, combatantId: hiddenGoblin, hidden: true });
+    await waitForEncounterRevision(p, hidden);
 
     // "Usar": the sheet says a combat is running and that drinking costs the Action.
     await rowOf(heal).getByRole('button', { name: 'Usar Poção de cura' }).click();
@@ -10785,11 +10785,9 @@ async function scanConsumableCombatScreens(browser: Browser, colorScheme: 'light
     await expect(use.locator('.cost app-economy-mark')).toBeVisible();
     await expect(use.locator('.cost')).toContainText('A poção age em Brisa.');
     await expectConsumableScreen(p, `Combate, dar a poção a Brisa ${where}`);
-    await expectConsumableScreen(p, `Combate, a lista sem a criatura escondida ao lado ${where}`);
 
     // Brisa walks off for real: the server refuses, the sheet reads the list again, drops her and is back at its first choice with "Dar a…" dashed.
-    // eslint-disable-next-line meurpg/rpc-revision-wait -- a change the page does not show as a revision (a move; a hidden creature) and the sheet asks the server for its list when it opens or sends
-    await moveBrisa(9, 7);
+    await waitForEncounterRevision(p, await moveBrisa(9, 7));
     await use.getByRole('button', { name: 'Dar a Brisa' }).click();
     const away = use.getByRole('alert').filter({ hasText: 'Longe demais.' });
     await expect(away).toContainText('Longe demais. Brisa não está mais ao seu lado. Nada foi gasto.');
@@ -10797,8 +10795,7 @@ async function scanConsumableCombatScreens(browser: Browser, colorScheme: 'light
     await expect(use.getByRole('radio')).toHaveCount(0);
     await expect(use.getByRole('button', { name: 'Dar a…' })).toHaveAttribute('aria-disabled', 'true');
     await expectConsumableScreen(p, `Combate, a recusa TARGET_NOT_ADJACENT ${where}`);
-    // eslint-disable-next-line meurpg/rpc-revision-wait -- a change the page does not show as a revision (a move; a hidden creature) and the sheet asks the server for its list when it opens or sends
-    await moveBrisa(4, 7);
+    await waitForEncounterRevision(p, await moveBrisa(4, 7));
     await use.getByRole('button', { name: 'Fechar' }).first().click();
     await expect(use).toBeHidden();
 
@@ -10820,28 +10817,22 @@ async function scanConsumableCombatScreens(browser: Browser, colorScheme: 'light
     await expect(rebound.getByText('Restam 2 · em combate, gasta a ação', { exact: true })).toBeVisible();
     await expectConsumableScreen(p, `Combate, a recusa ITEM_GONE ${where}`);
 
-    // The refusals the combat has for the turn and the Action: a ban line each, and nothing left to send. The server answers them to a sheet kept open past its turn; no screen offers the sheet blocked, as the tab is drawn on the turn only and a spent Action folds its rows.
+    // The refusals the combat has for the turn and the Action: a ban line each, and nothing left to send. The server answers them to a sheet kept open past its turn (the dead receiver's refusal is on the real stack, at the end); no screen offers the sheet blocked, as the tab is drawn on the turn only and a spent Action folds its rows.
     const useCall = '**/meurpg.play.v1.ChargesService/UseConsumable';
     const refusals: [string, number, string][] = [
-      ['TARGET_DEAD', 69, 'Brisa morreu. Não dá para dar a poção a quem morreu. Nada foi gasto.'],
       ['NOT_YOUR_TURN', 10, 'Só na sua vez: beber ou dar gasta a ação.'],
       ['ACTION_USED', 15, 'Ação já usada. Você já usou a ação desta vez.'],
     ];
     for (const [name, number, words] of refusals) {
-      if (name !== 'TARGET_DEAD') {
-        await rebound.getByRole('button', { name: 'Fechar' }).first().click();
-        await expect(rebound).toBeHidden();
-        await rowOf(heal).getByRole('button', { name: 'Usar Poção de cura' }).click();
-        await rebound.getByRole('button', { name: 'Dar a…' }).click();
-      }
+      await rebound.getByRole('button', { name: 'Fechar' }).first().click();
+      await expect(rebound).toBeHidden();
+      await rowOf(heal).getByRole('button', { name: 'Usar Poção de cura' }).click();
+      await rebound.getByRole('button', { name: 'Dar a…' }).click();
       await p.route(useCall, (r) => r.fulfill(encounterBlockedAnswer(number)));
       await rebound.getByRole('button', { name: 'Dar a Brisa' }).click();
-      // A dead receiver is a red notice in the alert; the turn and the Action are the ban line under the choices, kept with the buttons off.
-      const shown = name === 'TARGET_DEAD' ? rebound.getByRole('alert').filter({ hasText: 'morreu' }) : rebound.locator('.why');
-      await expect(shown).toContainText(words);
-      if (name !== 'TARGET_DEAD') {
-        await expect(rebound.getByRole('button', { name: 'Dar a Brisa' })).toHaveAccessibleDescription(words);
-      }
+      // The turn and the Action are the ban line under the choices, kept with the buttons off.
+      await expect(rebound.locator('.why')).toContainText(words);
+      await expect(rebound.getByRole('button', { name: 'Dar a Brisa' })).toHaveAccessibleDescription(words);
       await expectConsumableScreen(p, `Combate, a recusa ${name} ${where}`);
       await p.unroute(useCall);
     }
@@ -10882,12 +10873,14 @@ async function scanConsumableCombatScreens(browser: Browser, colorScheme: 'light
     await expect(spentUse).toHaveAccessibleDescription('A ação desta vez já foi usada.');
     await spentUse.focus();
     await p.keyboard.press('Enter');
-    await expect(p.getByRole('dialog')).toHaveCount(0);
+    await expect(spentUse).toBeFocused();
     await expectConsumableScreen(p, `Combate, a linha Ação usada aberta ${where}`);
 
     // The oil takes no action: the sheet says the master rules on the time, and the log line has no number.
     await rowOf(oil).getByRole('button', { name: /^Usar / }).click();
     const oilSheet = p.getByRole('dialog', { name: /^Usar / });
+    // Only the oil's sheet is open, so the Enter on the spent row (above) opened none before it.
+    await expect(p.getByRole('dialog')).toHaveCount(1);
     await expect(oilSheet.getByText('Não gasta a ação: o mestre decide o tempo que isso leva.')).toBeVisible();
     await expect(oilSheet.getByRole('button', { name: 'Usar', exact: true })).toBeVisible();
     await expectConsumableScreen(p, `Combate, usar o óleo, que não gasta a ação ${where}`);
@@ -10950,6 +10943,37 @@ async function scanConsumableCombatScreens(browser: Browser, colorScheme: 'light
     release();
     await expect(outside.getByRole('alert').filter({ hasText: 'Sem conexão.' })).toBeVisible();
     await p.unroute(useCall);
+    await outside.getByRole('button', { name: 'Fechar' }).first().click();
+    await expect(outside).toBeHidden();
+
+    // TARGET_DEAD on the real stack: in a second combat Brisa is put down at Pensantus's side and the sheet of the potion is opened on his turn; the master
+    // rolls her three death saves (the face 5 fails) as the turns come round, and when the turn is Pensantus's again she is dead and the sheet gives her the potion.
+    const second = await beginAttackCombatRPC(m, table, { Pensantus: 20, Brisa: 15, 'Capitão Goblin': 10, 'Goblin 1': 5, 'Goblin 2': 4 }, { ...attackCombatSquares, Pensantus: [5, 7], Brisa: [4, 7] });
+    await adjustVitalsRPC(m, campaignId, brisaPlayer.characterId, { hitPointsCurrent: 0 });
+    const brisaSecond = second.combatants.find((c) => c.label === 'Brisa')!.id;
+    await openSessionPage(p, campaignId);
+    const secondItems = await openActionTab(p, 'Itens');
+    await secondItems.locator(`[data-item-row="${heal}"]`).getByRole('button', { name: 'Usar Poção de cura' }).click();
+    const dying = p.getByRole('dialog', { name: /^Usar / });
+    await dying.getByRole('button', { name: 'Dar a…' }).click();
+    await expect(dying.getByRole('radio', { name: /Brisa/ })).toBeChecked();
+    for (let save = 1; save <= 3; save++) {
+      await passTurnsTo(m, campaignId, 'Brisa');
+      const rolled = await combatRPC(m, 'RollDeathSave', { campaignId, encounterId: second.id, combatantId: brisaSecond, d20Face: 5 });
+      const brisaNow = rolled.combatants.find((c) => c.id === brisaSecond)!;
+      if (save < 3) {
+        expect(brisaNow.deathFailures ?? 0, `the failures after save ${save}`).toBe(save);
+      } else {
+        expect(brisaNow.state, 'Brisa after three failed saves').toBe('COMBATANT_STATE_DEAD');
+      }
+      await passTurnsToAndWait(m, campaignId, 'Pensantus', p);
+    }
+    await dying.getByRole('button', { name: 'Dar a Brisa' }).click();
+    const dead = dying.getByRole('alert').filter({ hasText: 'Brisa morreu.' });
+    await expect(dead).toContainText('Brisa morreu. Não dá para dar a poção a quem morreu. Nada foi gasto.');
+    await expect(dying.getByRole('radio')).toHaveCount(0);
+    await expect(dying.getByRole('button', { name: 'Dar a…' })).toHaveAttribute('aria-disabled', 'true');
+    await expectConsumableScreen(p, `Combate, a recusa TARGET_DEAD ${where}`);
   } finally {
     await close();
     if (campaignId) {

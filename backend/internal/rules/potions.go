@@ -153,6 +153,18 @@ type Consumable struct {
 	Heal DiceFormula
 }
 
+// CostsAction says the use of the item is the user's action in a running combat, as the sheet reads it (Consumable.CostsAction).
+func (c *Content) CostsAction(key string) bool {
+	e, ok := c.ConsumableOf(key)
+	return ok && e.CostsAction
+}
+
+// HealOf is the dice of the hit points the use of the item restores, the zero value when it rolls nothing.
+func (c *Content) HealOf(key string) DiceFormula {
+	e, _ := c.ConsumableOf(key)
+	return e.Heal
+}
+
 // ConsumableOf says whether the item is a consumable the sheet holds and what its use is. It is the test the use of a
 // consumable applies to an entry of the sheet.
 func (c *Content) ConsumableOf(key string) (Consumable, bool) {
@@ -200,12 +212,12 @@ func (c *Content) PotionTitlePT(key string) string {
 	return ""
 }
 
-// PotionChipPT is the short label of the effect a resistance potion leaves ("Resistência: fogo"), and "" for any other key.
-func (c *Content) PotionChipPT(key string) string {
+// PotionChipsPT is the short label of the effect a resistance potion leaves (["Resistência: fogo"]), and none for any other key.
+func (c *Content) PotionChipsPT(key string) []string {
 	if e, ok := c.PotionEffect(key); ok && e.Kind == PotionResistance {
-		return "Resistência: " + strings.ToLower(c.NamePT(e.DamageType))
+		return []string{"Resistência: " + strings.ToLower(c.NamePT(e.DamageType))}
 	}
-	return ""
+	return nil
 }
 
 // PotionSeconds is how long the effect of a resistance potion lasts in game time, and false for any other key.

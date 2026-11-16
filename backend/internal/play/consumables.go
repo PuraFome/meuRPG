@@ -104,7 +104,7 @@ func (s *Service) useConsumableTx(ctx context.Context, tx pgx.Tx, h *hints, sess
 	if err != nil {
 		return err
 	}
-	fight, err := s.openFight(ctx, tx, q, h, session, use, costsAction(content, item.GetKey()))
+	fight, err := s.openFight(ctx, tx, q, h, session, use, content.CostsAction(item.GetKey()))
 	if err != nil {
 		return err
 	}
@@ -219,8 +219,7 @@ func (s *Service) applyConsumable(ctx context.Context, tx pgx.Tx, q *playdb.Quer
 	ok = ok && !use.bare // a character with no vitals has nothing to heal or to resist for: the master tells what the potion did
 	switch {
 	case ok && potion.Kind == rules.PotionHeal:
-		consumed, _ := content.ConsumableOf(run.ev.Item) // the heal the sheet reads is the one rolled
-		return s.healWithPotion(ctx, tx, q, session, use, fight, consumed.Heal, &run.ev)
+		return s.healWithPotion(ctx, tx, q, session, use, fight, content.HealOf(run.ev.Item), &run.ev)
 	case ok && potion.Kind == rules.PotionResistance:
 		run.ev.Outcome, run.ev.DamageType = consumable.OutcomeResistance, potion.DamageType
 		if fight.receives() {
@@ -345,10 +344,4 @@ func (s *Service) consumableRetry(ctx context.Context, tx pgx.Tx, h *hints, done
 	h.replay()
 	s.tellVitalsAfter(h, use.m.CampaignID, slices.Compact([]string{use.charText, use.target})...)
 	return nil
-}
-
-// costsAction says the use of the item is the user's action in a running combat, as the sheet reads it (SheetConsumable.costs_action).
-func costsAction(content *rules.Content, key string) bool {
-	c, ok := content.ConsumableOf(key)
-	return ok && c.CostsAction
 }
