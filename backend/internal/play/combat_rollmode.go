@@ -540,6 +540,9 @@ type rollInput struct {
 	// typedFaces are the faces of a physical d20 pair (advantage or disadvantage,
 	// d20_faces); typed alone is one face.
 	typedFaces []int
+	// rays are the physical d20s of each ray of a spell with several rays (ray_rolls), in the order of the rays:
+	// one face, or the pair for advantage or disadvantage, each.
+	rays [][]int
 	// pool says typed is the sum of the physical dice of a spell's pool (not a
 	// d20 face): CastSpell's pool_sum.
 	pool bool

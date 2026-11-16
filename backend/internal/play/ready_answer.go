@@ -185,8 +185,8 @@ func fieldsNotUsed(msg *playv1.AnswerReactionRequest) error {
 // diceNotUsed refuses the table's dice (pool_sum, d20_faces, a mode) where the answer rolls nothing of its own: a pass,
 // another kind of window, a readied action that is not an attack or a spell. An answer never drops what it carries.
 func diceNotUsed(msg *playv1.AnswerReactionRequest) error {
-	if _, pool := msg.GetRoll().(*playv1.AnswerReactionRequest_PoolSum); pool || len(msg.GetD20Faces()) > 0 || msg.GetRollMode() != playv1.RollMode_ROLL_MODE_UNSPECIFIED || msg.GetModeReason() != "" {
-		return connect.NewError(connect.CodeInvalidArgument, errors.New("pool_sum, d20_faces and the roll mode are for the release of a readied attack or spell"))
+	if _, pool := msg.GetRoll().(*playv1.AnswerReactionRequest_PoolSum); pool || len(msg.GetD20Faces()) > 0 || len(msg.GetRayRolls()) > 0 || msg.GetRollMode() != playv1.RollMode_ROLL_MODE_UNSPECIFIED || msg.GetModeReason() != "" {
+		return connect.NewError(connect.CodeInvalidArgument, errors.New("pool_sum, d20_faces, ray_rolls and the roll mode are for the release of a readied attack or spell"))
 	}
 	return nil
 }
@@ -207,6 +207,12 @@ func releaseFieldsOf(msg *playv1.AnswerReactionRequest, row playdb.ReadiedAction
 	}
 	if _, pool := msg.GetRoll().(*playv1.AnswerReactionRequest_PoolSum); pool && kind == readiedAttack {
 		return connect.NewError(connect.CodeInvalidArgument, errors.New("pool_sum is for a spell that rolls a pool of dice"))
+	}
+	if kind == readiedAttack && len(msg.GetRayRolls()) > 0 {
+		return connect.NewError(connect.CodeInvalidArgument, errors.New("ray_rolls are for a spell with several rays"))
+	}
+	if msg.GetRoll() != nil && len(msg.GetRayRolls()) > 0 {
+		return connect.NewError(connect.CodeInvalidArgument, errors.New("ray_rolls take the place of roll_in_app, typed and pool_sum"))
 	}
 	return nil
 }

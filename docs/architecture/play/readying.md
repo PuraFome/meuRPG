@@ -269,7 +269,7 @@ The answer carries the table's dice as the cast and the attack do.
 `typed` (one d20 face, kept for old clients), `pool_sum` (the sum of a pool: Sleep, Color Spray), `d20_faces` (the physical d20s, the pair for advantage or disadvantage), `roll_mode` and `mode_reason` are copied one to one into the `RollAttackRequest` or the `CastSpellRequest` the release builds (`useReadiedAttack`, `useReadiedSpell`).
 Every check of the cast or the attack applies: the number and range of the faces, the mode rules, the table's dice mode (`mustRollThisWay`).
 The answer refuses what the released action does not use (`releaseDiceOf`, `castFlow.checkReleaseDice`, `diceNotUsed`) with `invalid_argument`, and the window stays open.
-A cast takes one physical d20 for a single ray only, so a readied Scorching Ray with several rays is released with the app's dice.
+`ray_rolls` (the physical d20s of each ray of a spell with several rays, one entry per ray in the order of the targets and of the rays each target takes) is copied too, into `CastSpellRequest.ray_rolls`, and the cast checks it (`readRayRolls`, `checkRayRolls`): a held Scorching Ray is released at a physical-dice table with one entry per ray, and `invalid_argument` on a pass, another kind of window, a non-spell row, a readied attack or a single-ray spell (`diceNotUsed`, `releaseFieldsOf`).
 
 ## Events and log
 
