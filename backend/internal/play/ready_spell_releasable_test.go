@@ -109,8 +109,8 @@ func TestReadyStillHoldsASpellTheWindowReleases(t *testing.T) {
 	}
 }
 
-// On this branch a spell placed on the map is readied: the window's "Soltar no mapa" releases it with CastSpell, which
-// carries the point or the direction.
+// A spell placed on the map is readied: the window's "Soltar no mapa" releases it with CastSpell, which carries the point or
+// the direction.
 func TestReadyHoldsASpellPlacedOnAMap(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {

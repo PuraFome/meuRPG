@@ -266,8 +266,7 @@ type moveRequest struct {
 	// forced (a teleport, a token put right) and place (the first square of a
 	// combatant that has none) are the master's.
 	forced, place bool
-	// release is release_readied: the master's walk is the release of the combatant's readied move (readiedMoveOf).
-	release bool
+	release       bool // release_readied: the master's walk releases the combatant's readied move (readiedMoveOf)
 	// legendary is the key of the legendary option of kind "move" the move is made as (the master's, off the
 	// creature's own turn, with a budget of its own, see spendLegendaryMove).
 	legendary string
