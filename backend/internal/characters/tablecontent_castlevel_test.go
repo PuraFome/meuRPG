@@ -1,9 +1,9 @@
 package characters
 
 import (
-	"connectrpc.com/connect"
 	"testing"
 
+	"connectrpc.com/connect"
 	"google.golang.org/protobuf/proto"
 
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
