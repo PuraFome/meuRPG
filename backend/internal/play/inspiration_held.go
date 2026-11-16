@@ -74,11 +74,8 @@ func (s *Service) holdSpellAttack(
 		return nil, err
 	}
 	spec.FavorSpent = modes.favor.Used
-	toHit := sp.ToHit
-	if forced {
-		if toHit, err = s.heldModifier(ctx, env, spec); err != nil {
-			return nil, err
-		}
+	if spec.Modifier, err = s.spellToHit(ctx, env, spec, forced); err != nil {
+		return nil, err
 	}
 	choice, err := s.chooseMode(ctx, c, modes.v, caster, target, sp.Key, truth.Mode, ask)
 	if err != nil {
@@ -92,14 +89,33 @@ func (s *Service) holdSpellAttack(
 	case step.Held != nil:
 		return s.outsideAskOf(ctx, c.tx, step.Held), nil
 	case step.Settled:
-		if !forced { // a lucky caster's d20 that showed no 1 goes on: the reason of its mode is written now
-			if choice, err = s.keepReason(ctx, c, choice); err != nil {
-				return nil, err
-			}
+		pre := spellAttackPre{target: target.ID, truth: truth, choice: choice, step: step, toHit: spec.Modifier, die: before.Die}
+		if modes.pre, err = s.settledSpellAttack(ctx, c, pre, forced); err != nil {
+			return nil, err
 		}
-		modes.pre = &spellAttackPre{target: target.ID, truth: truth, choice: choice, step: step, toHit: toHit, die: before.Die}
 	}
 	return nil, nil // settled, or no die after all: the cast goes on
+}
+
+// spellToHit is the bonus the spell attack is rolled with. An answer settles the roll on the bonus it was held with, which has the
+// die of a Cutting Words already off it when a reaction window held the cast: the cast run again for the answer has no replay to take
+// it off.
+func (s *Service) spellToHit(ctx context.Context, env gateEnv, spec rollSpec, forced bool) (int, error) {
+	if !forced {
+		return spec.Modifier, nil
+	}
+	return s.heldModifier(ctx, env, spec)
+}
+
+// settledSpellAttack is the d20 the cast goes on with. A lucky caster's d20 that showed no 1 goes on at once, and the reason of its
+// mode is written now; an answer's was written when the roll was made.
+func (s *Service) settledSpellAttack(ctx context.Context, c *combatTx, pre spellAttackPre, forced bool) (*spellAttackPre, error) {
+	if forced {
+		return &pre, nil
+	}
+	var err error
+	pre.choice, err = s.keepReason(ctx, c, pre.choice)
+	return &pre, err
 }
 
 // spellMayAsk says the cast has a spell attack that may wait: one against a single target, by a player's
