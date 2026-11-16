@@ -61,11 +61,11 @@ func (f *castFlow) checkReadyTime(context.Context) error {
 	return nil
 }
 
-// checkReadyReleasable refuses a spell the READIED window cannot release, decided by what the spell is: the answer carries
-// targets and darts, and nothing else. A spell that brings creatures (a summon), asks the caster an ability or a damage
-// type, revives the dead, keeps a zone on a map, or is placed at a point or in a direction on a map could only be let pass, with its slot spent:
-// it is cast on the caster's turn, not held. An area in a combat with no map is released with the creatures the answer
-// picks, and stays allowed.
+// checkReadyReleasable refuses a spell no release of the READIED window can carry, decided by what the spell is: the
+// answer carries targets and darts, and CastSpell on the map carries a point, a direction and a wall, but neither has a
+// picker for a summon, an ability, a damage type or the dead creature of a revival. Such a spell could only be let pass,
+// with its slot spent: it is cast on the caster's turn, not held. A spell placed on the map or laying a zone there is held
+// and released with CastSpell; an area in a combat with no map is released by the answer with the creatures it picks.
 func (f *readyFlow) checkReadyReleasable(cf *castFlow) func(context.Context) error {
 	return func(ctx context.Context) error {
 		why, err := cf.unreleasable(ctx)
@@ -76,25 +76,21 @@ func (f *readyFlow) checkReadyReleasable(cf *castFlow) func(context.Context) err
 	}
 }
 
-// laysZoneOnMap says casting the spell lays a zone on the map: it keeps one and the combat has a map. Ready and the
-// answer of its window both read it, so the two refuse the same spells.
+// laysZoneOnMap says casting the spell lays a zone on the map: it keeps one and the combat has a map. The answer of a
+// window refuses such a spell (it carries no point); CastSpell lays it.
 func laysZoneOnMap(sp link.Spell, enc playdb.Encounter) bool {
 	_, keepsZone := zoneDefOfSpell(sp)
 	return keepsZone && !isTheatre(enc)
 }
 
-// unreleasable names what the spell asks that the window's answer cannot carry, "" when it asks nothing of the kind.
+// unreleasable names what the spell asks that no release can carry, "" when it asks nothing of the kind.
 func (f *castFlow) unreleasable(ctx context.Context) (string, error) {
 	sp := f.sp
-	switch placement := placementOf(sp); {
-	case laysZoneOnMap(sp, f.c.enc):
-		return "a zone to lay on the map", nil
+	switch {
 	case sp.Summon:
 		return "the creatures of a summon", nil
 	case sp.DamageChoice != "" && len(sp.DamageTypes) > 0:
 		return "a damage type", nil
-	case !isTheatre(f.c.enc) && (placement == playv1.AreaPlacement_AREA_PLACEMENT_POINT || placement == playv1.AreaPlacement_AREA_PLACEMENT_DIRECTION):
-		return "a point or a direction on the map", nil
 	}
 	asks, err := f.s.spellAsksAbility(ctx, f.c, f.call.spellKey)
 	if err != nil {
