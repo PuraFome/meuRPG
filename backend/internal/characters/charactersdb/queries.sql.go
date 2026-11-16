@@ -501,19 +501,25 @@ func (q *Queries) EndBond(ctx context.Context, arg EndBondParams) (int64, error)
 
 const endCharacterInfusion = `-- name: EndCharacterInfusion :execrows
 UPDATE character_infusions
-SET ended_at = $1, ended_reason = $2
-WHERE id = $3::UUID AND ended_at IS NULL
+SET ended_at = $1::TIMESTAMPTZ, ended_reason = $2::TEXT
+WHERE campaign_id = $3::UUID AND id = $4::UUID AND ended_at IS NULL
 `
 
 type EndCharacterInfusionParams struct {
-	At     *time.Time
-	Reason *string
-	ID     string
+	At         time.Time
+	Reason     string
+	CampaignID string
+	ID         string
 }
 
 // Ends a record that is live; the count says whether it was.
 func (q *Queries) EndCharacterInfusion(ctx context.Context, arg EndCharacterInfusionParams) (int64, error) {
-	result, err := q.db.Exec(ctx, endCharacterInfusion, arg.At, arg.Reason, arg.ID)
+	result, err := q.db.Exec(ctx, endCharacterInfusion,
+		arg.At,
+		arg.Reason,
+		arg.CampaignID,
+		arg.ID,
+	)
 	if err != nil {
 		return 0, err
 	}
@@ -1697,16 +1703,17 @@ func (q *Queries) InsertCharacterCreature(ctx context.Context, arg InsertCharact
 const insertCharacterInfusion = `-- name: InsertCharacterInfusion :one
 
 INSERT INTO character_infusions
-    (campaign_id, artificer_character_id, holder_character_id, infusion_key, item_kind, item_key, object_name, parameter, attuned, since, created_at)
+    (id, campaign_id, artificer_character_id, holder_character_id, infusion_key, item_kind, item_key, object_name, parameter, attuned, since, created_at)
 VALUES (
-    $1::UUID, $2::UUID, $3::UUID, $4,
-    $5, $6, $7::TEXT, $8::TEXT, $9::BOOLEAN,
-    $10, $11
+    $1::UUID, $2::UUID, $3::UUID, $4::UUID, $5,
+    $6, $7, $8::TEXT, $9::TEXT, $10::BOOLEAN,
+    $11, $12
 )
 RETURNING id, campaign_id, artificer_character_id, holder_character_id, infusion_key, item_kind, item_key, object_name, parameter, attuned, since, ended_at, ended_reason, materialises_id, created_at
 `
 
 type InsertCharacterInfusionParams struct {
+	ID                   string
 	CampaignID           string
 	ArtificerCharacterID string
 	HolderCharacterID    string
@@ -1723,6 +1730,7 @@ type InsertCharacterInfusionParams struct {
 // An Artificer's infusions. A record is "live" until it ends; an ended one is kept (ended_at, ended_reason).
 func (q *Queries) InsertCharacterInfusion(ctx context.Context, arg InsertCharacterInfusionParams) (CharacterInfusion, error) {
 	row := q.db.QueryRow(ctx, insertCharacterInfusion,
+		arg.ID,
 		arg.CampaignID,
 		arg.ArtificerCharacterID,
 		arg.HolderCharacterID,
@@ -3748,8 +3756,8 @@ func (q *Queries) MarkCharacterReviewResubmitted(ctx context.Context, arg MarkCh
 
 const moveCharacterInfusion = `-- name: MoveCharacterInfusion :execrows
 UPDATE character_infusions
-SET item_kind = $1, item_key = $2, object_name = $3::TEXT, since = $4
-WHERE id = $5::UUID AND ended_at IS NULL
+SET item_kind = $1, item_key = $2, object_name = $3::TEXT, since = $4, attuned = false
+WHERE campaign_id = $5::UUID AND id = $6::UUID AND ended_at IS NULL
 `
 
 type MoveCharacterInfusionParams struct {
@@ -3757,16 +3765,18 @@ type MoveCharacterInfusionParams struct {
 	ItemKey    string
 	ObjectName string
 	At         time.Time
+	CampaignID string
 	ID         string
 }
 
-// Puts a live record on another item and begins its time again; the count says whether it was live.
+// Puts a live record on another item, begins its time again and clears the attunement (the item changed); the count says whether it was live.
 func (q *Queries) MoveCharacterInfusion(ctx context.Context, arg MoveCharacterInfusionParams) (int64, error) {
 	result, err := q.db.Exec(ctx, moveCharacterInfusion,
 		arg.ItemKind,
 		arg.ItemKey,
 		arg.ObjectName,
 		arg.At,
+		arg.CampaignID,
 		arg.ID,
 	)
 	if err != nil {
@@ -4098,17 +4108,18 @@ func (q *Queries) SetCharacterCreatureName(ctx context.Context, arg SetCharacter
 const setCharacterInfusionAttuned = `-- name: SetCharacterInfusionAttuned :execrows
 UPDATE character_infusions
 SET attuned = $1::BOOLEAN
-WHERE id = $2::UUID AND ended_at IS NULL
+WHERE campaign_id = $2::UUID AND id = $3::UUID AND ended_at IS NULL
 `
 
 type SetCharacterInfusionAttunedParams struct {
-	Attuned bool
-	ID      string
+	Attuned    bool
+	CampaignID string
+	ID         string
 }
 
 // Says whether the holder is attuned to the item of a live record; the count says whether it was live.
 func (q *Queries) SetCharacterInfusionAttuned(ctx context.Context, arg SetCharacterInfusionAttunedParams) (int64, error) {
-	result, err := q.db.Exec(ctx, setCharacterInfusionAttuned, arg.Attuned, arg.ID)
+	result, err := q.db.Exec(ctx, setCharacterInfusionAttuned, arg.Attuned, arg.CampaignID, arg.ID)
 	if err != nil {
 		return 0, err
 	}

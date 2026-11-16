@@ -2,6 +2,7 @@ package characters
 
 import (
 	"context"
+	"uuid"
 
 	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
 )
@@ -29,28 +30,62 @@ const (
 	infusionEndedTaken = "taken"
 )
 
-// endInfusion ends a record that is live and says whether it was: an ended record is left as it is.
-func (s *Service) endInfusion(ctx context.Context, q *charactersdb.Queries, id, reason string) (bool, error) {
+// newInfusion is what insertInfusion writes. GearKey is the gear key of the holder's sheet; an object ignores it, since
+// its key is made from its own id.
+type newInfusion struct {
+	CampaignID, ArtificerID, HolderID, InfusionKey string
+	ItemKind, GearKey, ObjectName, Parameter       string
+	Attuned                                        bool
+}
+
+// objectItemKey is the item key of an object record: its own id, so two objects never collide.
+func objectItemKey(id string) string { return "object:" + id }
+
+// insertInfusion writes a live record that begins now. The id is made here, so an object's key can hold it.
+func (s *Service) insertInfusion(ctx context.Context, q *charactersdb.Queries, n newInfusion) (charactersdb.CharacterInfusion, error) {
+	id := uuid.New().String()
+	itemKey := n.GearKey
+	if n.ItemKind == infusionItemObject {
+		itemKey = objectItemKey(id)
+	}
 	at := s.now()
-	n, err := q.EndCharacterInfusion(ctx, charactersdb.EndCharacterInfusionParams{ID: id, Reason: &reason, At: &at})
+	rec, err := q.InsertCharacterInfusion(ctx, charactersdb.InsertCharacterInfusionParams{
+		ID: id, CampaignID: n.CampaignID, ArtificerCharacterID: n.ArtificerID, HolderCharacterID: n.HolderID,
+		InfusionKey: n.InfusionKey, ItemKind: n.ItemKind, ItemKey: itemKey, ObjectName: n.ObjectName, Parameter: n.Parameter,
+		Attuned: n.Attuned, Since: at, CreatedAt: at,
+	})
+	if err != nil {
+		return charactersdb.CharacterInfusion{}, wrap("insert an infusion", err)
+	}
+	return rec, nil
+}
+
+// endInfusion ends a record of the campaign that is live and says whether it was: an ended record is left as it is.
+func (s *Service) endInfusion(ctx context.Context, q *charactersdb.Queries, campaignID, id, reason string) (bool, error) {
+	n, err := q.EndCharacterInfusion(ctx, charactersdb.EndCharacterInfusionParams{CampaignID: campaignID, ID: id, Reason: reason, At: s.now()})
 	if err != nil {
 		return false, wrap("end an infusion", err)
 	}
 	return n > 0, nil
 }
 
-// moveInfusion puts a live record on another item and starts its time again, and says whether it was live.
-func (s *Service) moveInfusion(ctx context.Context, q *charactersdb.Queries, id, itemKind, itemKey, objectName string) (bool, error) {
-	n, err := q.MoveCharacterInfusion(ctx, charactersdb.MoveCharacterInfusionParams{ID: id, ItemKind: itemKind, ItemKey: itemKey, ObjectName: objectName, At: s.now()})
+// moveInfusion puts a live record on another item, starts its time again and clears its attunement (the item changed), and
+// says whether it was live. A move to an object keeps the key made from the record's own id; a move to gear sets gearKey.
+func (s *Service) moveInfusion(ctx context.Context, q *charactersdb.Queries, campaignID, id, itemKind, gearKey, objectName string) (bool, error) {
+	itemKey := gearKey
+	if itemKind == infusionItemObject {
+		itemKey = objectItemKey(id)
+	}
+	n, err := q.MoveCharacterInfusion(ctx, charactersdb.MoveCharacterInfusionParams{CampaignID: campaignID, ID: id, ItemKind: itemKind, ItemKey: itemKey, ObjectName: objectName, At: s.now()})
 	if err != nil {
 		return false, wrap("move an infusion", err)
 	}
 	return n > 0, nil
 }
 
-// setInfusionAttuned says whether the holder is attuned to the item of a live record, and whether the record was live.
-func (s *Service) setInfusionAttuned(ctx context.Context, q *charactersdb.Queries, id string, attuned bool) (bool, error) {
-	n, err := q.SetCharacterInfusionAttuned(ctx, charactersdb.SetCharacterInfusionAttunedParams{ID: id, Attuned: attuned})
+// setInfusionAttuned says whether the holder is attuned to the item of a live record of the campaign, and whether the record was live.
+func (s *Service) setInfusionAttuned(ctx context.Context, q *charactersdb.Queries, campaignID, id string, attuned bool) (bool, error) {
+	n, err := q.SetCharacterInfusionAttuned(ctx, charactersdb.SetCharacterInfusionAttunedParams{CampaignID: campaignID, ID: id, Attuned: attuned})
 	if err != nil {
 		return false, wrap("set the attunement of an infusion", err)
 	}

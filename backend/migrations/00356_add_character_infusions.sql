@@ -4,7 +4,7 @@
 -- character that holds it. The artificer made it (artificer_character_id); holder_character_id is the character
 -- whose sheet has the item, which is the artificer itself for now.
 -- item_kind is 'gear' (item_key is a gear key of the holder's sheet) or 'object' (item_key is 'object:<record id>',
--- so two named objects never share a key; object_name is what the table called it). parameter is the damage type
+-- so two named objects never share a key, and the CHECK holds it; object_name is what the table called it, 40 characters at most). parameter is the damage type
 -- an infusion asks for, or ''. attuned says the holder attuned to the item.
 -- since is when the infusion began or last moved: the oldest live record of an artificer is the first to end when
 -- a new infusion is over the limit. A move sets it again.
@@ -33,11 +33,19 @@ CREATE TABLE IF NOT EXISTS character_infusions (
     materialises_id UUID NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     CONSTRAINT character_infusions_item_kind_valid CHECK (item_kind IN ('gear', 'object')),
+    CONSTRAINT character_infusions_object_key_valid CHECK ((item_kind = 'object') = (item_key = 'object:' || id::TEXT)),
+    CONSTRAINT character_infusions_gear_key_valid CHECK (item_kind <> 'gear' OR item_key NOT LIKE 'object:%'),
+    CONSTRAINT character_infusions_object_name_length CHECK (char_length(object_name) <= 40),
     CONSTRAINT character_infusions_ended_valid CHECK (
         (ended_at IS NULL) = (ended_reason IS NULL)
         AND (ended_reason IS NULL OR ended_reason IN ('ended', 'replaced', 'swapped', 'item_gone', 'taken'))
     )
 );
+
+-- The ON DELETE CASCADE of the campaign and of each character.
+CREATE INDEX IF NOT EXISTS character_infusions_campaign_id_idx ON character_infusions (campaign_id);
+CREATE INDEX IF NOT EXISTS character_infusions_holder_character_id_idx ON character_infusions (holder_character_id);
+CREATE INDEX IF NOT EXISTS character_infusions_artificer_character_id_idx ON character_infusions (artificer_character_id);
 
 -- One live record for each item of a holder.
 CREATE UNIQUE INDEX IF NOT EXISTS character_infusions_one_live_item_idx
@@ -60,4 +68,7 @@ DELETE FROM session_event_kinds WHERE kind IN ('infusion_infused', 'infusion_mov
 -- CASCADE: CockroachDB keeps a unique index as a constraint and refuses to drop it without it.
 DROP INDEX IF EXISTS character_infusions_one_live_item_idx CASCADE;
 DROP INDEX IF EXISTS character_infusions_live_by_artificer_idx;
+DROP INDEX IF EXISTS character_infusions_artificer_character_id_idx;
+DROP INDEX IF EXISTS character_infusions_holder_character_id_idx;
+DROP INDEX IF EXISTS character_infusions_campaign_id_idx;
 DROP TABLE IF EXISTS character_infusions;

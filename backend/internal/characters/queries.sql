@@ -1091,9 +1091,9 @@ WHERE id = sqlc.arg(id) AND sheet ? 'full';
 
 -- name: InsertCharacterInfusion :one
 INSERT INTO character_infusions
-    (campaign_id, artificer_character_id, holder_character_id, infusion_key, item_kind, item_key, object_name, parameter, attuned, since, created_at)
+    (id, campaign_id, artificer_character_id, holder_character_id, infusion_key, item_kind, item_key, object_name, parameter, attuned, since, created_at)
 VALUES (
-    sqlc.arg(campaign_id)::UUID, sqlc.arg(artificer_character_id)::UUID, sqlc.arg(holder_character_id)::UUID, sqlc.arg(infusion_key),
+    sqlc.arg(id)::UUID, sqlc.arg(campaign_id)::UUID, sqlc.arg(artificer_character_id)::UUID, sqlc.arg(holder_character_id)::UUID, sqlc.arg(infusion_key),
     sqlc.arg(item_kind), sqlc.arg(item_key), sqlc.arg(object_name)::TEXT, sqlc.arg(parameter)::TEXT, sqlc.arg(attuned)::BOOLEAN,
     sqlc.arg(since), sqlc.arg(created_at)
 )
@@ -1124,17 +1124,17 @@ WHERE artificer_character_id = sqlc.arg(artificer_character_id)::UUID AND ended_
 -- name: EndCharacterInfusion :execrows
 -- Ends a record that is live; the count says whether it was.
 UPDATE character_infusions
-SET ended_at = sqlc.arg(at), ended_reason = sqlc.arg(reason)
-WHERE id = sqlc.arg(id)::UUID AND ended_at IS NULL;
+SET ended_at = sqlc.arg(at)::TIMESTAMPTZ, ended_reason = sqlc.arg(reason)::TEXT
+WHERE campaign_id = sqlc.arg(campaign_id)::UUID AND id = sqlc.arg(id)::UUID AND ended_at IS NULL;
 
 -- name: MoveCharacterInfusion :execrows
--- Puts a live record on another item and begins its time again; the count says whether it was live.
+-- Puts a live record on another item, begins its time again and clears the attunement (the item changed); the count says whether it was live.
 UPDATE character_infusions
-SET item_kind = sqlc.arg(item_kind), item_key = sqlc.arg(item_key), object_name = sqlc.arg(object_name)::TEXT, since = sqlc.arg(at)
-WHERE id = sqlc.arg(id)::UUID AND ended_at IS NULL;
+SET item_kind = sqlc.arg(item_kind), item_key = sqlc.arg(item_key), object_name = sqlc.arg(object_name)::TEXT, since = sqlc.arg(at), attuned = false
+WHERE campaign_id = sqlc.arg(campaign_id)::UUID AND id = sqlc.arg(id)::UUID AND ended_at IS NULL;
 
 -- name: SetCharacterInfusionAttuned :execrows
 -- Says whether the holder is attuned to the item of a live record; the count says whether it was live.
 UPDATE character_infusions
 SET attuned = sqlc.arg(attuned)::BOOLEAN
-WHERE id = sqlc.arg(id)::UUID AND ended_at IS NULL;
+WHERE campaign_id = sqlc.arg(campaign_id)::UUID AND id = sqlc.arg(id)::UUID AND ended_at IS NULL;

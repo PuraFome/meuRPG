@@ -30,13 +30,22 @@ func newInfusionTable(t *testing.T) *infusionTable {
 
 func (tb *infusionTable) insert(t *testing.T, holder, itemKey string) charactersdb.CharacterInfusion {
 	t.Helper()
-	at := tb.h.clock.Now()
-	rec, err := tb.h.svc.queries.InsertCharacterInfusion(t.Context(), charactersdb.InsertCharacterInfusionParams{
-		CampaignID: tb.campaign, ArtificerCharacterID: tb.artif, HolderCharacterID: holder,
-		InfusionKey: "infusion:enhanced_defense", ItemKind: infusionItemGear, ItemKey: itemKey, Since: at, CreatedAt: at,
+	rec, err := tb.h.svc.insertInfusion(t.Context(), tb.h.svc.queries, newInfusion{
+		CampaignID: tb.campaign, ArtificerID: tb.artif, HolderID: holder,
+		InfusionKey: "infusion:enhanced_defense", ItemKind: infusionItemGear, GearKey: itemKey,
 	})
 	if err != nil {
-		t.Fatalf("InsertCharacterInfusion(%q) error = %v", itemKey, err)
+		t.Fatalf("insertInfusion(%q) error = %v", itemKey, err)
+	}
+	return rec
+}
+
+// get reads a record of the campaign, live or ended.
+func (tb *infusionTable) get(t *testing.T, id string) charactersdb.CharacterInfusion {
+	t.Helper()
+	rec, err := tb.h.svc.queries.GetCharacterInfusionForUpdate(t.Context(), charactersdb.GetCharacterInfusionForUpdateParams{CampaignID: tb.campaign, ID: id})
+	if err != nil {
+		t.Fatalf("read the record %s: %v", id, err)
 	}
 	return rec
 }
@@ -58,7 +67,7 @@ func TestInfusionStoreInsertAndLists(t *testing.T) {
 		t.Errorf("count = %d, %v; want 2", n, err)
 	}
 	// An ended record leaves the live lists and the count.
-	if ok, err := tb.h.svc.endInfusion(t.Context(), tb.h.svc.queries, first.ID, infusionEndedReplaced); err != nil || !ok {
+	if ok, err := tb.h.svc.endInfusion(t.Context(), tb.h.svc.queries, tb.campaign, first.ID, infusionEndedReplaced); err != nil || !ok {
 		t.Fatalf("endInfusion() = %v, %v; want true", ok, err)
 	}
 	held, err := tb.h.svc.queries.ListLiveInfusionsOfHolder(t.Context(), tb.artif)
@@ -90,7 +99,7 @@ func TestInfusionStoreListOrdersBySinceThenID(t *testing.T) {
 	}
 }
 
-func TestInfusionStoreGetForUpdateLocksTheRow(t *testing.T) {
+func TestInfusionStoreReadsTheLiveRowInATransaction(t *testing.T) {
 	t.Parallel()
 	tb := newInfusionTable(t)
 	rec := tb.insert(t, tb.artif, "equipment:shield")
@@ -113,7 +122,7 @@ func TestInfusionStoreEndOnlyALiveRecord(t *testing.T) {
 	t.Parallel()
 	tb := newInfusionTable(t)
 	rec := tb.insert(t, tb.artif, "equipment:shield")
-	ok, err := tb.h.svc.endInfusion(t.Context(), tb.h.svc.queries, rec.ID, infusionEndedEnded)
+	ok, err := tb.h.svc.endInfusion(t.Context(), tb.h.svc.queries, tb.campaign, rec.ID, infusionEndedEnded)
 	if err != nil || !ok {
 		t.Fatalf("first end = %v, %v; want true", ok, err)
 	}
@@ -122,7 +131,7 @@ func TestInfusionStoreEndOnlyALiveRecord(t *testing.T) {
 		t.Fatalf("the ended record = %+v, want an end time and the reason", ended)
 	}
 	tb.h.clock.Advance(time.Hour)
-	ok, err = tb.h.svc.endInfusion(t.Context(), tb.h.svc.queries, rec.ID, infusionEndedItemGone)
+	ok, err = tb.h.svc.endInfusion(t.Context(), tb.h.svc.queries, tb.campaign, rec.ID, infusionEndedItemGone)
 	if err != nil || ok {
 		t.Errorf("second end = %v, %v; want false, nil", ok, err)
 	}
@@ -136,21 +145,69 @@ func TestInfusionStoreMoveOnlyALiveRecord(t *testing.T) {
 	t.Parallel()
 	tb := newInfusionTable(t)
 	rec := tb.insert(t, tb.artif, "equipment:shield")
+	if ok, err := tb.h.svc.setInfusionAttuned(t.Context(), tb.h.svc.queries, tb.campaign, rec.ID, true); err != nil || !ok {
+		t.Fatalf("attune = %v, %v", ok, err)
+	}
 	tb.h.clock.Advance(time.Hour)
-	ok, err := tb.h.svc.moveInfusion(t.Context(), tb.h.svc.queries, rec.ID, infusionItemObject, "object:abc", "Bengala do Vovô")
+	ok, err := tb.h.svc.moveInfusion(t.Context(), tb.h.svc.queries, tb.campaign, rec.ID, infusionItemObject, "ignored", "Bengala do Vovô")
 	if err != nil || !ok {
-		t.Fatalf("move = %v, %v; want true", ok, err)
+		t.Fatalf("move to an object = %v, %v; want true", ok, err)
 	}
-	moved, _ := tb.h.svc.queries.GetCharacterInfusionForUpdate(t.Context(), charactersdb.GetCharacterInfusionForUpdateParams{CampaignID: tb.campaign, ID: rec.ID})
-	if moved.ItemKind != infusionItemObject || moved.ItemKey != "object:abc" || moved.ObjectName != "Bengala do Vovô" || !moved.Since.After(rec.Since.Add(time.Hour-time.Second)) {
-		t.Errorf("the moved record = %+v, want the new item and a new since", moved)
+	moved := tb.get(t, rec.ID)
+	if moved.ItemKind != infusionItemObject || moved.ItemKey != "object:"+rec.ID || moved.ObjectName != "Bengala do Vovô" || moved.Attuned || !moved.Since.After(rec.Since.Add(time.Hour-time.Second)) {
+		t.Errorf("the record moved to an object = %+v, want its own object key, the name, no attunement and a new since", moved)
 	}
-	if _, err := tb.h.svc.endInfusion(t.Context(), tb.h.svc.queries, rec.ID, infusionEndedEnded); err != nil {
+	if ok, err := tb.h.svc.moveInfusion(t.Context(), tb.h.svc.queries, tb.campaign, rec.ID, infusionItemGear, "equipment:chain-mail", ""); err != nil || !ok {
+		t.Fatalf("move to gear = %v, %v; want true", ok, err)
+	}
+	if back := tb.get(t, rec.ID); back.ItemKind != infusionItemGear || back.ItemKey != "equipment:chain-mail" || back.ObjectName != "" {
+		t.Errorf("the record moved back to gear = %+v", back)
+	}
+	if _, err := tb.h.svc.endInfusion(t.Context(), tb.h.svc.queries, tb.campaign, rec.ID, infusionEndedEnded); err != nil {
 		t.Fatal(err)
 	}
-	ok, err = tb.h.svc.moveInfusion(t.Context(), tb.h.svc.queries, rec.ID, infusionItemGear, "equipment:shield", "")
+	ok, err = tb.h.svc.moveInfusion(t.Context(), tb.h.svc.queries, tb.campaign, rec.ID, infusionItemGear, "equipment:shield", "")
 	if err != nil || ok {
 		t.Errorf("moving an ended record = %v, %v; want false, nil", ok, err)
+	}
+}
+
+func TestInfusionObjectRecordKeepsItsOwnKey(t *testing.T) {
+	t.Parallel()
+	tb := newInfusionTable(t)
+	one, err := tb.h.svc.insertInfusion(t.Context(), tb.h.svc.queries, newInfusion{CampaignID: tb.campaign, ArtificerID: tb.artif, HolderID: tb.artif, InfusionKey: "infusion:x", ItemKind: infusionItemObject, ObjectName: "Bengala"})
+	if err != nil {
+		t.Fatalf("insert an object: %v", err)
+	}
+	two, err := tb.h.svc.insertInfusion(t.Context(), tb.h.svc.queries, newInfusion{CampaignID: tb.campaign, ArtificerID: tb.artif, HolderID: tb.artif, InfusionKey: "infusion:x", ItemKind: infusionItemObject, ObjectName: "Bengala"})
+	if err != nil {
+		t.Fatalf("insert a second object of the same name: %v", err)
+	}
+	if one.ItemKey != "object:"+one.ID || two.ItemKey != "object:"+two.ID || one.ItemKey == two.ItemKey {
+		t.Errorf("object keys = %q, %q; want each its own id", one.ItemKey, two.ItemKey)
+	}
+}
+
+func TestInfusionOtherCampaignTouchesNothing(t *testing.T) {
+	t.Parallel()
+	tb := newInfusionTable(t)
+	rec := tb.insert(t, tb.artif, "equipment:shield")
+	other := "00000000-0000-4000-8000-0000000000aa"
+	q := tb.h.svc.queries
+	if ok, err := tb.h.svc.endInfusion(t.Context(), q, other, rec.ID, infusionEndedEnded); err != nil || ok {
+		t.Errorf("end from another campaign = %v, %v; want false, nil", ok, err)
+	}
+	if ok, err := tb.h.svc.moveInfusion(t.Context(), q, other, rec.ID, infusionItemGear, "equipment:chain-mail", ""); err != nil || ok {
+		t.Errorf("move from another campaign = %v, %v; want false, nil", ok, err)
+	}
+	if ok, err := tb.h.svc.setInfusionAttuned(t.Context(), q, other, rec.ID, true); err != nil || ok {
+		t.Errorf("attune from another campaign = %v, %v; want false, nil", ok, err)
+	}
+	if _, err := q.GetCharacterInfusionForUpdate(t.Context(), charactersdb.GetCharacterInfusionForUpdateParams{CampaignID: other, ID: rec.ID}); !errors.Is(err, pgx.ErrNoRows) {
+		t.Errorf("read from another campaign: error = %v, want no rows", err)
+	}
+	if got := tb.get(t, rec.ID); got.EndedAt != nil || got.ItemKey != "equipment:shield" || got.Attuned {
+		t.Errorf("the record changed: %+v", got)
 	}
 }
 
@@ -158,17 +215,17 @@ func TestInfusionStoreSetAttuned(t *testing.T) {
 	t.Parallel()
 	tb := newInfusionTable(t)
 	rec := tb.insert(t, tb.artif, "equipment:shield")
-	if ok, err := tb.h.svc.setInfusionAttuned(t.Context(), tb.h.svc.queries, rec.ID, true); err != nil || !ok {
+	if ok, err := tb.h.svc.setInfusionAttuned(t.Context(), tb.h.svc.queries, tb.campaign, rec.ID, true); err != nil || !ok {
 		t.Fatalf("set attuned = %v, %v; want true", ok, err)
 	}
 	got, _ := tb.h.svc.queries.GetCharacterInfusionForUpdate(t.Context(), charactersdb.GetCharacterInfusionForUpdateParams{CampaignID: tb.campaign, ID: rec.ID})
 	if !got.Attuned {
 		t.Error("the record is not attuned")
 	}
-	if _, err := tb.h.svc.endInfusion(t.Context(), tb.h.svc.queries, rec.ID, infusionEndedEnded); err != nil {
+	if _, err := tb.h.svc.endInfusion(t.Context(), tb.h.svc.queries, tb.campaign, rec.ID, infusionEndedEnded); err != nil {
 		t.Fatal(err)
 	}
-	if ok, err := tb.h.svc.setInfusionAttuned(t.Context(), tb.h.svc.queries, rec.ID, false); err != nil || ok {
+	if ok, err := tb.h.svc.setInfusionAttuned(t.Context(), tb.h.svc.queries, tb.campaign, rec.ID, false); err != nil || ok {
 		t.Errorf("set attuned on an ended record = %v, %v; want false, nil", ok, err)
 	}
 }
@@ -177,17 +234,16 @@ func TestInfusionOneLiveRecordForAnItem(t *testing.T) {
 	t.Parallel()
 	tb := newInfusionTable(t)
 	first := tb.insert(t, tb.artif, "equipment:shield")
-	at := tb.h.clock.Now()
-	_, err := tb.h.svc.queries.InsertCharacterInfusion(t.Context(), charactersdb.InsertCharacterInfusionParams{
-		CampaignID: tb.campaign, ArtificerCharacterID: tb.artif, HolderCharacterID: tb.artif,
-		InfusionKey: "infusion:enhanced_weapon", ItemKind: infusionItemGear, ItemKey: "equipment:shield", Since: at, CreatedAt: at,
+	_, err := tb.h.svc.insertInfusion(t.Context(), tb.h.svc.queries, newInfusion{
+		CampaignID: tb.campaign, ArtificerID: tb.artif, HolderID: tb.artif,
+		InfusionKey: "infusion:enhanced_weapon", ItemKind: infusionItemGear, GearKey: "equipment:shield",
 	})
 	if !db.IsUniqueViolation(err, "character_infusions_one_live_item_idx") {
 		t.Fatalf("a second live record on the same item: error = %v, want the unique index", err)
 	}
 	// The same item of another holder is another record.
 	tb.insert(t, tb.friend, "equipment:shield")
-	if _, err := tb.h.svc.endInfusion(t.Context(), tb.h.svc.queries, first.ID, infusionEndedTaken); err != nil {
+	if _, err := tb.h.svc.endInfusion(t.Context(), tb.h.svc.queries, tb.campaign, first.ID, infusionEndedTaken); err != nil {
 		t.Fatal(err)
 	}
 	tb.insert(t, tb.artif, "equipment:shield")
@@ -225,6 +281,10 @@ func TestInfusionEndReasonAndEndTimeConstraints(t *testing.T) {
 		{"a reason with no time", `ended_reason = 'ended'`, "character_infusions_ended_valid"},
 		{"a time with no reason", `ended_at = now()`, "character_infusions_ended_valid"},
 		{"an unknown item kind", `item_kind = 'spell'`, "character_infusions_item_kind_valid"},
+		{"an object with a forged key", `item_kind = 'object', item_key = 'object:00000000-0000-4000-8000-000000000001'`, "character_infusions_object_key_valid"},
+		{"an object with a gear key", `item_kind = 'object', item_key = 'equipment:shield'`, "character_infusions_object_key_valid"},
+		{"a gear key of an object of another id", `item_key = 'object:00000000-0000-4000-8000-000000000001'`, "character_infusions_gear_key_valid"},
+		{"an object name over 40 characters", `object_name = repeat('a', 41)`, "character_infusions_object_name_length"},
 	}
 	for _, c := range cases {
 		_, err := tb.h.pool.Exec(t.Context(), `UPDATE character_infusions SET `+c.set+` WHERE id = $1`, rec.ID)
@@ -238,5 +298,28 @@ func TestInfusionEndReasonAndEndTimeConstraints(t *testing.T) {
 		if _, err := tb.h.pool.Exec(t.Context(), `UPDATE character_infusions SET ended_at = now(), ended_reason = $2 WHERE id = $1`, row.ID, reason); err != nil {
 			t.Errorf("the reason %q is refused: %v", reason, err)
 		}
+	}
+}
+
+func TestInfusionObjectNameOf40CharactersIsAllowed(t *testing.T) {
+	t.Parallel()
+	tb := newInfusionTable(t)
+	rec := tb.insert(t, tb.artif, "equipment:shield")
+	if _, err := tb.h.pool.Exec(t.Context(), `UPDATE character_infusions SET object_name = repeat('é', 40) WHERE id = $1`, rec.ID); err != nil {
+		t.Errorf("a name of 40 characters is refused: %v", err)
+	}
+}
+
+func TestInfusionRecordsGoWithTheCampaign(t *testing.T) {
+	t.Parallel()
+	tb := newInfusionTable(t)
+	tb.insert(t, tb.friend, "equipment:shield")
+	tb.insert(t, tb.artif, "equipment:chain-mail")
+	if _, err := tb.h.pool.Exec(t.Context(), `DELETE FROM campaigns WHERE id = $1`, tb.campaign); err != nil {
+		t.Fatal(err)
+	}
+	var mine int
+	if err := tb.h.pool.QueryRow(t.Context(), `SELECT count(*) FROM character_infusions WHERE campaign_id = $1`, tb.campaign).Scan(&mine); err != nil || mine != 0 {
+		t.Errorf("after deleting the campaign: %d records, %v; want none", mine, err)
 	}
 }

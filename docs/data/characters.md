@@ -307,15 +307,24 @@ Cascades with the campaign and the character.
 
 The infusions of an Artificer: one row for each item an infusion is on.
 `infusion_key` is the key of the option in the table feature's content.
-`artificer_character_id` is the character that made the infusion and `holder_character_id` the character whose sheet has the item; both cascade, and they are the same character for now.
-`item_kind` is `gear` or `object` (`CHECK`); `item_key` is a gear key of the holder's sheet, or `object:<record id>` for an object, so two objects never share a key; `object_name` is the name the table gave an object, **free text** (listed in [Privacy](../privacy.md)).
-`parameter` is the damage type an infusion asks for, or empty; `attuned` says the holder attuned to the item.
-`since` is when the infusion began or last moved, and it orders the live records of an artificer, the oldest first.
+`artificer_character_id` is the character that made the infusion.
+`holder_character_id` is the character whose sheet has the item.
+They are the same character for now.
+`item_kind` is `gear` or `object` (`CHECK`).
+For gear, `item_key` is a gear key of the holder's sheet, and it never starts with `object:` (`CHECK`).
+For an object, `item_key` is `object:<the record's own id>` (`CHECK`), so two objects never share a key.
+`object_name` is the name the table gave an object.
+It is **free text** of 0 to 40 characters (`CHECK`), listed in [Privacy](../privacy.md).
+`parameter` is the damage type an infusion asks for, or empty.
+`attuned` says the holder attuned to the item, and a move to another item clears it.
+`since` is when the infusion began or last moved.
+It orders the live records of an artificer, the oldest first.
 `materialises_id` links to the item or creature an infusion made, and nothing writes it yet.
 A record that ends is kept: `ended_at` and `ended_reason` (`ended`, `replaced`, `swapped`, `item_gone`, `taken`; both set or both `NULL`, `CHECK`).
 A unique partial index allows one live record for each `(holder_character_id, item_key)`.
 A partial index on `(artificer_character_id, since, id)` serves the live records of an artificer.
-Cascades with the campaign and with each of the two characters.
+Plain indexes on the campaign and on each character serve the cascades.
+The record cascades with the campaign and with each of the two characters.
 The campaign package does not carry it: an imported character comes with no infusions.
 
 ## Table content
