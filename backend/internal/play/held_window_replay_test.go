@@ -6,6 +6,7 @@ import (
 	"connectrpc.com/connect"
 	"google.golang.org/protobuf/proto"
 
+	campaignsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/campaigns/v1"
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
@@ -445,5 +446,36 @@ func TestASpellAttackCutByAnEnemyBardAsksForTheDieOnTheCutRoll(t *testing.T) {
 	targets := out.GetSpellCast().GetCast().GetTargets()
 	if len(targets) != 1 || targets[0].GetAttackRoll().GetTotal() != 20 || len(targets[0].GetBonusDice()) != 1 {
 		t.Fatalf("the cast = %v, want the d20 15 + 6 - 5 + the die 4 = 20", out.GetSpellCast().GetCast())
+	}
+}
+
+// TestASpellAttackIsRefusedWhileTheCastersOtherQuestionWaits: Pensantus holds a die and her first spell attack waits for her answer. A second
+// cast, which the master's window would hold, is refused at once as a weapon attack is (INSPIRATION_PENDING): she does not wait for the window to learn
+// it, no window opens, nothing is spent (no slot, no action), and the first question stays open and answerable.
+func TestASpellAttackIsRefusedWhileTheCastersOtherQuestionWaits(t *testing.T) {
+	t.Parallel()
+	a, c := spellAfterAWindow(t, "race:gnome")
+	a.setRules(t, func(r *campaignsv1.TableRules) {
+		r.EnemyReactions = campaignsv1.EnemyReactionsRule_ENEMY_REACTIONS_RULE_ONLY_WHEN_POSSIBLE
+	})
+	a.giveCombatantDie(t, "Pensantus", c.e)
+	first, err := a.cast(t, a.ana, c.e, "Pensantus", acidArrow, slotOfLevel(2), a.at(t, "Goblin"), d20Face(15))
+	if err != nil || first.GetInspirationOffer() == nil {
+		t.Fatalf("the first CastSpell() = %v, %v; want the die's question", first, err)
+	}
+	a.setRules(t, enemyReactionsAlways)
+	_, err = a.cast(t, a.ana, c.e, "Pensantus", acidArrow, slotOfLevel(2), a.at(t, "Goblin"), d20Face(12))
+	wantResourceBlocked(t, err, playv1.ResourceBlockedReason_RESOURCE_BLOCKED_REASON_INSPIRATION_PENDING)
+	if w := a.windowOf(t, a.master, playv1.ReactionKind_REACTION_KIND_MASTER_CHECK); w != nil {
+		t.Errorf("the refused cast left the window %v", w)
+	}
+	if byLabel(t, a.get(t, a.ana), "Pensantus").GetActionUsed() {
+		t.Error("the action was spent by a cast that waits")
+	}
+	if n := a.countOf(t, `SELECT count(*) FROM inspiration_holds WHERE answer_key IS NULL`); n != 1 {
+		t.Errorf("open questions = %d, want the first alone", n)
+	}
+	if out, err := a.answerHeldRoll(t, a.ana, first.GetInspirationOffer().GetHoldId(), dieAnswer(false)); err != nil || out.GetSpellCast().GetCast() == nil {
+		t.Errorf("the first question's answer = %v, %v; want the cast", out, err)
 	}
 }

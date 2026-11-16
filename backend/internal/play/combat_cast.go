@@ -631,6 +631,9 @@ func (f *castFlow) holdForWindow(ctx context.Context) (bool, error) {
 	if err := f.checkFavorHeld(ctx); err != nil { // the replay would refuse it: refuse it now, before anything is held
 		return false, err
 	}
+	if err := f.heldBlocked(ctx); err != nil {
+		return false, err
+	}
 	held, ok, err := f.s.holdCast(ctx, f.c, f.m, f.req, f.cs, f.caster, f.call.spellKey, int32(f.slotLevel), f.targs, f.sp.AttackType != "") //nolint:gosec // a slot level, 0 to 9
 	if err != nil {
 		return false, err
@@ -640,6 +643,19 @@ func (f *castFlow) holdForWindow(ctx context.Context) (bool, error) {
 		return true, nil
 	}
 	return false, nil
+}
+
+// heldBlocked refuses a spell attack that may be asked about while a question of the caster waits, before a window can hold it: the
+// replay would be refused by the open question and the cast dropped when the windows were answered, as a weapon attack is refused
+// at once (attackFlow.holdForWindow).
+func (f *castFlow) heldBlocked(ctx context.Context) error {
+	if !spellMayAsk(f.caster, f.m, f.sp, f.targs) {
+		return nil
+	}
+	return f.s.heldBlocked(ctx, combatGate(f.c), rollSpec{
+		Kind: heldSpellAttack, Key: f.call.key, Window: f.c.replay != nil, Lucky: f.out.modes.traits.Lucky,
+		Roller: heldRoller{CampaignID: f.m.CampaignID, CharacterID: f.caster.CharacterID, UserID: f.m.UserID},
+	})
 }
 
 // holdForDie asks the player of a spell attack against one target, when the character holds a Bardic
