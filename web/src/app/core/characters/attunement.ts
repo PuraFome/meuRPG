@@ -12,6 +12,7 @@ import {
 import { ContentService, type MagicItemOption } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { CONNECT_TRANSPORT } from '../connect/transport';
 import { type ItemChargesVm, chargesOf } from './charges';
+import { type ConsumableVm, consumableOf } from './consumable-vm';
 
 /** The most items a character is attuned to at once (SRD 5.1); the server refuses a fourth. */
 export const MAX_ATTUNED = 3;
@@ -48,6 +49,8 @@ export interface AttunementEntryVm {
   readonly charges?: ItemChargesVm;
   /** What "Usar" does for a consumable, as the server words it ("Cura 2d4 + 2"); empty for an item with no automatic effect. */
   readonly effectPt?: string;
+  /** What "Usar" is and costs, as the server says it: present only on a consumable (a potion, an oil, a scroll...). */
+  readonly consumable?: ConsumableVm;
 }
 
 /** The attunement of a sheet: the entries in the order the sheet lists them (pieces, then magic items). */
@@ -71,6 +74,7 @@ export function magicEntryOf(m: SheetMagicItem): AttunementEntryVm {
     sameItemAttuned: m.sameItemAttuned,
     charges: chargesOf(m),
     effectPt: m.effectPt,
+    consumable: consumableOf(m.consumable),
   };
 }
 

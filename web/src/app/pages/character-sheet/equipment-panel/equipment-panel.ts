@@ -150,9 +150,7 @@ export class EquipmentPanel {
     this.sheet().attunement.entries.filter((e) => e.kind === 'magic'),
   );
   /** The rows of the magic items: identical potions and scrolls are one row ("×2"), the rest as they were. */
-  protected readonly rows = computed(() =>
-    magicRows(this.magicItems(), (key) => this.categories.categoryOf(key)),
-  );
+  protected readonly rows = computed(() => magicRows(this.magicItems()));
   /** Some magic item holds charges: the lock line then names what still works on a locked sheet. */
   protected readonly hasCharges = computed(() => this.magicItems().some((e) => e.charges));
   /**
@@ -165,7 +163,9 @@ export class EquipmentPanel {
     );
     const words = [
       kinds.has('potion') ? 'poções' : '',
+      kinds.has('oil') ? 'óleos' : '',
       kinds.has('scroll') ? 'pergaminhos' : '',
+      kinds.has('other') ? 'outros itens' : '',
       this.hasCharges() ? 'cargas' : '',
     ].filter((w) => w !== '');
     if (words.length === 0) {

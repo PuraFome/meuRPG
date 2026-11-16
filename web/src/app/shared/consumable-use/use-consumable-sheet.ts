@@ -19,29 +19,52 @@ import { MatIconModule } from '@angular/material/icon';
 import { parseSum } from '../../core/combat/combat-dice';
 import {
   type ConsumableKind,
+  type ConsumableVm,
+  signedText,
+} from '../../core/characters/consumable-vm';
+import {
+  canGive,
   type ConsumableTargetVm,
-  costsAction,
   effectIcon,
   effectLine,
-  healingDice,
+  kindWords,
   subtitleOf,
   type TurnBlock,
+  useCost,
 } from '../../core/characters/consumables';
 import { ActionKey } from '../../core/connect/idempotency';
+import { focusWithRing } from '../../core/creatures/focus-ring';
 import type { ConsumableRoll } from '../../core/play/charges-client';
-import { turnBlockMessage } from '../../core/play/charges-errors';
+import { type ConsumableRefusal, turnBlockParts } from '../../core/play/charges-errors';
 import { EconomyMark } from '../economy-shapes/economy-shapes';
 import { SheetFrame } from '../sheet/sheet-frame/sheet-frame';
 import { injectSheet, openSheet } from '../sheet/sheet-host';
 
-/** Who may receive the consumable, or why the list could not be read. */
-export interface TargetsOutcome {
-  readonly targets: readonly ConsumableTargetVm[];
-  /** A refusal in words; empty when the list was read. */
-  readonly error: string;
+/** What the page holds once a refusal made it read the character again: the unit the sheet is open on, and its count. */
+export interface Aftermath {
+  /** The units of the item the page holds now. */
+  readonly left?: number;
+  /** The unit the sheet was open on is gone and another of the same item takes its place (the next call has a new key). */
+  readonly rebound?: boolean;
+  /** No unit is left: the sheet closes, and the page shows the notice. */
+  readonly close?: boolean;
 }
 
-/** What a tap on "Beber" or "Dar a …" asks: the receiver (`null` for the user) and how the healing dice come. */
+/** Who may receive the consumable, or why the list could not be read. */
+export interface TargetsOutcome extends Aftermath {
+  readonly targets: readonly ConsumableTargetVm[];
+  /** The character is in a running combat (the server's own test); `null` when the list could not be read. */
+  readonly inCombat: boolean | null;
+  /** A refusal in words; `null` when the list was read. */
+  readonly error: ConsumableRefusal | null;
+}
+
+/** What a use answered: `refusal` is `null` when it was used; the rest is what the page now holds. */
+export interface UseAnswer extends Aftermath {
+  readonly refusal: ConsumableRefusal | null;
+}
+
+/** What a tap on the item's own button or "Dar a …" asks: the receiver (`null` for the user) and how the healing dice come. */
 export interface UseConsumableRequest {
   readonly target: ConsumableTargetVm | null;
   readonly roll: ConsumableRoll;
@@ -49,16 +72,16 @@ export interface UseConsumableRequest {
 
 export interface UseConsumableData {
   readonly itemName: string;
-  /** The catalog key of the item: which ones cost the action in a combat depends on it (`costsAction`). */
-  readonly itemKey: string;
   readonly kind: ConsumableKind;
+  /** What the server says the use is and costs (`SheetMagicItem.consumable`). */
+  readonly consumable: ConsumableVm;
   /** What "Usar" does, as the server words it ("Cura 2d4 + 2"); empty for an item with no automatic effect. */
   readonly effectPt: string;
   /** The units of the item the sheet holds: "Restam 2". */
   readonly left: number;
   /** The master acts for this character: the title reads "Usar por Tor". `null` for the player's own use. */
   readonly actingFor: string | null;
-  /** Whether a combat is running, when the page knows (the combat's "Itens" does); `null` on the sheet, which says both costs. */
+  /** Whether a combat is running, when the page knows (the combat's "Itens" does); `null` on the sheet, which learns it from the targets read. */
   readonly inCombat: boolean | null;
   /** What the page knows keeps the use from the Action (it is not the turn, or the Action is spent): both buttons are dashed and the sheet says why, with no call to the server. Only for an item that costs the action. */
   readonly blockedBy: TurnBlock | null;
@@ -70,8 +93,8 @@ export interface UseConsumableData {
   readonly preferApp: boolean;
   /** Reads who the item may be given to; never rejects. */
   readonly loadTargets: () => Promise<TargetsOutcome>;
-  /** Uses the item under `key`; answers the refusal in words, or '' when it was used. */
-  readonly use: (request: UseConsumableRequest, key: string) => Promise<string>;
+  /** Uses the item under `key`; answers the refusal in words, or none when it was used. */
+  readonly use: (request: UseConsumableRequest, key: string) => Promise<UseAnswer>;
 }
 
 /** Opens "Usar · <item>": a bottom sheet on a phone, a dialog from a tablet up. Answers `true` when the unit was used. */
@@ -95,13 +118,8 @@ export function openUseConsumable(
   );
 }
 
-/** The text a number added to the dice is said with: "+ 2", "− 1". */
-function signed(modifier: number): string {
-  return `${modifier < 0 ? '−' : '+'} ${Math.abs(modifier)}`;
-}
-
 /**
- * "Usar · Poção de cura": drink it ("Beber") or give it ("Dar a…", the receivers the server lists as radio rows). The dice of
+ * "Usar · Poção de cura": drink it ("Beber"; an oil or any other item is "Usar") or give it ("Dar a…", the receivers the server lists as radio rows). The dice of
  * a healing potion follow the table's rule (RN-18): the app rolls them, or the player types one face for each die ("Digitar
  * os dados"). The call has one idempotency key for the request it carries: the same use again after a failure is a retry and
  * never spends twice. Works on a locked sheet: the sheet only reads and sends.
@@ -120,32 +138,47 @@ export class UseConsumableSheet {
   private readonly injector = inject(Injector);
   private readonly radios = viewChildren<ElementRef<HTMLInputElement>>('radio');
   private readonly giveButton = viewChild('give', { read: ElementRef<HTMLButtonElement> });
+  private readonly faceFields = viewChildren<ElementRef<HTMLInputElement>>('face');
+  private readonly typeSwitch = viewChild('typeSwitch', { read: ElementRef<HTMLButtonElement> });
 
   protected readonly title = this.data.actingFor
     ? `Usar por ${this.data.actingFor}`
     : `Usar · ${this.data.itemName}`;
-  /** Every potion costs the action in a combat but the oils; any other item is spent at no cost and the master rules on its time. */
-  private readonly costs = costsAction(this.data.kind, this.data.itemKey);
-  protected readonly subtitle = subtitleOf({ ...this.data, costsAction: this.costs });
+  private readonly words = kindWords(this.data.kind);
+  /** The server says whether the use costs the action in a running combat: every potion but an oil does, and nothing else. */
+  private readonly costs = this.data.consumable.costsAction;
+  /** The units of the item the page holds: a refusal that made the page read the character again changes it. */
+  protected readonly left = signal(this.data.left);
+  /** Whether a combat is running: what the page knew, then what the targets read said (the server's own test). */
+  protected readonly inCombat = signal<boolean | null>(this.data.inCombat);
+  protected readonly subtitle = computed(() =>
+    subtitleOf({
+      itemName: this.data.itemName,
+      left: this.left(),
+      actingFor: this.data.actingFor,
+      inCombat: this.inCombat(),
+      costsAction: this.costs,
+    }),
+  );
   protected readonly effectText = effectLine(this.data.effectPt);
-  protected readonly effectIconName = effectIcon(this.data.effectPt);
-  /** The dice of a healing potion; `null` for every other consumable, which rolls nothing. */
-  protected readonly dice = healingDice(this.data.effectPt);
+  protected readonly effectIconName = effectIcon(this.data.effectPt, this.data.consumable);
+  /** The dice of a healing potion, as the server sent them; `null` for every other consumable, which rolls nothing. */
+  protected readonly dice = this.data.consumable.heal;
   protected readonly numbers = Array.from({ length: this.dice?.count ?? 0 }, (_, i) => i);
-  protected readonly signedModifier = signed(this.dice?.modifier ?? 0);
-  protected readonly drinkWord = this.data.kind === 'potion' ? 'Beber' : 'Usar';
+  protected readonly signedModifier = signedText(this.dice?.modifier ?? 0);
+  protected readonly drinkWord = this.words.use;
+  protected readonly itemIcon = this.words.icon;
   /** What the item does in words, for the items whose effect line says it only in short. */
-  protected readonly explain =
-    this.data.effectPt === ''
+  protected readonly explain = this.dice
+    ? ''
+    : this.data.effectPt === ''
       ? 'O app só gasta o item e mostra o texto dele: o mestre e você seguem o texto.'
-      : this.data.effectPt.startsWith('Resist')
-        ? 'Quem bebe fica com um efeito que dura 1 hora: aparece em “Seus efeitos” e acaba sozinho.'
-        : '';
+      : 'Quem bebe fica com um efeito que dura 1 hora: aparece em “Seus efeitos” e acaba sozinho.';
 
   protected readonly phase = signal<'choose' | 'give'>('choose');
   /** `null` while the list is being read. */
   protected readonly targets = signal<readonly ConsumableTargetVm[] | null>(null);
-  protected readonly targetsError = signal('');
+  protected readonly targetsError = signal<ConsumableRefusal | null>(null);
   protected readonly chosen = signal('');
   protected readonly receiver = computed(
     () => this.targets()?.find((t) => t.id === this.chosen()) ?? null,
@@ -153,43 +186,44 @@ export class UseConsumableSheet {
   protected readonly receiverName = computed(() =>
     this.phase() === 'give' ? (this.receiver()?.name ?? '') : '',
   );
-  /** What the page knows keeps the use from the Action: no list is read and nothing is offered. */
-  protected readonly blocked = this.data.blockedBy;
-  private readonly blockedText = this.blocked
-    ? turnBlockMessage(this.blocked, this.data.actingFor)
-    : '';
+  /** What keeps the use from the Action: the page knew it, or the server just refused for it. Nothing is offered under it. */
+  protected readonly blocked = signal<TurnBlock | null>(this.data.blockedBy);
+  protected readonly blockedLine = computed(() => {
+    const block = this.blocked();
+    return block ? turnBlockParts(block, this.data.actingFor) : null;
+  });
   /** The server lists only who is within reach for what costs the action in a running combat; any other use lists the party. */
-  private readonly byReach = this.data.inCombat === true && this.costs;
+  private readonly byReach = computed(() => this.inCombat() === true && this.costs);
   protected readonly whyId = 'use-consumable-why';
   protected readonly targetsErrorId = 'use-consumable-targets-error';
-  /** Only a potion is given: a scroll has no "Dar a…", so nobody is listed for it. */
-  protected readonly gives = this.data.kind === 'potion';
+  /** A potion and an oil are given: a scroll and the rest have no "Dar a…", so nobody is listed for them. */
+  protected readonly gives = canGive(this.data.kind);
   protected readonly canGive = computed(
-    () => this.gives && !this.blocked && (this.targets()?.length ?? 0) > 0,
+    () => this.gives && !this.blocked() && (this.targets()?.length ?? 0) > 0,
   );
   /** "Dar a…" is dashed: the turn does not allow it, or the list is read and has nobody (or could not be read). */
   protected readonly giveOff = computed(
-    () => !!this.blocked || (this.targets() !== null && !this.canGive()),
+    () => !!this.blocked() || (this.targets() !== null && !this.canGive()),
   );
-  /** The block icon says there is nobody to give to; a use the turn does not allow keeps the open hand, like "Beber". */
+  /** The block icon says there is nobody to give to; a use the turn does not allow keeps the open hand, like the item's own button. */
   protected readonly giveIcon = computed(() =>
-    this.giveOff() && !this.blocked ? 'block' : 'volunteer_activism',
+    this.giveOff() && !this.blocked() ? 'block' : 'volunteer_activism',
   );
   /** What says why "Dar a…" is dashed: the line of the turn or of the empty list, or the error of the read. */
   protected readonly giveWhyId = computed(() => {
     if (!this.giveOff()) {
       return null;
     }
-    if (this.reasonText()) {
+    if (this.reasonText() || this.blockedLine()) {
       return this.whyId;
     }
     return this.targetsError() ? this.targetsErrorId : null;
   });
-  protected readonly legend = this.byReach
-    ? 'Dar a quem está ao seu lado'
-    : this.data.inCombat === null
-      ? 'Dar a quem pode receber'
-      : 'Dar a alguém do grupo';
+  protected readonly legend = computed(() =>
+    this.byReach() ? 'Dar a quem está ao seu lado' : 'Dar a alguém do grupo',
+  );
+  /** The verb of the button that applies the item to its user: "Beber" for a potion, "Usar" for the rest. */
+  protected readonly selfWord = computed(() => `${this.drinkWord} eu mesmo`);
 
   /** The player rolls their own dice: the fields open first (the table's mode and the choice of the player, RN-18). */
   protected readonly typing = signal(
@@ -208,77 +242,76 @@ export class UseConsumableSheet {
   );
 
   protected readonly busy = signal(false);
-  protected readonly error = signal('');
-  protected readonly canSend = computed(() => !this.blocked && !this.busy() && this.rolled());
+  protected readonly error = signal<ConsumableRefusal | null>(null);
+  protected readonly canSend = computed(() => !this.blocked() && !this.busy() && this.rolled());
   /** A request in the air: Esc and the backdrop do not close the sheet under it. */
   protected readonly lockWhileBusy = effect(() => this.sheet.lock(this.busy()));
-  private readonly key = new ActionKey();
+  private key = new ActionKey();
+  /** The receiver of the last call, for "Tente de novo". */
+  private lastTarget: ConsumableTargetVm | null = null;
 
   /** Why the first state offers less than two buttons: the turn does not allow it, or the list is read and has nobody. */
   protected readonly reasonText = computed(() => {
-    if (this.blockedText) {
-      return this.blockedText;
-    }
-    if (!this.gives || this.targets() === null || this.canGive() || this.targetsError()) {
+    if (this.blocked() || !this.gives || this.targets() === null) {
       return '';
     }
-    return this.byReach
-      ? 'Ninguém a 1,5 m de você para receber a poção.'
-      : this.data.inCombat === null
-        ? 'Ninguém por perto para receber a poção.'
-        : 'Não há mais ninguém no grupo para receber a poção.';
+    if (this.canGive() || this.targetsError()) {
+      return '';
+    }
+    return this.byReach()
+      ? `Ninguém a 1,5 m de ${this.data.actingFor ?? 'você'} para receber ${this.words.the}.`
+      : `Ninguém mais no grupo para receber ${this.words.the}.`;
   });
 
   /** What the use costs: the mark of the Ação and a bold lead where it spends it, an info icon where it says what it does not. */
-  protected readonly cost = computed((): { mark: boolean; lead: string; rest: string } | null => {
-    if (this.blocked) {
-      return null;
-    }
-    if (this.phase() === 'choose' && this.data.inCombat === true && this.costs) {
-      // The subtitle already says it costs the action; the first choice adds only the reason a button is dashed.
-      return null;
-    }
-    const thing = this.data.kind === 'potion' ? 'A poção' : 'O pergaminho';
-    const who = this.receiverName();
-    const acts = who ? ` ${thing} age em ${who}.` : '';
-    const combat = this.data.inCombat;
-    if (!this.costs && combat !== false) {
-      return {
-        mark: false,
-        lead: 'Não gasta a ação: o mestre decide o tempo que isso leva.',
-        rest: acts,
-      };
-    }
-    if (this.phase() === 'give') {
-      return combat === false
-        ? { mark: false, lead: 'Fora de combate, não gasta a vez.', rest: acts }
-        : {
-            mark: true,
-            lead: combat === true ? 'Gasta a sua ação.' : 'Em combate, gasta a sua ação.',
-            rest: acts,
-          };
-    }
-    if (combat === false) {
-      return {
-        mark: false,
-        lead: 'Fora de combate: não gasta a vez.',
-        rest: this.canGive() ? ' “Dar a…” lista o grupo todo.' : '',
-      };
-    }
-    return { mark: false, lead: 'Em combate, gasta a ação; fora dele, não gasta a vez.', rest: '' };
-  });
+  protected readonly cost = computed(() =>
+    useCost({
+      kind: this.data.kind,
+      costsAction: this.costs,
+      inCombat: this.inCombat(),
+      blocked: !!this.blocked(),
+      phase: this.phase(),
+      receiverName: this.receiverName(),
+      canGive: this.canGive(),
+    }),
+  );
 
   constructor() {
-    if (this.blocked || !this.gives) {
+    if (this.blocked() || !this.gives) {
       // The turn does not allow the use, or the item is not given: nobody is listed and the server is not asked.
       this.targets.set([]);
       return;
     }
-    void this.data.loadTargets().then((out) => {
-      this.targets.set(out.targets);
-      this.targetsError.set(out.error);
-      this.chosen.set(out.targets[0]?.id ?? '');
-    });
+    void this.refreshTargets();
+  }
+
+  /** Reads who may receive the item and what the targets say of the combat; `leaving` is a receiver the list must not offer again. */
+  protected async refreshTargets(leaving = ''): Promise<void> {
+    const out = await this.data.loadTargets();
+    this.targets.set(out.targets.filter((t) => t.id !== leaving));
+    this.targetsError.set(out.error);
+    if (out.inCombat !== null) {
+      this.inCombat.set(out.inCombat);
+    }
+    this.follow(out);
+    const still = this.targets()?.find((t) => t.id === this.chosen());
+    this.chosen.set(still?.id ?? this.targets()?.[0]?.id ?? '');
+    if (this.phase() === 'give' && (this.targets()?.length ?? 0) === 0) {
+      this.phase.set('choose');
+    }
+  }
+
+  /** What the page holds now of the unit: its count, the unit that takes the place of a gone one, or the sheet closing. */
+  private follow(after: Aftermath): void {
+    if (after.left !== undefined) {
+      this.left.set(Math.max(1, after.left));
+    }
+    if (after.rebound) {
+      this.key = new ActionKey();
+    }
+    if (after.close) {
+      this.sheet.close(true);
+    }
   }
 
   /** "Voltar": the first choice again, with the focus on "Dar a…". */
@@ -300,6 +333,20 @@ export class UseConsumableSheet {
     );
   }
 
+  /** "Digitar os dados": the fields replace the button that was pressed, so the focus goes to the first die. */
+  protected startTyping(): void {
+    this.typing.set(true);
+    afterNextRender(() => this.faceFields()[0]?.nativeElement.focus(), { injector: this.injector });
+  }
+
+  /** "Rolar no app": the fields go, so the focus goes back to the button that opens them. */
+  protected stopTyping(): void {
+    this.typing.set(false);
+    afterNextRender(() => focusWithRing(this.typeSwitch()?.nativeElement), {
+      injector: this.injector,
+    });
+  }
+
   protected onFace(index: number, event: Event): void {
     const text = (event.target as HTMLInputElement).value;
     this.faces.update((all) => all.map((old, i) => (i === index ? text : old)));
@@ -309,26 +356,47 @@ export class UseConsumableSheet {
     if (!this.canSend()) {
       return;
     }
+    this.lastTarget = target;
     const faces = this.parsed().filter((v): v is number => v !== null);
     const request: UseConsumableRequest = {
       target,
       roll: this.dice && this.typing() ? { faces } : { inApp: true },
     };
     this.busy.set(true);
-    this.error.set('');
+    this.error.set(null);
     try {
-      const why = await this.data.use(
+      const answer = await this.data.use(
         request,
         this.key.keyFor({ target: target?.id ?? '', roll: request.roll }),
       );
-      if (why) {
-        this.error.set(why);
-      } else {
+      this.follow(answer);
+      const why = answer.refusal;
+      if (!why) {
         this.sheet.close(true);
+      } else if (why.block) {
+        // The turn or the action: the sheet is blocked and its ban line says why, so the refusal is not said twice.
+        this.blocked.set(why.block);
+      } else {
+        this.error.set(why);
+        if (target && (why.cause === 'target-dead' || why.cause === 'target-away')) {
+          // The receiver is out of reach or dead: the list is read again and the choice dropped.
+          await this.refreshTargets(why.cause === 'target-dead' ? target.id : '');
+        }
       }
     } finally {
       this.busy.set(false);
     }
+  }
+
+  /** "Tente de novo" under a call that never reached the server: the same call again, with the same key. */
+  protected retry(): void {
+    void this.send(this.lastTarget);
+  }
+
+  /** "Tente de novo" under a list that could not be read. */
+  protected retryTargets(): void {
+    this.targetsError.set(null);
+    void this.refreshTargets();
   }
 
   protected close(): void {

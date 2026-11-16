@@ -29,6 +29,13 @@ export type LastChargeRoll =
   { readonly inApp: true } | { readonly face: number; readonly regainFace?: number };
 
 /** How the healing dice of a potion come (RN-18): the app rolls them, or the player typed one face for each die. */
+/** The answer of `listConsumableTargets`. */
+export interface ConsumableTargets {
+  readonly targets: ConsumableTarget[];
+  /** The character is a combatant of a running combat. */
+  readonly inCombat: boolean;
+}
+
 export type ConsumableRoll = { readonly inApp: true } | { readonly faces: readonly number[] };
 
 /** The table's dice setting and the player's own choice, which decide whether a die is typed or rolled in the app. */
@@ -123,14 +130,17 @@ export class ChargesClient {
     });
   }
 
-  /** Who the character may give the consumable to: the adjacent player characters in a combat, the party out of one. */
+  /**
+   * Who the character may give the consumable to (the adjacent player characters in a combat, the party out of one) and
+   * whether the character is in a running combat, which the server tests the same way as the list.
+   */
   async listConsumableTargets(
     campaignId: string,
     characterId: string,
     entryId: string,
-  ): Promise<ConsumableTarget[]> {
+  ): Promise<ConsumableTargets> {
     const res = await this.client.listConsumableTargets({ campaignId, characterId, entryId });
-    return res.targets;
+    return { targets: res.targets, inCombat: res.inCombat };
   }
 
   /** The pieces of one kind of ammunition (0 to 9999): the owner while the sheet is open to editing, the master always. */

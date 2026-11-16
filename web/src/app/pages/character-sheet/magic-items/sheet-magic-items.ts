@@ -234,12 +234,11 @@ export function createSheetMagicItems(d: SheetMagicItemsDeps): SheetMagicItems {
           }
         : null;
     },
-    // The sheet does not know whether a combat is running: the "Usar" sheet says both costs.
+    // The sheet does not know whether a combat is running: the "Usar" sheet learns it from the targets read.
     inCombat: () => null,
     turnBlock: () => null,
     reload: d.reload,
     dice: () => items.charges.tableDice(),
-    categoryOf: (key) => categories.categoryOf(key),
     // The row of the last unit is gone once the sheet is drawn again: the section's heading takes the focus.
     focusConsumable: (key) =>
       afterNextRender(

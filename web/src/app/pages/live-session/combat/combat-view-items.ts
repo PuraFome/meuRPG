@@ -1,6 +1,5 @@
-import { afterNextRender, computed, Directive, effect, inject, untracked } from '@angular/core';
+import { afterNextRender, computed, Directive, effect, untracked } from '@angular/core';
 
-import { MagicCategories } from '../../../core/characters/attunement';
 import { turnBlockOf } from '../../../core/characters/consumables';
 import { focusWithRing } from '../../../core/creatures/focus-ring';
 import { ChargesClient } from '../../../core/play/charges-client';
@@ -15,7 +14,6 @@ export abstract class CombatViewItemsDirective extends CombatViewPartsDirective 
   /** The potions and scrolls of the character on turn: the "Itens" tab and the "Usar" sheet of the combat (`CombatItems`). */
   protected readonly items = new CombatItems({
     client: () => this.injector.get(ChargesClient),
-    categories: inject(MagicCategories),
     campaignId: () => this.campaignId(),
     // The own combatant: the player's character, or the one the master acts for.
     characterId: () => this.own()?.characterId ?? '',

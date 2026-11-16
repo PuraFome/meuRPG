@@ -10,11 +10,6 @@ import type { UseConsumableData } from '../../../shared/consumable-use/use-consu
 /** What the combat's "Itens" reads from the screen it serves. */
 export interface CombatItemsContext {
   readonly client: () => ChargesClient;
-  /** The catalog category of every item key, read once per campaign (`MagicCategories`). */
-  readonly categories: {
-    readonly load: (campaignId: string) => Promise<void>;
-    readonly categoryOf: (key: string) => string;
-  };
   readonly campaignId: () => string;
   /** The character whose items the screen shows: the player's own, or the one the master acts for; empty when there is none. */
   readonly characterId: () => string;
@@ -41,9 +36,7 @@ export interface CombatItemsContext {
  */
 export class CombatItems {
   private readonly entries = signal<readonly AttunementEntryVm[]>([]);
-  readonly rows = computed(() =>
-    combatItemRows(this.entries(), (key) => this.ctx.categories.categoryOf(key)),
-  );
+  readonly rows = computed(() => combatItemRows(this.entries()));
   /** The use of an item: the sheet, the calls and the notice. */
   readonly use: ConsumableUse;
   /** What the last use said, for the card at the top of the tab. */
@@ -66,7 +59,6 @@ export class CombatItems {
       turnBlock: ctx.turnBlock,
       reload: () => this.read(),
       dice: ctx.dice,
-      categoryOf: (key) => ctx.categories.categoryOf(key),
       focusConsumable: ctx.focusItem,
       openUse: ctx.openUse,
     });
@@ -77,7 +69,6 @@ export class CombatItems {
         return;
       }
       untracked(() => {
-        void ctx.categories.load(ctx.campaignId());
         void this.read();
       });
     });

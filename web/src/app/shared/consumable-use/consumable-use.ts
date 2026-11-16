@@ -3,12 +3,11 @@ import type { Observable } from 'rxjs';
 
 import { DiceMode, DicePreference } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import type { AttunementEntryVm } from '../../core/characters/attunement';
+import type { ConsumableKind } from '../../core/characters/consumable-vm';
 import {
-  type ConsumableKind,
   type ConsumableNotice,
   type ConsumableTargetVm,
-  consumableKind,
-  costsAction,
+  goneNotice,
   targetRows,
   type TurnBlock,
   useNotice,
@@ -20,12 +19,16 @@ import {
   type TableDice,
 } from '../../core/play/charges-client';
 import {
-  chargesDidNotGetThrough,
-  consumableErrorMessage,
-  consumableTargetsErrorMessage,
+  type ConsumableErrorContext,
+  type ConsumableRefusal,
+  consumableNeedsReload,
+  consumableRefusal,
+  consumableTargetsRefusal,
 } from '../../core/play/charges-errors';
 import type {
+  Aftermath,
   TargetsOutcome,
+  UseAnswer,
   UseConsumableData,
   UseConsumableRequest,
 } from './use-consumable-sheet';
@@ -46,7 +49,10 @@ export interface ConsumableUseHost {
   readonly campaignId: () => string;
   /** The character as the page holds it. */
   readonly owner: () => ConsumableOwner | null;
-  /** Whether a combat is running, when the page knows (the combat's "Itens" does); `null` on the sheet, which says both costs. */
+  /**
+   * Whether a combat is running, when the page knows (the combat's "Itens" does); `null` on the sheet, which learns it from
+   * the targets read (`ListConsumableTargetsResponse.in_combat`) and says nothing of the cost until then.
+   */
   readonly inCombat: () => boolean | null;
   /** What the page knows keeps a potion from the Action (the turn is not the character's, or the Action is spent); `null` where it does not know, as on the sheet. */
   readonly turnBlock: () => TurnBlock | null;
@@ -56,113 +62,192 @@ export interface ConsumableUseHost {
   readonly dice: () => Promise<TableDice>;
   /** Puts the focus on the row of the consumable (its "Usar") once the page has drawn it again. */
   readonly focusConsumable: (key: string) => void;
-  /** The catalog category of an item key ("potion", "scroll"), or '' while it is not read. */
-  readonly categoryOf: (key: string) => string;
   readonly openUse: (data: UseConsumableData) => Observable<boolean | undefined>;
 }
 
+/** The unit a sheet is open on: it changes when the unit is gone and another one of the same item is left. */
+interface Session {
+  entry: AttunementEntryVm;
+}
+
+/** A refusal as the notice of the page, for a sheet that closes under it. */
+function refusalNotice(refusal: ConsumableRefusal): ConsumableNotice {
+  return { tone: 'neutral', icon: 'info', headline: refusal.lead, detail: refusal.text, text: [] };
+}
+
 /**
- * The potions and scrolls of a character: "Usar" opens the use sheet (`UseConsumableSheet`) and every call goes to
- * `ChargesService`. The page reads the character again after a use, since the unit is gone. Works on a locked sheet, for
- * the owner and for the master, who acts for the character ("Usar por Tor"). The sheet does not know whether a combat is
- * running, so it says both costs; the combat's "Itens" says there is one.
+ * The potions, oils and scrolls of a character: "Usar" opens the use sheet (`UseConsumableSheet`) and every call goes to
+ * `ChargesService`. What each entry is and costs is the server's (`AttunementEntryVm.consumable`); an entry without it is no
+ * consumable and has no row. The page reads the character again after a use, since the unit is gone, and after every failure
+ * but a call that never left: the sheet then follows what the page now holds (the count, the unit, the receivers). Works on a
+ * locked sheet, for the owner and for the master, who acts for the character ("Usar por Tor").
  */
 export class ConsumableUse {
   /** What the last use said, for the live region under the magic items or the combat's items. */
   readonly result = signal<ConsumableNotice | null>(null);
+  /** A sheet is opening or open: a second tap on "Usar" opens nothing. */
+  private opening = false;
 
   constructor(private readonly host: ConsumableUseHost) {}
 
   /** "Usar" on the row of a consumable: `entry` is the unit the row sends (one entry of the group). */
   openUse(entry: AttunementEntryVm): void {
     const vm = this.host.owner();
-    if (!vm) {
+    const consumable = entry.consumable;
+    if (!vm || !consumable || this.opening) {
       return;
     }
+    this.opening = true;
     this.result.set(null);
-    const kind: ConsumableKind = consumableKind(this.host.categoryOf(entry.key)) ?? 'potion';
-    const left = Math.max(1, vm.entries.filter((e) => e.key === entry.key).length);
-    void this.host.dice().then((dice) => {
-      this.host
-        .openUse({
-          itemName: entry.namePt,
-          itemKey: entry.key,
-          kind,
-          effectPt: entry.effectPt ?? '',
-          left,
-          actingFor: vm.byMaster ? vm.name : null,
-          inCombat: this.host.inCombat(),
-          blockedBy: costsAction(kind, entry.key) ? this.host.turnBlock() : null,
-          canApp: dice.mode !== DiceMode.PHYSICAL,
-          canType: dice.mode !== DiceMode.APP,
-          preferApp: effectivePreference(dice.mode, dice.preference) === DicePreference.APP,
-          loadTargets: () => this.loadTargets(vm, entry, kind),
-          use: (request, key) => this.use(vm, entry, kind, left, request, key),
-        })
-        .subscribe(() => this.host.focusConsumable(entry.key));
-    });
+    const kind = consumable.kind;
+    const session: Session = { entry };
+    const done = () => {
+      this.opening = false;
+    };
+    this.host
+      .dice()
+      .then((dice) => {
+        this.host
+          .openUse({
+            itemName: entry.namePt,
+            kind,
+            consumable,
+            effectPt: entry.effectPt ?? '',
+            left: Math.max(1, this.unitsOf(vm, entry.key)),
+            actingFor: vm.byMaster ? vm.name : null,
+            inCombat: this.host.inCombat(),
+            blockedBy: consumable.costsAction ? this.host.turnBlock() : null,
+            canApp: dice.mode !== DiceMode.PHYSICAL,
+            canType: dice.mode !== DiceMode.APP,
+            preferApp: effectivePreference(dice.mode, dice.preference) === DicePreference.APP,
+            loadTargets: () => this.loadTargets(session, vm, kind),
+            use: (request, key) => this.use(session, vm, kind, request, key),
+          })
+          .subscribe({
+            next: () => this.host.focusConsumable(session.entry.key),
+            error: done,
+            complete: done,
+          });
+      })
+      .catch(done);
+  }
+
+  private unitsOf(vm: ConsumableOwner, key: string): number {
+    return vm.entries.filter((e) => e.key === key).length;
+  }
+
+  /**
+   * What the page holds now of the unit a refusal was about, once it has been read again: the units left and, when the unit
+   * the sheet was open on is no longer there, the one that takes its place, or that the sheet closes with a notice when no
+   * unit is left. Nothing is said of a read that is not on screen.
+   */
+  private async aftermath(
+    session: Session,
+    kind: ConsumableKind,
+    refusal: ConsumableRefusal,
+  ): Promise<Aftermath> {
+    const onScreen = await this.host.reload();
+    const vm = this.host.owner();
+    if (!onScreen || !vm) {
+      return {};
+    }
+    const units = vm.entries.filter((e) => e.key === session.entry.key);
+    if (units.length === 0) {
+      this.result.set(refusal.cause === 'item-gone' ? goneNotice(kind) : refusalNotice(refusal));
+      return { left: 0, close: true };
+    }
+    if (units.some((e) => e.id === session.entry.id)) {
+      return { left: units.length };
+    }
+    session.entry = units[0];
+    return { left: units.length, rebound: true };
+  }
+
+  private context(
+    vm: ConsumableOwner,
+    kind: ConsumableKind,
+    target?: ConsumableTargetVm | null,
+    typedDice?: boolean,
+  ): ConsumableErrorContext {
+    return {
+      kind,
+      userName: vm.name,
+      targetName: target?.name,
+      targetId: target?.id,
+      actingFor: vm.byMaster ? vm.name : undefined,
+      typedDice,
+    };
   }
 
   private async loadTargets(
+    session: Session,
     vm: ConsumableOwner,
-    entry: AttunementEntryVm,
     kind: ConsumableKind,
+    again = true,
   ): Promise<TargetsOutcome> {
     try {
       const list = await this.host
         .client()
-        .listConsumableTargets(this.host.campaignId(), vm.id, entry.id);
-      return { targets: targetRows(list), error: '' };
+        .listConsumableTargets(this.host.campaignId(), vm.id, session.entry.id);
+      return { targets: targetRows(list.targets), inCombat: list.inCombat, error: null };
     } catch (err) {
-      if (!chargesDidNotGetThrough(err)) {
-        await this.host.reload();
+      const error = consumableTargetsRefusal(err, this.context(vm, kind));
+      if (!consumableNeedsReload(err)) {
+        return { targets: [], inCombat: null, error };
       }
-      return {
-        targets: [],
-        error: consumableTargetsErrorMessage(err, {
-          kind,
-          actingFor: vm.byMaster ? vm.name : undefined,
-        }),
-      };
+      const after = await this.aftermath(session, kind, error);
+      if (after.rebound && again) {
+        // The unit was used: the list is read again for the one that takes its place.
+        const next = await this.loadTargets(session, vm, kind, false);
+        return { ...next, left: after.left, rebound: true };
+      }
+      return { targets: [], inCombat: null, error, ...after };
     }
   }
 
   private async use(
+    session: Session,
     vm: ConsumableOwner,
-    entry: AttunementEntryVm,
     kind: ConsumableKind,
-    left: number,
     request: UseConsumableRequest,
     key: string,
-  ): Promise<string> {
+  ): Promise<UseAnswer> {
     const target: ConsumableTargetVm | null = request.target;
     const roll: ConsumableRoll = request.roll;
     try {
       const res = await this.host
         .client()
-        .useConsumable(this.host.campaignId(), vm.id, entry.id, target?.id ?? '', roll, key);
-      await this.host.reload();
+        .useConsumable(
+          this.host.campaignId(),
+          vm.id,
+          session.entry.id,
+          target?.id ?? '',
+          roll,
+          key,
+        );
+      // The notice follows what the page holds once it has read the character again, never a count made up here.
+      const onScreen = await this.host.reload();
+      const now = this.host.owner();
+      const entry = session.entry;
       this.result.set(
         useNotice(res, {
           itemName: entry.namePt,
+          kind,
           effectPt: entry.effectPt ?? '',
           userName: vm.name,
           receiverName: target?.name ?? vm.name,
           gift: target !== null,
           woke: target?.down === true,
-          left: left - 1,
+          left: onScreen && now ? this.unitsOf(now, entry.key) : null,
         }),
       );
-      return '';
+      return { refusal: null };
     } catch (err) {
-      if (!chargesDidNotGetThrough(err)) {
-        await this.host.reload();
+      const refusal = consumableRefusal(err, this.context(vm, kind, target, 'faces' in roll));
+      if (!consumableNeedsReload(err)) {
+        return { refusal };
       }
-      return consumableErrorMessage(err, {
-        kind,
-        targetName: target?.name,
-        actingFor: vm.byMaster ? vm.name : undefined,
-      });
+      return { refusal, ...(await this.aftermath(session, kind, refusal)) };
     }
   }
 }

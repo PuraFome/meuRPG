@@ -5,7 +5,8 @@ import {
   CharacterBlockedSchema,
   type ItemRecharge,
 } from '../../../gen/meurpg/characters/v1/characters_pb';
-import type { ConsumableKind, TurnBlock } from '../characters/consumables';
+import type { ConsumableKind } from '../characters/consumable-vm';
+import { kindWords, type TurnBlock } from '../characters/consumables';
 import { blockedMessage, encounterBlocked, sessionClosed } from '../combat/combat-errors';
 import { EncounterBlockedReason } from '../../../gen/meurpg/play/v1/combat_pb';
 import { noChargesWithRecharge } from '../characters/recharge-text';
@@ -94,100 +95,177 @@ export function chargesErrorMessage(
   return describeCharacterError(err);
 }
 
-/** Who and what a refused use of a consumable is about, for the words of its refusals. */
+/** Who and what a refused or failed use of a consumable is about, for the words of its refusals. */
 export interface ConsumableErrorContext {
   readonly kind: ConsumableKind;
+  /** The name of the character that holds the item: the refusals about "this character" say who. */
+  readonly userName: string;
   /** The receiver the call named, when it was a gift: the refusals that are about them say their name. */
   readonly targetName?: string;
+  /** The receiver's id, to tell whose death `CHARACTER_DEAD` is. */
+  readonly targetId?: string;
   /** The character the master acts for: "Só na vez de Tor". Absent for the player's own use. */
   readonly actingFor?: string;
+  /** The call carried the faces of typed dice: only then can an `invalid_argument` be about them. */
+  readonly typedDice?: boolean;
 }
 
-const KIND_WORDS: Record<ConsumableKind, { use: string; goneUsed: string }> = {
-  potion: { use: 'a poção', goneUsed: 'Essa poção já foi usada' },
-  scroll: { use: 'o pergaminho', goneUsed: 'Esse pergaminho já foi usado' },
-};
+/** What a refusal is about, for what the sheet does next: the receiver (read the list again), the item, or neither. */
+export type RefusalCause = 'target-dead' | 'target-away' | 'item-gone' | 'other';
 
-/** The line of a turn that does not allow the use, the one the server's refusals say too: "Só na sua vez…", "Você já usou a ação desta vez.". */
-export function turnBlockMessage(block: TurnBlock, actingFor: string | null): string {
+/**
+ * A refusal or failure of a use as the sheet shows it: a bold lead, the rest of the sentence, and how it looks. A turn or an
+ * action the character does not have is a ban line (the look of a folded group's reason); every other refusal is a red notice.
+ */
+export interface ConsumableRefusal {
+  readonly lead: string;
+  readonly text: string;
+  readonly look: 'danger' | 'ban';
+  /** The call never reached the server: the sheet offers to send it again. */
+  readonly retry: boolean;
+  readonly cause: RefusalCause;
+  /** The turn or the action is what keeps the use: the sheet shows it as its ban line and offers nothing under it. */
+  readonly block?: TurnBlock;
+}
+
+function refusal(
+  lead: string,
+  text: string,
+  more: Partial<Pick<ConsumableRefusal, 'look' | 'retry' | 'cause' | 'block'>> = {},
+): ConsumableRefusal {
+  return { lead, text, look: 'danger', retry: false, cause: 'other', ...more };
+}
+
+/** What keeps a use from the Action, in two parts: a bold lead and the rest of the sentence. */
+export interface TurnBlockParts {
+  readonly lead: string;
+  readonly text: string;
+}
+
+/** The line of a turn that does not allow the use, the one the server's refusals say too: "Só na sua vez: beber ou dar gasta a ação.", "Ação já usada. Você já usou a ação desta vez.". */
+export function turnBlockParts(block: TurnBlock, actingFor: string | null): TurnBlockParts {
   return block === 'turn'
-    ? `Só na ${actingFor ? `vez de ${actingFor}` : 'sua vez'}: beber ou dar gasta a ação.`
-    : `${actingFor ?? 'Você'} já usou a ação desta vez.`;
+    ? {
+        lead: `Só na ${actingFor ? `vez de ${actingFor}` : 'sua vez'}:`,
+        text: 'beber ou dar gasta a ação.',
+      }
+    : { lead: 'Ação já usada.', text: `${actingFor ?? 'Você'} já usou a ação desta vez.` };
 }
 
-/** The sentence of an item that is no longer on the sheet: the sheet is read again after it. */
-function itemGoneMessage(words: { goneUsed: string }): string {
-  return `${words.goneUsed}. A ficha foi atualizada.`;
+/** The line of a turn that does not allow the use, as one sentence. */
+export function turnBlockMessage(block: TurnBlock, actingFor: string | null): string {
+  const { lead, text } = turnBlockParts(block, actingFor);
+  return `${lead} ${text}`;
 }
 
 /** What a refusal of the combat says: the turn, the action, the receiver out of reach, down or dead, the item gone, and the reasons the combat has sentences for. */
-function combatMessage(
+function combatRefusal(
   encounter: NonNullable<ReturnType<typeof encounterBlocked>>,
   ctx: ConsumableErrorContext,
-  words: { use: string; goneUsed: string },
-): string {
+): ConsumableRefusal {
+  const words = kindWords(ctx.kind);
+  const target = ctx.targetName ?? 'Quem ia receber';
   switch (encounter.reason) {
     case EncounterBlockedReason.NOT_YOUR_TURN:
-      return turnBlockMessage('turn', ctx.actingFor ?? null);
-    case EncounterBlockedReason.ACTION_USED:
-      return turnBlockMessage('action', ctx.actingFor ?? null);
+    case EncounterBlockedReason.ACTION_USED: {
+      const block = encounter.reason === EncounterBlockedReason.NOT_YOUR_TURN ? 'turn' : 'action';
+      const { lead, text } = turnBlockParts(block, ctx.actingFor ?? null);
+      return refusal(lead, text, { look: 'ban', block });
+    }
     case EncounterBlockedReason.COMBATANT_DOWN:
-      return 'Quem está caído não age, mas ainda pode receber uma poção.';
+      return refusal('Quem está caído não age.', `Mas ainda pode receber ${words.the}.`);
     // A creature at three failed death saves still reads "Caída" in the list of a player, and the server refuses it.
     case EncounterBlockedReason.TARGET_DEAD:
-      return `${ctx.targetName ?? 'Quem ia receber'} já morreu: não dá para dar ${words.use} a quem morreu. Nada foi gasto.`;
+      return refusal(
+        `${target} morreu.`,
+        `Não dá para dar ${words.the} a quem morreu. Nada foi gasto.`,
+        { cause: 'target-dead' },
+      );
     case EncounterBlockedReason.TARGET_NOT_ADJACENT:
-      return `${ctx.targetName ?? 'Quem ia receber'} não está mais ${ctx.actingFor ? `ao lado de ${ctx.actingFor}` : 'ao seu lado'}. Nada foi gasto.`;
+      return refusal(
+        'Longe demais.',
+        `${target} não está mais ${ctx.actingFor ? `ao lado de ${ctx.actingFor}` : 'ao seu lado'}. Nada foi gasto.`,
+        { cause: 'target-away' },
+      );
     case EncounterBlockedReason.ITEM_GONE:
-      return itemGoneMessage(words);
+      return refusal(words.goneLead, `${words.goneUsed}. A ficha foi atualizada.`, {
+        cause: 'item-gone',
+      });
   }
-  return blockedMessage(encounter);
+  return refusal('Não foi possível.', blockedMessage(encounter));
+}
+
+/** Whether the sheet must be read again after a failed use: everything but a call that never reached the server. */
+export function consumableNeedsReload(err: unknown): boolean {
+  return ConnectError.from(err, Code.Unavailable).code !== Code.Unavailable;
 }
 
 /**
  * What a refused or failed use of a consumable says in the "Usar" sheet, by the typed reason and never by the server's
- * message: the turn and the action of a combat, the receiver out of reach and the item gone (worded for this sheet; the
- * generic sentences of the combat stay for the other callers), then the sentences of the combat and of the character for the
- * rest. The refusals that spend nothing and could leave the player in doubt say so: the receiver gone or dead, the character
- * dead or no longer at the table, no open session, dice that do not fit the die and a call that did not get through.
+ * message: a bold lead and the sentence. The refusals that spend nothing say so; a call that was cut off or failed on the
+ * server says "Não sabemos se foi usada: confira a ficha", since it may have spent the unit; one that never left says nothing
+ * was spent and can be sent again. The turn and the action of a combat are ban lines.
  */
-export function consumableErrorMessage(err: unknown, ctx: ConsumableErrorContext): string {
-  const words = KIND_WORDS[ctx.kind];
+export function consumableRefusal(err: unknown, ctx: ConsumableErrorContext): ConsumableRefusal {
+  const words = kindWords(ctx.kind);
   const encounter = encounterBlocked(err);
   if (encounter) {
-    return combatMessage(encounter, ctx, words);
+    return combatRefusal(encounter, ctx);
   }
   if (sessionClosed(err)) {
-    return 'Sem sessão aberta: só dá para usar durante a sessão. Nada foi gasto.';
+    return refusal('Sem sessão aberta.', 'Só dá para usar durante a sessão. Nada foi gasto.');
   }
   const connectErr = ConnectError.from(err, Code.Unavailable);
   if (connectErr.code === Code.FailedPrecondition) {
-    const reason = connectErr.findDetails(CharacterBlockedSchema)[0]?.reason;
-    if (reason === CharacterBlockedReason.CHARACTER_DEAD) {
-      return 'Esse personagem está morto: não usa nem recebe itens. Nada foi gasto.';
+    const blocked = connectErr.findDetails(CharacterBlockedSchema)[0];
+    if (blocked?.reason === CharacterBlockedReason.CHARACTER_DEAD) {
+      const forTarget = !!ctx.targetId && blocked.characterId === ctx.targetId;
+      const who = forTarget ? (ctx.targetName ?? 'Quem ia receber') : ctx.userName;
+      return refusal(`${who} morreu.`, 'Quem morreu não usa nem recebe itens. Nada foi gasto.', {
+        cause: forTarget ? 'target-dead' : 'other',
+      });
     }
   }
   switch (connectErr.code) {
     case Code.InvalidArgument:
-      return 'Os dados digitados não valem: cada um vai de 1 até o número de faces dele. Nada foi gasto.';
+      return ctx.typedDice
+        ? refusal(
+            'Dados inválidos.',
+            'Cada dado vai de 1 até o número de faces dele. Nada foi gasto.',
+          )
+        : refusal('Pedido inválido.', `Não deu para usar ${words.the}. Nada foi gasto.`);
     case Code.NotFound:
-      return `${ctx.targetName ?? 'Esse personagem'} não está mais na mesa. Nada foi gasto.`;
+      return ctx.targetName
+        ? refusal('Fora da mesa.', `${ctx.targetName} não está mais na mesa. Nada foi gasto.`, {
+            cause: 'target-away',
+          })
+        : refusal('Fora da mesa.', `${ctx.userName} não está mais na mesa. Nada foi gasto.`);
+    case Code.Unavailable:
+      return refusal('Sem conexão.', `Não deu para usar ${words.the}. Nada foi gasto.`, {
+        retry: true,
+      });
+    case Code.Unknown:
+    case Code.Internal:
+    case Code.DeadlineExceeded:
+      return refusal('Não sabemos se foi usada:', 'confira a ficha.');
   }
-  if (chargesDidNotGetThrough(err)) {
-    return `Não deu para usar ${words.use}. Nada foi gasto. Tente de novo.`;
-  }
-  return describeCharacterError(err);
+  return refusal('Não foi possível.', describeCharacterError(err));
 }
 
 /**
  * What a failed read of who may receive the item says, by the typed reason: the item is gone, the character is dead or no
- * longer at the table, and for anything else that the list could not be read. It never speaks of typed dice or of a
- * receiver, which the list read has none of.
+ * longer at the table, and for anything else that the list could not be read (and can be read again). It never speaks of
+ * typed dice or of a receiver, which the list read has none of.
  */
-export function consumableTargetsErrorMessage(err: unknown, ctx: ConsumableErrorContext): string {
-  const words = KIND_WORDS[ctx.kind];
+export function consumableTargetsRefusal(
+  err: unknown,
+  ctx: ConsumableErrorContext,
+): ConsumableRefusal {
+  const words = kindWords(ctx.kind);
   if (encounterBlocked(err)?.reason === EncounterBlockedReason.ITEM_GONE) {
-    return itemGoneMessage(words);
+    return refusal(words.goneLead, `${words.goneUsed}. A ficha foi atualizada.`, {
+      cause: 'item-gone',
+    });
   }
   const connectErr = ConnectError.from(err, Code.Unavailable);
   if (
@@ -195,10 +273,12 @@ export function consumableTargetsErrorMessage(err: unknown, ctx: ConsumableError
     connectErr.findDetails(CharacterBlockedSchema)[0]?.reason ===
       CharacterBlockedReason.CHARACTER_DEAD
   ) {
-    return 'Esse personagem está morto: não usa nem recebe itens.';
+    return refusal(`${ctx.userName} morreu.`, 'Quem morreu não usa nem recebe itens.');
   }
   if (connectErr.code === Code.NotFound) {
-    return 'Esse personagem não está mais na mesa.';
+    return refusal('Fora da mesa.', `${ctx.userName} não está mais na mesa.`);
   }
-  return `Não deu para ver quem pode receber ${words.use}. Tente de novo.`;
+  return refusal('Sem a lista.', `Não deu para ver quem pode receber ${words.the}.`, {
+    retry: true,
+  });
 }

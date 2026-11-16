@@ -1,7 +1,7 @@
 <app-sheet-frame
   [title]="title"
   titleId="use-consumable-t"
-  [subtitle]="subtitle"
+  [subtitle]="subtitle()"
   [phone]="inSheet"
   (closed)="close()"
 >
@@ -11,16 +11,32 @@
   @if (explain) {
     <p class="explain">{{ explain }}</p>
   }
-  @if (error()) {
-    <p class="mr-notice mr-notice--danger" role="alert">
-      <mat-icon aria-hidden="true">error</mat-icon><span>{{ error() }}</span>
-    </p>
-  }
-  @if (targetsError()) {
-    <p class="mr-notice mr-notice--danger" role="alert" [id]="targetsErrorId">
-      <mat-icon aria-hidden="true">error</mat-icon><span>{{ targetsError() }}</span>
-    </p>
-  }
+  <div class="mr-live" role="alert">
+    @if (error(); as e) {
+      <p class="mr-notice mr-notice--danger refusal">
+        <span class="mr-notice__said">
+          <mat-icon aria-hidden="true">error</mat-icon>
+          <span><strong>{{ e.lead }}</strong> {{ e.text }}</span>
+        </span>
+        @if (e.retry) {
+          <button matButton="outlined" type="button" class="refusal__retry" [disabled]="busy()" (click)="retry()">Tente de novo</button>
+        }
+      </p>
+    }
+  </div>
+  <div class="mr-live" role="alert">
+    @if (targetsError(); as e) {
+      <p class="mr-notice mr-notice--danger refusal" [id]="targetsErrorId">
+        <span class="mr-notice__said">
+          <mat-icon aria-hidden="true">error</mat-icon>
+          <span><strong>{{ e.lead }}</strong> {{ e.text }}</span>
+        </span>
+        @if (e.retry) {
+          <button matButton="outlined" type="button" class="refusal__retry" (click)="retryTargets()">Tente de novo</button>
+        }
+      </p>
+    }
+  </div>
   @if (phase() === 'give') {
     <fieldset class="who">
       <legend class="who__legend">{{ legend }}</legend>
@@ -53,7 +69,7 @@
         <p class="dice__line">
           O app rola {{ d.text }}{{ receiverName() ? ' para ' + receiverName() : '' }}.
           @if (data.canType) {
-            <button type="button" class="dice__switch" (click)="typing.set(true)">Digitar os dados</button>
+            <button #typeSwitch type="button" class="dice__switch" (click)="startTyping()">Digitar os dados</button>
           }
         </p>
       } @else {
@@ -63,7 +79,7 @@
             O {{ signedModifier }} o app soma.
           }
           @if (data.canApp) {
-            <button type="button" class="dice__switch" (click)="typing.set(false)">Rolar no app</button>
+            <button type="button" class="dice__switch" (click)="stopTyping()">Rolar no app</button>
           }
         </p>
         <div class="dice__fields">
@@ -71,6 +87,7 @@
             <div class="dice__one">
               <label class="dice__label" [for]="'use-consumable-face-' + n">Dado {{ n + 1 }} (d{{ d.sides }})</label>
               <input
+                #face
                 [id]="'use-consumable-face-' + n"
                 class="dice__field"
                 type="text"
@@ -94,10 +111,16 @@
     </div>
   }
   <div class="why" aria-live="polite">
-    @if (phase() === 'choose' && reasonText()) {
-      <p class="none" [id]="whyId">
-        <mat-icon aria-hidden="true">block</mat-icon>{{ reasonText() }}
-      </p>
+    @if (phase() === 'choose') {
+      @if (blockedLine(); as b) {
+        <p class="none" [id]="whyId">
+          <mat-icon aria-hidden="true">block</mat-icon><span><strong>{{ b.lead }}</strong> {{ b.text }}</span>
+        </p>
+      } @else if (reasonText()) {
+        <p class="none" [id]="whyId">
+          <mat-icon aria-hidden="true">block</mat-icon>{{ reasonText() }}
+        </p>
+      }
     }
   </div>
   @if (cost(); as c) {
@@ -139,24 +162,24 @@
         type="button"
         class="go"
         [class.go--off]="!canSend()"
-        [class.mr-button--off]="!!blocked"
+        [class.mr-button--off]="!!blocked()"
         [disabled]="!canSend()"
         disabledInteractive
-        [attr.aria-describedby]="blocked ? whyId : null"
+        [attr.aria-describedby]="blocked() ? whyId : null"
         (click)="send(null)"
       >
-        <mat-icon aria-hidden="true">{{ data.kind === 'potion' ? 'science' : 'description' }}</mat-icon>{{ busy() ? 'Usando...' : drinkWord }}
+        <mat-icon aria-hidden="true">{{ itemIcon }}</mat-icon>{{ busy() ? 'Usando...' : drinkWord }}
       </button>
     } @else {
-      @if (data.inCombat !== true) {
+      @if (inCombat() !== true) {
         <button matButton="outlined" type="button" class="go--half" [disabled]="busy()" disabledInteractive (click)="back()">Voltar</button>
       }
       <button
         matButton="filled"
         type="button"
         class="go"
-        [class.go--wide]="data.inCombat === true"
-        [class.go--half]="data.inCombat !== true"
+        [class.go--wide]="inCombat() === true"
+        [class.go--half]="inCombat() !== true"
         [class.go--off]="!canSend()"
         [disabled]="!canSend()"
         disabledInteractive
@@ -164,7 +187,7 @@
       >
         <mat-icon aria-hidden="true">volunteer_activism</mat-icon>{{ busy() ? 'Usando...' : 'Dar a ' + receiverName() }}
       </button>
-      @if (data.inCombat === true) {
+      @if (inCombat() === true) {
         <button
           matButton="outlined"
           type="button"
@@ -173,7 +196,7 @@
           disabledInteractive
           (click)="send(null)"
         >
-          <mat-icon aria-hidden="true">science</mat-icon>Beber eu mesmo
+          <mat-icon aria-hidden="true">{{ itemIcon }}</mat-icon>{{ selfWord() }}
         </button>
       }
     }
