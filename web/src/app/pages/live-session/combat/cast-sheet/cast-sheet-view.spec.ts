@@ -552,6 +552,19 @@ describe('the result of the cast', () => {
     expect(castNotes(create(SpellCastSchema, {}), spell).length).toBe(1);
   });
 
+  it('ends the notes of a cast with those of its spell', () => {
+    const spell = {
+      name: 'Toque Vampírico',
+      economy: ActionEconomy.ACTION,
+      metaOptions: [],
+      sorceryPoints: null,
+    };
+    const notes = castNotes(create(SpellCastSchema, { spellKey: 'spell:vampiric-touch' }), spell);
+    expect(notes.length).toBe(2);
+    expect(notes[1]).toContain('repetir o ataque');
+    expect(castNotes(create(SpellCastSchema, { spellKey: 'spell:shield' }), spell).length).toBe(1);
+  });
+
   it('knows a plain cast: nothing to roll, hit or save', () => {
     expect(isPlainCast(create(SpellCastSchema, { targets: [{ combatantId: 'a' }] }), 'plain')).toBe(
       true,

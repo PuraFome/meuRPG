@@ -368,7 +368,7 @@ const BLOCKED_TEXT_WITH_NUMBERS: ReadonlyMap<
   [EncounterBlockedReason.TOO_FAR, tooFarText],
   [
     EncounterBlockedReason.TARGET_OUT_OF_REACH,
-    (b) => `Longe demais: faltam ${metersText(b.missingFt)} para chegar ao alvo.`,
+    (b) => `Longe demais: a distância passa do limite em ${metersText(b.missingFt)}.`,
   ],
   [
     EncounterBlockedReason.NO_SLOT,
