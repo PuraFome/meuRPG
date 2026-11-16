@@ -641,6 +641,10 @@ func (c *content) asPlayer() *content {
 	return &x
 }
 
+// StoredIssues are the things a stored entry holds that the content leaves out while the entry loads: a key a choice of
+// tools lists that no tool choice offers. The master reads them on the entry; a write that holds one is refused.
+func (c *Content) StoredIssues() []*OverlayError { return slices.Clone(c.c.kept) }
+
 // AsksOptionsOf says the choice (its key is its feature's) offers the options of another feature, a pool the table
 // keeps some options out of for the reader (from_feature).
 func (c *Content) AsksOptionsOf(choiceKey string) bool { return c.c.fromFeature[choiceKey] != "" }
@@ -1503,6 +1507,7 @@ func (c *content) cloneForOverlay() *content {
 	n.listFrom = map[string]string{}
 	n.offeredBy = map[string][]string{}
 	n.fromFeature, n.askedBy = map[string]string{}, map[string][]string{}
+	n.kept = nil
 	n.archived = map[string]bool{}
 	n.off = map[string]bool{}
 	n.entryRevision = map[string]int{}

@@ -315,7 +315,11 @@ func (b *overlayBuilder) addFeatureOption(f, o *TableFeature, k featureKind, at 
 
 // effectSite is where an effect is, for the errors it gets: the owner's key and
 // the effect's path in the Overlay.
-type effectSite struct{ owner, path string }
+type effectSite struct {
+	owner, path string
+	// strict says the entry is being written (Overlay.Strict): what is stored is read as it was before.
+	strict bool
+}
 
 // fail is the refusal of the effect's attribute attr.
 func (s effectSite) fail(attr, reason, format string, args ...any) error {
@@ -325,7 +329,7 @@ func (s effectSite) fail(attr, reason, format string, args ...any) error {
 // checkEffect is the closed menu: what is not on it is refused, naming the key.
 // The error carries the effect's path.
 func (b *overlayBuilder) checkEffect(owner, path string, e *Effect, strict bool) error {
-	site := effectSite{owner: owner, path: path}
+	site := effectSite{owner: owner, path: path, strict: strict}
 	if err := checkEffectType(site, e); err != nil {
 		return err
 	}
@@ -595,7 +599,12 @@ func (b *overlayBuilder) checkChoiceKey(site effectSite, e *Effect, k string) er
 		return site.fail(".from", ReasonReference, "%q is not an option of an SRD feature", k)
 	}
 	if e.Choice == "tool" && !b.base.isToolPickKey(k) {
-		return site.fail(".from", ReasonValue, "%q is not a tool, a weapon or another kind of proficiency a tool choice offers", k)
+		err := site.fail(".from", ReasonValue, "%q is not a tool, a weapon or another kind of proficiency a tool choice offers", k)
+		if site.strict {
+			return err
+		}
+		// A stored entry that names such a key loads, as it always did: the pool leaves the key out, and the master reads why.
+		b.n.kept = append(b.n.kept, err.(*OverlayError))
 	}
 	return nil
 }
