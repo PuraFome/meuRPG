@@ -4,6 +4,7 @@ import (
 	"errors"
 	"slices"
 	"testing"
+	"time"
 )
 
 // The numbers of an infusion record (Build.Infusions): the typed data of the content, the class level and the sheet's
@@ -523,26 +524,165 @@ func TestAManualBonusOnAnInfusedKeyIsRefusedAndOtherEffectsLeaveItAlone(t *testi
 	b.Armor = infArmor
 	b.Infusions = []InfusionRecord{infRec("r1", infGume, infSword)}
 	b.ItemBonuses = []ItemBonus{{Key: infArmor, Bonus: 1}}
-	if err := Validate(b, c); err != nil {
+	stored := b
+	if err := CheckManualBonuses(stored, b, c); err != nil {
 		t.Fatalf("a manual bonus on another piece: %v", err)
 	}
+	// A new manual bonus on the infused sword is refused, at its own entry.
 	b.ItemBonuses = []ItemBonus{{Key: infArmor, Bonus: 1}, {Key: infSword, Bonus: 1}}
 	var ve *ValidationError
-	if err := Validate(b, c); !errors.As(err, &ve) || ve.Field != "full.item_bonuses[1].key" {
+	if err := CheckManualBonuses(stored, b, c); !errors.As(err, &ve) || ve.Field != "full.item_bonuses[1].key" {
 		t.Fatalf("a manual bonus on the infused sword: %v, want a refusal at full.item_bonuses[1].key", err)
+	}
+	// So is a changed one: the stored pair stands, a bigger bonus does not.
+	stored.ItemBonuses = []ItemBonus{{Key: infSword, Bonus: 1}}
+	b.ItemBonuses = []ItemBonus{{Key: infSword, Bonus: 2}}
+	if err := CheckManualBonuses(stored, b, c); !errors.As(err, &ve) || ve.Field != "full.item_bonuses[0].key" {
+		t.Fatalf("a changed manual bonus: %v, want a refusal", err)
 	}
 	// Other effects leave the manual bonus alone: a focus on the staff, a label on the armor, a text only object.
 	b.Infusions = []InfusionRecord{infRec("f", infFoco, infStaff), infRec("l", infResiste, infArmor), infObject("o", infTexto, "Lanterna")}
 	b.ItemBonuses = []ItemBonus{{Key: infStaff, Bonus: 1}, {Key: infArmor, Bonus: 1}}
-	if err := Validate(b, c); err != nil {
+	if err := CheckManualBonuses(Build{}, b, c); err != nil {
 		t.Errorf("a manual bonus beside an infusion with another effect: %v", err)
 	}
 	// An infusion that is not valid now refuses nothing.
 	b.Infusions = []InfusionRecord{infRec("r1", infGume, infSword)}
 	b.FeatureChoices = []string{infTexto}
 	b.ItemBonuses = []ItemBonus{{Key: infSword, Bonus: 1}}
-	if err := Validate(b, c); err != nil {
+	if err := CheckManualBonuses(Build{}, b, c); err != nil {
 		t.Errorf("a record that is not valid now refused a manual bonus: %v", err)
+	}
+}
+
+// A sheet can reach the stale pair (a record on a key the content lost, a manual bonus added, the key back): Derive
+// resolves it, so the pair saves, validates and levels up, and only a new or changed manual bonus is refused.
+func TestAStalePairKeepsSavingAndValidating(t *testing.T) {
+	t.Parallel()
+	c := withOverlay(t, infusionRulesOverlay())
+	b := infBuild(5, infAll...)
+	b.Weapons = []string{infSword}
+	b.ItemBonuses = []ItemBonus{{Key: infSword, Bonus: 1}}
+	b.Infusions = []InfusionRecord{infRec("r1", infGume, infSword)}
+	if err := Validate(b, c); err != nil {
+		t.Errorf("Validate refused the stale pair: %v", err)
+	}
+	if err := CheckManualBonuses(b, b, c); err != nil {
+		t.Errorf("an untouched stale pair was refused on a save: %v", err)
+	}
+	after := b
+	after.Cantrips = []string{"spell:fire-bolt"} // an unrelated edit
+	if err := CheckManualBonuses(b, after, c); err != nil {
+		t.Errorf("an unrelated edit of a stale pair was refused: %v", err)
+	}
+	if s := infStatus(t, Derive(b, c), "r1"); s.Valid {
+		t.Errorf("the stale record is valid: %+v", s)
+	}
+	next := b
+	next.Classes = []ClassLevel{{Class: "class:wizard", Subclass: infSubclass, Level: 6}}
+	if err := Validate(next, c); err != nil {
+		t.Errorf("Validate of the level-up build with the stale pair: %v", err)
+	}
+}
+
+func TestALostOptionMakesItsRecordNotValidNow(t *testing.T) {
+	t.Parallel()
+	c := withOverlay(t, infusionRulesOverlay())
+	b := infBuild(5, infAll...)
+	b.Weapons = []string{infSword}
+	b.Infusions = []InfusionRecord{infRec("r1", infGume, infSword)}
+	d := deriveWith(b, c.c, map[string]*LostPrerequisite{infGume: {}})
+	s := infStatus(t, d, "r1")
+	if s.Valid || s.ReasonPT != reasonInfusionLost || s.Bonus != 0 {
+		t.Errorf("status = %+v, want not valid now: lost", s)
+	}
+	if a, _ := attackOf(d, infSword); a.MagicBonus != 0 || a.InfusionNamePT != "" || len(d.ItemModifiers) != 0 || infHostUsed(d) != 0 {
+		t.Errorf("a lost option's record gave %+v %+v used %d", a, d.ItemModifiers, infHostUsed(d))
+	}
+}
+
+func TestBelowTheFirstStepAValidRecordGivesNoLine(t *testing.T) {
+	t.Parallel()
+	o := infusionRulesOverlay()
+	opts := o.Subclasses[0].Levels[0].Features[0].Options
+	late := []TableInfusionStep{{ClassLevel: 5, Bonus: 1}}
+	opts[0].Infusion.BonusSteps, opts[3].Infusion.BonusSteps = late, late
+	c := withOverlay(t, o)
+	b := infBuild(3, infAll...)
+	b.Weapons = []string{infSword}
+	plainD := Derive(b, c)
+	focus := infObject("f", infFoco, "Cajado")
+	focus.Attuned = true
+	b.Infusions = []InfusionRecord{infRec("r1", infGume, infSword), focus}
+	d := Derive(b, c)
+	if len(d.ItemModifiers) != 0 {
+		t.Errorf("lines below the first step: %+v", d.ItemModifiers)
+	}
+	if a, _ := attackOf(d, infSword); a.MagicBonus != 0 || a.Magical {
+		t.Errorf("a zero bonus changed the attack: %+v", a)
+	}
+	if d.Spellcasting[0].AttackBonus != plainD.Spellcasting[0].AttackBonus {
+		t.Errorf("spell attack %d, want %d", d.Spellcasting[0].AttackBonus, plainD.Spellcasting[0].AttackBonus)
+	}
+	for _, id := range []string{"r1", "f"} {
+		if s := infStatus(t, d, id); !s.Valid || s.Bonus != 0 || s.Counts {
+			t.Errorf("%s: status %+v, want valid with no number", id, s)
+		}
+	}
+}
+
+func TestDeriveLeavesTheBuildAloneAndOneRecordHoldsAPiece(t *testing.T) {
+	t.Parallel()
+	c := withOverlay(t, infusionRulesOverlay())
+	b := infBuild(5, infAll...)
+	b.Weapons = []string{infSword}
+	b.ItemBonuses = []ItemBonus{{Key: infArmor, Bonus: 1}}
+	b.Armor = infArmor
+	old, newer := infRec("old", infGume, infSword), infRec("new", infSelo, infSword)
+	old.Since, newer.Since = time.Unix(100, 0), time.Unix(200, 0)
+	newer.Attuned = true
+	for _, order := range [][]InfusionRecord{{old, newer}, {newer, old}} {
+		b.Infusions = order
+		before := slices.Clone(b.ItemBonuses)
+		d := Derive(b, c)
+		if !slices.Equal(b.ItemBonuses, before) {
+			t.Errorf("Derive changed the build's item bonuses: %+v", b.ItemBonuses)
+		}
+		if s := infStatus(t, d, "old"); !s.Valid {
+			t.Errorf("the oldest record is not valid: %+v", s)
+		}
+		if s := infStatus(t, d, "new"); s.Valid || s.ReasonPT != reasonInfusionTaken {
+			t.Errorf("the newer record = %+v, want not valid: taken", s)
+		}
+		if a, _ := attackOf(d, infSword); a.MagicBonus != 1 || a.InfusionNamePT != "Gume Vivo" {
+			t.Errorf("the piece = %+v, want the oldest infusion's +1", a)
+		}
+		if infHostUsed(d) != 1 || AttunedCount(b, c) != 0 {
+			t.Errorf("used %d, attuned %d, want 1 and 0", infHostUsed(d), AttunedCount(b, c))
+		}
+	}
+}
+
+func TestARecordOnAPieceThatIsNotOnTheSheetIsNotValidNow(t *testing.T) {
+	t.Parallel()
+	c := withOverlay(t, infusionRulesOverlay())
+	b := infBuild(5, infAll...)
+	b.Weapons = []string{infSword}
+	b.Infusions = []InfusionRecord{infRec("r1", infGume, infAxe)}
+	d := Derive(b, c)
+	if s := infStatus(t, d, "r1"); s.Valid || s.ReasonPT != reasonInfusionNoPiece {
+		t.Errorf("status = %+v, want not valid: no piece", s)
+	}
+	if len(d.ItemModifiers) != 0 || infHostUsed(d) != 0 {
+		t.Errorf("modifiers %+v used %d", d.ItemModifiers, infHostUsed(d))
+	}
+}
+
+func TestAttunedCountWithoutContentCountsNoInfusions(t *testing.T) {
+	t.Parallel()
+	b := Build{ItemBonuses: []ItemBonus{{Key: infSword, Bonus: 1, RequiresAttunement: true, Attuned: true}}, Infusions: []InfusionRecord{infRec("r", infSelo, infSword)}}
+	if got := AttunedCount(b, nil); got != 1 {
+		t.Errorf("AttunedCount = %d, want 1", got)
 	}
 }
 

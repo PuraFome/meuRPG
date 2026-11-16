@@ -1065,6 +1065,7 @@ export type FullSheet = Message<"meurpg.characters.v1.FullSheet"> & {
    * A bonus counts only while the piece is equipped and, when it asks for attunement, attuned.
    * The bonus of a weapon key applies to every copy of that key.
    * A client that removes a piece from the sheet must remove its bonus in the same request, or the save is refused.
+   * A bonus the save adds or changes on a piece an infusion gives its bonus is refused (the entry's `key`): end the infusion first.
    *
    * @generated from field: repeated meurpg.characters.v1.ItemBonus item_bonuses = 43;
    */

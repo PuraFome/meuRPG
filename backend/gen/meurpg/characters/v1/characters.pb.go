@@ -3462,6 +3462,7 @@ type FullSheet struct {
 	// A bonus counts only while the piece is equipped and, when it asks for attunement, attuned.
 	// The bonus of a weapon key applies to every copy of that key.
 	// A client that removes a piece from the sheet must remove its bonus in the same request, or the save is refused.
+	// A bonus the save adds or changes on a piece an infusion gives its bonus is refused (the entry's `key`): end the infusion first.
 	ItemBonuses []*ItemBonus `protobuf:"bytes,43,rep,name=item_bonuses,json=itemBonuses,proto3" json:"item_bonuses,omitempty"`
 	// The magic items the character carries that are not weapons, armor or a shield with a +N
 	// (a ring, a cloak): at most 20, each `key` an `item:*` key of the catalog that is not a

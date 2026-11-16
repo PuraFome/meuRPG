@@ -220,6 +220,9 @@ func refuseSheetChanges(content *rules.Content, m authz.Membership, current char
 	if err := refuseFeatChange(m, stored.GetFull(), sheet.GetFull()); err != nil {
 		return err
 	}
+	if err := refuseInfusedBonus(content, stored.GetFull(), sheet.GetFull()); err != nil {
+		return err
+	}
 	// The ability origin is the server's: kept from the stored sheet, and a
 	// player's draft edit of the base scores is checked against it (RN-24).
 	if err := keepAbilityOrigin(m, content, stored, sheet); err != nil {
@@ -234,6 +237,20 @@ func refuseSheetChanges(content *rules.Content, m authz.Membership, current char
 		keepDailyState(stored.GetFull(), sheet.GetFull())
 	}
 	return nil
+}
+
+// refuseInfusedBonus refuses a manual magic bonus that the save adds or changes on a piece an infusion gives its bonus.
+// A pair the stored sheet already has is left alone, so the sheet keeps saving. The builds carry the infusion records
+// once the loader sets Build.Infusions; without them nothing is infused.
+func refuseInfusedBonus(content *rules.Content, stored, sheet *charactersv1.FullSheet) error {
+	if sheet == nil {
+		return nil
+	}
+	err := rules.CheckManualBonuses(buildOf(stored), buildOf(sheet), content)
+	if ve, ok := errors.AsType[*rules.ValidationError](err); ok {
+		return invalidArgument(&fieldError{field: "sheet." + ve.Field, err: errors.New(ve.Message)})
+	}
+	return err
 }
 
 // insertPortraitCopy writes the portrait copy's gallery row in the transaction and puts

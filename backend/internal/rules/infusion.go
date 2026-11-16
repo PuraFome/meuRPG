@@ -38,10 +38,11 @@ type InfusionStatus struct {
 	Parameter          string
 	// Effect is the part of the infusion the app computes (InfusionEffect*); "" for a key the content does not know.
 	Effect string
-	// Computed says the app computes the infusion; false is a text only one, which only counts.
+	// Computed says the app handles the infusion (a number or a mark); false is a text only one, which the table applies.
 	Computed bool
-	// Valid says the record counts: the content knows the infusion, the character has its feature and picked it, and a
-	// manual bonus does not stand on the same piece. ReasonPT says why it does not.
+	// Valid says the record counts: the content knows the infusion, the character has its feature, picked it and still
+	// meets its prerequisite, a gear piece is on the sheet with no older infusion, and a manual bonus does not stand on
+	// the same piece. ReasonPT says why it does not.
 	Valid    bool
 	ReasonPT string
 	// Bonus is the size of the number the infusion gives at the class level, 0 when it gives none or the record is not
@@ -69,6 +70,9 @@ const (
 	reasonInfusionNoHost  = "A ficha não tem a característica desta infusão."
 	reasonInfusionUnpick  = "O personagem não conhece esta infusão."
 	reasonInfusionManual  = "A peça já tem um bônus mágico marcado."
+	reasonInfusionLost    = "A infusão perdeu o pré-requisito."
+	reasonInfusionNoPiece = "A peça não está na ficha."
+	reasonInfusionTaken   = "A peça já tem outra infusão, mais antiga."
 )
 
 // infusionLine is a record read against the content and the sheet.
@@ -94,16 +98,35 @@ func (l infusionLine) gear() bool { return l.rec.ItemKind == InfusionItemGear }
 
 // infusionLines reads the records of b against the content, in order. manualStands says a manual bonus on the piece of an
 // item bonus infusion makes the record not valid (the manual one stands); a save that asks whether the piece may take a
-// manual bonus passes false, because the bonus it asks about is the one in b.
-func (c *content) infusionLines(b Build, manualStands bool) []infusionLine {
+// manual bonus passes false, because the bonus it asks about is the one in b. lost are the options the character no
+// longer meets the prerequisite of: their records are not valid.
+// Two valid records on one gear key cannot be live (one live record per piece): the oldest stands and the other is not
+// valid, the one that comes first in b.Infusions when they began together.
+func (c *content) infusionLines(b Build, manualStands bool, lost map[string]*LostPrerequisite) []infusionLine {
 	out := make([]infusionLine, 0, len(b.Infusions))
 	for _, r := range b.Infusions {
-		out = append(out, c.infusionLine(b, r, manualStands))
+		out = append(out, c.infusionLine(b, r, manualStands, lost))
+	}
+	oldest := map[string]int{}
+	for i, l := range out {
+		if !l.valid || !l.gear() {
+			continue
+		}
+		j, taken := oldest[l.rec.ItemKey]
+		switch {
+		case !taken:
+			oldest[l.rec.ItemKey] = i
+		case l.rec.Since.Before(out[j].rec.Since):
+			out[j].valid, out[j].reasonPT, out[j].bonus = false, reasonInfusionTaken, 0
+			oldest[l.rec.ItemKey] = i
+		default:
+			out[i].valid, out[i].reasonPT, out[i].bonus = false, reasonInfusionTaken, 0
+		}
 	}
 	return out
 }
 
-func (c *content) infusionLine(b Build, r InfusionRecord, manualStands bool) infusionLine {
+func (c *content) infusionLine(b Build, r InfusionRecord, manualStands bool, lost map[string]*LostPrerequisite) infusionLine {
 	l := infusionLine{rec: r}
 	in, ok := c.infusions.data[r.InfusionKey]
 	if !ok {
@@ -120,6 +143,10 @@ func (c *content) infusionLine(b Build, r InfusionRecord, manualStands bool) inf
 		l.reasonPT = reasonInfusionNoHost
 	case !slices.Contains(b.FeatureChoices, r.InfusionKey):
 		l.reasonPT = reasonInfusionUnpick
+	case lost[r.InfusionKey] != nil:
+		l.reasonPT = reasonInfusionLost
+	case l.gear() && !l.onSheet:
+		l.reasonPT = reasonInfusionNoPiece
 	case manualStands && l.gear() && in.Effect == InfusionEffectItemBonus && b.hasItemBonus(r.ItemKey):
 		l.reasonPT = reasonInfusionManual
 	default:
@@ -148,7 +175,7 @@ func (c *content) infusionHostLevel(b Build, host string) (int, bool) {
 // infusesBonusOf says a valid record with an item bonus sits on the gear key, whatever manual bonus the key has: the
 // key takes no manual bonus.
 func (c *content) infusesBonusOf(b Build, key string) bool {
-	for _, l := range c.infusionLines(b, false) {
+	for _, l := range c.infusionLines(b, false, nil) {
 		if l.valid && l.gear() && l.rec.ItemKey == key && l.in.Effect == InfusionEffectItemBonus {
 			return true
 		}
@@ -159,7 +186,7 @@ func (c *content) infusesBonusOf(b Build, key string) bool {
 // attunedInfusions is how many valid records ask for attunement and are attuned.
 func (c *content) attunedInfusions(b Build) int {
 	n := 0
-	for _, l := range c.infusionLines(b, true) {
+	for _, l := range c.infusionLines(b, true, nil) {
 		if l.valid && l.in.RequiresAttunement && l.rec.Attuned {
 			n++
 		}
@@ -201,7 +228,7 @@ func (x *deriver) infuseGear(l infusionLine) {
 		return
 	}
 	x.infused[key] = l
-	if l.in.Effect != InfusionEffectItemBonus || !l.onSheet {
+	if l.in.Effect != InfusionEffectItemBonus || l.bonus < 1 {
 		return
 	}
 	x.bonusFrom[key] = l
@@ -212,6 +239,9 @@ func (x *deriver) infuseGear(l infusionLine) {
 func (x *deriver) addFocus(l infusionLine) {
 	if l.gear() {
 		x.infuseGear(l)
+	}
+	if l.bonus < 1 {
+		return // below the first step: no number and no line
 	}
 	x.foci = append(x.foci, l)
 	if x.focusCounts(l) && l.bonus > x.focusBonus {

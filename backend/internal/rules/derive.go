@@ -150,7 +150,7 @@ func deriveWith(b Build, c *content, lost map[string]*LostPrerequisite) Derived 
 	}
 	x := &deriver{b: b, c: c, d: d, proficient: map[string]bool{}, conditions: map[*Effect]bool{}, appliedTagged: map[*Effect]bool{}, inactiveFeats: inactive, lost: lost}
 
-	x.original, x.lines = b, c.infusionLines(b, true)
+	x.original, x.lines = b, c.infusionLines(b, true, lost)
 	x.equip()
 	x.applyInfusions()
 	x.resolve()

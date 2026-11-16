@@ -113,14 +113,27 @@ func checkItemBonuses(b *Build, c *content) error {
 			return invalid(f+".key", "is not the sheet's armor, its shield or one of its weapons")
 		case seen[ib.Key]:
 			return invalid(f+".key", "repeats an entry")
-		case c.infusesBonusOf(*b, ib.Key):
-			return invalid(f+".key", "is a piece an infusion gives its magic bonus: end the infusion to mark one by hand")
 		case ib.Bonus < 1 || ib.Bonus > MaxItemBonus:
 			return invalid(f+".bonus", "must be from 1 to %d", MaxItemBonus)
 		case ib.ItemKey != "" && !fitsCatalogItem(b, c, ib):
 			return invalid(f+".item_key", "is not a catalog item (no family) that fits the piece: armor for the armor and the shield, a weapon for a weapon")
 		}
 		seen[ib.Key] = true
+	}
+	return nil
+}
+
+// CheckManualBonuses refuses a manual item bonus that the save adds or changes on a gear key that a valid item bonus
+// infusion of incoming (its Infusions) gives its bonus. A pair that is already on the stored sheet is left alone:
+// Derive resolves it, so the sheet keeps saving. The error is a ValidationError at full.item_bonuses[i].key.
+func CheckManualBonuses(stored, incoming Build, c *Content) error {
+	for i, ib := range incoming.ItemBonuses {
+		if old, ok := stored.itemBonus(ib.Key); ok && old.Bonus == ib.Bonus && old.RequiresAttunement == ib.RequiresAttunement && old.ItemKey == ib.ItemKey {
+			continue
+		}
+		if c.c.infusesBonusOf(incoming, ib.Key) {
+			return invalid(fmt.Sprintf("full.item_bonuses[%d].key", i), "has an infusion that gives its magic bonus: end the infusion, or leave the manual bonus off")
+		}
 	}
 	return nil
 }
