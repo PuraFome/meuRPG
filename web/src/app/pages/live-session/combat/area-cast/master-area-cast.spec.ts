@@ -27,7 +27,7 @@ const zuk = combatant({ id: 'z', label: 'Zuk', col: 8, row: 1 });
 const toren = combatant({ id: 't', label: 'Toren', kind: CombatantKind.PLAYER, col: 5, row: 4 });
 const g3 = combatant({ id: 'g3', label: 'Goblin 3', hidden: true, col: 6, row: 5 });
 
-async function open(rule: HiddenAreaHitRule, hiddenInside: boolean) {
+async function open(rule: HiddenAreaHitRule, hiddenInside: boolean, grantedBy = '') {
   TestBed.resetTestingModule();
   const castSpell = vi.fn().mockResolvedValue({ encounter: encounter(), cast: { targets: [] } });
   const previewSpellArea = vi.fn().mockResolvedValue(
@@ -48,6 +48,7 @@ async function open(rule: HiddenAreaHitRule, hiddenInside: boolean) {
     encounterId: 'enc',
     caster: zuk,
     spellKey: 'spell:fireball',
+    grantedBy,
     name: 'Bola de Fogo',
     level: 3,
     slot: { level: 3, pact: false },
@@ -103,7 +104,7 @@ async function open(rule: HiddenAreaHitRule, hiddenInside: boolean) {
   await settle();
   button('Confirmar local').click();
   await settle();
-  return { el, button, settle, castSpell, close, regions };
+  return { el, button, settle, castSpell, previewSpellArea, close, regions };
 }
 
 describe("MasterAreaCast: the master casts an NPC's area spell", () => {
@@ -156,5 +157,17 @@ describe("MasterAreaCast: the master casts an NPC's area spell", () => {
     button('Conjurar Bola de Fogo').click();
     await settle();
     expect(castSpell.mock.calls[0][12].revealHidden).toBeUndefined();
+  });
+
+  it("previews and casts through the grant the spell is the NPC's through, with granted_by", async () => {
+    const { button, settle, castSpell, previewSpellArea } = await open(
+      HiddenAreaHitRule.KEEP_HIDDEN,
+      false,
+      'trait:inato',
+    );
+    expect(previewSpellArea.mock.calls.at(-1)?.[6]).toBe('trait:inato');
+    button('Conjurar Bola de Fogo').click();
+    await settle();
+    expect(castSpell.mock.calls[0][12]).toMatchObject({ grantedBy: 'trait:inato' });
   });
 });

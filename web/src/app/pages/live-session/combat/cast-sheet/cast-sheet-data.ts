@@ -184,18 +184,21 @@ export function masterAreaCastData(req: {
   readonly campaignId: string;
   readonly encounter: Encounter;
   readonly caster: Combatant;
+  /** The option's reference (`castRefOf`): the spell's key, with the grant's source when the NPC casts it through one. */
   readonly key: string;
   readonly found: NonNullable<ReturnType<typeof areaSpellOf>>;
   readonly map: CastMapData;
   readonly state: CombatState;
 }): MasterAreaCastData {
   const { spell, targets, level, name } = req.found;
+  const { key, grantedBy } = splitCastRef(req.key);
   const row = defaultSlot(slotRows(level, spell.slots, [], null));
   return {
     campaignId: req.campaignId,
     encounterId: req.encounter.id,
     caster: req.caster,
-    spellKey: req.key,
+    spellKey: key,
+    grantedBy,
     name,
     level,
     slot: level > 0 ? { level: row?.level ?? level, pact: row?.pact ?? false } : null,

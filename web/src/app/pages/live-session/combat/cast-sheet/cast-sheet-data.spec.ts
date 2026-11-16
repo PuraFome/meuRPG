@@ -279,6 +279,25 @@ describe('the master casting an NPC area spell', () => {
     });
   };
 
+  it('carries the grant of an option the NPC has only through a grant, apart from the spell key', () => {
+    const o = options(3, [{ level: 3, pact: false, free: 1 }]);
+    o.options!.spells[0]!.grant = { sourceKey: 'trait:inato' } as never;
+    const ref = 'spell:fireball#granted=trait:inato';
+    expect(areaSpellOf(o, 'spell:fireball')).toBeNull();
+    const found = areaSpellOf(o, ref)!;
+    const data = masterAreaCastData({
+      campaignId: 'c',
+      encounter: enc,
+      caster,
+      key: ref,
+      found,
+      map: { mapName: 'Cripta' } as never,
+      state: new CombatState(),
+    });
+    expect(data.spellKey).toBe('spell:fireball');
+    expect(data.grantedBy).toBe('trait:inato');
+  });
+
   it("casts with the lowest slot the options offer, or the spell's own level", () => {
     expect(
       dataFor(3, [
