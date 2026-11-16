@@ -330,6 +330,46 @@ describe('ConsumableUse', () => {
       );
     });
 
+    it('waits for the read of the character, however late it lands, before it says what is left', async () => {
+      client.useConsumable.mockResolvedValue(heal());
+      let land!: () => void;
+      reload.mockImplementation(
+        () =>
+          new Promise<boolean>((resolve) => {
+            land = () => {
+              entries = [entry('p2')];
+              resolve(true);
+            };
+          }),
+      );
+      const data = await open();
+      const used = data.use(apply, 'k1');
+      await vi.waitFor(() => expect(reload).toHaveBeenCalledTimes(1));
+      expect(consumables.result()).toBeNull();
+      land();
+      await used;
+      expect(consumables.result()?.detail).toBe('2d4 + 2: 3 + 2 + 2 = 7. Resta 1 Poção de cura.');
+    });
+
+    it('rebinds after a refusal from the sheet the late read brings', async () => {
+      client.useConsumable.mockRejectedValue(gone(EncounterBlockedReason.ITEM_GONE));
+      let land!: () => void;
+      reload.mockImplementation(
+        () =>
+          new Promise<boolean>((resolve) => {
+            land = () => {
+              entries = [entry('p2'), entry('p3')];
+              resolve(true);
+            };
+          }),
+      );
+      const data = await open();
+      const used = data.use(apply, 'k1');
+      await vi.waitFor(() => expect(reload).toHaveBeenCalledTimes(1));
+      land();
+      expect(await used).toMatchObject({ left: 2, rebound: true });
+    });
+
     it('says nothing of what is left when the new read of the sheet is not on screen', async () => {
       client.useConsumable.mockResolvedValue(heal());
       reload.mockResolvedValue(false);
