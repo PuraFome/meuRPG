@@ -58,3 +58,13 @@ export function changeAnnouncement(change: ChangedContentVm): string {
   const n = change.messages.length;
   return `${changeTitle(change).replace(/\.$/, '')}: ${n} ${n === 1 ? 'aviso' : 'avisos'}.`;
 }
+
+/**
+ * The notice of a table weapon that now takes both hands, so the equipped shield does not count (580-16): a changed weapon
+ * whose sentence says it. The sheet's owner ends it by stowing the shield or the weapon; it does not wait for the numbers.
+ */
+export function isShieldNotice(change: ChangedContentVm): boolean {
+  return (
+    change.key.startsWith('weapon:') && change.messages.some((m) => m.includes('as duas mãos'))
+  );
+}

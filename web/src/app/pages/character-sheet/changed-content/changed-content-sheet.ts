@@ -10,7 +10,7 @@ import { MatIconModule } from '@angular/material/icon';
 
 import { PHONE_QUERY } from '../../../shared/map-view/media-query';
 import type { ChangedContentVm } from '../character-sheet.types';
-import { changeSheetTitle } from './changed-content-format';
+import { changeSheetTitle, isShieldNotice } from './changed-content-format';
 
 export interface ChangedContentData {
   readonly change: ChangedContentVm;
@@ -52,7 +52,7 @@ export interface ChangedContentData {
           </ul>
         </div>
         <p class="sheet__who">
-          Quem ajusta: {{ data.canEdit ? 'você, na ficha' : 'o mestre, na ficha' }}. O aviso some sozinho quando os números voltam a combinar.
+          {{ who }}
         </p>
       </div>
       <div class="sheet__foot">
@@ -171,6 +171,10 @@ export class ChangedContentSheet {
 
   protected readonly inSheet = this.sheetRef !== null;
   protected readonly title = changeSheetTitle(this.data.change);
+  /** Who adjusts and when the notice goes: the shield notice has its own two sentences (the owner stows the gear), the others are about the numbers. */
+  protected readonly who = isShieldNotice(this.data.change)
+    ? 'Quem ajusta: o dono da ficha, guardando o escudo ou a arma. O aviso some quando um dos dois deixa de estar em uso.'
+    : `Quem ajusta: ${this.data.canEdit ? 'você, na ficha' : 'o mestre, na ficha'}. O aviso some sozinho quando os números voltam a combinar.`;
   /** "Perícias da ficha: Atletismo, Natureza.", under a sentence that talks about the skills. */
   protected readonly skillsLine =
     (this.data.skills?.length ?? 0) > 0 && this.data.change.messages.some((m) => /perícia/i.test(m))
