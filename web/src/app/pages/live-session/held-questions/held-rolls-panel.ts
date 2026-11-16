@@ -12,6 +12,7 @@ import {
 import { MatIconModule } from '@angular/material/icon';
 
 import { DiceMode } from '../../../../gen/meurpg/campaigns/v1/campaigns_pb';
+import { HeldRollKind } from '../../../../gen/meurpg/play/v1/combat_pb';
 import { HeldQuestions, type MasterQuestion } from '../../../core/held-rolls/held-questions';
 import { asksReroll } from '../../../core/held-rolls/held-roll-offer';
 import { pendingCountText, questionTitle } from '../../../core/held-rolls/held-text';
@@ -100,7 +101,8 @@ export class HeldRollsPanel {
       const res = await this.api.listHeldRolls(this.campaignId());
       // A newer read was asked for while this one was on the way: its answer is the one to keep.
       if (read === this.reads) {
-        this.questions.sync(res.offers);
+        // The NPC check has its own card (`app-npc-check-master`): it is not a question to answer for the roller.
+        this.questions.sync(res.offers.filter((o) => o.kind !== HeldRollKind.NPC_CHECK));
       }
     } catch {
       // A hint that did not come back: the panel keeps what it shows and reads again on the next one.

@@ -48,6 +48,15 @@
   }
   @case ('live') {
     @if (state.session(); as s) {
+      @if (!state.isMaster()) {
+        <!-- The question of a bard whose Cutting Words may cut an NPC's check outside a combat (591): over the board or a puzzle. -->
+        <app-npc-cut-host
+          [campaignId]="state.campaignId()"
+          [tick]="state.heldRollsTick()"
+          [diceMode]="state.campaign()?.diceMode ?? 1"
+          [preference]="state.campaign()?.dicePreference ?? 1"
+        />
+      }
       @if (!state.isMaster() && state.openPuzzle(); as puzzleId) {
         <!-- A shown puzzle, open (MR-038, E10-06 states 6 to 9): in the place of the board; the one stream stays here, and so do the
              session's notices (a trap noticed, a treasure found, a clue that arrived, a combat that needs the player). -->
@@ -325,6 +334,8 @@
                   (leftChanged)="loader.reloadLeftImages()"
                   (taken)="loader.takenBack($event)"
                 />
+                <!-- The master's NPC check outside a combat (591): the scene's own button asks, and the card shows who answered. -->
+                <app-npc-check-master sceneTools [campaignId]="state.campaignId()" [tick]="state.heldRollsTick()" />
                 <!-- The master's group check (W7-X): the scene's own button asks, and the card shows who answered. -->
                 <app-group-check-master
                   sceneTools
@@ -356,6 +367,7 @@
                 (leftChanged)="loader.reloadLeftImages()"
                 (taken)="loader.takenBack($event)"
               />
+              <app-npc-check-master [entry]="true" [campaignId]="state.campaignId()" [tick]="state.heldRollsTick()" />
               <app-group-check-master
                 [collapsible]="true"
                 [campaignId]="state.campaignId()"

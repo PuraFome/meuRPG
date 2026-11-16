@@ -1,0 +1,36 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+
+  &:empty {
+    display: none;
+  }
+}
+
+.entry {
+  align-self: flex-start;
+  min-height: 44px;
+
+  &--off {
+    border: 1px dashed var(--mr-control-line);
+    color: var(--mr-ink-muted);
+  }
+}
+
+.combat {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: var(--mr-font-14);
+  color: var(--mr-ink-muted);
+
+  .mat-icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    font-size: var(--mr-font-18);
+  }
+}

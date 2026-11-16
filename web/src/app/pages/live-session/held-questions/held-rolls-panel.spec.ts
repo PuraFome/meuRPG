@@ -3,6 +3,7 @@ import { create } from '@bufbuild/protobuf';
 import { type Mock, vi } from 'vitest';
 
 import { DiceMode } from '../../../../gen/meurpg/campaigns/v1/campaigns_pb';
+import { cuttingOffer } from '../../../core/npc-check/npc-check-testing';
 import { ListHeldRollsResponseSchema } from '../../../../gen/meurpg/play/v1/resources_pb';
 import { NOTE_LINGER_MS } from '../../../core/held-rolls/held-questions';
 import {
@@ -81,6 +82,16 @@ describe('HeldRollsPanel', () => {
       'Brisa · Tirou 1: rolar de novo?',
       'Toren · Usar a Inspiração de Bardo (d6)?',
     ]);
+  });
+
+  it('keeps the NPC check out of the pending questions: its card is the master\'s own', async () => {
+    list.mockImplementation(() => reply(brisa(), cuttingOffer({ holdId: 'h-npc' }) as never));
+    const { el, flush } = mount();
+    await flush();
+    const headings = Array.from(el.querySelectorAll('h3')).map((h) => h.textContent?.trim() ?? '');
+    expect(headings.some((h) => h.includes('Capitão bandido'))).toBe(false);
+    expect(el.textContent).not.toContain('Capitão bandido');
+    expect(el.textContent).toContain('Brisa');
   });
 
   it('draws nothing but the polite count when nothing is pending', async () => {

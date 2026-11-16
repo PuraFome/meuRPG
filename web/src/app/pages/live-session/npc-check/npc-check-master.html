@@ -1,0 +1,18 @@
+@if (entry()) {
+  <button
+    matButton
+    type="button"
+    class="entry"
+    [class.entry--off]="launcher.combatOpen()"
+    [attr.aria-disabled]="launcher.combatOpen() ? 'true' : null"
+    (click)="open()"
+  >
+    <mat-icon aria-hidden="true">{{ launcher.combatOpen() ? 'block' : 'record_voice_over' }}</mat-icon>Teste de um NPC
+  </button>
+}
+@if (launcher.combatOpen()) {
+  <p class="combat" role="status"><mat-icon aria-hidden="true">block</mat-icon>{{ combatText }}</p>
+}
+@if (state.card(); as card) {
+  <app-npc-check-card [card]="card" [busy]="state.busy()" [error]="state.error()" (skip)="state.skip(campaignId())" (dismiss)="state.dismiss()" />
+}

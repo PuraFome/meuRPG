@@ -17,6 +17,8 @@ import { MatMenuModule } from '@angular/material/menu';
 import { RouterLink } from '@angular/router';
 
 import type { StageNpc } from '../../../../../gen/meurpg/play/v1/scene_pb';
+import { NpcCheckLauncher } from '../../../../core/npc-check/npc-check-launcher';
+import { ofName } from '../../../../core/npc-check/npc-check-picker';
 import { SceneClient } from '../../../../core/play/scene-client';
 import type { SceneState } from '../../../../core/play/scene-state';
 import { StageController } from '../../../../core/play/stage-controller';
@@ -57,6 +59,9 @@ interface StageCard {
 })
 export class StageMaster {
   private readonly api = inject(SceneClient);
+  /** "Teste do Bartolo" in an NPC's menu asks the master's host for the sheet with that NPC chosen. */
+  protected readonly npc = inject(NpcCheckLauncher);
+  protected readonly ofName = ofName;
   private readonly roster = inject(StageRoster);
   private readonly dialog = inject(MatDialog);
   private readonly bottomSheet = inject(MatBottomSheet);

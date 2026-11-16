@@ -45,6 +45,8 @@ export function skipErrorText(_err: unknown): string {
   return 'Não deu para continuar sem esperar agora. Tente de novo.';
 }
 
+/** Said beside the entry while a combat is open. */
+export const COMBAT_OPEN_TEXT = 'Há um combate aberto: os testes das criaturas são do combate.';
 /** The picker that could not be read. */
 export const PICKER_ERROR_TEXT = 'Não deu para ler as criaturas.';
 

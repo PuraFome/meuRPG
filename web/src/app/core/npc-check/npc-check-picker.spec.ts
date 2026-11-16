@@ -2,6 +2,7 @@ import { NpcCheckSource } from '../../../gen/meurpg/play/v1/scene_pb';
 import {
   boxHint,
   boxStart,
+  checkHint,
   checkOptions,
   defaultCheck,
   groupsOf,
@@ -130,5 +131,14 @@ describe('parseD20', () => {
     expect(parseD20('1,5')).toBeNull();
     expect(parseD20('')).toBeNull();
     expect(parseD20('abc')).toBeNull();
+  });
+});
+
+describe('checkHint', () => {
+  it('says whose checks the select lists, with the article of the creature', () => {
+    expect(checkHint(candidate())).toBe('Uma perícia ou uma habilidade do Capitão bandido, com o bônus dele.');
+    expect(checkHint(candidate({ name: 'Aranha-lobo' }))).toBe(
+      'Uma perícia ou uma habilidade da Aranha-lobo, com o bônus dela.',
+    );
   });
 });

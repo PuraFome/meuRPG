@@ -1,0 +1,77 @@
+@if (flow.phase() === 'result' && flow.result(); as r) {
+  <app-sheet-frame [title]="r.title" titleId="npc-cut-t" icon="record_voice_over" [subtitle]="r.subtitle" [phone]="inSheet" [closable]="false">
+    <p class="mr-tag mr-tag--success tag"><mat-icon aria-hidden="true">content_cut</mat-icon>{{ r.tag }}</p>
+    <div class="said">
+      <span class="said__box" aria-hidden="true">{{ r.face }}</span>
+      <p class="said__text">{{ r.text }}</p>
+    </div>
+    <ul class="chips" aria-label="Inspiração de Bardo">
+      @for (c of r.chips; track c; let first = $first) {
+        <li class="chip" [class.chip--cost]="first">{{ c }}</li>
+      }
+    </ul>
+    <p class="note"><mat-icon aria-hidden="true">visibility_off</mat-icon>{{ r.note }}</p>
+    <div foot class="foot">
+      <button matButton="filled" type="button" data-initial-focus (click)="close()">Voltar à cena</button>
+    </div>
+  </app-sheet-frame>
+} @else if (view(); as v) {
+  <app-sheet-frame [title]="v.title" titleId="npc-cut-t" icon="record_voice_over" [subtitle]="v.subtitle" [phone]="inSheet" [closable]="false">
+    @if (flow.phase() === 'skipped') {
+      <div class="mr-notice mr-notice--neutral" role="status">
+        <mat-icon aria-hidden="true">info</mat-icon>
+        <p><strong>O mestre seguiu sem a sua resposta.</strong> Nada foi gasto.</p>
+      </div>
+    } @else if (flow.phase() === 'late') {
+      <div class="mr-notice mr-notice--danger" role="alert">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <p><strong>{{ flow.error()?.lead }}</strong> {{ flow.error()?.text }}</p>
+      </div>
+    } @else {
+      <p class="lead"><strong>{{ v.lead }}</strong> {{ v.text }}</p>
+      <ul class="chips" aria-label="O que a resposta custa">
+        @for (c of v.chips; track c; let first = $first) {
+          <li class="chip" [class.chip--cost]="first">{{ c }}</li>
+        }
+      </ul>
+      <ul class="notes">
+        <li class="note"><mat-icon aria-hidden="true">visibility_off</mat-icon>{{ v.notes[0] }}</li>
+        <li class="note"><mat-icon aria-hidden="true">hourglass_empty</mat-icon>{{ v.notes[1] }}</li>
+      </ul>
+      @if (data.typed) {
+        <app-text-field
+          [label]="v.fieldLabel"
+          inputmode="numeric"
+          [maxlength]="maxLength"
+          [value]="text()"
+          [hint]="v.fieldHint"
+          [issues]="invalid() ? ['Digite um número de 1 a ' + v.sides + '.'] : []"
+          (valueChange)="text.set($event)"
+        />
+      }
+      @if (flow.error(); as e) {
+        <div class="mr-notice mr-notice--danger" role="alert">
+          <mat-icon aria-hidden="true">error</mat-icon>
+          <p><strong>{{ e.lead }}</strong> {{ e.text }}</p>
+        </div>
+      }
+    }
+    <div foot class="foot">
+      @if (flow.phase() === 'skipped' || flow.phase() === 'late') {
+        <button matButton="filled" type="button" data-initial-focus (click)="close()">Fechar</button>
+      } @else {
+        <app-pair-foot
+          cancelLabel="Deixar passar"
+          [confirmLabel]="cutText()"
+          confirmIcon="content_cut"
+          [ready]="cutReady()"
+          [busy]="flow.busy()"
+          [cancelOff]="flow.busy()"
+          [safe]="true"
+          (cancel)="pass()"
+          (confirm)="cut()"
+        />
+      }
+    </div>
+  </app-sheet-frame>
+}

@@ -75,6 +75,11 @@ export function ofName(name: string): string {
   return `${article(name) === 'a' ? 'da' : 'do'} ${name}`;
 }
 
+/** The line under the select "Teste": whose checks they are. */
+export function checkHint(c: NpcCheckCandidate): string {
+  return `Uma perícia ou uma habilidade ${ofName(c.name)}, com o bônus ${article(c.name) === 'a' ? 'dela' : 'dele'}.`;
+}
+
 /** The box shows only when the map cannot measure the creature against a bard. */
 export function showsBox(c: NpcCheckCandidate): boolean {
   return !c.mapMeasures;

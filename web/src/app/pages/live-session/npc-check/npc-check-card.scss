@@ -1,0 +1,213 @@
+:host {
+  display: block;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-sizing: border-box;
+  padding: 14px 16px;
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-lg);
+  background: var(--mr-surface-sunken, var(--mr-surface));
+
+  p {
+    margin: 0;
+  }
+
+  // The check waits for a bard: the warning surface, so it reads as open without the colour alone (the tags and the button say it).
+  &--waiting {
+    border-color: var(--mr-warning-line);
+    background: var(--mr-warning-surface);
+  }
+}
+
+.card__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.card__icon {
+  flex: none;
+}
+
+.card__title {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-size: var(--mr-font-22);
+  font-weight: 700;
+  line-height: 27px;
+  overflow-wrap: anywhere;
+}
+
+.card__only {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--mr-font-14);
+  color: var(--mr-ink-muted);
+
+  .mat-icon {
+    width: 18px;
+    height: 18px;
+    font-size: var(--mr-font-18);
+  }
+}
+
+.card__close {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin: -8px -8px -8px 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 3px solid var(--mr-focus);
+    outline-offset: 0;
+  }
+}
+
+.total {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 16px;
+}
+
+.total__box {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-width: 56px;
+  height: 56px;
+  padding: 0 8px;
+  border: 2px solid var(--mr-ink);
+  border-radius: var(--mr-radius-md);
+  font-family: var(--mr-font-display);
+  font-size: var(--mr-font-28);
+  font-weight: 700;
+}
+
+.total__text {
+  flex: 1 1 12rem;
+  min-width: 0;
+}
+
+.total__formula {
+  font-size: var(--mr-font-16);
+  font-weight: 700;
+  line-height: 22px;
+}
+
+.total__detail {
+  font-size: var(--mr-font-14);
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.total__skip {
+  flex: 0 1 auto;
+  min-height: 44px;
+
+  @media (max-width: 767px) {
+    flex: 1 1 100%;
+  }
+}
+
+.note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: var(--mr-font-14);
+  line-height: 20px;
+  color: var(--mr-ink-muted);
+
+  .mat-icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    font-size: var(--mr-font-18);
+    margin-top: 1px;
+  }
+
+  &--warn {
+    color: var(--mr-warning-ink);
+    font-weight: 700;
+  }
+}
+
+.rows {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--mr-line);
+}
+
+.row__who {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--mr-ink);
+  color: var(--mr-surface);
+  font-family: var(--mr-font-display);
+  font-weight: 700;
+}
+
+.row__text {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.row__name {
+  font-weight: 700;
+  line-height: 20px;
+  overflow-wrap: anywhere;
+}
+
+.row__sub {
+  font-size: var(--mr-font-14);
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.row__tag {
+  white-space: normal;
+  height: auto;
+  min-height: 26px;
+  padding-block: 3px;
+  text-align: center;
+
+  &--closed {
+    border-style: dashed;
+  }
+}

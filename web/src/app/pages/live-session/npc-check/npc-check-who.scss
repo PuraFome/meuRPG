@@ -1,0 +1,106 @@
+:host {
+  display: block;
+}
+
+.who {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.who__group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 8px 0 0;
+  color: var(--mr-ink-muted);
+  font-size: var(--mr-font-14);
+  font-weight: 700;
+
+  .mat-icon {
+    width: 18px;
+    height: 18px;
+    font-size: var(--mr-font-18);
+  }
+}
+
+.row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  box-sizing: border-box;
+  min-height: 56px;
+  padding: 10px 14px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-surface);
+  cursor: pointer;
+
+  &--on {
+    padding: 9px 13px;
+    border: 2px solid var(--mr-accent);
+    background: var(--mr-accent-soft);
+  }
+
+  &:has(:focus-visible) {
+    outline: 3px solid var(--mr-focus);
+    outline-offset: 2px;
+  }
+}
+
+// A radio drawn by hand: the ring, and the filled disc inside it for the chosen row.
+.row__mark {
+  flex: none;
+  box-sizing: border-box;
+  width: 24px;
+  height: 24px;
+  margin-top: 10px;
+  border: 2px solid var(--mr-control-line);
+  border-radius: 50%;
+}
+
+.row--on .row__mark {
+  border-color: var(--mr-accent);
+  background: radial-gradient(circle, var(--mr-accent) 0 38%, transparent 42%);
+}
+
+.row__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.row__name {
+  font-size: var(--mr-font-16);
+  font-weight: 700;
+  line-height: 22px;
+  overflow-wrap: anywhere;
+}
+
+.row__sees,
+.row__warn {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: var(--mr-font-14);
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+
+  .mat-icon {
+    flex: none;
+    width: 16px;
+    height: 16px;
+    margin-top: 1.5px;
+    font-size: var(--mr-font-16);
+  }
+}
+
+.row__warn {
+  color: var(--mr-warning-ink);
+  font-weight: 700;
+}
+
+.who__search {
+  display: block;
+}

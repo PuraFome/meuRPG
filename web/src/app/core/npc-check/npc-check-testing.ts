@@ -15,6 +15,12 @@ import {
   NpcCheckSource,
 } from '../../../gen/meurpg/play/v1/scene_pb';
 
+const BARD_DIE_SIDES = 8;
+const BARD_USES = 3;
+const CREATURE_FACE = 13;
+/** The moment the question was asked: a fixed one, so a spec never depends on the clock. */
+const ASKED_AT_MS = 1_794_000_000_000;
+
 /**
  * Builders for the specs of the NPC check (never imported by the app, so never bundled): the messages as the server sends them,
  * always made with `create`, so a field added to the proto never leaves a spec with a hand-built object missing it.
@@ -26,7 +32,7 @@ export function ask(
   state: NpcCheckAskState,
   over: { sides?: number; face?: number } = {},
 ) {
-  return { characterId: name.toLowerCase(), characterName: name, state, sides: over.sides ?? 8, face: over.face ?? 0 };
+  return { characterId: name.toLowerCase(), characterName: name, state, sides: over.sides ?? BARD_DIE_SIDES, face: over.face ?? 0 };
 }
 
 /** A check that waits for Brisa and bilbo: the d20 13 + 4 = 17 of the Capitão bandido's Enganação. */
@@ -36,7 +42,7 @@ export function npcCheckRead(over: MessageInitShape<typeof NpcCheckReadSchema> =
     creatureLabel: 'Capitão bandido',
     checkKey: 'skill:deception',
     checkName: 'Enganação',
-    d20: { diceCount: 1, diceSides: 20, faces: [13], modifier: 4, total: 17 },
+    d20: { diceCount: 1, diceSides: 20, faces: [CREATURE_FACE], modifier: 4, total: 17 },
     modifierKnown: true,
     asks: [
       ask('Brisa', NpcCheckAskState.WAITING),
@@ -73,8 +79,8 @@ export function cuttingOffer(over: MessageInitShape<typeof HeldRollOfferSchema> 
     holdId: 'hold-1',
     kind: HeldRollKind.NPC_CHECK,
     rollerLabel: 'Capitão bandido',
-    createdAt: timestampFromMs(Date.UTC(2026, 10, 16, 21, 14)),
-    question: { case: 'cuttingWords', value: { sides: 8, usesLeft: 3 } },
+    createdAt: timestampFromMs(ASKED_AT_MS),
+    question: { case: 'cuttingWords', value: { sides: BARD_DIE_SIDES, usesLeft: BARD_USES } },
     ...over,
   } as MessageInitShape<typeof HeldRollOfferSchema>;
   return create(HeldRollOfferSchema, init);
