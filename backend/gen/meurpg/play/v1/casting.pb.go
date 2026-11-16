@@ -543,7 +543,9 @@ type CastingSpell struct {
 	// (CastSpellOutsideCombatRequest.granted_by = source_key). The spell is listed once, even
 	// when the character's class has it too.
 	Grants []*CastingGrant `protobuf:"bytes,22,rep,name=grants,proto3" json:"grants,omitempty"`
-	// The dice a cast rolls at each level it can be cast at, from the spell's own level to 9th: in the app, or typed as a sum from physical dice. Empty when the cast rolls none.
+	// The dice a cast rolls at each level it can be cast at: the spell's own level to 9th, a cantrip's own only.
+	// A client reads the entry of the slot's level, else of the grant's `cast_level`, else of the spell's own.
+	// Empty when the cast rolls none.
 	DiceByLevel   []*CastingDice `protobuf:"bytes,23,rep,name=dice_by_level,json=diceByLevel,proto3" json:"dice_by_level,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

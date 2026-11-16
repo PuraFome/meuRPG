@@ -164,8 +164,9 @@ The slot, targets and dice are checked by the server alone: `invalid_argument` c
   In a combat the dice of a cast through a grant are those at its `cast_level`, rolled in the app or physically.
   Outside a combat the server rolls and heals at the `cast_level`.
   The cast sheet shows the dice of the level it casts at: the slot's, else the grant's `cast_level`, else the spell's own.
-  `CastingSpell.dice_by_level` holds the dice of each level from the spell's own to 9th (`CastingDice`: level and dice, "3d8"), empty when the cast rolls none.
-  A typed sum is checked against those dice; `roll_dice` is the dice at the spell's own level.
+  `CastingSpell.dice_by_level` holds the dice of each level from the spell's own to 9th, a cantrip's own only, and is empty when the cast rolls none.
+  The server checks a typed sum against the dice of the level cast.
+  `roll_dice` is the dice at the spell's own level.
   The undo of a cast through a grant gives back no slot.
   A retried cast answers with the area at the cast level.
   `SpellTargets` lists one entry per enabled cast option of a spell, in the order of the options.

@@ -124,7 +124,7 @@ test(
       await expect(sheet.getByText('Digite a soma dos dados, de 3 a 24.')).toBeVisible();
       await pickTargetOf(sheet, 'Brisa');
 
-      // A sum no 1d8 reaches: 20, the 3d8 the slot's level rolls. Healed: 20 + Wisdom 3 + Disciple of Life (2 + 3).
+      // 20 is above the 1d8 maximum, so only the 3d8 of the 3rd-level slot accepts it. Healed: 20 + Wisdom 3 + Disciple of Life (2 + 3).
       await sheet.getByLabel('Role 3d8 para Curar Ferimentos: some os dados').fill('20');
       await sheet.getByRole('button', { name: 'Confirmar' }).click();
       await expect(sheet.getByText('Brisa recuperou 28 PV.')).toBeVisible();
