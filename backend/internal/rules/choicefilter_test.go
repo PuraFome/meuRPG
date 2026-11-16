@@ -161,3 +161,24 @@ func TestAFilterThatDoesNotFitItsChoiceIsRefused(t *testing.T) {
 		})
 	}
 }
+
+// An explicit list of a choice of tools names proficiencies of the kinds tool, weapon and other alone.
+func TestAToolListRefusesAProficiencyOfAnotherKind(t *testing.T) {
+	t.Parallel()
+	base := loadForTest(t)
+	for _, key := range []string{"proficiency:light-armor", "proficiency:heavy-armor", "proficiency:shields"} {
+		if p := base.c.proficiencies[key]; p == nil || slices.Contains(filterKinds, p.Kind) {
+			t.Fatalf("%s is %+v, want a proficiency of another kind than the filter's", key, p)
+		}
+	}
+	for _, key := range []string{"skill:athletics", "language:common", "proficiency:light-armor", "saving-throw:strength", "proficiency:nenhuma"} {
+		t.Run(key, func(t *testing.T) {
+			t.Parallel()
+			_, err := base.With(filterBackgroundWith(Effect{Type: "choice", Choice: "tool", Count: 1, From: []string{"proficiency:smiths-tools", key}}))
+			var oe *OverlayError
+			if !errors.As(err, &oe) || !slices.ContainsFunc(oe.Violations(), func(v *OverlayError) bool { return strings.HasSuffix(v.Field, ".from") }) {
+				t.Errorf("With: %v, want %s refused at from", err, key)
+			}
+		})
+	}
+}

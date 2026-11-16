@@ -594,6 +594,9 @@ func (b *overlayBuilder) checkChoiceKey(site effectSite, e *Effect, k string) er
 	if e.Choice == "feature" && !isOption(b.base, k) {
 		return site.fail(".from", ReasonReference, "%q is not an option of an SRD feature", k)
 	}
+	if e.Choice == "tool" && !b.base.isToolPickKey(k) {
+		return site.fail(".from", ReasonValue, "%q is not a tool, a weapon or another kind of proficiency a tool choice offers", k)
+	}
 	return nil
 }
 
