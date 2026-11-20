@@ -202,6 +202,11 @@
 }
 
 .row__tag {
+  // A long name in "Esperando {nome}" wraps inside the tag instead of pushing the page sideways.
+  flex: none;
+  max-width: 55%;
+  overflow-wrap: anywhere;
+  border-radius: var(--mr-radius-md);
   white-space: normal;
   height: auto;
   min-height: 26px;
