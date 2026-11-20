@@ -174,10 +174,11 @@ export async function passFlow(t: NpcTable, v: NpcView): Promise<void> {
   const q = cutSheet(p);
   await expect(q.getByRole('button', { name: 'Deixar passar' })).toBeFocused();
   await q.getByRole('button', { name: 'Deixar passar' }).click();
-  await expectNoOffers(p, campaignId);
-  await expect(cutSheet(p)).toHaveCount(0);
+  // The sheet closes and the note shows only after the answer landed: that is the marker, and the server's proof comes after it.
   const note = p.getByRole('status').filter({ hasText: 'Você deixou passar. Nada foi gasto.' });
   await expect(note).toBeVisible();
+  await expectNoOffers(p, campaignId);
+  await expect(cutSheet(p)).toHaveCount(0);
   // The line leaves the page after 6 s: the shot comes first, then the scan.
   await v.shoot?.(p, 'bard-pass-note', note);
   await v.scan?.(p, 'bard-pass-note');
