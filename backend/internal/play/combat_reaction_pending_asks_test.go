@@ -66,12 +66,16 @@ func TestACutLineWaitsForTheBardicDieOfTheRollItCut(t *testing.T) {
 		use            bool
 		master, player string
 	}{
-		{"the die used", true,
+		{
+			"the die used", true,
 			"Bardo usou Palavras de Interrupção: d6 (5) subtraído do ataque de Pipo: 19 → 14 contra CA 12: acertou.",
-			"Bardo usou Palavras de Interrupção: o ataque de Pipo ainda acertou."},
-		{"the die kept", false,
+			"Bardo usou Palavras de Interrupção: o ataque de Pipo ainda acertou.",
+		},
+		{
+			"the die kept", false,
 			"Bardo usou Palavras de Interrupção: d6 (5) subtraído do ataque de Pipo: 15 → 10 contra CA 12: errou.",
-			"Bardo usou Palavras de Interrupção: o ataque de Pipo errou."},
+			"Bardo usou Palavras de Interrupção: o ataque de Pipo errou.",
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
@@ -126,15 +130,19 @@ func TestThePendingLineOfACutIsTheSameForEveryQuestion(t *testing.T) {
 		asks func(*playv1.HeldRollOffer) bool
 	}{
 		{"the Bardic die", func(t *testing.T, a *armed, e *playv1.Encounter) func(*playv1.RollAttackRequest) {
+			t.Helper()
 			a.giveCombatantDie(t, "Pipo", e)
 			return d20(10)
 		}, func(o *playv1.HeldRollOffer) bool { return o.GetDie() != nil }},
 		{"Lucky asked after the Inspiração was spent with the roll", func(t *testing.T, a *armed, e *playv1.Encounter) func(*playv1.RollAttackRequest) {
+			t.Helper()
 			favorFightOf(t, a, e).give(t, a.toren)
 			return func(r *playv1.RollAttackRequest) { r.D20Faces, r.SpendFavor = []int32{1, 1}, true }
 		}, func(o *playv1.HeldRollOffer) bool { return o.GetLucky() != nil }},
-		{"Lucky", func(*testing.T, *armed, *playv1.Encounter) func(*playv1.RollAttackRequest) { return d20(1) },
-			func(o *playv1.HeldRollOffer) bool { return o.GetLucky() != nil }},
+		{
+			"Lucky", func(*testing.T, *armed, *playv1.Encounter) func(*playv1.RollAttackRequest) { return d20(1) },
+			func(o *playv1.HeldRollOffer) bool { return o.GetLucky() != nil },
+		},
 	}
 	read := map[string][]string{}
 	for _, ask := range asks {
@@ -171,7 +179,8 @@ func spellBardTable(t *testing.T, race string) (*armed, *playv1.Encounter) {
 		players: map[string]int32{"Toren": 18, "Pensantus": 10, "Brisa": 1}, reveal: []string{"Bardo"},
 		at: map[string][2]int32{"Toren": {3, 3}, "Bardo": {4, 3}, "Pensantus": {10, 3}, "Brisa": {4, 9}},
 	})
-	return a, a.passTo(t, e, "Pensantus")
+	turn := a.passTo(t, e, "Pensantus")
+	return a, turn
 }
 
 // spellCut holds Pensantus's cast at Bardo for the window and answers it with a die of 5, and returns the question that waits for her.
@@ -230,12 +239,16 @@ func TestACutLineWaitsForTheBardicDieOfASpellAttack(t *testing.T) {
 		use            bool
 		master, player string
 	}{
-		{"the die used", true,
+		{
+			"the die used", true,
 			"Bardo usou Palavras de Interrupção: d6 (5) subtraído do ataque de Pensantus: 25 → 20 contra CA 12: acertou.",
-			"Bardo usou Palavras de Interrupção: o ataque de Pensantus ainda acertou."},
-		{"the die kept", false,
+			"Bardo usou Palavras de Interrupção: o ataque de Pensantus ainda acertou.",
+		},
+		{
+			"the die kept", false,
 			"Bardo usou Palavras de Interrupção: d6 (5) subtraído do ataque de Pensantus: 21 → 16 contra CA 12: acertou.",
-			"Bardo usou Palavras de Interrupção: o ataque de Pensantus ainda acertou."},
+			"Bardo usou Palavras de Interrupção: o ataque de Pensantus ainda acertou.",
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
