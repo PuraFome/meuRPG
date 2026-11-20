@@ -48,7 +48,7 @@ The 500 kB budget bounds what the browser parses; the download is the compressed
 
 A campaign holds at most 1,000 table entries and 6,000 effects (the distinct formulas stay at 500).
 The numbers below were measured on 4 vCPUs of an Intel Xeon at 2.1 GHz (`GOMAXPROCS` 4, 16 GiB), Go 1.27, without `-race`, with the commands in the last table of this page (the benchmarks with `-benchtime 2s -count 5`, the median of the five; the live source and the budget test as the median or range of three runs).
-The "Kept by the content" columns are the content's own heap with the overlay still alive in both readings, so what the content shares with the overlay (strings and slices) is not counted; a cached content keeps a little more once its overlay is dropped (the reviewer's reading with the overlay dropped: 2.2 MB at 300 entries, 5.9 MB at 1,000, 8.2 MB at 2,000 effects, 15.4 MB at 6,000, 16.2 MB at 6,000 with 480 formulas).
+The "Kept by the content" columns are the content's own heap with the overlay still alive in both readings, so what the content shares with the overlay (strings and slices) is not counted; a cached content keeps a little more once its overlay is dropped (read with the overlay dropped before the second reading: 2.2 MB at 300 entries, 5.9 MB at 1,000, 8.2 MB at 2,000 effects, 15.4 MB at 6,000, 16.2 MB at 6,000 with 480 formulas).
 The live-source table ("One cached content keeps") is the production figure, because there the overlay is dropped as in the cache, and the worst case of the cache uses it.
 The tables are built like a large table's books: mostly spells, then subclasses with features, subraces, races, feats, backgrounds and a few classes, every name and number different.
 
