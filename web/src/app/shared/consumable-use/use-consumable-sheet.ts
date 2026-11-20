@@ -189,7 +189,7 @@ export class UseConsumableSheet {
   protected readonly dice = this.data.consumable.heal;
   protected readonly numbers = Array.from({ length: this.dice?.count ?? 0 }, (_, i) => i);
   /** "+ 2" with a no-break space: the sign never stays alone at the end of a line. */
-  protected readonly signedModifier = signedText(this.dice?.modifier ?? 0).replace(' ', ' ');
+  protected readonly signedModifier = signedText(this.dice?.modifier ?? 0).replace(' ', NBSP);
   protected readonly drinkWord = this.words.use;
   protected readonly itemIcon = this.words.icon;
   /** What the item does in words, for the items whose effect line says it only in short; the lasting effect's title and length are the server's. */

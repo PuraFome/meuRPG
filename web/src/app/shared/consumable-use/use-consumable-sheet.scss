@@ -255,7 +255,11 @@
 }
 // A ring that turns: a plain element, since a spinner component in a button is an interactive control inside a control.
 .go__spin {
+  // The label of a button is an inline box: without this the ring has no width and reads as a hairline.
+  display: inline-block;
   flex: none;
+  vertical-align: middle;
+  margin-inline-end: var(--mr-space-2);
   width: 18px;
   height: 18px;
   box-sizing: border-box;

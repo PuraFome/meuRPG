@@ -11095,6 +11095,9 @@ async function scanConsumableCombatScreens(browser: Browser, colorScheme: 'light
     await outside.getByRole('button', { name: 'Beber', exact: true }).click();
     const using = outside.getByRole('button', { name: 'Usando…' });
     await expect(using.locator('.go__spin')).toBeVisible();
+    // A ring, not a hairline: the label of a button is inline, so the ring has to say it takes its box.
+    await expect(using.locator('.go__spin')).toHaveJSProperty('offsetWidth', 18);
+    await expect(using.locator('.go__spin')).toHaveJSProperty('offsetHeight', 18);
     await expect(using).toBeVisible();
     await expect(using).toHaveAttribute('aria-disabled', 'true');
     await expectConsumableScreen(p, `Fora do combate, usando ${where}`);
