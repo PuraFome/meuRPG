@@ -235,7 +235,7 @@ func askRefusal(ctx context.Context, q *playdb.Queries, giver string) error {
 
 // favorGiver checks that the giver is a player character of the caller's (not in the reserve) that has the Inspiration.
 func (s *Service) favorGiver(ctx context.Context, tx pgx.Tx, c favorPassCall) (link.Character, error) {
-	found, err := s.roster.SessionCharacters(ctx, tx, c.m.CampaignID, []string{c.from})
+	found, err := s.lockedCharacters(ctx, tx, c.m.CampaignID, []string{c.from})
 	if err != nil {
 		return link.Character{}, err
 	}
@@ -415,15 +415,7 @@ func (s *Service) CancelFavorPass(ctx context.Context, req *connect.Request[play
 // while it waited is canceled by its new owner (the one who reads it, favor_read.go) and not by the one who asked. A giver sent to the
 // reserve has no owner. The owner is read after the giver's row is locked, never before it: the lock makes the read the latest one.
 func (s *Service) ownsGiver(ctx context.Context, tx pgx.Tx, m authz.Membership, pass playdb.FavorPass) (bool, error) {
-	// Lock the giver's row, then read its owner. Do not read the owner first.
-	_, err := s.queries.WithTx(tx).LockCharacterForOwnerRead(ctx, playdb.LockCharacterForOwnerReadParams{ID: pass.FromCharacterID, CampaignID: m.CampaignID})
-	if errors.Is(err, pgx.ErrNoRows) {
-		return false, nil
-	}
-	if err != nil {
-		return false, fmt.Errorf("lock the ask's giver: %w", err)
-	}
-	found, err := s.roster.SessionCharacters(ctx, tx, m.CampaignID, []string{pass.FromCharacterID})
+	found, err := s.lockedCharacters(ctx, tx, m.CampaignID, []string{pass.FromCharacterID})
 	if err != nil {
 		return false, err
 	}
@@ -433,6 +425,25 @@ func (s *Service) ownsGiver(ctx context.Context, tx pgx.Tx, m authz.Membership, 
 		}
 	}
 	return false, nil
+}
+
+// lockedCharacters is SessionCharacters read after the rows of the characters are locked, and the only way a write of the session reads a
+// character to decide on its owner or on its place in the reserve. Lock the rows, then read them; never read first. The transaction's
+// snapshot is taken at its first statement, before the wait for the session's lock (LockSessionForHints), and on CockroachDB the wait
+// does not move it: a character that changed hands meanwhile would still be read as before. A locking read finds the newest committed
+// version of the row, so the transaction is moved onto it (or restarted, 40001, and Service.tx runs it again), and the read next is the
+// latest one. The ids are locked in order, after the session's lock, as every write of a session does.
+func (s *Service) lockedCharacters(ctx context.Context, tx pgx.Tx, campaignID string, ids []string) ([]link.Character, error) {
+	valid := make([]string, 0, len(ids))
+	for _, id := range ids {
+		if id, ok := uid.Canonical(id); ok {
+			valid = append(valid, id)
+		}
+	}
+	if _, err := s.queries.WithTx(tx).LockCharactersForRead(ctx, playdb.LockCharactersForReadParams{CampaignID: campaignID, Ids: valid}); err != nil {
+		return nil, fmt.Errorf("lock the characters: %w", err)
+	}
+	return s.roster.SessionCharacters(ctx, tx, campaignID, ids)
 }
 
 // closePass finds the pass the call is about and runs the transaction of the answer on the session it was asked in. A pass that is not

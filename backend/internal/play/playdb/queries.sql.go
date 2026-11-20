@@ -9725,23 +9725,39 @@ func (q *Queries) ListWaitingOpportunityOffers(ctx context.Context, encounterID 
 	return items, nil
 }
 
-const lockCharacterForOwnerRead = `-- name: LockCharacterForOwnerRead :one
-SELECT id FROM characters WHERE id = $1::UUID AND campaign_id = $2::UUID FOR UPDATE
+const lockCharactersForRead = `-- name: LockCharactersForRead :many
+SELECT id FROM characters
+WHERE campaign_id = $1::UUID AND id = ANY($2::UUID[])
+ORDER BY id
+FOR UPDATE
 `
 
-type LockCharacterForOwnerReadParams struct {
-	ID         string
+type LockCharactersForReadParams struct {
 	CampaignID string
+	Ids        []string
 }
 
-// Locks the row of a character until the transaction ends. A write that decides on who owns a character locks the row first and
-// reads the owner after: the lock makes that read the latest one. It comes after the session's lock (LockSessionForHints), the
-// order of every write of a session.
-func (q *Queries) LockCharacterForOwnerRead(ctx context.Context, arg LockCharacterForOwnerReadParams) (string, error) {
-	row := q.db.QueryRow(ctx, lockCharacterForOwnerRead, arg.ID, arg.CampaignID)
-	var id string
-	err := row.Scan(&id)
-	return id, err
+// Locks the rows of the characters until the transaction ends, in the order of their ids. A write that decides on who owns a
+// character, or on whether it is in the reserve, locks the row first and reads it after: the lock makes that read the latest one. It
+// comes after the session's lock (LockSessionForHints), the order of every write of a session.
+func (q *Queries) LockCharactersForRead(ctx context.Context, arg LockCharactersForReadParams) ([]string, error) {
+	rows, err := q.db.Query(ctx, lockCharactersForRead, arg.CampaignID, arg.Ids)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const lockSessionForHints = `-- name: LockSessionForHints :one

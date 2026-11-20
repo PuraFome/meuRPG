@@ -2282,11 +2282,14 @@ RETURNING *;
 -- name: GetFavorPass :one
 SELECT * FROM favor_passes WHERE id = $1 AND campaign_id = $2;
 
--- name: LockCharacterForOwnerRead :one
--- Locks the row of a character until the transaction ends. A write that decides on who owns a character locks the row first and
--- reads the owner after: the lock makes that read the latest one. It comes after the session's lock (LockSessionForHints), the
--- order of every write of a session.
-SELECT id FROM characters WHERE id = sqlc.arg(id)::UUID AND campaign_id = sqlc.arg(campaign_id)::UUID FOR UPDATE;
+-- name: LockCharactersForRead :many
+-- Locks the rows of the characters until the transaction ends, in the order of their ids. A write that decides on who owns a
+-- character, or on whether it is in the reserve, locks the row first and reads it after: the lock makes that read the latest one. It
+-- comes after the session's lock (LockSessionForHints), the order of every write of a session.
+SELECT id FROM characters
+WHERE campaign_id = sqlc.arg(campaign_id)::UUID AND id = ANY(sqlc.arg(ids)::UUID[])
+ORDER BY id
+FOR UPDATE;
 
 -- name: GetFavorPassByAskKey :one
 SELECT * FROM favor_passes WHERE campaign_id = $1 AND ask_key = $2;

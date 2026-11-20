@@ -119,9 +119,9 @@ func (s *Service) grantFavorIn(ctx context.Context, tx pgx.Tx, h *hints, g favor
 }
 
 // favorReceiver finds the character the master names, which must be a player character of the campaign that is not in the
-// reserve. Every other id gets the same refusal.
+// reserve. Every other id gets the same refusal. The row is locked before it is read (lockedCharacters).
 func (s *Service) favorReceiver(ctx context.Context, tx pgx.Tx, campaignID, characterID string) (link.Character, error) {
-	found, err := s.roster.SessionCharacters(ctx, tx, campaignID, []string{characterID})
+	found, err := s.lockedCharacters(ctx, tx, campaignID, []string{characterID})
 	if err != nil {
 		return link.Character{}, err
 	}
