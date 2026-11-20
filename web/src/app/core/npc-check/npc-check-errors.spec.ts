@@ -22,7 +22,7 @@ describe('rollErrorOf', () => {
   it('says a combat began and the check was not rolled, and marks the combat', () => {
     expect(rollErrorOf(blocked(ResourceBlockedReason.COMBAT_OPEN), 'Capitão bandido')).toEqual({
       lead: 'Um combate começou.',
-      text: 'O teste do Capitão bandido não foi rolado: os testes agora são do combate.',
+      text: 'O teste de Capitão bandido não foi rolado: os testes agora são do combate.',
       combat: true,
     });
   });
@@ -54,9 +54,7 @@ describe('rollErrorOf', () => {
 
 describe('skipErrorText', () => {
   it('says the master can try again', () => {
-    expect(skipErrorText(failed(Code.Unavailable))).toBe(
-      'Não deu para continuar sem esperar agora. Tente de novo.',
-    );
+    expect(skipErrorText()).toBe('Não deu para continuar sem esperar agora. Tente de novo.');
   });
 });
 
@@ -91,6 +89,18 @@ describe('cutErrorOf', () => {
       text: 'Tente de novo.',
       closed: false,
     });
+  });
+
+  it('reads a closed session as the question being closed', () => {
+    const err = new ConnectError('x', Code.FailedPrecondition, undefined, [
+      {
+        desc: GameSessionBlockedSchema,
+        value: create(GameSessionBlockedSchema, {
+          reason: GameSessionBlockedReason.NO_OPEN_SESSION,
+        }),
+      },
+    ]);
+    expect(cutErrorOf(err, true).lead).toBe('A pergunta já foi encerrada.');
   });
 
   it('reads a question that is gone, closed or passed by the server as closed, for a cut and for a pass', () => {

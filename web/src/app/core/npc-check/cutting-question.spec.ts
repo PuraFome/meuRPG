@@ -19,11 +19,11 @@ describe('isCuttingOffer', () => {
 describe('cuttingView', () => {
   it('names the creature the bard knows, with the die and the uses left', () => {
     const v = cuttingView(cuttingOffer());
-    expect(v.title).toBe('O Capitão bandido faz um teste');
+    expect(v.title).toBe('Capitão bandido faz um teste');
     expect(v.subtitle).toBe('Palavras de Interrupção · fora de combate');
     expect(v.lead).toBe('Usar Palavras de Interrupção?');
     expect(v.text).toBe(
-      'Você tira o seu dado de Inspiração de Bardo (d8) do teste do Capitão bandido. O resultado ainda não foi dito.',
+      'Você tira o seu dado de Inspiração de Bardo (d8) do teste de Capitão bandido. O resultado ainda não foi dito.',
     );
     expect(v.chips).toEqual(['Gasta 1 Inspiração de Bardo', 'Você tem 3', 'Não gasta reação']);
     expect(v.notes).toEqual([
@@ -85,10 +85,10 @@ describe('resultView', () => {
       create(CuttingWordsAnsweredSchema, { cut: true, die, usesLeft: 2 }),
     );
     expect(v.title).toBe('Palavras de Interrupção usadas');
-    expect(v.subtitle).toBe('O teste do Capitão bandido · fora de combate');
+    expect(v.subtitle).toBe('O teste de Capitão bandido · fora de combate');
     expect(v.tag).toBe('Você cortou: −4');
     expect(v.face).toBe(4);
-    expect(v.text).toBe('O seu d8 saiu 4 e foi tirado do teste do Capitão bandido.');
+    expect(v.text).toBe('O seu d8 saiu 4 e foi tirado do teste de Capitão bandido.');
     expect(v.chips).toEqual(['Gastou 1 Inspiração de Bardo', 'Restam 2']);
     expect(v.note).toBe('O total do teste e o resultado ficam com o mestre, que conta na cena.');
   });

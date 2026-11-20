@@ -48,7 +48,7 @@ describe('NpcCheckForm', () => {
     expect(form.checkKey()).toBe('skill:deception');
     expect(form.ready()).toBe(true);
     expect(form.reason()).toBe('');
-    expect(form.rollLabel()).toBe('Rolar Enganação do Capitão bandido');
+    expect(form.rollLabel()).toBe('Rolar Enganação de Capitão bandido');
   });
 
   it('says a creature with no number for the check rolls +0, beside the check', () => {

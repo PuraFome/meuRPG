@@ -1,7 +1,6 @@
 import { HeldRollKind, type HeldRollOffer } from '../../../gen/meurpg/play/v1/combat_pb';
 import type { CuttingWordsAnswered } from '../../../gen/meurpg/play/v1/resources_pb';
 import { ofName } from './npc-check-picker';
-import { article } from '../format/article';
 
 /** What the server writes in the offer when the bard's player does not know the creature (`cutting.UnnamedLabel`). */
 export const UNNAMED_LABEL = 'uma criatura';
@@ -40,7 +39,7 @@ function nameOf(offer: HeldRollOffer): string {
   return label === '' || label === UNNAMED_LABEL ? '' : label;
 }
 
-/** "do Capitão bandido", or "da criatura" when the bard does not know the name. */
+/** "de Capitão bandido", or "da criatura" when the bard does not know the name. */
 function ofCreature(offer: HeldRollOffer): string {
   const name = nameOf(offer);
   return name ? ofName(name) : 'da criatura';
@@ -55,9 +54,7 @@ export function cuttingView(offer: HeldRollOffer): CuttingViewVm {
   const sides = q?.sides ?? 0;
   const name = nameOf(offer);
   return {
-    title: name
-      ? `${article(name) === 'a' ? 'A' : 'O'} ${name} faz um teste`
-      : 'Uma criatura faz um teste',
+    title: name ? `${name} faz um teste` : 'Uma criatura faz um teste',
     subtitle: 'Palavras de Interrupção · fora de combate',
     lead: 'Usar Palavras de Interrupção?',
     text: `Você tira o seu dado de Inspiração de Bardo (d${sides}) do teste ${ofCreature(offer)}. O resultado ainda não foi dito.`,

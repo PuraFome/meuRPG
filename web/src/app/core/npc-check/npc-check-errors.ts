@@ -41,7 +41,7 @@ export function rollErrorOf(err: unknown, creature: string): RollError {
 }
 
 /** "Continuar sem esperar" that did not get through. */
-export function skipErrorText(_err: unknown): string {
+export function skipErrorText(): string {
   return 'Não deu para continuar sem esperar agora. Tente de novo.';
 }
 
@@ -61,14 +61,12 @@ export function cutErrorOf(err: unknown, cut: boolean): CutError {
       closed: false,
     };
   }
-  // not_found: the question is gone (closed, passed on by the server, or the bard's player left the scene).
-  if (connectErr.code === Code.NotFound) {
+  // not_found, or no open session: the question is gone (closed, passed on by the server, or the bard's player left the scene).
+  if (connectErr.code === Code.NotFound || sessionClosed(err)) {
     return { lead: 'A pergunta já foi encerrada.', text: 'Nada foi gasto.', closed: true };
   }
   // failed_precondition: this bard answered it already.
-  const answeredAlready =
-    connectErr.code === Code.FailedPrecondition && !blocked && !sessionClosed(err);
-  if (answeredAlready || sessionClosed(err)) {
+  if (connectErr.code === Code.FailedPrecondition && !blocked) {
     return { lead: 'Essa pergunta já foi respondida.', text: 'Nada foi gasto.', closed: true };
   }
   return cut

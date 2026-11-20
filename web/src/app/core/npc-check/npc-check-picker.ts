@@ -1,5 +1,4 @@
 import { type NpcCheckCandidate, NpcCheckSource } from '../../../gen/meurpg/play/v1/scene_pb';
-import { article } from '../format/article';
 
 /** One creature the master may pick, as the sheet draws its radio row. */
 export interface PickRow {
@@ -70,14 +69,14 @@ export function groupsOf(candidates: readonly NpcCheckCandidate[]): PickGroup[] 
   })).filter((g) => g.rows.length > 0 || g.source === NpcCheckSource.MONSTER);
 }
 
-/** "do Espião", "da Aranha-lobo": the preposition with the creature's article, as the rest of the app writes a creature's name. */
+/** "de Espião", "de Aranha-lobo": the name after "de", with no article, so no word of the text takes a gender from the name. */
 export function ofName(name: string): string {
-  return `${article(name) === 'a' ? 'da' : 'do'} ${name}`;
+  return `de ${name}`;
 }
 
 /** The line under the select "Teste": whose checks they are. */
 export function checkHint(c: NpcCheckCandidate): string {
-  return `Uma perícia ou uma habilidade ${ofName(c.name)}, com o bônus ${article(c.name) === 'a' ? 'dela' : 'dele'}.`;
+  return `Uma perícia ou uma habilidade ${ofName(c.name)}, com o bônus que consta no teste.`;
 }
 
 /** The box shows only when the map cannot measure the creature against a bard. */
@@ -92,14 +91,13 @@ export function boxStart(c: NpcCheckCandidate): boolean {
 
 /** The line under the box, or, when the map measures the creature, the quiet line that stands in its place. */
 export function boxHint(c: NpcCheckCandidate): string {
-  const the = `${article(c.name) === 'a' ? 'A' : 'O'} ${c.name}`;
   if (c.mapMeasures) {
     return `O token ${ofName(c.name)} e os dos bardos estão no mapa: o app mede os 18 m e a visão. Com o token escondido, nenhum bardo é perguntado.`;
   }
   if (c.hidden) {
-    return `${the} está escondido dos jogadores, então a caixa começa desmarcada: ninguém é perguntado. Se você marcar, os bardos leem “uma criatura”, sem o nome.`;
+    return `O token ${ofName(c.name)} está escondido dos jogadores, então a caixa começa desmarcada: ninguém é perguntado. Se você marcar, os bardos leem “uma criatura”, sem o nome.`;
   }
-  return `${the} não é medido pelo mapa: é você quem diz. Com o token da criatura e o de um bardo na grade do mapa, o app mede os 18 m e a visão.`;
+  return `O mapa não mede ${c.name}: é você quem diz. Com o token da criatura e o de um bardo na grade do mapa, o app mede os 18 m e a visão.`;
 }
 
 const signed = (n: number) => `${n < 0 ? '−' : '+'}${Math.abs(n)}`;
@@ -125,7 +123,7 @@ export function noBonusLine(c: NpcCheckCandidate, checkKey: string): string {
     : '';
 }
 
-/** "Rolar Enganação do Capitão bandido": the button names the roll. */
+/** "Rolar Enganação de Capitão bandido": the button names the roll. */
 export function rollLabel(c: NpcCheckCandidate, checkKey: string): string {
   const check = c.checks.find((o) => o.key === checkKey);
   return `Rolar ${check?.name ?? 'o teste'} ${ofName(c.name)}`;

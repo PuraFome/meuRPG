@@ -59,7 +59,7 @@ interface StageCard {
 })
 export class StageMaster {
   private readonly api = inject(SceneClient);
-  /** "Teste do Bartolo" in an NPC's menu asks the master's host for the sheet with that NPC chosen. */
+  /** "Teste de Bartolo" in an NPC's menu asks the master's host for the sheet with that NPC chosen. */
   protected readonly npc = inject(NpcCheckLauncher);
   protected readonly ofName = ofName;
   private readonly roster = inject(StageRoster);

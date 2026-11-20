@@ -102,7 +102,7 @@ function rowOf(read: NpcCheckRead, index: number, firstWaiting: number): AskRowV
       return {
         ...base,
         tag: 'Sem resposta',
-        sub: `${die} · você seguiu sem esperar · nada gasto`,
+        sub: `${die} · a pergunta foi encerrada · nada gasto`,
         tone: 'closed',
       };
     default:

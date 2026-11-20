@@ -48,7 +48,7 @@ describe('cardOf', () => {
     expect(card.formula).toBe('17 − 4 = 13');
     expect(card.detail).toBe('d20 (13) + 4, menos o corte de Brisa');
     expect(card.rows.map((r) => r.tag)).toEqual(['Cortou 4', 'Sem resposta']);
-    expect(card.rows[1].sub).toBe('d6 · você seguiu sem esperar · nada gasto');
+    expect(card.rows[1].sub).toBe('d6 · a pergunta foi encerrada · nada gasto');
     expect(card.nobody).toBe(false);
   });
 

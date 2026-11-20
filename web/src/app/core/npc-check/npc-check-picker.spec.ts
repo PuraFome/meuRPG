@@ -73,16 +73,16 @@ describe('the checkbox "Os bardos veem a criatura e ela os ouve"', () => {
 
   it('says who decides, naming the creature, and what a hidden one means for the bards', () => {
     expect(boxHint(candidate())).toBe(
-      'O Capitão bandido não é medido pelo mapa: é você quem diz. Com o token da criatura e o de um bardo na grade do mapa, o app mede os 18 m e a visão.',
+      'O mapa não mede Capitão bandido: é você quem diz. Com o token da criatura e o de um bardo na grade do mapa, o app mede os 18 m e a visão.',
     );
     expect(boxHint(candidate({ name: 'Espião', hidden: true }))).toBe(
-      'O Espião está escondido dos jogadores, então a caixa começa desmarcada: ninguém é perguntado. Se você marcar, os bardos leem “uma criatura”, sem o nome.',
+      'O token de Espião está escondido dos jogadores, então a caixa começa desmarcada: ninguém é perguntado. Se você marcar, os bardos leem “uma criatura”, sem o nome.',
     );
   });
 
   it('says the app measures a creature the map measures, and that a hidden token opens no question', () => {
     expect(boxHint(espiao)).toBe(
-      'O token do Espião e os dos bardos estão no mapa: o app mede os 18 m e a visão. Com o token escondido, nenhum bardo é perguntado.',
+      'O token de Espião e os dos bardos estão no mapa: o app mede os 18 m e a visão. Com o token escondido, nenhum bardo é perguntado.',
     );
   });
 });
@@ -116,15 +116,15 @@ describe('the check', () => {
   });
 
   it('names the roll on the button, with the creature as the board writes it', () => {
-    expect(rollLabel(candidate(), 'skill:deception')).toBe('Rolar Enganação do Capitão bandido');
+    expect(rollLabel(candidate(), 'skill:deception')).toBe('Rolar Enganação de Capitão bandido');
     expect(rollLabel(candidate({ name: 'Brisa' }), 'skill:deception')).toBe(
-      'Rolar Enganação da Brisa',
+      'Rolar Enganação de Brisa',
     );
   });
 
-  it('writes "do" or "da" before a name', () => {
-    expect(ofName('Espião')).toBe('do Espião');
-    expect(ofName('Aranha-lobo')).toBe('da Aranha-lobo');
+  it('writes "de" before a name, never an article', () => {
+    expect(ofName('Espião')).toBe('de Espião');
+    expect(ofName('Aranha-lobo')).toBe('de Aranha-lobo');
   });
 });
 
@@ -141,12 +141,12 @@ describe('parseD20', () => {
 });
 
 describe('checkHint', () => {
-  it('says whose checks the select lists, with the article of the creature', () => {
+  it('says whose checks the select lists, with no article and no pronoun', () => {
     expect(checkHint(candidate())).toBe(
-      'Uma perícia ou uma habilidade do Capitão bandido, com o bônus dele.',
+      'Uma perícia ou uma habilidade de Capitão bandido, com o bônus que consta no teste.',
     );
     expect(checkHint(candidate({ name: 'Aranha-lobo' }))).toBe(
-      'Uma perícia ou uma habilidade da Aranha-lobo, com o bônus dela.',
+      'Uma perícia ou uma habilidade de Aranha-lobo, com o bônus que consta no teste.',
     );
   });
 });
