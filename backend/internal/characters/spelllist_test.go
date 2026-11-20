@@ -339,7 +339,7 @@ func TestMR025_TheSpellDetailsSayWhomItReaches(t *testing.T) {
 		{"spell:detect-magic", rulesv1.SpellTargetKind_SPELL_TARGET_KIND_SELF, 0, 0, 0, 0, "Só quem conjura", rulesv1.SpellRangeKind_SPELL_RANGE_KIND_SELF},
 		{"spell:arcane-eye", rulesv1.SpellTargetKind_SPELL_TARGET_KIND_NONE, 0, 0, 0, 0, "Nenhuma criatura", rulesv1.SpellRangeKind_SPELL_RANGE_KIND_RANGED},
 		{"spell:acid-splash", rulesv1.SpellTargetKind_SPELL_TARGET_KIND_CREATURES, 0, 0, 2, 0, "Uma criatura, ou duas a até 1,5 m uma da outra", rulesv1.SpellRangeKind_SPELL_RANGE_KIND_RANGED},
-		{"spell:chain-lightning", rulesv1.SpellTargetKind_SPELL_TARGET_KIND_CREATURES, 0, 0, 4, 1, "Um alvo e até 3 outros a até 9 m do primeiro", rulesv1.SpellRangeKind_SPELL_RANGE_KIND_RANGED},
+		{"spell:chain-lightning", rulesv1.SpellTargetKind_SPELL_TARGET_KIND_CREATURES, 0, 0, 4, 1, "Um alvo e até 3 outros a até 9 m do primeiro, mais 1 por nível acima do 6º", rulesv1.SpellRangeKind_SPELL_RANGE_KIND_RANGED},
 		{"spell:disintegrate", rulesv1.SpellTargetKind_SPELL_TARGET_KIND_CREATURE, 0, 0, 0, 0, "Uma criatura", rulesv1.SpellRangeKind_SPELL_RANGE_KIND_RANGED},
 		{"spell:mage-hand", rulesv1.SpellTargetKind_SPELL_TARGET_KIND_NONE, 0, 0, 0, 0, "Nenhuma criatura", rulesv1.SpellRangeKind_SPELL_RANGE_KIND_RANGED},
 		{"spell:flame-strike", rulesv1.SpellTargetKind_SPELL_TARGET_KIND_AREA, rulesv1.SpellAreaShape_SPELL_AREA_SHAPE_CYLINDER, 10, 0, 0, "Cilindro de 3 m de raio", rulesv1.SpellRangeKind_SPELL_RANGE_KIND_RANGED},

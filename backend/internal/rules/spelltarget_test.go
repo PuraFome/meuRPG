@@ -189,7 +189,7 @@ func TestSpellTargetOverrides(t *testing.T) {
 		"spell:forbiddance": "Uma área de cerca de 3.700 m²", "spell:teleportation-circle": "Círculo de 3 m de diâmetro",
 		"spell:mirage-arcane": "Terreno de até 1,6 km de lado", "spell:wind-walk": "Você e até 10 criaturas",
 		"spell:hypnotic-pattern": "Cubo de 9 m", "spell:plant-growth": "Esfera de 30 m",
-		"spell:acid-splash": "Uma criatura, ou duas a até 1,5 m uma da outra", "spell:chain-lightning": "Um alvo e até 3 outros a até 9 m do primeiro",
+		"spell:acid-splash": "Uma criatura, ou duas a até 1,5 m uma da outra", "spell:chain-lightning": "Um alvo e até 3 outros a até 9 m do primeiro, mais 1 por nível acima do 6º",
 		"spell:dimension-door": "Só quem conjura; o mestre leva quem for junto", "spell:seeming": "Até 10 criaturas; o mestre aplica às demais",
 		"spell:wall-of-ice": "Até 10 criaturas cortadas pela muralha; o mestre aplica às demais",
 	} {
