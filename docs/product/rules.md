@@ -700,8 +700,8 @@ The master's undo gives the concentration and the same creatures back.
 A spell that forces a saving throw later (Flaming Sphere, Sleet Storm, Earthquake) rolls its saves and damage when it is cast; the master calls for the later ones. Spirit Guardians, Moonbeam, Cloudkill, Web, Grease, Entangle, Stinking Cloud, Spike Growth and Wall of Fire are the exception: the app keeps their area and calls for the later saves by itself (RN-37).
 Vampiric Touch attacks a creature in reach when it is cast, and heals the caster half the damage dealt.
 The log shows the heal, and the master's undo takes it back.
-The cast result says what comes on later turns: the attacks of Flame Blade and Vampiric Touch, made as an action, and the bite of Faithful Hound.
-The master applies them, and the app does not repeat them.
+The cast result says what the master applies on later turns, such as the attacks of Flame Blade and Vampiric Touch, made as an action, the bite of Faithful Hound and Eyebite's new target.
+The app does not repeat them.
 
 Conditions are public or owner-class.
 Public conditions are readable by everyone.
@@ -918,7 +918,11 @@ On a map with a grid the caster does not list who an area spell touches: they pl
 - **Walls.** A location is outside the area when no unblocked straight line runs from the point of origin to it. Only total cover blocks (a wall, a closed door; crates, a column or other creatures do not). A spell that "spreads around corners" (Fireball and the other spheres) reaches the part of its shape connected to the origin, but never between two walls that touch at a corner. If a player places the point behind a wall, it lands on the near side. The master's point stays, and the master is not held to the range.
 - **Who is hit.** Everyone inside: allies, the caster when inside, hidden creatures. The damage is one roll for all. Cover is measured from the point of origin, and adds +2 (half) or +5 (three-quarters) only to a Dexterity saving throw. A creature reached only around a corner gets no automatic cover; the master marks it by hand.
 - **An empty area** is still cast and spends the slot and the action. The app asks first: "Ninguém que você vê está na área".
-- **Several creatures with a closeness limit.** Some spells take several creatures that must stay near each other: Acid Splash takes two within 1.5 m of each other, Chain Lightning takes others within 9 m of the first, and Mass Cure Wounds takes up to six within 18 m of the first. On a map a player's picks are refused when they are too far apart. Without a map the app does not check. The master is not held to the number of creatures or to the closeness.
+- **Several creatures with a closeness limit.** Some spells take several creatures that must stay near each other.
+  Acid Splash takes two within 1.5 m of each other, Chain Lightning takes others within 9 m of the first, and Mass Cure Wounds takes up to six within 18 m of the first.
+  On a map a player's picks are refused when they are too far apart.
+  Without a map the app does not check.
+  The master is not held to the number of creatures or to the closeness.
 - **Without a grid** (combat without a map, RN-25) none of this exists: the caster lists who is hit, and the master judges who is inside and the cover.
 
 ### Teleport spells on the grid
@@ -999,7 +1003,7 @@ The master judges reach, distance and spell range, and the lists of targets hold
 The player spends movement by number ("Gastar movimento"), never more than the turn has, and reads what remains ("Restam 6 m"); the master spends for anyone.
 The opportunity attack is an offer from the master, who sees who left whose reach and may withdraw it or go on without waiting.
 Cover is what the master marks; total cover puts the target out of reach.
-**Spell targets** follow the SRD's number of creatures.
+**Spell targets** keep the SRD's number of creatures in this mode too.
 Seeming and Wall of Ice take up to 10 creatures, and the master applies the rest.
 Slow takes up to 6 and Water Breathing up to 10.
 A spell with no creature to pick (a point, an object, a place) takes no target.
