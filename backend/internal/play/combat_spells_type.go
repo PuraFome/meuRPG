@@ -3,7 +3,6 @@ package play
 import (
 	"context"
 
-	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 )
@@ -29,17 +28,4 @@ func (s *Service) noLifeMagic(ctx context.Context, c *combatTx, t playdb.Combata
 		return "", err
 	}
 	return whyNoLifeMagic, nil
-}
-
-// damagesFor are the damages a spell opens for a target: its own, or, for a plant, each as the most its dice can give, which needs
-// no roll (and is halved when the target saved).
-func damagesFor(rule combat.TypeRule, parts []link.Dice) []link.Dice {
-	if !rule.Plant {
-		return parts
-	}
-	out := make([]link.Dice, len(parts))
-	for i, d := range parts {
-		out[i] = link.Dice{Bonus: combat.MaxRoll(d.Count, d.Sides, d.Bonus), DamageType: d.DamageType}
-	}
-	return out
 }

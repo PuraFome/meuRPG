@@ -233,9 +233,19 @@ func TestBlightOnAPlantSavesWithDisadvantageAndTakesTheMaximum(t *testing.T) {
 			if (got.GetSave().GetOutcome() == playv1.SaveOutcome_SAVE_OUTCOME_SAVED) != tc.saved {
 				t.Fatalf("the save = %v, want saved %v", got.GetSave().GetOutcome(), tc.saved)
 			}
+			a.h.roller.queue(1, 1, 1, 1, 1, 1, 1, 1)
 			dmg := a.mustDamage(t, a.master, e, got.GetPendingDamageId(), inAppDamage).GetPendingDamage()
-			if dmg.GetAmount() != tc.want || dmg.GetHalf() != tc.saved {
-				t.Errorf("the damage = %d (half %v), want %d (half %v)", dmg.GetAmount(), dmg.GetHalf(), tc.want, tc.saved)
+			if dmg.GetDiceCount() != 8 || dmg.GetDiceSides() != 8 || dmg.GetHalf() != tc.saved {
+				t.Errorf("the pending damage = %dd%d (half %v), want the spell's 8d8 as on any target (half %v)", dmg.GetDiceCount(), dmg.GetDiceSides(), dmg.GetHalf(), tc.saved)
+			}
+			// The server takes the most the dice can give at landing, halved on a passed save; the master's line reads it, a player's
+			// reads the damage as rolled (8, halved: 4).
+			applied, asRolled := a.castDamage(t, a.master, e).GetAmount(), a.castDamage(t, a.ana, e).GetAmount()
+			if applied != tc.want {
+				t.Errorf("the master reads the damage %d, want %d applied", applied, tc.want)
+			}
+			if wantRolled := map[bool]int32{false: 8, true: 4}[tc.saved]; asRolled != wantRolled {
+				t.Errorf("the caster's player reads the damage %d, want %d as rolled", asRolled, wantRolled)
 			}
 		})
 	}
@@ -257,4 +267,14 @@ func TestBlightOnACreatureWithNoTypeIsAsItWas(t *testing.T) {
 	if dmg.GetDiceCount() != 8 || dmg.GetAmount() != 8 {
 		t.Errorf("the damage = %d dice, %d, want 8d8 rolled (8)", dmg.GetDiceCount(), dmg.GetAmount())
 	}
+}
+
+// castDamage is the damage the latest cast of the log opened for its target, as the user reads it.
+func (a *armed) castDamage(t *testing.T, u *user, e *playv1.Encounter) *playv1.CombatLogDamage {
+	t.Helper()
+	targets := spellEntry(t, a.log(t, u, e)).GetSpell().GetTargets()
+	if len(targets) != 1 || targets[0].GetDamage() == nil {
+		t.Fatalf("the cast's targets = %v, want one with its damage", targets)
+	}
+	return targets[0].GetDamage()
 }

@@ -648,7 +648,7 @@ func (s *Service) spellSave(ctx context.Context, c *combatTx, m authz.Membership
 	}
 	// One pending damage for each damage type, all of the cast: each is its own
 	// roll, and the resistance of the target is read for its type when it lands.
-	return s.openSavePendings(ctx, c, damagesFor(rule, sp.Damages), sp, caster, target, share == combat.ShareHalf, hit)
+	return s.openSavePendings(ctx, c, sp.Damages, sp, caster, target, share == combat.ShareHalf, hit)
 }
 
 // settleSpellSave is the outcome of the target's save against the spell, written into the hit: the roll (or

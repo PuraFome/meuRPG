@@ -129,6 +129,30 @@ func TestTheCreatureTypeOfASpellOfLifeIsTheMastersAlone(t *testing.T) {
 		t.Errorf("Ana reads the shrub's save as %v, want its outcome alone: no roll, no mode, no source", got.GetSave())
 	}
 	rt.ask(t, "Blight on a plant")
+	// 4. The damage: a plant takes the most the dice can give, and only the master reads it. Ana (and Caio) read the damage as rolled,
+	// in the same shape as for a target that is not a plant: the spell's dice, and the roll's total as the amount.
+	rt.undoLast(t) // Ana's cast of step 3
+	plant := rt.blightDamage(t, "Arbusto")
+	other := rt.blightDamage(t, "Bandido")
+	for _, p := range []*person{ana, caio} {
+		for target, d := range map[string]*playv1.CombatLogDamage{"the shrub": plant[p], "the bandit": other[p]} {
+			if p == caio { // Caio reads the amount alone, and it is the one Ana reads: as rolled
+				if want := map[string]*playv1.CombatLogDamage{"the shrub": plant[ana], "the bandit": other[ana]}[target]; d.GetAmount() != want.GetAmount() || d.GetRoll() != nil {
+					t.Errorf("Caio reads the damage on %s as %v, want Ana's amount %d and no roll", target, d, want.GetAmount())
+				}
+				continue
+			}
+			if d.GetRoll().GetDiceCount() != 8 || d.GetRoll().GetDiceSides() != 8 || d.GetAmount() != rolledAmount(d) {
+				t.Errorf("%s reads the damage on %s as %v, want the 8d8 and the amount as rolled", p.name, target, d)
+			}
+		}
+	}
+	if d := plant[m]; d.GetAmount() != maximumAmount(d) {
+		t.Errorf("the master reads the damage on the shrub as %v, want the most the dice give, 64 (halved when it saved)", d)
+	}
+	if d := other[m]; d.GetAmount() != rolledAmount(d) {
+		t.Errorf("the master reads the damage on the bandit as %v, want it as rolled", d)
+	}
 	for _, p := range []*person{ana, caio} {
 		for what, body := range map[string]string{"the combat": protojson.Format(rt.encounterOf(p)), "the log": protojson.Format(rt.logOf(p))} {
 			for _, word := range []string{lifeMagicReason, plantSource, typeSourceKind, "construtos"} {
@@ -139,4 +163,54 @@ func TestTheCreatureTypeOfASpellOfLifeIsTheMastersAlone(t *testing.T) {
 		}
 	}
 	t.Run("canaries are reachable", func(t *testing.T) { checkCanariesAreReachable(t, w, rt.got) })
+}
+
+// rolledAmount is the damage as it was rolled: the total of the dice, halved when the target saved.
+func rolledAmount(d *playv1.CombatLogDamage) int32 {
+	if d.GetHalf() {
+		return d.GetRoll().GetTotal() / 2
+	}
+	return d.GetRoll().GetTotal()
+}
+
+// maximumAmount is the most 8d8 gives, halved when the target saved.
+func maximumAmount(d *playv1.CombatLogDamage) int32 {
+	if d.GetHalf() {
+		return 32
+	}
+	return 64
+}
+
+// blightDamage has Ana cast Blight at the target and roll its damage, takes both back, and answers the damage line of the cast as
+// each person reads it, as the master, Ana and Caio.
+func (rt *rollsTable) blightDamage(t *testing.T, target string) map[*person]*playv1.CombatLogDamage {
+	t.Helper()
+	got, _ := rt.lifeSpell(t, rt.ana, labelPens, "spell:blight", 4, target)
+	if got.GetPendingDamageId() == "" {
+		t.Fatalf("Blight on %s opened no damage: %v", target, got)
+	}
+	must(rt.ana.combat.RollDamage(t.Context(), rq(&playv1.RollDamageRequest{
+		CampaignId: rt.campaign, EncounterId: rt.encounter.GetId(), PendingDamageId: got.GetPendingDamageId(), IdempotencyKey: newKey(),
+		Roll: &playv1.RollDamageRequest_RollInApp{RollInApp: true},
+	})))
+	rt.ask(t, "Blight damage on "+target)
+	out := map[*person]*playv1.CombatLogDamage{}
+	for _, p := range []*person{rt.master, rt.ana, rt.caio} {
+		for _, r := range rt.logOf(p).GetRounds() {
+			for _, en := range r.GetEntries() {
+				if en.GetKind() == playv1.CombatLogKind_COMBAT_LOG_KIND_SPELL_CAST && out[p] == nil && len(en.GetSpell().GetTargets()) == 1 {
+					out[p] = en.GetSpell().GetTargets()[0].GetDamage()
+				}
+			}
+		}
+		if p == rt.caio { // the spell's damage is the caster's and the master's: Caio may read none, and what he reads is checked all the same
+			continue
+		}
+		if out[p] == nil || out[p].GetRoll() == nil {
+			t.Fatalf("%s reads no damage of the Blight on %s", p.name, target)
+		}
+	}
+	rt.undoLast(t) // the damage
+	rt.undoLast(t) // the cast
+	return out
 }
