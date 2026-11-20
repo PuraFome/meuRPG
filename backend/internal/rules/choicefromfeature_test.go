@@ -381,3 +381,38 @@ func TestTheLevelUpOffersNoOptionTheTableKeepsOut(t *testing.T) {
 		t.Errorf("the master's: %+v, want the five postures", got)
 	}
 }
+
+// Choices that offer the options of one feature share the pool, and the picks they ask in all are the ones a player may
+// make today, dealt in the order the picks are: the options the table switched off are no pick for either choice.
+func TestTwoChoicesOfOnePoolAskOnlyForThePicksLeft(t *testing.T) {
+	t.Parallel()
+	const second = "feature:rumor-segundo" + tableSuffix
+	o := fromFeatureOverlay(askPostures(1))
+	more := TableFeature{Key: second, NamePT: "Rumor segundo", DescPT: []string{"Texto de teste."}, Effects: []Effect{askPostures(1)}}
+	o.Subclasses[1].Levels[0].Features = append(o.Subclasses[1].Levels[0].Features, more)
+	// The source offers the heron and two options the table switched off.
+	o.Subclasses[0].Levels[0].Features[0].Options = o.Subclasses[0].Levels[0].Features[0].Options[:1]
+	o.Subclasses[0].Levels[0].Features[0].Effects[1].Count = 1
+	o.Subclasses[0].Levels = o.Subclasses[0].Levels[:1]
+	for _, k := range []string{"option:table_feature:rumor-um" + tableSuffix, "option:table_feature:rumor-dois" + tableSuffix} {
+		o.Options = append(o.Options, TableOption{TableEntry: TableEntry{Key: k, NamePT: "Opção " + k}, Set: "table_feature", OfferedBy: postureFeature, DescPT: []string{"Texto de teste."}})
+		o.Off = append(o.Off, k)
+	}
+	master := withOverlay(t, o)
+
+	set := master.ForPlayer().Choices(rumorBuild(3, postureHeron))
+	first, next := optionChoiceOf(t, set, fromFeatureAsk), optionChoiceOf(t, set, second)
+	if m := master.Choices(rumorBuild(3, postureHeron)); optionChoiceOf(t, m, fromFeatureAsk).Picks != first.Picks || optionChoiceOf(t, m, second).Picks != next.Picks {
+		t.Errorf("the master reads other numbers than the player")
+	}
+	if first.Picks+next.Picks != 1 || first.Missing() != 0 || next.Missing() != 0 {
+		t.Errorf("the choices ask %d and %d picks, missing %d and %d; want one pick of the one option left, made",
+			first.Picks, next.Picks, first.Missing(), next.Missing())
+	}
+	if p := set.Pending(); len(p) != 0 {
+		t.Errorf("pending = %v, want none", p)
+	}
+	if problems := set.ChoiceProblems(true); len(problems) != 0 {
+		t.Errorf("problems = %v, want none", problems)
+	}
+}
