@@ -104,6 +104,10 @@ describe('reachFtOf', () => {
     expect(reachFtOf(details())).toBeNull();
     expect(reachFtOf(null)).toBeNull();
   });
+
+  it('has no distance for a spell of range Self that picks its creature at a distance on the server (Vampiric Touch, Produce Flame, Eyebite)', () => {
+    expect(reachFtOf(details({ range: { kind: SpellRangeKind.SELF, distanceFt: 0 } }))).toBeNull();
+  });
 });
 
 describe('castRowsOf', () => {
