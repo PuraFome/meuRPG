@@ -63,6 +63,8 @@ export interface NpcOptions {
   other?: 'bard' | 'fighter';
   /** Brisa rolls her die by hand (the table's dice mode is the real dice). */
   physical?: boolean;
+  /** The map has fog, in bright light: a token the master hides reaches the players as a vision hint only. */
+  fog?: boolean;
   /** No scene is open: the master's entry is the one beside "Pedir teste em grupo". */
   noScene?: boolean;
 }
@@ -87,6 +89,10 @@ export async function npcTable(browser: Browser, look: NpcLook = {}, options: Np
   // The tokens are born hidden: the Capitão Goblin's is shown, so the map can measure it against Brisa's.
   const shown = await callRPC(m, 'meurpg.maps.v1.MapService/SetMapTokenHidden', { campaignId, mapId: table.mapId, characterId: table.captainId, hidden: false });
   expect(shown.ok(), await shown.text()).toBeTruthy();
+  if (options.fog) {
+    const fog = await callRPC(m, 'meurpg.maps.v1.MapService/SetMapFog', { campaignId, mapId: table.mapId, fogEnabled: true, baseLight: 'LIGHT_LEVEL_BRIGHT' });
+    expect(fog.ok(), await fog.text()).toBeTruthy();
+  }
   const sceneId = await createPointRPC(m, campaignId, table.mapId, { kind: 'SCENE', name: 'A taverna do Javali Cego', description: 'Uma taverna cheia.', xBp: 3000, yBp: 3000, revealed: true });
   if (!options.noScene) {
     await openSceneRPC(m, campaignId, sceneId);
@@ -160,7 +166,7 @@ export async function openNpcSheet(m: Page, campaignId: string): Promise<Locator
 /** Chooses the creature in the sheet's list. */
 export async function pickNpc(sheet: Locator, name: string): Promise<void> {
   await sheet.locator('label.row', { hasText: name }).first().click();
-  await expect(sheet.getByRole('button', { name: new RegExp(`^Rolar .* d[oa] ${name}`) })).toBeVisible();
+  await expect(sheet.getByRole('button', { name: new RegExp(`^Rolar .* de ${name}`) })).toBeVisible();
 }
 
 /** The sheet's d20: the app's, or the face of a real die typed in the field. */
@@ -170,7 +176,7 @@ export async function typeD20(sheet: Locator, face: string): Promise<void> {
 }
 
 /** Rolls the chosen creature's check (the button names it) and waits for the sheet to go. */
-export async function rollChosen(m: Page, sheet: Locator, name = /^Rolar .* d[oa] /): Promise<void> {
+export async function rollChosen(m: Page, sheet: Locator, name = /^Rolar .* de /): Promise<void> {
   await sheet.getByRole('button', { name }).click();
   await expect(sheet).toHaveCount(0);
 }
@@ -189,6 +195,12 @@ export async function masterRolls(t: NpcTable, name: string, d20: 'app' | string
     }
   }
   await rollChosen(t.m, sheet);
+}
+
+/** The server holds no question for this player: the proof that comes before "no sheet is open", which a page that has not read yet would also show. */
+export async function expectNoOffers(page: Page, campaignId: string): Promise<void> {
+  const list = await callRPC(page, 'meurpg.play.v1.ResourceService/ListHeldRolls', { campaignId });
+  expect((await list.json()).offers ?? []).toEqual([]);
 }
 
 /** The bard's page, on the session, ready to be asked. */

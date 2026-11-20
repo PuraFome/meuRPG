@@ -43,22 +43,22 @@ test('a folha "Teste de um NPC" lista quem rola, começa a caixa certa e diz qua
   await withTable(browser, {}, (t) => sheetFlow(t, {}));
 });
 
-test('o mestre rola com os dados do app, a bardo corta com os dela, e o cartão fecha, volta ao recarregar e some com o X só neste aparelho', { tag: ['@MR-015', '@RN-10', '@RN-18'] }, async ({ browser }) => {
+test('o mestre rola com os dados do app, o corte usa os dados do app, e o cartão fecha, volta ao recarregar e some com o X só neste aparelho', { tag: ['@MR-015', '@RN-10', '@RN-18'] }, async ({ browser }) => {
   test.setTimeout(180_000);
   await withTable(browser, {}, (t) => appDiceFlow(t, {}));
 });
 
-test('o mestre digita o d20 e a bardo digita o dado físico dela: "Cortar com 4"', { tag: ['@MR-015', '@RN-18'] }, async ({ browser }) => {
+test('o mestre digita o d20 e quem corta digita o dado físico: "Cortar com 4"', { tag: ['@MR-015', '@RN-18'] }, async ({ browser }) => {
   test.setTimeout(180_000);
   await withTable(browser, { physical: true }, (t) => physicalDiceFlow(t, {}));
 });
 
-test('a bardo deixa passar: nada é gasto, a cena diz uma linha e o cartão do mestre diz "Deixou passar"', { tag: ['@MR-015'] }, async ({ browser }) => {
+test('deixar passar: nada é gasto, a cena diz uma linha e o cartão do mestre diz "Deixou passar"', { tag: ['@MR-015'] }, async ({ browser }) => {
   test.setTimeout(180_000);
   await withTable(browser, {}, (t) => passFlow(t, {}));
 });
 
-test('dois bardos em ordem: o segundo só lê a pergunta na vez dele, e "Continuar sem esperar" fecha a dele sem gastar nada', { tag: ['@MR-015', '@RN-10'] }, async ({ browser }) => {
+test('dois bardos em ordem: a pergunta só chega ao segundo bardo na sua vez, e "Continuar sem esperar" fecha a pergunta do segundo bardo sem gastar nada', { tag: ['@MR-015', '@RN-10'] }, async ({ browser }) => {
   test.setTimeout(240_000);
   await withTable(browser, { other: 'bard' }, (t) => twoBardsFlow(t, {}));
 });
@@ -68,14 +68,19 @@ test('a resposta que chega depois de o mestre seguir é recusada: "A pergunta j�
   await withTable(browser, { other: 'bard' }, (t) => lateAnswerFlow(t, {}));
 });
 
-test('uma criatura escondida começa sem caixa marcada e, marcada, a bardo lê "uma criatura"', { tag: ['@MR-015', '@RN-10'] }, async ({ browser }) => {
+test('uma criatura escondida começa sem caixa marcada e, marcada, a pergunta lê "uma criatura"', { tag: ['@MR-015', '@RN-10'] }, async ({ browser }) => {
   test.setTimeout(180_000);
   await withTable(browser, {}, (t) => hiddenFlow(t, {}));
 });
 
-test('o mestre esconde o token da criatura depois da rolagem: a pergunta da bardo some e o cartão fecha a pergunta como "Sem resposta"', { tag: ['@MR-015', '@RN-10'] }, async ({ browser }) => {
+test('o mestre esconde o token da criatura depois da rolagem: a pergunta some e o cartão fecha a pergunta como "Sem resposta"', { tag: ['@MR-015', '@RN-10'] }, async ({ browser }) => {
   test.setTimeout(180_000);
   await withTable(browser, {}, (t) => hideAfterRollFlow(t, {}));
+});
+
+test('o mestre esconde o token da criatura num mapa com névoa: a pergunta some do mesmo jeito', { tag: ['@MR-015', '@RN-10'] }, async ({ browser }) => {
+  test.setTimeout(180_000);
+  await withTable(browser, { fog: true }, (t) => hideAfterRollFlow(t, {}));
 });
 
 test('uma criatura sem bônus conhecido rola com +0 e o cartão diz isso ao lado do resultado', { tag: ['@MR-015'] }, async ({ browser }) => {

@@ -7,6 +7,7 @@ import {
   beginCombatRPC,
   bardReady,
   cutSheet,
+  expectNoOffers,
   masterRolls,
   npcCard,
   npcSheet,
@@ -46,7 +47,7 @@ export async function sheetFlow(t: NpcTable, v: NpcView): Promise<void> {
   await pickNpc(sheet, 'Capitão bandido');
   const box = sheet.getByRole('checkbox', { name: /Os bardos veem a criatura e ela os ouve/ });
   await expect(box).toBeChecked();
-  await expect(sheet.getByRole('button', { name: 'Rolar Enganação do Capitão bandido' })).toBeVisible();
+  await expect(sheet.getByRole('button', { name: 'Rolar Enganação de Capitão bandido' })).toBeVisible();
   await see(v, m, 'sheet', sheet);
   await expectFits(m, sheet, 'Teste de um NPC, a folha');
 
@@ -65,7 +66,7 @@ export async function sheetFlow(t: NpcTable, v: NpcView): Promise<void> {
   await see(v, m, 'sheet-typed', sheet);
   await sheet.getByLabel('Número que saiu no d20 (1 a 20)').fill('21');
   await expect(sheet.getByText('Digite um número de 1 a 20.')).toBeVisible();
-  await expectDashed(sheet.getByRole('button', { name: /^Rolar .* do Capitão Goblin/ }));
+  await expectDashed(sheet.getByRole('button', { name: /^Rolar .* de Capitão Goblin/ }));
   await expect(sheet.getByText('O d20 vai de 1 a 20.')).toBeVisible();
   await see(v, m, 'sheet-typed-invalid', sheet);
 
@@ -76,7 +77,7 @@ export async function sheetFlow(t: NpcTable, v: NpcView): Promise<void> {
   await see(v, m, 'sheet-no-bonus', sheet);
 }
 
-/** The master rolls with the app's dice and the bard cuts with hers; the card follows, survives a reload and hides on this device (boards 591-02, 03, 05, 06). */
+/** The master rolls with the app's dice and the bard cuts with the app's dice too; the card follows, survives a reload and hides on this device (boards 591-02, 03, 05, 06). */
 export async function appDiceFlow(t: NpcTable, v: NpcView): Promise<void> {
   const { m, p, campaignId } = t;
   await masterRolls(t, 'Capitão bandido', 'app');
@@ -93,9 +94,9 @@ export async function appDiceFlow(t: NpcTable, v: NpcView): Promise<void> {
 
   await bardReady(p, campaignId);
   const q = cutSheet(p);
-  await expect(q.getByRole('heading', { name: 'O Capitão bandido faz um teste' })).toBeVisible();
+  await expect(q.getByRole('heading', { name: 'Capitão bandido faz um teste' })).toBeVisible();
   await expect(q).toContainText('Usar Palavras de Interrupção?');
-  await expect(q).toContainText('Você tira o seu dado de Inspiração de Bardo (d8) do teste do Capitão bandido. O resultado ainda não foi dito.');
+  await expect(q).toContainText('Você tira o seu dado de Inspiração de Bardo (d8) do teste de Capitão bandido. O resultado ainda não foi dito.');
   for (const chip of ['Gasta 1 Inspiração de Bardo', 'Você tem 3', 'Não gasta reação']) {
     await expect(q.getByText(chip, { exact: true })).toBeVisible();
   }
@@ -116,6 +117,7 @@ export async function appDiceFlow(t: NpcTable, v: NpcView): Promise<void> {
   await expect(q).not.toContainText(/Enganação|\d+ = \d+/);
   await see(v, p, 'bard-result');
   await q.getByRole('button', { name: 'Voltar à cena' }).click();
+  await expectNoOffers(p, campaignId);
   await expect(cutSheet(p)).toHaveCount(0);
 
   // The master's card is settled: who cut and what the number came to.
@@ -134,7 +136,7 @@ export async function appDiceFlow(t: NpcTable, v: NpcView): Promise<void> {
   await expect(npcCard(m)).toBeVisible();
 }
 
-/** The master types a d20 and the bard types the face of her real die: "Cortar com 4" (boards 591-04, 591-07). */
+/** The master types a d20 and the bard types the face of the real die: "Cortar com 4" (boards 591-04, 591-07). */
 export async function physicalDiceFlow(t: NpcTable, v: NpcView): Promise<void> {
   const { m, p, campaignId } = t;
   await masterRolls(t, 'Capitão bandido', '13');
@@ -153,7 +155,7 @@ export async function physicalDiceFlow(t: NpcTable, v: NpcView): Promise<void> {
   await see(v, p, 'bard-question-physical');
   await q.getByRole('button', { name: 'Cortar com 4' }).click();
   await expect(q).toContainText('Você cortou: −4');
-  await expect(q).toContainText('O seu d8 saiu 4 e foi tirado do teste do Capitão bandido.');
+  await expect(q).toContainText('O seu d8 saiu 4 e foi tirado do teste de Capitão bandido.');
   await q.getByRole('button', { name: 'Voltar à cena' }).click();
   await expect(card).toContainText('Cortou 4');
   await expect(card).toContainText(/d20 \(13\) \+ \d+, menos o corte de Brisa/);
@@ -167,10 +169,13 @@ export async function passFlow(t: NpcTable, v: NpcView): Promise<void> {
   const q = cutSheet(p);
   await expect(q.getByRole('button', { name: 'Deixar passar' })).toBeFocused();
   await q.getByRole('button', { name: 'Deixar passar' }).click();
+  await expectNoOffers(p, campaignId);
   await expect(cutSheet(p)).toHaveCount(0);
   const note = p.getByRole('status').filter({ hasText: 'Você deixou passar. Nada foi gasto.' });
   await expect(note).toBeVisible();
-  await see(v, p, 'bard-pass-note', note);
+  // The line leaves the page after 6 s: the shot comes first, then the scan.
+  await v.shoot?.(p, 'bard-pass-note', note);
+  await v.scan?.(p, 'bard-pass-note');
   const card = npcCard(m);
   await expect(card).toContainText('Deixou passar');
   await expect(card).toContainText('d8 · nada gasto');
@@ -181,7 +186,7 @@ export async function passFlow(t: NpcTable, v: NpcView): Promise<void> {
   await expect(cutSheet(p)).toContainText('Você tem 3');
 }
 
-/** Two bards, in order: Brisa cut, bilbo waits; the master goes on without him (boards 591-08 states 4 and 7). */
+/** Two bards, in order: Brisa cut, bilbo waits; the master goes on without bilbo's answer (boards 591-08 states 4 and 7). */
 export async function twoBardsFlow(t: NpcTable, v: NpcView): Promise<void> {
   const { m, p, campaignId, other } = t;
   if (!other) {
@@ -197,30 +202,32 @@ export async function twoBardsFlow(t: NpcTable, v: NpcView): Promise<void> {
   await bardReady(other.page, campaignId);
   await bardReady(p, campaignId);
   await expect(cutSheet(p)).toBeVisible();
+  await expectNoOffers(other.page, campaignId);
   await expect(cutSheet(other.page)).toHaveCount(0);
   await expect(other.page.getByText(/Usar Palavras de Interrupção|faz um teste/)).toHaveCount(0);
 
   await cutSheet(p).getByRole('button', { name: 'Cortar', exact: true }).click();
   await cutSheet(p).getByRole('button', { name: 'Voltar à cena' }).click();
   const q = cutSheet(other.page);
-  await expect(q.getByRole('heading', { name: 'O Capitão bandido faz um teste' })).toBeVisible();
+  await expect(q.getByRole('heading', { name: 'Capitão bandido faz um teste' })).toBeVisible();
   await expect(q).toContainText('(d6)');
   await expect(card).toContainText(/Cortou \d/);
   await expect(card).toContainText('Esperando bilbo');
   await expect(card).toContainText(/, por enquanto/);
   await see(v, m, 'card-two-bards', card);
 
-  // "Continuar sem esperar": bilbo's open question says the master went on, and what he cut stays cut.
+  // "Continuar sem esperar": bilbo's open question is closed, and what Brisa cut stays cut.
   await card.getByRole('button', { name: 'Continuar sem esperar' }).click();
   await expect(card).toContainText('Sem resposta');
-  await expect(card).toContainText('d6 · você seguiu sem esperar · nada gasto');
+  await expect(card).toContainText('d6 · a pergunta foi encerrada · nada gasto');
   await expect(card).toContainText(/Cortou \d/);
   await expect(card.getByRole('button', { name: 'Esconder o teste' })).toBeVisible();
   await see(v, m, 'card-skipped', card);
-  await expect(q).toContainText('O mestre seguiu sem a sua resposta. Nada foi gasto.');
+  await expect(q).toContainText('A pergunta foi encerrada. Nada foi gasto.');
   await expect(q.getByRole('button', { name: 'Cortar', exact: true })).toHaveCount(0);
   await see(v, other.page, 'bard-skipped');
   await q.getByRole('button', { name: 'Fechar' }).click();
+  await expectNoOffers(other.page, campaignId);
   await expect(cutSheet(other.page)).toHaveCount(0);
 }
 
@@ -272,22 +279,22 @@ export async function hideAfterRollFlow(t: NpcTable, v: NpcView): Promise<void> 
 
   // The master's card is settled, the ask closed and nothing was spent.
   await expect(card).toContainText('Sem resposta');
-  await expect(card).toContainText('d8 · você seguiu sem esperar · nada gasto');
+  await expect(card).toContainText('d8 · a pergunta foi encerrada · nada gasto');
   await expect(card.getByRole('button', { name: 'Continuar sem esperar' })).toHaveCount(0);
   await expect(card.getByRole('button', { name: 'Esconder o teste' })).toBeVisible();
   await expect(card).not.toContainText('Esperando');
   await see(v, m, 'card-hidden-after-roll', card);
   // The bard's question is gone: nothing to cut or let pass, only the line that the master went on, and the server holds none.
-  await expect(q).toContainText('O mestre seguiu sem a sua resposta. Nada foi gasto.');
+  await expect(q).toContainText('A pergunta foi encerrada. Nada foi gasto.');
   await expect(q.getByRole('button', { name: 'Cortar', exact: true })).toHaveCount(0);
   await expect(q.getByRole('button', { name: 'Deixar passar' })).toHaveCount(0);
   await see(v, p, 'bard-hidden-after-roll');
-  const mine = await callRPC(p, 'meurpg.play.v1.ResourceService/ListHeldRolls', { campaignId });
-  expect((await mine.json()).offers ?? []).toEqual([]);
+  await expectNoOffers(p, campaignId);
   await q.getByRole('button', { name: 'Fechar' }).click();
   await expect(cutSheet(p)).toHaveCount(0);
   // A reload does not bring the question back.
   await bardReady(p, campaignId);
+  await expectNoOffers(p, campaignId);
   await expect(cutSheet(p)).toHaveCount(0);
 }
 
@@ -302,6 +309,7 @@ export async function hiddenFlow(t: NpcTable, v: NpcView): Promise<void> {
   await expect(card.getByRole('button', { name: 'Continuar sem esperar' })).toHaveCount(0);
   await expect(card.getByRole('button', { name: 'Esconder o teste' })).toBeVisible();
   await see(v, m, 'card-nobody', card);
+  await expectNoOffers(p, campaignId);
   await expect(cutSheet(p)).toHaveCount(0);
 
   await masterRolls(t, 'Espião', '14', true);
@@ -338,15 +346,15 @@ export async function refusalsFlow(t: NpcTable, v: NpcView): Promise<void> {
   const sheet = await openNpcSheet(m, t.campaignId);
   await pickNpc(sheet, 'Capitão bandido');
   await m.route('**/*PlayService/RollNpcCheck', (route) => route.fulfill({ status: 400, contentType: 'application/json', body: JSON.stringify(detail('meurpg.play.v1.GameSessionBlocked')) }));
-  await sheet.getByRole('button', { name: 'Rolar Enganação do Capitão bandido' }).click();
+  await sheet.getByRole('button', { name: 'Rolar Enganação de Capitão bandido' }).click();
   await expect(sheet.getByRole('alert')).toContainText('Só numa sessão aberta. Nada foi rolado.');
   await see(v, m, 'refusal-session', sheet);
   // The combat is the last refusal: it is the one that leaves the entry dashed.
   await m.route('**/*PlayService/RollNpcCheck', (route) => route.fulfill({ status: 400, contentType: 'application/json', body: JSON.stringify(detail('meurpg.play.v1.ResourceBlocked')) }));
-  await sheet.getByRole('button', { name: 'Rolar Enganação do Capitão bandido' }).click();
+  await sheet.getByRole('button', { name: 'Rolar Enganação de Capitão bandido' }).click();
   const alert = sheet.getByRole('alert');
   await expect(alert).toContainText('Um combate começou.');
-  await expect(alert).toContainText('O teste do Capitão bandido não foi rolado: os testes agora são do combate.');
+  await expect(alert).toContainText('O teste de Capitão bandido não foi rolado: os testes agora são do combate.');
   await see(v, m, 'refusal-combat', sheet);
   await m.unroute('**/*PlayService/RollNpcCheck');
   await sheet.getByRole('button', { name: 'Cancelar' }).click();
@@ -365,7 +373,7 @@ export async function combatOpenFlow(t: NpcTable): Promise<void> {
   const sheet = await openNpcSheet(m, campaignId);
   await pickNpc(sheet, 'Capitão bandido');
   await beginCombatRPC(t);
-  await sheet.getByRole('button', { name: 'Rolar Enganação do Capitão bandido' }).click();
+  await sheet.getByRole('button', { name: 'Rolar Enganação de Capitão bandido' }).click();
   await expect(sheet.getByRole('alert')).toContainText('Um combate começou.');
   const res = await callRPC(m, 'meurpg.play.v1.PlayService/GetNpcCheck', { campaignId });
   expect((await res.json()).check).toBeUndefined();
@@ -401,7 +409,7 @@ export async function loadingFlow(t: NpcTable, v: NpcView): Promise<void> {
     await hold;
     await route.fulfill({ status: 503, contentType: 'application/json', body: '{"code":"unavailable","message":"x"}' });
   });
-  await sheet.getByRole('button', { name: 'Rolar Enganação do Capitão bandido' }).click();
+  await sheet.getByRole('button', { name: 'Rolar Enganação de Capitão bandido' }).click();
   const rolling = sheet.getByRole('button', { name: 'Rolando…' });
   await expect(rolling).toBeVisible();
   await expectDashed(rolling);
@@ -444,7 +452,7 @@ export async function cutFailureFlow(t: NpcTable, v: NpcView): Promise<void> {
   await expect(npcCard(m)).toContainText(/Cortou \d/);
 }
 
-/** Who sees nothing (RN-10): another player reads no question, no card and no line, and the server gives him none (board 591-08 state 9). */
+/** Who sees nothing (RN-10): another player reads no question, no card and no line, and the server gives that player none (board 591-08 state 9). */
 export async function nobodySeesFlow(t: NpcTable, v: NpcView): Promise<void> {
   const { m, p, campaignId, other } = t;
   if (!other) {
@@ -464,7 +472,11 @@ export async function nobodySeesFlow(t: NpcTable, v: NpcView): Promise<void> {
   expect((await list.json()).offers ?? []).toEqual([]);
   const latest = await callRPC(seen, 'meurpg.play.v1.PlayService/GetNpcCheck', { campaignId });
   expect(latest.status()).toBe(403);
-  // Brisa's own list holds her question and none of the creature's numbers.
+  const bardLatest = await callRPC(p, 'meurpg.play.v1.PlayService/GetNpcCheck', { campaignId });
+  expect(bardLatest.status()).toBe(403);
+  // The bard's whole page, with the question open, holds nothing of the check.
+  await expect(p.locator('body')).not.toContainText(/d20 \(|skill:deception|Capitão bandido · Enganação/);
+  // The list of the bard asked holds the question and none of the creature's numbers.
   const mine = await callRPC(p, 'meurpg.play.v1.ResourceService/ListHeldRolls', { campaignId });
   const body = JSON.stringify(await mine.json());
   expect(body).not.toMatch(/"d20"|"total"|"modifier"|"checkKey"|Enganação/);
@@ -496,8 +508,8 @@ export async function stageMenuFlow(t: NpcTable): Promise<Locator> {
   const { m, campaignId } = t;
   await openSessionPage(m, campaignId);
   await m.getByRole('button', { name: 'Mais ações de Bartolo' }).click();
-  await m.getByRole('menuitem', { name: 'Teste do Bartolo' }).click();
+  await m.getByRole('menuitem', { name: 'Teste de Bartolo' }).click();
   const sheet = npcSheet(m);
-  await expect(sheet.getByRole('button', { name: /^Rolar .* do Bartolo/ })).toBeVisible();
+  await expect(sheet.getByRole('button', { name: /^Rolar .* de Bartolo/ })).toBeVisible();
   return sheet;
 }
