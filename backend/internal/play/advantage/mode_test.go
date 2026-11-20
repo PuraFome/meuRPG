@@ -50,3 +50,22 @@ func TestSourceProtoHidesWhatTheViewerMayNotKnow(t *testing.T) {
 		t.Errorf("ShownSources for a player = %v", shown)
 	}
 }
+
+// The roll that rests on the target's creature type (Blight on a plant) names the type to the master alone: a player reads the
+// mode with "Outra fonte" and never the type (RN-10).
+func TestSourceOfTheTargetCreatureTypeIsTheMastersAlone(t *testing.T) {
+	names := func(key string) string { return key }
+	ctx := TextContext{Self: true, Names: names}
+	plant := combat.Source{Kind: combat.SourceTargetCreatureType, Effect: combat.ModeDisadvantage, Condition: "plant"}
+	master := SourceProto(plant, ctx, HideUnlessMaster(true))
+	if master.GetTextPt() != "Criatura do tipo planta: desvantagem no teste de resistência" || master.GetKind() != playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_TARGET_CREATURE_TYPE {
+		t.Errorf("the master reads %q (%v)", master.GetTextPt(), master.GetKind())
+	}
+	player := SourceProto(plant, ctx, HideUnlessMaster(false))
+	if player.GetTextPt() != "Outra fonte: desvantagem" || player.GetKind() != playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_OTHER_SOURCE || player.GetEffect() != playv1.RollMode_ROLL_MODE_DISADVANTAGE {
+		t.Errorf("a player reads %q (%v), want the anonymous source with the same mode", player.GetTextPt(), player.GetKind())
+	}
+	if got := (TextContext{Names: names}).Sentence(combat.Source{Kind: combat.SourceTargetCreatureType, Effect: combat.ModeAdvantage, Condition: "undead"}); got != "Criatura do tipo morto-vivo: vantagem no teste de resistência" {
+		t.Errorf("the sentence of an advantage for an undead = %q", got)
+	}
+}

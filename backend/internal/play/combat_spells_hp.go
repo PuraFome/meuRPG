@@ -251,6 +251,14 @@ func (s *Service) hpThreshold(ctx context.Context, c *combatTx, k *hpCast) ([]*p
 func (s *Service) hpZero(ctx context.Context, c *combatTx, k *hpCast) ([]*playv1.CharacterVitals, error) {
 	for i, t := range k.targets {
 		h := &k.hits[i]
+		why, err := s.noLifeMagic(ctx, c, t.c) // no effect on undead or constructs (SRD 5.1)
+		if err != nil {
+			return nil, err
+		}
+		if why != "" {
+			h.NoEffectWhy = why
+			continue
+		}
 		if !combat.ResolveZeroHP(t.hp) {
 			h.FxReason = fxNotAtZero
 			continue
@@ -316,6 +324,14 @@ func (s *Service) hpFlatHeal(ctx context.Context, c *combatTx, k *hpCast) ([]*pl
 	var vitals []*playv1.CharacterVitals
 	for i, t := range k.targets {
 		h := &k.hits[i]
+		why, err := s.noLifeMagic(ctx, c, t.c) // no effect on undead or constructs (SRD 5.1)
+		if err != nil {
+			return nil, err
+		}
+		if why != "" {
+			h.NoEffectWhy = why
+			continue
+		}
 		h.Fx = fxAffected
 		r := combat.ResolveFlatHeal(fx.Heal, t.hp, t.max, t.c.Conditions, fx.Ends)
 		hit, v, err := s.healCombatant(ctx, c, t.c, clamp32(fx.Heal, 0, math.MaxInt32))

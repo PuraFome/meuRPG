@@ -1,0 +1,260 @@
+package play
+
+import (
+	"strings"
+	"testing"
+
+	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
+)
+
+// The creature type in the spells (SRD 5.1): Cure Wounds, Healing Word, Heal and Mass Cure Wounds have no effect on undead or
+// constructs, Spare the Dying stabilizes none, Blight skips both and a plant saves against it with disadvantage and takes the
+// most the dice can give. The slot is spent; a player reads only that nothing happened and the master reads why (RN-02, RN-10).
+// A creature with no type (a character) is as it always was. These tests need the database (MEURPG_TEST_DATABASE_URL).
+
+const (
+	massCureWounds = "spell:mass-cure-wounds"
+	blightSpell    = "spell:blight"
+)
+
+// typeTable is a cleric of level 11 (Brisa: Wisdom 16, the 1st to the 6th circle) and a wizard of level 17 (Pensantus: Intelligence
+// 20, so the save DC is 19) with a Zumbi (undead), an Armadura (construct) and an Arbusto (plant) next to each, and Toren, a
+// character with no type. Brisa has the turn.
+func typeTable(t *testing.T) (*armed, *playv1.Encounter) {
+	t.Helper()
+	a := newArmedWith(t, func(a *armed) {
+		a.toren = a.caio.hero(t, a.campaignID, "Toren", "class:fighter", "race:human", 5,
+			&rulesv1.AbilityScores{Strength: 16, Dexterity: 13, Constitution: 14, Intelligence: 10, Wisdom: 10, Charisma: 8}, []string{battleaxe}, nil)
+		a.pens = a.ana.caster(t, a.campaignID, "Pensantus", "class:wizard", "race:gnome", 17,
+			&rulesv1.AbilityScores{Strength: 10, Dexterity: 14, Constitution: 12, Intelligence: 20, Wisdom: 10, Charisma: 8}, nil, nil, []string{blightSpell}, []string{blightSpell})
+		a.bri = a.bia.caster(t, a.campaignID, "Brisa", "class:cleric", "race:human", 11,
+			&rulesv1.AbilityScores{Strength: 10, Dexterity: 16, Constitution: 14, Intelligence: 10, Wisdom: 16, Charisma: 8}, []string{maceKey}, []string{spareDying}, nil,
+			[]string{cureWounds, healingWord, massCureWounds, healSpell})
+	})
+	e := a.start(t, plan{
+		npcs: []*playv1.Participant{{CharacterId: a.goblin.GetId()}}, npcRolls: []int{3},
+		players: map[string]int32{"Brisa": 18, "Pensantus": 16, "Toren": 14}, reveal: []string{"Goblin"}, setup: true,
+		at: map[string][2]int32{"Brisa": {3, 3}, "Pensantus": {3, 6}, "Toren": {2, 3}, "Goblin": {19, 9}},
+	})
+	creatures := map[string][2]string{"Zumbi": {"monster:zombie", ""}, "Armadura": {"monster:animated-armor", ""}, "Arbusto": {"monster:awakened-shrub", ""}}
+	for name, c := range creatures {
+		a.h.roller.queue(10)
+		e = a.mustAddMonsters(t, e, func(r *playv1.AddMonstersRequest) {
+			r.CreatureKey, r.Count, r.Name, r.Hidden = c[0], 1, name, new(false)
+		}).GetEncounter()
+	}
+	for name, sq := range map[string][2]int32{"Zumbi": {4, 3}, "Armadura": {3, 4}, "Arbusto": {3, 5}} {
+		a.put(t, name, sq[0], sq[1])
+	}
+	e = a.begin(t, e)
+	e = a.passTo(t, e, "Brisa")
+	return a, e
+}
+
+// targetOf is the result of the cast for the target with the label.
+func (a *armed) targetOf(t *testing.T, e *playv1.Encounter, res *playv1.CastSpellResponse, label string) *playv1.SpellTargetResult {
+	t.Helper()
+	id := byLabel(t, e, label).GetId()
+	for _, r := range res.GetCast().GetTargets() {
+		if r.GetCombatantId() == id {
+			return r
+		}
+	}
+	t.Fatalf("%s is not in the cast", label)
+	return nil
+}
+
+// A healing on an undead or a construct: the slot is spent, no hit points come back, the damage the heal would open is
+// not opened, and the player of the caster reads "nothing happened" with no reason (the same as for a creature of any
+// other type that nothing refused); the master reads why, in the app's words.
+func TestHealingSpellsHaveNoEffectOnUndeadAndConstructs(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name, spell string
+		slot        int32
+		heal        bool // the spell reads its hit points (Heal): the answer is an effect, not a lasting effect
+		targets     [][]string
+	}{
+		{"Cure Wounds", cureWounds, 1, false, [][]string{{"Zumbi"}, {"Armadura"}}},
+		{"Healing Word", healingWord, 1, false, [][]string{{"Zumbi"}, {"Armadura"}}},
+		{"Mass Cure Wounds", massCureWounds, 5, false, [][]string{{"Zumbi", "Armadura"}}},
+		{"Heal", healSpell, 6, true, [][]string{{"Zumbi"}, {"Armadura"}}},
+	} {
+		for _, targets := range tc.targets {
+			t.Run(tc.name+" on "+strings.Join(targets, " and "), func(t *testing.T) {
+				t.Parallel()
+				a, e := typeTable(t)
+				before := map[string]int32{}
+				for _, target := range targets {
+					before[target] = byLabel(t, e, target).GetHitPointsCurrent()
+				}
+				res := a.mustCast(t, a.bia, e, "Brisa", tc.spell, slotOfLevel(tc.slot), a.at(t, targets...), noCastRoll)
+				for _, target := range targets {
+					got := a.targetOf(t, e, res, target)
+					if tc.heal {
+						if o := got.GetEffect().GetOutcome(); o != playv1.SpellEffectOutcome_SPELL_EFFECT_OUTCOME_NOT_AFFECTED || got.GetEffect().Healed != nil {
+							t.Errorf("%s: the player reads the effect %v, want not affected and no amount", target, got.GetEffect())
+						}
+					} else if got.GetLastingEffect() != playv1.LastingEffectOutcome_LASTING_EFFECT_OUTCOME_NO_EFFECT {
+						t.Errorf("%s: the player reads %v, want no effect", target, got.GetLastingEffect())
+					}
+					if got.GetNoEffectReasonMaster() != "" || got.GetPendingDamageId() != "" || len(got.GetMorePendingDamageIds()) != 0 {
+						t.Errorf("%s: the player reads the reason %q and the pending heals %q %v, want none", target, got.GetNoEffectReasonMaster(), got.GetPendingDamageId(), got.GetMorePendingDamageIds())
+					}
+					if now := byLabel(t, a.get(t, a.master), target).GetHitPointsCurrent(); now != before[target] {
+						t.Errorf("%s has %d PV, want the %d it had", target, now, before[target])
+					}
+				}
+				if used := usedSlots(a.vitals(t, a.bri), tc.slot); used != 1 {
+					t.Errorf("slots of level %d used = %d, want 1: the slot is spent", tc.slot, used)
+				}
+				// The master, who casts it again for Brisa, reads why.
+				if err := a.undo(t, a.master, e, a.log(t, a.master, e).GetUndoableEventId()); err != nil {
+					t.Fatalf("UndoLastAction() error = %v", err)
+				}
+				master := a.mustCast(t, a.master, e, "Brisa", tc.spell, slotOfLevel(tc.slot), a.at(t, targets...), noCastRoll)
+				for _, target := range targets {
+					if why := a.targetOf(t, e, master, target).GetNoEffectReasonMaster(); why != whyNoLifeMagic {
+						t.Errorf("%s: the master reads %q, want %q", target, why, whyNoLifeMagic)
+					}
+				}
+			})
+		}
+	}
+}
+
+// A creature with no type, a character, is healed as ever: Cure Wounds opens its heal and Heal heals it.
+func TestHealingSpellsStillHealACreatureWithNoType(t *testing.T) {
+	t.Parallel()
+	a, e := typeTable(t)
+	a.hurt(t, a.toren, 5)
+	a.put(t, "Toren", 2, 3)
+	cure := a.targetOf(t, e, a.mustCast(t, a.bia, e, "Brisa", cureWounds, slotOfLevel(1), a.at(t, "Toren"), noCastRoll), "Toren")
+	if cure.GetPendingDamageId() == "" || cure.GetLastingEffect() != playv1.LastingEffectOutcome_LASTING_EFFECT_OUTCOME_UNSPECIFIED {
+		t.Errorf("Cure Wounds on a character = %v, want its heal opened", cure)
+	}
+	if err := a.undo(t, a.master, e, a.log(t, a.master, e).GetUndoableEventId()); err != nil {
+		t.Fatalf("UndoLastAction() error = %v", err)
+	}
+	heal := a.targetOf(t, e, a.mustCast(t, a.bia, e, "Brisa", healSpell, slotOfLevel(6), a.at(t, "Toren"), noCastRoll), "Toren")
+	if heal.GetEffect().GetOutcome() != playv1.SpellEffectOutcome_SPELL_EFFECT_OUTCOME_AFFECTED {
+		t.Errorf("Heal on a character = %v, want affected", heal.GetEffect())
+	}
+}
+
+// Spare the Dying stabilizes no undead and no construct: the player reads that it was not affected, as for any creature that
+// is not at 0 hit points, and the master reads the type's reason instead of the one of the hit points.
+func TestSpareTheDyingStabilisesNoUndeadAndNoConstruct(t *testing.T) {
+	t.Parallel()
+	for _, target := range []string{"Zumbi", "Armadura"} {
+		t.Run(target, func(t *testing.T) {
+			t.Parallel()
+			a, e := typeTable(t)
+			res := a.mustCast(t, a.bia, e, "Brisa", spareDying, nil, a.at(t, target), noCastRoll)
+			got := a.targetOf(t, e, res, target)
+			if got.GetEffect().GetOutcome() != playv1.SpellEffectOutcome_SPELL_EFFECT_OUTCOME_NOT_AFFECTED || got.GetNoEffectReasonMaster() != "" || got.GetEffect().GetReason() != playv1.SpellEffectReason_SPELL_EFFECT_REASON_UNSPECIFIED {
+				t.Errorf("the player reads %v, want not affected with no reason", got)
+			}
+			if err := a.undo(t, a.master, e, a.log(t, a.master, e).GetUndoableEventId()); err != nil {
+				t.Fatalf("UndoLastAction() error = %v", err)
+			}
+			master := a.targetOf(t, e, a.mustCast(t, a.master, e, "Brisa", spareDying, nil, a.at(t, target), noCastRoll), target)
+			if master.GetNoEffectReasonMaster() != whyNoLifeMagic || master.GetEffect().GetOutcome() != playv1.SpellEffectOutcome_SPELL_EFFECT_OUTCOME_NOT_AFFECTED {
+				t.Errorf("the master reads %v, want not affected: %q", master, whyNoLifeMagic)
+			}
+		})
+	}
+}
+
+// Blight skips an undead and a construct: no save, no damage, the slot spent; the player reads that it had no effect, the
+// master reads why.
+func TestBlightSkipsUndeadAndConstructs(t *testing.T) {
+	t.Parallel()
+	for _, target := range []string{"Zumbi", "Armadura"} {
+		t.Run(target, func(t *testing.T) {
+			t.Parallel()
+			a, e := typeTable(t)
+			e = a.passTo(t, e, "Pensantus")
+			res := a.mustCast(t, a.ana, e, "Pensantus", blightSpell, slotOfLevel(4), a.at(t, target), noCastRoll)
+			got := a.targetOf(t, e, res, target)
+			if got.GetLastingEffect() != playv1.LastingEffectOutcome_LASTING_EFFECT_OUTCOME_NO_EFFECT || got.GetNoEffectReasonMaster() != "" {
+				t.Errorf("the player reads %v, want no effect and no reason", got)
+			}
+			if got.GetSave() != nil || got.GetPendingDamageId() != "" {
+				t.Errorf("the cast rolled a save or opened a damage: %v", got)
+			}
+			if used := usedSlots(a.vitals(t, a.pens), 4); used != 1 {
+				t.Errorf("4th-level slots used = %d, want 1", used)
+			}
+			if err := a.undo(t, a.master, e, a.log(t, a.master, e).GetUndoableEventId()); err != nil {
+				t.Fatalf("UndoLastAction() error = %v", err)
+			}
+			master := a.targetOf(t, e, a.mustCast(t, a.master, e, "Pensantus", blightSpell, slotOfLevel(4), a.at(t, target), noCastRoll), target)
+			if master.GetNoEffectReasonMaster() != whyNoLifeMagic || master.GetSave() != nil {
+				t.Errorf("the master reads %v, want no save and %q", master, whyNoLifeMagic)
+			}
+		})
+	}
+}
+
+// A plant saves against Blight with disadvantage and takes the most the dice can give (8d8 at the 4th level: 64), halved when it
+// saves. Only the master reads the roll and why it had disadvantage; the sentence is the app's, and a player is given none.
+func TestBlightOnAPlantSavesWithDisadvantageAndTakesTheMaximum(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name  string
+		faces []int
+		saved bool
+		want  int32
+	}{
+		{"failed", []int{19, 2}, false, 64}, // the lower d20 counts: 2 - 1 = 1
+		{"passed", []int{20, 20}, true, 32},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			a, e := typeTable(t)
+			e = a.passTo(t, e, "Pensantus")
+			a.h.roller.queue(tc.faces...)
+			res := a.mustCast(t, a.master, e, "Pensantus", blightSpell, slotOfLevel(4), a.at(t, "Arbusto"), noCastRoll)
+			got := a.targetOf(t, e, res, "Arbusto")
+			if got.GetSave().GetMode() != playv1.RollMode_ROLL_MODE_DISADVANTAGE || len(got.GetSave().GetRoll().GetFaces()) != 2 {
+				t.Errorf("the master reads the save %v, want two d20 with disadvantage", got.GetSave())
+			}
+			var source *playv1.AdvantageSource
+			for _, s := range got.GetSave().GetSources() {
+				if s.GetKind() == playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_TARGET_CREATURE_TYPE {
+					source = s
+				}
+			}
+			if source == nil || source.GetEffect() != playv1.RollMode_ROLL_MODE_DISADVANTAGE || source.GetTextPt() != "Criatura do tipo planta: desvantagem no teste de resistência" {
+				t.Errorf("the master reads the source %v, want the plant's disadvantage", source)
+			}
+			if (got.GetSave().GetOutcome() == playv1.SaveOutcome_SAVE_OUTCOME_SAVED) != tc.saved {
+				t.Fatalf("the save = %v, want saved %v", got.GetSave().GetOutcome(), tc.saved)
+			}
+			dmg := a.mustDamage(t, a.master, e, got.GetPendingDamageId(), inAppDamage).GetPendingDamage()
+			if dmg.GetAmount() != tc.want || dmg.GetHalf() != tc.saved {
+				t.Errorf("the damage = %d (half %v), want %d (half %v)", dmg.GetAmount(), dmg.GetHalf(), tc.want, tc.saved)
+			}
+		})
+	}
+}
+
+// A creature with no type (a character) saves against Blight as ever: no disadvantage, the dice rolled.
+func TestBlightOnACreatureWithNoTypeIsAsItWas(t *testing.T) {
+	t.Parallel()
+	a, e := typeTable(t)
+	e = a.passTo(t, e, "Pensantus")
+	a.put(t, "Toren", 3, 7)
+	a.h.roller.queue(1)
+	got := a.targetOf(t, e, a.mustCast(t, a.master, e, "Pensantus", blightSpell, slotOfLevel(4), a.at(t, "Toren"), noCastRoll), "Toren")
+	if got.GetSave().GetMode() != playv1.RollMode_ROLL_MODE_NORMAL || got.GetLastingEffect() != playv1.LastingEffectOutcome_LASTING_EFFECT_OUTCOME_UNSPECIFIED {
+		t.Errorf("the save of a character = %v, want a normal roll and no refusal", got)
+	}
+	a.h.roller.queue(1, 1, 1, 1, 1, 1, 1, 1)
+	dmg := a.mustDamage(t, a.master, e, got.GetPendingDamageId(), inAppDamage).GetPendingDamage()
+	if dmg.GetDiceCount() != 8 || dmg.GetAmount() != 8 {
+		t.Errorf("the damage = %d dice, %d, want 8d8 rolled (8)", dmg.GetDiceCount(), dmg.GetAmount())
+	}
+}
