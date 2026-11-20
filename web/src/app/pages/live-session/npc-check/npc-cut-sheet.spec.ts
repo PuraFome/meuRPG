@@ -113,8 +113,8 @@ describe('NpcCutSheet', () => {
     expect(close).toHaveBeenCalledWith(true);
   });
 
-  it('says the master went on without the answer, and only offers to close', async () => {
-    const { flow, flush, button, text } = setup(false);
+  it('says the question is closed when the offer goes, as an alert, and only offers to close', async () => {
+    const { el, flow, flush, button, text } = setup(false);
     flow.sync([]);
     await flush();
     expect(text()).toContain('A pergunta foi encerrada. Nada foi gasto.');
