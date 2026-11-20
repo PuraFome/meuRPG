@@ -62,7 +62,7 @@ type favorPassCall struct {
 	passID    string // the pass an answer or a cancel is about
 	from, to  string // the characters of an ask
 	accept    bool
-	// owner says only the owner of the pass's giver, now, may close it (a cancel): read under the session's lock. The master's answer needs no such check.
+	// owner says only the owner of the pass's giver, now, may close it (a cancel): read with the giver's row locked, under the session's lock. The master's answer needs no such check.
 	owner bool
 	key   string
 	hash  *string
@@ -413,11 +413,9 @@ func (s *Service) CancelFavorPass(ctx context.Context, req *connect.Request[play
 
 // ownsGiver says the caller is, now, the owner of the giver of the ask: the ask follows the character, so a character that changed hands
 // while it waited is canceled by its new owner (the one who reads it, favor_read.go) and not by the one who asked. A giver sent to the
-// reserve has no owner. It is read in the transaction of the cancel, under the session's lock, so a character that changes hands while the
-// cancel waits for the lock is the old owner's no more.
+// reserve has no owner. The owner is read after the giver's row is locked, never before it: the lock makes the read the latest one.
 func (s *Service) ownsGiver(ctx context.Context, tx pgx.Tx, m authz.Membership, pass playdb.FavorPass) (bool, error) {
-	// The transaction's snapshot is older than the session's lock it waited for: the character's row is locked first, so the owner
-	// read next is the newest committed one (the query says why).
+	// Lock the giver's row, then read its owner. Do not read the owner first.
 	_, err := s.queries.WithTx(tx).LockCharacterForOwnerRead(ctx, playdb.LockCharacterForOwnerReadParams{ID: pass.FromCharacterID, CampaignID: m.CampaignID})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return false, nil
@@ -450,7 +448,7 @@ func (s *Service) closePass(ctx context.Context, c favorPassCall, run func(conte
 	c.sessionID = pass.GameSessionID
 	var out playdb.FavorPass
 	err = s.tx(ctx, c.sessionID, func(tx pgx.Tx, h *hints) error {
-		if c.owner { // under the lock: the character may have changed hands while the call waited for it
+		if c.owner { // the owner is read after the lock: the character may have changed hands while the call waited for it
 			owns, err := s.ownsGiver(ctx, tx, c.m, pass)
 			if err != nil {
 				return fmt.Errorf("find the ask's giver: %w", err)

@@ -100,9 +100,8 @@ func TestRefundAnswerKeyUsedInAnotherSessionIsRefusedAsReused(t *testing.T) {
 	}
 }
 
-// The owner is read again under the session's lock: a cancel that passed the owner's check and then waited for the session while another
-// write took it (and the character changed hands) is the old owner's no more, and cancels nothing. The waiting write retries on a fresh
-// snapshot once the session's row has been written, and reads the new owner.
+// The owner is read after the session's lock is taken, not before it: a cancel that passed the owner's check and then waited for the
+// session, while the character changed hands, is the old owner's no more and cancels nothing. The new owner's cancel still works.
 func TestCancelOfAnAskReadsTheOwnerUnderTheSessionLock(t *testing.T) {
 	t.Parallel()
 	f := newFavorFight(t)
