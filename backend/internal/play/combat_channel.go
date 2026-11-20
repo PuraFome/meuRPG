@@ -186,7 +186,7 @@ func (f *takeActionFlow) preserveTarget(ctx context.Context, cs []playdb.Combata
 	if d, known := distanceFt(f.who, target); known && d > channelRangeFt {
 		return target, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_CHANNEL_DIVINITY_TARGET, target.Label+" is more than 30 ft away")
 	}
-	kind, err := f.creatureType(ctx, target)
+	kind, err := f.s.typeOfTarget(ctx, f.c, target)
 	if err != nil {
 		return target, err
 	}
@@ -194,15 +194,6 @@ func (f *takeActionFlow) preserveTarget(ctx context.Context, cs []playdb.Combata
 		return target, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_CHANNEL_DIVINITY_TARGET, "Preserve Life cannot restore an undead or a construct")
 	}
 	return target, nil
-}
-
-// creatureType is the SRD type of a combatant's creature ("undead"), empty for a character.
-func (f *takeActionFlow) creatureType(ctx context.Context, c playdb.Combatant) (string, error) {
-	sheet, err := f.s.sheetOf(ctx, f.c.tx, f.m.CampaignID, c)
-	if err != nil {
-		return "", err
-	}
-	return sheet.Traits.CreatureType, nil
 }
 
 // restore gives the creature the hit points asked, no further than half of its maximum.

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/PuraFome/meuRPG/backend/internal/rules"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 )
 
@@ -206,7 +207,7 @@ func (c TextContext) otherSentence(src combat.Source) string {
 	case combat.SourcePoisonedCheck, combat.SourceFrightenedCheck:
 		return fmt.Sprintf("%s: desvantagem em testes de habilidade", c.cond(src.Condition))
 	case combat.SourceTargetCreatureType:
-		return fmt.Sprintf("Criatura do tipo %s: %s no teste de resistência", creatureTypePT(src.Condition), modeWord(src.Effect))
+		return fmt.Sprintf("Criatura do tipo %s: %s no teste de resistência", rules.CreatureTypeNamePT(src.Condition), modeWord(src.Effect))
 	case combat.SourceTaggedSave:
 		mode := "vantagem"
 		if src.Effect == combat.ModeDisadvantage {
@@ -215,21 +216,6 @@ func (c TextContext) otherSentence(src combat.Source) string {
 		return fmt.Sprintf("%s: %s no teste de resistência %s", c.Names(src.Condition), mode, c.againstSentence(src.Against))
 	}
 	return ""
-}
-
-// creatureTypesPT are the SRD creature types in Portuguese, as the master reads them.
-var creatureTypesPT = map[string]string{
-	"aberration": "aberração", "beast": "fera", "celestial": "celestial", "construct": "construto", "dragon": "dragão",
-	"elemental": "elemental", "fey": "fada", "fiend": "ínfero", "giant": "gigante", "humanoid": "humanoide",
-	"monstrosity": "monstruosidade", "ooze": "gosma", "plant": "planta", "undead": "morto-vivo",
-}
-
-// creatureTypePT is the Portuguese name of an SRD creature type; the key itself for one the app does not know.
-func creatureTypePT(key string) string {
-	if pt, ok := creatureTypesPT[key]; ok {
-		return pt
-	}
-	return key
 }
 
 // modeWord is "vantagem" or "desvantagem".

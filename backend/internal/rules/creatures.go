@@ -57,6 +57,14 @@ var (
 	}
 )
 
+// CreatureTypeNamePT is the Portuguese name of an SRD creature type ("plant" is "planta"); the key itself for one the app does not know.
+func CreatureTypeNamePT(key string) string {
+	if pt, ok := creatureTypeNamePT[key]; ok {
+		return pt
+	}
+	return key
+}
+
 // creatureBeast is the type Wild Shape and Conjure Animals take.
 const creatureBeast = "beast"
 

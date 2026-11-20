@@ -490,11 +490,11 @@ func halfIf(half bool, total int) int32 {
 // plantMaximum is the damage the target takes before its modifiers: the roll, or the most the dice can give when the spell
 // does that to a plant (Blight). It says whether it took the maximum.
 func (f *damageFlow) plantMaximum(ctx context.Context, g playdb.PendingDamage, tgt playdb.Combatant) (int, bool, error) {
-	if g.Healing || g.AttackKey != combat.SpellBlight {
+	if g.Healing || !combat.SpellReadsType(g.AttackKey) {
 		return f.total, false, nil
 	}
 	typ, err := f.s.typeOfTarget(ctx, f.c, tgt)
-	if err != nil || !combat.IsPlant(typ) {
+	if err != nil || !combat.SpellTypeRule(g.AttackKey, typ).Plant {
 		return f.total, false, err
 	}
 	return combat.MaxRoll(int(g.DiceCount), int(g.DiceSides), int(g.DiceBonus)), true, nil

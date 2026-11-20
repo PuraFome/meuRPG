@@ -14,6 +14,9 @@ func LifeMagicNoEffect(creatureType string) bool {
 	return rules.LayOnHandsNoEffect(creatureType)
 }
 
+// SpellReadsType says the spell has a rule for the target's creature type (SpellTypeRule).
+func SpellReadsType(spellKey string) bool { return spellKey == SpellBlight }
+
 // IsPlant says the creature type is plant.
 func IsPlant(creatureType string) bool { return creatureType == "plant" }
 
@@ -44,7 +47,7 @@ type TypeRule struct {
 
 // SpellTypeRule is the rule of the spell for a target of the type; a spell that does not read the type has none.
 func SpellTypeRule(spellKey, creatureType string) TypeRule {
-	if spellKey != SpellBlight {
+	if !SpellReadsType(spellKey) {
 		return TypeRule{}
 	}
 	return TypeRule{NoEffect: LifeMagicNoEffect(creatureType), Mode: BlightSaveMode(creatureType), CreatureType: creatureType, Plant: IsPlant(creatureType)}

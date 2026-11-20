@@ -189,10 +189,30 @@ func (rt *rollsTable) blightDamage(t *testing.T, target string) map[*person]*pla
 	if got.GetPendingDamageId() == "" {
 		t.Fatalf("Blight on %s opened no damage: %v", target, got)
 	}
-	must(rt.ana.combat.RollDamage(t.Context(), rq(&playv1.RollDamageRequest{
+	// The save Ana reads is its outcome alone, the same shape for any target; the damage she rolls reads as rolled in the answer to the
+	// roll and in the options of her turn: the amount is the roll's total (halved when the target saved), never the maximum a plant
+	// takes. Numbers are compared in the number fields.
+	if got.GetSave() == nil || got.GetSave().GetMode() != playv1.RollMode_ROLL_MODE_UNSPECIFIED || got.GetSave().GetRoll() != nil || len(got.GetSave().GetSources()) != 0 {
+		t.Errorf("Ana reads the save on %s as %v, want its outcome alone", target, got.GetSave())
+	}
+	rolled := must(rt.ana.combat.RollDamage(t.Context(), rq(&playv1.RollDamageRequest{
 		CampaignId: rt.campaign, EncounterId: rt.encounter.GetId(), PendingDamageId: got.GetPendingDamageId(), IdempotencyKey: newKey(),
 		Roll: &playv1.RollDamageRequest_RollInApp{RollInApp: true},
-	})))
+	}))).GetPendingDamage()
+	asRolled := func(d *playv1.PendingDamage) int32 {
+		if d.GetHalf() {
+			return d.GetRoll().GetTotal() / 2
+		}
+		return d.GetRoll().GetTotal()
+	}
+	if rolled.GetDiceCount() != 8 || rolled.GetAmount() != asRolled(rolled) {
+		t.Errorf("Ana's roll of the damage on %s answers %v, want 8d8 and the amount as rolled", target, rolled)
+	}
+	for _, d := range rt.optionsOf(rt.ana, labelPens).GetPendingDamages() {
+		if d.GetId() == rolled.GetId() && d.GetAmount() != asRolled(d) {
+			t.Errorf("Ana's options on %s read the amount %d, want %d as rolled", target, d.GetAmount(), asRolled(d))
+		}
+	}
 	rt.ask(t, "Blight damage on "+target)
 	out := map[*person]*playv1.CombatLogDamage{}
 	for _, p := range []*person{rt.master, rt.ana, rt.caio} {
@@ -203,7 +223,10 @@ func (rt *rollsTable) blightDamage(t *testing.T, target string) map[*person]*pla
 				}
 			}
 		}
-		if p == rt.caio { // the spell's damage is the caster's and the master's: Caio may read none, and what he reads is checked all the same
+		if p == rt.caio { // Caio reads the damage as an amount with no roll, so only its presence is required here
+			if out[p] == nil {
+				t.Fatalf("%s reads no damage of the Blight on %s", p.name, target)
+			}
 			continue
 		}
 		if out[p] == nil || out[p].GetRoll() == nil {

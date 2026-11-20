@@ -1698,11 +1698,16 @@ func shownOfPending(p playdb.PendingDamage) (int32, bool) {
 	if rolls := readPartRolls(p.PartRolls); len(rolls) > 0 {
 		return clamp32(shownTotalOf(rolls), 0, math.MaxInt32), true
 	}
-	if len(damagesteps.Read(p.Steps)) > 0 && p.RollTotal != nil {
-		total := *p.RollTotal
-		if p.Half {
-			total = clamp32(combat.HalfDamage(int(total)), 0, math.MaxInt32)
-		}
+	if p.RollTotal == nil || p.Amount == nil {
+		return 0, false
+	}
+	total := *p.RollTotal
+	if p.Half {
+		total = clamp32(combat.HalfDamage(int(total)), 0, math.MaxInt32)
+	}
+	// The target's modifiers took steps, or the damage landed as something other than the roll (a plant takes the maximum of
+	// Blight's dice): a player reads what was rolled.
+	if len(damagesteps.Read(p.Steps)) > 0 || total != *p.Amount {
 		return total, true
 	}
 	return 0, false

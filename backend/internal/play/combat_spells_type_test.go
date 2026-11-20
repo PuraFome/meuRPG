@@ -278,3 +278,44 @@ func (a *armed) castDamage(t *testing.T, u *user, e *playv1.Encounter) *playv1.C
 	}
 	return targets[0].GetDamage()
 }
+
+// The caster's player rolls Blight's damage on a plant and reads it as rolled, in the answer to the roll and in the options of the
+// turn, as on a creature that is not a plant: the pending damage holds the roll's total (8), never the maximum the plant took (64).
+func TestBlightOnAPlantReadsAsRolledToTheCastersPlayer(t *testing.T) {
+	t.Parallel()
+	for _, target := range []string{"Arbusto", "Goblin"} {
+		t.Run(target, func(t *testing.T) {
+			t.Parallel()
+			a, e := typeTable(t)
+			e = a.passTo(t, e, "Pensantus")
+			a.put(t, "Goblin", 4, 6)
+			a.h.roller.queue(1, 1)
+			got := a.targetOf(t, e, a.mustCast(t, a.ana, e, "Pensantus", blightSpell, slotOfLevel(4), a.at(t, target), noCastRoll), target)
+			a.h.roller.queue(1, 1, 1, 1, 1, 1, 1, 1)
+			dmg := a.mustDamage(t, a.ana, e, got.GetPendingDamageId(), inAppDamage).GetPendingDamage()
+			if dmg.GetAmount() != 8 || dmg.GetRoll().GetTotal() != 8 {
+				t.Errorf("the answer to the roll reads amount %d and total %d, want 8 and 8 as rolled", dmg.GetAmount(), dmg.GetRoll().GetTotal())
+			}
+			for _, d := range a.mustOptions(t, a.ana, e, "Pensantus").GetPendingDamages() {
+				if d.GetId() == got.GetPendingDamageId() && (d.GetAmount() != 8 || d.GetRoll().GetTotal() != 8) {
+					t.Errorf("the options of the turn read amount %d and total %d, want 8 and 8 as rolled", d.GetAmount(), d.GetRoll().GetTotal())
+				}
+			}
+		})
+	}
+}
+
+// Spare the Dying on a creature with no type works as it always did.
+func TestSpareTheDyingStillStabilizesACreatureWithNoType(t *testing.T) {
+	t.Parallel()
+	a, e := typeTable(t)
+	a.correct(t, a.toren, hpIs(0))
+	a.put(t, "Toren", 2, 3)
+	got := a.targetOf(t, e, a.mustCast(t, a.bia, e, "Brisa", spareDying, nil, a.at(t, "Toren"), noCastRoll), "Toren")
+	if got.GetEffect().GetOutcome() != playv1.SpellEffectOutcome_SPELL_EFFECT_OUTCOME_AFFECTED {
+		t.Errorf("Spare the Dying on Toren = %v, want affected", got.GetEffect())
+	}
+	if c := byLabel(t, a.get(t, a.master), "Toren"); c.GetState() != playv1.CombatantState_COMBATANT_STATE_STABLE {
+		t.Errorf("Toren = %v, want stable", c.GetState())
+	}
+}
