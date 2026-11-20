@@ -9737,9 +9737,9 @@ type LockCharactersForReadParams struct {
 	Ids        []string
 }
 
-// Locks the rows of the characters until the transaction ends, in the order of their ids. A write that decides on who owns a
-// character, or on whether it is in the reserve, locks the row first and reads it after: the lock makes that read the latest one. It
-// comes after the session's lock (LockSessionForHints), the order of every write of a session.
+// Locks the rows of the characters until the transaction ends. A write that decides on who owns a character, or on whether it is in
+// the reserve, locks the row first and reads it after: the lock makes that read the latest one. It comes after the session's lock
+// (LockSessionForHints).
 func (q *Queries) LockCharactersForRead(ctx context.Context, arg LockCharactersForReadParams) ([]string, error) {
 	rows, err := q.db.Query(ctx, lockCharactersForRead, arg.CampaignID, arg.Ids)
 	if err != nil {

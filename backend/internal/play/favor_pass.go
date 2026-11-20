@@ -233,7 +233,8 @@ func askRefusal(ctx context.Context, q *playdb.Queries, giver string) error {
 	return favorBlocked(playv1.FavorBlockedReason_FAVOR_BLOCKED_REASON_PASS_PENDING, "the inspiration is already in an ask the master has not answered")
 }
 
-// favorGiver checks that the giver is a player character of the caller's (not in the reserve) that has the Inspiration.
+// favorGiver checks that the giver is a player character of the caller's (not in the reserve) that has the Inspiration. The row is locked
+// before it is read (lockedCharacters).
 func (s *Service) favorGiver(ctx context.Context, tx pgx.Tx, c favorPassCall) (link.Character, error) {
 	found, err := s.lockedCharacters(ctx, tx, c.m.CampaignID, []string{c.from})
 	if err != nil {
@@ -427,12 +428,9 @@ func (s *Service) ownsGiver(ctx context.Context, tx pgx.Tx, m authz.Membership, 
 	return false, nil
 }
 
-// lockedCharacters is SessionCharacters read after the rows of the characters are locked, and the only way a write of the session reads a
-// character to decide on its owner or on its place in the reserve. Lock the rows, then read them; never read first. The transaction's
-// snapshot is taken at its first statement, before the wait for the session's lock (LockSessionForHints), and on CockroachDB the wait
-// does not move it: a character that changed hands meanwhile would still be read as before. A locking read finds the newest committed
-// version of the row, so the transaction is moved onto it (or restarted, 40001, and Service.tx runs it again), and the read next is the
-// latest one. The ids are locked in order, after the session's lock, as every write of a session does.
+// lockedCharacters reads the characters of ids (SessionCharacters) after locking their rows. A write of a session that decides on who
+// owns a character, or on whether it is in the reserve, reads it here. The lock makes the read the latest one, whatever changed while
+// the write waited for the session. The session's lock comes first, then the characters' locks.
 func (s *Service) lockedCharacters(ctx context.Context, tx pgx.Tx, campaignID string, ids []string) ([]link.Character, error) {
 	valid := make([]string, 0, len(ids))
 	for _, id := range ids {
@@ -440,10 +438,13 @@ func (s *Service) lockedCharacters(ctx context.Context, tx pgx.Tx, campaignID st
 			valid = append(valid, id)
 		}
 	}
+	if len(valid) == 0 {
+		return nil, nil
+	}
 	if _, err := s.queries.WithTx(tx).LockCharactersForRead(ctx, playdb.LockCharactersForReadParams{CampaignID: campaignID, Ids: valid}); err != nil {
 		return nil, fmt.Errorf("lock the characters: %w", err)
 	}
-	return s.roster.SessionCharacters(ctx, tx, campaignID, ids)
+	return s.roster.SessionCharacters(ctx, tx, campaignID, valid)
 }
 
 // closePass finds the pass the call is about and runs the transaction of the answer on the session it was asked in. A pass that is not
@@ -621,7 +622,8 @@ func (s *Service) acceptPass(ctx context.Context, tx pgx.Tx, h *hints, c favorPa
 
 // mayHold says the character may hold the Inspiration now: a player character of the campaign that is out of the reserve. Every move of
 // the row to a character (the accept, the undo of an accept, the master's refund) asks it first. A character that may not is answered
-// with notAPlayer; a failed read is returned as it is, since it says nothing of the character.
+// with notAPlayer; a failed read is returned as it is, since it says nothing of the character. It locks the character's row until the
+// transaction ends.
 func (s *Service) mayHold(ctx context.Context, tx pgx.Tx, campaignID, characterID string, notAPlayer error) error {
 	if _, err := s.favorReceiver(ctx, tx, campaignID, characterID); err != nil {
 		if favorReasonOf(err) == playv1.FavorBlockedReason_FAVOR_BLOCKED_REASON_NOT_A_PLAYER_CHARACTER {

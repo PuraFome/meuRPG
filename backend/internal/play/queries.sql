@@ -2283,9 +2283,9 @@ RETURNING *;
 SELECT * FROM favor_passes WHERE id = $1 AND campaign_id = $2;
 
 -- name: LockCharactersForRead :many
--- Locks the rows of the characters until the transaction ends, in the order of their ids. A write that decides on who owns a
--- character, or on whether it is in the reserve, locks the row first and reads it after: the lock makes that read the latest one. It
--- comes after the session's lock (LockSessionForHints), the order of every write of a session.
+-- Locks the rows of the characters until the transaction ends. A write that decides on who owns a character, or on whether it is in
+-- the reserve, locks the row first and reads it after: the lock makes that read the latest one. It comes after the session's lock
+-- (LockSessionForHints).
 SELECT id FROM characters
 WHERE campaign_id = sqlc.arg(campaign_id)::UUID AND id = ANY(sqlc.arg(ids)::UUID[])
 ORDER BY id
