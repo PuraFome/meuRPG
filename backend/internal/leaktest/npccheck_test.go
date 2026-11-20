@@ -661,6 +661,77 @@ func TestNpcCheckOutsideTheScenesAudienceAsksNoBard(t *testing.T) {
 	}
 }
 
+// A check of a creature both bards stand within 60 feet of on a measured map, in sight, with the scene open to Ana only: the map measures
+// both bards, yet Caio's bard is outside the scene's audience, so it is not asked, reads no offer and hears nothing on the stream; Ana's
+// bard is (the positive control).
+func TestNpcCheckOnAMeasuredMapOutsideTheScenesAudienceAsksNoBard(t *testing.T) {
+	w := &world{stack: newStack(t), secrets: newSecrets(), pts: map[string]*mapsv1.MapPoint{}, puzzles: map[string]*playv1.Puzzle{}, notes: map[string]string{}}
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("the table: %v", r)
+		}
+	}()
+	ctx := t.Context()
+	w.buildPeople()
+	w.buildGallery()
+	w.fogMap = must(w.master.maps.CreateMap(ctx, rq(&mapsv1.CreateMapRequest{CampaignId: w.campaign, Name: "Caverna", ImageId: w.imgMap}))).GetMap().GetId()
+	must(w.master.maps.SetMapRevealed(ctx, rq(&mapsv1.SetMapRevealedRequest{CampaignId: w.campaign, MapId: w.fogMap, Revealed: true})))
+	must(w.master.maps.SetMapGrid(ctx, rq(&mapsv1.SetMapGridRequest{CampaignId: w.campaign, MapId: w.fogMap, Columns: caveColumns})))
+	ps := w.buildPartialScene()
+	m, ana, caio := w.master, w.ana, w.caio
+	brisa, lia := loreBard(w, ana, "Brisa", 16), loreBard(w, caio, "Lia", 14)
+	baron, _ := w.npc("measured-npc", &charactersv1.BasicSheet{HitPointsMax: 9, ArmorClass: 11, SpeedFt: 30})
+	w.session = must(m.play.StartGameSession(ctx, rq(&playv1.StartGameSessionRequest{CampaignId: w.campaign}))).GetGameSession().GetId()
+	must(m.play.SetCurrentMap(ctx, rq(&playv1.SetCurrentMapRequest{CampaignId: w.campaign, MapId: w.fogMap})))
+	w.place(w.fogMap, brisa.GetId(), 2, 2)
+	w.place(w.fogMap, lia.GetId(), 2, 4)
+	w.place(w.fogMap, baron.GetId(), 6, 3)
+	must(m.maps.SetMapTokenHidden(ctx, rq(&mapsv1.SetMapTokenHiddenRequest{CampaignId: w.campaign, MapId: w.fogMap, CharacterId: baron.GetId(), Hidden: false})))
+	w.openSceneTo(ps.point.GetId(), ana)
+	watchers := map[*person]*streamWatcher{ana: w.watchStream(ana), caio: w.watchStream(caio)}
+	res := must(m.play.RollNpcCheck(ctx, rq(&playv1.RollNpcCheckRequest{
+		CampaignId: w.campaign, Npc: &playv1.RollNpcCheckRequest_NpcCharacterId{NpcCharacterId: baron.GetId()}, CheckKey: "ability:cha",
+		Roll: &playv1.RollNpcCheckRequest_D20Face{D20Face: 17}, IdempotencyKey: newKey(),
+	})))
+	if !res.GetHeld() || len(res.GetCheck().GetAsks()) != 1 || res.GetCheck().GetAsks()[0].GetCharacterId() != brisa.GetId() {
+		t.Fatalf("the master's roll = %v, want one bard asked: Ana's, though the map measures both", res)
+	}
+	read := res.GetCheck()
+	secret := rollNumbers{d20: 17, modifier: read.GetD20().GetModifier(), total: read.GetD20().GetTotal(), name: read.GetCreatureLabel()}
+	offers := func(p *person) []*playv1.HeldRollOffer {
+		return must(p.resources.ListHeldRolls(ctx, rq(&playv1.ListHeldRollsRequest{CampaignId: w.campaign}))).GetOffers()
+	}
+	if got := offers(ana); len(got) != 1 {
+		t.Errorf("Ana lists %v, want the bard's question (the positive control)", got)
+	}
+	if got := offers(caio); len(got) != 0 {
+		t.Errorf("Caio lists %v, want nothing", got)
+	}
+	fenced := w.fence(t, m, watchers, "fim da conversa")
+	heard := func(p *person) int {
+		n := 0
+		for _, ev := range watchers[p].since(0)[:fenced[p]] {
+			if eventCase(ev) == "held_rolls_changed" {
+				n++
+			}
+		}
+		return n
+	}
+	if heard(ana) == 0 {
+		t.Error("Ana's stream heard no held rolls change, want the hint of her question (the positive control)")
+	}
+	if got := heard(caio); got != 0 {
+		t.Errorf("Caio's stream heard %d held rolls changes, want none", got)
+	}
+	for p, sw := range watchers {
+		for _, ev := range sw.since(0) {
+			for _, l := range secret.leaks(ev) {
+				t.Errorf("%s's stream: %s", p.name, l)
+			}
+		}
+	}
+}
+
 // A player reads the summary of a session that ended after an NPC's check a bard cut: it holds nothing of the check (the creature, its
 // roll, who cut), the bard included: a check of the master's side is nobody's roll in the summary.
 func TestNpcCheckLeavesNothingInThePlayersSummaryOfTheEndedSession(t *testing.T) {

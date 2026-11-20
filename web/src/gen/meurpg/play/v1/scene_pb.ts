@@ -1134,8 +1134,9 @@ export type RollNpcCheckRequest = Message<"meurpg.play.v1.RollNpcCheckRequest"> 
    * e ela os ouve"): Cutting Words needs both. Read only when the session's map has no placement of both the creature's token
    * and a bard's (no usable map): then it decides for every bard. With both tokens on the map the server measures the 60 feet
    * and, on a fog map, what the bard's player sees, and ignores this for that bard. A creature whose token the master hid on the map is seen by
-   * no bard, whatever this says, whether or not the bard has a token and whether or not the map has a grid. `NpcCheckCandidate.map_measures`
-   * says which creatures the map measures.
+   * no bard, whatever this says, whether or not the bard has a token and whether or not the map has a grid. A bard whose player the
+   * open scene is not open to is not asked, whatever the map measures and this says. `NpcCheckCandidate.map_measures` says which
+   * creatures the map measures.
    *
    * @generated from field: bool bard_sees = 7;
    */
@@ -1424,7 +1425,7 @@ export type NpcCheckCandidate = Message<"meurpg.play.v1.NpcCheckCandidate"> & {
   /**
    * True when the session's current map can measure this creature against a bard: the creature has a token on the grid of the
    * map, and so has at least one bard that would be asked (a bard of the party with Cutting Words in "todos", awake, with a use
-   * left). It is per creature: another creature of the same map, with no such pair, has it false. Then the server measures the
+   * left) whose player the open scene is open to. It is per creature: another creature of the same map, with no such pair, has it false. Then the server measures the
    * 60 feet and the sight itself for each bard with a token and the app shows no checkbox, so it sends `bard_sees` false and a
    * bard with no token on the map is not asked about this creature; when false the checkbox "Os bardos veem a criatura e ela os
    * ouve" decides for every bard (a creature whose token is hidden is the exception: no bard is asked).

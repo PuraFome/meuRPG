@@ -162,8 +162,8 @@ func (s *Service) GetNpcCheck(ctx context.Context, req *connect.Request[playv1.G
 }
 
 // mapMeasures says which creatures the session's current map measures against a bard: the creature has a token on it, and so has a
-// bard that would be asked (see askedBardOf, without the sight). Then the server measures the 60 feet and the sight and the master's
-// box is not read.
+// bard that would be asked (see askedBardOf, without the sight) whose player is among the viewers of the open scene. Then the server
+// measures the 60 feet and the sight and the master's box is not read for that bard.
 func (s *Service) mapMeasures(ctx context.Context, session playdb.GameSession) (func(string) bool, error) {
 	var tokens map[string]cutting.Token
 	var bards []string
@@ -172,12 +172,16 @@ func (s *Service) mapMeasures(ctx context.Context, session playdb.GameSession) (
 		if tokens, err = s.mapTokensOf(ctx, tx, session); err != nil || len(tokens) == 0 {
 			return err
 		}
+		scene, err := sceneViewersOf(ctx, s.queries.WithTx(tx), session)
+		if err != nil {
+			return err
+		}
 		party, err := s.roster.CombatParty(ctx, tx, session.CampaignID)
 		if err != nil {
 			return err
 		}
 		for _, c := range party {
-			if _, on := tokens[c.ID]; !on || !c.Player || c.Reserved || c.PlayerUserID == "" {
+			if _, on := tokens[c.ID]; !on || !c.Player || c.Reserved || c.PlayerUserID == "" || !scene.has(c.PlayerUserID) {
 				continue
 			}
 			if _, asked, err := s.bardOf(ctx, tx, session.CampaignID, c); err != nil {

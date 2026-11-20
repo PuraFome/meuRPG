@@ -99,13 +99,14 @@ func TestSightOnTheMap(t *testing.T) {
 		wantSees  bool
 		wantNamed bool
 	}{
-		{"both tokens, 60 feet, in the open", cutting.Sight{Mapped: true, DistanceFt: 60, Seen: true}, true, true},
-		{"both tokens, 65 feet", cutting.Sight{Mapped: true, DistanceFt: 65, Seen: true}, false, false},
-		{"close but in the dark of the fog", cutting.Sight{Mapped: true, DistanceFt: 10, Seen: false}, false, false},
-		{"close but the token is hidden", cutting.Sight{Mapped: true, DistanceFt: 10, Seen: true, TokenHidden: true}, false, false},
+		{"both tokens, 60 feet, in the open", cutting.Sight{Mapped: true, DistanceFt: 60, Seen: true, InScene: true}, true, true},
+		{"both tokens, 65 feet", cutting.Sight{Mapped: true, DistanceFt: 65, Seen: true, InScene: true}, false, false},
+		{"close but in the dark of the fog", cutting.Sight{Mapped: true, DistanceFt: 10, Seen: false, InScene: true}, false, false},
+		{"close but the token is hidden", cutting.Sight{Mapped: true, DistanceFt: 10, Seen: true, TokenHidden: true, InScene: true}, false, false},
 		{"the box says yes and the map says no: the map wins", cutting.Sight{Mapped: true, DistanceFt: 100, Seen: true, Box: true, InScene: true}, false, false},
-		{"the map says yes, the bard's player is outside the scene: the map wins, the scene is not read", cutting.Sight{Mapped: true, DistanceFt: 5, Seen: true}, true, true},
-		{"the box says no and the map says yes: the map wins", cutting.Sight{Mapped: true, DistanceFt: 5, Seen: true}, true, true},
+		{"the map says yes, the bard's player is outside the scene: nobody sees it", cutting.Sight{Mapped: true, DistanceFt: 5, Seen: true}, false, false},
+		{"the map says yes and the box says yes, the bard's player is outside the scene", cutting.Sight{Mapped: true, DistanceFt: 5, Seen: true, Box: true}, false, false},
+		{"the box says no and the map says yes: the map wins", cutting.Sight{Mapped: true, DistanceFt: 5, Seen: true, InScene: true}, true, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -245,6 +246,13 @@ func TestPlaceSightOf(t *testing.T) {
 	}
 	if blind := both.SightOf("bard", true, func(grid.Square) bool { return false }, true, true); blind.Seen {
 		t.Errorf("a bard whose player does not see the square = %+v, want Seen false", blind)
+	}
+	shown := cutting.Place{NPC: "npc", Tokens: map[string]cutting.Token{"npc": {Sq: grid.Square{Col: 2}}, "bard": {}}}
+	if got := shown.SightOf("bard", true, yes, true, true); !got.Mapped || !got.Sees() || !got.Named() {
+		t.Errorf("both tokens within 60 feet, the bard's player in the scene = %+v, want the creature seen and named", got)
+	}
+	if got := shown.SightOf("bard", true, yes, true, false); !got.Mapped || got.Sees() || got.Named() {
+		t.Errorf("both tokens within 60 feet, the bard's player outside the scene = %+v, want a creature nobody sees", got)
 	}
 	noBard := cutting.Place{NPC: "npc", Tokens: map[string]cutting.Token{"npc": {}}}
 	if got := noBard.SightOf("bard", true, yes, true, true); got != (cutting.Sight{Box: true, OnStage: true, InScene: true}) {
