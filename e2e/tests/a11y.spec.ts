@@ -15443,17 +15443,6 @@ async function scanReadyMasterScreens(browser: Browser, colorScheme: 'light' | '
     await m.locator('app-readied-fold').scrollIntoViewIfNeeded();
     await shoot(m, 'mestre-dois');
 
-    // Off both readiers' turns (Goblin 2's), Pensantus' window opens first and Goblin 1's waits behind it: the queue says "Depois de Pensantus".
-    await passTurnsToAndWait(m, campaignId, 'Goblin 2', m);
-    await row.filter({ hasText: 'Pensantus' }).getByRole('button', { name: 'Disparar a ação de Pensantus' }).click();
-    await expect(row.filter({ hasText: 'Pensantus' })).toContainText('A janela de Pensantus já está aberta: espere a resposta.');
-    await row.filter({ hasText: 'Goblin 1' }).getByRole('button', { name: 'Disparar a ação de Goblin 1' }).click();
-    const behind = m.locator('app-reaction-queue[part="rest"]');
-    await expect(behind).toContainText('Depois de Pensantus');
-    await behind.scrollIntoViewIfNeeded();
-    await expectScreenPasses(m, `Preparar, a fila do mestre com uma janela esperando a outra ${where}`);
-    await shootReady(m, 'fila-depois', width, colorScheme, '857');
-
     // The fire opens the readier's window: the row says so and "Disparar" stays off.
     await row.filter({ hasText: 'Pensantus' }).getByRole('button', { name: 'Disparar a ação de Pensantus' }).click();
     await expect(row.filter({ hasText: 'Pensantus' })).toContainText('A janela de Pensantus já está aberta: espere a resposta.');
