@@ -436,6 +436,7 @@ func TestTheLevelUpOffersAChoiceOfASharedPoolTheShareThePoolHasLeft(t *testing.T
 	before := rumorBuild(5, postureHeron)
 	for name, view := range map[string]*Content{"player": withOverlay(t, o).ForPlayer(), "master": withOverlay(t, o)} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			offer, err := LevelUpOptions(before, "class:barbarian", view)
 			if err != nil {
 				t.Fatalf("LevelUpOptions: %v", err)
