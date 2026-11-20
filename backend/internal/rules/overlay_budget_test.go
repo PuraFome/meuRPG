@@ -34,19 +34,19 @@ func budgetOverlay() Overlay {
 }
 
 // TestWithAtTheBudgets: an overlay at every budget (6,000 effects, 500 distinct
-// formulas) is accepted and stays cheap: under 100 ms and under 8 MB kept. Without
+// formulas) is accepted and stays cheap: under 100 ms and under 16 MB kept. Without
 // the budgets, 300 classes of 60 features of 20 effects took 24 s and kept 673 MB.
 func TestWithAtTheBudgets(t *testing.T) {
 	srd := loadForTest(t)
 	o := budgetOverlay()
 	best := time.Hour
 	var kept *Content
-	heap := func() uint64 {
+	heap := func() float64 { // bytes as a float: the difference of two readings is signed
 		runtime.GC()
 		runtime.GC()
 		var m runtime.MemStats
 		runtime.ReadMemStats(&m)
-		return m.HeapAlloc
+		return float64(m.HeapAlloc)
 	}
 	before := heap()
 	for range 5 {
@@ -59,15 +59,20 @@ func TestWithAtTheBudgets(t *testing.T) {
 		kept = c
 	}
 	after := heap()
-	retained := float64(after-before) / 1e6
+	runtime.KeepAlive(o)               // after the second reading: a freed overlay would make this content minus overlay
+	retained := (after - before) / 1e6 // signed: a shrinking heap shows as negative, never wraps
 	t.Logf("at the budgets: %v best of 5, %.2f MB kept (one content)", best, retained)
 	// The time is held only when asked (MEURPG_MEASURE=1, on a quiet machine,
 	// without -race): on a busy one, or in CI, a clock check fails for nothing.
 	if os.Getenv("MEURPG_MEASURE") == "1" && !raceEnabled && best > 100*time.Millisecond {
 		t.Errorf("With at the budgets took %v, want under 100 ms", best)
 	}
-	if retained > 8 {
-		t.Errorf("a content at the budgets keeps %.2f MB, want under 8", retained)
+	// 16 MB holds what one content at the budgets keeps: about 12 MB measured
+	// here, with room for a size class or two of Effect. The overlay is built
+	// before the first reading and kept alive past the second, so it is in both
+	// and cancels out: the figure is the content's own, not content minus overlay.
+	if retained > 16 {
+		t.Errorf("a content at the budgets keeps %.2f MB, want under 16", retained)
 	}
 	runtime.KeepAlive(kept)
 }

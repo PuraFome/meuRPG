@@ -15,12 +15,12 @@ func TestWithMemory(t *testing.T) {
 	}
 	srd := loadForTest(t)
 	o := realisticOverlay(t, srd)
-	heap := func() uint64 {
+	heap := func() float64 { // bytes as a float: the difference of two readings is signed
 		runtime.GC()
 		runtime.GC()
 		var m runtime.MemStats
 		runtime.ReadMemStats(&m)
-		return m.HeapAlloc
+		return float64(m.HeapAlloc)
 	}
 	const n = 8
 	keep := make([]*Content, 0, n)
@@ -33,6 +33,7 @@ func TestWithMemory(t *testing.T) {
 		keep = append(keep, c)
 	}
 	after := heap()
-	t.Logf("%d contents of 300 entries keep %.2f MB each (%.1f MB together)", n, float64(after-before)/n/1e6, float64(after-before)/1e6)
+	runtime.KeepAlive(o) // the overlay lives past the second reading: it cancels out, not "content minus overlay"
+	t.Logf("%d contents of 300 entries keep %.2f MB each (%.1f MB together)", n, (after-before)/n/1e6, (after-before)/1e6)
 	runtime.KeepAlive(keep)
 }

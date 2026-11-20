@@ -185,12 +185,12 @@ func TestWithMemoryByEntries(t *testing.T) {
 		t.Skip("set MEURPG_MEASURE=1 to measure")
 	}
 	srd := loadForTest(t)
-	heap := func() uint64 {
+	heap := func() float64 { // bytes as a float: the difference of two readings is signed
 		runtime.GC()
 		runtime.GC()
 		var m runtime.MemStats
 		runtime.ReadMemStats(&m)
-		return m.HeapAlloc
+		return float64(m.HeapAlloc)
 	}
 	const copies = 4
 	for _, n := range scaleSizes {
@@ -205,7 +205,8 @@ func TestWithMemoryByEntries(t *testing.T) {
 			keep = append(keep, c)
 		}
 		after := heap()
-		t.Logf("%d entries: a content keeps %.2f MB", n, float64(after-before)/copies/1e6)
+		runtime.KeepAlive(o) // the overlay lives past the second reading: it cancels out, not "content minus overlay"
+		t.Logf("%d entries: a content keeps %.2f MB", n, (after-before)/copies/1e6)
 		runtime.KeepAlive(keep)
 	}
 }
