@@ -115,7 +115,7 @@ test('com o mapa aberto num aparelho, o outro aparelho do jogador lê onde a mes
 
 test('o mestre solta a Bola de Fogo por Pensantus: o rodapé diz que ele ainda pode responder, e "Voltar" não gasta nada', { tag: ['@RN-31', '@RN-22'] }, async ({ browser }) => {
   test.setTimeout(240_000);
-  const { m, p, campaignId, done } = await readyMapTable(browser, 'Mestre solta', 'fireball');
+  const { m, p, campaignId, done } = await readyMapTable(browser, 'Mestre solta', 'fireball', { width: 1280, height: 800, both: true });
   try {
     await fireReadied(m);
     await expect(spellWindow(p)).toBeVisible();
@@ -133,6 +133,7 @@ test('o mestre solta a Bola de Fogo por Pensantus: o rodapé diz que ele ainda p
     await sheet.getByRole('application', { name: 'Mapa: escolha o ponto da Bola de Fogo' }).press('Enter');
     await expect(sheet.getByRole('heading', { name: /Quem está na área/ })).toBeFocused();
     // Opening the list does not scroll the band out from under the header.
+    await expect.poll(() => sheet.locator('.frame__body').evaluate((el) => el.scrollTop)).toBe(0);
     await expect(sheet.getByTestId('release-band')).toBeInViewport({ ratio: 1 });
     await expect(sheet.getByRole('button', { name: 'Voltar', exact: true }).locator('mat-icon')).toHaveText('arrow_back');
     await expect(sheet.getByRole('button', { name: 'Mudar o local' }).locator('mat-icon')).toHaveCount(0);

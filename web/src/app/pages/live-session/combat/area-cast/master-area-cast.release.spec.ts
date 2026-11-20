@@ -19,6 +19,7 @@ import { fakeCombatClient } from '../../../../core/combat/combat-client-testing'
 import { combatant, encounter, reactionWindow } from '../../../../core/combat/combat-testing';
 import { SpellCatalog } from '../../../../core/combat/spell-catalog';
 import { AreaMap } from '../../../../shared/area-picker/area-map';
+import { SheetFrame } from '../../../../shared/sheet/sheet-frame/sheet-frame';
 import { MasterAreaCast, type MasterAreaCastData } from './master-area-cast';
 
 const plain = (t: string | null | undefined) =>
@@ -165,6 +166,7 @@ describe('MasterAreaCast: the master releases a readied spell for the player (#8
     await settle();
     expect(el.querySelector('app-release-band')).not.toBeNull();
     const focus = vi.spyOn(HTMLElement.prototype, 'focus');
+    const scrollTop = vi.spyOn(SheetFrame.prototype, 'scrollToTop');
     try {
       button('Mudar o local')!.click();
       await settle();
@@ -176,8 +178,10 @@ describe('MasterAreaCast: the master releases a readied spell for the player (#8
           (focus.mock.calls[i]?.[0] as FocusOptions | undefined)?.preventScroll === true,
       );
       expect(heading).toBeGreaterThanOrEqual(0);
+      expect(scrollTop).toHaveBeenCalled();
     } finally {
       focus.mockRestore();
+      scrollTop.mockRestore();
     }
   });
 

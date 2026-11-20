@@ -202,6 +202,7 @@ export class MasterAreaCast {
   protected readonly error = signal('');
   private readonly key = new ActionKey();
   private readonly listTitle = viewChild<AreaStep>('listTitle');
+  private readonly frame = viewChild(SheetFrame);
 
   protected readonly combatants = computed(() => this.data.state.encounter()?.combatants ?? []);
   /** Everyone placed on the map, hidden ones too: "Centrar em…" for the master. */
@@ -303,7 +304,14 @@ export class MasterAreaCast {
     effect(() => {
       if (this.flow.step() === 'list') {
         untracked(() =>
-          afterNextRender(() => this.listTitle()?.focus(true), { injector: this.injector }),
+          afterNextRender(
+            () => {
+              this.listTitle()?.focus(true);
+              // The picking may have scrolled the body: the list opens at the top, with the band under the header.
+              this.frame()?.scrollToTop();
+            },
+            { injector: this.injector },
+          ),
         );
       }
     });
