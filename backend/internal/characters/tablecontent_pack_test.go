@@ -814,7 +814,9 @@ func TestAnImportRefusesAKeyOfAnotherKindInAToolListAsAWriteDoes(t *testing.T) {
 	}}}
 	const field = "table_background.feature.effects[0].from"
 	hasViolation := func(vs []*rulesv1.TableContentViolation) bool {
-		return slices.ContainsFunc(vs, func(v *rulesv1.TableContentViolation) bool { return v.GetField() == field && v.GetReason() == "bad_value" })
+		return slices.ContainsFunc(vs, func(v *rulesv1.TableContentViolation) bool {
+			return v.GetField() == field && v.GetReason() == "bad_value"
+		})
 	}
 
 	_, err := pt.master.table.CreateTableEntry(t.Context(), connect.NewRequest(createReq(pt.to, body)))
