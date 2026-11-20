@@ -18,7 +18,7 @@ These rules hold for every MeuRPG cloud session, on every item. They live on the
 - Spend with care: one implementer and one reviewer per task, no second reviewer on the same diff, no agent for a lookup you can do with one command, and no re-run of a suite that already passed on the same head.
 - When a task proves too hard for the implementer (a second failed fix round on the same finding, for example), say so in a `question:` and name the task. Do not change an agent's model or effort by yourself.
 - If your Agent tool does not offer `implementer`, `reviewer` and `explorer`, or you find the main agent on another model, say so in your next `progress:` line.
-- A hook refuses an Agent call that breaks these rules (`.claude/hooks/agent-effort.py`) and says why: repeat the call with the values it names.
+- A hook refuses an Agent call that breaks these rules (`.claude/hooks/agent-effort.py`) and says why: any agent type but the three named ones and the built-in search and planning agents, and an implementer whose prompt names no existing reading list. Repeat the call with the values it names.
 
 ## Commits
 
