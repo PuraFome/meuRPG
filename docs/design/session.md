@@ -261,12 +261,53 @@ The question is a `--warning` surface (`app-held-question`, `pages/live-session/
 
 ## Cutting Words outside a combat
 
-A College of Lore bard may cut the check an NPC makes outside a combat (boards 591-01 to 591-08). The master rolls it, the bards are asked one at a time, and the master's card follows. Code: `core/npc-check` (the words and the state), `pages/live-session/npc-check` (the screens).
+A College of Lore bard may cut the check an NPC makes outside a combat (boards 591-01 to 591-08).
+The master rolls it, the bards are asked one at a time, and the master's card follows.
+Code: `core/npc-check` (the words and the state), `pages/live-session/npc-check` (the screens).
+No text of this feature takes a gender from a creature's name: a name follows "de" ("Rolar Enganação de Capitão bandido", "Teste de Bartolo"), and a title names it alone ("Capitão bandido faz um teste").
 
-- **The entry** is one name, "Teste de um NPC": a button in the head of "Ações e rolagens" beside "Teste em grupo", "Teste de Bartolo" in the "⋮" of a stage NPC (the sheet opens with that NPC chosen), and, with no scene open, a button beside "Pedir teste em grupo". While a combat is open the entry is the app's dashed button with "Há um combate aberto: os testes das criaturas são do combate." beside it.
-- **The sheet "Teste de um NPC"** is a dialog from 768 px (two columns: "Quem rola" at the left, the check, the d20 and the box at the right) and a bottom sheet under it (one column). "Quem rola" lists the stage ("Em cena"), the NPC tokens of the map ("No mapa") and the bestiary ("Do bestiário", a search that reads one SRD creature), each with "Os jogadores veem" or "Escondido dos jogadores", and "Sem bloco de estatísticas: rola com +0" for an NPC typed by hand. The select "Teste" shows each check with its bonus ("Enganação +4", "sem bônus"); a creature with no number for the check says "Sem bônus para Persuasão: o d20 conta com +0 e você soma o bônus que achar justo." beside the select. "Como rolar o d20" is "Rolar no app" or "Digitar o d20" (1 to 20). The box "Os bardos veem a criatura e ela os ouve" shows only when the map cannot measure the creature (no token of it beside a bard's); when it can, a quiet line says the app measures the 18 m and the sight. The box starts ticked, and unticked for a creature the master hid, with the line that ticked the bards read "uma criatura", without the name. The one filled button names the roll ("Rolar Enganação do Capitão bandido"); with nothing chosen, or a d20 outside 1 to 20, it is the dashed one with the reason above it ("Escolha quem rola e o teste.", "O d20 vai de 1 a 20."), and "Rolando…" while the roll is on the way. A refusal stays in the sheet as an alert: "Um combate começou.", "Só numa sessão aberta.", "Não deu para rolar agora." Each says nothing was rolled.
-- **The master's card** (`app-npc-check-card`) is under the head of "Ações e rolagens" (or with the entry when no scene is open), titled "Capitão bandido · Enganação": the number in a box, how it came ("d20 (13) + 4 = 17"; after a cut "17 − 4 = 13, por enquanto"), "Só você vê", and one row for each bard asked in the party's order: "Esperando Brisa", "Na fila", "Cortou 4", "Deixou passar", "Sem resposta". While a bard may still answer it has "Continuar sem esperar" (it closes every open question and keeps the cuts); a settled card has the "X" that hides it on this device only, in memory: a reload shows it again until the next check or the end of the session. A creature with no known bonus adds "Sem bônus: Bartolo não tem número para Persuasão. O d20 contou com +0: some o bônus que achar justo." A check nobody was asked about says "Ninguém foi perguntado" and why. The check is not in "Perguntas pendentes": the card is the only place.
-- **The bard's question** (`app-npc-cut-sheet`) is an alert sheet that Esc and the backdrop do not close, opened over the board or an open puzzle: "O Capitão bandido faz um teste" (or "Uma criatura faz um teste"), "Palavras de Interrupção · fora de combate", "Usar Palavras de Interrupção?", the chips "Gasta 1 Inspiração de Bardo", "Você tem 3" and "Não gasta reação", and the lines that the check, the total and the DC stay with the master and that the master may go on without the answer. It has no clock and never reads "Sem efeito". "Deixar passar" is the first focus. "Cortar" rolls the bard's own die in the app; at a table with physical dice the field "Número que saiu no seu d8 (1 a 8)" comes first and the button reads "Cortar com 4". After a cut the sheet reads "Palavras de Interrupção usadas", "Você cortou: −4", "Gastou 1 Inspiração de Bardo", "Restam 2" and "Voltar à cena". Letting it pass closes the sheet and leaves "Você deixou passar. Nada foi gasto." on the page for a moment. If the master went on first the open sheet reads "O mestre seguiu sem a sua resposta. Nada foi gasto." with "Fechar"; an answer that arrives after that is refused with "Essa pergunta já foi respondida. Nada foi gasto."; a failure reads "Não deu para cortar agora. Nada foi gasto. Tente de novo." (RN-10: the bard never reads the creature's d20, bonus, total or DC; no other player reads anything.)
+- **The entry** is one name, "Teste de um NPC".
+  It is a button in the head of "Ações e rolagens" beside "Teste em grupo", "Teste de Bartolo" in the "⋮" of a stage NPC (the sheet opens with that NPC chosen), and, with no scene open, a button beside "Pedir teste em grupo".
+  While a combat is open the entry is the app's dashed button with "Há um combate aberto: os testes das criaturas são do combate." beside it.
+- **The sheet "Teste de um NPC"** is a dialog from 768 px (two columns: "Quem rola" at the left, the check, the d20 and the box at the right) and a bottom sheet under it (one column).
+  "Quem rola" has one heading and one radio group for each source: the stage ("Em cena"), the NPC tokens of the map ("No mapa") and the bestiary ("Do bestiário", with its search outside the group, which reads one SRD creature).
+  Each row says "Os jogadores veem" or "Escondido dos jogadores", and "Sem bloco de estatísticas: rola com +0" for an NPC typed by hand.
+  The select "Teste" shows each check with its bonus ("Enganação +4", "sem bônus"), under "Uma perícia ou uma habilidade de Capitão bandido, com o bônus que consta no teste."
+  A creature with no number for the check says "Sem bônus para Persuasão: o d20 conta com +0 e você soma o bônus que achar justo." beside the select.
+  "Como rolar o d20" is "Rolar no app" or "Digitar o d20" (1 to 20).
+  The box "Os bardos veem a criatura e ela os ouve" shows only when the map cannot measure the creature (no token of it beside a bard's).
+  When the map can, a quiet line says the app measures the 18 m and the sight.
+  The box starts ticked, and unticked for a creature the master hid, with the line that ticked the bards read "uma criatura", without the name.
+  The one filled button names the roll ("Rolar Enganação de Capitão bandido").
+  With nothing chosen, or a d20 outside 1 to 20, it is the dashed one with the reason above it ("Escolha quem rola e o teste.", "O d20 vai de 1 a 20."), and "Rolando…" while the roll is on the way.
+  A refusal stays in the sheet as an alert: "Um combate começou.", "Só numa sessão aberta.", "Não deu para rolar agora."
+  Each says nothing was rolled.
+- **The master's card** (`app-npc-check-card`) is under the head of "Ações e rolagens" (or with the entry when no scene is open), titled "Capitão bandido · Enganação".
+  It shows the number in a box, how it came ("d20 (13) + 4 = 17"; after a cut "17 − 4 = 13, por enquanto"), "Só você vê", and one row for each bard asked in the party's order.
+  The tags are "Esperando Brisa", "Na fila", "Cortou 4", "Deixou passar" and "Sem resposta".
+  A question the server closed (the master went on, the creature's token was hidden after the roll, or the bard's player left the scene) reads "Sem resposta" with "d8 · a pergunta foi encerrada · nada gasto".
+  Only the formula and its line are a polite live region; the number in the box is read once, as "Total 13".
+  While a bard may still answer the card has "Continuar sem esperar" (it closes every open question and keeps the cuts); a skip that fails reads the card again.
+  A settled card has the "X" that hides it on this device only: the hidden card is kept for the page, so a scene opening or closing does not bring it back, and a reload shows it again until the next check or the end of the session.
+  The "X" sends the focus to the button "Teste de um NPC".
+  A creature with no known bonus adds "Sem bônus: Bartolo não tem número para Persuasão. O d20 contou com +0: some o bônus que achar justo."
+  A check nobody was asked about says "Ninguém foi perguntado" and why (no bard can cut, the creature cannot be charmed, its token is hidden, nobody sees it), from the master-only `nobody_reason`.
+  The check is not in "Perguntas pendentes": the card is the only place.
+- **The bard's question** (`app-npc-cut-sheet`) is an alert sheet that Esc and the backdrop do not close, opened over the board or an open puzzle.
+  It reads "Capitão bandido faz um teste" (or "Uma criatura faz um teste"), "Palavras de Interrupção · fora de combate" and "Usar Palavras de Interrupção?"
+  It has the chips "Gasta 1 Inspiração de Bardo", "Você tem 3" and "Não gasta reação", and the lines that the check, the total and the DC stay with the master and that the master may go on without the answer.
+  It has no clock and never reads "Sem efeito".
+  "Deixar passar" is the first focus.
+  "Cortar" rolls the bard's own die in the app; at a table with physical dice the field "Número que saiu no seu d8 (1 a 8)" comes first and the button reads "Cortar com 4".
+  After a cut the sheet reads "Palavras de Interrupção usadas", "Você cortou: −4", "Gastou 1 Inspiração de Bardo", "Restam 2" and "Voltar à cena".
+  Letting it pass closes the sheet and leaves "Você deixou passar. Nada foi gasto." on the page for a moment.
+  When the question is closed while the sheet is open (the master went on, the creature's token was hidden after the roll, the bard's player left the scene) the open sheet reads "A pergunta foi encerrada. Nada foi gasto." as an alert, with only "Fechar".
+  An answer that arrives after that is refused: "A pergunta já foi encerrada. Nada foi gasto." when the server no longer has the question (not found, or no open session), and "Essa pergunta já foi respondida. Nada foi gasto." when this bard answered it already.
+  A failure reads "Não deu para cortar agora. Nada foi gasto. Tente de novo."
+  The content of the sheet is inside a polite live region, and when the phase changes the new primary button takes the focus.
+  A different question that comes while a result is on screen or an answer is on its way waits for the sheet to close.
+  RN-10: the bard never reads the creature's d20, bonus, total or DC, and no other player reads anything.
+
 
 ## Experience and level up
 

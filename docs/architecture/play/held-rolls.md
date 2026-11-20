@@ -434,4 +434,16 @@ The damage dice are not a held roll: the app rolls them again by itself ([Attack
 
 ### The NPC check outside a combat
 
-`HeldRollKind.NPC_CHECK` is not a question the master answers for the roller: `app-held-rolls-panel` filters it out of "Perguntas pendentes", and the master reads it as the card of `app-npc-check-master` (`GetNpcCheck`, read again on every `heldRollsTick` and after a reload; `RollNpcCheck` and `SkipNpcCheckAsks` answer with the check). The bard's question is a cutting-words offer: `NpcCutHost` reads `ListHeldRolls` on each hint and `CuttingFlow` (`core/npc-check/cutting-flow.ts`) keeps where the bard is (asking, result, passed, skipped by the master, answered too late); the answer goes through `AnswerHeldRoll` with the `cutting_words` arm. See [Live session](../../design/session.md#cutting-words-outside-a-combat).
+`HeldRollKind.NPC_CHECK` is not a question the master answers for the roller.
+`app-held-rolls-panel` filters it out of "Perguntas pendentes".
+The master reads it as the card of `app-npc-check-master` (`GetNpcCheck`; `RollNpcCheck` and `SkipNpcCheckAsks` answer with the check).
+The bard's question is a cutting-words offer: `NpcCutHost` reads `ListHeldRolls`, and `CuttingFlow` (`core/npc-check/cutting-flow.ts`) keeps where the bard is (asking, result, passed, closed, answered too late).
+The answer goes through `AnswerHeldRoll` with the `cutting_words` arm.
+Two signals of the live session move the reads.
+`heldRollsTick` moves only on `held_rolls_changed` and after a reload, and every panel of the held rolls reads on it.
+`heldRollsRecheck` moves on `map_changed`, `vision_changed`, `scene_changed` and `stage_changed`, because the server judges a check that waits again only when the held rolls or the check are read, and a token hidden, a stage mark or a player leaving the scene send no hint of their own.
+The master's card reads on it only while the check waits, and `NpcCutHost` only while a question is asked.
+On a fog map a hidden token reaches the players as `vision_changed` alone, so that hint moves it too.
+A not found answer means the question is gone (closed, passed on, or its player is outside the scene), and a failed precondition means the bard answered already.
+The sheet says "A pergunta já foi encerrada." for the first and "Essa pergunta já foi respondida." for the second.
+See [Live session](../../design/session.md#cutting-words-outside-a-combat).
