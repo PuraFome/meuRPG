@@ -236,14 +236,20 @@ export class LiveSessionEvents {
           void parts.mapState.refresh();
         }
       },
-      onSceneChanged: () => void parts.scene.refresh(),
+      onSceneChanged: () => {
+        void parts.scene.refresh();
+        this.heldRollsMayHaveChanged();
+      },
       onNotesChanged: () => {
         void parts.notes.refresh(true);
         // A cipher's key is a clue in the notes: the open puzzle reads its run again to learn the player found it.
         void parts.puzzles.refresh();
       },
       // The stage is part of the open scene: read it again (it names nobody).
-      onStageChanged: () => void parts.scene.refresh(),
+      onStageChanged: () => {
+        void parts.scene.refresh();
+        this.heldRollsMayHaveChanged();
+      },
     } satisfies Partial<LiveStreamHandlers>;
   }
 
@@ -270,8 +276,18 @@ export class LiveSessionEvents {
     }
   }
 
+  /**
+   * The server judges a check that waits again when its held rolls are read (the token the creature was rolled on, the stage, who
+   * is in the scene) and sends no hint of its own for it: a map, a stage or a scene that changed makes the master's card and the
+   * bard's question read again.
+   */
+  private heldRollsMayHaveChanged(): void {
+    this.state.heldRollsTick.update((n) => n + 1);
+  }
+
   private mapChanged(mapId: string): void {
     const { state, parts } = this;
+    this.heldRollsMayHaveChanged();
     // The damage that waits covers the whole campaign (ListTrapDamages): a trap on another map may have fired.
     void parts.trapBoard.refreshDamages();
     if (mapId === state.currentMapId()) {

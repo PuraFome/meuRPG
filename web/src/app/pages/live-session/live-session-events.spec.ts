@@ -15,7 +15,9 @@ function setup(readSnapshot: () => Promise<boolean>, openCombat: boolean) {
     combat: { touchLog, encounter: () => (openCombat ? { id: 'e1', revision: 3 } : null) },
     mapState: { refresh: () => undefined },
   };
+  const ticks = { held: 0 };
   const state = {
+    heldRollsTick: { update: (f: (n: number) => number) => (ticks.held = f(ticks.held)) },
     currentMapId: () => 'm1',
     isMaster: () => false,
     vitals: Object.assign(() => [], { update: () => undefined }),
@@ -38,12 +40,12 @@ function setup(readSnapshot: () => Promise<boolean>, openCombat: boolean) {
       c: string,
       g: number,
     ): { onBehind(): Promise<boolean>; onReady(): void; onVitals(v: unknown): void };
-    mapHandlers(g: number): { onVisionChanged(mapId: string): void };
+    mapHandlers(g: number): { onVisionChanged(mapId: string): void; onMapChanged(mapId: string): void };
     combatHandlers(g: number): {
       onEncounterChanged(c: { encounterId: string; revision: number }): void;
     };
   };
-  return { priv, loader, touchLog, calls };
+  return { priv, loader, touchLog, calls, ticks };
 }
 
 describe('LiveSessionEvents: a heartbeat ahead of the stream', () => {
@@ -71,6 +73,14 @@ describe('LiveSessionEvents: reading the whole combat log', () => {
     priv.mapHandlers(1).onVisionChanged('m1');
     priv.combatHandlers(1).onEncounterChanged({ encounterId: 'e1', revision: 0 });
     expect(touchLog).not.toHaveBeenCalled();
+  });
+});
+
+describe('LiveSessionEvents: the questions of the held rolls', () => {
+  it('reads them again when a map changed (a token hidden after the roll), for the card and for the bard', () => {
+    const { priv, ticks } = setup(() => Promise.resolve(true), false);
+    priv.mapHandlers(1).onMapChanged('m2');
+    expect(ticks.held).toBe(1);
   });
 });
 

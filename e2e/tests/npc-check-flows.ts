@@ -224,7 +224,7 @@ export async function twoBardsFlow(t: NpcTable, v: NpcView): Promise<void> {
   await expect(cutSheet(other.page)).toHaveCount(0);
 }
 
-/** The bard's answer reaches the server after the master went on: "Essa pergunta já foi respondida." (board 591-08 state 7). */
+/** The bard's answer reaches the server after the master went on: the server no longer has the question, "A pergunta já foi encerrada." (board 591-08 state 7). */
 export async function lateAnswerFlow(t: NpcTable, v: NpcView): Promise<void> {
   const { m, p, campaignId, other } = t;
   if (!other) {
@@ -244,11 +244,51 @@ export async function lateAnswerFlow(t: NpcTable, v: NpcView): Promise<void> {
     await route.continue();
   });
   await q.getByRole('button', { name: 'Cortar', exact: true }).click();
-  await expect(q).toContainText('Essa pergunta já foi respondida. Nada foi gasto.');
+  await expect(q).toContainText('A pergunta já foi encerrada. Nada foi gasto.');
   await see(v, other.page, 'bard-late');
   await other.page.unroute('**/*ResourceService/AnswerHeldRoll');
   await q.getByRole('button', { name: 'Fechar' }).click();
   await expect(npcCard(m)).toContainText('Sem resposta');
+}
+
+/**
+ * The master hides the creature's token after the roll, with a bard asked: the server closes the question as a skip. The bard's
+ * question goes away (the sheet says the master went on, offers only to close, and reads nothing of the creature), and the master's
+ * card reads settled with the ask closed ("Sem resposta"), still with no number of the bards' (RN-10).
+ */
+export async function hideAfterRollFlow(t: NpcTable, v: NpcView): Promise<void> {
+  const { m, p, campaignId, table } = t;
+  // The Capitão Goblin has the token the master shows on the map, beside Brisa's: the map measures it, so Brisa is asked.
+  await masterRolls(t, 'Capitão Goblin', '13');
+  const card = npcCard(m);
+  await expect(card).toContainText('Esperando Brisa');
+  await bardReady(p, campaignId);
+  const q = cutSheet(p);
+  await expect(q.getByRole('button', { name: 'Cortar', exact: true })).toBeVisible();
+  await see(v, p, 'bard-question-before-hide');
+
+  const hidden = await callRPC(m, 'meurpg.maps.v1.MapService/SetMapTokenHidden', { campaignId, mapId: table.mapId, characterId: table.captainId, hidden: true });
+  expect(hidden.ok(), await hidden.text()).toBeTruthy();
+
+  // The master's card is settled, the ask closed and nothing was spent.
+  await expect(card).toContainText('Sem resposta');
+  await expect(card).toContainText('d8 · você seguiu sem esperar · nada gasto');
+  await expect(card.getByRole('button', { name: 'Continuar sem esperar' })).toHaveCount(0);
+  await expect(card.getByRole('button', { name: 'Esconder o teste' })).toBeVisible();
+  await expect(card).not.toContainText('Esperando');
+  await see(v, m, 'card-hidden-after-roll', card);
+  // The bard's question is gone: nothing to cut or let pass, only the line that the master went on, and the server holds none.
+  await expect(q).toContainText('O mestre seguiu sem a sua resposta. Nada foi gasto.');
+  await expect(q.getByRole('button', { name: 'Cortar', exact: true })).toHaveCount(0);
+  await expect(q.getByRole('button', { name: 'Deixar passar' })).toHaveCount(0);
+  await see(v, p, 'bard-hidden-after-roll');
+  const mine = await callRPC(p, 'meurpg.play.v1.ResourceService/ListHeldRolls', { campaignId });
+  expect((await mine.json()).offers ?? []).toEqual([]);
+  await q.getByRole('button', { name: 'Fechar' }).click();
+  await expect(cutSheet(p)).toHaveCount(0);
+  // A reload does not bring the question back.
+  await bardReady(p, campaignId);
+  await expect(cutSheet(p)).toHaveCount(0);
 }
 
 /** A creature the master hid: unticked, nobody is asked; ticked, the bard reads "uma criatura" (boards 591-08 states 3 and 6). */

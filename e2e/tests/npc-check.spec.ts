@@ -5,6 +5,7 @@ import {
   combatOpenFlow,
   cutFailureFlow,
   hiddenFlow,
+  hideAfterRollFlow,
   lateAnswerFlow,
   loadingFlow,
   noBonusFlow,
@@ -62,7 +63,7 @@ test('dois bardos em ordem: o segundo só lê a pergunta na vez dele, e "Continu
   await withTable(browser, { other: 'bard' }, (t) => twoBardsFlow(t, {}));
 });
 
-test('a resposta que chega depois de o mestre seguir é recusada: "Essa pergunta já foi respondida"', { tag: ['@MR-015'] }, async ({ browser }) => {
+test('a resposta que chega depois de o mestre seguir é recusada: "A pergunta já foi encerrada"', { tag: ['@MR-015'] }, async ({ browser }) => {
   test.setTimeout(240_000);
   await withTable(browser, { other: 'bard' }, (t) => lateAnswerFlow(t, {}));
 });
@@ -70,6 +71,11 @@ test('a resposta que chega depois de o mestre seguir é recusada: "Essa pergunta
 test('uma criatura escondida começa sem caixa marcada e, marcada, a bardo lê "uma criatura"', { tag: ['@MR-015', '@RN-10'] }, async ({ browser }) => {
   test.setTimeout(180_000);
   await withTable(browser, {}, (t) => hiddenFlow(t, {}));
+});
+
+test('o mestre esconde o token da criatura depois da rolagem: a pergunta da bardo some e o cartão fecha a pergunta como "Sem resposta"', { tag: ['@MR-015', '@RN-10'] }, async ({ browser }) => {
+  test.setTimeout(180_000);
+  await withTable(browser, {}, (t) => hideAfterRollFlow(t, {}));
 });
 
 test('uma criatura sem bônus conhecido rola com +0 e o cartão diz isso ao lado do resultado', { tag: ['@MR-015'] }, async ({ browser }) => {
