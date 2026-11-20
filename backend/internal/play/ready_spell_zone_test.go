@@ -7,8 +7,8 @@ import (
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 )
 
-// A spell that keeps a zone cannot be readied on a map (#857): the answer carries no point, so the release would spend the
-// slot, the action and the concentration and lay nothing. A combat with no map lays no zones, so it is still readied.
+// A spell that keeps a zone is readied on a map (#857) and released with CastSpell, which carries the point. The answer of
+// its window carries none and refuses it. A combat with no map lays no zones, so the answer releases it there.
 
 const (
 	tableCasterBall = "spell:esfera-de-teste@mesa"
@@ -54,8 +54,8 @@ func (a *armed) theatreFight(t *testing.T) *playv1.Encounter {
 	})
 }
 
-// Ready refuses, on a map, a spell that keeps a zone, whether the SRD's or a table's, and spends nothing.
-func TestReadyRefusesASpellThatKeepsAZoneOnAMap(t *testing.T) {
+// Ready holds, on a map, a spell that keeps a zone, whether the SRD's or a table's: CastSpell releases it with the point.
+func TestReadyHoldsASpellThatKeepsAZoneOnAMap(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
 		name  string
@@ -70,10 +70,10 @@ func TestReadyRefusesASpellThatKeepsAZoneOnAMap(t *testing.T) {
 			t.Parallel()
 			a := newTableReadier(t)
 			e := a.castersFight(t, 1)
-			events, slots := a.events(t), a.slotsUsed(t, readyZoneCaster, tc.slot)
-			_, err := a.ready(t, a.ana, a.readySpell(t, e, readyZoneCaster, tc.spell, tc.slot, ""))
-			wantBlockedBy(t, "Ready of "+tc.name, err, blockedReadyNotReleasable)
-			a.wantNothingReadied(t, events, tc.slot, slots)
+			a.mustReady(t, a.ana, a.readySpell(t, e, readyZoneCaster, tc.spell, tc.slot, ""))
+			if a.readiedStatus(t, readyZoneCaster) != readiedWaiting || a.concentrationAs(t, a.ana, readyZoneCaster) != tc.spell {
+				t.Errorf("rows %q, concentration %q; want the spell held", a.readiedStatus(t, readyZoneCaster), a.concentrationAs(t, a.ana, readyZoneCaster))
+			}
 		})
 	}
 }

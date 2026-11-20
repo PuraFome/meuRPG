@@ -16,12 +16,13 @@ docker inspect --format 'status={{.State.Status}} oom_killed={{.State.OOMKilled}
 docker stats --no-stream --format 'memory={{.MemUsage}} cpu={{.CPUPerc}}' "$name" 2>&1 || true
 free -m 2>&1 || true
 if [ "$name" = cockroach ]; then
-  # The store is in memory with a fixed size (start-cockroach.sh): how full it is, counting what dropped test
-  # databases still hold until the garbage collection takes them. CockroachDB answers the store's status only to a
-  # session that allows its internal tables, which is fine for a throwaway test node.
+  # The store is in memory with a fixed size (start-cockroach.sh). An in-memory store reports no used space, so its
+  # fill is read from the bytes it holds: `total` counts every version, the ones dropped test databases still hold
+  # until the garbage collection takes them included, and `live` only what a read sees. CockroachDB answers the store's
+  # status only to a session that allows its internal tables, which is fine for a throwaway test node.
   docker exec cockroach cockroach sql --insecure --host=localhost:26257 --format=tsv \
     -e "SET allow_unsafe_internals = true" \
-    -e "SELECT store_id, (capacity/1048576)::INT AS store_capacity_mib, (used/1048576)::INT AS store_used_mib, (available/1048576)::INT AS store_available_mib FROM crdb_internal.kv_store_status" 2>&1 || true
+    -e "SELECT store_id, (capacity/1048576)::INT AS store_capacity_mib, ((metrics->>'totalbytes')::FLOAT/1048576)::INT AS store_total_mib, ((metrics->>'livebytes')::FLOAT/1048576)::INT AS store_live_mib, range_count FROM crdb_internal.kv_store_status" 2>&1 || true
 fi
 echo "::endgroup::"
 if [ "$brief" = brief ]; then exit 0; fi
