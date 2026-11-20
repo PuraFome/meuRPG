@@ -12,10 +12,12 @@ import {
   chargesLine,
   recoverOf,
 } from '../../../core/characters/charges';
+import { type ConsumableNotice, magicRows } from '../../../core/characters/consumables';
 import type { GearVm } from '../../../core/characters/gear';
 
 import { reasonOf } from '../../../shared/attunement-section/attunement-rows';
 import { ChipLegend } from '../../../shared/chip-legend/chip-legend';
+import { ConsumableNoticeCard } from '../../../shared/consumable-use/consumable-notice';
 import { CountPips } from '../../../shared/count-pips/count-pips';
 import {
   type AttunementChip,
@@ -33,7 +35,7 @@ import { coinEntries, keepUnitsTogether } from '../sheet-format';
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-equipment-panel',
-  imports: [ChipLegend, CountPips, GearList, MatButtonModule, MatIconModule],
+  imports: [ChipLegend, ConsumableNoticeCard, CountPips, GearList, MatButtonModule, MatIconModule],
   templateUrl: './equipment-panel.html',
   styleUrl: './equipment-panel.scss',
 })
@@ -88,6 +90,10 @@ export class EquipmentPanel {
   readonly chargesUsed = output<AttunementEntryVm>();
   /** "Rolar": the page opens the d20 of the item's last charge. */
   readonly lastChargeRolled = output<AttunementEntryVm>();
+  /** What the last use of a potion said, in the live region under the list. */
+  readonly consumableResult = input<ConsumableNotice | null>(null);
+  /** "Usar" on a potion or a scroll: the page opens the use sheet with one unit of the group. Works on a locked sheet. */
+  readonly consumableUsed = output<AttunementEntryVm>();
 
   /** "Adicionar munição" (the owner while the sheet is open to editing, the master always). */
   readonly canAddAmmunition = input(false);
@@ -143,8 +149,37 @@ export class EquipmentPanel {
   protected readonly magicItems = computed(() =>
     this.sheet().attunement.entries.filter((e) => e.kind === 'magic'),
   );
+  /** The rows of the magic items: identical potions and scrolls are one row ("×2"), the rest as they were. */
+  protected readonly rows = computed(() => magicRows(this.magicItems()));
   /** Some magic item holds charges: the lock line then names what still works on a locked sheet. */
   protected readonly hasCharges = computed(() => this.magicItems().some((e) => e.charges));
+  /**
+   * What "Usar" keeps working for on a locked sheet, by what the sheet holds: potions, scrolls and charges, in that order,
+   * worded as a list ("poções e cargas", "poções, pergaminhos e cargas"). A sheet with none of them says what equipping keeps.
+   */
+  protected readonly lockLine = computed(() => {
+    const kinds = new Set(
+      this.rows().flatMap((r) => (r.type === 'consumable' ? [r.row.kind] : [])),
+    );
+    const words = [
+      kinds.has('potion') ? 'poções' : '',
+      kinds.has('oil') ? 'óleos' : '',
+      kinds.has('scroll') ? 'pergaminhos' : '',
+      kinds.has('other') ? 'outros itens' : '',
+      this.hasCharges() ? 'cargas' : '',
+    ].filter((w) => w !== '');
+    if (words.length === 0) {
+      return 'Travada: equipar e guardar continuam valendo; marcas, bônus e itens mágicos, só o mestre muda.';
+    }
+    if (words.length === 1 && words[0] === 'cargas') {
+      return 'Travada: usar cargas continua valendo, o resto, só o mestre muda.';
+    }
+    const list =
+      words.length === 1
+        ? words[0]
+        : `${words.slice(0, -1).join(', ')} e ${words[words.length - 1]}`;
+    return `Travada: usar ${list} continua valendo; o resto, só o mestre muda.`;
+  });
   /** The header "Sintonizados: N de 3" shows when anything on the sheet asks for attunement or is attuned. */
   protected readonly hasAttunement = computed(() =>
     this.sheet().attunement.entries.some((e) => e.asks || e.attuned),

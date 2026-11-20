@@ -7,10 +7,12 @@ import {
   CharacterBlockedSchema,
   CharacterService,
   type FullSheet,
+  type SheetMagicItem,
 } from '../../../gen/meurpg/characters/v1/characters_pb';
 import { ContentService, type MagicItemOption } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { CONNECT_TRANSPORT } from '../connect/transport';
 import { type ItemChargesVm, chargesOf } from './charges';
+import { type ConsumableVm, consumableOf } from './consumable-vm';
 
 /** The most items a character is attuned to at once (SRD 5.1); the server refuses a fourth. */
 export const MAX_ATTUNED = 3;
@@ -45,6 +47,10 @@ export interface AttunementEntryVm {
   readonly sameItemAttuned: boolean;
   /** The charges of a magic item that holds some; absent for the others, whose row stays as it is. */
   readonly charges?: ItemChargesVm;
+  /** What "Usar" does for a consumable, as the server words it ("Cura 2d4 + 2"); empty for an item with no automatic effect. */
+  readonly effectPt?: string;
+  /** What "Usar" is and costs, as the server says it: present only on a consumable (a potion, an oil, a scroll...). */
+  readonly consumable?: ConsumableVm;
 }
 
 /** The attunement of a sheet: the entries in the order the sheet lists them (pieces, then magic items). */
@@ -52,6 +58,24 @@ export interface AttunementVm {
   readonly entries: readonly AttunementEntryVm[];
   /** How many entries that ask for attunement are attuned: "Sintonizados: 2 de 3". */
   readonly attuned: number;
+}
+
+/** One magic item of the sheet as an entry (the attunement, the charges and what "Usar" does): the sheet's own read, and the one the combat's "Itens" makes. */
+export function magicEntryOf(m: SheetMagicItem): AttunementEntryVm {
+  return {
+    id: m.id,
+    key: m.key,
+    namePt: m.namePt,
+    kind: 'magic',
+    attuned: m.attuned,
+    asks: m.requiresAttunement,
+    restrictionPt: m.restrictionPt,
+    restriction: STATES[m.restriction] ?? 'none',
+    sameItemAttuned: m.sameItemAttuned,
+    charges: chargesOf(m),
+    effectPt: m.effectPt,
+    consumable: consumableOf(m.consumable),
+  };
 }
 
 /** The attunement of a full sheet, as the server says it on every read. */
@@ -78,18 +102,7 @@ export function attunementOf(
     });
   }
   for (const m of full.magicItems) {
-    entries.push({
-      id: m.id,
-      key: m.key,
-      namePt: m.namePt,
-      kind: 'magic',
-      attuned: m.attuned,
-      asks: m.requiresAttunement,
-      restrictionPt: m.restrictionPt,
-      restriction: STATES[m.restriction] ?? 'none',
-      sameItemAttuned: m.sameItemAttuned,
-      charges: chargesOf(m),
-    });
+    entries.push(magicEntryOf(m));
   }
   return { entries, attuned: entries.filter((e) => e.asks && e.attuned).length };
 }

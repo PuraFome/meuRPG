@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   AttunementRestriction,
+  ConsumableKind,
   FullSheetSchema,
   ItemBonusSchema,
   SheetMagicItemSchema,
@@ -15,6 +16,7 @@ import {
   type MagicItemsPage,
   attunementOf,
   magicCategoryIcon,
+  magicEntryOf,
 } from './attunement';
 
 describe('attunementOf', () => {
@@ -91,6 +93,78 @@ describe('attunementOf, the charges', () => {
   });
 });
 
+describe('attunementOf, the consumables', () => {
+  it('carries the line of what "Usar" does for a magic item, and none for the others', () => {
+    const a = attunementOf(
+      create(FullSheetSchema, {
+        magicItems: [
+          create(SheetMagicItemSchema, { id: 'p', effectPt: 'Cura 2d4 + 2' }),
+          create(SheetMagicItemSchema, {
+            id: 's',
+            spellKey: 'spell:fireball',
+            spellNamePt: 'Bola de Fogo',
+          }),
+          create(SheetMagicItemSchema, { id: 'r' }),
+        ],
+      }),
+    );
+    expect(a.entries.map((e) => e.effectPt)).toEqual(['Cura 2d4 + 2', '', '']);
+    // The scroll's spell is not read until the scroll has a screen of its own.
+    expect(Object.keys(a.entries[1])).not.toContain('spellNamePt');
+  });
+
+  it('carries what the server says of a consumable, and none for an item that is not one', () => {
+    const a = attunementOf(
+      create(FullSheetSchema, {
+        magicItems: [
+          create(SheetMagicItemSchema, {
+            id: 'p',
+            consumable: {
+              kind: ConsumableKind.POTION,
+              costsAction: true,
+              healDiceCount: 2,
+              healDiceSides: 4,
+              healBonus: 2,
+            },
+          }),
+          create(SheetMagicItemSchema, {
+            id: 'o',
+            consumable: { kind: ConsumableKind.OIL },
+          }),
+          create(SheetMagicItemSchema, { id: 'r' }),
+        ],
+      }),
+    );
+    expect(a.entries.map((e) => e.consumable?.kind)).toEqual(['potion', 'oil', undefined]);
+    expect(a.entries[0].consumable).toEqual({
+      kind: 'potion',
+      costsAction: true,
+      heal: { count: 2, sides: 4, modifier: 2, text: '2d4 + 2' },
+    });
+  });
+});
+
+describe('magicEntryOf', () => {
+  it('is the entry of one magic item, as the sheet lists it, for a page that reads the items alone', () => {
+    const m = create(SheetMagicItemSchema, {
+      id: 'p',
+      key: 'item:potion-of-healing',
+      namePt: 'Poção de cura',
+      effectPt: 'Cura 2d4 + 2',
+    });
+    expect(magicEntryOf(m)).toEqual(
+      attunementOf(create(FullSheetSchema, { magicItems: [m] })).entries[0],
+    );
+    expect(magicEntryOf(m)).toMatchObject({
+      id: 'p',
+      key: 'item:potion-of-healing',
+      namePt: 'Poção de cura',
+      kind: 'magic',
+      effectPt: 'Cura 2d4 + 2',
+    });
+  });
+});
+
 describe('MagicCategories', () => {
   const page = (items: MagicItemsPage['items'], nextPageToken = ''): MagicItemsPage => ({
     items,
@@ -142,6 +216,26 @@ describe('MagicCategories', () => {
     expect(calls).toEqual(['', 'p2']);
     expect(cats.iconOf('item:ring')).toBe('shield');
     expect(cats.iconOf('item:armor-1')).toBe('shield');
+    expect(cats.iconOf('item:nope')).toBe('diamond');
+  });
+
+  it("draws the icon of the category of an item, a variant's being its family's, and the gem for what it does not know", async () => {
+    TestBed.configureTestingModule({
+      providers: [
+        {
+          provide: AttunementClient,
+          useValue: {
+            listMagicItems: async () =>
+              page([option('item:potion-healing', 'potion', ['item:potion-healing-greater'])]),
+          },
+        },
+      ],
+    });
+    const cats = TestBed.inject(MagicCategories);
+    expect(cats.iconOf('item:potion-healing')).toBe('diamond');
+    await cats.load('c1');
+    expect(cats.iconOf('item:potion-healing')).toBe('science');
+    expect(cats.iconOf('item:potion-healing-greater')).toBe('science');
     expect(cats.iconOf('item:nope')).toBe('diamond');
   });
 
