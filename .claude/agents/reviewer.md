@@ -4,7 +4,6 @@ description: Reviews one task's diff or a whole branch against its requirements 
 model: sonnet
 effort: high
 disallowedTools: Agent, Edit
-autoCompactWindow: 150000
 experimental:
   cacheTtl: 1h
 ---
