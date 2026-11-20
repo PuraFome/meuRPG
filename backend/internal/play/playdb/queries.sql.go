@@ -9725,6 +9725,27 @@ func (q *Queries) ListWaitingOpportunityOffers(ctx context.Context, encounterID 
 	return items, nil
 }
 
+const lockCharacterForOwnerRead = `-- name: LockCharacterForOwnerRead :one
+SELECT id FROM characters WHERE id = $1::UUID AND campaign_id = $2::UUID FOR UPDATE
+`
+
+type LockCharacterForOwnerReadParams struct {
+	ID         string
+	CampaignID string
+}
+
+// Takes the row of a character (FOR UPDATE) until the transaction ends, before the transaction reads who owns it. The
+// transaction's snapshot is taken at its first statement, and a write that waits for the session's lock (LockSessionForHints)
+// keeps the snapshot it took before the wait: a character that changed hands meanwhile would still read as the old owner's.
+// A locking read finds the newest committed version of the row, so the transaction is moved onto it (or restarted, 40001) and
+// the owner read next is the latest one. It comes after the session's lock, the order the writes of a session take them in.
+func (q *Queries) LockCharacterForOwnerRead(ctx context.Context, arg LockCharacterForOwnerReadParams) (string, error) {
+	row := q.db.QueryRow(ctx, lockCharacterForOwnerRead, arg.ID, arg.CampaignID)
+	var id string
+	err := row.Scan(&id)
+	return id, err
+}
+
 const lockSessionForHints = `-- name: LockSessionForHints :one
 SELECT id FROM game_sessions WHERE id = $1 FOR UPDATE
 `

@@ -416,6 +416,15 @@ func (s *Service) CancelFavorPass(ctx context.Context, req *connect.Request[play
 // reserve has no owner. It is read in the transaction of the cancel, under the session's lock, so a character that changes hands while the
 // cancel waits for the lock is the old owner's no more.
 func (s *Service) ownsGiver(ctx context.Context, tx pgx.Tx, m authz.Membership, pass playdb.FavorPass) (bool, error) {
+	// The transaction's snapshot is older than the session's lock it waited for: the character's row is locked first, so the owner
+	// read next is the newest committed one (the query says why).
+	_, err := s.queries.WithTx(tx).LockCharacterForOwnerRead(ctx, playdb.LockCharacterForOwnerReadParams{ID: pass.FromCharacterID, CampaignID: m.CampaignID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("lock the ask's giver: %w", err)
+	}
 	found, err := s.roster.SessionCharacters(ctx, tx, m.CampaignID, []string{pass.FromCharacterID})
 	if err != nil {
 		return false, err
