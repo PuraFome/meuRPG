@@ -10,7 +10,7 @@ Summoning spells are described in [Creatures](creatures.md#casting-summons).
 Who casts: the player on their own character on their turn (a prepared spell or a save cantrip from the options list); the master on any combatant on turn (an NPC casts from its full sheet or its stat block; an NPC's slots and daily uses are counted on its combatant, and a hand-made NPC's also in `npc_spell_use` until the table's long rest; a player's character's in its vitals). The options the master gets for an NPC show the slots and uses left; a player's never do (RN-20, RN-29).
 The spell, the level (`slot`: level or pact, none for a cantrip) and the targets are checked against the character's `TurnOptions`; the targets against what they see, the range and how many targets the spell accepts:
 
-- **Range.** Self only the caster, Touch 5 ft, otherwise the spell's range; multiplied for a spell attack when the caster's table feat has a `ranged_attack` with `range_multiplier`.
+- **Range.** Self only the caster (except Vampiric Touch, Produce Flame and Eyebite, which pick a creature within their `reach_ft`: 5, 30 and 60 ft), Touch 5 ft, otherwise the spell's range plus its `range_extra_ft` (Mass Cure Wounds, 30 ft); multiplied for a spell attack when the caster's table feat has a `ranged_attack` with `range_multiplier`.
   The master is never limited.
 - **How many targets.** `SpellDetails.Target` says whether a spell hits an area and how many it takes: what the master wrote on a table spell, the 5e-database's structured area on an SRD one and, for one without a structured area, the SRD text read with two patterns (`rules/spelltarget.go`).
   A spell attack takes one target, so a wrong guess never blocks the master.
@@ -209,7 +209,7 @@ What the server applies when the spell takes effect:
 | Anything else | Recorded in the log; the master narrates |
 
 An NPC has no hit points or slots outside combat, so a cast on an NPC changes nothing about it and an NPC caster spends no slot.
-Reach is measured on the session's current map (touch 5 ft, ranged the spell's distance, 5 ft a square); without a map, grid or token the master judges and nothing is refused (`TARGET_OUT_OF_REACH` carries `missing_ft`); the master is never held to reach.
+Reach is measured on the session's current map (touch 5 ft, ranged the spell's distance, a Self spell with a `reach_ft` that reach, plus the spell's `range_extra_ft`, 5 ft a square; a spell whose other targets hang off the first, such as Chain Lightning, holds only the first to the distance); without a map, grid or token the master judges and nothing is refused (`TARGET_OUT_OF_REACH` carries `missing_ft`); the master is never held to reach.
 
 **How a lasting spell ends.** The master or the caster ends it (`EndActiveSpell`, `dismissed`), the caster's concentration moves on or stops (`concentration`), the caster is gone (`caster_gone`), or a rest covers the whole duration: a short rest is 1 hour, a long rest 8 hours.
 Durations are game time, never the wall clock.

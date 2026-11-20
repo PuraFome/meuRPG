@@ -561,6 +561,7 @@ Um membro escondido nunca é nomeado: o turno espera a parte do mestre como "Fal
 - **Uma cura que depende do dano causado** (Toque Vampírico) é metade do dano que o golpe causou, depois das resistências do alvo, onde quer que o dano caia: os PV temporários, os PV e o que passa de 0 contam.
   A cura é uma linha do registro, escrita em todo golpe que acerta, com 0 quando nada cura.
   Os números dela vão só ao mestre e ao dono de quem conjura; os outros jogadores leem a linha sem números, e nenhuma linha quando o alvo está escondido.
+  Quando o alvo está escondido, nenhum jogador lê a linha, nem o dono de quem conjura.
 
 **Cenas de RP** (MR-015).
 A CD de uma ação pertence ao mestre. Um jogador nunca recebe a rolagem de outro jogador.

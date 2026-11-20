@@ -561,6 +561,7 @@ A hidden member is never named: the turn waits for the master's part as "Falta o
 - **A heal that depends on the damage dealt** (Vampiric Touch) is half the damage the hit dealt, after the target's resistances, wherever the damage lands: temporary hit points, hit points, and what goes past 0 all count.
   The heal is a line of the log, written on every hit that lands, with 0 when nothing heals.
   Its numbers go only to the master and the caster's owner; another player reads the line with no numbers, and no line when the target is hidden.
+  When the target is hidden no player reads the line, the caster's owner included.
 
 **RP scenes** (MR-015).
 An action's DC belongs to the master. A player never receives another player's roll.

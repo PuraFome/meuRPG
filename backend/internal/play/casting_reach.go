@@ -94,6 +94,13 @@ const wearsArmorPT = "Está de armadura: a Armadura Arcana não funciona."
 // reachOfTargets says, for each target, whether the spell reaches it from the caster.
 func (s *Service) reachOfTargets(ctx context.Context, campaignID string, spell *playv1.CastingSpell, casterID string, targets []*playv1.CastingTarget) ([]*playv1.CastingReach, error) {
 	limit, limited := reachLimit(spell.GetRangeKind(), spell.GetRangeFt(), spell.GetCasterOnly())
+	// The spell's own target data (reach of a Self spell, creatures a spell stretches past its range) wins over the
+	// proto's range; a hint never shuts out a pick the cast would accept (link.Spell.ListedSlackFt).
+	if sp, err := s.roster.CombatSpell(ctx, nil, campaignID, casterID, spell.GetSpell().GetKey(), int(spell.GetSpell().GetLevel()), ""); err == nil && !spell.GetCasterOnly() {
+		if ft, ok := reachOf(sp); ok {
+			limit, limited = ft+clamp32(sp.ListedSlackFt(), 0, math.MaxInt32), true
+		}
+	}
 	var out []*playv1.CastingReach
 	for _, t := range targets {
 		r := &playv1.CastingReach{CharacterId: t.GetCharacterId(), InRange: true}
@@ -129,12 +136,13 @@ func (s *Service) checkReach(ctx context.Context, c *combatTx, plan castPlan, ma
 	if !limited {
 		return nil
 	}
+	limit += clamp32(sp.RangeExtraFt, 0, math.MaxInt32)
 	pos, err := s.tokenSquares(ctx, c.tx, c.session)
 	if err != nil {
 		return err
 	}
-	for _, t := range plan.g.targets {
-		if t.ID == plan.g.caster.ID {
+	for i, t := range plan.g.targets {
+		if t.ID == plan.g.caster.ID || !sp.HoldsToRange(i) {
 			continue
 		}
 		if dist, ok := between(pos, plan.g.caster.ID, t.ID); ok && dist > limit {
