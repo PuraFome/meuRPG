@@ -370,7 +370,8 @@ A hold out of a combat is not forgotten when the dice run out; one of a combat o
 A hold of kind `npc_check` is neither.
 It waits for the bards' dice, so the sweep of orphans, the forget of an actor's holds and the list of open holds leave it alone.
 It is settled as a skip when a combat starts or when the next check is rolled.
-It is also settled as a skip when the next read or answer finds a token of the creature hidden on the map of the roll, or no bard in play left.
+It is settled as a skip when the next read or answer finds a token of the creature hidden on the map of the roll.
+It is settled as the last answer settles it when the next read or answer finds no bard in play left.
 It is kept (settled) while its session is open, and deleted with every other hold of the kind when its session ends.
 
 ## `npc_check_asks`

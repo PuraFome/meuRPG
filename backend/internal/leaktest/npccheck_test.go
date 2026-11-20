@@ -804,6 +804,13 @@ func TestNpcCheckTellsNoBardOutsideTheScene(t *testing.T) {
 			if got := must(outside.resources.ListHeldRolls(ctx, rq(&playv1.ListHeldRollsRequest{CampaignId: w.campaign}))).GetOffers(); len(got) != 0 {
 				t.Errorf("the bard outside the scene lists %v, want nothing", got)
 			}
+			_, err := outside.resources.AnswerHeldRoll(ctx, rq(&playv1.AnswerHeldRollRequest{
+				CampaignId: w.campaign, HoldId: hold, IdempotencyKey: newKey(),
+				Answer: &playv1.AnswerHeldRollRequest_CuttingWords{CuttingWords: &playv1.CuttingWordsAnswer{Cut: false}},
+			}))
+			if connect.CodeOf(err) != connect.CodeNotFound || strings.Contains(err.Error(), hold) || strings.Contains(err.Error(), "Lobo") {
+				t.Errorf("the answer of the bard outside the scene = %v, want not_found naming nothing", err)
+			}
 		})
 	}
 }
