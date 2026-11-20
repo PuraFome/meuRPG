@@ -425,6 +425,168 @@ message RollSceneCheckResponse {
   HeldRollOffer held_roll_offer = 4;
 }
 
+// RollNpcCheckRequest is the master's ability check for a creature of the master's side outside a combat: an NPC's Enganação,
+// Persuasão or Intimidação against the party in a scene with no map, say. The creature is a character of the campaign that
+// is an NPC, or an SRD creature by its key.
+message RollNpcCheckRequest {
+  string campaign_id = 1;
+  // The creature that rolls: exactly one.
+  oneof npc {
+    // An NPC of the campaign (a UUID): a stage NPC, one with a token or any living NPC.
+    string npc_character_id = 2;
+    // An SRD creature ("monster:bandit"): the app keeps a hidden NPC for it, as it does for the monsters of a combat.
+    string monster_key = 3;
+  }
+  // The check ("skill:deception", "ability:cha"). A saving throw ("save:wis") is not a check.
+  string check_key = 4;
+  // How the d20 comes: exactly one. The master rolls either way, whatever the campaign's dice setting says for the players.
+  oneof roll {
+    // True: the server rolls the d20.
+    bool roll_in_app = 5;
+    // The face of the real d20, 1 to 20. The server adds the creature's bonus.
+    int32 d20_face = 6;
+  }
+  // Whether the bards of the table see the creature and the creature hears them (the master's box "Os bardos veem a criatura
+  // e ela os ouve"): Cutting Words needs both. Read only when the session's map has no placement of both the creature's token
+  // and a bard's (no usable map): then it decides for every bard whose player the open scene is open to. With both tokens on
+  // the map the server measures the 60 feet and, on a fog map, what the bard's player sees, and ignores this for that bard.
+  // A creature whose token the master hid on the map is seen by no bard, whatever this says, whether or not the bard has a
+  // token and whether or not the map has a grid. A bard whose player the open scene is not open to is not asked, whatever the
+  // map measures and this says. `NpcCheckCandidate.map_measures` says which creatures the map measures.
+  bool bard_sees = 7;
+  // A UUID the app makes for each roll. Repeating it answers with the first roll's read and changes nothing.
+  string idempotency_key = 8;
+}
+
+// RollNpcCheckResponse is the master's read of the check. Nothing of it reaches a player (RN-10, RN-20).
+message RollNpcCheckResponse {
+  // True when at least one bard was asked: the check waits for them (see `check.asks`) and `check.settled` is false.
+  bool held = 1;
+  NpcCheckRead check = 2;
+}
+
+// NpcCheckRead is the master's read of an NPC's check outside a combat.
+message NpcCheckRead {
+  // The held check (a UUID); empty when nobody was asked and the check settled at once.
+  string hold_id = 1;
+  // The creature's name and the check's name in Portuguese.
+  string creature_label = 2;
+  string check_key = 3;
+  string check_name = 4;
+  // The creature's d20 with its bonus and the total before any die is taken off.
+  DiceRoll d20 = 5;
+  // False when the creature's sheet gives no number for the check (an NPC typed by hand has no skills): the bonus is +0.
+  bool modifier_known = 6;
+  // The bards asked, in the order they are asked (one at a time: the next one is asked after the one before answers).
+  repeated NpcCheckAsk asks = 7;
+  // True once the check has no question open (every bard answered or the master went on without them).
+  bool settled = 8;
+  // When settled: the total after the dice the bards took off, and what they took off.
+  int32 total = 9;
+  int32 cut = 10;
+  // Why nobody was asked, when no bard was (`asks` is empty and the check settled at once): the first reason that applies, in the order
+  // of the enum. UNSPECIFIED when a bard was asked. Stored with the roll, so the master reads it again after a reload (GetNpcCheck).
+  NpcCheckNobodyReason nobody_reason = 11;
+}
+
+// SkipNpcCheckAsksRequest is the master's "Continuar sem esperar": it closes the questions that wait for the bards and settles
+// the check with the dice already taken off.
+message SkipNpcCheckAsksRequest {
+  string campaign_id = 1;
+  // The held check (a UUID), `NpcCheckRead.hold_id`.
+  string hold_id = 2;
+  string idempotency_key = 3;
+}
+
+// SkipNpcCheckAsksResponse is the settled check.
+message SkipNpcCheckAsksResponse {
+  NpcCheckRead check = 1;
+}
+
+// ListNpcCheckPickerRequest asks for the creatures the master can pick for RollNpcCheck.
+message ListNpcCheckPickerRequest {
+  string campaign_id = 1;
+  // An SRD creature ("monster:bandit") to read too, besides the NPCs of the table: the catalogue is searched elsewhere, and
+  // this reads the checks of one entry. Empty adds none.
+  string monster_key = 2;
+}
+
+// ListNpcCheckPickerResponse lists the creatures: the NPCs on the stage, those with a token on the session's map, and the
+// creature asked for.
+message ListNpcCheckPickerResponse {
+  repeated NpcCheckCandidate candidates = 1;
+}
+
+// NpcCheckCandidate is a creature the master may roll a check for, as the master reads it.
+message NpcCheckCandidate {
+  // The NPC's character (a UUID), for an NPC of the table; empty for an SRD creature that has no NPC of the table.
+  string character_id = 1;
+  // The SRD creature's key, when it is one (an NPC made from a creature has it too).
+  string monster_key = 2;
+  string name = 3;
+  // False for an NPC typed by hand with no skills: its checks have no number and roll +0.
+  bool has_stat_block = 4;
+  // Where it was found, and whether the players do not see it (the stage or the token hides it).
+  NpcCheckSource source = 5;
+  // True for an NPC the master marked hidden from the players on the stage ("Escondido dos jogadores"), or whose token is hidden
+  // on the session's current map: when the creature is both on the stage and on the map, either one makes it true (it is listed
+  // once, as a stage creature). The app starts the checkbox unticked for it.
+  bool hidden = 6;
+  // The checks, with the bonus the master sees: six abilities and the skills, in the sheet's order.
+  repeated NpcCheckOption checks = 7;
+  // True when the session's current map can measure this creature against a bard: the creature has a token on the grid of the
+  // map, and so has at least one bard that would be asked (a bard of the party with Cutting Words in "todos", awake, with a use
+  // left) whose player the open scene is open to. It is per creature: another creature of the same map, with no such pair, has
+  // it false. Then the server measures the 60 feet and the sight itself for each bard with a token and the app shows no
+  // checkbox, so it sends `bard_sees` false and a bard with no token on the map is not asked about this creature; when false
+  // the checkbox "Os bardos veem a criatura e ela os ouve" decides for every bard whose player the open scene is open to (a
+  // creature whose token is hidden is the exception: no bard is asked).
+  bool map_measures = 8;
+}
+
+// GetNpcCheckRequest names the campaign.
+message GetNpcCheckRequest {
+  string campaign_id = 1;
+}
+
+// GetNpcCheckResponse is the latest NPC check of the open session, unset when there was none.
+message GetNpcCheckResponse {
+  NpcCheckRead check = 1;
+}
+
+// NpcCheckSource is where the picker found a creature.
+enum NpcCheckSource {
+  NPC_CHECK_SOURCE_UNSPECIFIED = 0;
+  NPC_CHECK_SOURCE_STAGE = 1;
+  NPC_CHECK_SOURCE_TOKEN = 2;
+  NPC_CHECK_SOURCE_MONSTER = 3;
+}
+
+// NpcCheckNobodyReason is why a check of the master's side asked no bard. The master reads it; no player does.
+enum NpcCheckNobodyReason {
+  NPC_CHECK_NOBODY_REASON_UNSPECIFIED = 0;
+  // No bard of the party can cut a check: none has Cutting Words with the setting "todos", is awake and has a use of Bardic
+  // Inspiration left.
+  NPC_CHECK_NOBODY_REASON_NO_BARD_CAN_CUT = 1;
+  // The creature is immune to being charmed.
+  NPC_CHECK_NOBODY_REASON_CHARM_IMMUNE = 2;
+  // The master hid the creature's token on the map: no player sees it, whatever the box says.
+  NPC_CHECK_NOBODY_REASON_TOKEN_HIDDEN = 3;
+  // Some bard could cut the check but none sees the creature within 60 feet and is seen by it: the map's distance or fog, or the master's
+  // box and the players the scene is open to.
+  NPC_CHECK_NOBODY_REASON_NOBODY_SEES = 4;
+}
+
+// NpcCheckOption is one check of a creature.
+message NpcCheckOption {
+  // "skill:deception", "ability:cha".
+  string key = 1;
+  string name = 2;
+  // What the creature adds to the d20, 0 when `known` is false.
+  int32 bonus = 3;
+  bool known = 4;
+}
+
 // GrantSceneAttemptRequest gives one character one more attempt at one action.
 message GrantSceneAttemptRequest {
   string campaign_id = 1;

@@ -4779,6 +4779,13 @@ enum HeldRollKind {
   // The Dexterity saving throw of a mounted rider (RollMountSave), DC 10: Lucky's reroll of a 1 and a Bardic Inspiration die are
   // asked about before the rider stays on or falls, as for any saving throw.
   HELD_ROLL_KIND_MOUNT_SAVE = 14;
+  // The ability check a creature of the master's side makes outside a combat (RollNpcCheck), held for the Cutting Words
+  // ("Palavras de Interrupção") of the bards of the table. The offer is the master's, who reads the roll and every bard asked, and the
+  // bard whose turn it is, when its player is in the open scene's audience (one at a time, in order), with only the die and
+  // the uses left and the creature's name only when that bard's player sees it; no other player is offered it, and no
+  // player reads the creature's d20, bonus or total. A creature has no
+  // player: there is no roller to leave out.
+  HELD_ROLL_KIND_NPC_CHECK = 15;
 }
 
 // LuckyQuestion is the halfling's "Tirou 1: rolar de novo?" (SRD 5.1, Halfling, Lucky).
@@ -4786,6 +4793,43 @@ message LuckyQuestion {
   // The die that shows the 1, as an index into `HeldRollOffer.d20.faces`: the one the answer rolls
   // again (0 for a single d20; with both dice on 1, the first).
   int32 lucky_index = 1;
+}
+
+// CuttingWordsQuestion is the question of a check a creature of the master's side makes outside a combat (SRD 5.1, College of
+// Lore, Cutting Words): "Palavras de Interrupção: tirar o dado do teste?". In the bard's offer it carries the die and the uses
+// left, and the offer's `roller_label` names the creature only when the bard's player sees it ("uma criatura" otherwise); it
+// never carries the d20, the bonus, the total or a DC. In the master's offer it lists every bard asked, in order.
+message CuttingWordsQuestion {
+  // The size of the bard's die (6, 8, 10 or 12), from the bard level. 0 in the master's offer.
+  int32 sides = 1;
+  // The uses of Bardic Inspiration the bard has left. 0 in the master's offer.
+  int32 uses_left = 2;
+  // The bards asked, in the order they are asked. The master's offer only: empty in a bard's.
+  repeated NpcCheckAsk asks = 3;
+}
+
+// NpcCheckAsk is one bard asked about a check of the master's side, as the master reads it.
+message NpcCheckAsk {
+  // The bard's character (a UUID) and its name.
+  string character_id = 1;
+  string character_name = 2;
+  NpcCheckAskState state = 3;
+  // The size of the bard's die; the face when it was cut (CUT), 0 otherwise.
+  int32 sides = 4;
+  int32 face = 5;
+}
+
+// NpcCheckAskState is where a bard's question of a check stands.
+enum NpcCheckAskState {
+  NPC_CHECK_ASK_STATE_UNSPECIFIED = 0;
+  // The question is open or waits for the bards asked before this one.
+  NPC_CHECK_ASK_STATE_WAITING = 1;
+  // The bard cut the roll: the die was taken off and the use spent.
+  NPC_CHECK_ASK_STATE_CUT = 2;
+  // The bard let it pass.
+  NPC_CHECK_ASK_STATE_PASSED = 3;
+  // The question closed with no answer: the master went on without the bard, or the bard could not answer any more.
+  NPC_CHECK_ASK_STATE_CLOSED = 4;
 }
 
 // DieQuestion is the Bardic Inspiration die the roller may add (SRD 5.1).
@@ -4869,6 +4913,8 @@ message HeldRollOffer {
     IndomitableQuestion indomitable = 12;
     StrokeOfLuckQuestion stroke_of_luck = 13;
     RerollQuestion reroll = 14;
+    // The bard's question of an NPC_CHECK (a bard's offer), or the master's read of who is asked (the master's offer).
+    CuttingWordsQuestion cutting_words = 15;
   }
   // The attack and its target; empty for a roll that is not a weapon attack.
   string attack_key = 9;

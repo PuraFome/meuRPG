@@ -378,6 +378,8 @@ type CombatRoster interface {
 	// listed bonus, or the ability modifier. Known is false for a key the stat block does
 	// not give.
 	CreatureCheck(ctx context.Context, tx pgx.Tx, campaignID, creatureID, monsterKey, key string) (link.SceneOption, error)
+	// CreatureChecks is CreatureCheck for each of the keys, in order, with the stat block read once for all of them.
+	CreatureChecks(ctx context.Context, tx pgx.Tx, campaignID, creatureID, monsterKey string, keys []string) ([]link.SceneOption, error)
 	// DamageModifiers are the damage types the target takes double, half or none
 	// of (SRD 5.1), from the stat block of the creature it is: the monsterKey when
 	// it is a character's creature, otherwise the one on the basic sheet of an NPC

@@ -73,6 +73,8 @@ var otherWriters = map[string][]storedShape{
 	"spell_cast_finished":       {storedShapeOf[castEvent]("today.json")},
 	"spell_cast_interrupted":    {storedShapeOf[castEvent]("today.json")},
 	"spell_cast_ended":          {storedShapeOf[castEvent]("today.json")},
+	"npc_check_held":            {storedShapeOf[npcCheckEvent]("today.json")},
+	"npc_check_resolved":        {storedShapeOf[npcCheckEvent]("today.json")},
 	"group_check_requested":     {storedShapeOf[groupCheckEvent]("today.json")},
 	"group_check_rolled":        {storedShapeOf[groupCheckEvent]("today.json")},
 	"group_check_closed":        {storedShapeOf[groupCheckEvent]("today.json")},
