@@ -15702,8 +15702,9 @@ async function scanReadyMapEndScreens(browser: Browser, colorScheme: 'light' | '
     await fireReadied(m);
     const sheet = await placeFireball(p);
     await sheet.getByRole('button', { name: 'Conjurar Bola de Fogo' }).click();
-    const result = p.getByRole('dialog', { name: 'Bola de Fogo conjurada' });
-    await expect(result.getByRole('heading', { name: 'Bola de Fogo conjurada' })).toBeVisible();
+    // The dialog is named by its title on a wide screen and keeps "Soltar Bola de Fogo" in the phone's sheet: it is found by what it shows.
+    const result = p.getByRole('dialog').filter({ has: p.getByRole('heading', { name: 'Bola de Fogo conjurada' }) });
+    await expect(result).toBeVisible();
     await result.getByRole('button', { name: 'Digitar o resultado' }).click();
     await result.getByLabel(/Role 8d6/).fill('28');
     await expectScreenPasses(p, `Soltar, o dado da Bola de Fogo digitado ${where}`);
