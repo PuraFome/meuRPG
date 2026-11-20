@@ -415,7 +415,8 @@ type InspirationHold struct {
 type NpcCheckAsk struct {
 	ID              string
 	HoldID          string
-	BardCharacterID string
+	MapID           *string
+	BardCharacterID *string
 	Position        int32
 	State           string
 	Sides           int32
@@ -719,6 +720,7 @@ type SpellCast struct {
 	StartedAt          time.Time
 	CastAt             *time.Time
 	EndedAt            *time.Time
+	GrantSource        string
 }
 
 type SpellZone struct {

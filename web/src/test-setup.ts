@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, vi } from 'vitest';
+import { noShadowedScrollIntoView } from './test-setup-guard';
 
 /**
  * Runs before every spec file (the `setupFiles` of the `test` target in angular.json).
@@ -23,6 +24,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  noShadowedScrollIntoView();
   vi.unstubAllGlobals();
   // A fake clock one test turns on (vi.useFakeTimers) never reaches the next file either.
   vi.useRealTimers();

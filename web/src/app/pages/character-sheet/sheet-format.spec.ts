@@ -4,6 +4,7 @@ import {
   formatWhen,
   grantedSpellTags,
   issueTitle,
+  lostKeys,
   keepUnitsTogether,
   spellLimitsText,
   pactSlotRow,
@@ -29,6 +30,7 @@ describe('sheet-format', () => {
       countsAsKnown: false,
       noMaterialComponents: false,
       usesCost: 0,
+      castLevel: 1,
       ability: null,
       abilityPending: false,
       saveDc: 0,
@@ -40,6 +42,34 @@ describe('sheet-format', () => {
       'Sem material',
     ]);
     expect(grantedSpellTags({ ...g, atWill: true, resource: '' })).toEqual(['À vontade']);
+  });
+
+  it('says the level a granted spell is cast at only when it is above the spell’s own', () => {
+    const g = {
+      key: 'spell:bless',
+      namePt: 'Bênção',
+      level: 1,
+      sourcePt: 'Legado',
+      atWill: false,
+      resource: 'usos',
+      resourceNamePt: 'Usos',
+      alsoWithSlot: false,
+      ritualOnly: false,
+      countsAsKnown: false,
+      noMaterialComponents: false,
+      usesCost: 0,
+      castLevel: 1,
+      ability: null,
+      abilityPending: false,
+      saveDc: 0,
+      attackBonus: 0,
+    } as const;
+    expect(grantedSpellTags({ ...g, castLevel: 2 })).toEqual([
+      'Gasta um uso de Usos',
+      'Conjurada no\u00a02º\u00a0nível',
+    ]);
+    expect(grantedSpellTags(g)).toEqual(['Gasta um uso de Usos']);
+    expect(grantedSpellTags({ ...g, level: 0, castLevel: 0 })).toEqual(['Gasta um uso de Usos']);
   });
 
   it('keeps a number beside its unit, and only a unit', () => {
@@ -112,8 +142,8 @@ describe('sheet-format', () => {
       'Habilidade acima de 20.',
       'Nível acima do máximo.',
       'Efeito ignorado.',
-      'Talento que não vale agora.',
-      'Opção que não vale agora.',
+      'Pré-requisito perdido.',
+      'Pré-requisito perdido.',
     ]);
   });
 
@@ -243,5 +273,32 @@ describe('spellGroups', () => {
     const cleric = spellGroups(spells, [caster({ spellsPreparedMax: 4 })]);
     expect(cleric[1].rows.map((r) => r.state)).toEqual(['Preparada', 'Conhecida']);
     expect(spellStateSummary(cleric)).toBe('1 preparada e 1 só conhecida.');
+  });
+});
+
+describe('the feats and options a sheet keeps but that do not apply now (board 580-05)', () => {
+  const issue = (code: string, field: string) => ({ code, field, message: 'x' });
+  const full = {
+    featKeys: ['feat:alert', 'feat:lamina-rubra@mesa'],
+    featureChoiceKeys: [
+      'feature:fighting-style-1#feature:fighting-style-protection',
+      'option:table-feature:asa-partida@mesa',
+      'feature:asi-4#feat=feat:grappler',
+    ],
+  };
+
+  it("takes the key of each lost feat and option from the issue's field, and nothing else", () => {
+    expect(
+      [
+        ...lostKeys(full, [
+          issue('feat_prerequisite', 'full.feat_keys[1]'),
+          issue('option_prerequisite', 'full.feature_choice_keys[1]'),
+          // A feat taken through a choice: the server names the pick's index (choiceFeats in rules/feat_choices.go).
+          issue('feat_prerequisite', 'full.feature_choice_keys[2]'),
+          issue('skill_count', 'full.feat_keys[0]'),
+          issue('option_prerequisite', 'full.feature_choice_keys[9]'),
+        ]),
+      ].sort(),
+    ).toEqual(['feat:grappler', 'feat:lamina-rubra@mesa', 'option:table-feature:asa-partida@mesa']);
   });
 });

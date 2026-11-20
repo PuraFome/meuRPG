@@ -27,8 +27,8 @@ type Bard struct {
 }
 
 // MayCut says the bard may cut a check at all: it is the setting "todos" that takes part in checks (the default asks about attacks
-// only), and the bard must be awake. It holds at the answer as it holds at the question, so a bard who fell, or who changed the
-// setting, since the question was asked cuts nothing; only the pass is left.
+// only), and the bard must be awake. It holds at the answer as it holds at the question, so a bard at 0 hit points or whose setting is
+// not "todos" cuts nothing; only the pass is left.
 func (b Bard) MayCut() bool {
 	return b.Feature && b.Ask == "all" && b.HitPoints > 0
 }
@@ -56,16 +56,20 @@ type Sight struct {
 	TokenHidden bool
 	// Box is the master's "Os bardos veem a criatura e ela os ouve" for a table with no placement of both.
 	Box bool
+	// InScene says the bard's player is one of the viewers of the scene the table is in (the whole table when no scene is open or it is
+	// open to everyone). Both paths read it: a player the scene is not open to sees nothing of the creature, whatever the map measures
+	// and the box says.
+	InScene bool
 	// OnStage says the creature is on the stage of the open scene for the bard's player (an NPC the players see).
 	OnStage bool
 }
 
 // Sees says the bard sees the creature within the 60 feet of the reactions and the creature hears it. A creature whose token the master
-// hid is seen by nobody, first of all. Outside a combat nothing says a creature is deafened, so it is the master's box that answers
-// when the map does not measure it.
+// hid is seen by nobody, first of all, and so is every creature by a bard whose player is outside the viewers of the scene. Outside a
+// combat nothing says a creature is deafened, so it is the master's box that answers when the map does not measure it.
 func (s Sight) Sees() bool {
 	switch {
-	case s.TokenHidden:
+	case s.TokenHidden, !s.InScene:
 		return false
 	case s.Mapped:
 		return s.DistanceFt <= reaction.RangeFt && s.Seen
@@ -169,8 +173,7 @@ type Place struct {
 	NPC    string
 }
 
-// Measures says the map places both the creature and the bard on its grid: the map decides what the bard sees, and the master's box is
-// not read. The tokens of a map with no grid place nobody.
+// Measures says the map places both the creature and the bard on its grid: the map decides what the bard sees, and the map measures the distance and the fog, and the master's box is not read. The tokens of a map with no grid place nobody.
 func (p Place) Measures(bard string) bool {
 	npc, okN := p.Tokens[p.NPC]
 	b, okB := p.Tokens[bard]
@@ -179,11 +182,67 @@ func (p Place) Measures(bard string) bool {
 
 // SightOf is what a bard's question reads of the creature. Its own token comes first: hidden, nobody sees it (the bard needs no token
 // for that, and the map needs no grid). Then the map when it measures both (seen says the bard's player sees the creature's square),
-// the master's box otherwise, and whether the creature is on the stage the bard's player sees (onStage).
-func (p Place) SightOf(bard string, box bool, seen func(grid.Square) bool, onStage bool) Sight {
+// the master's box otherwise. A bard whose player is outside the viewers of the scene (inScene false) sees nothing on either path.
+// onStage says the creature is on the stage the bard's player sees.
+func (p Place) SightOf(bard string, box bool, seen func(grid.Square) bool, onStage, inScene bool) Sight {
 	npcTok, bardTok := p.Tokens[p.NPC], p.Tokens[bard]
 	if p.Measures(bard) {
-		return Sight{Mapped: true, DistanceFt: grid.RangeFt(bardTok.Sq, npcTok.Sq), Seen: seen(npcTok.Sq), TokenHidden: npcTok.Hidden}
+		return Sight{Mapped: true, DistanceFt: grid.RangeFt(bardTok.Sq, npcTok.Sq), Seen: seen(npcTok.Sq), TokenHidden: npcTok.Hidden, InScene: inScene}
 	}
-	return Sight{Box: box, OnStage: onStage, TokenHidden: npcTok.Hidden}
+	return Sight{Box: box, OnStage: onStage, InScene: inScene, TokenHidden: npcTok.Hidden}
+}
+
+// The reasons no bard is asked about a check, as the event of the check keeps them.
+const (
+	NobodyNoBard      = "no_bard"
+	NobodyCharmImmune = "charm_immune"
+	NobodyTokenHidden = "token_hidden"
+	NobodySees        = "nobody_sees"
+)
+
+// TokenHidden says the master hid the creature's token on the session's map.
+func (p Place) TokenHidden() bool { return p.Tokens[p.NPC].Hidden }
+
+// WhyNobody is why no bard is asked about a check, "" when one is: the first that applies. bards is how many bards of the party could cut a check
+// at all (see Bard.Asks), asked how many of them are asked once the creature and what they see of it are read.
+func WhyNobody(bards, asked int, charmImmune, tokenHidden bool) string {
+	switch {
+	case asked > 0:
+		return ""
+	case bards == 0:
+		return NobodyNoBard
+	case charmImmune:
+		return NobodyCharmImmune
+	case tokenHidden:
+		return NobodyTokenHidden
+	}
+	return NobodySees
+}
+
+// Move is what a check that waits needs as things stand when it is read or answered.
+type Move int
+
+// The moves: leave it, close every question as a skip (the creature is hidden), let the question at the index pass (its bard is not
+// in play), or settle it as the last answer does (no question is left open).
+const (
+	Stand Move = iota
+	Skip
+	Pass
+	Finish
+)
+
+// NextMove says what a check that waits needs now. states are the questions in the order they are asked, inPlay says for each whether its
+// bard is a character in play of a member, and tokenHidden whether the creature's token is hidden on the map the check was rolled on. The index is
+// the question to let pass, -1 for any other move. A hidden creature closes the check whatever the bards are.
+func NextMove(states []State, inPlay []bool, tokenHidden bool) (Move, int) {
+	cur := Current(states)
+	switch {
+	case tokenHidden:
+		return Skip, -1
+	case cur < 0:
+		return Finish, -1
+	case cur < len(inPlay) && !inPlay[cur]:
+		return Pass, cur
+	}
+	return Stand, -1
 }

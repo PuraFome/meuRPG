@@ -19,6 +19,7 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
+	mapsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 )
@@ -591,6 +592,263 @@ func TestNpcCheckHintsReachOnlyWhoMayHearThem(t *testing.T) {
 			}
 			for _, l := range secret.leaks(ev) {
 				t.Errorf("%s's stream: %s", p.name, l)
+			}
+		}
+	}
+}
+
+// A check the master's box says the bards see, with the scene open to Ana only: Caio's bard is outside the scene's audience, so it is not
+// asked about the check, hears nothing of it on the stream and reads no offer; Ana's bard is (the positive control).
+func TestNpcCheckOutsideTheScenesAudienceAsksNoBard(t *testing.T) {
+	w := &world{stack: newStack(t), secrets: newSecrets(), pts: map[string]*mapsv1.MapPoint{}, puzzles: map[string]*playv1.Puzzle{}, notes: map[string]string{}}
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("the table: %v", r)
+		}
+	}()
+	ctx := t.Context()
+	w.buildPeople()
+	w.buildGallery()
+	w.fogMap = must(w.master.maps.CreateMap(ctx, rq(&mapsv1.CreateMapRequest{CampaignId: w.campaign, Name: "Caverna", ImageId: w.imgMap}))).GetMap().GetId()
+	must(w.master.maps.SetMapRevealed(ctx, rq(&mapsv1.SetMapRevealedRequest{CampaignId: w.campaign, MapId: w.fogMap, Revealed: true})))
+	ps := w.buildPartialScene()
+	m, ana, caio := w.master, w.ana, w.caio
+	loreBard(w, ana, "Brisa", 16)
+	loreBard(w, caio, "Lia", 14)
+	w.session = must(m.play.StartGameSession(ctx, rq(&playv1.StartGameSessionRequest{CampaignId: w.campaign}))).GetGameSession().GetId()
+	w.openSceneTo(ps.point.GetId(), ana)
+	watchers := map[*person]*streamWatcher{ana: w.watchStream(ana), caio: w.watchStream(caio)}
+	res := must(m.play.RollNpcCheck(ctx, rq(&playv1.RollNpcCheckRequest{
+		CampaignId: w.campaign, Npc: &playv1.RollNpcCheckRequest_MonsterKey{MonsterKey: "monster:wolf"}, CheckKey: "skill:perception",
+		Roll: &playv1.RollNpcCheckRequest_D20Face{D20Face: 17}, BardSees: true, IdempotencyKey: newKey(),
+	})))
+	if !res.GetHeld() || len(res.GetCheck().GetAsks()) != 1 || res.GetCheck().GetAsks()[0].GetCharacterName() != "Brisa" {
+		t.Fatalf("the master's roll = %v, want one bard asked: Ana's", res)
+	}
+	read := res.GetCheck()
+	secret := rollNumbers{d20: 17, modifier: read.GetD20().GetModifier(), total: read.GetD20().GetTotal(), name: read.GetCreatureLabel()}
+	offers := func(p *person) []*playv1.HeldRollOffer {
+		return must(p.resources.ListHeldRolls(ctx, rq(&playv1.ListHeldRollsRequest{CampaignId: w.campaign}))).GetOffers()
+	}
+	if got := offers(ana); len(got) != 1 || got[0].GetRollerLabel() != "uma criatura" {
+		t.Errorf("Ana lists %v, want the bard's question (the positive control)", got)
+	}
+	if got := offers(caio); len(got) != 0 {
+		t.Errorf("Caio lists %v, want nothing", got)
+	}
+	fenced := w.fence(t, m, watchers, "fim da conversa")
+	heard := func(p *person) int {
+		n := 0
+		for _, ev := range watchers[p].since(0)[:fenced[p]] {
+			if eventCase(ev) == "held_rolls_changed" {
+				n++
+			}
+		}
+		return n
+	}
+	if heard(ana) == 0 {
+		t.Error("Ana's stream heard no held rolls change, want the hint of her question (the positive control)")
+	}
+	if got := heard(caio); got != 0 {
+		t.Errorf("Caio's stream heard %d held rolls changes, want none", got)
+	}
+	for p, sw := range watchers {
+		for _, ev := range sw.since(0) {
+			for _, l := range secret.leaks(ev) {
+				t.Errorf("%s's stream: %s", p.name, l)
+			}
+		}
+	}
+}
+
+// A check of a creature both bards stand within 60 feet of on a measured map, in sight, with the scene open to Ana only: the map measures
+// both bards, yet Caio's bard is outside the scene's audience, so it is not asked, reads no offer and hears nothing on the stream; Ana's
+// bard is (the positive control).
+func TestNpcCheckOnAMeasuredMapOutsideTheScenesAudienceAsksNoBard(t *testing.T) {
+	w := &world{stack: newStack(t), secrets: newSecrets(), pts: map[string]*mapsv1.MapPoint{}, puzzles: map[string]*playv1.Puzzle{}, notes: map[string]string{}}
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("the table: %v", r)
+		}
+	}()
+	ctx := t.Context()
+	w.buildPeople()
+	w.buildGallery()
+	w.fogMap = must(w.master.maps.CreateMap(ctx, rq(&mapsv1.CreateMapRequest{CampaignId: w.campaign, Name: "Caverna", ImageId: w.imgMap}))).GetMap().GetId()
+	must(w.master.maps.SetMapRevealed(ctx, rq(&mapsv1.SetMapRevealedRequest{CampaignId: w.campaign, MapId: w.fogMap, Revealed: true})))
+	must(w.master.maps.SetMapGrid(ctx, rq(&mapsv1.SetMapGridRequest{CampaignId: w.campaign, MapId: w.fogMap, Columns: caveColumns})))
+	ps := w.buildPartialScene()
+	m, ana, caio := w.master, w.ana, w.caio
+	brisa, lia := loreBard(w, ana, "Brisa", 16), loreBard(w, caio, "Lia", 14)
+	baron, _ := w.npc("measured-npc", &charactersv1.BasicSheet{HitPointsMax: 9, ArmorClass: 11, SpeedFt: 30})
+	w.session = must(m.play.StartGameSession(ctx, rq(&playv1.StartGameSessionRequest{CampaignId: w.campaign}))).GetGameSession().GetId()
+	must(m.play.SetCurrentMap(ctx, rq(&playv1.SetCurrentMapRequest{CampaignId: w.campaign, MapId: w.fogMap})))
+	w.place(w.fogMap, brisa.GetId(), 2, 2)
+	w.place(w.fogMap, lia.GetId(), 2, 4)
+	w.place(w.fogMap, baron.GetId(), 6, 3)
+	must(m.maps.SetMapTokenHidden(ctx, rq(&mapsv1.SetMapTokenHiddenRequest{CampaignId: w.campaign, MapId: w.fogMap, CharacterId: baron.GetId(), Hidden: false})))
+	w.openSceneTo(ps.point.GetId(), ana)
+	watchers := map[*person]*streamWatcher{ana: w.watchStream(ana), caio: w.watchStream(caio)}
+	res := must(m.play.RollNpcCheck(ctx, rq(&playv1.RollNpcCheckRequest{
+		CampaignId: w.campaign, Npc: &playv1.RollNpcCheckRequest_NpcCharacterId{NpcCharacterId: baron.GetId()}, CheckKey: "ability:cha",
+		Roll: &playv1.RollNpcCheckRequest_D20Face{D20Face: 17}, IdempotencyKey: newKey(),
+	})))
+	if !res.GetHeld() || len(res.GetCheck().GetAsks()) != 1 || res.GetCheck().GetAsks()[0].GetCharacterId() != brisa.GetId() {
+		t.Fatalf("the master's roll = %v, want one bard asked: Ana's, though the map measures both", res)
+	}
+	read := res.GetCheck()
+	secret := rollNumbers{d20: 17, modifier: read.GetD20().GetModifier(), total: read.GetD20().GetTotal(), name: read.GetCreatureLabel()}
+	offers := func(p *person) []*playv1.HeldRollOffer {
+		return must(p.resources.ListHeldRolls(ctx, rq(&playv1.ListHeldRollsRequest{CampaignId: w.campaign}))).GetOffers()
+	}
+	if got := offers(ana); len(got) != 1 {
+		t.Errorf("Ana lists %v, want the bard's question (the positive control)", got)
+	}
+	if got := offers(caio); len(got) != 0 {
+		t.Errorf("Caio lists %v, want nothing", got)
+	}
+	fenced := w.fence(t, m, watchers, "fim da conversa")
+	heard := func(p *person) int {
+		n := 0
+		for _, ev := range watchers[p].since(0)[:fenced[p]] {
+			if eventCase(ev) == "held_rolls_changed" {
+				n++
+			}
+		}
+		return n
+	}
+	if heard(ana) == 0 {
+		t.Error("Ana's stream heard no held rolls change, want the hint of her question (the positive control)")
+	}
+	if got := heard(caio); got != 0 {
+		t.Errorf("Caio's stream heard %d held rolls changes, want none", got)
+	}
+	for p, sw := range watchers {
+		for _, ev := range sw.since(0) {
+			for _, l := range secret.leaks(ev) {
+				t.Errorf("%s's stream: %s", p.name, l)
+			}
+		}
+	}
+}
+
+// Two bards are asked about a check while the scene is open to both players. The master then narrows the scene to one of them: the
+// question that moves to the other bard, or ends, is told to the master and to the bard inside the scene alone. The bard outside hears
+// no held rolls change, reads no offer and gets no answer to a try at answering (the positive control is the bard inside).
+func TestNpcCheckTellsNoBardOutsideTheScene(t *testing.T) {
+	for name, tc := range map[string]struct {
+		insideFirst bool // the scene is narrowed to the bard asked first (it answers); otherwise to the bard asked second (the master skips)
+	}{
+		"the bard asked first answers, the next is outside":      {true},
+		"the master skips, the bard whose turn it is is outside": {false},
+	} {
+		t.Run(name, func(t *testing.T) {
+			w := &world{stack: newStack(t), secrets: newSecrets(), pts: map[string]*mapsv1.MapPoint{}, puzzles: map[string]*playv1.Puzzle{}, notes: map[string]string{}}
+			defer func() {
+				if r := recover(); r != nil {
+					t.Fatalf("the table: %v", r)
+				}
+			}()
+			ctx := t.Context()
+			w.buildPeople()
+			w.buildGallery()
+			w.fogMap = must(w.master.maps.CreateMap(ctx, rq(&mapsv1.CreateMapRequest{CampaignId: w.campaign, Name: "Caverna", ImageId: w.imgMap}))).GetMap().GetId()
+			must(w.master.maps.SetMapRevealed(ctx, rq(&mapsv1.SetMapRevealedRequest{CampaignId: w.campaign, MapId: w.fogMap, Revealed: true})))
+			ps := w.buildPartialScene()
+			m, ana, caio := w.master, w.ana, w.caio
+			brisa, lia := loreBard(w, ana, "Brisa", 16), loreBard(w, caio, "Lia", 14)
+			w.session = must(m.play.StartGameSession(ctx, rq(&playv1.StartGameSessionRequest{CampaignId: w.campaign}))).GetGameSession().GetId()
+			w.openSceneTo(ps.point.GetId(), ana, caio)
+			watchers := map[*person]*streamWatcher{ana: w.watchStream(ana), caio: w.watchStream(caio)}
+			res := must(m.play.RollNpcCheck(ctx, rq(&playv1.RollNpcCheckRequest{
+				CampaignId: w.campaign, Npc: &playv1.RollNpcCheckRequest_MonsterKey{MonsterKey: "monster:wolf"}, CheckKey: "skill:perception",
+				Roll: &playv1.RollNpcCheckRequest_D20Face{D20Face: 17}, BardSees: true, IdempotencyKey: newKey(),
+			})))
+			asks := res.GetCheck().GetAsks()
+			if !res.GetHeld() || len(asks) != 2 {
+				t.Fatalf("the master's roll = %v, want both bards asked", res)
+			}
+			byChar := map[string]*person{brisa.GetId(): ana, lia.GetId(): caio}
+			first, second := byChar[asks[0].GetCharacterId()], byChar[asks[1].GetCharacterId()]
+			hold := res.GetCheck().GetHoldId()
+			inside, outside := second, first
+			if tc.insideFirst {
+				inside, outside = first, second
+			}
+			rolled := w.fence(t, m, watchers, "fim da rolagem")
+			w.setSceneTo(inside)
+			if tc.insideFirst {
+				must(first.resources.AnswerHeldRoll(ctx, rq(&playv1.AnswerHeldRollRequest{
+					CampaignId: w.campaign, HoldId: hold, IdempotencyKey: newKey(),
+					Answer: &playv1.AnswerHeldRollRequest_CuttingWords{CuttingWords: &playv1.CuttingWordsAnswer{Cut: false}},
+				})))
+			} else {
+				must(m.play.SkipNpcCheckAsks(ctx, rq(&playv1.SkipNpcCheckAsksRequest{CampaignId: w.campaign, HoldId: hold, IdempotencyKey: newKey()})))
+			}
+			moved := w.fence(t, m, watchers, "fim da mudança")
+			heard := func(p *person) int {
+				n := 0
+				for _, ev := range watchers[p].since(0)[rolled[p]:moved[p]] {
+					if eventCase(ev) == "held_rolls_changed" {
+						n++
+					}
+				}
+				return n
+			}
+			if got := heard(outside); got != 0 {
+				t.Errorf("the bard outside the scene heard %d held rolls changes, want none", got)
+			}
+			if tc.insideFirst && heard(inside) == 0 {
+				t.Error("the bard inside the scene heard no held rolls change, want the hint of its own answer (the positive control)")
+			}
+			if got := must(outside.resources.ListHeldRolls(ctx, rq(&playv1.ListHeldRollsRequest{CampaignId: w.campaign}))).GetOffers(); len(got) != 0 {
+				t.Errorf("the bard outside the scene lists %v, want nothing", got)
+			}
+		})
+	}
+}
+
+// A player reads the summary of a session that ended after an NPC's check a bard cut: it holds nothing of the check (the creature, its
+// roll, who cut), the bard included: a check of the master's side is nobody's roll in the summary.
+func TestNpcCheckLeavesNothingInThePlayersSummaryOfTheEndedSession(t *testing.T) {
+	w := &world{stack: newStack(t), secrets: newSecrets(), pts: nil, notes: map[string]string{}}
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("the table: %v", r)
+		}
+	}()
+	ctx := t.Context()
+	w.buildPeople()
+	m, ana, caio := w.master, w.ana, w.caio
+	loreBard(w, ana, "Brisa", 16)
+	w.pc(caio, "Toren", "race:human")
+	w.session = must(m.play.StartGameSession(ctx, rq(&playv1.StartGameSessionRequest{CampaignId: w.campaign}))).GetGameSession().GetId()
+	res := must(m.play.RollNpcCheck(ctx, rq(&playv1.RollNpcCheckRequest{
+		CampaignId: w.campaign, Npc: &playv1.RollNpcCheckRequest_MonsterKey{MonsterKey: "monster:wolf"}, CheckKey: "skill:perception",
+		Roll: &playv1.RollNpcCheckRequest_D20Face{D20Face: 17}, BardSees: true, IdempotencyKey: newKey(),
+	})))
+	read := res.GetCheck()
+	if !res.GetHeld() || read.GetCreatureLabel() == "" {
+		t.Fatalf("the master's roll = %v, want a held check of a named creature", res)
+	}
+	must(ana.resources.AnswerHeldRoll(ctx, rq(&playv1.AnswerHeldRollRequest{
+		CampaignId: w.campaign, HoldId: read.GetHoldId(), IdempotencyKey: newKey(),
+		Answer: &playv1.AnswerHeldRollRequest_CuttingWords{CuttingWords: &playv1.CuttingWordsAnswer{Cut: true, Roll: &playv1.CuttingWordsAnswer_TypedFace{TypedFace: 4}}},
+	})))
+	if got := must(m.play.GetNpcCheck(ctx, rq(&playv1.GetNpcCheckRequest{CampaignId: w.campaign}))).GetCheck(); !got.GetSettled() || got.GetCut() != 4 {
+		t.Fatalf("the master's latest check = %v, want it settled with the 4 cut (the positive control)", got)
+	}
+	must(m.play.EndGameSession(ctx, rq(&playv1.EndGameSessionRequest{CampaignId: w.campaign, GameSessionId: w.session})))
+	for _, p := range []*person{ana, caio} {
+		s := must(p.play.GetSessionSummary(ctx, rq(&playv1.GetSessionSummaryRequest{CampaignId: w.campaign, GameSessionId: w.session}))).GetSummary()
+		if s.GetMine() != nil || len(s.GetCategories()) != 0 || len(s.GetPlayers()) != 0 || s.GetCombats() != 0 || s.GetScenesOpened() != 0 ||
+			s.GetChecksTried() != 0 || s.GetChecksPassed() != 0 || len(s.GetConversation()) != 0 {
+			t.Errorf("%s's summary = %s, want only the times of the session", p.name, protojson.Format(s))
+		}
+		text := strings.ToLower(protojson.Format(s))
+		for _, word := range []string{strings.ToLower(read.GetCreatureLabel()), "wolf", "npc_check", "perception", "cutting", read.GetHoldId()} {
+			if strings.Contains(text, word) {
+				t.Errorf("%s's summary holds %q: %s", p.name, word, text)
 			}
 		}
 	}

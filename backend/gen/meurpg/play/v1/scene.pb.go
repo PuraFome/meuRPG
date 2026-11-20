@@ -172,6 +172,68 @@ func (NpcCheckSource) EnumDescriptor() ([]byte, []int) {
 	return file_meurpg_play_v1_scene_proto_rawDescGZIP(), []int{1}
 }
 
+// NpcCheckNobodyReason is why a check of the master's side asked no bard. The master reads it; no player does.
+type NpcCheckNobodyReason int32
+
+const (
+	NpcCheckNobodyReason_NPC_CHECK_NOBODY_REASON_UNSPECIFIED NpcCheckNobodyReason = 0
+	// No bard of the party can cut a check: none has Cutting Words with the setting "todos", is awake and has a use of Bardic
+	// Inspiration left.
+	NpcCheckNobodyReason_NPC_CHECK_NOBODY_REASON_NO_BARD_CAN_CUT NpcCheckNobodyReason = 1
+	// The creature is immune to being charmed.
+	NpcCheckNobodyReason_NPC_CHECK_NOBODY_REASON_CHARM_IMMUNE NpcCheckNobodyReason = 2
+	// The master hid the creature's token on the map: no player sees it, whatever the box says.
+	NpcCheckNobodyReason_NPC_CHECK_NOBODY_REASON_TOKEN_HIDDEN NpcCheckNobodyReason = 3
+	// Some bard could cut the check but none sees the creature within 60 feet and is seen by it: the map's distance or fog, or the master's
+	// box and the players the scene is open to.
+	NpcCheckNobodyReason_NPC_CHECK_NOBODY_REASON_NOBODY_SEES NpcCheckNobodyReason = 4
+)
+
+// Enum value maps for NpcCheckNobodyReason.
+var (
+	NpcCheckNobodyReason_name = map[int32]string{
+		0: "NPC_CHECK_NOBODY_REASON_UNSPECIFIED",
+		1: "NPC_CHECK_NOBODY_REASON_NO_BARD_CAN_CUT",
+		2: "NPC_CHECK_NOBODY_REASON_CHARM_IMMUNE",
+		3: "NPC_CHECK_NOBODY_REASON_TOKEN_HIDDEN",
+		4: "NPC_CHECK_NOBODY_REASON_NOBODY_SEES",
+	}
+	NpcCheckNobodyReason_value = map[string]int32{
+		"NPC_CHECK_NOBODY_REASON_UNSPECIFIED":     0,
+		"NPC_CHECK_NOBODY_REASON_NO_BARD_CAN_CUT": 1,
+		"NPC_CHECK_NOBODY_REASON_CHARM_IMMUNE":    2,
+		"NPC_CHECK_NOBODY_REASON_TOKEN_HIDDEN":    3,
+		"NPC_CHECK_NOBODY_REASON_NOBODY_SEES":     4,
+	}
+)
+
+func (x NpcCheckNobodyReason) Enum() *NpcCheckNobodyReason {
+	p := new(NpcCheckNobodyReason)
+	*p = x
+	return p
+}
+
+func (x NpcCheckNobodyReason) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (NpcCheckNobodyReason) Descriptor() protoreflect.EnumDescriptor {
+	return file_meurpg_play_v1_scene_proto_enumTypes[2].Descriptor()
+}
+
+func (NpcCheckNobodyReason) Type() protoreflect.EnumType {
+	return &file_meurpg_play_v1_scene_proto_enumTypes[2]
+}
+
+func (x NpcCheckNobodyReason) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use NpcCheckNobodyReason.Descriptor instead.
+func (NpcCheckNobodyReason) EnumDescriptor() ([]byte, []int) {
+	return file_meurpg_play_v1_scene_proto_rawDescGZIP(), []int{2}
+}
+
 // SceneBlocked is the error detail of a scene call's `failed_precondition`
 // that the app reacts to. (A call with no open session fails with
 // GameSessionBlocked, NO_OPEN_SESSION, as every live-session call does.)
@@ -2000,10 +2062,11 @@ type RollNpcCheckRequest struct {
 	Roll isRollNpcCheckRequest_Roll `protobuf_oneof:"roll"`
 	// Whether the bards of the table see the creature and the creature hears them (the master's box "Os bardos veem a criatura
 	// e ela os ouve"): Cutting Words needs both. Read only when the session's map has no placement of both the creature's token
-	// and a bard's (no usable map): then it decides for every bard. With both tokens on the map the server measures the 60 feet
-	// and, on a fog map, what the bard's player sees, and ignores this for that bard. A creature whose token the master hid on the map is seen by
-	// no bard, whatever this says, whether or not the bard has a token and whether or not the map has a grid. `NpcCheckCandidate.map_measures`
-	// says which creatures the map measures.
+	// and a bard's (no usable map): then it decides for every bard whose player the open scene is open to. With both tokens on
+	// the map the server measures the 60 feet and, on a fog map, what the bard's player sees, and ignores this for that bard.
+	// A creature whose token the master hid on the map is seen by no bard, whatever this says, whether or not the bard has a
+	// token and whether or not the map has a grid. A bard whose player the open scene is not open to is not asked, whatever the
+	// map measures and this says. `NpcCheckCandidate.map_measures` says which creatures the map measures.
 	BardSees bool `protobuf:"varint,7,opt,name=bard_sees,json=bardSees,proto3" json:"bard_sees,omitempty"`
 	// A UUID the app makes for each roll. Repeating it answers with the first roll's read and changes nothing.
 	IdempotencyKey string `protobuf:"bytes,8,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
@@ -2227,8 +2290,11 @@ type NpcCheckRead struct {
 	// True once the check has no question open (every bard answered or the master went on without them).
 	Settled bool `protobuf:"varint,8,opt,name=settled,proto3" json:"settled,omitempty"`
 	// When settled: the total after the dice the bards took off, and what they took off.
-	Total         int32 `protobuf:"varint,9,opt,name=total,proto3" json:"total,omitempty"`
-	Cut           int32 `protobuf:"varint,10,opt,name=cut,proto3" json:"cut,omitempty"`
+	Total int32 `protobuf:"varint,9,opt,name=total,proto3" json:"total,omitempty"`
+	Cut   int32 `protobuf:"varint,10,opt,name=cut,proto3" json:"cut,omitempty"`
+	// Why nobody was asked, when no bard was (`asks` is empty and the check settled at once): the first reason that applies, in the order
+	// of the enum. UNSPECIFIED when a bard was asked. Stored with the roll, so the master reads it again after a reload (GetNpcCheck).
+	NobodyReason  NpcCheckNobodyReason `protobuf:"varint,11,opt,name=nobody_reason,json=nobodyReason,proto3,enum=meurpg.play.v1.NpcCheckNobodyReason" json:"nobody_reason,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2331,6 +2397,13 @@ func (x *NpcCheckRead) GetCut() int32 {
 		return x.Cut
 	}
 	return 0
+}
+
+func (x *NpcCheckRead) GetNobodyReason() NpcCheckNobodyReason {
+	if x != nil {
+		return x.NobodyReason
+	}
+	return NpcCheckNobodyReason_NPC_CHECK_NOBODY_REASON_UNSPECIFIED
 }
 
 // SkipNpcCheckAsksRequest is the master's "Continuar sem esperar": it closes the questions that wait for the bards and settles
@@ -2562,10 +2635,11 @@ type NpcCheckCandidate struct {
 	Checks []*NpcCheckOption `protobuf:"bytes,7,rep,name=checks,proto3" json:"checks,omitempty"`
 	// True when the session's current map can measure this creature against a bard: the creature has a token on the grid of the
 	// map, and so has at least one bard that would be asked (a bard of the party with Cutting Words in "todos", awake, with a use
-	// left). It is per creature: another creature of the same map, with no such pair, has it false. Then the server measures the
-	// 60 feet and the sight itself for each bard with a token and the app shows no checkbox, so it sends `bard_sees` false and a
-	// bard with no token on the map is not asked about this creature; when false the checkbox "Os bardos veem a criatura e ela os
-	// ouve" decides for every bard (a creature whose token is hidden is the exception: no bard is asked).
+	// left) whose player the open scene is open to. It is per creature: another creature of the same map, with no such pair, has
+	// it false. Then the server measures the 60 feet and the sight itself for each bard with a token and the app shows no
+	// checkbox, so it sends `bard_sees` false and a bard with no token on the map is not asked about this creature; when false
+	// the checkbox "Os bardos veem a criatura e ela os ouve" decides for every bard whose player the open scene is open to (a
+	// creature whose token is hidden is the exception: no bard is asked).
 	MapMeasures   bool `protobuf:"varint,8,opt,name=map_measures,json=mapMeasures,proto3" json:"map_measures,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -3376,7 +3450,7 @@ const file_meurpg_play_v1_scene_proto_rawDesc = "" +
 	"\x04roll\"^\n" +
 	"\x14RollNpcCheckResponse\x12\x12\n" +
 	"\x04held\x18\x01 \x01(\bR\x04held\x122\n" +
-	"\x05check\x18\x02 \x01(\v2\x1c.meurpg.play.v1.NpcCheckReadR\x05check\"\xd0\x02\n" +
+	"\x05check\x18\x02 \x01(\v2\x1c.meurpg.play.v1.NpcCheckReadR\x05check\"\x9b\x03\n" +
 	"\fNpcCheckRead\x12\x17\n" +
 	"\ahold_id\x18\x01 \x01(\tR\x06holdId\x12%\n" +
 	"\x0ecreature_label\x18\x02 \x01(\tR\rcreatureLabel\x12\x1b\n" +
@@ -3389,7 +3463,8 @@ const file_meurpg_play_v1_scene_proto_rawDesc = "" +
 	"\asettled\x18\b \x01(\bR\asettled\x12\x14\n" +
 	"\x05total\x18\t \x01(\x05R\x05total\x12\x10\n" +
 	"\x03cut\x18\n" +
-	" \x01(\x05R\x03cut\"|\n" +
+	" \x01(\x05R\x03cut\x12I\n" +
+	"\rnobody_reason\x18\v \x01(\x0e2$.meurpg.play.v1.NpcCheckNobodyReasonR\fnobodyReason\"|\n" +
 	"\x17SkipNpcCheckAsksRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12\x17\n" +
@@ -3464,7 +3539,13 @@ const file_meurpg_play_v1_scene_proto_rawDesc = "" +
 	"\x1cNPC_CHECK_SOURCE_UNSPECIFIED\x10\x00\x12\x1a\n" +
 	"\x16NPC_CHECK_SOURCE_STAGE\x10\x01\x12\x1a\n" +
 	"\x16NPC_CHECK_SOURCE_TOKEN\x10\x02\x12\x1c\n" +
-	"\x18NPC_CHECK_SOURCE_MONSTER\x10\x03B\xb8\x01\n" +
+	"\x18NPC_CHECK_SOURCE_MONSTER\x10\x03*\xe9\x01\n" +
+	"\x14NpcCheckNobodyReason\x12'\n" +
+	"#NPC_CHECK_NOBODY_REASON_UNSPECIFIED\x10\x00\x12+\n" +
+	"'NPC_CHECK_NOBODY_REASON_NO_BARD_CAN_CUT\x10\x01\x12(\n" +
+	"$NPC_CHECK_NOBODY_REASON_CHARM_IMMUNE\x10\x02\x12(\n" +
+	"$NPC_CHECK_NOBODY_REASON_TOKEN_HIDDEN\x10\x03\x12'\n" +
+	"#NPC_CHECK_NOBODY_REASON_NOBODY_SEES\x10\x04B\xb8\x01\n" +
 	"\x12com.meurpg.play.v1B\n" +
 	"SceneProtoP\x01Z<github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1;playv1\xa2\x02\x03MPX\xaa\x02\x0eMeurpg.Play.V1\xca\x02\x0eMeurpg\\Play\\V1\xe2\x02\x1aMeurpg\\Play\\V1\\GPBMetadata\xea\x02\x10Meurpg::Play::V1b\x06proto3"
 
@@ -3480,111 +3561,113 @@ func file_meurpg_play_v1_scene_proto_rawDescGZIP() []byte {
 	return file_meurpg_play_v1_scene_proto_rawDescData
 }
 
-var file_meurpg_play_v1_scene_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
+var file_meurpg_play_v1_scene_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
 var file_meurpg_play_v1_scene_proto_msgTypes = make([]protoimpl.MessageInfo, 43)
 var file_meurpg_play_v1_scene_proto_goTypes = []any{
 	(SceneBlockedReason)(0),                // 0: meurpg.play.v1.SceneBlockedReason
 	(NpcCheckSource)(0),                    // 1: meurpg.play.v1.NpcCheckSource
-	(*SceneBlocked)(nil),                   // 2: meurpg.play.v1.SceneBlocked
-	(*OpenSceneInfo)(nil),                  // 3: meurpg.play.v1.OpenSceneInfo
-	(*SceneAudience)(nil),                  // 4: meurpg.play.v1.SceneAudience
-	(*ScenePlayer)(nil),                    // 5: meurpg.play.v1.ScenePlayer
-	(*SceneAudienceView)(nil),              // 6: meurpg.play.v1.SceneAudienceView
-	(*StageNpc)(nil),                       // 7: meurpg.play.v1.StageNpc
-	(*PutOnStageRequest)(nil),              // 8: meurpg.play.v1.PutOnStageRequest
-	(*PutOnStageResponse)(nil),             // 9: meurpg.play.v1.PutOnStageResponse
-	(*TakeOffStageRequest)(nil),            // 10: meurpg.play.v1.TakeOffStageRequest
-	(*TakeOffStageResponse)(nil),           // 11: meurpg.play.v1.TakeOffStageResponse
-	(*SetStageNpcHiddenRequest)(nil),       // 12: meurpg.play.v1.SetStageNpcHiddenRequest
-	(*SetStageNpcHiddenResponse)(nil),      // 13: meurpg.play.v1.SetStageNpcHiddenResponse
-	(*SetSpeakerRequest)(nil),              // 14: meurpg.play.v1.SetSpeakerRequest
-	(*SetSpeakerResponse)(nil),             // 15: meurpg.play.v1.SetSpeakerResponse
-	(*SceneActionView)(nil),                // 16: meurpg.play.v1.SceneActionView
-	(*SceneRoll)(nil),                      // 17: meurpg.play.v1.SceneRoll
-	(*OpenSceneRequest)(nil),               // 18: meurpg.play.v1.OpenSceneRequest
-	(*OpenSceneResponse)(nil),              // 19: meurpg.play.v1.OpenSceneResponse
-	(*CloseSceneRequest)(nil),              // 20: meurpg.play.v1.CloseSceneRequest
-	(*CloseSceneResponse)(nil),             // 21: meurpg.play.v1.CloseSceneResponse
-	(*GetOpenSceneRequest)(nil),            // 22: meurpg.play.v1.GetOpenSceneRequest
-	(*GetOpenSceneResponse)(nil),           // 23: meurpg.play.v1.GetOpenSceneResponse
-	(*RollSceneCheckRequest)(nil),          // 24: meurpg.play.v1.RollSceneCheckRequest
-	(*RollSceneCheckResponse)(nil),         // 25: meurpg.play.v1.RollSceneCheckResponse
-	(*RollNpcCheckRequest)(nil),            // 26: meurpg.play.v1.RollNpcCheckRequest
-	(*RollNpcCheckResponse)(nil),           // 27: meurpg.play.v1.RollNpcCheckResponse
-	(*NpcCheckRead)(nil),                   // 28: meurpg.play.v1.NpcCheckRead
-	(*SkipNpcCheckAsksRequest)(nil),        // 29: meurpg.play.v1.SkipNpcCheckAsksRequest
-	(*SkipNpcCheckAsksResponse)(nil),       // 30: meurpg.play.v1.SkipNpcCheckAsksResponse
-	(*ListNpcCheckPickerRequest)(nil),      // 31: meurpg.play.v1.ListNpcCheckPickerRequest
-	(*ListNpcCheckPickerResponse)(nil),     // 32: meurpg.play.v1.ListNpcCheckPickerResponse
-	(*NpcCheckCandidate)(nil),              // 33: meurpg.play.v1.NpcCheckCandidate
-	(*GetNpcCheckRequest)(nil),             // 34: meurpg.play.v1.GetNpcCheckRequest
-	(*GetNpcCheckResponse)(nil),            // 35: meurpg.play.v1.GetNpcCheckResponse
-	(*NpcCheckOption)(nil),                 // 36: meurpg.play.v1.NpcCheckOption
-	(*GrantSceneAttemptRequest)(nil),       // 37: meurpg.play.v1.GrantSceneAttemptRequest
-	(*GrantSceneAttemptResponse)(nil),      // 38: meurpg.play.v1.GrantSceneAttemptResponse
-	(*SetSceneAudienceRequest)(nil),        // 39: meurpg.play.v1.SetSceneAudienceRequest
-	(*SetSceneAudienceResponse)(nil),       // 40: meurpg.play.v1.SetSceneAudienceResponse
-	(*SetScenePlayersMayJoinRequest)(nil),  // 41: meurpg.play.v1.SetScenePlayersMayJoinRequest
-	(*SetScenePlayersMayJoinResponse)(nil), // 42: meurpg.play.v1.SetScenePlayersMayJoinResponse
-	(*JoinSceneRequest)(nil),               // 43: meurpg.play.v1.JoinSceneRequest
-	(*JoinSceneResponse)(nil),              // 44: meurpg.play.v1.JoinSceneResponse
-	(*timestamppb.Timestamp)(nil),          // 45: google.protobuf.Timestamp
-	(*v1.SceneClue)(nil),                   // 46: meurpg.maps.v1.SceneClue
-	(*v1.SceneImage)(nil),                  // 47: meurpg.maps.v1.SceneImage
-	(*DiceRoll)(nil),                       // 48: meurpg.play.v1.DiceRoll
-	(RollMode)(0),                          // 49: meurpg.play.v1.RollMode
-	(*AdvantageSource)(nil),                // 50: meurpg.play.v1.AdvantageSource
-	(*BonusDie)(nil),                       // 51: meurpg.play.v1.BonusDie
-	(*OutsideInspirationOffer)(nil),        // 52: meurpg.play.v1.OutsideInspirationOffer
-	(*LuckyOffer)(nil),                     // 53: meurpg.play.v1.LuckyOffer
-	(*HeldRollOffer)(nil),                  // 54: meurpg.play.v1.HeldRollOffer
-	(*NpcCheckAsk)(nil),                    // 55: meurpg.play.v1.NpcCheckAsk
+	(NpcCheckNobodyReason)(0),              // 2: meurpg.play.v1.NpcCheckNobodyReason
+	(*SceneBlocked)(nil),                   // 3: meurpg.play.v1.SceneBlocked
+	(*OpenSceneInfo)(nil),                  // 4: meurpg.play.v1.OpenSceneInfo
+	(*SceneAudience)(nil),                  // 5: meurpg.play.v1.SceneAudience
+	(*ScenePlayer)(nil),                    // 6: meurpg.play.v1.ScenePlayer
+	(*SceneAudienceView)(nil),              // 7: meurpg.play.v1.SceneAudienceView
+	(*StageNpc)(nil),                       // 8: meurpg.play.v1.StageNpc
+	(*PutOnStageRequest)(nil),              // 9: meurpg.play.v1.PutOnStageRequest
+	(*PutOnStageResponse)(nil),             // 10: meurpg.play.v1.PutOnStageResponse
+	(*TakeOffStageRequest)(nil),            // 11: meurpg.play.v1.TakeOffStageRequest
+	(*TakeOffStageResponse)(nil),           // 12: meurpg.play.v1.TakeOffStageResponse
+	(*SetStageNpcHiddenRequest)(nil),       // 13: meurpg.play.v1.SetStageNpcHiddenRequest
+	(*SetStageNpcHiddenResponse)(nil),      // 14: meurpg.play.v1.SetStageNpcHiddenResponse
+	(*SetSpeakerRequest)(nil),              // 15: meurpg.play.v1.SetSpeakerRequest
+	(*SetSpeakerResponse)(nil),             // 16: meurpg.play.v1.SetSpeakerResponse
+	(*SceneActionView)(nil),                // 17: meurpg.play.v1.SceneActionView
+	(*SceneRoll)(nil),                      // 18: meurpg.play.v1.SceneRoll
+	(*OpenSceneRequest)(nil),               // 19: meurpg.play.v1.OpenSceneRequest
+	(*OpenSceneResponse)(nil),              // 20: meurpg.play.v1.OpenSceneResponse
+	(*CloseSceneRequest)(nil),              // 21: meurpg.play.v1.CloseSceneRequest
+	(*CloseSceneResponse)(nil),             // 22: meurpg.play.v1.CloseSceneResponse
+	(*GetOpenSceneRequest)(nil),            // 23: meurpg.play.v1.GetOpenSceneRequest
+	(*GetOpenSceneResponse)(nil),           // 24: meurpg.play.v1.GetOpenSceneResponse
+	(*RollSceneCheckRequest)(nil),          // 25: meurpg.play.v1.RollSceneCheckRequest
+	(*RollSceneCheckResponse)(nil),         // 26: meurpg.play.v1.RollSceneCheckResponse
+	(*RollNpcCheckRequest)(nil),            // 27: meurpg.play.v1.RollNpcCheckRequest
+	(*RollNpcCheckResponse)(nil),           // 28: meurpg.play.v1.RollNpcCheckResponse
+	(*NpcCheckRead)(nil),                   // 29: meurpg.play.v1.NpcCheckRead
+	(*SkipNpcCheckAsksRequest)(nil),        // 30: meurpg.play.v1.SkipNpcCheckAsksRequest
+	(*SkipNpcCheckAsksResponse)(nil),       // 31: meurpg.play.v1.SkipNpcCheckAsksResponse
+	(*ListNpcCheckPickerRequest)(nil),      // 32: meurpg.play.v1.ListNpcCheckPickerRequest
+	(*ListNpcCheckPickerResponse)(nil),     // 33: meurpg.play.v1.ListNpcCheckPickerResponse
+	(*NpcCheckCandidate)(nil),              // 34: meurpg.play.v1.NpcCheckCandidate
+	(*GetNpcCheckRequest)(nil),             // 35: meurpg.play.v1.GetNpcCheckRequest
+	(*GetNpcCheckResponse)(nil),            // 36: meurpg.play.v1.GetNpcCheckResponse
+	(*NpcCheckOption)(nil),                 // 37: meurpg.play.v1.NpcCheckOption
+	(*GrantSceneAttemptRequest)(nil),       // 38: meurpg.play.v1.GrantSceneAttemptRequest
+	(*GrantSceneAttemptResponse)(nil),      // 39: meurpg.play.v1.GrantSceneAttemptResponse
+	(*SetSceneAudienceRequest)(nil),        // 40: meurpg.play.v1.SetSceneAudienceRequest
+	(*SetSceneAudienceResponse)(nil),       // 41: meurpg.play.v1.SetSceneAudienceResponse
+	(*SetScenePlayersMayJoinRequest)(nil),  // 42: meurpg.play.v1.SetScenePlayersMayJoinRequest
+	(*SetScenePlayersMayJoinResponse)(nil), // 43: meurpg.play.v1.SetScenePlayersMayJoinResponse
+	(*JoinSceneRequest)(nil),               // 44: meurpg.play.v1.JoinSceneRequest
+	(*JoinSceneResponse)(nil),              // 45: meurpg.play.v1.JoinSceneResponse
+	(*timestamppb.Timestamp)(nil),          // 46: google.protobuf.Timestamp
+	(*v1.SceneClue)(nil),                   // 47: meurpg.maps.v1.SceneClue
+	(*v1.SceneImage)(nil),                  // 48: meurpg.maps.v1.SceneImage
+	(*DiceRoll)(nil),                       // 49: meurpg.play.v1.DiceRoll
+	(RollMode)(0),                          // 50: meurpg.play.v1.RollMode
+	(*AdvantageSource)(nil),                // 51: meurpg.play.v1.AdvantageSource
+	(*BonusDie)(nil),                       // 52: meurpg.play.v1.BonusDie
+	(*OutsideInspirationOffer)(nil),        // 53: meurpg.play.v1.OutsideInspirationOffer
+	(*LuckyOffer)(nil),                     // 54: meurpg.play.v1.LuckyOffer
+	(*HeldRollOffer)(nil),                  // 55: meurpg.play.v1.HeldRollOffer
+	(*NpcCheckAsk)(nil),                    // 56: meurpg.play.v1.NpcCheckAsk
 }
 var file_meurpg_play_v1_scene_proto_depIdxs = []int32{
 	0,  // 0: meurpg.play.v1.SceneBlocked.reason:type_name -> meurpg.play.v1.SceneBlockedReason
-	16, // 1: meurpg.play.v1.OpenSceneInfo.actions:type_name -> meurpg.play.v1.SceneActionView
-	17, // 2: meurpg.play.v1.OpenSceneInfo.rolls:type_name -> meurpg.play.v1.SceneRoll
-	45, // 3: meurpg.play.v1.OpenSceneInfo.opened_at:type_name -> google.protobuf.Timestamp
-	46, // 4: meurpg.play.v1.OpenSceneInfo.clues:type_name -> meurpg.maps.v1.SceneClue
-	7,  // 5: meurpg.play.v1.OpenSceneInfo.stage:type_name -> meurpg.play.v1.StageNpc
-	47, // 6: meurpg.play.v1.OpenSceneInfo.images:type_name -> meurpg.maps.v1.SceneImage
-	6,  // 7: meurpg.play.v1.OpenSceneInfo.audience:type_name -> meurpg.play.v1.SceneAudienceView
-	5,  // 8: meurpg.play.v1.SceneAudienceView.inside:type_name -> meurpg.play.v1.ScenePlayer
-	5,  // 9: meurpg.play.v1.SceneAudienceView.outside:type_name -> meurpg.play.v1.ScenePlayer
-	7,  // 10: meurpg.play.v1.PutOnStageResponse.stage:type_name -> meurpg.play.v1.StageNpc
-	7,  // 11: meurpg.play.v1.TakeOffStageResponse.stage:type_name -> meurpg.play.v1.StageNpc
-	7,  // 12: meurpg.play.v1.SetStageNpcHiddenResponse.stage:type_name -> meurpg.play.v1.StageNpc
-	7,  // 13: meurpg.play.v1.SetSpeakerResponse.stage:type_name -> meurpg.play.v1.StageNpc
-	48, // 14: meurpg.play.v1.SceneRoll.roll:type_name -> meurpg.play.v1.DiceRoll
-	45, // 15: meurpg.play.v1.SceneRoll.rolled_at:type_name -> google.protobuf.Timestamp
-	49, // 16: meurpg.play.v1.SceneRoll.mode:type_name -> meurpg.play.v1.RollMode
-	50, // 17: meurpg.play.v1.SceneRoll.sources:type_name -> meurpg.play.v1.AdvantageSource
-	51, // 18: meurpg.play.v1.SceneRoll.bonus_dice:type_name -> meurpg.play.v1.BonusDie
-	4,  // 19: meurpg.play.v1.OpenSceneRequest.audience:type_name -> meurpg.play.v1.SceneAudience
-	3,  // 20: meurpg.play.v1.OpenSceneResponse.scene:type_name -> meurpg.play.v1.OpenSceneInfo
-	3,  // 21: meurpg.play.v1.GetOpenSceneResponse.scene:type_name -> meurpg.play.v1.OpenSceneInfo
-	17, // 22: meurpg.play.v1.RollSceneCheckResponse.roll:type_name -> meurpg.play.v1.SceneRoll
-	52, // 23: meurpg.play.v1.RollSceneCheckResponse.inspiration_offer:type_name -> meurpg.play.v1.OutsideInspirationOffer
-	53, // 24: meurpg.play.v1.RollSceneCheckResponse.lucky_offer:type_name -> meurpg.play.v1.LuckyOffer
-	54, // 25: meurpg.play.v1.RollSceneCheckResponse.held_roll_offer:type_name -> meurpg.play.v1.HeldRollOffer
-	28, // 26: meurpg.play.v1.RollNpcCheckResponse.check:type_name -> meurpg.play.v1.NpcCheckRead
-	48, // 27: meurpg.play.v1.NpcCheckRead.d20:type_name -> meurpg.play.v1.DiceRoll
-	55, // 28: meurpg.play.v1.NpcCheckRead.asks:type_name -> meurpg.play.v1.NpcCheckAsk
-	28, // 29: meurpg.play.v1.SkipNpcCheckAsksResponse.check:type_name -> meurpg.play.v1.NpcCheckRead
-	33, // 30: meurpg.play.v1.ListNpcCheckPickerResponse.candidates:type_name -> meurpg.play.v1.NpcCheckCandidate
-	1,  // 31: meurpg.play.v1.NpcCheckCandidate.source:type_name -> meurpg.play.v1.NpcCheckSource
-	36, // 32: meurpg.play.v1.NpcCheckCandidate.checks:type_name -> meurpg.play.v1.NpcCheckOption
-	28, // 33: meurpg.play.v1.GetNpcCheckResponse.check:type_name -> meurpg.play.v1.NpcCheckRead
-	3,  // 34: meurpg.play.v1.GrantSceneAttemptResponse.scene:type_name -> meurpg.play.v1.OpenSceneInfo
-	4,  // 35: meurpg.play.v1.SetSceneAudienceRequest.audience:type_name -> meurpg.play.v1.SceneAudience
-	3,  // 36: meurpg.play.v1.SetSceneAudienceResponse.scene:type_name -> meurpg.play.v1.OpenSceneInfo
-	3,  // 37: meurpg.play.v1.SetScenePlayersMayJoinResponse.scene:type_name -> meurpg.play.v1.OpenSceneInfo
-	3,  // 38: meurpg.play.v1.JoinSceneResponse.scene:type_name -> meurpg.play.v1.OpenSceneInfo
-	39, // [39:39] is the sub-list for method output_type
-	39, // [39:39] is the sub-list for method input_type
-	39, // [39:39] is the sub-list for extension type_name
-	39, // [39:39] is the sub-list for extension extendee
-	0,  // [0:39] is the sub-list for field type_name
+	17, // 1: meurpg.play.v1.OpenSceneInfo.actions:type_name -> meurpg.play.v1.SceneActionView
+	18, // 2: meurpg.play.v1.OpenSceneInfo.rolls:type_name -> meurpg.play.v1.SceneRoll
+	46, // 3: meurpg.play.v1.OpenSceneInfo.opened_at:type_name -> google.protobuf.Timestamp
+	47, // 4: meurpg.play.v1.OpenSceneInfo.clues:type_name -> meurpg.maps.v1.SceneClue
+	8,  // 5: meurpg.play.v1.OpenSceneInfo.stage:type_name -> meurpg.play.v1.StageNpc
+	48, // 6: meurpg.play.v1.OpenSceneInfo.images:type_name -> meurpg.maps.v1.SceneImage
+	7,  // 7: meurpg.play.v1.OpenSceneInfo.audience:type_name -> meurpg.play.v1.SceneAudienceView
+	6,  // 8: meurpg.play.v1.SceneAudienceView.inside:type_name -> meurpg.play.v1.ScenePlayer
+	6,  // 9: meurpg.play.v1.SceneAudienceView.outside:type_name -> meurpg.play.v1.ScenePlayer
+	8,  // 10: meurpg.play.v1.PutOnStageResponse.stage:type_name -> meurpg.play.v1.StageNpc
+	8,  // 11: meurpg.play.v1.TakeOffStageResponse.stage:type_name -> meurpg.play.v1.StageNpc
+	8,  // 12: meurpg.play.v1.SetStageNpcHiddenResponse.stage:type_name -> meurpg.play.v1.StageNpc
+	8,  // 13: meurpg.play.v1.SetSpeakerResponse.stage:type_name -> meurpg.play.v1.StageNpc
+	49, // 14: meurpg.play.v1.SceneRoll.roll:type_name -> meurpg.play.v1.DiceRoll
+	46, // 15: meurpg.play.v1.SceneRoll.rolled_at:type_name -> google.protobuf.Timestamp
+	50, // 16: meurpg.play.v1.SceneRoll.mode:type_name -> meurpg.play.v1.RollMode
+	51, // 17: meurpg.play.v1.SceneRoll.sources:type_name -> meurpg.play.v1.AdvantageSource
+	52, // 18: meurpg.play.v1.SceneRoll.bonus_dice:type_name -> meurpg.play.v1.BonusDie
+	5,  // 19: meurpg.play.v1.OpenSceneRequest.audience:type_name -> meurpg.play.v1.SceneAudience
+	4,  // 20: meurpg.play.v1.OpenSceneResponse.scene:type_name -> meurpg.play.v1.OpenSceneInfo
+	4,  // 21: meurpg.play.v1.GetOpenSceneResponse.scene:type_name -> meurpg.play.v1.OpenSceneInfo
+	18, // 22: meurpg.play.v1.RollSceneCheckResponse.roll:type_name -> meurpg.play.v1.SceneRoll
+	53, // 23: meurpg.play.v1.RollSceneCheckResponse.inspiration_offer:type_name -> meurpg.play.v1.OutsideInspirationOffer
+	54, // 24: meurpg.play.v1.RollSceneCheckResponse.lucky_offer:type_name -> meurpg.play.v1.LuckyOffer
+	55, // 25: meurpg.play.v1.RollSceneCheckResponse.held_roll_offer:type_name -> meurpg.play.v1.HeldRollOffer
+	29, // 26: meurpg.play.v1.RollNpcCheckResponse.check:type_name -> meurpg.play.v1.NpcCheckRead
+	49, // 27: meurpg.play.v1.NpcCheckRead.d20:type_name -> meurpg.play.v1.DiceRoll
+	56, // 28: meurpg.play.v1.NpcCheckRead.asks:type_name -> meurpg.play.v1.NpcCheckAsk
+	2,  // 29: meurpg.play.v1.NpcCheckRead.nobody_reason:type_name -> meurpg.play.v1.NpcCheckNobodyReason
+	29, // 30: meurpg.play.v1.SkipNpcCheckAsksResponse.check:type_name -> meurpg.play.v1.NpcCheckRead
+	34, // 31: meurpg.play.v1.ListNpcCheckPickerResponse.candidates:type_name -> meurpg.play.v1.NpcCheckCandidate
+	1,  // 32: meurpg.play.v1.NpcCheckCandidate.source:type_name -> meurpg.play.v1.NpcCheckSource
+	37, // 33: meurpg.play.v1.NpcCheckCandidate.checks:type_name -> meurpg.play.v1.NpcCheckOption
+	29, // 34: meurpg.play.v1.GetNpcCheckResponse.check:type_name -> meurpg.play.v1.NpcCheckRead
+	4,  // 35: meurpg.play.v1.GrantSceneAttemptResponse.scene:type_name -> meurpg.play.v1.OpenSceneInfo
+	5,  // 36: meurpg.play.v1.SetSceneAudienceRequest.audience:type_name -> meurpg.play.v1.SceneAudience
+	4,  // 37: meurpg.play.v1.SetSceneAudienceResponse.scene:type_name -> meurpg.play.v1.OpenSceneInfo
+	4,  // 38: meurpg.play.v1.SetScenePlayersMayJoinResponse.scene:type_name -> meurpg.play.v1.OpenSceneInfo
+	4,  // 39: meurpg.play.v1.JoinSceneResponse.scene:type_name -> meurpg.play.v1.OpenSceneInfo
+	40, // [40:40] is the sub-list for method output_type
+	40, // [40:40] is the sub-list for method input_type
+	40, // [40:40] is the sub-list for extension type_name
+	40, // [40:40] is the sub-list for extension extendee
+	0,  // [0:40] is the sub-list for field type_name
 }
 
 func init() { file_meurpg_play_v1_scene_proto_init() }
@@ -3611,7 +3694,7 @@ func file_meurpg_play_v1_scene_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_meurpg_play_v1_scene_proto_rawDesc), len(file_meurpg_play_v1_scene_proto_rawDesc)),
-			NumEnums:      2,
+			NumEnums:      3,
 			NumMessages:   43,
 			NumExtensions: 0,
 			NumServices:   0,

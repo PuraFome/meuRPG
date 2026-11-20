@@ -1,5 +1,10 @@
 <section class="mr-panel" id="pick-abilities" [attr.data-missing]="missing() ? '' : null" aria-labelledby="asi-title">
-  <h2 class="mr-panel__title" id="asi-title">{{ hasFeats() ? 'Incremento ou talento' : 'Incremento no Valor de Habilidade' }}</h2>
+  <div class="asi-head">
+    <h2 class="mr-panel__title" id="asi-title">{{ hasFeats() ? 'Incremento ou talento' : 'Incremento no Valor de Habilidade' }}</h2>
+    @if (taking() && !s().draft.featKey()) {
+      <span class="mr-tag mr-tag--pending">Falta escolher</span>
+    }
+  </div>
   @if (hasFeats()) {
     <div class="mode" role="radiogroup" aria-label="O que pegar neste nível">
       <label class="mode__opt" [class.mode__opt--on]="!taking()">
@@ -83,10 +88,6 @@
   }
 </section>
 
-@if (s().draft.swap.groups().length > 0) {
-  <app-swap-picker [swap]="s().draft.swap" />
-}
-
 <section class="mr-panel" aria-labelledby="asi-effect">
   <h2 class="mr-panel__title" id="asi-effect">{{ title() ? 'O que muda com ' + title() : 'O que muda com o aumento' }}</h2>
   @if (changes().length > 0) {
@@ -98,6 +99,10 @@
     <p class="note">Constituição, se fosse a escolhida, também muda os pontos de vida (passo 2).</p>
   }
 </section>
+
+@if (s().draft.swap.groups().length > 0) {
+  <app-swap-picker [swap]="s().draft.swap" />
+}
 
 @if (!hasFeats()) {
   <p class="srd" role="note">

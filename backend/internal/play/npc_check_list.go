@@ -20,7 +20,7 @@ import (
 )
 
 // npcCheckOffer is the question of a held NPC check as the caller reads it: the master reads the roll and the bards asked; a player reads
-// only the question of the bard asked now, if it is their own, with no number of the creature's and no name the bard's player may not
+// only the question of the bard whose turn it is, if it is their own, with no number of the creature's and no name the bard's player may not
 // know. Nobody else reads anything. A check whose session is over, or while a combat is open, is not listed.
 func (l *heldList) npcCheckOffer(ctx context.Context, h heldRoll) (*playv1.HeldRollOffer, error) {
 	s := l.s
@@ -52,19 +52,43 @@ func (l *heldList) npcCheckOffer(ctx context.Context, h heldRoll) (*playv1.HeldR
 		offer.Question = &playv1.HeldRollOffer_CuttingWords{CuttingWords: &playv1.CuttingWordsQuestion{Asks: ev.withAsks(asks, false).read(s, false).GetAsks()}}
 		return offer, nil
 	}
+	return l.playerNpcCheckOffer(ctx, h, session, ev, asks, offer)
+}
+
+// playerNpcCheckOffer is the question the caller reads when they are not the master: only the bard whose turn it is, if it is their own.
+func (l *heldList) playerNpcCheckOffer(ctx context.Context, h heldRoll, session playdb.GameSession, ev npcCheckEvent, asks []playdb.NpcCheckAsk, offer *playv1.HeldRollOffer) (*playv1.HeldRollOffer, error) {
+	s := l.s
 	cur := cutting.Current(askStates(asks))
 	if cur < 0 {
 		return nil, nil
 	}
-	mine, err := s.isMyCharacter(ctx, l.m, asks[cur].BardCharacterID)
+	if asks[cur].BardCharacterID == nil {
+		return nil, nil // the bard's character is gone: the next read or answer lets the question pass
+	}
+	bard := *asks[cur].BardCharacterID
+	mine, err := s.isMyCharacter(ctx, l.m, bard)
 	if err != nil || !mine {
 		return nil, err
 	}
-	vit, err := s.vitals.GetVitals(ctx, h.CampaignID, asks[cur].BardCharacterID)
+	scene, err := sceneViewersOf(ctx, s.queries, session)
+	if err != nil {
+		return nil, s.dbError(ctx, "read the viewers of the scene", err)
+	}
+	if !scene.has(l.m.UserID) {
+		return nil, nil // the scene is not open to the bard's player: the next read passes the question
+	}
+	vit, err := s.vitals.GetVitals(ctx, h.CampaignID, bard)
 	if err != nil {
 		return nil, s.dbError(ctx, "read the bard's vitals", err)
 	}
-	offer.RollerLabel = cutting.Label(ev.Name, asks[cur].CreatureSeen)
+	stage, token, err := s.npcHiddenNow(ctx, session, rolledOn(asks), h.CharacterID)
+	if err != nil {
+		return nil, s.dbError(ctx, "read where the creature stands", err)
+	}
+	if token {
+		return nil, nil // hidden after the keep read the check: the next read settles it
+	}
+	offer.RollerLabel = cutting.Label(ev.Name, asks[cur].CreatureSeen && !stage) // the name is as the bard's player may know it now
 	offer.Question = &playv1.HeldRollOffer_CuttingWords{CuttingWords: &playv1.CuttingWordsQuestion{Sides: asks[cur].Sides, UsesLeft: bardUsesLeft(vit)}}
 	return offer, nil
 }
@@ -114,6 +138,9 @@ func (s *Service) GetNpcCheck(ctx context.Context, req *connect.Request[playv1.G
 	if err != nil {
 		return nil, err
 	}
+	if err := s.keepNpcChecks(ctx, m.CampaignID); err != nil {
+		return nil, err
+	}
 	var read *playv1.NpcCheckRead
 	err = db.ReadTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := s.queries.WithTx(tx)
@@ -142,8 +169,8 @@ func (s *Service) GetNpcCheck(ctx context.Context, req *connect.Request[playv1.G
 }
 
 // mapMeasures says which creatures the session's current map measures against a bard: the creature has a token on it, and so has a
-// bard that would be asked (see askedBardOf, without the sight). Then the server measures the 60 feet and the sight and the master's
-// box is not read.
+// bard that would be asked (see askedBardOf, without the sight) whose player is among the viewers of the open scene. Then the server
+// measures the 60 feet and the sight and the master's box is not read for that bard.
 func (s *Service) mapMeasures(ctx context.Context, session playdb.GameSession) (func(string) bool, error) {
 	var tokens map[string]cutting.Token
 	var bards []string
@@ -152,25 +179,37 @@ func (s *Service) mapMeasures(ctx context.Context, session playdb.GameSession) (
 		if tokens, err = s.mapTokensOf(ctx, tx, session); err != nil || len(tokens) == 0 {
 			return err
 		}
-		party, err := s.roster.CombatParty(ctx, tx, session.CampaignID)
-		if err != nil {
-			return err
-		}
-		for _, c := range party {
-			if _, on := tokens[c.ID]; !on || !c.Player || c.Reserved || c.PlayerUserID == "" {
-				continue
-			}
-			if _, asked, err := s.bardOf(ctx, tx, session.CampaignID, c); err != nil {
-				return err
-			} else if asked {
-				bards = append(bards, c.ID)
-			}
-		}
-		return nil
+		bards, err = s.measurableBards(ctx, tx, session, tokens)
+		return err
 	})
 	return func(npc string) bool {
 		return slices.ContainsFunc(bards, cutting.Place{Tokens: tokens, NPC: npc}.Measures)
 	}, err
+}
+
+// measurableBards lists the bards of the party with a token among the tokens that would be asked and whose player is among the viewers of
+// the open scene.
+func (s *Service) measurableBards(ctx context.Context, tx pgx.Tx, session playdb.GameSession, tokens map[string]cutting.Token) ([]string, error) {
+	scene, err := sceneViewersOf(ctx, s.queries.WithTx(tx), session)
+	if err != nil {
+		return nil, err
+	}
+	party, err := s.roster.CombatParty(ctx, tx, session.CampaignID)
+	if err != nil {
+		return nil, err
+	}
+	var bards []string
+	for _, c := range party {
+		if _, on := tokens[c.ID]; !on || !c.Player || c.Reserved || c.PlayerUserID == "" || !scene.has(c.PlayerUserID) {
+			continue
+		}
+		if _, asked, err := s.bardOf(ctx, tx, session.CampaignID, c); err != nil {
+			return nil, err
+		} else if asked {
+			bards = append(bards, c.ID)
+		}
+	}
+	return bards, nil
 }
 
 // pickMonster adds the SRD creature the master asked for, when the master asked for one.
@@ -262,9 +301,9 @@ func (s *Service) monsterCandidate(ctx context.Context, campaignID, key string) 
 	return cand, true, s.fillChecks(ctx, campaignID, link.Character{MonsterKey: key}, cand)
 }
 
-// fillChecks lists the creature's checks with what it adds to each. The picker makes one SceneOptions call for each NPC of the table (all
-// its checks together); a creature with a monster key (an SRD creature, or an NPC made from one) is still read key by key, one CreatureCheck
-// call for each check.
+// fillChecks lists the creature's checks with what it adds to each. The picker makes one read for each creature: one SceneOptions call for an
+// NPC of the table, one CreatureChecks call for a creature with a monster key (an SRD creature, or an NPC made from one), all its checks
+// together.
 func (s *Service) fillChecks(ctx context.Context, campaignID string, c link.Character, cand *playv1.NpcCheckCandidate) error {
 	keys := cutting.CheckKeys()
 	opts, err := s.npcCheckNumbers(ctx, nil, campaignID, c, keys)

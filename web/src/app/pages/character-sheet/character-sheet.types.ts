@@ -148,6 +148,8 @@ export interface GrantedSpellVm {
   /** The grant waives the material components, and each cast spends this many uses of the resource (1 or more; 0 at will). */
   readonly noMaterialComponents: boolean;
   readonly usesCost: number;
+  /** The level the spell is cast at (`GrantedSpell.cast_level`): the spell's own level when the grant sets none; 0 for a cantrip. */
+  readonly castLevel: number;
   /** The casting ability; `null` while the player has not picked it (`abilityPending`). */
   readonly ability: AbilityKey | null;
   readonly abilityPending: boolean;
@@ -172,6 +174,11 @@ export interface FeatureVm {
   /** The rule in one line, in Portuguese (`Feature.summary_pt`), for an option the player picked (a fighting
    * style, an invocation, a pact boon); empty for the other features. */
   readonly summaryPt: string;
+  /** For an option the character picked, the name of the feature, trait or feat that offers it (`Feature.option_of_pt`, and `option_of_key` for its key):
+   * its row reads "Opção de <it>" and has no source on the right (board 580-05); empty for every other feature. */
+  readonly optionOf: string;
+  /** A feat or an option the sheet keeps whose prerequisite it no longer meets: it does not apply now (board 580-05). */
+  readonly lost: boolean;
 }
 
 /** A real problem with the sheet (`DerivedSheet.issues`): shown in the
@@ -192,6 +199,9 @@ export interface ChangedContentVm {
   /** When the entry last changed. */
   readonly changedAt: Date | null;
   readonly messages: readonly string[];
+  /** The code of the issue each sentence comes from, one per sentence in the same order (`ChangedContent.codes`); empty or
+   * shorter than `messages` for an answer from before the field. */
+  readonly codes: readonly string[];
 }
 
 /** A situational reminder the numbers above cannot express, such as

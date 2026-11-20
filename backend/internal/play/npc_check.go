@@ -61,6 +61,8 @@ type npcCheckEvent struct {
 	Cut         int32             `json:"cut,omitempty"`
 	Asked       []npcCheckAskLine `json:"asked,omitempty"`
 	Skipped     bool              `json:"skipped,omitempty"`
+	// Nobody is why no bard was asked (cutting.Nobody*), kept with the roll so the master reads it again after a reload.
+	Nobody string `json:"nobody,omitempty"`
 }
 
 // The states of an ask as the rows and the history spell them (package cutting).
@@ -89,7 +91,15 @@ func (e npcCheckEvent) read(s *Service, settled bool) *playv1.NpcCheckRead {
 	if settled {
 		out.Total, out.Cut = e.Total, e.Cut
 	}
+	out.NobodyReason = nobodyReasonProto[e.Nobody]
 	return out
+}
+
+var nobodyReasonProto = map[string]playv1.NpcCheckNobodyReason{
+	cutting.NobodyNoBard:      playv1.NpcCheckNobodyReason_NPC_CHECK_NOBODY_REASON_NO_BARD_CAN_CUT,
+	cutting.NobodyCharmImmune: playv1.NpcCheckNobodyReason_NPC_CHECK_NOBODY_REASON_CHARM_IMMUNE,
+	cutting.NobodyTokenHidden: playv1.NpcCheckNobodyReason_NPC_CHECK_NOBODY_REASON_TOKEN_HIDDEN,
+	cutting.NobodySees:        playv1.NpcCheckNobodyReason_NPC_CHECK_NOBODY_REASON_NOBODY_SEES,
 }
 
 // tellNpcCheck collects the hint that the held rolls changed for the master and for the bards whose question changed: nobody else hears
@@ -219,7 +229,7 @@ func (c *npcCheckCall) run(ctx context.Context, tx pgx.Tx, h *hints, session pla
 	}
 	// A check still held for the bards ends where the next one is rolled: the master has one question at a time (a retry of a key
 	// replayed above and never gets here).
-	if err := s.settleOpenNpcChecks(ctx, tc, h, false); err != nil {
+	if err := s.settleOpenNpcChecks(ctx, tc, h); err != nil {
 		return err
 	}
 	opts, err := s.npcCheckNumbers(ctx, tx, c.m.CampaignID, npc, []string{c.req.GetCheckKey()})
@@ -236,11 +246,12 @@ func (c *npcCheckCall) run(ctx context.Context, tx pgx.Tx, h *hints, session pla
 		Modifier: clamp32(opt.Bonus, -heldBonusLimit, heldBonusLimit), Known: opt.Known, Physical: res.Physical,
 	}
 	ev.Total = ev.D20 + ev.Modifier
-	bards, err := s.npcCheckBards(ctx, tx, q, session, npc, c.req.GetBardSees(), c.sight)
+	bards, nobody, err := s.npcCheckBards(ctx, tx, q, session, npc, c.req.GetBardSees(), c.sight)
 	if err != nil {
 		return err
 	}
-	if len(bards) == 0 { // nobody may cut it: it settles at once
+	if len(bards) == 0 { // nobody may cut it: it settles at once, and the master reads why
+		ev.Nobody = nobody
 		if _, err := insertSceneEvent(ctx, tc, eventNpcCheckResolved, &c.m.UserID, &c.key, ev); err != nil {
 			return err
 		}
@@ -266,7 +277,8 @@ func (c *npcCheckCall) hold(ctx context.Context, tc *combatTx, h *hints, ev npcC
 	ev.HoldID = row.ID
 	for i, b := range bards {
 		if _, err := tc.q.InsertNpcCheckAsk(ctx, playdb.InsertNpcCheckAskParams{
-			HoldID: row.ID, BardCharacterID: b.char.ID, Position: conv.Int32(i), Sides: conv.Int32(b.sides), CreatureSeen: b.named, CreatedAt: tc.now,
+			HoldID: row.ID, BardCharacterID: &b.char.ID, Position: conv.Int32(i), Sides: conv.Int32(b.sides), CreatureSeen: b.named, CreatedAt: tc.now,
+			MapID: tc.session.CurrentMapID,
 		}); err != nil {
 			return fmt.Errorf("ask a bard: %w", err)
 		}
@@ -336,8 +348,8 @@ func (e npcCheckEvent) withAsks(asks []playdb.NpcCheckAsk, settled bool) npcChec
 	e.Asked = slices.Clone(e.Asked)
 	var dice []int
 	for _, a := range asks {
-		i := slices.IndexFunc(e.Asked, func(l npcCheckAskLine) bool { return l.Bard == a.BardCharacterID })
-		if i < 0 {
+		i := int(a.Position) // the asks are in the order of the event's lines: the bard's character may be gone
+		if i < 0 || i >= len(e.Asked) {
 			continue
 		}
 		e.Asked[i].State = a.State
@@ -382,20 +394,13 @@ func (c *npcCheckCall) creature(ctx context.Context, tx pgx.Tx) (link.Character,
 }
 
 // npcCheckNumbers is what the creature adds to each of the checks in keys, one option for each, in order: its stat block's number when it
-// is an SRD creature, its sheet's otherwise (one SceneOptions call for all the keys); an NPC typed by hand has none (Known false: it rolls +0).
-// A creature with a monster key is still read key by key (one CreatureCheck call for each).
+// is an SRD creature (one CreatureChecks read for all the keys), its sheet's otherwise (one SceneOptions call for all the keys); an NPC typed
+// by hand has none (Known false: it rolls +0).
 func (s *Service) npcCheckNumbers(ctx context.Context, tx pgx.Tx, campaignID string, npc link.Character, keys []string) ([]link.SceneOption, error) {
-	out := make([]link.SceneOption, len(keys))
 	if npc.MonsterKey != "" {
-		for i, key := range keys {
-			o, err := s.roster.CreatureCheck(ctx, tx, campaignID, "", npc.MonsterKey, key)
-			if err != nil {
-				return nil, err
-			}
-			out[i] = o
-		}
-		return out, nil
+		return s.roster.CreatureChecks(ctx, tx, campaignID, "", npc.MonsterKey, keys)
 	}
+	out := make([]link.SceneOption, len(keys))
 	opts, err := s.roster.SceneOptions(ctx, tx, campaignID, npc.ID, keys)
 	if err != nil || len(opts) != len(keys) {
 		return out, err
@@ -410,49 +415,52 @@ type askedBard struct {
 	named bool
 }
 
-// npcCheckBards lists the bards asked, in the order of the party: nobody when the creature is immune to being charmed.
-func (s *Service) npcCheckBards(ctx context.Context, tx pgx.Tx, q *playdb.Queries, session playdb.GameSession, npc link.Character, boxSees bool, sight maplink.CombatSight) ([]askedBard, error) {
+// npcCheckBards lists the bards asked, in the order of the party: nobody when the creature is immune to being charmed. When it lists
+// none it says why (cutting.WhyNobody).
+func (s *Service) npcCheckBards(ctx context.Context, tx pgx.Tx, q *playdb.Queries, session playdb.GameSession, npc link.Character, boxSees bool, sight maplink.CombatSight) ([]askedBard, string, error) {
 	campaignID := session.CampaignID
 	st, err := s.roster.ReactionStats(ctx, tx, campaignID, npc.ID)
-	if err != nil || st.CharmImmune {
-		return nil, err
+	if err != nil {
+		return nil, "", err
 	}
 	party, err := s.roster.CombatParty(ctx, tx, campaignID)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	place, err := s.npcPlacement(ctx, tx, q, session, npc.ID)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	var out []askedBard
+	qualified := 0
 	for _, c := range party {
 		if !c.Player || c.Reserved || c.PlayerUserID == "" {
 			continue
 		}
-		b, ok, err := s.askedBardOf(ctx, tx, campaignID, c, place, boxSees, sight)
+		b, ok, err := s.bardOf(ctx, tx, campaignID, c)
 		if err != nil {
-			return nil, err
+			return nil, "", err
 		}
-		if ok {
-			out = append(out, b)
+		if !ok {
+			continue
+		}
+		qualified++
+		if asked, ok := askedBardOf(c, b, place, boxSees, sight); ok && !st.CharmImmune {
+			out = append(out, asked)
 		}
 	}
-	return out, nil
+	return out, cutting.WhyNobody(qualified, len(out), st.CharmImmune, place.TokenHidden()), nil
 }
 
-// askedBardOf is the bard asked about the creature, when the character is a bard that may cut it and sees it.
-func (s *Service) askedBardOf(ctx context.Context, tx pgx.Tx, campaignID string, c link.Character, place npcPlace, boxSees bool, sight maplink.CombatSight) (askedBard, bool, error) {
-	b, ok, err := s.bardOf(ctx, tx, campaignID, c)
-	if err != nil || !ok {
-		return askedBard{}, false, err
-	}
+// askedBardOf is the bard asked about the creature, when the bard may cut it and sees it.
+func askedBardOf(c link.Character, b bardWith, place npcPlace, boxSees bool, sight maplink.CombatSight) (askedBard, bool) {
 	seen := func(sq grid.Square) bool { return sight == nil || sight.Sees(c.PlayerUserID, sq) }
-	sees := place.SightOf(c.ID, boxSees, seen, place.onStage && place.scene.has(c.PlayerUserID))
+	inScene := place.scene.has(c.PlayerUserID)
+	sees := place.SightOf(c.ID, boxSees, seen, place.onStage && inScene, inScene)
 	if !sees.Sees() {
-		return askedBard{}, false, nil
+		return askedBard{}, false
 	}
-	return askedBard{char: c, sides: cutting.Die(b.level), named: sees.Named()}, true, nil
+	return askedBard{char: c, sides: cutting.Die(b.level), named: sees.Named()}, true
 }
 
 // bardWith is a bard of the party and its level.
@@ -476,7 +484,8 @@ func (s *Service) bardOf(ctx context.Context, tx pgx.Tx, campaignID string, c li
 	return bardWith{level: rs.BardLevel}, bard.Asks(), nil
 }
 
-// npcPlace is where the creature stands for the question of a check: its token on the session's map, the stage and who sees the scene.
+// npcPlace is where the creature stands for the question of a check: its token on the session's map, the stage and who the scene is open
+// to (the whole table when no scene is open).
 type npcPlace struct {
 	cutting.Place
 	onStage bool
@@ -495,29 +504,30 @@ func (s *Service) npcPlacement(ctx context.Context, tx pgx.Tx, q *playdb.Queries
 		return p, fmt.Errorf("list the stage: %w", err)
 	}
 	p.onStage = slices.ContainsFunc(rows, func(r playdb.StageNpc) bool { return r.CharacterID == npcID })
-	if p.onStage {
-		if p.scene, err = sceneViewersOf(ctx, q, session); err != nil {
-			return p, err
-		}
-	}
-	return p, nil
+	p.scene, err = sceneViewersOf(ctx, q, session) // read whether or not the creature is on the stage: the box asks only the scene's players
+	return p, err
 }
 
-// mapTokensOf reads the tokens of the session's current map, none when there is no map. On a map with no grid the tokens are still read
-// (a hidden one stays hidden) but stand on no square: they are marked Unmeasured.
+// mapTokensOf reads the tokens of the session's current map, none when there is no map.
 func (s *Service) mapTokensOf(ctx context.Context, tx pgx.Tx, session playdb.GameSession) (map[string]cutting.Token, error) {
+	return s.tokensOfMap(ctx, tx, session.CampaignID, session.CurrentMapID)
+}
+
+// tokensOfMap reads the tokens of a map of the campaign, none when there is no map. On a map with no grid the tokens are still read
+// (a hidden one stays hidden) but stand on no square: they are marked Unmeasured.
+func (s *Service) tokensOfMap(ctx context.Context, tx pgx.Tx, campaignID string, mapID *string) (map[string]cutting.Token, error) {
 	out := map[string]cutting.Token{}
-	if session.CurrentMapID == nil {
+	if mapID == nil {
 		return out, nil
 	}
-	g, err := s.maps.MapGrid(ctx, tx, session.CampaignID, *session.CurrentMapID)
+	g, err := s.maps.MapGrid(ctx, tx, campaignID, *mapID)
 	if connect.CodeOf(err) == connect.CodeNotFound {
 		return out, nil
 	}
 	if err != nil {
 		return nil, err
 	}
-	tokens, err := s.maps.MapTokens(ctx, tx, *session.CurrentMapID)
+	tokens, err := s.maps.MapTokens(ctx, tx, *mapID)
 	if err != nil {
 		return nil, fmt.Errorf("read the tokens: %w", err)
 	}

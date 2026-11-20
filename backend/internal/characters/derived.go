@@ -220,6 +220,8 @@ func featureToProto(f rules.Feature) *rulesv1.Feature {
 		DescriptionPt:        strings.Join(f.DescriptionPT, "\n\n"),
 		DescriptionPtMissing: f.DescriptionPTMissing,
 		DescriptionPtOnly:    f.DescriptionPTOnly,
+		OptionOfPt:           f.OptionOfPT,
+		OptionOfKey:          f.OptionOfKey,
 	}
 }
 
@@ -319,6 +321,7 @@ func attackToProto(a rules.Attack) *rulesv1.Attack {
 		Adamantine:          a.Adamantine,
 		Magical:             a.Magical,
 		MagicBonus:          i32(a.MagicBonus),
+		InfusionNamePt:      a.InfusionNamePT,
 	}
 }
 
@@ -515,7 +518,7 @@ func armorToProto(a rules.ArmorEntry) *rulesv1.Armor {
 }
 
 func weaponToProto(w rules.WeaponEntry) *rulesv1.Weapon {
-	return &rulesv1.Weapon{Key: w.Key, Name: w.Name, NamePt: w.NamePT, Category: weaponCategoryToProto[w.Category], Ranged: w.Range == "ranged", Archived: w.Archived, Off: w.Off}
+	return &rulesv1.Weapon{Key: w.Key, Name: w.Name, NamePt: w.NamePT, Category: weaponCategoryToProto[w.Category], Ranged: w.Range == "ranged", Archived: w.Archived, Off: w.Off, Damage: w.Damage}
 }
 
 func challengeRatingToProto(r rules.ChallengeRating) *rulesv1.ChallengeRating {
@@ -582,7 +585,7 @@ func grantedSpellToProto(g rules.GrantedSpell) *rulesv1.GrantedSpell {
 	return &rulesv1.GrantedSpell{
 		Spell: spellToProto(g.Spell), SourceKey: g.Source, SourceNamePt: g.SourcePT,
 		AtWill: g.AtWill, Resource: g.Resource, AlsoWithSlot: g.AlsoWithSlot, RitualOnly: g.RitualOnly, CountsAsKnown: g.CountsAsKnown, NoMaterialComponents: g.NoMaterialComponents, UsesCost: i32(g.Cost),
-		Ability: string(g.Ability), AbilityPending: g.AbilityPending, AttackBonus: i32(g.AttackBonus), SaveDc: i32(g.SaveDC), FromLevel: i32(g.FromLevel),
+		Ability: string(g.Ability), AbilityPending: g.AbilityPending, AttackBonus: i32(g.AttackBonus), SaveDc: i32(g.SaveDC), FromLevel: i32(g.FromLevel), CastLevel: i32(g.CastLevel),
 	}
 }
 
@@ -592,6 +595,7 @@ func itemModifiersOf(in []rules.ItemModifier) []*rulesv1.ItemModifier {
 	for _, m := range in {
 		out = append(out, &rulesv1.ItemModifier{
 			Target: m.Target, Value: i32(m.Value), SourceKey: m.SourceKey, SourceNamePt: m.SourceNamePT, Counts: m.Counts, ReasonPt: m.ReasonPT,
+			InfusionNamePt: m.InfusionNamePT, InfusionId: m.InfusionID,
 		})
 	}
 	return out

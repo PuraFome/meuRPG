@@ -72,19 +72,28 @@ func healsHitPoints(sp link.Spell) bool {
 // dead. A dead creature can't regain hit points, so nothing is spent.
 func (s *Service) refuseTheDead(ctx context.Context, c *combatTx, targs []playdb.Combatant) error {
 	for _, t := range targs {
-		if t.Kind != kindPlayer {
-			continue
-		}
-		dead := t.Defeated || t.DeathFailures >= 3
-		if !dead {
-			_, err := s.vitals.GetVitalsTx(ctx, c.tx, c.session.CampaignID, t.CharacterID)
-			dead = connect.CodeOf(err) == connect.CodeNotFound // marked dead: no longer an active character
+		dead, err := s.isDead(ctx, c.tx, c.session.CampaignID, t)
+		if err != nil {
+			return err
 		}
 		if dead {
 			return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_TARGET_DEAD, "the target is dead and regains no hit points")
 		}
 	}
 	return nil
+}
+
+// isDead says whether a player's combatant is dead for a healing: the master confirmed its death, it failed three death
+// saves, or its character was marked dead (no longer an active character).
+func (s *Service) isDead(ctx context.Context, tx pgx.Tx, campaignID string, t playdb.Combatant) (bool, error) {
+	if t.Kind != kindPlayer {
+		return false, nil
+	}
+	if t.Defeated || t.DeathFailures >= combat.DeathSaveGoal {
+		return true, nil
+	}
+	_, err := s.vitals.GetVitalsTx(ctx, tx, campaignID, t.CharacterID)
+	return connect.CodeOf(err) == connect.CodeNotFound, nil // marked dead: no longer an active character
 }
 
 // poolRoll rolls the dice of a pool: the server rolls them, or the player types
@@ -98,7 +107,14 @@ func (s *Service) poolRoll(d link.Dice, in rollInput) (dice.Result, error) {
 		}
 		return roll, nil
 	}
-	roll, err := dice.Physical(expr, in.typed)
+	return physicalPool(d, in.typed)
+}
+
+// physicalPool takes the sum a player typed for the dice of a pool, and refuses one the dice cannot make. The cast checks it
+// before a window can hold it (checkPool): the replay never meets a sum out of range.
+func physicalPool(d link.Dice, sum int) (dice.Result, error) {
+	expr := dice.Expr{Count: d.Count, Sides: d.Sides}
+	roll, err := dice.Physical(expr, sum)
 	if err != nil {
 		return dice.Result{}, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("pool_sum must be %d to %d", expr.Count, expr.Count*expr.Sides))
 	}
@@ -243,7 +259,7 @@ func (s *Service) hpZero(ctx context.Context, c *combatTx, k *hpCast) ([]*playv1
 		if t.c.Kind == kindPlayer { // an NPC at 0 is defeated and never a target
 			h.DeathBefore = deathOf(t.c)
 			if err := c.q.SetCombatantDeathSaves(ctx, playdb.SetCombatantDeathSavesParams{
-				ID: t.c.ID, DeathSuccesses: deathSaveCount, DeathFailures: 0, DeathSaveRolled: t.c.DeathSaveRolled, Defeated: t.c.Defeated,
+				ID: t.c.ID, DeathSuccesses: combat.DeathSaveGoal, DeathFailures: 0, DeathSaveRolled: t.c.DeathSaveRolled, Defeated: t.c.Defeated,
 			}); err != nil {
 				return nil, fmt.Errorf("make the character stable: %w", err)
 			}

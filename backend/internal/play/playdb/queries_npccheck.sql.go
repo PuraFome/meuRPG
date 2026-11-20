@@ -14,7 +14,7 @@ const answerNpcCheckAsk = `-- name: AnswerNpcCheckAsk :one
 UPDATE npc_check_asks
 SET state = $2, die_face = $3, physical = $4, answer_key = $5, answered_at = $6, answer_hash = $7
 WHERE id = $1 AND state = 'asked'
-RETURNING id, hold_id, bard_character_id, position, state, sides, creature_seen, die_face, physical, answer_key, answer_hash, created_at, answered_at
+RETURNING id, hold_id, map_id, bard_character_id, position, state, sides, creature_seen, die_face, physical, answer_key, answer_hash, created_at, answered_at
 `
 
 type AnswerNpcCheckAskParams struct {
@@ -44,6 +44,7 @@ func (q *Queries) AnswerNpcCheckAsk(ctx context.Context, arg AnswerNpcCheckAskPa
 	err := row.Scan(
 		&i.ID,
 		&i.HoldID,
+		&i.MapID,
 		&i.BardCharacterID,
 		&i.Position,
 		&i.State,
@@ -71,7 +72,7 @@ type CloseNpcCheckAsksParams struct {
 }
 
 // The questions of a held check that still wait close with no answer (the master went on without the bard, or the bard could
-// not answer any more).
+// not answer).
 func (q *Queries) CloseNpcCheckAsks(ctx context.Context, arg CloseNpcCheckAsksParams) error {
 	_, err := q.db.Exec(ctx, closeNpcCheckAsks, arg.HoldID, arg.AnsweredAt)
 	return err
@@ -108,7 +109,7 @@ func (q *Queries) GetLatestNpcCheckEvent(ctx context.Context, gameSessionID stri
 }
 
 const getNpcCheckAskByAnswerKey = `-- name: GetNpcCheckAskByAnswerKey :one
-SELECT a.id, a.hold_id, a.bard_character_id, a.position, a.state, a.sides, a.creature_seen, a.die_face, a.physical, a.answer_key, a.answer_hash, a.created_at, a.answered_at FROM npc_check_asks AS a
+SELECT a.id, a.hold_id, a.map_id, a.bard_character_id, a.position, a.state, a.sides, a.creature_seen, a.die_face, a.physical, a.answer_key, a.answer_hash, a.created_at, a.answered_at FROM npc_check_asks AS a
 JOIN inspiration_holds AS h ON h.id = a.hold_id
 WHERE h.campaign_id = $1 AND a.answer_key = $2
 `
@@ -125,6 +126,7 @@ func (q *Queries) GetNpcCheckAskByAnswerKey(ctx context.Context, arg GetNpcCheck
 	err := row.Scan(
 		&i.ID,
 		&i.HoldID,
+		&i.MapID,
 		&i.BardCharacterID,
 		&i.Position,
 		&i.State,
@@ -142,22 +144,23 @@ func (q *Queries) GetNpcCheckAskByAnswerKey(ctx context.Context, arg GetNpcCheck
 
 const insertNpcCheckAsk = `-- name: InsertNpcCheckAsk :one
 
-INSERT INTO npc_check_asks (hold_id, bard_character_id, position, sides, creature_seen, physical, created_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
-RETURNING id, hold_id, bard_character_id, position, state, sides, creature_seen, die_face, physical, answer_key, answer_hash, created_at, answered_at
+INSERT INTO npc_check_asks (hold_id, bard_character_id, position, sides, creature_seen, physical, created_at, map_id)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+RETURNING id, hold_id, map_id, bard_character_id, position, state, sides, creature_seen, die_face, physical, answer_key, answer_hash, created_at, answered_at
 `
 
 type InsertNpcCheckAskParams struct {
 	HoldID          string
-	BardCharacterID string
+	BardCharacterID *string
 	Position        int32
 	Sides           int32
 	CreatureSeen    bool
 	Physical        bool
 	CreatedAt       time.Time
+	MapID           *string
 }
 
-// The bards asked about an NPC's check outside a combat (migration 00354): one row for each bard, in the order they are asked.
+// The bards asked about an NPC's check outside a combat: one row for each bard, in the order they are asked.
 func (q *Queries) InsertNpcCheckAsk(ctx context.Context, arg InsertNpcCheckAskParams) (NpcCheckAsk, error) {
 	row := q.db.QueryRow(ctx, insertNpcCheckAsk,
 		arg.HoldID,
@@ -167,11 +170,13 @@ func (q *Queries) InsertNpcCheckAsk(ctx context.Context, arg InsertNpcCheckAskPa
 		arg.CreatureSeen,
 		arg.Physical,
 		arg.CreatedAt,
+		arg.MapID,
 	)
 	var i NpcCheckAsk
 	err := row.Scan(
 		&i.ID,
 		&i.HoldID,
+		&i.MapID,
 		&i.BardCharacterID,
 		&i.Position,
 		&i.State,
@@ -188,7 +193,7 @@ func (q *Queries) InsertNpcCheckAsk(ctx context.Context, arg InsertNpcCheckAskPa
 }
 
 const listNpcCheckAsks = `-- name: ListNpcCheckAsks :many
-SELECT id, hold_id, bard_character_id, position, state, sides, creature_seen, die_face, physical, answer_key, answer_hash, created_at, answered_at FROM npc_check_asks WHERE hold_id = $1 ORDER BY position
+SELECT id, hold_id, map_id, bard_character_id, position, state, sides, creature_seen, die_face, physical, answer_key, answer_hash, created_at, answered_at FROM npc_check_asks WHERE hold_id = $1 ORDER BY position
 `
 
 // The questions of one held check, in the order the bards are asked.
@@ -204,6 +209,7 @@ func (q *Queries) ListNpcCheckAsks(ctx context.Context, holdID string) ([]NpcChe
 		if err := rows.Scan(
 			&i.ID,
 			&i.HoldID,
+			&i.MapID,
 			&i.BardCharacterID,
 			&i.Position,
 			&i.State,
@@ -215,6 +221,75 @@ func (q *Queries) ListNpcCheckAsks(ctx context.Context, holdID string) ([]NpcChe
 			&i.AnswerHash,
 			&i.CreatedAt,
 			&i.AnsweredAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listNpcCheckHolds = `-- name: ListNpcCheckHolds :many
+SELECT id, campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, answer_key, created_at, round, lucky_index, lucky_answer_key, lucky_to, combatant_id, encounter_id, window_hold, indomitable_ask, indomitable_failed, indomitable_answer_key, indomitable_from, indomitable_to, die_answer_key, die_used, stroke_ask, stroke_failed, stroke_answer_key, stroke_from, reroll_ask, reroll_index, reroll_at_most, reroll_resource, reroll_cost, reroll_source, reroll_answer_key, reroll_from, reroll_to, counted_by, favor_spent FROM inspiration_holds WHERE campaign_id = $1 AND kind = 'npc_check' ORDER BY created_at, id
+`
+
+// Every NPC check hold of the campaign, settled or not: the session that ends deletes them all.
+func (q *Queries) ListNpcCheckHolds(ctx context.Context, campaignID string) ([]InspirationHold, error) {
+	rows, err := q.db.Query(ctx, listNpcCheckHolds, campaignID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []InspirationHold
+	for rows.Next() {
+		var i InspirationHold
+		if err := rows.Scan(
+			&i.ID,
+			&i.CampaignID,
+			&i.CharacterID,
+			&i.UserID,
+			&i.Kind,
+			&i.IdempotencyKey,
+			&i.Request,
+			&i.Faces,
+			&i.Modifier,
+			&i.Total,
+			&i.Counted,
+			&i.Physical,
+			&i.AnswerKey,
+			&i.CreatedAt,
+			&i.Round,
+			&i.LuckyIndex,
+			&i.LuckyAnswerKey,
+			&i.LuckyTo,
+			&i.CombatantID,
+			&i.EncounterID,
+			&i.WindowHold,
+			&i.IndomitableAsk,
+			&i.IndomitableFailed,
+			&i.IndomitableAnswerKey,
+			&i.IndomitableFrom,
+			&i.IndomitableTo,
+			&i.DieAnswerKey,
+			&i.DieUsed,
+			&i.StrokeAsk,
+			&i.StrokeFailed,
+			&i.StrokeAnswerKey,
+			&i.StrokeFrom,
+			&i.RerollAsk,
+			&i.RerollIndex,
+			&i.RerollAtMost,
+			&i.RerollResource,
+			&i.RerollCost,
+			&i.RerollSource,
+			&i.RerollAnswerKey,
+			&i.RerollFrom,
+			&i.RerollTo,
+			&i.CountedBy,
+			&i.FavorSpent,
 		); err != nil {
 			return nil, err
 		}
@@ -293,4 +368,39 @@ func (q *Queries) ListOpenNpcCheckHolds(ctx context.Context, campaignID string) 
 		return nil, err
 	}
 	return items, nil
+}
+
+const passNpcCheckAsk = `-- name: PassNpcCheckAsk :one
+UPDATE npc_check_asks
+SET state = 'passed', answered_at = $2
+WHERE id = $1 AND state = 'asked'
+RETURNING id, hold_id, map_id, bard_character_id, position, state, sides, creature_seen, die_face, physical, answer_key, answer_hash, created_at, answered_at
+`
+
+type PassNpcCheckAskParams struct {
+	ID         string
+	AnsweredAt *time.Time
+}
+
+// The bard's question is let pass with no answer of the bard: its character is not in play (reserve, dead, deleted, no player), or its player is outside the open scene.
+func (q *Queries) PassNpcCheckAsk(ctx context.Context, arg PassNpcCheckAskParams) (NpcCheckAsk, error) {
+	row := q.db.QueryRow(ctx, passNpcCheckAsk, arg.ID, arg.AnsweredAt)
+	var i NpcCheckAsk
+	err := row.Scan(
+		&i.ID,
+		&i.HoldID,
+		&i.MapID,
+		&i.BardCharacterID,
+		&i.Position,
+		&i.State,
+		&i.Sides,
+		&i.CreatureSeen,
+		&i.DieFace,
+		&i.Physical,
+		&i.AnswerKey,
+		&i.AnswerHash,
+		&i.CreatedAt,
+		&i.AnsweredAt,
+	)
+	return i, err
 }

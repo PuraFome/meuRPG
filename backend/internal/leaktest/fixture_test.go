@@ -48,7 +48,9 @@ type world struct {
 	campaign                             string
 	// The stored spells the rules refuse (buildTableContent): the live one and the one the master retired, with their names.
 	leftOutKey, retiredLeftOutKey, retiredLeftOutName string
-	session                                           string
+	// unofferedKey is an option of a feature of a retired subclass (buildTableContent), unofferedLabel its text: no level offers it.
+	unofferedKey, unofferedLabel string
+	session                      string
 
 	// The characters.
 	pens, toren  *charactersv1.Character // Ana's and Caio's player characters
@@ -71,6 +73,9 @@ type world struct {
 	// The hidden NPC on the open scene's stage (its portrait is imgHiddenStage), and the hidden action of that scene.
 	hiddenStageNPC *charactersv1.Character
 	hiddenAction   string
+	// The entries of a potion of healing on Toren's and on Pensantus's sheets (buildConsumables).
+	torenPotion, pensPotion, torenScroll string
+	threeFailures                        bool // Pensantus has three failed death saves the master has not confirmed (withThreeFailedSaves)
 
 	// The gallery.
 	imgSceneA, imgSceneB, imgMap, imgUnshown, imgShown, imgLeft, imgPortrait, imgStage, imgHiddenStage, imgGenerated, generation string

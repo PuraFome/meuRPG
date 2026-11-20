@@ -820,6 +820,10 @@ func (noRoster) CreatureCheck(context.Context, pgx.Tx, string, string, string, s
 	return link.SceneOption{}, nil
 }
 
+func (noRoster) CreatureChecks(_ context.Context, _ pgx.Tx, _, _, _ string, keys []string) ([]link.SceneOption, error) {
+	return make([]link.SceneOption, len(keys)), nil
+}
+
 func (noRoster) DamageModifiers(context.Context, pgx.Tx, string, string, string) (combat.TypeModifiers, error) {
 	return combat.TypeModifiers{}, nil
 }

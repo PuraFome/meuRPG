@@ -19,7 +19,9 @@ import { addClueRPC, cartClues, cartHooks, createNoteRPC } from './notes-support
 import { createCapitaoRPC, createMiraRPC, playedCombatRPC, putOnStageRPC, uploadPortrait } from './stage-support';
 import { printRoute, tableForPrinting } from './print-support';
 import { tableWithOpenChoices } from './choices-support';
-import { classCard, passClassStep, tableForLevelUp } from './levelup-support';
+import { optionRowsTable } from './option-rows-support';
+import { classCard, markMilestoneRPC, passClassStep, tableForLevelUp, toren as levelUpToren } from './levelup-support';
+import { allowRulePickSwapRPC, doran, postureSheetRPC } from './option-swap-support';
 import { aurora, auroraSheet, beginPlacedCombatRPC, nael, naelSheet, orla, orlaSheet, spendForRestRPC } from './rests-support';
 import { castSheet, choiceCard, openCastOf, pickChoice, pickSlotRadio, pickTargetOf, tableForCasting } from './casting-support';
 import { movingTable, paintRPC, pickRadio, tapSquare } from './move-support';
@@ -73,6 +75,8 @@ import { armorClassOf, bonusCombatSheet, bonusSheet, cropBonus, masterSetsBonuse
 import { combatWithTwoDown, reviveRPC, tableWithDead } from './revivify-support';
 import { brisa, brisaAidSheet, brisaSheet, dalila, dalilaSheet, ragna, ragnaSheet } from './combat-support';
 import { createPrerequisiteFeatsRPC } from './feat-prerequisites-support';
+import { lostPrerequisiteTable, type LostKind, type LostTable } from './lost-prerequisite-support';
+import { AXE_NAME, axeAndShieldTable, editAxe } from './two-handed-support';
 import { createFeatsRPC, createNightRaceRPC, createSnowSubraceRPC, tor } from './editor-races-support';
 import { beginCrowdedCombatRPC, boxIn, callFeatBody, chamadosFeatBody, elementFeatBody, endSessionOf, haloFeatBody, haloSquares, markFeatBody, volleyFeatBody } from './feature-use-support';
 import { createFeatOptionsRPC, expectInViewport, featShotScale, featViewport, openSelect, shootFeat, type FeatOptionsTable } from './feat-options-support';
@@ -114,7 +118,7 @@ import {
 } from './table-sheet-support';
 import { masterLog, openCombatPanel, openMap, openOrderRow, openTurn } from './combat-layout';
 import { waitForEncounterRevision } from './revision-support';
-import { goblinTrigger, moveOffText, openReadySheet, pensantusReadyKit, readyAttackRPC, readyRPC, readySpellRPC, shootReady, spellOffText } from './ready-support';
+import { goblinTrigger, moveOffText, openReadySheet, pensantusReadyKit, readyAttackRPC, readyRPC, readySpellRPC, shootReady, spellOffText, summonOffText } from './ready-support';
 import { WIDTHS, beginVrockFight, pagesFor, shoot, useCreatureActionRPC, viewportOf } from './recharge-support';
 import { chooseRow, openTvPanel, rollForTableRPC, tvRoute } from './table-screen-support';
 import { LIT, WIDTHS as SUN_WIDTHS, sunSpot as sunBar, mapCard as sunMapCard, paintStatus as sunPaintStatus, setSunlightRPC, shoot as shootSun, sunSwitch, sunlightTable, viewportOf as sunViewport } from './sunlight-support';
@@ -3597,6 +3601,82 @@ test('o subir de nível passa no axe e nas conferências de layout no tema claro
   test.setTimeout(900_000);
   await scanLevelUpScreens(browser, 'light', 320);
 });
+
+// "Trocar escolhas" with a table feature's group (#715): at a level with no ability step the one panel sits in "Escolhas"
+// (closed, a group open, half chosen, whole, then the summary); at an Ability Score Improvement level it holds the table rule's
+// group and the feature's together. Doran, Guerreiro 4 of the table's "Mestre das Posturas", goes to 5 and then to 6.
+async function scanOptionSwapScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const where = `${colorScheme === 'light' ? 'no tema claro' : 'no tema escuro'}, a ${width} px`;
+  const height = width < 768 ? 844 : 800;
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport: { width, height } });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport: { width, height } });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await tableForLevelUp(m, p, `Acessibilidade troca de opção ${Date.now()}`, {
+      build: doran,
+      prepare: (id) => postureSheetRPC(m, id, 4, [5, 6]),
+    });
+    campaignId = table.campaignId;
+    const sheet = `/campaigns/${campaignId}/characters/${table.characterId}`;
+    await p.goto(`${sheet}/level-up`);
+    await passClassStep(p);
+    await p.getByRole('button', { name: 'Próximo' }).click();
+    await expect(p.getByText('Passo 3 de 4 · Escolhas')).toBeVisible();
+    const panel = p.getByRole('region', { name: 'Trocar escolhas' });
+    await expect(panel).toBeVisible();
+    await expectScreenPasses(p, `Escolhas, o painel "Trocar escolhas" sem troca ${where}`);
+    await panel.getByText('Posturas', { exact: true }).click();
+    await expect(panel.getByRole('radiogroup', { name: 'Abrir mão de' })).toBeVisible();
+    await expectScreenPasses(p, `Escolhas, a troca da característica aberta ${where}`);
+    await panel.getByRole('radiogroup', { name: 'Abrir mão de' }).getByText('Postura da Garça').click();
+    await expectScreenPasses(p, `Escolhas, a troca com meia escolha ${where}`);
+    await panel.getByRole('radiogroup', { name: 'Pegar no lugar' }).getByText('Postura do Lobo').click();
+    await expect(panel.getByRole('status')).toHaveText('Trocar Postura da Garça por Postura do Lobo');
+    await expectScreenPasses(p, `Escolhas, a troca escolhida ${where}`);
+    await p.getByRole('button', { name: 'Próximo' }).click();
+    await expect(p.getByText('Passo 4 de 4 · Resumo')).toBeVisible();
+    await expectScreenPasses(p, `Resumo com a troca da característica ${where}`);
+    await p.getByRole('button', { name: 'Confirmar o nível 5' }).click();
+    await expect(p.getByText('Doran subiu para o nível 5.').first()).toBeVisible();
+
+    // Level 6 has an Ability Score Improvement: the table's rule and the feature offer their groups in one panel.
+    await allowRulePickSwapRPC(m, campaignId);
+    await markMilestoneRPC(m, campaignId, 'Chegar ao Vale Seco 2', [table.characterId]);
+    await p.goto(`${sheet}/level-up`);
+    await passClassStep(p);
+    await expect(p.getByText('Passo 2 de 4 · Habilidades')).toBeVisible();
+    const both = p.getByRole('region', { name: 'Trocar escolhas' });
+    await expect(both.getByRole('radio', { name: 'Estilo de luta' })).toBeVisible();
+    await expect(both.getByRole('radio', { name: 'Posturas' })).toBeVisible();
+    await expectScreenPasses(p, `Habilidades, o painel com o conjunto da regra e o da característica ${where}`);
+    await both.locator('label.opt').filter({ hasText: 'Posturas' }).click();
+    await both.getByRole('radiogroup', { name: 'Abrir mão de' }).getByText('Postura do Touro').click();
+    await both.getByRole('radiogroup', { name: 'Pegar no lugar' }).getByText('Postura do Urso').click();
+    await both.getByText('Estilo de luta', { exact: true }).click();
+    await both.getByRole('radiogroup', { name: 'Abrir mão de' }).getByText('Defesa').click();
+    await both.getByRole('radiogroup', { name: 'Pegar no lugar' }).getByText('Duelismo').click();
+    await both.locator('label.opt').filter({ hasText: 'Posturas' }).click();
+    await expect(both.getByRole('status')).toHaveText('Trocar Postura do Touro por Postura do Urso');
+    await expectScreenPasses(p, `Habilidades, duas trocas, uma de cada tipo ${where}`);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+for (const [scheme, width] of [['light', 1280], ['dark', 390], ['light', 768], ['dark', 1280]] as const) {
+  test(`a troca de uma opção de característica no subir de nível passa no axe e nas conferências de layout no tema ${scheme === 'light' ? 'claro' : 'escuro'}, a ${width} px`, { tag: ['@a11y', '@MR-040'] }, async ({ browser }) => {
+    test.setTimeout(300_000);
+    await scanOptionSwapScreens(browser, scheme, width);
+  });
+}
 
 // The choices a locked sheet left open (PM-05): the sheet's banner, the page "Completar escolhas pendentes" with the
 // choice missing, half picked and full, the save, the page with nothing left, and the master's tag on the campaign.
@@ -10832,7 +10912,7 @@ async function scanBonusBoards(browser: Browser, colorScheme: 'light' | 'dark', 
     await equipment.getByRole('button', { name: /^Guardar .*Cota de malha/ }).click();
     await expect(equipment.getByRole('button', { name: /^Equipar .*Cota de malha/ })).toBeVisible();
     const idle = equipment.locator('.gear-row--idle');
-    await expect(idle).toContainText('Parado');
+    await expect(idle).toContainText('Não conta na CA');
     await expect(idle.locator('.bonus-chip--idle')).toHaveCount(1);
     await expect(rowOf(p, 'Cota de malha').locator('.bonus-chip--idle')).toHaveCount(1);
     await expectScreenPasses(p, `A ficha do dono, o escudo parado e a armadura carregada ${where}`);
@@ -11060,14 +11140,15 @@ async function scanBonusCombatScreens(browser: Browser, colorScheme: 'light' | '
     await crop(block, 'recorte-modificadores-escudo-parado');
     await crop(lineOf(block, 'Escudo'), 'recorte-modificadores-linha-escudo-parado');
 
-    // No bonus on any piece: no block, no chip, and the idle shield is said by the sheet's note, once.
+    // No bonus on any piece: no block, no chip, and the idle shield is said once, by the line under the armor class.
     await masterSetsBonuses(m, campaignId, table.characterId, () => []);
     await openLive(p, route);
     await expect(p.getByRole('heading', { name: 'Modificadores de itens' })).toHaveCount(0);
     await expect(modifiersOf(p)).toHaveCount(0);
     await expect(attacksOf(p).locator('app-bonus-chip')).toHaveCount(0);
-    const note = p.getByRole('note').filter({ hasText: 'O escudo não conta na CA' });
+    const note = p.locator('app-combat-stats').getByText(/^O escudo não conta na CA:/);
     await expect(note).toHaveCount(1);
+    await expect(note).toBeVisible();
     await expectScreenPasses(p, `A ficha sem bônus, sem o bloco ${where}`);
     await shootBonus(p, 'ficha-sem-bonus', width, colorScheme, attacksOf(p));
     await crop(attacksOf(p).getByRole('row').filter({ hasText: 'Espada longa' }), 'recorte-ataques-linha-espada-sem-bonus');
@@ -13289,8 +13370,12 @@ async function scanTraitOptions(browser: Browser, colorScheme: 'light' | 'dark',
     const night = await createNightRaceRPC(m, campaignId);
     await open(m, entryRoute(campaignId, night.race));
     const options = m.getByRole('region', { name: 'Opções para escolher de Sentidos da noite' });
-    await expect(options.getByLabel('Nome da opção')).toHaveCount(2);
-    await expect(options.getByLabel('Nome da opção').nth(1)).toHaveValue('Passo de pena');
+    // The options are closed rows, one open at a time: the second opens to show its name.
+    const optionRows = options.getByRole('group', { name: /^Opção \d/ });
+    await expect(optionRows).toHaveCount(2);
+    await expect(optionRows.nth(1)).toContainText('Passo de pena');
+    await optionRows.nth(1).getByRole('button', { expanded: false }).first().click();
+    await expect(options.getByLabel('Nome da opção')).toHaveValue('Passo de pena');
     await expectScreenPasses(m, `Editor de raça, o traço com opções para escolher ${where}`);
     // A trait with no options says so, and a new option with no name says it is not saved.
     const planar = m.getByRole('region', { name: 'Opções para escolher de Planar' });
@@ -15053,6 +15138,11 @@ async function scanReadyScreens(browser: Browser, colorScheme: 'light' | 'dark',
     campaignId = table.campaignId;
     const begun = await beginAttackCombatRPC(m, table, { Pensantus: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 }, attackCombatSquares);
     const shoot = async (page: Page, screen: string): Promise<void> => shootReady(page, screen, width, colorScheme);
+    // Pensantus summons nothing of the kinds the window cannot release yet (a summon, an ability, a damage type), so the character's summon options are
+    // answered with Mísseis Mágicos in them: the sheet then lists it off with the reason of its kind, as it does Conjurar Animais for a druid (#857).
+    await p.route('**/meurpg.characters.v1.CharacterService/GetSummonOptions', (route) =>
+      route.fulfill({ contentType: 'application/json', body: JSON.stringify({ spells: [{ spellKey: 'spell:magic-missile', namePt: 'Mísseis Mágicos', level: 1 }], slots: [] }) }),
+    );
 
     await openSessionPage(p, campaignId);
     await expect(p.getByRole('heading', { name: 'Sua vez, Pensantus' })).toBeVisible();
@@ -15077,7 +15167,10 @@ async function scanReadyScreens(browser: Browser, colorScheme: 'light' | 'dark',
 
     // A spell: the circle to hold it with, and the warning that it is the concentration.
     await sheet.getByRole('button', { name: 'Magia', exact: true }).click();
-    await expect(sheet.locator('label', { hasText: 'Mísseis Mágicos' })).toContainText(spellOffText);
+    await expect(sheet.locator('label', { hasText: 'Sono' })).toContainText(spellOffText);
+    await expect(sheet.locator('label', { hasText: 'Mísseis Mágicos' })).toContainText(summonOffText);
+    await expect(sheet.getByRole('radio', { name: /Mísseis Mágicos/ })).toBeDisabled();
+    await shootReady(p, 'preparar-magia-escolha', width, colorScheme, '857');
     await sheet.locator('label', { hasText: 'Enfeitiçar Pessoa' }).click();
     await expect(sheet.getByRole('group', { name: 'Com que espaço' })).toBeVisible();
     await field.fill('Se o goblin sair da sombra do pilar');
@@ -15254,7 +15347,7 @@ async function scanReadyWindowScreens(browser: Browser, colorScheme: 'light' | '
   try {
     await m.goto('/');
     await p.goto('/');
-    const table = await tableForCombat(m, p, `Acessibilidade preparar janelas ${Date.now()}`, true, true, { sheet: pensantusCasting });
+    const table = await tableForCombat(m, p, `Acessibilidade preparar janelas ${Date.now()}`, true, true, { sheet: pensantusReadyKit });
     campaignId = table.campaignId;
     const squares: Record<string, [number, number]> = { Pensantus: [1, 1], 'Capitão Goblin': [2, 1], 'Goblin 1': [9, 9], 'Goblin 2': [14, 10] };
     const begun = await beginAttackCombatRPC(m, table, { Pensantus: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 }, squares);
@@ -15314,18 +15407,71 @@ async function scanReadyWindowScreens(browser: Browser, colorScheme: 'light' | '
     await move.getByRole('button', { name: 'Deixar passar' }).click();
     await expect(move).toHaveCount(0);
 
-    // A readied spell is released from the prompt ("Soltar"), with the creature named at Ready chosen.
+    // A readied spell of darts is released from the prompt (#857): the darts are shared out as on the cast screen, and "Soltar agora" waits for all three.
     const round4 = await passTurnsToAndWait(m, campaignId, 'Pensantus', [m, p]);
     await waitForEncounterRevision(p, await readySpellRPC(p, campaignId, round4, 'Pensantus', 'spell:magic-missile', 1, 'Capitão Goblin'));
     await passTurnsToAndWait(m, campaignId, 'Capitão Goblin', [m, p]);
     await m.locator('app-readied-fold').getByRole('button', { name: 'Disparar a ação de Pensantus' }).click();
     const spell = p.getByRole('alertdialog', { name: 'Soltar Mísseis Mágicos' });
     await expect(spell).toBeVisible();
-    await expect(spell.getByRole('radio', { name: /Capitão Goblin/ })).toBeChecked();
-    await expectScreenPasses(p, `Preparar, o aviso do gatilho com uma magia ${where}`);
-    await shoot(p, 'janela-magia');
+    await expect(spell.getByText('Divida os 3 dardos entre os alvos')).toBeVisible();
+    await expect(spell.getByRole('button', { name: 'Soltar agora' })).toHaveAttribute('aria-disabled', 'true');
+    await expectScreenPasses(p, `Preparar, os dardos da magia ainda por repartir ${where}`);
+    await shootReady(p, 'janela-dardos', width, colorScheme, '857');
+    await spell.getByRole('button', { name: 'Pôr um dardo em Capitão Goblin' }).click();
+    await spell.getByRole('button', { name: 'Pôr um dardo em Capitão Goblin' }).click();
+    await spell.getByRole('button', { name: 'Pôr um dardo em Goblin 1' }).click();
+    await expect(spell.getByText('3 de 3 dardos distribuídos.')).toBeVisible();
+    await expect(spell.getByRole('button', { name: 'Soltar agora' })).not.toHaveAttribute('aria-disabled', 'true');
+    await expectScreenPasses(p, `Preparar, os dardos da magia repartidos ${where}`);
+    await shootReady(p, 'janela-dardos-repartidos', width, colorScheme, '857');
     await spell.getByRole('button', { name: 'Deixar passar' }).click();
     await expect(spell).toHaveCount(0);
+
+    // A readied spell of one creature (#857): the creatures it reaches are a radio list inside the window's alertdialog.
+    const roundOne = await passTurnsToAndWait(m, campaignId, 'Pensantus', [m, p]);
+    await waitForEncounterRevision(p, await readySpellRPC(p, campaignId, roundOne, 'Pensantus', 'spell:charm-person', 1));
+    await passTurnsToAndWait(m, campaignId, 'Capitão Goblin', [m, p]);
+    await m.locator('app-readied-fold').getByRole('button', { name: 'Disparar a ação de Pensantus' }).click();
+    const one = p.getByRole('alertdialog', { name: 'Soltar Enfeitiçar Pessoa' });
+    await expect(one).toBeVisible();
+    await expect(one.getByRole('radiogroup')).toBeVisible();
+    await expect(one.getByRole('radio', { name: /Capitão Goblin/ })).toBeVisible();
+    await expect(one.getByRole('button', { name: /^Soltar/ })).toHaveAttribute('aria-disabled', 'true');
+    await expectScreenPasses(p, `Preparar, a magia de uma criatura com o alvo por escolher ${where}`);
+    await shootReady(p, 'janela-criatura', width, colorScheme, '857');
+    await one.locator('label', { hasText: 'Capitão Goblin' }).click();
+    await expect(one.getByRole('radio', { name: /Capitão Goblin/ })).toBeChecked();
+    await expectScreenPasses(p, `Preparar, a magia de uma criatura com o alvo escolhido ${where}`);
+    await shootReady(p, 'janela-criatura-escolhida', width, colorScheme, '857');
+    await one.getByRole('button', { name: 'Deixar passar' }).click();
+    await expect(one).toHaveCount(0);
+
+    // The same spell held with a 2nd circle slot takes two creatures: checkboxes in the window, and the master's row with the same list open.
+    const roundMany = await passTurnsToAndWait(m, campaignId, 'Pensantus', [m, p]);
+    await waitForEncounterRevision(p, await readySpellRPC(p, campaignId, roundMany, 'Pensantus', 'spell:charm-person', 2));
+    await passTurnsToAndWait(m, campaignId, 'Capitão Goblin', [m, p]);
+    await m.locator('app-readied-fold').getByRole('button', { name: 'Disparar a ação de Pensantus' }).click();
+    const many = p.getByRole('alertdialog', { name: 'Soltar Enfeitiçar Pessoa' });
+    await expect(many).toBeVisible();
+    await expect(many.getByRole('group', { name: /Escolha até 2 alvos/ })).toBeVisible();
+    await expect(many.getByRole('checkbox', { name: /Capitão Goblin/ })).toBeVisible();
+    await expectScreenPasses(p, `Preparar, a magia de vários alvos com nenhum escolhido ${where}`);
+    await shootReady(p, 'janela-criaturas', width, colorScheme, '857');
+    await many.locator('label', { hasText: 'Capitão Goblin' }).click();
+    await expect(many.getByRole('checkbox', { name: /Capitão Goblin/ })).toBeChecked();
+    await expectScreenPasses(p, `Preparar, a magia de vários alvos com um escolhido ${where}`);
+    await shootReady(p, 'janela-criaturas-escolhida', width, colorScheme, '857');
+    const held = m.locator('app-reaction-queue[part="rest"]');
+    await expect(held.getByRole('checkbox', { name: /Capitão Goblin/ })).toBeVisible();
+    await expect(held.getByRole('button', { name: 'Soltar por Pensantus' })).toBeVisible();
+    await held.scrollIntoViewIfNeeded();
+    await expectScreenPasses(m, `Preparar, a fila do mestre com a magia preparada e a lista dos alvos aberta ${where}`);
+    await shootReady(m, 'janela-fila-magia', width, colorScheme, '857');
+    await held.getByRole('button', { name: 'Deixar passar' }).click();
+    await expect(many).toContainText('A janela fechou.');
+    await many.getByRole('button', { name: 'Fechar' }).click();
+    await expect(many).toHaveCount(0);
 
     // A readied attack with no creature named: the master's row asks who, with the use off until he picks.
     const round5 = await passTurnsToAndWait(m, campaignId, 'Pensantus', [m, p]);
@@ -15587,3 +15733,738 @@ for (const [colorScheme, theme] of [
     );
   }
 }
+
+/**
+ * The sheet that keeps a feat, then one that keeps an option, whose prerequisite is a class the master switched off (#580, board
+ * 580-05, RN-23): the owner reads "uma condição que a mesa não mostra" and the row says "Não vale agora"; the master reads the
+ * class by its name.
+ */
+/**
+ * The rows and the banner of a sheet that keeps a lost feat or option (#580, board 580-05): the option row has no label on the right
+ * and says "Opção de <feature>" under its name, 16 px in; the lost name is muted; the tag is the dashed pending tag, 22 px high with
+ * 12 px text; "Pré-requisito perdido." has 16 px above and below it (the empty banners and the live region add nothing).
+ */
+async function expectLostRows(page: Page, table: LostTable, kind: LostKind, where: string): Promise<void> {
+  const row = page.locator('details.feature', { has: page.locator('.feature__lost') }).filter({ hasText: table.entryName });
+  await expect(row, `uma linha perdida ${where}`).toHaveCount(1);
+  await expect(row.locator('.feature__name')).toHaveText(table.entryName);
+  const look = await row.evaluate((el) => {
+    const css = (node: Element) => getComputedStyle(node);
+    const tag = el.querySelector('.feature__lost')!;
+    const name = el.querySelector('.feature__name')!;
+    const list = el.closest('ul')!.getBoundingClientRect();
+    const muted = document.querySelector('details.feature:not(.feature--option) .feature__source');
+    const optionRows = [...document.querySelectorAll('details.feature--option')];
+    return {
+      tagHeight: tag.getBoundingClientRect().height,
+      tagFont: css(tag).fontSize,
+      tagBorder: css(tag).borderTopStyle,
+      tagInk: css(tag).color,
+      tagLine: css(tag).borderTopColor,
+      nameInk: css(name).color,
+      mutedInk: muted ? css(muted).color : '',
+      option: el.classList.contains('feature--option'),
+      source: !!el.querySelector('.feature__source'),
+      sub: el.querySelector('.feature__sub')?.textContent?.trim() ?? '',
+      indent: name.getBoundingClientRect().left - list.left,
+      optionRows: optionRows.map((r) => ({
+        source: !!r.querySelector('.feature__source'),
+        sub: r.querySelector('.feature__sub')?.textContent?.trim() ?? '',
+        indent: r.querySelector('.feature__name')!.getBoundingClientRect().left - r.closest('ul')!.getBoundingClientRect().left,
+      })),
+    };
+  });
+  expect(look.tagHeight, `a etiqueta "Não vale agora" tem 22 px de altura ${where}`).toBe(22);
+  expect(look.tagFont, `a etiqueta tem texto de 12 px ${where}`).toBe('12px');
+  expect(look.tagBorder, `a etiqueta tem borda tracejada ${where}`).toBe('dashed');
+  expect(look.tagInk, `a etiqueta na cor de aviso ${where}`).toBe(look.tagLine);
+  expect(look.nameInk, `o nome da linha perdida em tinta suave ${where}`).toBe(look.mutedInk);
+  if (kind !== 'feat') {
+    expect(look.option && !look.source, `a linha da opção não tem rótulo à direita ${where}`).toBe(true);
+    expect(look.sub, `a linha da opção diz de quem ela é ${where}`).toBe('Opção de ' + table.featName);
+  } else {
+    expect(look.option, `o talento não é uma linha de opção ${where}`).toBe(false);
+    expect(look.sub).toBe('');
+  }
+  // Every option row, lost or not (the fighting style the sheet picked too): no label on the right, "Opção de ...", 16 px in.
+  for (const [i, option] of look.optionRows.entries()) {
+    expect(option.source, `a opção ${i + 1} sem rótulo à direita ${where}`).toBe(false);
+    expect(option.sub.startsWith('Opção de '), `a opção ${i + 1} diz "Opção de ..." ${where}`).toBe(true);
+    expect(option.indent, `a opção ${i + 1} entra 16 px ${where}`).toBe(16);
+  }
+  const banner = await page.getByRole('note', { name: 'Pendências de regra' }).evaluate((el) => {
+    const box = el.getBoundingClientRect();
+    const seen = (node: Element) => {
+      const r = node.getBoundingClientRect();
+      return r.height > 1 && getComputedStyle(node).position !== 'absolute';
+    };
+    let before = el.previousElementSibling;
+    while (before && !seen(before)) {
+      before = before.previousElementSibling;
+    }
+    let after = el.nextElementSibling;
+    while (after && !seen(after)) {
+      after = after.nextElementSibling;
+    }
+    return { above: before ? box.top - before.getBoundingClientRect().bottom : -1, below: after ? after.getBoundingClientRect().top - box.bottom : -1 };
+  });
+  expect(banner.above, `16 px acima de "Pré-requisito perdido." ${where}`).toBe(16);
+  expect(banner.below, `16 px abaixo de "Pré-requisito perdido." ${where}`).toBe(16);
+}
+
+async function scanLostPrerequisite(browser: Browser, colorScheme: 'light' | 'dark', width: number, reader: 'owner' | 'master' | 'locked-owner'): Promise<void> {
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport: sizeOf(width) });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport: sizeOf(width) });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${reader === 'owner' ? 'dono' : 'mestre'}, ${colorScheme}, ${width}px)`;
+  try {
+    await Promise.all([m.goto('/'), p.goto('/')]);
+    for (const kind of ['feat', 'option', 'both'] as const) {
+      const table = await lostPrerequisiteTable(m, p, `Acessibilidade pré-requisito perdido ${Date.now()}`, kind, true);
+      const page = reader === 'owner' ? p : m;
+      await open(page, `/campaigns/${table.campaignId}/characters/${table.characterId}`);
+      const asked = reader === 'owner' ? 'uma condição que a mesa não mostra' : 'Ordem Esquecida 3, e Toren não tem nível de Ordem Esquecida';
+      await expect(page.getByText(`${table.entryName} pede ${asked}:`)).toBeVisible();
+      await expect(page.getByText('Pré-requisito perdido.').first()).toBeVisible();
+      await expect(page.getByText('Não vale agora')).toHaveCount(kind === 'both' ? 2 : 1);
+      if (kind === 'both') {
+        // The feat and its option, lost together, are two lines of one list in "Pendências de regra".
+        await expect(page.getByRole('note', { name: 'Pendências de regra' }).locator('li')).toHaveCount(2);
+        await expect(page.getByText(`${table.alsoName} pede ${asked}:`)).toBeVisible();
+      }
+      await expectLostRows(page, table, kind, where);
+      // The story sits beside the features on a tablet, never over them: the heading of the features stays in sight.
+      const features = await page.locator('app-features-panel').boundingBox();
+      const story = await page.locator('app-story-panel').boundingBox();
+      expect(features && story && features.x < story.x + story.width && story.x < features.x + features.width && features.y < story.y + story.height && story.y < features.y + features.height, `a história cobre as características ${where}`).toBe(false);
+      await expectScreenPasses(page, `Ficha com ${{ feat: 'o talento', option: 'a opção', both: 'o talento e a opção' }[kind]} de pré-requisito perdido ${where}`);
+    }
+  } finally {
+    await Promise.all([master.close(), player.close()]);
+  }
+}
+
+test('a ficha com o talento e a opção de pré-requisito perdido, que o dono lê sem o nome escondido, passa no axe e nas conferências de layout no tema claro, no celular', { tag: ['@a11y', '@MR-025', '@MR-040'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanLostPrerequisite(browser, 'light', 390, 'owner');
+});
+
+test('a ficha com o talento e a opção de pré-requisito perdido, que o dono lê sem o nome escondido, passa no axe e nas conferências de layout no tema escuro, no desktop', { tag: ['@a11y', '@MR-025', '@MR-040'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanLostPrerequisite(browser, 'dark', 1280, 'owner');
+});
+
+test('a ficha com o talento e a opção de pré-requisito perdido, que o mestre lê com o nome, passa no axe e nas conferências de layout no tema escuro, no tablet', { tag: ['@a11y', '@MR-025', '@MR-040'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanLostPrerequisite(browser, 'dark', 768, 'master');
+});
+
+// The level-up's "Falta escolher" chip and its stepper on a tablet (#580, board 580-04): the five steps end inside the card's right edge
+// (the viewport's edge is not enough: the page's gutter is 48 px there), the chip is the pending tag in the colour of the footer line,
+// and it sits 12 px above the "Aumentar habilidades / Um talento" control.
+async function scanLevelUpFeatChip(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport: sizeOf(width) });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport: sizeOf(width) });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  try {
+    await Promise.all([m.goto('/'), p.goto('/')]);
+    const table = await tableForLevelUp(m, p, `Acessibilidade chip ${Date.now()}`, { session: false });
+    await createPrerequisiteFeatsRPC(m, table.campaignId);
+    await open(p, `/campaigns/${table.campaignId}/characters/${table.characterId}/level-up`);
+    await passClassStep(p);
+    await pickRadio(p, 'Um talento');
+    const chip = p.locator('app-abilities-step .asi-head .mr-tag');
+    await expect(chip).toHaveText('Falta escolher');
+
+    const geometry = await p.evaluate(() => {
+      const rect = (selector: string) => document.querySelector(selector)!.getBoundingClientRect();
+      const bar = rect('app-steps-bar');
+      const card = rect('#pick-abilities');
+      return {
+        steps: [...document.querySelectorAll('app-steps-bar .step')].map((s) => s.getBoundingClientRect().right),
+        barRight: bar.right,
+        cardRight: card.right,
+        headBottom: rect('.asi-head').bottom,
+        chipBottom: rect('.asi-head .mr-tag').bottom,
+        modeTop: rect('#pick-abilities .mode').top,
+        overflow: document.documentElement.scrollWidth - window.innerWidth,
+      };
+    });
+    expect(geometry.steps, `o passo a passo tem os cinco passos ${where}`).toHaveLength(5);
+    for (const [i, right] of geometry.steps.entries()) {
+      expect(right, `o passo ${i + 1} termina dentro do cartão ${where}`).toBeLessThanOrEqual(Math.min(geometry.barRight, geometry.cardRight) + 0.5);
+    }
+    expect(geometry.overflow, `a página sem rolagem lateral ${where}`).toBeLessThanOrEqual(0);
+    expect(geometry.modeTop - Math.max(geometry.headBottom, geometry.chipBottom), `o chip a 12 px do controle ${where}`).toBeCloseTo(12, 0);
+
+    const inkOf = (locator: Locator) => locator.evaluate((el) => getComputedStyle(el).color);
+    await expect(chip).toHaveClass(/mr-tag--pending/);
+    await expect(chip).not.toHaveClass(/mr-tag--danger/);
+    expect(await inkOf(chip), `o chip na cor da linha "Falta escolher o talento." ${where}`).toBe(await inkOf(p.locator('.foot__reason')));
+    await expectScreenPasses(p, `Subir de nível, o chip "Falta escolher" e o passo a passo ${where}`);
+  } finally {
+    await Promise.all([master.close(), player.close()]);
+  }
+}
+
+test('o chip "Falta escolher" do subir de nível e o passo a passo cabem no cartão no tema escuro, no tablet', { tag: ['@a11y', '@MR-025', '@MR-040'] }, async ({ browser }) => {
+  test.setTimeout(180_000);
+  await scanLevelUpFeatChip(browser, 'dark', 768);
+});
+
+test('o chip "Falta escolher" do subir de nível e o passo a passo cabem no cartão no tema claro, no tablet', { tag: ['@a11y', '@MR-025', '@MR-040'] }, async ({ browser }) => {
+  test.setTimeout(180_000);
+  await scanLevelUpFeatChip(browser, 'light', 768);
+});
+
+// The kinds strip of "Conteúdo da mesa" on a tablet (#580, board 580-12): the open kind is in sight when the page opens and when the kind
+// changes, the fade is 40 px wide, and it follows the strip when the window is resized.
+async function scanKindsStrip(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport: { width, height: 900 } });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport: { width, height: 900 } });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  const strip = m.locator('.menu__list');
+  const state = () =>
+    strip.evaluate((el) => {
+      const on = el.querySelector('[aria-current="page"]')!.getBoundingClientRect();
+      const box = el.getBoundingClientRect();
+      return {
+        name: el.querySelector('[aria-current="page"] span')!.textContent,
+        inside: on.left >= box.left - 1 && on.right <= box.right + 1,
+        start: el.classList.contains('menu__list--fade-start'),
+        end: el.classList.contains('menu__list--fade-end'),
+        moreBefore: el.scrollLeft > 1,
+        moreAfter: el.scrollLeft + el.clientWidth < el.scrollWidth - 1,
+        mask: getComputedStyle(el).maskImage,
+        overflow: document.documentElement.scrollWidth - window.innerWidth,
+      };
+    });
+  try {
+    await Promise.all([m.goto('/'), p.goto('/')]);
+    const campaignId = await campaignWithEmptyPlayer(m, p, `Acessibilidade faixa ${Date.now()}`);
+    await open(m, `/campaigns/${campaignId}/content?kind=weapons`);
+    await expect.poll(async () => (await state()).inside, { message: `Armas à vista ao abrir a página ${where}` }).toBe(true);
+    const weapons = await state();
+    expect(weapons.name, `o tipo aberto ${where}`).toBe('Armas');
+    expect(weapons.start, `a borda esquerda esmaece, há tipos antes ${where}`).toBe(true);
+    expect(weapons.end, `a borda direita não esmaece, Armas é o último ${where}`).toBe(false);
+    expect(weapons.mask, `o esmaecimento de 40 px ${where}`).toContain('40px');
+    expect(weapons.overflow, `a página sem rolagem lateral ${where}`).toBeLessThanOrEqual(0);
+
+    await strip.getByRole('link', { name: /^Magias/ }).click();
+    await expect(strip.locator('[aria-current="page"]')).toContainText('Magias');
+    await expect.poll(async () => (await state()).inside, { message: `Magias à vista depois de trocar o tipo ${where}` }).toBe(true);
+    const spells = await state();
+    expect(spells.start && spells.end, `os dois lados esmaecem com um tipo do meio ${where}`).toBe(true);
+    await expectScreenPasses(m, `Conteúdo da mesa, a faixa de tipos com um tipo do meio aberto ${where}`);
+
+    await open(m, `/campaigns/${campaignId}/content`);
+    const first = await state();
+    expect(first.name).toBe('Classes');
+    expect(first.start, `sem esmaecimento à esquerda no primeiro tipo ${where}`).toBe(false);
+    expect(first.end, `esmaecimento à direita no primeiro tipo ${where}`).toBe(true);
+
+    // The window is resized: the fade is measured again and follows what the strip really has beyond each edge.
+    await m.setViewportSize({ width: 1090, height: 900 });
+    await expect.poll(async () => {
+      const s = await state();
+      return s.start === s.moreBefore && s.end === s.moreAfter;
+    }, { message: `o esmaecimento acompanha a faixa depois de redimensionar ${where}` }).toBe(true);
+    await m.setViewportSize({ width, height: 900 });
+    await expect.poll(async () => {
+      const s = await state();
+      return s.start === s.moreBefore && s.end === s.moreAfter && s.end;
+    }, { message: `o esmaecimento volta ao tamanho da página ${where}` }).toBe(true);
+  } finally {
+    await Promise.all([master.close(), player.close()]);
+  }
+}
+
+test('a faixa de tipos do conteúdo da mesa mostra o tipo aberto e o esmaecimento no tema claro, no tablet', { tag: ['@a11y', '@MR-025'] }, async ({ browser }) => {
+  test.setTimeout(180_000);
+  await scanKindsStrip(browser, 'light', 768);
+});
+
+test('a faixa de tipos do conteúdo da mesa mostra o tipo aberto e o esmaecimento no tema escuro, no tablet', { tag: ['@a11y', '@MR-025'] }, async ({ browser }) => {
+  test.setTimeout(180_000);
+  await scanKindsStrip(browser, 'dark', 768);
+});
+
+// The option rows of a subclass feature ask (#580, board 580-03): "Nível mínimo" is 140 px, "Adicionar pré-requisito" is a text action with a
+// caret, "Remover opção" is in the "⋮" menu of the row, the hint says it is never the option itself, and the open feature's accent frame has
+// no second outline of the option card a few pixels inside it.
+async function scanOptionAsks(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport: { width, height: 900 } });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport: { width, height: 900 } });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  try {
+    await Promise.all([m.goto('/'), p.goto('/')]);
+    const campaignId = await campaignWithEmptyPlayer(m, p, `Acessibilidade opções que pedem ${Date.now()}`);
+    const brasa = await createEntryRPC(m, campaignId, 'tableOption', { namePt: 'Olhar de Brasa', descPt: ['Você enxerga no escuro.'], set: 'invocation' });
+    const subclass = await createSubclassRPC(m, campaignId, {
+      namePt: 'Guarda do Corvo',
+      classKey: 'class:fighter',
+      descPt: ['Quem aprendeu a lâmina com os corvos.'],
+      levels: [{ level: 3, features: [{
+        namePt: 'Truques de lâmina',
+        descPt: ['Escolha entre as opções da lista.'],
+        effects: [{ type: 'choice', choice: 'feature', count: 1 }],
+        options: ['Golpe do Corvo', 'Asa Partida'].map((n) => ({ namePt: n, descPt: [`${n}: um truque da lista.`] })),
+      }] }],
+    });
+    const entry = (await listEntries(m, campaignId)).find((e) => e.key === subclass)!;
+    const feature = entry.tableSubclass.levels[0].features[0];
+    const asking = { ...feature.options[1], prerequisite: { classLevel: { classKey: 'class:fighter', level: 7 }, requiresOptionKeys: [brasa] } };
+    const updated = await callRPC(m, 'meurpg.rules.v1.TableContentService/UpdateTableEntry', {
+      campaignId,
+      key: subclass,
+      expectedRevision: entry.revision,
+      tableSubclass: { ...entry.tableSubclass, levels: [{ ...entry.tableSubclass.levels[0], features: [{ ...feature, options: [feature.options[0], asking] }] }] },
+    });
+    expect(updated.ok(), await updated.text()).toBeTruthy();
+
+    await open(m, entryRoute(campaignId, subclass));
+    await m.getByRole('button', { name: /Truques de lâmina/ }).first().click();
+    const option = m.getByRole('group', { name: 'Opção 2' });
+    await option.getByRole('button', { name: /Opção 2 · Asa Partida/ }).click();
+    await expect(option.getByLabel('Nome da opção')).toHaveValue('Asa Partida');
+    const add = option.getByRole('button', { name: 'Adicionar pré-requisito' });
+    await add.scrollIntoViewIfNeeded();
+    await expect(option).toContainText('Nunca a própria opção.');
+    const level = await option.locator('app-ask-rows app-text-field').first().boundingBox();
+    expect(level?.width, `"Nível mínimo" com 140 px ${where}`).toBeCloseTo(140, 0);
+    await expect(add, `"Adicionar pré-requisito" é uma ação de texto ${where}`).not.toHaveClass(/mat-mdc-outlined-button/);
+    expect(await add.evaluate((el) => getComputedStyle(el).borderTopWidth), `sem contorno em "Adicionar pré-requisito" ${where}`).toBe('0px');
+    await expect(option.getByRole('button', { name: 'Remover opção' }), `"Remover opção" só no menu ${where}`).toHaveCount(0);
+    // The accent frame is the open option's head alone; its fields (the nested editor) keep no outline of their own.
+    expect(await option.evaluate((el) => getComputedStyle(el.querySelector('app-feature-editor .feature') ?? el).borderRightWidth), `os campos da opção sem contorno ${where}`).toBe('0px');
+    await m.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+    await expectScreenPasses(m, `Editor de subclasse, a opção que pede nível e opção ${where}`);
+
+    await option.getByRole('button', { name: /^Mais ações da opção/ }).click();
+    await expect(m.getByRole('menuitem', { name: 'Remover opção' })).toBeVisible();
+    await expectScreenPasses(m, `Editor de subclasse, o menu da opção ${where}`);
+    await m.keyboard.press('Escape');
+    await add.click();
+    await expect(m.getByRole('menuitem', { name: /Magia que conhece/ })).toBeVisible();
+    await expectScreenPasses(m, `Editor de subclasse, "Adicionar pré-requisito" aberto ${where}`);
+  } finally {
+    await Promise.all([master.close(), player.close()]);
+  }
+}
+
+test('a opção de uma característica que pede nível e opção passa no axe e nas conferências de layout no tema escuro, no tablet', { tag: ['@a11y', '@MR-025', '@RN-23'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanOptionAsks(browser, 'dark', 768);
+});
+
+test('a opção de uma característica que pede nível e opção passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-025', '@RN-23'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanOptionAsks(browser, 'light', 1280);
+});
+
+// The option rows of a subclass feature (#580, board 580-03): closed rows with a summary line and two arrows, one open at a time with the
+// accent frame on its head alone (the feature has the grey frame), its fields 36 px in, "Outras opções" offering the saved siblings
+// with their "Opção N", the hint that a new option waits for the save, and a refusal of the server on the field of the pick.
+async function scanOptionRows(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport: { width, height: 900 } });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport: { width, height: 900 } });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  try {
+    await Promise.all([m.goto('/'), p.goto('/')]);
+    const table = await optionRowsTable(m, p, `Acessibilidade linhas de opção ${Date.now()}`);
+    await open(m, entryRoute(table.campaignId, table.subclass));
+    await m.getByRole('button', { name: /Truques de lâmina/ }).first().click();
+    const rows = m.locator('section.options > [role="group"]');
+    await expect(rows).toHaveCount(5);
+    const toggle = (n: number) => rows.nth(n - 1).getByRole('button', { expanded: false }).or(rows.nth(n - 1).getByRole('button', { expanded: true })).first();
+    const colour = (css: string) => m.evaluate((c) => { const e = document.createElement('i'); e.style.color = c; document.body.append(e); const v = getComputedStyle(e).color; e.remove(); return v; }, css);
+    const accent = await colour('var(--mr-accent)');
+    const line = await colour('var(--mr-line)');
+
+    // Closed: one row each, a summary line, the arrows disabled at the ends, 12 px between rows.
+    for (let n = 1; n <= 5; n++) {
+      await expect(toggle(n), `a linha ${n} começa fechada ${where}`).toHaveAttribute('aria-expanded', 'false');
+    }
+    await expect(rows.nth(0)).toContainText('Opção 1 · Golpe do Corvo');
+    await expect(rows.nth(0)).toContainText('Soma o dado de manobra ao dano · não pede nada');
+    await expect(rows.nth(1)).toContainText('Soma o dado ao ataque · pede Guerreiro 7 e Golpe do Corvo');
+    await expect(rows.nth(2)).toContainText('pede Guerreiro 10');
+    await expect(m.getByRole('button', { name: 'Subir a opção Golpe do Corvo' })).toBeDisabled();
+    await expect(m.getByRole('button', { name: 'Descer a opção Grito do Bando' })).toBeDisabled();
+    await expect(m.getByRole('button', { name: 'Subir a opção Asa Partida' })).toBeEnabled();
+    await expect(m.getByRole('button', { name: 'Descer a opção Asa Partida' })).toBeEnabled();
+    const closed = await m.evaluate(() => {
+      const heads = [...document.querySelectorAll('section.options > [role="group"] .opt__head')].map((h) => h.getBoundingClientRect());
+      const arrow = document.querySelector('button[aria-label="Subir a opção Asa Partida"]')!.getBoundingClientRect();
+      const box = document.querySelector('app-class-features .item--open')!;
+      const style = getComputedStyle(box);
+      return { heights: heads.map((h) => h.height), gaps: heads.slice(1).map((h, i) => h.top - heads[i].bottom), arrow: [arrow.width, arrow.height], frame: style.borderTopColor, frameWidth: style.borderTopWidth, bg: style.backgroundColor, head: getComputedStyle(document.querySelector('.opt__head')!).backgroundColor };
+    });
+    for (const h of closed.heights) expect(h, `cada linha fechada tem de 56 a 60 px ${where}`).toBeGreaterThanOrEqual(56);
+    for (const h of closed.heights) expect(h).toBeLessThanOrEqual(60);
+    for (const g of closed.gaps) expect(g, `12 px entre as linhas ${where}`).toBeCloseTo(12, 0);
+    expect(closed.arrow[0], `as setas são os botões de ícone do sistema, de 40 px no mínimo ${where}`).toBeGreaterThanOrEqual(40);
+    expect(closed.arrow[1]).toBeGreaterThanOrEqual(40);
+    expect(closed.frame, `a característica aberta tem a moldura cinza, não a de destaque ${where}`).toBe(line);
+    expect(closed.frame).not.toBe(accent);
+    expect(closed.frameWidth).toBe('1px');
+    expect(closed.head, `a linha usa a cor da superfície, a característica a do fundo ${where}`).not.toBe(closed.bg);
+    await m.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+    await expectScreenPasses(m, `Editor de subclasse, as opções fechadas ${where}`);
+
+    // One open: the accent frame on its head alone, the fields 36 px in, the others closed.
+    await toggle(2).click();
+    await expect(toggle(2)).toHaveAttribute('aria-expanded', 'true');
+    await toggle(3).click();
+    await expect(toggle(2), `uma linha aberta por vez ${where}`).toHaveAttribute('aria-expanded', 'false');
+    await expect(toggle(3)).toHaveAttribute('aria-expanded', 'true');
+    await expect(toggle(3), 'o foco fica no botão da linha').toBeFocused();
+    const open3 = await m.evaluate(() => {
+      const box = document.querySelector('app-class-features .item--open')!;
+      const accentBorders = [...box.querySelectorAll('*')].filter((e) => { const s = getComputedStyle(e); return s.borderTopWidth !== '0px' && s.borderTopStyle !== 'none' && s.borderTopColor === getComputedStyle(document.querySelector('.opt--open .opt__head')!).borderTopColor; });
+      const head = document.querySelector('.opt--open .opt__head')!;
+      const body = document.querySelector('.opt--open .opt__body app-text-field')!;
+      const hs = getComputedStyle(head);
+      return { frame: [hs.borderTopColor, hs.borderTopWidth, hs.boxShadow], count: accentBorders.length, indent: body.getBoundingClientRect().left - head.getBoundingClientRect().left, bodyOutside: !head.contains(body) };
+    });
+    expect(open3.frame[0], `a linha aberta tem o contorno de destaque ${where}`).toBe(accent);
+    expect(open3.frame[2], 'com a segunda linha de 1 px por dentro (2 px no total)').toContain('inset');
+    expect(open3.count, `só a linha aberta tem o contorno de destaque ${where}`).toBe(1);
+    expect(open3.indent, `os campos entram 36 px, fora da moldura ${where}`).toBeCloseTo(36, 0);
+    expect(open3.bodyOutside).toBe(true);
+
+    // "Outras opções" offers the saved siblings with their place, never the option itself, and says a new option waits for the save.
+    const row3 = rows.nth(2);
+    await row3.getByRole('button', { name: 'Adicionar pré-requisito' }).click();
+    await m.getByRole('menuitem', { name: /Outras opções/ }).click();
+    // The add control is the board's "Adicionar opção" button; it opens the system's menu panel, each choice with its origin.
+    await row3.getByRole('button', { name: 'Adicionar opção' }).click();
+    const choices = m.getByRole('menuitem');
+    await expect(choices.filter({ hasText: 'Golpe do Corvo' }).filter({ hasText: 'Opção 1' })).toHaveCount(1);
+    await expect(choices.filter({ hasText: 'Asa Partida' }).filter({ hasText: 'Opção 2' })).toHaveCount(1);
+    await expect(choices.filter({ hasText: /^Bico de Ferro/ }), `nunca a própria opção ${where}`).toHaveCount(0);
+    await expect(m.locator('.pick-menu .mat-mdc-menu-item:not(:has(.mr-tag))'), `toda escolha leva a sua origem ${where}`).toHaveCount(0);
+    await expect(row3).toContainText('Nunca a própria opção.');
+    await expect(row3).not.toContainText('depois de salvar a característica');
+    await choices.filter({ hasText: 'Golpe do Corvo' }).click();
+    await expect(row3.locator('.pick__count'), `a contagem fica no fim da linha ${where}`).toHaveText('1 de 10');
+    await expect(row3.locator('app-pick-list .chip', { hasText: 'Golpe do Corvo' }).locator('.mr-tag')).toHaveText('Opção 1');
+    const chipGap = await row3.locator('app-pick-list .chip', { hasText: 'Golpe do Corvo' }).evaluate((chip) => {
+      const tag = chip.querySelector('.mr-tag')!;
+      const name = document.createRange();
+      name.selectNodeContents([...chip.childNodes].find((n) => n.nodeType === 3 && n.textContent!.includes('Golpe do Corvo'))!);
+      return tag.getBoundingClientRect().left - name.getBoundingClientRect().right;
+    });
+    expect(chipGap, `a etiqueta "Opção 1" não encosta no nome, 8 px de intervalo ${where}`).toBeGreaterThanOrEqual(7.5);
+    await m.getByRole('button', { name: 'Adicionar uma opção' }).click();
+    await expect(rows).toHaveCount(6);
+    await expect(toggle(6), 'a opção nova abre').toHaveAttribute('aria-expanded', 'true');
+    await expect(rows.nth(5).getByLabel('Nome da opção'), 'e leva o foco no nome').toBeFocused();
+    await toggle(3).click();
+    await expect(row3).toContainText('Uma opção nova só pode ser pedida depois de salvar a característica.');
+    await expect(row3).toContainText('Nunca a própria opção.');
+    await m.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+    await expectScreenPasses(m, `Editor de subclasse, "Outras opções" com a opção irmã ${where}`);
+
+    // "Como os jogadores veem": the open feature, with the muted "Pede" line of each option.
+    const side = m.getByRole('complementary', { name: 'Como os jogadores veem' });
+    await expect(side).toContainText('Truques de lâmina');
+    await expect(side).toContainText('3 de 5 opções');
+    await expect(side.getByText('Pede Guerreiro 7 e Golpe do Corvo.')).toBeVisible();
+    await expect(side.getByText('Pede Guerreiro 10 e Golpe do Corvo.'), 'o preview segue o que se digita').toBeVisible();
+    const asks = await side.locator('.asks').first().evaluate((el) => ({ color: getComputedStyle(el).color, text: getComputedStyle(el.parentElement!).color }));
+    expect(asks.color, `a linha "Pede" é apagada ${where}`).not.toBe(asks.text);
+
+    // The arrows move an option with its key, and the focus stays on the arrow.
+    await m.getByRole('button', { name: 'Descer a opção Golpe do Corvo' }).click();
+    await expect(rows.nth(0)).toContainText('Opção 1 · Asa Partida');
+    await expect(m.getByRole('button', { name: 'Descer a opção Golpe do Corvo' }), `o foco fica na seta ${where}`).toBeFocused();
+    await m.getByRole('button', { name: 'Subir a opção Golpe do Corvo' }).click();
+    await expect(rows.nth(0)).toContainText('Opção 1 · Golpe do Corvo');
+
+    // The server's refusal (two options waiting for each other) lands at the field of the pick, in an open row marked in its summary.
+    await toggle(6).click();
+    await m.getByRole('button', { name: 'Mais ações da opção 6' }).click();
+    await m.getByRole('menuitem', { name: 'Remover opção' }).click();
+    await expect(rows).toHaveCount(5);
+    await toggle(1).click();
+    await rows.nth(0).getByRole('button', { name: 'Adicionar pré-requisito' }).click();
+    await m.getByRole('menuitem', { name: /Outras opções/ }).click();
+    await rows.nth(0).getByRole('button', { name: 'Adicionar opção' }).click();
+    await m.getByRole('menuitem').filter({ hasText: 'Asa Partida' }).click();
+    await m.getByRole('button', { name: 'Salvar subclasse' }).click();
+    // The two options that wait for each other are marked, and no other: option 1 (asked Asa Partida) and option 2 (asks Golpe do Corvo).
+    const waiting = 'Esta opção e a que ela pede esperam uma pela outra: nenhuma das duas poderia ser escolhida. Tire um dos pedidos.';
+    await expect(rows.locator('.opt__bad'), `só as duas opções que esperam uma pela outra são marcadas ${where}`).toHaveCount(2);
+    await expect(rows.nth(0).locator('.opt__bad'), `a opção 1 é marcada ${where}`).toBeVisible();
+    await expect(rows.nth(1).locator('.opt__bad'), `a opção 2 é marcada ${where}`).toBeVisible();
+    for (const n of [3, 4, 5]) {
+      await expect(rows.nth(n - 1).locator('.opt__bad'), `a opção ${n} não é marcada ${where}`).toHaveCount(0);
+    }
+    // Layout of a refused row: the arrows and the "⋮" keep the width of the rows below, and the tag is a no-wrap item after the name on the
+    // title line, outside the summary, with no dot; the refused row has the danger border and tint.
+    const refusedLayout = await m.evaluate(() => {
+      const rowsEl = [...document.querySelectorAll('section.options > [role="group"]')];
+      const widths = rowsEl.map((r) => [...r.querySelectorAll('.opt__head > button.act')].map((b) => Math.round(b.getBoundingClientRect().width)));
+      const line = rowsEl[0].querySelector('.opt__line')!;
+      const name = line.querySelector('.opt__title')!.getBoundingClientRect();
+      const tag = line.querySelector('.opt__bad')!;
+      const t = tag.getBoundingClientRect();
+      return {
+        widths,
+        inSummary: !!rowsEl[0].querySelector('.opt__sub .opt__bad'),
+        dot: !!rowsEl[0].querySelector('.opt__dot'),
+        sameLine: Math.abs(t.top + t.height / 2 - (name.top + name.height / 2)) < 12,
+        gap: t.left - name.right,
+        noWrap: getComputedStyle(tag).whiteSpace,
+        border: getComputedStyle(rowsEl[0].querySelector('.opt__head')!).borderTopColor,
+        plain: getComputedStyle(rowsEl[2].querySelector('.opt__head')!).borderTopColor,
+      };
+    });
+    for (const w of refusedLayout.widths) expect(w, `as setas e o "⋮" têm o mesmo tamanho em todas as linhas ${where}`).toEqual(refusedLayout.widths[2]);
+    expect(refusedLayout.inSummary, `a marca fica fora do resumo ${where}`).toBe(false);
+    expect(refusedLayout.dot, `sem ponto ${where}`).toBe(false);
+    expect(refusedLayout.sameLine, `a marca fica na linha do nome ${where}`).toBe(true);
+    expect(refusedLayout.gap, `a marca não encosta no nome ${where}`).toBeGreaterThanOrEqual(7.5);
+    expect(refusedLayout.noWrap, `a marca não quebra ${where}`).toBe('nowrap');
+    expect(refusedLayout.border, `a linha recusada tem a borda de perigo ${where}`).not.toBe(refusedLayout.plain);
+    await expect(rows.nth(0), `a linha recusada leva a classe de recusa ${where}`).toHaveClass(/opt--bad/);
+    // The chip the refusal names (Asa Partida, which asks for this option in turn) is drawn flagged, and the sentence stands under the chips.
+    const flagged = rows.nth(0).locator('app-pick-list .chip[data-flagged]');
+    await expect(flagged, `o chip da recusa é marcado ${where}`).toHaveCount(1);
+    await expect(flagged).toContainText('Asa Partida');
+    await expect(flagged.locator('.mr-visually-hidden')).toHaveText(', com problema');
+    // The first row opens and says why at the field of the pick, in words; the generic sentence is gone.
+    await expect(toggle(1)).toHaveAttribute('aria-expanded', 'true');
+    const note = rows.nth(0).locator('app-ask-rows app-field-note').filter({ hasText: waiting });
+    await expect(note, `a recusa diz por quê, no campo de "Outras opções" ${where}`).toHaveCount(1);
+    await expect(rows.nth(0)).not.toContainText('Este valor não é aceito.');
+    // The arrows keep a refusal on the option it was about: Asa Partida (marked) goes down past the third option (not marked), the mark goes with it.
+    await expect(rows.nth(1)).toContainText('Opção 2 · Asa Partida');
+    await m.getByRole('button', { name: 'Descer a opção Asa Partida' }).click();
+    await expect(rows.nth(2), `a marca anda com a opção ${where}`).toContainText('Opção 3 · Asa Partida');
+    await expect(rows.nth(2).locator('.opt__bad')).toBeVisible();
+    await expect(rows.nth(1), `a opção que subiu não herda a marca ${where}`).not.toContainText('Precisa de ajuste');
+    await expect(rows.nth(0).locator('.opt__bad')).toBeVisible();
+    await expect(rows.locator('.opt__bad')).toHaveCount(2);
+    await m.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+    await expectScreenPasses(m, `Editor de subclasse, a recusa no campo de "Outras opções" ${where}`);
+  } finally {
+    await Promise.all([master.close(), player.close()]);
+  }
+}
+
+test('as opções de uma característica são linhas fechadas, uma aberta por vez, com irmãs em "Outras opções", no tema claro, no desktop', { tag: ['@a11y', '@MR-025', '@RN-23'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  await scanOptionRows(browser, 'light', 1280);
+});
+
+test('as opções de uma característica são linhas fechadas, uma aberta por vez, com irmãs em "Outras opções", no tema escuro, no tablet', { tag: ['@a11y', '@MR-025', '@RN-23'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  await scanOptionRows(browser, 'dark', 768);
+});
+
+// The weapons list of the sheet editor (#580, board 580-16, state 4): the table's group first with its book icon, a rule between the
+// two groups, "Do SRD" second, and the helper line under the field stays in sight above the open list.
+async function scanWeaponsList(browser: Browser, colorScheme: 'light' | 'dark', width: number, height?: number): Promise<void> {
+  const viewport = height === undefined ? sizeOf(width) : { width, height };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px${height === undefined ? '' : `, ${height}px de altura`})`;
+  try {
+    await Promise.all([m.goto('/'), p.goto('/')]);
+    const table = await tableForLevelUp(m, p, `Acessibilidade armas ${Date.now()}`, { build: levelUpToren, session: false, milestone: false });
+    await createEntryRPC(m, table.campaignId, 'tableWeapon', { namePt: 'Machado de Lenhador', category: 'WEAPON_CATEGORY_SIMPLE', damage: '1d6', damageType: 'damage-type:slashing', properties: [], weightOz: 80, priceCp: 700 });
+    await open(p, `/campaigns/${table.campaignId}/characters/${table.characterId}/edit`);
+    await p.getByRole('tab', { name: 'Equipamento' }).click();
+    const select = p.getByRole('combobox', { name: 'Armas', exact: true });
+    await select.scrollIntoViewIfNeeded();
+    await select.click();
+    await expect(p.getByRole('option', { name: /Machado de Lenhador/ })).toBeVisible();
+    // The panel is in the page, and visible, a few frames before the overlay places it (it is at the top of the window until then):
+    // measure once it stands under the helper line, which is where the list is placed.
+    await expect.poll(
+      () => p.evaluate(() => {
+        const hint = [...document.querySelectorAll('mat-hint')].find((h) => h.textContent?.includes('Escolha quantas quiser'))!;
+        return document.querySelector('.mr-weapons-panel')!.getBoundingClientRect().top - hint.getBoundingClientRect().bottom;
+      }),
+      { message: `a lista é posicionada abaixo da linha de ajuda ${where}`, timeout: 10_000 },
+    ).toBeGreaterThanOrEqual(0);
+    const list = await p.evaluate(() => {
+      const label = (g: Element) => g.querySelector('.mat-mdc-optgroup-label')!;
+      const groups = [...document.querySelectorAll('.mr-weapons-panel mat-optgroup')];
+      const hint = [...document.querySelectorAll('mat-hint')].find((h) => h.textContent?.includes('Escolha quantas quiser'))!;
+      const at = hint.getBoundingClientRect();
+      const top = document.elementFromPoint(at.left + at.width / 2, at.top + at.height / 2);
+      return {
+        labels: groups.map((g) => label(g).textContent!.replace(/menu_book/, '').replace(/\s+/g, ' ').trim()),
+        icons: groups.map((g) => label(g).querySelector('mat-icon')?.textContent?.trim() ?? ''),
+        rules: groups.map((g) => getComputedStyle(g, '::before').height),
+        iconBeforeText: (() => {
+          const icon = label(groups[0]).querySelector('mat-icon')!.getBoundingClientRect();
+          const range = document.createRange();
+          const words = [...label(groups[0]).querySelector('.mdc-list-item__primary-text')!.childNodes].find((n) => n.nodeType === Node.TEXT_NODE && n.textContent!.trim() !== '')!;
+          range.selectNodeContents(words);
+          return icon.right <= range.getBoundingClientRect().left;
+        })(),
+        hintCovered: !!top?.closest('.mr-weapons-panel'),
+        hintAbovePanel: document.querySelector('.mr-weapons-panel')!.getBoundingClientRect().top - at.bottom,
+      };
+    });
+    expect(list.labels, `a lista abre com o grupo da mesa e depois o do SRD ${where}`).toEqual(['Da mesa', 'Do SRD']);
+    expect(list.icons, `só o rótulo "Da mesa" tem o ícone de livro ${where}`).toEqual(['menu_book', '']);
+    expect(list.iconBeforeText, `o ícone vem antes do rótulo ${where}`).toBe(true);
+    expect(list.rules, `uma linha separa os dois grupos ${where}`).toEqual(['auto', '1px']);
+    expect(list.hintCovered, `a linha de ajuda do campo não fica atrás da lista ${where}`).toBe(false);
+    expect(list.hintAbovePanel, `a lista abre abaixo da linha de ajuda ${where}`).toBeGreaterThanOrEqual(0);
+    await expectScreenPasses(p, `Editar ficha, a lista de armas aberta ${where}`);
+  } finally {
+    await Promise.all([master.close(), player.close()]);
+  }
+}
+
+test('a lista de armas do editor, com o grupo da mesa, a linha entre os grupos e a ajuda à vista, passa no axe e nas conferências de layout no tema claro, no celular', { tag: ['@a11y', '@MR-025', '@MR-040'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanWeaponsList(browser, 'light', 390);
+});
+
+test('a lista de armas do editor, com o grupo da mesa, a linha entre os grupos e a ajuda à vista, passa no axe e nas conferências de layout no tema escuro, no tablet', { tag: ['@a11y', '@MR-025', '@MR-040'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanWeaponsList(browser, 'dark', 768);
+});
+
+// The list opens under the helper line whatever the height of the window and wherever the field stands in it: with little room
+// below the field the list is shorter and the field is brought to the middle, and the list never covers "Escolha quantas quiser.".
+for (const [scheme, width, label] of [['light', 390, 'no tema claro, no celular'], ['dark', 768, 'no tema escuro, no tablet'], ['light', 1280, 'no tema claro, no desktop']] as const) {
+  test(`a lista de armas do editor abre abaixo da linha de ajuda, também com a janela baixa, ${label}`, { tag: ['@a11y', '@MR-025', '@MR-040'] }, async ({ browser }) => {
+    test.setTimeout(240_000);
+    await scanWeaponsList(browser, scheme, width, 600);
+  });
+}
+
+// "A arma mudou." on the sheet of a character who carries the table's axe and a shield (#580, board 580-16, state 8): the master puts
+// "Duas mãos" on the axe, so the shield stands idle. The owner and the master read it in the changed-content notice, with the AC
+// before and after (the "after" is the number the sheet shows now), and "Pendências de regra" gets no new row. A change of damage
+// alone says nothing.
+async function issueRows(page: Page): Promise<number> {
+  return page.getByRole('note', { name: 'Pendências de regra' }).locator('li').count();
+}
+
+async function scanAxeTurnedTwoHanded(browser: Browser, colorScheme: 'light' | 'dark', width: number, reader: 'owner' | 'master' | 'locked-owner'): Promise<void> {
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport: sizeOf(width) });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport: sizeOf(width) });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${reader === 'master' ? 'mestre' : reader === 'owner' ? 'dono' : 'dono, ficha travada'}, ${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await Promise.all([m.goto('/'), p.goto('/')]);
+    const table = await axeAndShieldTable(m, p, `Acessibilidade arma de duas mãos ${Date.now()}`);
+    campaignId = table.campaignId;
+    // A table in play locks the owner's sheet: the master adjusts what the rules say, the owner still equips and stows.
+    if (reader === 'locked-owner') {
+      await startSessionRPC(m, table.campaignId);
+    }
+    const page = reader === 'master' ? m : p;
+    const route = `/campaigns/${table.campaignId}/characters/${table.characterId}`;
+    // The sheet fits the table as it stands: no notice, and the rows of "Pendências de regra" are the ones it already has.
+    await open(page, route);
+    await expect(page.getByText('A arma mudou.')).toHaveCount(0);
+    const rowsBefore = await issueRows(page);
+    // A change of damage alone is no change the sheet has to say.
+    await editAxe(m, table, 'damage');
+    await open(page, route);
+    await expect(page.getByText('A arma mudou.'), `a mudança só do dano não avisa ${where}`).toHaveCount(0);
+    await editAxe(m, table, 'two-handed');
+    await open(page, route);
+
+    const notice = page.locator('app-changed-content section.change');
+    await expect(notice).toHaveCount(1);
+    await expect(notice.locator('.change__text strong')).toHaveText('A arma mudou.');
+    await expect(notice.locator('.change__text')).toContainText(`O mestre mudou a arma ${AXE_NAME} em `);
+    await expect(notice.locator('.change__text')).toContainText('Os números da ficha já usam as regras novas. O que não combina mais:');
+    const sentence = await notice.locator('li').innerText();
+    const ac = /^A arma Machado de Lenhador passou a exigir as duas mãos\. Com ela em uso, o escudo de Toren não conta na CA \(CA[\s\u00a0](\d+)[\s\u00a0]→[\s\u00a0](\d+)\)\.$/.exec(sentence);
+    expect(ac, `a frase do quadro, lida: "${sentence}" ${where}`).not.toBeNull();
+    const [withShield, withoutShield] = [Number(ac![1]), Number(ac![2])];
+    expect(withShield - withoutShield, `o escudo vale 2 de CA ${where}`).toBe(2);
+    await expect(page.locator('.shield__number'), `a CA da ficha é a de depois ${where}`).toHaveText(String(withoutShield));
+    // Not a pending issue: the rows of "Pendências de regra" are the same as before the edit.
+    expect(await issueRows(page), `"Pendências de regra" não ganha linha ${where}`).toBe(rowsBefore);
+    await expect(page.getByRole('note', { name: 'Pendências de regra' }).getByText(/duas mãos|escudo/)).toHaveCount(0);
+
+    // The board's rhythm: 8 px between the lines, the sentence and the button.
+    const gaps = await notice.evaluate((el) => {
+      const top = (n: Element) => n.getBoundingClientRect().top;
+      const bottom = (n: Element) => n.getBoundingClientRect().bottom;
+      const text = el.querySelector('.change__text')!;
+      const list = el.querySelector('ul')!;
+      const button = el.querySelector('button')!;
+      return { textToList: top(list) - bottom(text), listToButton: top(button) - bottom(list), buttonHeight: button.getBoundingClientRect().height };
+    });
+    expect(gaps.textToList, `8 px entre a frase e a lista ${where}`).toBe(8);
+    expect(gaps.listToButton, `8 px entre a lista e o botão ${where}`).toBe(8);
+    expect(gaps.buttonHeight, `o botão tem 44 px ${where}`).toBe(44);
+    await expectScreenPasses(page, `Ficha com "A arma mudou." ${where}`);
+
+    // "Ver o que mudou" says the same sentence, who adjusts and when the notice goes.
+    await notice.getByRole('button', { name: 'Ver o que mudou' }).click();
+    const sheet = page.locator('app-changed-content-sheet');
+    await expect(sheet.getByRole('heading', { name: `O que mudou: ${AXE_NAME}` })).toBeVisible();
+    await expect(sheet.locator('li').first()).toHaveText(sentence);
+    // The shield notice is about gear: the sheet's owner stows the shield or the weapon, locked sheet or not, and the notice ends then.
+    await expect(sheet.locator('.sheet__who'), `quem ajusta e quando o aviso some ${where}`).toHaveText(
+      'Quem ajusta: o dono da ficha, guardando o escudo ou a arma. O aviso some quando um dos dois deixa de estar em uso.',
+    );
+    await expect(sheet).not.toContainText('o mestre, na ficha');
+    await expect(sheet).not.toContainText('voltam a combinar');
+    await expectScreenPasses(page, `O que mudou na arma ${where}`);
+    await sheet.locator('.sheet__action').click();
+    await expect(sheet).toHaveCount(0);
+    if (reader === 'locked-owner') {
+      await expect(page.getByText('Travada: equipar e guardar continuam valendo'), `a ficha do dono está travada ${where}`).toBeVisible();
+    }
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId).catch(() => undefined);
+    }
+    await Promise.all([master.close(), player.close()]);
+  }
+}
+
+test('a ficha com "A arma mudou." porque o mestre pôs "Duas mãos" no machado, que o dono lê com a CA de antes e de depois, passa no axe e nas conferências de layout no tema claro, no celular', { tag: ['@a11y', '@MR-025', '@MR-040', '@RN-23'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanAxeTurnedTwoHanded(browser, 'light', 390, 'owner');
+});
+
+test('a ficha com "A arma mudou." porque o mestre pôs "Duas mãos" no machado, que o dono lê com a CA de antes e de depois, passa no axe e nas conferências de layout no tema escuro, no tablet', { tag: ['@a11y', '@MR-025', '@MR-040', '@RN-23'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanAxeTurnedTwoHanded(browser, 'dark', 768, 'owner');
+});
+
+test('a ficha travada com "A arma mudou." diz ao dono, em "Ver o que mudou", que ele guarda o escudo ou a arma, no tema claro, no tablet', { tag: ['@a11y', '@MR-025', '@MR-040', '@RN-23'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanAxeTurnedTwoHanded(browser, 'light', 768, 'locked-owner');
+});
+
+test('a ficha travada com "A arma mudou." diz ao dono, em "Ver o que mudou", que ele guarda o escudo ou a arma, no tema escuro, no celular', { tag: ['@a11y', '@MR-025', '@MR-040', '@RN-23'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanAxeTurnedTwoHanded(browser, 'dark', 390, 'locked-owner');
+});
+
+test('a ficha com "A arma mudou." que o mestre lê na ficha do jogador passa no axe e nas conferências de layout no tema escuro, no desktop', { tag: ['@a11y', '@MR-025', '@MR-040', '@RN-23'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanAxeTurnedTwoHanded(browser, 'dark', 1280, 'master');
+});

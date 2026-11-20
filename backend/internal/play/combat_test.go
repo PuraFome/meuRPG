@@ -14,6 +14,7 @@ import (
 	campaignsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/campaigns/v1"
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/play/infusion"
 )
 
 // The combat (MR-013): the encounter, who fights, the
@@ -1182,9 +1183,10 @@ func TestSessionEventKindsMatchTheTable(t *testing.T) {
 		eventSpellCastOutside, eventSpellCastStarted, eventSpellCastFinished, eventSpellCastInterrupted, eventSpellCastEnded,
 		eventLastingAdded, eventLastingChanged, eventLastingEnded, eventLastingVisibility, eventLastingSaved, eventLastingTriggered, eventExhaustion, eventGameTimeAdvanced, eventFreeRoll,
 		eventZoneTriggered, eventZoneMoved, eventLegendarySpent, eventRechargeRolled, eventMonsterReactionSet, eventSunlightSet, eventGearSwapped, eventFeatureUsed, eventFavorGranted, eventFavorSpent, eventFavorPassed,
-		eventItemChargeSpent, eventItemChargesRestored, eventItemDestroyed, eventDawnTaken, eventAmmunitionSpent, eventAmmunitionRecovered,
+		eventItemChargeSpent, eventItemChargesRestored, eventItemDestroyed, eventDawnTaken, eventAmmunitionSpent, eventAmmunitionRecovered, eventConsumableUsed,
 		eventActionReadied, eventReadiedFired, eventReadiedLost,
 		eventNpcCheckHeld, eventNpcCheckResolved,
+		infusion.KindInfused, infusion.KindMoved, infusion.KindEnded,
 	}
 	rows, err := h.pool.Query(t.Context(), `SELECT kind FROM session_event_kinds`)
 	if err != nil {

@@ -247,6 +247,19 @@ var reads = []read{
 			return &charactersv1.GetSummonOptionsRequest{CampaignId: w.campaign, CharacterId: w.pens.GetId()}
 		},
 	},
+	{
+		procedure: charactersv1connect.InfusionServiceListCharacterInfusionsProcedure, label: "Ana's character", allow: onlyAna,
+		req: func(w *world) proto.Message {
+			return &charactersv1.ListCharacterInfusionsRequest{CampaignId: w.campaign, CharacterId: w.pens.GetId()}
+		},
+	},
+	{
+		procedure: charactersv1connect.InfusionServiceListInfusionTargetsProcedure, label: "Ana's character", allow: onlyAna,
+		why: "a key that is no infusion lists no piece, so the answer holds nothing: the owner and the master get the empty list, the others the not_found of a character they cannot read",
+		req: func(w *world) proto.Message {
+			return &charactersv1.ListInfusionTargetsRequest{CampaignId: w.campaign, CharacterId: w.pens.GetId(), InfusionKey: "feature:no-such-infusion", HolderCharacterId: w.pens.GetId()}
+		},
+	},
 
 	// ===== ContentService (the rules: public SRD data plus the table's own content)
 	{
@@ -521,6 +534,27 @@ var reads = []read{
 		procedure: playv1connect.CastingServiceGetCastOptionsProcedure, label: "the hidden NPC", allow: masterOnlyRead, why: "an NPC is cast for by the master alone, and a player never learns it exists",
 		req: func(w *world) proto.Message {
 			return &playv1.GetCastOptionsRequest{CampaignId: w.campaign, CharacterId: w.casterNPC.GetId()}
+		},
+	},
+
+	// ===== ChargesService
+	{
+		procedure: playv1connect.ChargesServiceListConsumableTargetsProcedure, label: "Toren's potion", allow: onlyCaio, why: "the list is the one the character's player gets: a player's character next to Toren, and no other creature, the one the master hid next to him included",
+		req: func(w *world) proto.Message {
+			return &playv1.ListConsumableTargetsRequest{CampaignId: w.campaign, CharacterId: w.toren.GetId(), EntryId: w.withPotions().torenPotion}
+		},
+	},
+	{
+		procedure: playv1connect.ChargesServiceListConsumableTargetsProcedure, label: "Toren's scroll, Pensantus with three failed death saves", allow: onlyCaio, why: "a consumable that is no potion has no reach and no state: the party, and a player reads no more of the creature than the word of the order of the combat",
+		req: func(w *world) proto.Message {
+			w.withPotions().withThreeFailedSaves()
+			return &playv1.ListConsumableTargetsRequest{CampaignId: w.campaign, CharacterId: w.toren.GetId(), EntryId: w.torenScroll}
+		},
+	},
+	{
+		procedure: playv1connect.ChargesServiceListConsumableTargetsProcedure, label: "Pensantus's potion", allow: onlyAna, why: "Ana's character is down: she may still hold the potion and read who is within reach",
+		req: func(w *world) proto.Message {
+			return &playv1.ListConsumableTargetsRequest{CampaignId: w.campaign, CharacterId: w.pens.GetId(), EntryId: w.withPotions().pensPotion}
 		},
 	},
 

@@ -1,9 +1,10 @@
-import type { MessageInitShape } from '@bufbuild/protobuf';
+import { create, type MessageInitShape } from '@bufbuild/protobuf';
 
 import {
   type TableBackground,
   TableBackgroundSchema,
   type TableFeature,
+  OptionPrerequisiteSchema,
   TableFeatureSchema,
   type TableRace,
   TableRaceSchema,
@@ -21,6 +22,7 @@ import {
   rangeMeters,
   unreadableNumberPaths,
 } from './effect-draft';
+import type { Asks } from './asks';
 import { effectInputPaths } from './effect-input-paths';
 import { paragraphs } from './spell-draft';
 import {
@@ -64,6 +66,17 @@ export interface FeatureDraft {
    * no field for it yet, and saving the feature must not drop it. Unset for anything else.
    */
   prerequisite?: TableFeature['prerequisite'];
+  /**
+   * The class levels at which the options of a class or subclass feature may be swapped at a level-up (#715), kept as the
+   * server wrote it: it is pack-only, the editor draws no control for it, and saving the feature must not drop it.
+   */
+  swapLevels?: TableFeature['swapLevels'];
+  /**
+   * The infusion data of an option of a feature that has an infusion rule, and the rule on the feature that has the options: the
+   * editor draws no field for either, so each is kept as the server wrote it and saving the feature must not drop it.
+   */
+  infusion?: TableFeature['infusion'];
+  infusionRule?: TableFeature['infusionRule'];
 }
 
 export function emptyFeature(): FeatureDraft {
@@ -89,6 +102,9 @@ export function featureToDraft(f: TableFeature): FeatureDraft {
     options: f.options.map(featureToDraft),
     summon: f.summon ? summonToDraft(f.summon) : null,
     ...(f.prerequisite ? { prerequisite: f.prerequisite } : {}),
+    ...(f.swapLevels ? { swapLevels: f.swapLevels } : {}),
+    ...(f.infusion ? { infusion: f.infusion } : {}),
+    ...(f.infusionRule ? { infusionRule: f.infusionRule } : {}),
   };
 }
 
@@ -103,6 +119,9 @@ export function draftToFeature(f: FeatureDraft, menu: EffectMenuVm): FeatureInit
     ...optionsOf(f, menu),
     ...(f.summon ? { summon: draftToSummon(f.summon) } : {}),
     ...(f.prerequisite ? { prerequisite: f.prerequisite } : {}),
+    ...(f.swapLevels ? { swapLevels: f.swapLevels } : {}),
+    ...(f.infusion ? { infusion: f.infusion } : {}),
+    ...(f.infusionRule ? { infusionRule: f.infusionRule } : {}),
     effects: f.effects.map((e) => {
       const effect = draftToEffect(e, menu);
       // A note's own text is the reminder the sheet shows, and it says what the trait says: left empty (folded under
@@ -340,11 +359,36 @@ export function draftToBackground(d: BackgroundDraft, menu: EffectMenuVm): Backg
   };
 }
 
+/** The fields of "O que a opção pede" of an option row at `base`: a refusal lands on its field (a pick of "Outras opções" has none of its own). */
+function askPaths(base: string): string[] {
+  return [
+    `${base}.prerequisite`,
+    ...[
+      'class_level',
+      'class_level.class_key',
+      'class_level.level',
+      'requires_pact',
+      'requires_spell_key',
+      'requires_option_keys',
+    ].map((field) => `${base}.prerequisite.${field}`),
+  ];
+}
+
+/** Every path an option row at `base` draws: what it asks and its own fields. A refusal on any of them is the row's. */
+export function optionRowPaths(base: string, o: FeatureDraft, menu: EffectMenuVm): string[] {
+  return [...askPaths(base), ...featureOwnPaths(base, o, menu)];
+}
+
 /** The paths of the inputs one feature draws, at `base` ("table_class.levels[4].features[0]"): the feature, its name and text and, for
  * each effect, its type and the fields the menu says that type reads. */
 export function featureOwnPaths(base: string, f: FeatureDraft, menu: EffectMenuVm): string[] {
   const out: string[] = [base, `${base}.name_pt`, `${base}.desc_pt`];
-  f.options.forEach((o, k) => out.push(...featureOwnPaths(`${base}.options[${k}]`, o, menu)));
+  f.options.forEach((o, k) => {
+    out.push(
+      ...askPaths(`${base}.options[${k}]`),
+      ...featureOwnPaths(`${base}.options[${k}]`, o, menu),
+    );
+  });
   if (f.summon) {
     out.push(...summonPaths(base));
   }
@@ -389,4 +433,43 @@ export function optionsInit(
 
 function optionsOf(f: FeatureDraft, menu: EffectMenuVm): { options?: FeatureInit[] } {
   return optionsInit(f.options, menu);
+}
+
+/** The five values an option row of a feature asks (board 580-03), out of the prerequisite the draft keeps. */
+export function featureAsks(f: FeatureDraft): Asks {
+  const p = f.prerequisite;
+  return {
+    classKey: p?.classLevel?.classKey ?? '',
+    classLevel: p?.classLevel && p.classLevel.level > 0 ? String(p.classLevel.level) : '',
+    requiresPact: p?.requiresPact ?? '',
+    requiresSpell: p?.requiresSpellKey ?? '',
+    requiresOptions: [...(p?.requiresOptionKeys ?? [])],
+  };
+}
+
+/** The feature with some of its asks changed; with every one cleared it has no prerequisite at all (the server reads that as none). */
+export function withAsks(f: FeatureDraft, change: Partial<Asks>): FeatureDraft {
+  const a = { ...featureAsks(f), ...change };
+  const level = a.classLevel.trim();
+  const empty =
+    a.classKey === '' &&
+    level === '' &&
+    a.requiresPact === '' &&
+    a.requiresSpell === '' &&
+    a.requiresOptions.length === 0;
+  const { prerequisite: _gone, ...rest } = f;
+  void _gone;
+  return empty
+    ? rest
+    : {
+        ...rest,
+        prerequisite: create(OptionPrerequisiteSchema, {
+          ...(a.classKey !== '' || level !== ''
+            ? { classLevel: { classKey: a.classKey, level: level === '' ? 0 : Number(level) } }
+            : {}),
+          requiresOptionKeys: [...a.requiresOptions],
+          requiresPact: a.requiresPact,
+          requiresSpellKey: a.requiresSpell,
+        }),
+      };
 }

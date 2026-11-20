@@ -97,10 +97,11 @@ var changedKinds = map[string]string{
 // after the sheet was last saved and that has issues it did not have then.
 const IssueTableContentChanged = "table_content_changed"
 
-// issueID is an issue by its whole identity: the code, the field and the exact
+// issueID is an issue by its whole identity (rules.Issue.ID): the code, the field and the exact
 // sentence ("Faltam 1 perícias" that becomes "Há 3 perícias; escolhe 2" is another
-// issue, and two formula issues on different features do not collide).
-func issueID(is rules.Issue) string { return is.Code + "|" + is.Field + "|" + is.Message }
+// issue, and two formula issues on different features do not collide); for a lost prerequisite
+// the code, the list its pick is in and the entry's key.
+func issueID(is rules.Issue) string { return is.ID() }
 
 // issueIDs is a set of issues as the sheet stores it: sorted, no repeats.
 func issueIDs(issues []rules.Issue) []string {
@@ -134,12 +135,12 @@ func flags(content *rules.Content, full *charactersv1.FullSheet, build rules.Bui
 	if len(changed) == 0 {
 		return nil
 	}
-	known := full.GetKnownIssues()
+	known := rules.KnownIssues(full.GetKnownIssues(), issues)
 	var out []flag
 	for _, ch := range changed {
 		f := flag{entry: ch}
-		for _, is := range issues {
-			if slices.Contains(is.Keys, ch.Key) && !slices.Contains(known, issueID(is)) {
+		for i, is := range issues {
+			if slices.Contains(is.Keys, ch.Key) && !known[i] && told(content, is, ch.Key, ch.Since) {
 				f.issues = append(f.issues, is)
 			}
 		}
@@ -150,13 +151,32 @@ func flags(content *rules.Content, full *charactersv1.FullSheet, build rules.Bui
 	return out
 }
 
+// told says the issue is one to tell for the changed table entry key, which the sheet fits as of revision since. All are but
+// the notice that a weapon leaves the shield idle: that one only when the weapon became two-handed after since, so a sheet
+// that already had the weapon as it is (saved before the notice existed, with no identity stored) is told nothing when the
+// weapon is edited for anything else.
+func told(content *rules.Content, is rules.Issue, key string, since int) bool {
+	return is.Idle == nil || content.TwoHandedSince(key) > since
+}
+
+// sinceOf is the revision of the table's content the sheet fits key as of: the baseline it keeps for the entry, or the
+// revision it was saved at.
+func sinceOf(full *charactersv1.FullSheet, key string) int {
+	if r, ok := full.GetContentBaselines()[key]; ok {
+		return int(r)
+	}
+	return int(full.GetContentRevision())
+}
+
 // issuesTiedTo are the new issues of a sheet (not in its known issues) that depend
 // on a table entry: what a change of the entry just did to it, for the master's
 // "Fichas com aviso".
 func issuesTiedTo(content *rules.Content, full *charactersv1.FullSheet, key string) []rules.Issue {
 	var out []rules.Issue
-	for _, is := range rules.Derive(buildOf(full), content).Issues {
-		if slices.Contains(is.Keys, key) && !slices.Contains(full.GetKnownIssues(), issueID(is)) {
+	issues := rules.Derive(buildOf(full), content).AllIssues()
+	known := rules.KnownIssues(full.GetKnownIssues(), issues)
+	for i, is := range issues {
+		if slices.Contains(is.Keys, key) && !known[i] && told(content, is, key, sinceOf(full, key)) {
 			out = append(out, is)
 		}
 	}
@@ -175,7 +195,7 @@ func carryFlags(content *rules.Content, stored, next *charactersv1.FullSheet) {
 		return
 	}
 	nextBuild := buildOf(next)
-	issues := rules.Derive(nextBuild, content).Issues
+	issues := rules.Derive(nextBuild, content).AllIssues()
 	// The flags are worked out against what stored knew, with next's own build and issues.
 	fl := flags(content, stored, nextBuild, issues)
 	if len(fl) == 0 {
@@ -202,24 +222,69 @@ func carryFlags(content *rules.Content, stored, next *charactersv1.FullSheet) {
 // away by itself when none remains. A save does not clear it either (carryFlags).
 // It is never a Validate error, so it blocks nothing. issues are what Derive found
 // (with their keys); d is the same, as the message.
-func addChangedContent(d *rulesv1.DerivedSheet, issues []rules.Issue, content *rules.Content, build rules.Build, full *charactersv1.FullSheet) {
+func addChangedContent(d *rulesv1.DerivedSheet, issues []rules.Issue, content *rules.Content, build rules.Build, full *charactersv1.FullSheet, r reader) {
 	for _, f := range flags(content, full, build, issues) {
 		name := content.NamePT(f.entry.Key)
-		var messages []string
+		var messages, codes []string
 		for _, is := range f.issues {
+			codes = append(codes, is.Code)
 			// The sentence as a change reads it ("agora dá 2 perícias"), when the
 			// engine has one for this issue; otherwise the issue's own.
+			if is.Lost != nil || is.Idle != nil {
+				messages = append(messages, r.say(is))
+				continue
+			}
 			messages = append(messages, changeSentence(is, f.entry.Key, name))
 		}
 		d.ChangedContent = append(d.ChangedContent, &rulesv1.ChangedContent{
 			Key: f.entry.Key, NamePt: name, Field: f.entry.Field, Revision: i32(f.entry.Revision), SavedRevision: i32(f.entry.Since),
-			ChangedAt: timestampOf(f.entry.ChangedAt), Messages: messages,
+			ChangedAt: timestampOf(f.entry.ChangedAt), Messages: messages, Codes: codes,
 		})
 		d.Issues = append(d.Issues, &rulesv1.Issue{
 			Code: IssueTableContentChanged, Field: f.entry.Field,
 			Message: changedKinds[keyKind(f.entry.Key)] + " " + name + " mudou: a ficha ficou com avisos que não tinha. Os números já usam as regras novas.",
 		})
 	}
+}
+
+// reader is who reads a sheet's issues: the sentence of a lost prerequisite names the character and, for the
+// campaign's master alone, a condition on an entry the players may not read (board 580-05, RN-23). It is built on
+// each read; the sheet stores no sentence of it, only the issue's identity (known issues).
+type reader struct {
+	name   string
+	master bool
+}
+
+// say is the issue's sentence for the reader: a lost prerequisite and a notice are built for the reader, the master reads
+// an issue's named sentence, any other is as stored.
+func (r reader) say(is rules.Issue) string {
+	switch {
+	case is.Lost != nil:
+		return is.Lost.SentencePT(r.name, r.master)
+	case is.Idle != nil:
+		return is.Idle.SentencePT(r.name)
+	case is.Named != "" && r.master:
+		return is.Named
+	}
+	return is.Message
+}
+
+// tell rewrites, in the sheet's derived issues (made from issues, in its order), the message of each lost
+// prerequisite to the reader's sentence. issues are Derived.Issues alone: the notices (Derived.Notices) are no part of
+// the derived sheet's issues, so the two lists stay aligned.
+func (r reader) tell(d *rulesv1.DerivedSheet, issues []rules.Issue) {
+	for i, is := range issues {
+		if (is.Lost != nil || is.Named != "") && i < len(d.GetIssues()) {
+			d.Issues[i].Message = r.say(is)
+		}
+	}
+}
+
+// derived is the DerivedSheet of d as the reader gets it: each lost prerequisite in the reader's sentence.
+func (r reader) derived(d rules.Derived) *rulesv1.DerivedSheet {
+	out := derivedToProto(d)
+	r.tell(out, d.Issues)
+	return out
 }
 
 // changeSentence is how "A classe mudou" tells an issue: the sentence of the
@@ -264,18 +329,31 @@ func callerKeys(ctx context.Context, q *charactersdb.Queries, m authz.Membership
 		if err != nil {
 			return nil, err
 		}
-		if full := sheet.GetFull(); full != nil {
-			b := buildOf(full)
-			for _, kf := range rules.BuildKeys(b) {
-				out[kf.Key] = true
-			}
-			// A table class feature is no key of the build: the sheet has it through its class and level.
-			for _, kf := range content.ClassFeatureKeys(b) {
-				out[kf.Key] = true
-			}
+		for _, k := range sheetContentKeys(content, sheet) {
+			out[k] = true
 		}
 	}
 	return out, nil
+}
+
+// sheetContentKeys are the content keys a sheet uses. A table class feature is no key of the build: the sheet has it
+// through its class and level, unless the master switched it off, and then the sheet no longer has it.
+func sheetContentKeys(content *rules.Content, sheet *charactersv1.CharacterSheet) []string {
+	full := sheet.GetFull()
+	if full == nil {
+		return nil
+	}
+	b := buildOf(full)
+	var keys []string
+	for _, kf := range rules.BuildKeys(b) {
+		keys = append(keys, kf.Key)
+	}
+	for _, kf := range content.ClassFeatureKeys(b) {
+		if !content.Off(kf.Key) {
+			keys = append(keys, kf.Key)
+		}
+	}
+	return keys
 }
 
 // callerUses says whether one of the caller's own characters uses the key.

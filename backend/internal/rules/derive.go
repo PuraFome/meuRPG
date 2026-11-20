@@ -62,6 +62,8 @@ type deriver struct {
 	// inactiveFeats are the feats the character took and no longer meets the prerequisite
 	// of: the sheet lists them but their effects do not apply.
 	inactiveFeats map[string]bool
+	// lost are those feats and the options lost the same way, with what each lacks.
+	lost map[string]*LostPrerequisite
 
 	env *formula.Env
 	// activeKeys are the keys of the states that are on (Build.ActiveStates that a state effect
@@ -77,6 +79,16 @@ type deriver struct {
 	// appliedTagged are the tagged modifiers the engine applied to an attack, so
 	// no Hint repeats them.
 	appliedTagged map[*Effect]bool
+
+	// original is the Build as it came, before equip (infusion.go); lines are its infusion records read against the
+	// content. infused names the gear key of each valid gear record, bonusFrom holds the ones that became an item bonus,
+	// and foci are the valid spell focus records: focusBonus is the best one that counts.
+	original   Build
+	lines      []infusionLine
+	infused    map[string]infusionLine
+	bonusFrom  map[string]infusionLine
+	foci       []infusionLine
+	focusBonus int
 }
 
 type ownedClass struct {
@@ -97,32 +109,89 @@ type activeEffect struct {
 }
 
 func derive(b Build, c *content) Derived {
-	d := deriveWith(b, c, nil)
-	if len(b.Feats) == 0 && len(b.FeatureChoices) == 0 {
-		return d
-	}
-	// A character that loses a feat's prerequisite cannot use the feat until it has the
-	// prerequisite again (SRD 5.1, Feats). What the character has is judged with the
-	// feats in place, and the sheet is made again without the ones that no longer fit.
-	lost := c.lostFeats(b, d)
-	for k := range c.lostOptions(b, d) {
-		if lost == nil {
-			lost = map[string]bool{}
-		}
-		lost[k] = true
-	}
-	if len(lost) == 0 {
-		return d
-	}
-	return deriveWith(b, c, lost)
+	d, _ := deriveRounds(b, c)
+	d.Notices = c.shieldIdleNotices(b, d)
+	return d
 }
 
-// deriveWith is derive with the feats in inactive (by key) listed but not applied.
-func deriveWith(b Build, c *content, inactive map[string]bool) Derived {
-	d := &Derived{ContentVersion: c.version}
-	x := &deriver{b: b, c: c, d: d, proficient: map[string]bool{}, conditions: map[*Effect]bool{}, appliedTagged: map[*Effect]bool{}, inactiveFeats: inactive}
+// deriveRounds is derive and the number of times it made the sheet: one for a sheet that loses nothing, and one more
+// for each pass that finds an entry lost.
+//
+// A character that loses a feat's prerequisite cannot use the feat until it has the prerequisite again (SRD 5.1,
+// Feats), and the same holds for an option. What the character has is judged with everything in place, and the sheet is
+// made again without the entries that no longer fit; the entries judged over that sheet may fit no more either (the
+// feat that gave the Strength another asks), so the judgement is repeated until nothing new is lost. An entry once lost
+// stays lost, so each pass loses at least one of the entries the sheet has and the repeat ends.
+func deriveRounds(b Build, c *content) (Derived, int) {
+	d, lost, rounds := c.settleLost(b)
+	if len(lost) == 0 {
+		return d, rounds
+	}
+	// What the character has is said over the sheet as it ends up, without the lost entries: the numbers the reader sees.
+	for i, is := range d.Issues {
+		if is.Lost != nil {
+			d.Issues[i].Lost = c.retold(is.Lost, b, d)
+			d.Issues[i].Message = d.Issues[i].Lost.SentencePT("", false)
+		}
+	}
+	return d, rounds
+}
 
+// settleLost makes the sheet of b without the feats and options whose prerequisite it no longer meets, repeating the
+// judgement until nothing new is lost. It returns that sheet, the lost entries by key, and the number of times it made
+// the sheet. A character without feats or picks loses nothing.
+func (c *content) settleLost(b Build) (Derived, map[string]*LostPrerequisite, int) {
+	d := deriveWith(b, c, nil)
+	if len(b.Feats) == 0 && len(b.FeatureChoices) == 0 {
+		return d, nil, 1
+	}
+	var lost map[string]*LostPrerequisite
+	rounds := 1
+	for range len(b.Feats) + len(b.FeatureChoices) + len(c.pickedChoiceFeats(b, ownedBy(b, d))) {
+		if !c.addNewlyLost(&lost, b, d) {
+			break
+		}
+		d = deriveWith(b, c, lost)
+		rounds++
+	}
+	return d, lost, rounds
+}
+
+// addNewlyLost judges the feats and the options of b over the sheet d and adds to *lost the ones not in it yet, each
+// with what it lacks on d. It says whether it added any.
+func (c *content) addNewlyLost(lost *map[string]*LostPrerequisite, b Build, d Derived) bool {
+	added := false
+	for _, judged := range []map[string]*LostPrerequisite{c.lostFeats(b, d), c.lostOptions(b, d)} {
+		for k, l := range judged {
+			if _, ok := (*lost)[k]; ok {
+				continue
+			}
+			if *lost == nil {
+				*lost = map[string]*LostPrerequisite{}
+			}
+			(*lost)[k] = l
+			added = true
+		}
+	}
+	return added
+}
+
+// deriveWith is derive with the feats and options in lost (by key) listed but not applied; each is told with what
+// it lacks as the sheet with them in place had it.
+func deriveWith(b Build, c *content, lost map[string]*LostPrerequisite) Derived {
+	d := &Derived{ContentVersion: c.version}
+	var inactive map[string]bool
+	for k := range lost {
+		if inactive == nil {
+			inactive = map[string]bool{}
+		}
+		inactive[k] = true
+	}
+	x := &deriver{b: b, c: c, d: d, proficient: map[string]bool{}, conditions: map[*Effect]bool{}, appliedTagged: map[*Effect]bool{}, inactiveFeats: inactive, lost: lost}
+
+	x.original, x.lines = b, c.infusionLines(b, true, lost)
 	x.equip()
+	x.applyInfusions()
 	x.resolve()
 	x.resolveArmor()
 	x.names()
@@ -144,6 +213,7 @@ func deriveWith(b Build, c *content, inactive map[string]bool) Derived {
 	x.rangedAttacks()
 	x.attacks()
 	x.itemModifiers()
+	x.infusionStatuses()
 	x.resourcesAndActions()
 	x.effectHints()
 	x.choiceEffects()
@@ -179,6 +249,12 @@ func (x *deriver) dropReplacedTiers() {
 // issue records a problem on the sheet.
 func (x *deriver) issue(code, field, format string, args ...any) {
 	x.d.Issues = append(x.d.Issues, Issue{Code: code, Field: field, Message: fmt.Sprintf(format, args...), Keys: x.issueKeys(code, field)})
+}
+
+// lostIssue records the issue of a lost feat or option: its Message names nobody and no hidden entry, and Issue.Lost
+// tells the sentence to each reader.
+func (x *deriver) lostIssue(code, field string, l *LostPrerequisite) {
+	x.d.Issues = append(x.d.Issues, Issue{Code: code, Field: field, Message: l.SentencePT("", false), Keys: x.issueKeys(code, field), Lost: l})
 }
 
 // issueChange records an issue and, when it is tied to a table entry, the
@@ -518,7 +594,7 @@ func (col *collector) feature(key, name, source string, level int, desc []string
 	x := col.x
 	x.d.Features = append(x.d.Features, Feature{
 		Key: key, Name: name, NamePT: x.c.namePT(key), Source: source, Level: level,
-		SourcePT: x.sourcePT(source, level), Description: desc, SummaryPT: x.optionSummary(key),
+		SourcePT: x.sourcePT(source, level), Description: x.c.withSwapLine(key, source, level, desc), SummaryPT: x.optionSummary(key),
 	}.withTextPT(x.c))
 }
 
@@ -662,7 +738,7 @@ func (col *collector) feats() {
 			continue
 		}
 		if x.inactiveFeats[key] {
-			x.issue(IssueFeatPrerequisite, fmt.Sprintf("full.feat_keys[%d]", i), "O personagem não cumpre mais o pré-requisito de %s: o talento só vale de novo quando cumprir.", x.c.namePT(key))
+			x.lostIssue(IssueFeatPrerequisite, fmt.Sprintf("full.feat_keys[%d]", i), x.lost[key])
 		} else {
 			col.add(key)
 		}
@@ -720,6 +796,10 @@ func (col *collector) featureOption(field, key string, pickedNames map[string]bo
 		parent = x.offeredParent(key, col.owned)
 	}
 	if parent == "" || !col.owned[parent] {
+		if feat := x.lostOfferer(key, f); feat != "" {
+			col.lostOffered(field, key, f, feat, pickedNames)
+			return
+		}
 		col.optionNotOffered(field, key, f)
 		return
 	}
@@ -734,6 +814,36 @@ func (col *collector) featureOption(field, key string, pickedNames map[string]bo
 		col.add(key)
 	}
 	col.feature(key, f.Name, parent, x.featureLevel(parent), f.Desc)
+	col.offeredBy(parent)
+}
+
+// lostOfferer is the lost feat (or option) whose choice offers the option key, or "": the pick is not one nothing offers,
+// its feat is there and does not apply.
+func (x *deriver) lostOfferer(key string, f *srd51.Feature) string {
+	for _, p := range append([]string{x.optionParent(key, f.Parent)}, x.c.offeredBy[key]...) {
+		if p != "" && x.inactiveFeats[p] {
+			return p
+		}
+	}
+	return ""
+}
+
+// lostOffered lists the option of a lost feat and says it is lost: it stays on the sheet, gives nothing, and reads as an
+// option that needs its feat (board 580-05).
+func (col *collector) lostOffered(field, key string, f *srd51.Feature, feat string, pickedNames map[string]bool) {
+	x := col.x
+	pickedNames[f.Name] = true
+	col.feature(key, f.Name, feat, 0, f.Desc)
+	col.offeredBy(feat)
+	x.lostIssue(IssueOptionPrerequisite, field, x.c.lostOffered(key, feat))
+	x.tieToOwners(&x.d.Issues[len(x.d.Issues)-1], key)
+}
+
+// offeredBy marks the feature just listed as an option of parent: its row reads "Opção de <parent>" (board 580-05).
+func (col *collector) offeredBy(parent string) {
+	last := &col.x.d.Features[len(col.x.d.Features)-1]
+	last.OptionOfPT = col.x.c.namePT(parent)
+	last.OptionOfKey = parent
 }
 
 // optionNotOffered is the issue of a pick that nothing on the sheet offers, tied
@@ -741,11 +851,21 @@ func (col *collector) featureOption(field, key string, pickedNames map[string]bo
 func (col *collector) optionNotOffered(field, key string, f *srd51.Feature) {
 	x := col.x
 	c := x.c
-	x.issueChange(IssueUnknownKey, field, "", fmt.Sprintf("a escolha %s não vale mais: nada na ficha oferece essa opção.", c.namePT(key)), fmt.Sprintf("%s não vale para este personagem.", c.namePT(key)))
+	named, change := fmt.Sprintf("%s não vale para este personagem.", c.namePT(key)), fmt.Sprintf("a escolha %s não vale mais: nada na ficha oferece essa opção.", c.namePT(key))
+	x.issueChange(IssueUnknownKey, field, "", change, named)
+	last := &x.d.Issues[len(x.d.Issues)-1]
+	if c.hidden(key) {
+		// The entry is one the players may not read: the sentence names it for the master alone (Issue.Named).
+		last.Named, last.Message = named, "Uma opção não vale para este personagem."
+		last.ChangeMessage = "uma das escolhas não vale mais: nada na ficha oferece essa opção."
+	}
 	if entry := x.tieToOfferers(x.optionParent(key, f.Parent)); entry != "" {
-		last := &x.d.Issues[len(x.d.Issues)-1]
+		last = &x.d.Issues[len(x.d.Issues)-1]
 		last.ChangeSubject = entry
 		last.ChangeMessage = fmt.Sprintf("agora não oferece a escolha %s; ela não vale mais nesta ficha.", c.namePT(key))
+		if last.Named != "" {
+			last.ChangeMessage = "agora não oferece uma das escolhas; ela não vale mais nesta ficha."
+		}
 	}
 }
 
@@ -760,6 +880,7 @@ func (col *collector) traitOption(field, key string) {
 	}
 	col.add(key)
 	col.feature(key, t.Name, t.Parent, 0, t.Desc)
+	col.offeredBy(t.Parent)
 }
 
 // optionSummary is the one-line rule of a chosen option, or "".

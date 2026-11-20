@@ -38,6 +38,7 @@ import {
   FullSheetVm,
   ReviewVm,
 } from './character-sheet.types';
+import { featuresVm } from './sheet-lost';
 import { hitDiceWords } from '../../core/resources/hit-dice-text';
 
 const STATE_FROM_GEN: Record<GenCharacterState, CharacterState> = {
@@ -169,18 +170,7 @@ function spellVm(cs: GenDerivedSheet['spells'][number]) {
   };
 }
 
-function featureVm(f: GenDerivedSheet['features'][number]) {
-  return {
-    name: f.namePt,
-    sourcePt: f.sourcePt,
-    description: f.description,
-    descriptionPt: f.descriptionPt,
-    descriptionPtMissing: f.descriptionPtMissing,
-    descriptionPtOnly: f.descriptionPtOnly,
-    summaryPt: f.summaryPt,
-  };
-}
-
+/** The features of the sheet; a feat or an option it keeps whose prerequisite it lost is marked (board 580-05). */
 function coinsVm(coins: GenFullSheet['coins']) {
   return {
     cp: coins?.copper ?? 0,
@@ -220,7 +210,6 @@ function scoresVm(derived: GenDerivedSheet) {
 }
 
 function grantedSpellVm(g: GenDerivedSheet['grantedSpells'][number], derived: GenDerivedSheet) {
-  const resource = derived.resources.find((r) => r.key === g.resource);
   return {
     key: g.spell?.key ?? '',
     namePt: g.spell?.namePt ?? '',
@@ -228,12 +217,13 @@ function grantedSpellVm(g: GenDerivedSheet['grantedSpells'][number], derived: Ge
     sourcePt: g.sourceNamePt,
     atWill: g.atWill,
     resource: g.resource,
-    resourceNamePt: resource?.namePt ?? g.resource,
+    resourceNamePt: derived.resources.find((r) => r.key === g.resource)?.namePt ?? g.resource,
     alsoWithSlot: g.alsoWithSlot,
     ritualOnly: g.ritualOnly,
     countsAsKnown: g.countsAsKnown,
     noMaterialComponents: g.noMaterialComponents,
     usesCost: g.usesCost,
+    castLevel: g.castLevel,
     ability: g.abilityPending || g.ability === '' ? null : (g.ability as AbilityKey),
     abilityPending: g.abilityPending,
     saveDc: g.saveDc,
@@ -263,6 +253,7 @@ function notesVm(derived: GenDerivedSheet) {
       namePt: c.namePt,
       changedAt: dateOf(c.changedAt),
       messages: [...c.messages],
+      codes: [...c.codes],
     })),
     hints: derived.hints.map((h) => ({ sourceKey: h.sourceKey, text: h.text })),
   };
@@ -294,7 +285,7 @@ function toFullSheetVm(full: GenFullSheet, derived: GenDerivedSheet): FullSheetV
     senses: derived.senses.map((s) => `${s.namePt}: ${metersWithFeet(s.rangeFt)}`),
     attacks: derived.attacks.map(toAttackVm),
     ...castingVm(derived),
-    features: derived.features.map(featureVm),
+    features: featuresVm(full, derived),
     breathWeapon: derived.breathWeapon?.textPt ?? '',
     resistances: derived.resistances.map((r) => capitalized(r.damageTypeNamePt)),
     languages: derived.languages,

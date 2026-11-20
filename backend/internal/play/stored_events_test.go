@@ -16,6 +16,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/goldentest"
+	"github.com/PuraFome/meuRPG/backend/internal/play/infusion"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
 
@@ -104,6 +105,10 @@ var otherWriters = map[string][]storedShape{
 	"dawn_taken":                {storedShapeOf[dawnEvent]("today.json")},
 	"ammunition_spent":          {storedShapeOf[itemUseEvent]("today.json")},
 	"ammunition_recovered":      {storedShapeOf[ammunitionRecoveredEvent]("today.json")},
+	"consumable_used":           {storedShapeOf[consumableUsedEvent]("today.json")},
+	"infusion_infused":          {storedShapeOf[infusion.Event]("today.json")},
+	"infusion_moved":            {storedShapeOf[infusion.Event]("today.json")},
+	"infusion_ended":            {storedShapeOf[infusion.Event]("today.json")},
 }
 
 // vitalsEvent is the payload vitalsPayload writes, named so that a test can reflect on it.

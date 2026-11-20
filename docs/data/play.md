@@ -287,6 +287,8 @@ Ids, spell keys and numbers, no personal data; cascades with the campaign, the s
 - `caster_id` is a player character or an NPC.
   `slot_level` (0 for a cantrip or ritual) and `slot_pact` only record the slot; it is spent in `character_vitals` when the casting finishes.
   An NPC caster spends nothing.
+- `grant_source` is the source of the granted-spell effect the casting started through, empty for none.
+  The end of a long casting reads that grant; it is never sent to a client.
 - `concentrating` says the caster concentrates on this cast now.
   `duration_seconds` is the spell's timed duration (`NULL`: nothing to count) and `rest_ends` the rest long enough to end it.
   The app never counts a duration: the master, the caster's concentration or a rest ends the spell.
@@ -320,7 +322,7 @@ Both cascade from the session or the character.
 ## `character_effects`
 
 Effects that last on a character outside a running combat (RN-22).
-`source_key` is the spell or catalog key, `source_character_id` who cast it (`SET NULL`), `group_id` the cast's id (so ending the cast ends them all), `source_kind` is `spell`, `feature` or `master`.
+`source_key` is the spell or catalog key, `source_character_id` who cast it (`SET NULL`), `group_id` the cast's id (so ending the cast ends them all), `source_kind` is `spell`, `feature`, `master` or `item` (what a potion left).
 `condition_keys` and `modifiers` (JSON array, at most 8) are what it gives.
 `duration_kind` is `rounds`, `until_start_of_turn_of`, `until_end_of_turn_of`, `concentration`, `until_dismissed` or `long_rest`; `seconds_left` is the game time left (a round is 6 seconds; `NULL` until it is dismissed or the caster stops concentrating).
 The save columns (`end_save_ability`, `start_save_ability`, `save_dc`, `on_fail_effect`), the trigger columns (`trigger_dice`, `trigger_damage_type`, `trigger_max_triggers`, `triggers_fired`) and `follows_key` (an effect that follows another, such as Haste's lethargy) carry the effect's rules.
@@ -350,7 +352,7 @@ In a combat the die is the combatant's (`combatants.inspiration_*`) and this row
 `counted_by` (`TEXT NOT NULL DEFAULT ''`) is the content key of the feature whose floor the total counts, a table's `roll_minimum` or Reliable Talent; it is empty when the die counts as it came up.
 `round` is the combat's round for a roll held in a combat and `NULL` out of one.
 `combatant_id` (the roller in a combat, `CASCADE`) and `encounter_id` (the combat the roll was held in, `CASCADE`) are `NULL` out of a combat; when `combatant_id` is set it is the owner of the hold (the copies of an NPC and the creatures of a combat share a `character_id`).
-`window_hold` says the hold is the attack a reaction window kept.
+`window_hold` says the hold is the roll a reaction window kept (a weapon attack, a spell attack, a contest or a Hide).
 The weapon attack waits here too (kind `weapon_attack`, `window_hold` for the one a reaction window held, whose `idempotency_key` is the request's own); `roll_holds` is empty and unused ([held rolls](../architecture/play/held-rolls.md)). Every roll held in a combat names its combatant and its combat; an older one has both `NULL` and belongs to its character.
 The partial index `inspiration_holds_open_combat_idx` on `(encounter_id, combatant_id)` where `answer_key IS NULL` serves the open questions of a combat.
 Lucky: `lucky_index` is the die that shows a 1 (0 for a single d20; 0 or 1 for a pair, in the order rolled; `NULL` with no Lucky question), `lucky_answer_key` the key of the answer and `lucky_to` the new face (1 to 20; `NULL` when the player kept the 1).
@@ -365,14 +367,30 @@ Reroll rule (migration 00306): `reroll_ask` marks the question asked as soon as 
 The check `inspiration_holds_reroll_face_valid` keeps the faces between 1 and 20, the index at 0 or 1 and the cost at 0 or more.
 `die_answer_key` and `die_used` keep the Bardic Inspiration die answered while this question follows, since the row stays open.
 A hold out of a combat is not forgotten when the dice run out; one of a combat only when the round or the combat is over.
-A hold of kind `npc_check` is neither: it waits for the bards' dice, so the sweep of orphans, the forget of an actor's holds and the list of open holds leave it alone; it is settled as a skip when a combat starts or when the next check is rolled, and forgotten when its session ends.
+A hold of kind `npc_check` is neither.
+It waits for the bards' dice, so the sweep of orphans, the forget of an actor's holds and the list of open holds leave it alone.
+It is settled as a skip when a combat starts or when the next check is rolled.
+It is also settled as a skip when the next read or answer finds a token of the creature hidden on the map of the roll, or no bard in play left.
+It is kept (settled) while its session is open, and deleted with every other hold of the kind when its session ends.
 
 ## `npc_check_asks`
 
-One row per Lore bard asked about an NPC's check outside a combat (migration 00354); the check itself is an `inspiration_holds` row of kind `npc_check` (`character_id` the NPC, `user_id` the master, `faces` the d20), and the asks cascade with it.
-`hold_id` (`CASCADE`) and `bard_character_id` are unique together, and so are `hold_id` and `position` (the order the bards are asked in).
-`state` is `asked`, `cut`, `passed` or `closed`; the one asked now is the first with `asked`.
-`sides` is the die of the bard's Bardic Inspiration, `creature_seen` whether the bard's player may read the creature's name, `die_face` the face that came off (`NULL` until the bard cuts), `physical` whether it was typed, `answer_key`, `answer_hash` and `answered_at` the answer, which a retry finds by key and whose body must be the same (another body under the key is a reused key; `answer_hash` is `NULL` until the bard answers).
+One row per Lore bard asked about an NPC's check outside a combat.
+The check itself is an `inspiration_holds` row of kind `npc_check` (`character_id` the NPC, `user_id` the master, `faces` the d20), and the asks cascade with it.
+A settled check keeps its asks while its session is open.
+The end of the session deletes the asks of its checks.
+`bard_character_id` and `map_id` have no index: deleting a character or a map scans a table that holds only the checks of open sessions, and the end of the session deletes them.
+`map_id` (`SET NULL`) is the session's map when the check was rolled, `NULL` with no map or once the map is deleted: the creature's token hidden on it closes the check.
+`hold_id` (`CASCADE`) and `bard_character_id` (`SET NULL`) are unique together.
+A bard whose character is deleted keeps its question, which the next read lets pass.
+`hold_id` and `position` (the order the bards are asked in) are unique together too.
+`state` is `asked`, `cut`, `passed` or `closed`; the one whose turn it is is the first with `asked`.
+`sides` is the die of the bard's Bardic Inspiration.
+`creature_seen` says whether the bard's player may read the creature's name.
+`die_face` is the face that came off (`NULL` until the bard cuts), and `physical` says whether it was typed.
+`answer_key`, `answer_hash` and `answered_at` are the answer, which a retry finds by key and whose body must be the same.
+Another body under the key is a reused key.
+`answer_hash` is `NULL` until the bard answers.
 
 ## `trap_damages`
 
