@@ -564,9 +564,25 @@ func (cb *choiceBuilder) finish() ChoiceSet {
 	}
 	slices.Sort(set.NotOffered)
 	set.NotOffered = slices.Compact(set.NotOffered)
+	cb.keepOutOwners()
 	set.KeptOut = slices.Compact(slices.Sorted(slices.Values(cb.keptOut)))
 	cb.results(&set)
 	return set
+}
+
+// keepOutOwners keeps out of the offer the picks stored under the key of an entry the reader's view keeps out (switched off,
+// hidden or retired) that the sheet does not hold: for that reader the entry does not exist, and neither does the pick. They
+// leave NotOffered, which would answer that the pick is there but nothing offers it.
+func (cb *choiceBuilder) keepOutOwners() {
+	for _, k := range cb.b.FeatureChoices {
+		choiceKey, _, ok := SplitScopedChoice(k)
+		if !ok {
+			continue
+		}
+		if base, _, _ := strings.Cut(choiceKey, textSeparator); cb.c.hiddenTo(cb.b, base) {
+			cb.keptOut = append(cb.keptOut, k)
+		}
+	}
 }
 
 // markFamilies blocks, in each choice of a family, the values an earlier choice of the
