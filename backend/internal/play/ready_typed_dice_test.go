@@ -128,6 +128,22 @@ func TestAReadiedSpellAttackTakesTypedFaces(t *testing.T) {
 	a.wantFaces(t, e, []int32{12, 3})
 }
 
+// Sleep at its first slot rolls 5d8. The typed sum is the one resolved: 8 covers the goblin (7 hit points) and not the Capitão
+// (27), so exactly the goblin falls asleep, and the log marks the roll as physical. A sum outside 5 to 40 is refused on the
+// release, the player's or the master's, with nothing spent and the window open.
+func (a *armed) readiedSleep(t *testing.T) (*playv1.Encounter, *playv1.ReactionWindow) {
+	t.Helper()
+	a.forceDice(t, campaignsv1.DiceMode_DICE_MODE_PHYSICAL)
+	e := a.start(t, plan{
+		npcs:     []*playv1.Participant{{CharacterId: a.goblin.GetId()}, {CharacterId: a.capitao.GetId()}},
+		npcRolls: []int{1, 1}, reveal: []string{"Goblin", "Capitão Goblin"}, theatre: true,
+		players: map[string]int32{"Pensantus": 20, "Toren": 15, "Brisa": 10},
+	})
+	a.mustReady(t, a.ana, a.readySpell(t, e, "Pensantus", sleepSpell, 1, "Capitão Goblin"))
+	e = a.mustEndTurn(t, a.master, e)
+	return e, a.mustFire(t, e, "Pensantus")
+}
+
 func TestAReadiedPoolSpellTakesTheTypedSum(t *testing.T) {
 	t.Parallel()
 	for name, by := range map[string]func(a *armed) *user{
@@ -137,17 +153,48 @@ func TestAReadiedPoolSpellTakesTheTypedSum(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			a := newCasters(t)
-			a.forceDice(t, campaignsv1.DiceMode_DICE_MODE_PHYSICAL)
-			e := a.start(t, plan{
-				npcs: []*playv1.Participant{{CharacterId: a.capitao.GetId()}}, npcRolls: []int{1}, reveal: []string{"Capitão Goblin"}, theatre: true,
-				players: map[string]int32{"Pensantus": 20, "Toren": 15, "Brisa": 10},
+			e, w := a.readiedSleep(t)
+			res := a.mustAnswer(t, by(a), e, w.GetId(), func(r *playv1.AnswerReactionRequest) {
+				withPool(8)(r)
+				r.Targets = a.at(t, "Capitão Goblin", "Goblin")
 			})
-			a.mustReady(t, a.ana, a.readySpell(t, e, "Pensantus", sleepSpell, 1, "Capitão Goblin"))
-			e = a.mustEndTurn(t, a.master, e)
-			w := a.mustFire(t, e, "Pensantus")
-			a.mustAnswer(t, by(a), e, w.GetId(), withPool(8))
-			if a.castLine(t, e, sleepSpell) == nil {
-				t.Errorf("no Sleep line in the log")
+			if !res.GetResult().GetUsed() {
+				t.Fatalf("the use's result = %v", res.GetResult())
+			}
+			now := a.get(t, a.master)
+			if !hasCondition(now, t, "Goblin", unconsciousC) || hasCondition(now, t, "Capitão Goblin", unconsciousC) {
+				t.Errorf("asleep: Goblin %v, Capitão %v; want only the goblin, whom the typed 8 covers and not the Capitão's 27",
+					hasCondition(now, t, "Goblin", unconsciousC), hasCondition(now, t, "Capitão Goblin", unconsciousC))
+			}
+			line := a.castLine(t, e, sleepSpell)
+			if line == nil {
+				t.Fatalf("no Sleep line in the log")
+			}
+			if roll := line.GetSpell().GetPoolRoll(); roll.GetTotal() != 8 || !roll.GetPhysical() || roll.GetDiceCount() != 5 || roll.GetDiceSides() != 8 {
+				t.Errorf("the log's pool roll = %v, want the typed 8 of 5d8 marked as physical", roll)
+			}
+		})
+	}
+}
+
+func TestAReadiedPoolSpellRefusesATypedSumOutOfRange(t *testing.T) {
+	t.Parallel()
+	for name, sum := range map[string]int32{"below the dice count": 4, "above the dice count times the sides": 41} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			a := newCasters(t)
+			e, w := a.readiedSleep(t)
+			before := a.stateSnapshot(t)
+			_, err := a.answerReaction(t, a.ana, e, w.GetId(), func(r *playv1.AnswerReactionRequest) {
+				withPool(sum)(r)
+				r.Targets = a.at(t, "Capitão Goblin", "Goblin")
+			})
+			wantRefusal(t, "a typed sum out of range", err, connect.CodeInvalidArgument, "pool_sum must be 5 to 40")
+			if !a.readiedOpen(t, "Pensantus") || a.readiedStatus(t, "Pensantus") != readiedWaiting {
+				t.Errorf("the window is open %v and the row %q, want open and waiting", a.readiedOpen(t, "Pensantus"), a.readiedStatus(t, "Pensantus"))
+			}
+			if after := a.stateSnapshot(t); after != before || a.castLine(t, e, sleepSpell) != nil {
+				t.Errorf("the refusal changed the state or left a line:\nbefore:\n%s\nafter:\n%s", before, after)
 			}
 		})
 	}

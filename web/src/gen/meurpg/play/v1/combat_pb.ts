@@ -13940,8 +13940,6 @@ export type AnswerReactionRequest = Message<"meurpg.play.v1.AnswerReactionReques
    * target takes). Copied one to one into the request the release builds, which checks it as it does. `invalid_argument` on a
    * pass, on another kind of window, or on a row that is not a spell.
    *
-   * Field numbers 12, 13, 15 and 16 are held by the orchestrator's number ledger.
-   *
    * @generated from field: repeated meurpg.play.v1.RayRoll ray_rolls = 21;
    */
   rayRolls: RayRoll[];
