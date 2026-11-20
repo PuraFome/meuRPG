@@ -27,6 +27,13 @@ func (r *failingRoster) SessionCharacters(ctx context.Context, tx pgx.Tx, campai
 	return r.CombatRoster.SessionCharacters(ctx, tx, campaignID, ids)
 }
 
+func (r *failingRoster) LockedSessionCharacters(ctx context.Context, tx pgx.Tx, campaignID string, ids []string) ([]link.Character, error) {
+	if r.fail.Load() {
+		return nil, errors.New("the characters module is down")
+	}
+	return r.CombatRoster.LockedSessionCharacters(ctx, tx, campaignID, ids)
+}
+
 // A read that fails at the accept is no word about the receiver: it is not CANNOT_RECEIVE, nothing changes and the pass stays pending.
 func TestAcceptWithAFailingReadIsNotCannotReceive(t *testing.T) {
 	t.Parallel()

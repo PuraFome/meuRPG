@@ -14,7 +14,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
 )
 
-// A write that waits for the session's lock reads the characters after the lock (lockedCharacters), so it decides on what changed in
+// A write that waits for the session's lock reads the characters after the lock (LockedSessionCharacters), so it decides on what changed in
 // them while it waited: the giver's owner of an ask, the receiver of a grant, an accept, a refund.
 
 // lateHolder is a transaction starter that takes the session's row in a transaction of the test's, once, just before the first

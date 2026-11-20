@@ -9725,41 +9725,6 @@ func (q *Queries) ListWaitingOpportunityOffers(ctx context.Context, encounterID 
 	return items, nil
 }
 
-const lockCharactersForRead = `-- name: LockCharactersForRead :many
-SELECT id FROM characters
-WHERE campaign_id = $1::UUID AND id = ANY($2::UUID[])
-ORDER BY id
-FOR UPDATE
-`
-
-type LockCharactersForReadParams struct {
-	CampaignID string
-	Ids        []string
-}
-
-// Locks the rows of the characters until the transaction ends. A write that decides on who owns a character, or on whether it is in
-// the reserve, locks the row first and reads it after: the lock makes that read the latest one. It comes after the session's lock
-// (LockSessionForHints).
-func (q *Queries) LockCharactersForRead(ctx context.Context, arg LockCharactersForReadParams) ([]string, error) {
-	rows, err := q.db.Query(ctx, lockCharactersForRead, arg.CampaignID, arg.Ids)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []string
-	for rows.Next() {
-		var id string
-		if err := rows.Scan(&id); err != nil {
-			return nil, err
-		}
-		items = append(items, id)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const lockSessionForHints = `-- name: LockSessionForHints :one
 SELECT id FROM game_sessions WHERE id = $1 FOR UPDATE
 `

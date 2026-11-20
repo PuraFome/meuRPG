@@ -27,7 +27,7 @@ In a combat it writes the grant as the combat's last action: `favorStage` reads 
 3.
    It looks for the idempotency key in `session_events`: the same request is answered as the first call was, another request under the key is `invalid_argument`.
 4.
-   It asks the characters module (`CombatRoster.SessionCharacters`) whether the id is a player character of the campaign that is not reserved.
+   It asks the characters module (`CombatRoster.LockedSessionCharacters`: it locks the character's row, then reads it, so a change made while the grant waited for the session is seen) whether the id is a player character of the campaign that is not reserved.
 5.
    It inserts the row with `ON CONFLICT DO NOTHING`: no row back means the character has it.
 6.

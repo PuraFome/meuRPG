@@ -234,9 +234,9 @@ func askRefusal(ctx context.Context, q *playdb.Queries, giver string) error {
 }
 
 // favorGiver checks that the giver is a player character of the caller's (not in the reserve) that has the Inspiration. The row is locked
-// before it is read (lockedCharacters).
+// before it is read (LockedSessionCharacters).
 func (s *Service) favorGiver(ctx context.Context, tx pgx.Tx, c favorPassCall) (link.Character, error) {
-	found, err := s.lockedCharacters(ctx, tx, c.m.CampaignID, []string{c.from})
+	found, err := s.roster.LockedSessionCharacters(ctx, tx, c.m.CampaignID, []string{c.from})
 	if err != nil {
 		return link.Character{}, err
 	}
@@ -416,7 +416,7 @@ func (s *Service) CancelFavorPass(ctx context.Context, req *connect.Request[play
 // while it waited is canceled by its new owner (the one who reads it, favor_read.go) and not by the one who asked. A giver sent to the
 // reserve has no owner. The owner is read after the giver's row is locked, never before it: the lock makes the read the latest one.
 func (s *Service) ownsGiver(ctx context.Context, tx pgx.Tx, m authz.Membership, pass playdb.FavorPass) (bool, error) {
-	found, err := s.lockedCharacters(ctx, tx, m.CampaignID, []string{pass.FromCharacterID})
+	found, err := s.roster.LockedSessionCharacters(ctx, tx, m.CampaignID, []string{pass.FromCharacterID})
 	if err != nil {
 		return false, err
 	}
@@ -426,25 +426,6 @@ func (s *Service) ownsGiver(ctx context.Context, tx pgx.Tx, m authz.Membership, 
 		}
 	}
 	return false, nil
-}
-
-// lockedCharacters reads the characters of ids (SessionCharacters) after locking their rows. A write of a session that decides on who
-// owns a character, or on whether it is in the reserve, reads it here. The lock makes the read the latest one, whatever changed while
-// the write waited for the session. The session's lock comes first, then the characters' locks.
-func (s *Service) lockedCharacters(ctx context.Context, tx pgx.Tx, campaignID string, ids []string) ([]link.Character, error) {
-	valid := make([]string, 0, len(ids))
-	for _, id := range ids {
-		if id, ok := uid.Canonical(id); ok {
-			valid = append(valid, id)
-		}
-	}
-	if len(valid) == 0 {
-		return nil, nil
-	}
-	if _, err := s.queries.WithTx(tx).LockCharactersForRead(ctx, playdb.LockCharactersForReadParams{CampaignID: campaignID, Ids: valid}); err != nil {
-		return nil, fmt.Errorf("lock the characters: %w", err)
-	}
-	return s.roster.SessionCharacters(ctx, tx, campaignID, valid)
 }
 
 // closePass finds the pass the call is about and runs the transaction of the answer on the session it was asked in. A pass that is not

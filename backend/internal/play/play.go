@@ -263,6 +263,10 @@ type CombatRoster interface {
 	// campaign whatever their status (a dead one too), with only their name and
 	// player filled: the session summary names who fought, even if they died.
 	SessionCharacters(ctx context.Context, tx pgx.Tx, campaignID string, ids []string) ([]link.Character, error)
+	// LockedSessionCharacters is SessionCharacters read after the rows of the characters are locked, until the transaction ends. A
+	// write of a session that decides on who owns a character, or on whether it is in the reserve, reads it here: the lock makes the
+	// read the latest one, whatever changed while the write waited for the session. The session's lock comes first.
+	LockedSessionCharacters(ctx context.Context, tx pgx.Tx, campaignID string, ids []string) ([]link.Character, error)
 	// Every read of this interface takes the caller's transaction (nil: the pool). A
 	// change that holds one must pass it: the read then sees what the change wrote
 	// (the character's vitals or Wild Shape form), and it takes no second connection,

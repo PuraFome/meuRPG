@@ -684,6 +684,10 @@ func (noRoster) SessionCharacters(context.Context, pgx.Tx, string, []string) ([]
 	return nil, nil
 }
 
+func (noRoster) LockedSessionCharacters(context.Context, pgx.Tx, string, []string) ([]link.Character, error) {
+	return nil, nil
+}
+
 func (noRoster) CombatSheet(context.Context, pgx.Tx, string, string) (link.Sheet, error) {
 	return link.Sheet{}, errors.New("not in this test")
 }
