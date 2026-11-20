@@ -122,6 +122,12 @@ describe('castRowsOf', () => {
     expect(castRowsOf(targets, 'plain', 's', null).map((r) => r.id)).toEqual(['s', 'g1']);
     expect(castRowsOf(undefined, 'plain', 's', null)).toEqual([]);
   });
+
+  it('says "Longe demais" with no distance for a creature out of reach of a spell that has no reach here (range Self, touch)', () => {
+    const far = create(SpellTargetsSchema, { targets: [reach('g1', { tooFar: true })] } as never);
+    const rows = castRowsOf(far, 'attack', 's', null);
+    expect(rows.map((r) => r.blocked)).toEqual(['Longe demais']);
+  });
 });
 
 describe('idsWhere', () => {

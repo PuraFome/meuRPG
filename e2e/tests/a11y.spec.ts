@@ -16582,11 +16582,17 @@ async function scanSpellTargetScreens(browser: Browser, colorScheme: 'light' | '
     await openSessionPage(p, campaignId);
 
     await look('Ataques', 'Atacar com Toque Chocante', 'Toque Chocante, nenhum inimigo ao alcance');
-    await look('Ataques', 'Atacar com Criar Chamas', 'Criar Chamas, nenhum inimigo ao alcance');
+    await look('Ataques', 'Atacar com Criar Chamas', 'Criar Chamas, nenhum inimigo ao alcance', async (sheet) => {
+      await expect(sheet.locator('label.target', { hasText: 'Goblin 1' }).getByText(/Longe demais: alcance de\s+9\s+m/)).toBeVisible();
+    });
     await combatRPC(m, 'MoveCombatant', { campaignId, encounterId: begun.id, combatantId: pensantusId, col: 8, row: 9 });
     await openSessionPage(p, campaignId); // reload, so the state is not the stale one
     await look('Ataques', 'Atacar com Toque Chocante', 'Toque Chocante, um inimigo ao alcance');
-    await look('Ataques', 'Atacar com Criar Chamas', 'Criar Chamas, um inimigo ao alcance');
+    await look('Ataques', 'Atacar com Criar Chamas', 'Criar Chamas, um inimigo ao alcance', async (sheet) => {
+      const row = sheet.locator('label.target', { hasText: 'Goblin 1' });
+      await expect(row).toBeVisible();
+      await expect(row.getByText('Longe demais')).toHaveCount(0);
+    });
     await look('Magias', 'Conjurar Desintegrar', 'Alvos, uma criatura');
     await look('Ataques', 'Conjurar Espirro Ácido', 'Alvos, até duas criaturas');
     await look('Magias', 'Conjurar Lentidão', 'Alvos, até seis criaturas');
