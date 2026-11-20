@@ -3,6 +3,7 @@ package play
 import (
 	"context"
 	"slices"
+	"strings"
 	"sync"
 	"testing"
 
@@ -63,8 +64,8 @@ func TestNpcCheckLastAnswerUnderTheKeyOfAnotherEventIsAReusedKey(t *testing.T) {
 	}
 }
 
-// TestNpcCheckAnswerWrapsTheErrorOfItsTransaction: an error of the store that is not a refusal reads as the store's error of every
-// path (the canceled request is told as canceled), not as the raw error of the transaction.
+// TestNpcCheckAnswerWrapsTheErrorOfItsTransaction: a write of the answer's own transaction the database refuses (after the keep went
+// well) reads as the store's error of every path, an internal error, not as the raw error of the database.
 func TestNpcCheckAnswerWrapsTheErrorOfItsTransaction(t *testing.T) {
 	t.Parallel()
 	n := newNpcTable(t, charactersv1.CuttingWordsAsk_CUTTING_WORDS_ASK_ALL)
@@ -73,15 +74,36 @@ func TestNpcCheckAnswerWrapsTheErrorOfItsTransaction(t *testing.T) {
 		t.Fatalf("RollNpcCheck() error = %v", err)
 	}
 	first := n.firstAsked(res)
-	ctx, cancel := context.WithCancel(t.Context())
-	cancel()
+	hold := res.GetCheck().GetHoldId()
+	name := "refuse_npc_answer_" + strings.ReplaceAll(newKey(), "-", "")
+	run := func(ctx context.Context, sql string) {
+		t.Helper()
+		if _, err := n.h.pool.Exec(ctx, sql); err != nil {
+			t.Fatalf("%s: %v", sql, err)
+		}
+	}
+	// Only the answer's transaction writes an answer key on an ask of this check.
+	run(t.Context(), `CREATE FUNCTION `+name+`() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+	-- CockroachDB reads a field of NEW only inside parentheses.
+	IF (NEW).answer_key IS NOT NULL AND (NEW).hold_id = '`+hold+`' THEN
+		RAISE EXCEPTION 'the answer is refused';
+	END IF;
+	RETURN NEW;
+END $$`)
+	run(t.Context(), `CREATE TRIGGER `+name+` BEFORE UPDATE ON npc_check_asks FOR EACH ROW EXECUTE FUNCTION `+name+`()`)
+	t.Cleanup(func() {
+		ctx := context.WithoutCancel(t.Context())
+		run(ctx, `DROP TRIGGER `+name+` ON npc_check_asks`)
+		run(ctx, `DROP FUNCTION `+name+`()`)
+	})
 	m := authz.Membership{CampaignID: n.campaignID, UserID: first.id, Role: authz.RolePlayer}
 	req := &playv1.AnswerHeldRollRequest{
-		CampaignId: n.campaignID, HoldId: res.GetCheck().GetHoldId(), IdempotencyKey: newKey(),
+		CampaignId: n.campaignID, HoldId: hold, IdempotencyKey: newKey(),
 		Answer: &playv1.AnswerHeldRollRequest_CuttingWords{CuttingWords: &playv1.CuttingWordsAnswer{Cut: false}},
 	}
-	_, err = n.h.svc.answerNpcCheck(ctx, m, req, req.GetIdempotencyKey(), req.GetHoldId())
-	wantCode(t, "the answer of a canceled request", err, connect.CodeCanceled)
+	_, err = n.h.svc.answerNpcCheck(t.Context(), m, req, req.GetIdempotencyKey(), req.GetHoldId())
+	wantCode(t, "the answer whose write the database refuses", err, connect.CodeInternal)
 }
 
 // TestNpcCheckRerunSettlesNothing: the rerun the registry holds for the kind refuses with an internal error and writes nothing: the check

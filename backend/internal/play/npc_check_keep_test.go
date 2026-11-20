@@ -141,8 +141,8 @@ func TestNpcCheckOfACreatureHiddenOnTheMapNowSettlesAsASkip(t *testing.T) {
 			if after := n.uses(t, n.charOf(first)); after != before {
 				t.Errorf("the first bard's uses %d -> %d, want none spent", before, after)
 			}
-			if !n.changed(t, master) || !n.changed(t, firstEars) || n.changed(t, secondEars) {
-				t.Errorf("the master, the bard asked now and the next bard hear the change as master %v, first %v, second %v; want true, true, false", false, false, false)
+			if m, f, s := n.changed(t, master), n.changed(t, firstEars), n.changed(t, secondEars); !m || !f || s {
+				t.Errorf("the master, the bard asked now and the next bard hear the change as master %v, first %v, second %v; want true, true, false", m, f, s)
 			}
 		})
 	}

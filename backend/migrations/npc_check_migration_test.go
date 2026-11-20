@@ -2,10 +2,11 @@ package migrations
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 )
 
-// TestNpcCheckMigration: 00354 widens the kind CHECK of the inspiration holds ('npc_check'), creates npc_check_asks (one row for each
+// TestNpcCheckMigration: the npc_check migration widens the kind CHECK of the inspiration holds ('npc_check'), creates npc_check_asks (one row for each
 // bard asked about a check of the master's side, in order) and adds the two event kinds of the check; before it none of them exists.
 // The way down removes the rows of the kind, the table and the kinds, and refuses the kind again; up, down and up again leave the same.
 func TestNpcCheckMigration(t *testing.T) {
@@ -16,8 +17,18 @@ func TestNpcCheckMigration(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewProvider() error = %v", err)
 	}
-	if _, err := provider.UpTo(ctx, 352); err != nil {
-		t.Fatalf("UpTo(352) error = %v", err)
+	var version int64
+	for _, source := range provider.ListSources() {
+		if strings.Contains(source.Path, "npc_check") {
+			version = source.Version
+		}
+	}
+	if version == 0 {
+		t.Fatal("no migration file has npc_check in its name")
+	}
+	before := version - 1
+	if _, err := provider.UpTo(ctx, before); err != nil {
+		t.Fatalf("UpTo(%d) error = %v", before, err)
 	}
 	scan := func(query string, dest ...any) {
 		t.Helper()
@@ -54,7 +65,7 @@ func TestNpcCheckMigration(t *testing.T) {
 	}
 	applied := func() int {
 		var n int
-		scan(`SELECT count(*) FROM goose_db_version WHERE version_id = 354 AND is_applied`, &n)
+		scan(fmt.Sprintf(`SELECT count(*) FROM goose_db_version WHERE version_id = %d AND is_applied`, version), &n)
 		return n
 	}
 	tableExists := func() bool {
@@ -63,10 +74,10 @@ func TestNpcCheckMigration(t *testing.T) {
 		return n == 1
 	}
 	if _, err := hold("npc_check"); err == nil {
-		t.Error("a hold of kind npc_check was accepted before 00354")
+		t.Error("a hold of kind npc_check was accepted before the migration")
 	}
 	if kinds() != 0 || applied() != 0 || tableExists() {
-		t.Errorf("before 00354: %d event kinds, applied %d, table %v; want 0, 0, false", kinds(), applied(), tableExists())
+		t.Errorf("before the migration: %d event kinds, applied %d, table %v; want 0, 0, false", kinds(), applied(), tableExists())
 	}
 
 	for round := range 2 { // up, down, up again: the same each time
@@ -134,8 +145,8 @@ func TestNpcCheckMigration(t *testing.T) {
 		if _, err := hold("npc_check"); err != nil {
 			t.Fatalf("round %d: hold of kind npc_check = %v", round, err)
 		}
-		if _, err := provider.DownTo(ctx, 352); err != nil {
-			t.Fatalf("DownTo(352) round %d error = %v", round, err)
+		if _, err := provider.DownTo(ctx, before); err != nil {
+			t.Fatalf("DownTo(%d) round %d error = %v", before, round, err)
 		}
 		var rows int
 		scan(`SELECT count(*) FROM inspiration_holds WHERE kind = 'npc_check'`, &rows)
