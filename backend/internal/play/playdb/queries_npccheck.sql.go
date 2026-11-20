@@ -72,7 +72,7 @@ type CloseNpcCheckAsksParams struct {
 }
 
 // The questions of a held check that still wait close with no answer (the master went on without the bard, or the bard could
-// not answer any more).
+// not answer).
 func (q *Queries) CloseNpcCheckAsks(ctx context.Context, arg CloseNpcCheckAsksParams) error {
 	_, err := q.db.Exec(ctx, closeNpcCheckAsks, arg.HoldID, arg.AnsweredAt)
 	return err
@@ -382,7 +382,7 @@ type PassNpcCheckAskParams struct {
 	AnsweredAt *time.Time
 }
 
-// The bard's question is let pass with no answer of the bard: its character is no longer in play (reserve, dead, deleted, no player).
+// The bard's question is let pass with no answer of the bard: its character is not in play (reserve, dead, deleted, no player), or its player is outside the open scene.
 func (q *Queries) PassNpcCheckAsk(ctx context.Context, arg PassNpcCheckAskParams) (NpcCheckAsk, error) {
 	row := q.db.QueryRow(ctx, passNpcCheckAsk, arg.ID, arg.AnsweredAt)
 	var i NpcCheckAsk

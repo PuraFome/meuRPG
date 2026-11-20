@@ -18,7 +18,7 @@ import (
 
 // A check that waits is read as things stand, not as they stood when it was rolled. The next read of the held rolls or of the check, and
 // the next answer, find what changed and settle it in a transaction of their own, before they go on. The creature's token hidden on the
-// map the check was rolled on closes every question as the skip does (the bard asked now and the master are told). A bard that is not a
+// map the check was rolled on closes every question as the skip does (the bard whose turn it is and the master are told). A bard that is not a
 // character in play of a member (in the reserve, dead, deleted, or with no player), or whose player the open scene is not open to, has
 // its question let pass: the next bard in play is asked and told, and the check settles as the last answer settles it when none is
 // left. The hide is a write of the maps module (and the stage's of this one, which only changes the name the offers give), so nothing
@@ -218,7 +218,7 @@ func (s *Service) keepNpcCheck(ctx context.Context, tc *combatTx, h *hints, view
 			}
 			moved = true
 		default:
-			if moved { // the next bard is asked now
+			if moved { // the next bard is asked
 				return s.tellNextBard(ctx, tc, h, view, asks)
 			}
 			return nil
@@ -235,7 +235,7 @@ func (s *Service) finishNpcCheck(ctx context.Context, tc *combatTx, h *hints, ho
 	return nil
 }
 
-// tellNextBard tells the master and the bard asked now that the question moved.
+// tellNextBard tells the master and the bard whose turn it is that the question moved.
 func (s *Service) tellNextBard(ctx context.Context, tc *combatTx, h *hints, view *npcCheckView, asks []playdb.NpcCheckAsk) error {
 	cur := cutting.Current(askStates(asks))
 	next, err := view.heard(ctx, tc.tx, tc.session.CampaignID, asks[cur].BardCharacterID)

@@ -20,7 +20,7 @@ import (
 )
 
 // npcCheckOffer is the question of a held NPC check as the caller reads it: the master reads the roll and the bards asked; a player reads
-// only the question of the bard asked now, if it is their own, with no number of the creature's and no name the bard's player may not
+// only the question of the bard whose turn it is, if it is their own, with no number of the creature's and no name the bard's player may not
 // know. Nobody else reads anything. A check whose session is over, or while a combat is open, is not listed.
 func (l *heldList) npcCheckOffer(ctx context.Context, h heldRoll) (*playv1.HeldRollOffer, error) {
 	s := l.s
@@ -55,7 +55,7 @@ func (l *heldList) npcCheckOffer(ctx context.Context, h heldRoll) (*playv1.HeldR
 	return l.playerNpcCheckOffer(ctx, h, session, ev, asks, offer)
 }
 
-// playerNpcCheckOffer is the question the caller reads when they are not the master: only the bard asked now, if it is their own.
+// playerNpcCheckOffer is the question the caller reads when they are not the master: only the bard whose turn it is, if it is their own.
 func (l *heldList) playerNpcCheckOffer(ctx context.Context, h heldRoll, session playdb.GameSession, ev npcCheckEvent, asks []playdb.NpcCheckAsk, offer *playv1.HeldRollOffer) (*playv1.HeldRollOffer, error) {
 	s := l.s
 	cur := cutting.Current(askStates(asks))

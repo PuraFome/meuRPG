@@ -255,7 +255,7 @@ func TestNpcCheckAsksOnlyTheBardsOfThePlayersOfTheScene(t *testing.T) {
 				}
 			}
 			for name, u := range bards {
-				first := len(tc.want) > 0 && tc.want[0] == name // only the bard asked now hears the check and reads its offer
+				first := len(tc.want) > 0 && tc.want[0] == name // only the bard whose turn it is hears the check and reads its offer
 				heard := false
 				for _, ev := range listeners[name].heard(t, n.h) {
 					heard = heard || ev.GetHeldRollsChanged() != nil
@@ -493,11 +493,9 @@ func TestNpcCheckAnswerAfterTheSceneClosedStillWorks(t *testing.T) {
 	}
 }
 
-// TestNpcCheckOfADeletedCreatureIsNotSettled: the only way there is an erased master account (docs/privacy.md, "Delete the account").
-// The creature's character is deleted while its check waits
-// after a cut. The hold goes with it (inspiration_holds.character_id cascades) and so do its asks: nobody is asked any more, the cut
-// stays spent (it was the bard's die, rolled for that check), and the master reads the check as neither held nor settled: its total is not
-// an outcome, with no way to skip what is gone; the next check the master rolls goes on as usual.
+// TestNpcCheckOfADeletedCreatureIsNotSettled: no app path deletes an NPC character: the only way is the master's account being erased
+// by hand (docs/privacy.md, "Delete the account"). Then the hold and its asks go with the character, the cut stays spent, the master
+// reads the check as neither held nor settled, and the next check goes on as usual.
 func TestNpcCheckOfADeletedCreatureIsNotSettled(t *testing.T) {
 	t.Parallel()
 	n := newNpcTable(t, charactersv1.CuttingWordsAsk_CUTTING_WORDS_ASK_ALL)

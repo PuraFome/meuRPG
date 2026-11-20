@@ -2679,8 +2679,9 @@ export const ResourceService: GenService<{
    *
    * The question of a check a creature of the master's side makes outside a combat (HeldRollKind NPC_CHECK, RollNpcCheck) is
    * the bard's, not the roller's: only the bard that is asked may answer it, with a CuttingWordsAnswer, and the master's way
-   * out is SkipNpcCheckAsks. Anyone else, and a bard whose turn has not come, gets `not_found`; a bard whose question was
-   * answered or closed already gets `failed_precondition` (the roll was answered already). The answer is a CuttingWordsAnswered:
+   * out is SkipNpcCheckAsks. Anyone else, a bard whose turn has not come, a bard whose question closed or passed with no answer,
+   * and a bard whose player the open scene is not open to, gets `not_found`; a bard that answered already gets
+   * `failed_precondition` (the roll was answered already). The answer is a CuttingWordsAnswered:
    * the bard's own die and the uses left, never the creature's roll.
    *
    * Errors: `not_found` for a hold that is gone or one the caller may not answer; `invalid_argument`
@@ -2700,7 +2701,7 @@ export const ResourceService: GenService<{
    * ListHeldRolls lists the questions of the rolls that wait and the caller may answer, oldest first: a
    * player's own rolls, in a combat and out of one; the master's, every roll of the campaign. A question
    * whose combat round is over, or whose die ran out, is not listed. Read it again when the stream says
-   * HeldRollsChanged. An NPC_CHECK is listed to the bard that is asked now and to the master only, and while no combat
+   * HeldRollsChanged. An NPC_CHECK is listed to the bard whose turn it is, whose player the open scene is open to, and to the master only, and while no combat
    * runs.
    *
    * @generated from rpc meurpg.play.v1.ResourceService.ListHeldRolls

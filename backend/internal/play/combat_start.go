@@ -151,7 +151,7 @@ func (s *Service) startWrite(ctx context.Context, c *combatTx, p startPlan) (any
 	if err := noOpenEncounter(ctx, c); err != nil {
 		return nil, err
 	}
-	// A check held for the bards ends where the combat begins: the dice are the combat's from now on.
+	// A check held for the bards ends where the combat begins: the dice are the combat's.
 	if err := s.settleOpenNpcChecks(ctx, c, c.hints); err != nil {
 		return nil, err
 	}

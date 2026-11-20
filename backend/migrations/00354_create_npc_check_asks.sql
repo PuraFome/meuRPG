@@ -3,7 +3,7 @@
 -- Deception against the party in a scene with no map, say. The master's roll is a held roll of the kind `npc_check` (the d20 and
 -- its bonus are the creature's, character_id is the NPC and user_id the master), and the bards of the table that may cut it are
 -- asked one at a time, in the order of the party: one row of npc_check_asks for each bard asked. The question belongs to the bard
--- (the hold is read by the master and by the bard that is asked now, and by nobody else).
+-- (the hold is read by the master and by the bard whose turn it is, and by nobody else).
 -- The widened CHECK only adds a value, so every row stays valid.
 ALTER TABLE inspiration_holds
     DROP CONSTRAINT IF EXISTS inspiration_holds_kind_valid,
@@ -14,7 +14,7 @@ ALTER TABLE inspiration_holds
 
 -- position is the order the bards are asked in (0 first); state is where the question stands: 'asked' (open, or waiting for the
 -- bards before it), 'cut' (the die was taken off: die_face is its face), 'passed' (the bard let it go) or 'closed' (no answer: the
--- master went on without the bard, or it could not answer any more). creature_seen says the bard's player sees the creature, so
+-- master went on without the bard, or it could not answer). creature_seen says the bard's player sees the creature, so
 -- its question names it ('uma criatura' otherwise). answer_key is the key of the answer that closed the question and answer_hash the
 -- hash of the request that gave it, so a retry with the same key and another body is told from a true retry.
 -- map_id is the session's current map when the check was rolled (NULL with no map, or once the map is deleted): the creature's

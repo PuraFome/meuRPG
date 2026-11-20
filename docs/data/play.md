@@ -367,17 +367,30 @@ Reroll rule (migration 00306): `reroll_ask` marks the question asked as soon as 
 The check `inspiration_holds_reroll_face_valid` keeps the faces between 1 and 20, the index at 0 or 1 and the cost at 0 or more.
 `die_answer_key` and `die_used` keep the Bardic Inspiration die answered while this question follows, since the row stays open.
 A hold out of a combat is not forgotten when the dice run out; one of a combat only when the round or the combat is over.
-A hold of kind `npc_check` is neither: it waits for the bards' dice, so the sweep of orphans, the forget of an actor's holds and the list of open holds leave it alone; it is settled as a skip when a combat starts or when the next check is rolled, kept (settled) while its session is open, and deleted with every other hold of the kind when its session ends.
+A hold of kind `npc_check` is neither.
+It waits for the bards' dice, so the sweep of orphans, the forget of an actor's holds and the list of open holds leave it alone.
+It is settled as a skip when a combat starts or when the next check is rolled.
+It is also settled as a skip when the next read or answer finds a token of the creature hidden on the map of the roll, or no bard in play left.
+It is kept (settled) while its session is open, and deleted with every other hold of the kind when its session ends.
 
 ## `npc_check_asks`
 
-One row per Lore bard asked about an NPC's check outside a combat; the check itself is an `inspiration_holds` row of kind `npc_check` (`character_id` the NPC, `user_id` the master, `faces` the d20), and the asks cascade with it.
+One row per Lore bard asked about an NPC's check outside a combat.
+The check itself is an `inspiration_holds` row of kind `npc_check` (`character_id` the NPC, `user_id` the master, `faces` the d20), and the asks cascade with it.
 A settled check keeps its asks while its session is open.
 The end of the session deletes the asks of its checks.
-The table holds only the checks of open sessions, a few rows each, so scanning it for the foreign key is cheap.
-`hold_id` (`CASCADE`) and `bard_character_id` (`SET NULL`: a bard whose character is deleted keeps its question, which the next read lets pass) are unique together, and so are `hold_id` and `position` (the order the bards are asked in).
-`state` is `asked`, `cut`, `passed` or `closed`; the one asked now is the first with `asked`.
-`sides` is the die of the bard's Bardic Inspiration, `creature_seen` whether the bard's player may read the creature's name, `die_face` the face that came off (`NULL` until the bard cuts), `physical` whether it was typed, `answer_key`, `answer_hash` and `answered_at` the answer, which a retry finds by key and whose body must be the same (another body under the key is a reused key; `answer_hash` is `NULL` until the bard answers).
+`bard_character_id` and `map_id` have no index: deleting a character or a map scans a table that holds only the checks of open sessions, and the end of the session deletes them.
+`map_id` (`SET NULL`) is the session's map when the check was rolled, `NULL` with no map or once the map is deleted: the creature's token hidden on it closes the check.
+`hold_id` (`CASCADE`) and `bard_character_id` (`SET NULL`) are unique together.
+A bard whose character is deleted keeps its question, which the next read lets pass.
+`hold_id` and `position` (the order the bards are asked in) are unique together too.
+`state` is `asked`, `cut`, `passed` or `closed`; the one whose turn it is is the first with `asked`.
+`sides` is the die of the bard's Bardic Inspiration.
+`creature_seen` says whether the bard's player may read the creature's name.
+`die_face` is the face that came off (`NULL` until the bard cuts), and `physical` says whether it was typed.
+`answer_key`, `answer_hash` and `answered_at` are the answer, which a retry finds by key and whose body must be the same.
+Another body under the key is a reused key.
+`answer_hash` is `NULL` until the bard answers.
 
 ## `trap_damages`
 

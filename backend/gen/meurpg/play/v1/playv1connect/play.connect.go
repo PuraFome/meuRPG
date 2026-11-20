@@ -926,10 +926,11 @@ type PlayServiceClient interface {
 	// The bards of the party that may cut it are asked, one at a time, in the order of the party, through the held rolls
 	// (HeldRollKind NPC_CHECK: ListHeldRolls, HeldRollsChanged, AnswerHeldRoll with a CuttingWordsAnswer). A bard is asked
 	// when its character is alive, above 0 hit points, in the campaign's party, a College of Lore bard with Cutting Words,
-	// its setting "Perguntar" is "todos" (checks are asked only then), it has a Bardic Inspiration use left, the creature
-	// is not immune to being charmed, and it sees the creature within 60 feet: a creature whose token the master hid on the
-	// map is seen by no bard, whatever `bard_sees` says (the bard needs no token for that, and the map no grid); otherwise,
-	// with a token of the creature and one of the bard on the grid of the session's map, by the distance and, on a fog map,
+	// its player is among the viewers of the open scene, its setting "Perguntar" is "todos" (checks are asked only then),
+	// it has a Bardic Inspiration use left, the creature is not immune to being charmed, and it sees the creature within 60
+	// feet: a creature whose token the master hid on the map is seen by no bard, whatever `bard_sees` says (the bard needs
+	// no token for that, and the map no grid); otherwise, with a token of the creature and one of the bard on the grid of
+	// the session's map, by the distance and, on a fog map,
 	// by what the bard's player sees; with no such pair, `bard_sees` says it for every bard. The server has no source for a creature
 	// that cannot hear the bard outside a combat, so the master's `bard_sees` (the box "Os bardos veem a criatura e ela os
 	// ouve": Cutting Words needs the bard to see the creature and the creature to hear the bard) is what it relies on. Nobody
@@ -950,7 +951,7 @@ type PlayServiceClient interface {
 	// SkipNpcCheckAsks is the master's "Continuar sem esperar": it closes every question of a held NPC check that still
 	// waits for a bard and settles the check with the dice already taken off. Master only. The same call again, with the
 	// same key or another, answers with the settled check and changes nothing; a bard's answer that comes after it is
-	// refused with `failed_precondition` (the roll was answered already).
+	// refused with `not_found`, as for a question that is gone.
 	//
 	// Errors: `invalid_argument` for a key that is not a UUID; `not_found` for a check that is gone or is not the campaign's;
 	// `permission_denied` for a player; `failed_precondition` with no open session.
@@ -2510,10 +2511,11 @@ type PlayServiceHandler interface {
 	// The bards of the party that may cut it are asked, one at a time, in the order of the party, through the held rolls
 	// (HeldRollKind NPC_CHECK: ListHeldRolls, HeldRollsChanged, AnswerHeldRoll with a CuttingWordsAnswer). A bard is asked
 	// when its character is alive, above 0 hit points, in the campaign's party, a College of Lore bard with Cutting Words,
-	// its setting "Perguntar" is "todos" (checks are asked only then), it has a Bardic Inspiration use left, the creature
-	// is not immune to being charmed, and it sees the creature within 60 feet: a creature whose token the master hid on the
-	// map is seen by no bard, whatever `bard_sees` says (the bard needs no token for that, and the map no grid); otherwise,
-	// with a token of the creature and one of the bard on the grid of the session's map, by the distance and, on a fog map,
+	// its player is among the viewers of the open scene, its setting "Perguntar" is "todos" (checks are asked only then),
+	// it has a Bardic Inspiration use left, the creature is not immune to being charmed, and it sees the creature within 60
+	// feet: a creature whose token the master hid on the map is seen by no bard, whatever `bard_sees` says (the bard needs
+	// no token for that, and the map no grid); otherwise, with a token of the creature and one of the bard on the grid of
+	// the session's map, by the distance and, on a fog map,
 	// by what the bard's player sees; with no such pair, `bard_sees` says it for every bard. The server has no source for a creature
 	// that cannot hear the bard outside a combat, so the master's `bard_sees` (the box "Os bardos veem a criatura e ela os
 	// ouve": Cutting Words needs the bard to see the creature and the creature to hear the bard) is what it relies on. Nobody
@@ -2534,7 +2536,7 @@ type PlayServiceHandler interface {
 	// SkipNpcCheckAsks is the master's "Continuar sem esperar": it closes every question of a held NPC check that still
 	// waits for a bard and settles the check with the dice already taken off. Master only. The same call again, with the
 	// same key or another, answers with the settled check and changes nothing; a bard's answer that comes after it is
-	// refused with `failed_precondition` (the roll was answered already).
+	// refused with `not_found`, as for a question that is gone.
 	//
 	// Errors: `invalid_argument` for a key that is not a UUID; `not_found` for a check that is gone or is not the campaign's;
 	// `permission_denied` for a player; `failed_precondition` with no open session.

@@ -27,8 +27,8 @@ type Bard struct {
 }
 
 // MayCut says the bard may cut a check at all: it is the setting "todos" that takes part in checks (the default asks about attacks
-// only), and the bard must be awake. It holds at the answer as it holds at the question, so a bard who fell, or who changed the
-// setting, since the question was asked cuts nothing; only the pass is left.
+// only), and the bard must be awake. It holds at the answer as it holds at the question, so a bard at 0 hit points or whose setting is
+// not "todos" cuts nothing; only the pass is left.
 func (b Bard) MayCut() bool {
 	return b.Feature && b.Ask == "all" && b.HitPoints > 0
 }
@@ -173,8 +173,7 @@ type Place struct {
 	NPC    string
 }
 
-// Measures says the map places both the creature and the bard on its grid: the map decides what the bard sees, and the master's box is
-// not read. The tokens of a map with no grid place nobody.
+// Measures says the map places both the creature and the bard on its grid: the map decides what the bard sees, and the map measures the distance and the fog, and the master's box is not read. The tokens of a map with no grid place nobody.
 func (p Place) Measures(bard string) bool {
 	npc, okN := p.Tokens[p.NPC]
 	b, okB := p.Tokens[bard]
@@ -223,8 +222,8 @@ func WhyNobody(bards, asked int, charmImmune, tokenHidden bool) string {
 // Move is what a check that waits needs as things stand when it is read or answered.
 type Move int
 
-// The moves: leave it, close every question as a skip (the creature is hidden), let the question at the index pass (its bard is no longer
-// in play), or settle it as the last answer does (no question is open any more).
+// The moves: leave it, close every question as a skip (the creature is hidden), let the question at the index pass (its bard is not
+// in play), or settle it as the last answer does (no question is left open).
 const (
 	Stand Move = iota
 	Skip
@@ -233,7 +232,7 @@ const (
 )
 
 // NextMove says what a check that waits needs now. states are the questions in the order they are asked, inPlay says for each whether its
-// bard is still a character in play of a member, and tokenHidden whether the master hid the creature's token since the roll. The index is
+// bard is a character in play of a member, and tokenHidden whether the creature's token is hidden on the map the check was rolled on. The index is
 // the question to let pass, -1 for any other move. A hidden creature closes the check whatever the bards are.
 func NextMove(states []State, inPlay []bool, tokenHidden bool) (Move, int) {
 	cur := Current(states)

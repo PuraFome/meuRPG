@@ -102,7 +102,7 @@ func (n *npcTable) bothInTheScene(t *testing.T) (hold string, first, second *use
 	return n.twoAsked(t)
 }
 
-// TestNpcCheckLetsPassTheBardWhosePlayerLeftTheScene: the master took the player of the bard asked now out of the scene while the question
+// TestNpcCheckLetsPassTheBardWhosePlayerLeftTheScene: the master took the player of the bard whose turn it is out of the scene while the question
 // waited: the question is not offered to that bard, it passes to the next bard, and the master and the next bard are told.
 func TestNpcCheckLetsPassTheBardWhosePlayerLeftTheScene(t *testing.T) {
 	t.Parallel()

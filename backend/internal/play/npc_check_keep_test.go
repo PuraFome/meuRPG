@@ -10,7 +10,7 @@ import (
 )
 
 // A check that waits is read as things stand when its question is read or answered, not as they stood when it was rolled: the creature
-// that was hidden since, and the bard that is no longer in play.
+// that is hidden, and the bard that is not in play.
 
 // twoAsked rolls a check the two bards are asked about: Brisa (Bia's) first, then Lia (Ana's).
 func (n *npcTable) twoAsked(t *testing.T) (hold string, first, second *user) {
@@ -72,7 +72,7 @@ func (n *npcTable) withTheCreatureOnTheMap(t *testing.T) string {
 }
 
 // TestNpcCheckOfACreatureHiddenOnTheStageNowIsAnUnnamedCreature: the offer is built when it is read, and the creature the master hid on the
-// stage since the roll reads "uma criatura" to the bard asked now and to the next one, after the bard before it answered; before, the
+// stage after the roll reads "uma criatura" to the bard whose turn it is and to the next one, after the bard before it answered; before, the
 // bards read its name.
 func TestNpcCheckOfACreatureHiddenOnTheStageNowIsAnUnnamedCreature(t *testing.T) {
 	t.Parallel()
@@ -84,7 +84,7 @@ func TestNpcCheckOfACreatureHiddenOnTheStageNowIsAnUnnamedCreature(t *testing.T)
 	}
 	n.hideOnStage(t)
 	if got := n.label(t, first); got != unnamedCreature {
-		t.Errorf("the bard asked now reads %q after the creature was hidden on the stage, want %q", got, unnamedCreature)
+		t.Errorf("the bard whose turn it is reads %q after the creature was hidden on the stage, want %q", got, unnamedCreature)
 	}
 	if _, err := n.pass(first, hold, newKey()); err != nil {
 		t.Fatalf("the first bard's pass error = %v", err)
@@ -96,16 +96,16 @@ func TestNpcCheckOfACreatureHiddenOnTheStageNowIsAnUnnamedCreature(t *testing.T)
 
 // TestNpcCheckOfACreatureHiddenOnTheMapNowSettlesAsASkip: the master hid the creature's token on the map after the roll: the check is
 // settled as the skip settles it by the next read or answer that finds it (the hide is a write of the maps module, and the check's own
-// paths settle it), so the bard asked now and the next one read nothing, whichever finds it first.
+// paths settle it), so the bard whose turn it is and the next one read nothing, whichever finds it first.
 func TestNpcCheckOfACreatureHiddenOnTheMapNowSettlesAsASkip(t *testing.T) {
 	t.Parallel()
 	for name, tc := range map[string]struct {
 		finds func(n *npcTable, hold string, first, second *user) // what finds the hidden token first
 	}{
-		"the bard asked now reads":   {func(n *npcTable, _ string, first, _ *user) { n.mustNothing(first) }},
-		"the next bard reads":        {func(n *npcTable, _ string, _, second *user) { n.mustNothing(second) }},
-		"the master reads the check": {func(n *npcTable, _ string, _, _ *user) { n.mustLatest(n.h.t) }},
-		"the bard asked now answers": {func(n *npcTable, hold string, first, _ *user) {
+		"the bard whose turn it is reads": {func(n *npcTable, _ string, first, _ *user) { n.mustNothing(first) }},
+		"the next bard reads":             {func(n *npcTable, _ string, _, second *user) { n.mustNothing(second) }},
+		"the master reads the check":      {func(n *npcTable, _ string, _, _ *user) { n.mustLatest(n.h.t) }},
+		"the bard whose turn it is answers": {func(n *npcTable, hold string, first, _ *user) {
 			n.mustRefuse(first, hold, connect.CodeNotFound)
 		}},
 		"the next bard answers": {func(n *npcTable, hold string, _, second *user) {
@@ -142,7 +142,7 @@ func TestNpcCheckOfACreatureHiddenOnTheMapNowSettlesAsASkip(t *testing.T) {
 				t.Errorf("the first bard's uses %d -> %d, want none spent", before, after)
 			}
 			if m, f, s := n.changed(t, master), n.changed(t, firstEars), n.changed(t, secondEars); !m || !f || s {
-				t.Errorf("the master, the bard asked now and the next bard hear the change as master %v, first %v, second %v; want true, true, false", m, f, s)
+				t.Errorf("the master, the bard whose turn it is and the next bard hear the change as master %v, first %v, second %v; want true, true, false", m, f, s)
 			}
 		})
 	}
@@ -199,10 +199,10 @@ func (n *npcTable) reserve(t *testing.T, c *charactersv1.Character) {
 	}
 }
 
-// TestNpcCheckLetsPassTheBardNoLongerInPlay: the bard asked now was put in the reserve, died, was deleted or lost its player: the next read
+// TestNpcCheckLetsPassTheBardNotInPlay: the bard whose turn it is was put in the reserve, died, was deleted or lost its player: the next read
 // or answer that finds it closes its question as a pass and asks the next bard, who and the master are told; a check whose last bard is gone
 // settles as the last answer settles it, not as a skip.
-func TestNpcCheckLetsPassTheBardNoLongerInPlay(t *testing.T) {
+func TestNpcCheckLetsPassTheBardNotInPlay(t *testing.T) {
 	t.Parallel()
 	for name, out := range outOfPlay {
 		for how, finds := range map[string]func(n *npcTable, hold string, second *user){

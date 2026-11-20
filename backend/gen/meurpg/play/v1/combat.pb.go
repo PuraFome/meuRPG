@@ -2403,8 +2403,9 @@ const (
 	HeldRollKind_HELD_ROLL_KIND_MOUNT_SAVE HeldRollKind = 14
 	// The ability check a creature of the master's side makes outside a combat (RollNpcCheck), held for the Cutting Words
 	// ("Palavras de Interrupção") of the bards of the table. The offer is the master's, who reads the roll and every bard asked, and the
-	// bard's that is asked now (one at a time, in order), with only the die and the uses left and the creature's name only when that
-	// bard's player sees it; no other player is offered it, and no player reads the creature's d20, bonus or total. A creature has no
+	// bard's whose turn it is, when its player is in the open scene's audience (one at a time, in order), with only the die and
+	// the uses left and the creature's name only when that bard's player sees it; no other player is offered it, and no
+	// player reads the creature's d20, bonus or total. A creature has no
 	// player: there is no roller to leave out.
 	HeldRollKind_HELD_ROLL_KIND_NPC_CHECK HeldRollKind = 15
 )

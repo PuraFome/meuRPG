@@ -26,7 +26,7 @@ RETURNING *;
 
 -- name: CloseNpcCheckAsks :exec
 -- The questions of a held check that still wait close with no answer (the master went on without the bard, or the bard could
--- not answer any more).
+-- not answer).
 UPDATE npc_check_asks
 SET state = 'closed', answered_at = $2
 WHERE hold_id = $1 AND state = 'asked';
@@ -50,7 +50,7 @@ LIMIT 1;
 SELECT * FROM inspiration_holds WHERE campaign_id = $1 AND kind = 'npc_check' ORDER BY created_at, id;
 
 -- name: PassNpcCheckAsk :one
--- The bard's question is let pass with no answer of the bard: its character is no longer in play (reserve, dead, deleted, no player).
+-- The bard's question is let pass with no answer of the bard: its character is not in play (reserve, dead, deleted, no player), or its player is outside the open scene.
 UPDATE npc_check_asks
 SET state = 'passed', answered_at = $2
 WHERE id = $1 AND state = 'asked'

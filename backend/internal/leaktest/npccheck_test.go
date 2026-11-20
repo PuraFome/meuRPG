@@ -739,8 +739,8 @@ func TestNpcCheckTellsNoBardOutsideTheScene(t *testing.T) {
 	for name, tc := range map[string]struct {
 		insideFirst bool // the scene is narrowed to the bard asked first (it answers); otherwise to the bard asked second (the master skips)
 	}{
-		"the bard asked first answers, the next is outside": {true},
-		"the master skips, the bard asked now is outside":   {false},
+		"the bard asked first answers, the next is outside":      {true},
+		"the master skips, the bard whose turn it is is outside": {false},
 	} {
 		t.Run(name, func(t *testing.T) {
 			w := &world{stack: newStack(t), secrets: newSecrets(), pts: map[string]*mapsv1.MapPoint{}, puzzles: map[string]*playv1.Puzzle{}, notes: map[string]string{}}
