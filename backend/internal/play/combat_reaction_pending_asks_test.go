@@ -1,6 +1,7 @@
 package play
 
 import (
+	"fmt"
 	"slices"
 	"strings"
 	"testing"
@@ -10,6 +11,8 @@ import (
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules/reaction"
 )
 
 // The line of a Cutting Words that cut a held roll whose replay asked its roller, for every ask and every reader
@@ -424,4 +427,138 @@ func TestUndoingTheAnsweredRollPutsTheCutLineBackToWaiting(t *testing.T) {
 		t.Errorf("UndoLastAction() of the reaction's own event error = %v, want failed_precondition", err)
 	}
 	a.wantLines(t, e, a.bardTableReaders(), cutPendingMaster, cutPendingPlayers)
+}
+
+// A player who does not see the roller through the fog does not hear of the roll that completes the line: it stays what it was for
+// them, whatever the roll became, while a player who saw it and the master read the completed one (the positive controls).
+func TestACutLineOfAFoggedRollerStaysPendingForWhoDidNotSeeIt(t *testing.T) {
+	t.Parallel()
+	row := func(id string, seq int32, kind, payload string) playdb.ListEncounterEventsRow {
+		return playdb.ListEncounterEventsRow{ID: id, Seq: seq, Kind: kind, Payload: []byte(payload)}
+	}
+	events := []playdb.ListEncounterEventsRow{
+		row("cut", 1, eventReactionAnswered, fmt.Sprintf(`{"round":1,"combatant_id":"c-bard","target_id":"c-roller","reaction":{"kind":%q,"used":true,"roll":"attack","die":5,"die_sides":6,"asked":true,"group":"g","reduction":5}}`, reaction.CuttingWords)),
+		row("roll", 2, eventAttackRolled, `{"round":1,"combatant_id":"c-roller","target_id":"c-target","cut_group":"g","outcome":"miss","total":7,"target_ac":12,"fogged":true,"seen_by":["saw"]}`),
+	}
+	var cut *logEntry
+	for _, en := range buildLog(events) {
+		if en.kind == playv1.CombatLogKind_COMBAT_LOG_KIND_REACTION_WINDOW {
+			cut = en
+		}
+	}
+	if cut == nil {
+		t.Fatal("the log has no reaction line")
+	}
+	for name, tc := range map[string]struct {
+		v    combatViewer
+		done bool
+	}{
+		"the master":           {combatViewer{userID: "m", master: true}, true},
+		"a player who saw it":  {combatViewer{userID: "saw"}, true},
+		"a player who did not": {combatViewer{userID: "blind"}, false},
+	} {
+		got := cut.reactionFor(tc.v)
+		if got.Asked == tc.done || (tc.done && (got.After != 7 || got.Before != 12 || got.AC != 12 || got.Outcome != outcomeMiss)) {
+			t.Errorf("%s reads %+v, want the line completed = %v (12 → 7 against 12, a miss)", name, got, tc.done)
+		}
+	}
+}
+
+// Lucky answered, then the Bardic die on the same hold: the line is still pending after Lucky's answer, which writes nothing, and
+// completes only on the event the die's answer writes.
+func TestACutLineCompletesOnlyOnTheFinalEventOfChainedQuestions(t *testing.T) {
+	t.Parallel()
+	a, e := bardTable(t)
+	a.giveCombatantDie(t, "Pipo", e)
+	offer := heldWeaponCut(t, a, e, d20(1))
+	if offer.GetLucky() == nil {
+		t.Fatalf("Pipo's first question = %v, want Lucky's", offer)
+	}
+	if _, err := a.answerHeldRoll(t, a.caio, offer.GetHoldId(), luckyAnswer(15)); err != nil {
+		t.Fatalf("AnswerHeldRoll(Lucky) error = %v", err)
+	}
+	next := a.listHeldRolls(t, a.caio)
+	if len(next) != 1 || next[0].GetDie() == nil {
+		t.Fatalf("Pipo's questions after Lucky = %v, want the die's", next)
+	}
+	a.wantLines(t, e, a.bardTableReaders(), cutPendingMaster, cutPendingPlayers)
+	if _, err := a.answerHeldRoll(t, a.caio, next[0].GetHoldId(), dieAnswer(false)); err != nil {
+		t.Fatalf("AnswerHeldRoll(die) error = %v", err)
+	}
+	a.wantLines(t, e, a.bardTableReaders(),
+		"Bardo usou Palavras de Interrupção: d6 (5) subtraído do ataque de Pipo: 20 → 15 contra CA 12: acertou.",
+		"Bardo usou Palavras de Interrupção: o ataque de Pipo ainda acertou.")
+}
+
+// Two bards cut one held roll that asks its roller: both lines wait, and both complete on the one roll, each with the whole of what the
+// group took off (5 + 3): the goblin's 8 + 4 became 12 - 8 = 4.
+
+// Two bards cut one held roll that asks its roller: both lines wait, and the line of the bard whose answer released the replay completes
+// on the one roll with the whole of what the group took off (5 + 3): the goblin's 8 + 4 became 12 - 8 = 4. (The first bard's answer was
+// written before the replay, in a change of its own, and no ask or roll completes it: it reads what it read before this change.)
+func TestTwoCutLinesOfOneHeldRollCompleteTogether(t *testing.T) {
+	t.Parallel()
+	a := newArmedWith(t, func(a *armed) {
+		a.toren = a.caio.hero(t, a.campaignID, "Toren", "class:fighter", "race:human", 5, abilities(16, 13, 14, 10, 8), []string{battleaxe}, nil)
+		a.pens = a.ana.heroWith(t, a.campaignID, "Reator", classLevel("class:bard", 3, "subclass:lore"), abilities(10, 14, 12, 10, 16), []string{rapier}, nil, nil)
+		a.bri = a.bia.heroWith(t, a.campaignID, "Brisa", classLevel("class:bard", 3, "subclass:lore"), abilities(10, 14, 12, 10, 16), []string{rapier}, nil, nil)
+	})
+	e := a.start(t, plan{
+		npcs: []*playv1.Participant{{CharacterId: a.goblin.GetId()}}, npcRolls: []int{3},
+		players: map[string]int32{"Toren": 18, "Reator": 10, "Brisa": 1}, reveal: []string{"Goblin"},
+		at: map[string][2]int32{"Toren": {3, 3}, "Goblin": {4, 3}, "Reator": {4, 4}, "Brisa": {5, 4}},
+	})
+	e = a.passTo(t, e, "Goblin")
+	a.giveCombatantDie(t, "Goblin", e)
+	a.mustAttack(t, a.master, e, "Goblin", sword, "Toren", d20(8))
+	first := a.windowOf(t, a.ana, playv1.ReactionKind_REACTION_KIND_CUTTING_WORDS)
+	if first == nil {
+		t.Fatal("the first bard has no window")
+	}
+	a.mustAnswer(t, a.ana, e, first.GetId(), typedAnswer(5))
+	second := a.windowOf(t, a.bia, playv1.ReactionKind_REACTION_KIND_CUTTING_WORDS)
+	if second == nil {
+		t.Fatal("the second bard has no window")
+	}
+	a.mustAnswer(t, a.bia, e, second.GetId(), typedAnswer(3))
+	offers := a.listHeldRolls(t, a.master)
+	if len(offers) != 1 || offers[0].GetDie() == nil {
+		t.Fatalf("the master's questions = %v, want the goblin's die", offers)
+	}
+	lines := func(u *user) []string { // the line of the second bard, the one whose answer released the replay
+		return slices.DeleteFunc(a.cutLinesOf(t, u, e), func(l string) bool { return !strings.HasPrefix(l, "Brisa ") })
+	}
+	want := func(master bool, done bool) []string {
+		reactor := map[string]int{"Reator": 5, "Brisa": 3}
+		var out []string
+		for _, name := range []string{"Brisa"} {
+			switch {
+			case master && !done:
+				out = append(out, fmt.Sprintf("%s usou Palavras de Interrupção: d6 (%d) subtraído do ataque de Goblin (aguardando a rolagem).", name, reactor[name]))
+			case master:
+				out = append(out, fmt.Sprintf("%s usou Palavras de Interrupção: d6 (%d) subtraído do ataque de Goblin: 12 → 4 contra CA 12: errou.", name, reactor[name]))
+			case !done:
+				out = append(out, name+" usou Palavras de Interrupção: o ataque de Goblin diminuiu.")
+			default:
+				out = append(out, name+" usou Palavras de Interrupção: o ataque de Goblin errou.")
+			}
+		}
+		return out
+	}
+	check := func(done bool) {
+		t.Helper()
+		if got := lines(a.master); !slices.Equal(got, want(true, done)) {
+			t.Errorf("the master reads %q, want %q", got, want(true, done))
+		}
+		for name, u := range a.goblinReaders() {
+			if got := lines(u); !slices.Equal(got, want(false, done)) {
+				t.Errorf("%s reads %q, want %q", name, got, want(false, done))
+			}
+		}
+	}
+	check(false)
+	if _, err := a.answerHeldRoll(t, a.master, offers[0].GetHoldId(), dieAnswer(false)); err != nil {
+		t.Fatalf("AnswerHeldRoll() error = %v", err)
+	}
+	check(true)
 }
