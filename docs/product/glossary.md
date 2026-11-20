@@ -71,7 +71,7 @@ Where a spell level could be confused with the character's level, the text says 
 | Português | English | Meaning |
 | --- | --- | --- |
 | Alvo da magia | Spell target | Whom a spell reaches: "Uma criatura", "Várias criaturas", an area (cone, cube, cylinder, line or sphere, in steps of 1.5 m: "Cone de 4,5 m") or "Só quem conjura". In combat, an area spell lets the caster choose the creatures; the app does not draw the area (RN-23). |
-| Alcance Pessoal e Toque | Self and Touch range | "Pessoal" reaches only the caster or an area coming out of them (Vampiric Touch, Produce Flame and Eyebite pick a creature at 1.5 m, 9 m and 18 m); "Toque" is 1.5 m in combat. |
+| Alcance Pessoal e Toque | Self and Touch range | "Pessoal" reaches only the caster or an area coming out of them, except Vampiric Touch, Produce Flame and Eyebite, which pick a creature at 1.5 m, 9 m and 18 m; "Toque" is 1.5 m in combat. |
 | Habilidade | Ability | One of Strength, Dexterity, Constitution, Intelligence, Wisdom and Charisma. It covers the score ("valor de habilidade"), the modifier and the check. The increase is the feature "Incremento no Valor de Habilidade". |
 | Conteúdo de regras | Rules content (SRD 5.1) | The races, classes, spells and rules the app knows, from the SRD 5.1 (CC-BY-4.0). The screen does not show its version. |
 | Conteúdo da mesa | Table content (homebrew) | Classes, subclasses, races, subraces, backgrounds, spells, feats, options, class features, weapons, creatures and rules outside the SRD that the master registers for one campaign (MR-025, MR-026, RN-23). Members read, only the master writes, and players can propose. Nothing is deleted; entries are archived. |

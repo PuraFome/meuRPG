@@ -560,8 +560,7 @@ Um membro escondido nunca é nomeado: o turno espera a parte do mestre como "Fal
 - **Magias que leem PV** (Sono, Leque Cromático, Palavra de Poder Atordoar, Palavra de Poder Matar, Estabilizar, Cura Completa) são resolvidas com os PV reais, e o jogador ainda vê só palavras. O conjurador vê o próprio total (`5d8 (2, 4, 1, 5, 3) = 15`) e quem foi afetado ("adormeceu", "não foi afetado"), nunca os PV de um alvo nem o motivo. O mestre vê o total, os PV de cada criatura, o que sobrou e o motivo. Os outros jogadores veem só quem foi afetado e a condição. Os alvos são listados na ordem do conjurador, não na ordem do total, que revelaria quem tem menos PV. Palavra de Poder Matar num personagem de jogador o leva a 0 com três falhas, e o mestre confirma a morte (RN-03).
 - **Uma cura que depende do dano causado** (Toque Vampírico) é metade do dano que o golpe causou, depois das resistências do alvo, onde quer que o dano caia: os PV temporários, os PV e o que passa de 0 contam.
   A cura é uma linha do registro, escrita em todo golpe que acerta, com 0 quando nada cura.
-  Os números dela vão só ao mestre e ao dono de quem conjura; os outros jogadores leem a linha sem números, e nenhuma linha quando o alvo está escondido.
-  Quando o alvo está escondido, nenhum jogador lê a linha, nem o dono de quem conjura.
+  Os números dela vão só ao mestre e ao dono de quem conjura; os outros jogadores leem a linha sem números, e, quando o alvo está escondido, nenhum jogador lê a linha, nem o dono de quem conjura.
 
 **Cenas de RP** (MR-015).
 A CD de uma ação pertence ao mestre. Um jogador nunca recebe a rolagem de outro jogador.

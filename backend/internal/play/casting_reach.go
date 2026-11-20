@@ -94,9 +94,14 @@ const wearsArmorPT = "Está de armadura: a Armadura Arcana não funciona."
 // reachOfTargets says, for each target, whether the spell reaches it from the caster.
 func (s *Service) reachOfTargets(ctx context.Context, campaignID string, spell *playv1.CastingSpell, casterID string, targets []*playv1.CastingTarget) ([]*playv1.CastingReach, error) {
 	limit, limited := reachLimit(spell.GetRangeKind(), spell.GetRangeFt(), spell.GetCasterOnly())
-	// The spell's own target data (reach of a Self spell, creatures a spell stretches past its range) wins over the
-	// proto's range; a hint never shuts out a pick the cast would accept (link.Spell.ListedSlackFt).
-	if sp, err := s.roster.CombatSpell(ctx, nil, campaignID, casterID, spell.GetSpell().GetKey(), int(spell.GetSpell().GetLevel()), ""); err == nil && !spell.GetCasterOnly() {
+	// The spell's own target data (the reach of a Self spell, the creatures a spell stretches past its range) wins over the
+	// proto's range, so a hint never shuts out a pick the cast would accept (link.Spell.ListedSlackFt). Touch and a
+	// caster-only spell are exact in the proto and cost no read.
+	if kind := spell.GetRangeKind(); !spell.GetCasterOnly() && (kind == rules.RangeSelf || kind == rules.RangeRanged) {
+		sp, err := s.roster.CombatSpell(ctx, nil, campaignID, casterID, spell.GetSpell().GetKey(), int(spell.GetSpell().GetLevel()), "")
+		if err != nil {
+			return nil, err
+		}
 		if ft, ok := reachOf(sp); ok {
 			limit, limited = ft+clamp32(sp.ListedSlackFt(), 0, math.MaxInt32), true
 		}

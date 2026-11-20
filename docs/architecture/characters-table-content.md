@@ -388,7 +388,7 @@ The app writes the rest of the spell (time, range, duration, components) in `spe
 The types are closed: `creature` (with `per_slot_level` and, optionally, `reach_ft`), `creatures` (with `count`, `per_slot_level` and, optionally, `within_ft`, `within_of` and `range_extra_ft`), `area` (shape and size), `self` and `none` ("no creature": a point, an object, a place, nobody to pick); every key is an SRD spell, `label_pt` replaces only the page's text, and the file follows the content revision rule.
 `reach_ft` is the distance at which a spell of range Self picks its creature (Vampiric Touch 5 ft, Produce Flame 30 ft, Eyebite 60 ft).
 The spell keeps the SRD's range (Self, "Pessoal" on the sheet, no Twinned Spell and no Distant Spell).
-Only the target check in `play` reads `reach_ft` (`link.Spell.ReachFt`), and so does the cantrip's attack line.
+`play` reads `reach_ft` (`link.Spell.ReachFt`) in the target check, in the casting options' reach hint and in the advantage shape of a spell attack, and so does the cantrip's attack line.
 The reach is what the spell is checked against, in a combat and outside one.
 `within_ft` is how close the targets of a cast must be, and `within_of` says to whom: `each` (every pair) or `first` (each target after the first is that close to the first, and only the first is held to the spell's range).
 `range_extra_ft` (only with `each`) is how far past the spell's range a target may be, for a spell whose area starts at the range's edge.

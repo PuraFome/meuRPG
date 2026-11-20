@@ -78,3 +78,34 @@ func TestCastingOutside_TheReachFollowsTheSpellsTargetData(t *testing.T) {
 		t.Errorf("Vampiric Touch hint for Brisa at 95 ft = %v, want out of range at 1,5 m", r)
 	}
 }
+
+// TestCastingOutside_OnlyTheFirstTargetOfChainLightningIsHeldToTheRange: the other targets of Chain Lightning
+// hang off the first (30 ft), so only the first is held to the 150 ft range on the map (SRD 5.1, "Chain Lightning").
+func TestCastingOutside_OnlyTheFirstTargetOfChainLightningIsHeldToTheRange(t *testing.T) {
+	t.Parallel()
+	a := newArmedWith(t, func(a *armed) {
+		a.toren = a.caio.hero(t, a.campaignID, "Toren", "class:fighter", "race:human", 5,
+			&rulesv1.AbilityScores{Strength: 16, Dexterity: 13, Constitution: 14, Intelligence: 10, Wisdom: 10, Charisma: 8}, []string{battleaxe}, nil)
+		a.pens = a.ana.castingHero(t, a.campaignID, "Pensantus", classLevel("class:wizard", 11, ""),
+			&rulesv1.AbilityScores{Strength: 10, Dexterity: 14, Constitution: 12, Intelligence: 16, Wisdom: 10, Charisma: 8}, []string{fireBolt},
+			[]string{chainLightning}, []string{chainLightning}, "")
+		a.bri = a.bia.castingHero(t, a.campaignID, "Brisa", classLevel("class:cleric", 3, "subclass:life"),
+			&rulesv1.AbilityScores{Strength: 10, Dexterity: 16, Constitution: 14, Intelligence: 10, Wisdom: 16, Charisma: 8}, nil, nil, []string{cureWounds}, "")
+	})
+	// A map of 40 columns (200 ft): Pensantus at the first, Toren 100 ft away, Brisa 195 ft away and 95 ft from Toren.
+	wide := a.h.newMap(a.campaignID, 40)
+	if _, err := a.h.pool.Exec(t.Context(), `UPDATE game_sessions SET current_map_id = $2 WHERE campaign_id = $1 AND ended_at IS NULL`, a.campaignID, wide); err != nil {
+		t.Fatal(err)
+	}
+	step := 10000 / 40
+	at := func(col int) int { return col*step + step/2 }
+	a.h.placeToken(wide, a.pens.GetId(), at(0), 5000)
+	a.h.placeToken(wide, a.toren.GetId(), at(20), 5000)
+	a.h.placeToken(wide, a.bri.GetId(), at(39), 5000)
+	_, err := a.castOut(t, a.ana, a.pens, chainLightning, slotOfLevel(6), false, []*charactersv1.Character{a.bri, a.toren})
+	b := wantCastingBlocked(t, "the first target at 195 ft", err, playv1.CastingBlockedReason_CASTING_BLOCKED_REASON_TARGET_OUT_OF_REACH)
+	if b.GetMissingFt() != 45 {
+		t.Errorf("missing = %d ft, want 45", b.GetMissingFt())
+	}
+	a.mustCastOut(t, a.ana, a.pens, chainLightning, slotOfLevel(6), false, []*charactersv1.Character{a.toren, a.bri})
+}

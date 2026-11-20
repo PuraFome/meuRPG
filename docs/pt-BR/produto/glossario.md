@@ -71,7 +71,7 @@ Onde um nível da magia puder ser confundido com o nível do personagem, o texto
 | Português | Inglês | Significado |
 | --- | --- | --- |
 | Alvo da magia | Spell target | Quem uma magia alcança: "Uma criatura", "Várias criaturas", uma área (cone, cubo, cilindro, linha ou esfera, em passos de 1,5 m: "Cone de 4,5 m") ou "Só quem conjura". No combate, uma magia de área deixa o conjurador escolher as criaturas; o app não desenha a área (RN-23). |
-| Alcance Pessoal e Toque | Self and Touch range | "Pessoal" alcança só o conjurador ou uma área que sai dele (Toque Vampírico, Criar Chamas e Ataque Visual escolhem uma criatura a 1,5 m, 9 m e 18 m); "Toque" é 1,5 m no combate. |
+| Alcance Pessoal e Toque | Self and Touch range | "Pessoal" alcança só o conjurador ou uma área que sai dele, menos o Toque Vampírico, Criar Chamas e Ataque Visual, que escolhem uma criatura a 1,5 m, 9 m e 18 m; "Toque" é 1,5 m no combate. |
 | Habilidade | Ability | Uma entre Força, Destreza, Constituição, Inteligência, Sabedoria e Carisma. Vale para o valor ("valor de habilidade"), o modificador e o teste. O aumento é a característica "Incremento no Valor de Habilidade". |
 | Conteúdo de regras | Rules content (SRD 5.1) | As raças, classes, magias e regras que o app conhece, do SRD 5.1 (CC-BY-4.0). A tela não mostra a versão dele. |
 | Conteúdo da mesa | Table content (homebrew) | Classes, subclasses, raças, sub-raças, antecedentes, magias, talentos, opções, características de classe, armas, criaturas e regras fora do SRD que o mestre cadastra para uma campanha (MR-025, MR-026, RN-23). Os membros leem, só o mestre escreve, e os jogadores podem propor. Nada é apagado; as entradas são arquivadas. |

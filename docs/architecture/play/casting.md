@@ -209,7 +209,14 @@ What the server applies when the spell takes effect:
 | Anything else | Recorded in the log; the master narrates |
 
 An NPC has no hit points or slots outside combat, so a cast on an NPC changes nothing about it and an NPC caster spends no slot.
-Reach is measured on the session's current map (touch 5 ft, ranged the spell's distance, a Self spell with a `reach_ft` that reach, plus the spell's `range_extra_ft`, 5 ft a square; a spell whose other targets hang off the first, such as Chain Lightning, holds only the first to the distance); without a map, grid or token the master judges and nothing is refused (`TARGET_OUT_OF_REACH` carries `missing_ft`); the master is never held to reach.
+Reach is measured on the session's current map, 5 ft a square.
+Touch is 5 ft and a ranged spell its distance.
+A Self spell with a `reach_ft` reaches that far.
+The spell's `range_extra_ft` is added to the distance.
+A spell whose other targets hang off the first, such as Chain Lightning, holds only the first to the distance.
+Without a map, grid or token the master judges and nothing is refused (`TARGET_OUT_OF_REACH` carries `missing_ft`).
+The master is never held to reach.
+The options' reach hint reads the same data (`link.Spell`) for a Self or ranged spell, one roster read each, and never shuts out a legal pick.
 
 **How a lasting spell ends.** The master or the caster ends it (`EndActiveSpell`, `dismissed`), the caster's concentration moves on or stops (`concentration`), the caster is gone (`caster_gone`), or a rest covers the whole duration: a short rest is 1 hour, a long rest 8 hours.
 Durations are game time, never the wall clock.

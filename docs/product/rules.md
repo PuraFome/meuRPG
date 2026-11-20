@@ -560,8 +560,7 @@ A hidden member is never named: the turn waits for the master's part as "Falta o
 - **Spells that read HP** (Sleep, Color Spray, Power Word Stun, Power Word Kill, Spare the Dying, Heal; "Sono", "Leque Cromático", "Palavra de Poder Atordoar", "Palavra de Poder Matar", "Estabilizar", "Cura Completa") are resolved with the real hit points, and the player still sees only words. The caster sees their own total (`5d8 (2, 4, 1, 5, 3) = 15`) and who was affected ("adormeceu", "não foi afetado"), never a target's hit points or the reason. The master sees the total, each creature's hit points, what remained and the reason. Other players see only who was affected and the condition. Targets are listed in the caster's order, not the order of the total, which would reveal who has the least hit points. Power Word Kill on a player character takes them to 0 with three failures, and the master confirms the death (RN-03).
 - **A heal that depends on the damage dealt** (Vampiric Touch) is half the damage the hit dealt, after the target's resistances, wherever the damage lands: temporary hit points, hit points, and what goes past 0 all count.
   The heal is a line of the log, written on every hit that lands, with 0 when nothing heals.
-  Its numbers go only to the master and the caster's owner; another player reads the line with no numbers, and no line when the target is hidden.
-  When the target is hidden no player reads the line, the caster's owner included.
+  Its numbers go only to the master and the caster's owner; another player reads the line with no numbers, and when the target is hidden no player reads the line, the caster's owner included.
 
 **RP scenes** (MR-015).
 An action's DC belongs to the master. A player never receives another player's roll.
