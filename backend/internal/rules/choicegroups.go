@@ -373,7 +373,7 @@ type optionEntry struct {
 	level   int
 	order   int
 	// pickable and held split the options a player may pick now and the ones the sheet holds; filtered says the table
-	// keeps options out of the choice's pool. The pool asks for its picks in all from them (poolRequired).
+	// keeps options out of the choice's pool. The pool asks for its picks in all from them (pool.dealRequired).
 	pickable, held []string
 	filtered       bool
 }

@@ -187,7 +187,7 @@ func (c *content) optionShares(b Build, owner string, options []string) (pickabl
 }
 
 // requiredOptionPicks is requiredPicks for the choice that owner makes alone, whose pool lists options. Choices that
-// share a pool ask for the picks of the pool in all, dealt in the order of the picks (poolRequired).
+// share a pool ask for the picks of the pool in all, dealt in the order of the picks (pool.dealRequired).
 func (c *content) requiredOptionPicks(b Build, owner string, count int, options []string) int {
 	pickable, held, filtered := c.optionShares(b, owner, options)
 	if !filtered {

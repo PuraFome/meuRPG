@@ -7574,7 +7574,7 @@ for (const [scheme, theme] of [['light', 'claro'], ['dark', 'escuro']] as const)
 /**
  * The notice of a stored entry that loads with a part left out (#574, MR-025, RN-33): the master opens a background whose tool list
  * cites a key that is not a tool, and the page says so as a warning, not as an entry that is out. The response is the real server's with
- * one issue set on the entry and the key put in its list: the Go tests (the leak row in `internal/leaktest` and
+ * one issue set on the entry and the key put in its list: the Go tests (`internal/leaktest/loadedissues_test.go` and
  * `internal/characters/tablecontent_stored_test.go`) cover what the server sends, and this row covers what the page draws. The editor is
  * on the wider screens only: the phone reads.
  */
