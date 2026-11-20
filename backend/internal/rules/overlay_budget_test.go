@@ -68,9 +68,10 @@ func TestWithAtTheBudgets(t *testing.T) {
 		t.Errorf("With at the budgets took %v, want under 100 ms", best)
 	}
 	// 16 MB holds what one content at the budgets keeps: about 12 MB measured
-	// here, with room for a size class or two of Effect. The overlay is built
-	// before the first reading and kept alive past the second, so it is in both
-	// and cancels out: the figure is the content's own, not content minus overlay.
+	// here, with room for a size class or two of Effect. This is the content's own
+	// heap with the overlay still alive in both readings, so the memory the content
+	// shares with the overlay (strings, slices) is not counted; a cached content
+	// whose overlay was dropped keeps a little more.
 	if retained > 16 {
 		t.Errorf("a content at the budgets keeps %.2f MB, want under 16", retained)
 	}

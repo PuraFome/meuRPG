@@ -205,7 +205,7 @@ func TestWithMemoryByEntries(t *testing.T) {
 			keep = append(keep, c)
 		}
 		after := heap()
-		runtime.KeepAlive(o) // the overlay lives past the second reading: it cancels out, not "content minus overlay"
+		runtime.KeepAlive(o) // the overlay is alive in both readings, so what the content shares with it is not counted
 		t.Logf("%d entries: a content keeps %.2f MB", n, (after-before)/copies/1e6)
 		runtime.KeepAlive(keep)
 	}

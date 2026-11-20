@@ -60,7 +60,7 @@ flowchart LR
   A miss builds the content only for whoever asked, reading the rows in the same `tx`, with no shared `singleflight`: a request holding a connection while waiting for another that needs one is how the pool hangs.
   Two that miss at once both build and the second to store wins.
   A write never fills the cache, since what it builds can still roll back.
-  Memory and time are in [Operations](../operations/reference.md#memory-budgets); a content of 1,000 entries keeps 5 MB (13.5 MB with 6,000 effects) and a miss takes 80 to 90 ms, so the eight contents come to 108 MB at most ([Performance](../performance.md#table-content-at-its-limits)).
+  Memory and time are in [Operations](../operations/reference.md#memory-budgets); a content of 1,000 entries keeps 4.7 MB (13.5 MB with 6,000 effects) and a miss takes 37 ms (88 ms with 6,000 effects), so the eight contents come to 108 MB at most ([Performance](../performance.md#table-content-at-its-limits)).
 - **The order against a sheet write.** `CreateCharacter` and `UpdateCharacter` read the content before the transaction and again inside it; if the revision changed, the sheet is checked again with the new content.
   `LevelUpCharacter` reads inside the transaction.
   Serialization conflicts (40001) are retried by `db.InTx`.

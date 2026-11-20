@@ -47,42 +47,44 @@ The 500 kB budget bounds what the browser parses; the download is the compressed
 ## Table content at its limits
 
 A campaign holds at most 1,000 table entries and 6,000 effects (the distinct formulas stay at 500).
-The "Kept by the content" and "One cached content keeps" figures are the content's own, read with the overlay still alive (so it cancels out) and as a signed difference; the other columns were not re-measured with them. The numbers below were measured on 4 vCPUs of an Intel Xeon at 2.1 GHz (`GOMAXPROCS` 4, 16 GiB), Go 1.27, without `-race`, with the commands in the last table of this page.
+The numbers below were measured on 4 vCPUs of an Intel Xeon at 2.1 GHz (`GOMAXPROCS` 4, 16 GiB), Go 1.27, without `-race`, with the commands in the last table of this page (the benchmarks with `-benchtime 2s -count 5`, the median of the five; the live source and the budget test as the median or range of three runs).
+The "Kept by the content" columns are the content's own heap with the overlay still alive in both readings, so what the content shares with the overlay (strings and slices) is not counted; a cached content keeps a little more once its overlay is dropped (the reviewer's reading with the overlay dropped: 2.2 MB at 300 entries, 5.9 MB at 1,000, 8.2 MB at 2,000 effects, 15.4 MB at 6,000, 16.2 MB at 6,000 with 480 formulas).
+The live-source table ("One cached content keeps") is the production figure, because there the overlay is dropped as in the cache, and the worst case of the cache uses it.
 The tables are built like a large table's books: mostly spells, then subclasses with features, subraces, races, feats, backgrounds and a few classes, every name and number different.
 
 `Content.With` (the cost of a content cache miss), by entries, with the effects such a table has (about 1.5 effects an entry):
 
 | Entries | Time | Allocated | Allocations | Kept by the content |
 | --- | --- | --- | --- | --- |
-| 300 | 17.3 ms | 3.5 MB | 55,000 | 1.9 MB |
-| 450 (a table whose books come to that) | 20.1 ms | 4.4 MB | 63,600 | 2.5 MB |
-| 600 | 22.4 ms | 5.0 MB | 72,000 | 3.0 MB |
-| 800 | 24.1 ms | 6.3 MB | 83,000 | 4.0 MB |
-| 1,000 | 28.4 ms | 8.3 MB | 95,700 | 5.0 MB |
+| 300 | 15.4 ms | 4.4 MB | 67,800 | 1.9 MB |
+| 450 (a table whose books come to that) | 17.9 ms | 5.8 MB | 82,200 | 2.5 MB |
+| 600 | 19.5 ms | 6.7 MB | 96,900 | 3.0 MB |
+| 800 | 23.7 ms | 8.7 MB | 116,600 | 4.0 MB |
+| 1,000 | 27.1 ms | 11.2 MB | 137,600 | 5.0 MB |
 
-The cost is a fixed 3.5 ms and 1.4 MB for the SRD clone plus about 25 microseconds and 7 KB an entry, so it grows with the entries, not faster.
-The realistic 300-entry table of `BenchmarkWith` takes 19 ms and 3.8 MB on this machine, inside the 25 ms and 4 MB the design budgeted.
+The cost is a fixed 10 ms and 1.5 MB (the intercept of the five sizes, the SRD clone included) plus about 17 microseconds and 10 KB an entry, so it grows with the entries, not faster.
+The realistic 300-entry table of `BenchmarkWith` takes 18.6 ms and 4.7 MB on this machine: inside the 25 ms the design budgeted, over its 4 MB.
 
 At 1,000 entries, by effects:
 
 | Effects | Distinct formulas | Time | Allocated | Allocations | Kept by the content |
 | --- | --- | --- | --- | --- | --- |
-| 2,000 | 100 | 36.5 ms | 13.5 MB | 125,800 | 7.3 MB |
-| 4,000 | 100 | 39.5 ms | 15.0 MB | 136,000 | 10.9 MB |
-| 6,000 | 100 | 40.4 ms | 16.6 MB | 146,100 | 14.5 MB |
-| 6,000 | 480 | 75.9 ms | 32.9 MB | 237,600 | 15.3 MB |
+| 2,000 | 100 | 46.4 ms | 20.2 MB | 223,900 | 7.3 MB |
+| 4,000 | 100 | 55.3 ms | 28.1 MB | 330,200 | 10.9 MB |
+| 6,000 | 100 | 61.2 ms | 35.9 MB | 436,600 | 14.5 MB |
+| 6,000 | 480 | 92.1 ms | 52.7 MB | 532,600 | 15.3 MB |
 
-A plain effect costs about 1 microsecond; what costs is a distinct formula, about 90 microseconds and 43 KB each to compile.
-`TestWithAtTheBudgets` (6,000 effects of 300 entries with 500 distinct formulas) takes 55 to 77 ms and keeps 12 MB (its limit is 16 MB).
+A plain effect costs about 4 microseconds and 4 KB; what costs most is a distinct formula, about 80 microseconds and 44 KB each to compile.
+`TestWithAtTheBudgets` (6,000 effects of 300 entries with 500 distinct formulas) takes about 58 ms (56 to 58 ms over three runs of `MEURPG_MEASURE=1 go test ./internal/rules -run TestWithAtTheBudgets -v`) and keeps 12 MB, the content's own heap with the overlay alive (its limit is 16 MB).
 
 The live source (through the database) for a campaign:
 
 | Entries | Miss (read, decode, `With`) | Hit | One cached content keeps |
 | --- | --- | --- | --- |
-| 300 | 36 ms | 0.6 ms | 1.8 MB |
-| 450 | 29 ms | 0.6 ms | 2.5 MB |
-| 1,000 | 80 ms | 0.6 ms | 4.7 MB |
-| 1,000, 6,000 effects | 91 ms | 0.7 ms | 13.5 MB |
+| 300 | 15 ms | 0.07 ms | 1.8 MB |
+| 450 | 18 ms | 0.08 ms | 2.5 MB |
+| 1,000 | 37 ms | 0.08 ms | 4.7 MB |
+| 1,000, 6,000 effects | 88 ms | 0.12 ms | 13.5 MB |
 
 A revision bump (any write or switch) makes the next read a miss; the old content stays until it is the least recently used.
 The cache keeps at most 8 contents, so the worst case is 8 times 13.5 MB, about 108 MB, 26% of the 400 MiB `GOMEMLIMIT`; the 24 MiB of stored data (`maxLiveBytes`) is not reached by 1,000 entries of 1 to 1.3 MiB and holds back a table of long texts.

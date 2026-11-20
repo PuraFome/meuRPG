@@ -40,7 +40,7 @@ All checked in the first pass, before anything compiles; the error names the lim
 
 The 64 KiB per entry is a storage limit, checked by the server.
 Without these budgets, hundreds of classes of 60 features of 20 effects each cost seconds and gigabytes.
-The ADR-0018 budget for a realistic content of 300 entries is about 25 ms and 4 MB per `With` (19 ms and 3.8 MB measured); a table of 1,000 entries takes 28 ms and 8.3 MB, and one with 6,000 effects 40 ms and 16.6 MB (76 ms and 33 MB with 480 distinct formulas), a content keeping 1.9 to 15 MB.
+The ADR-0018 budget for a realistic content of 300 entries is about 25 ms and 4 MB per `With` (18.6 ms and 4.7 MB measured); a table of 1,000 entries takes 27 ms and 11.2 MB, and one with 6,000 effects 61 ms and 35.9 MB (92 ms and 52.7 MB with 480 distinct formulas), a content keeping 5 to 15 MB.
 The numbers, the machine and the commands (`BenchmarkWithEntries`, `BenchmarkWithEffects`, `TestWithMemoryByEntries`, `TestWithMemoryByEffects`) are in [Performance](../performance.md#table-content-at-its-limits).
 Cache and memory limits of the live source are in [Characters](characters-table-content.md#the-live-source).
 
