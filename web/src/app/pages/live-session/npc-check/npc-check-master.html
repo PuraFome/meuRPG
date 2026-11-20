@@ -4,7 +4,7 @@
     type="button"
     class="entry"
     [class.mr-button--off]="launcher.combatOpen()"
-    [attr.aria-disabled]="launcher.combatOpen() ? 'true' : null"
+    [attr.aria-disabled]="launcher.blocked() ? 'true' : null"
     (click)="open()"
   >
     <mat-icon aria-hidden="true">{{ launcher.combatOpen() ? 'block' : 'record_voice_over' }}</mat-icon>Teste de um NPC

@@ -2,12 +2,14 @@ import { test } from './diagnostics';
 
 import {
   appDiceFlow,
+  combatEndedFlow,
   combatOpenFlow,
   cutFailureFlow,
   hiddenFlow,
   hideAfterRollFlow,
   lateAnswerFlow,
   loadingFlow,
+  longNameFlow,
   noBonusFlow,
   noSceneFlow,
   nobodySeesFlow,
@@ -118,7 +120,17 @@ test('sem cena aberta a entrada fica ao lado de "Pedir teste em grupo" e o cartÃ
   await withTable(browser, { noScene: true }, (t) => noSceneFlow(t, {}));
 });
 
-test('o menu de um NPC em cena abre a folha com ele escolhido', { tag: ['@MR-015'] }, async ({ browser }) => {
+test('o menu de um NPC em cena abre a folha com ele escolhido e espera enquanto um combate recusa o teste', { tag: ['@MR-015'] }, async ({ browser }) => {
   test.setTimeout(180_000);
-  await withTable(browser, {}, (t) => stageMenuFlow(t));
+  await withTable(browser, {}, (t) => stageMenuFlow(t, {}));
+});
+
+test('nomes longos quebram dentro da tela: a folha, o cartÃ£o do mestre e a pergunta', { tag: ['@MR-015'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await withTable(browser, { other: 'bard', longName: true }, (t) => longNameFlow(t, {}));
+});
+
+test('um combate que terminou libera a entrada: o teste recusado pode ser rolado de novo', { tag: ['@MR-015'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await withTable(browser, {}, (t) => combatEndedFlow(t));
 });

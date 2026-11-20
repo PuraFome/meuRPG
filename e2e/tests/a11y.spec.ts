@@ -90,6 +90,7 @@ import {
   hideAfterRollFlow,
   lateAnswerFlow,
   loadingFlow,
+  longNameFlow,
   nobodySeesFlow,
   noBonusFlow,
   noSceneFlow,
@@ -97,6 +98,7 @@ import {
   physicalDiceFlow,
   refusalsFlow,
   sheetFlow,
+  stageMenuFlow,
   twoBardsFlow,
 } from './npc-check-flows';
 import { npcShotScale, npcTable, shootNpc, type NpcOptions, type NpcTable, type NpcView } from './npc-check-support';
@@ -15724,6 +15726,8 @@ for (const [colorScheme, theme] of [
           [{ other: 'bard' }, lateAnswerFlow],
           [{}, hiddenFlow],
           [{}, hideAfterRollFlow],
+          [{ other: 'bard', longName: true }, longNameFlow],
+          [{}, stageMenuFlow],
           [{}, noBonusFlow],
           [{}, refusalsFlow],
           [{}, loadingFlow],

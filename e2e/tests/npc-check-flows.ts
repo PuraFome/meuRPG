@@ -1,4 +1,4 @@
-import { expect, type Locator } from '@playwright/test';
+import { expect, type Page } from '@playwright/test';
 
 import { openSessionPage } from './live-session-support';
 import { expectDashed, expectFits } from './take-out-support';
@@ -8,6 +8,8 @@ import {
   bardReady,
   cutSheet,
   expectNoOffers,
+  LONG_BARD,
+  LONG_NPC,
   masterRolls,
   npcCard,
   npcSheet,
@@ -54,9 +56,12 @@ export async function sheetFlow(t: NpcTable, v: NpcView): Promise<void> {
   // The hidden one starts unticked; ticked, the bards read "uma criatura".
   await pickNpc(sheet, 'Espião');
   await expect(box).not.toBeChecked();
-  await expect(sheet.getByText(/está escondido dos jogadores, então a caixa começa desmarcada/)).toBeVisible();
-  await expect(sheet.getByText('os bardos leem “uma criatura”, sem o nome', { exact: false })).toBeVisible();
-  await see(v, m, 'sheet-hidden', sheet);
+  const hint = sheet.getByText(/A caixa começa desmarcada porque os jogadores não veem a criatura/);
+  await expect(hint).toBeVisible();
+  await expect(hint).toContainText('leem “uma criatura”, sem o nome');
+  await expect(hint).toContainText('Se o token de Espião estiver escondido no mapa, nenhum bardo é perguntado');
+  // The box and its line go under the foot of a phone's sheet: the shot scrolls to them.
+  await see(v, m, 'sheet-hidden', hint);
 
   // The map measures a creature with a token beside a bard's: no box, the quiet line, and the d20 typed.
   await pickNpc(sheet, 'Capitão Goblin');
@@ -68,7 +73,7 @@ export async function sheetFlow(t: NpcTable, v: NpcView): Promise<void> {
   await expect(sheet.getByText('Digite um número de 1 a 20.')).toBeVisible();
   await expectDashed(sheet.getByRole('button', { name: /^Rolar .* de Capitão Goblin/ }));
   await expect(sheet.getByText('O d20 vai de 1 a 20.')).toBeVisible();
-  await see(v, m, 'sheet-typed-invalid', sheet);
+  await see(v, m, 'sheet-typed-invalid', sheet.getByText('Digite um número de 1 a 20.'));
 
   // A creature with no number for the check: said beside the check, and in the select.
   await pickNpc(sheet, 'Bartolo');
@@ -503,13 +508,95 @@ export async function noSceneFlow(t: NpcTable, v: NpcView): Promise<void> {
   await cutSheet(p).getByRole('button', { name: 'Deixar passar' }).click();
 }
 
-/** The "⋮" of an NPC on the stage opens the same sheet with that NPC chosen (board 591-08 state 5). */
-export async function stageMenuFlow(t: NpcTable): Promise<Locator> {
+/**
+ * The "⋮" of an NPC on the stage opens the same sheet with that NPC chosen (board 591-08 state 5). After a roll refused for a
+ * combat the page does not show, the entry says so and the item still opens the sheet.
+ */
+export async function stageMenuFlow(t: NpcTable, v: NpcView): Promise<void> {
   const { m, campaignId } = t;
   await openSessionPage(m, campaignId);
   await m.getByRole('button', { name: 'Mais ações de Bartolo' }).click();
-  await m.getByRole('menuitem', { name: 'Teste de Bartolo' }).click();
+  const menu = m.getByRole('menu');
+  const item = menu.getByRole('menuitem', { name: 'Teste de Bartolo' });
+  await expect(item).toBeVisible();
+  await expect(item).not.toHaveAttribute('aria-disabled', 'true');
+  await see(v, m, 'stage-menu', menu);
+  await item.click();
   const sheet = npcSheet(m);
-  await expect(sheet.getByRole('button', { name: /^Rolar .* de Bartolo/ })).toBeVisible();
-  return sheet;
+  const roll = sheet.getByRole('button', { name: /^Rolar .* de Bartolo/ });
+  await expect(roll).toBeVisible();
+  // The server refuses the roll for a combat: the reason stays on the page.
+  await refuseForCombat(m);
+  await roll.click();
+  await expect(sheet.getByRole('alert')).toContainText('Um combate começou.');
+  await sheet.getByRole('button', { name: 'Cancelar' }).click();
+  await expect(npcSheet(m)).toHaveCount(0);
+  await expect(m.getByText('Há um combate aberto: os testes das criaturas são do combate.').first()).toBeVisible();
+  await m.getByRole('button', { name: 'Mais ações de Bartolo' }).click();
+  const waiting = m.getByRole('menu').getByRole('menuitem', { name: 'Teste de Bartolo' });
+  // The page shows no combat, so the item is not disabled: it waits only while a combat is on the page, and there is no board then.
+  await expect(waiting).not.toHaveAttribute('aria-disabled', 'true');
+  await see(v, m, 'stage-menu-after-refusal', m.getByRole('menu'));
+  await m.unroute('**/*PlayService/RollNpcCheck');
+}
+
+/**
+ * Names too long for one line at 390 px: a creature and the first bard. The sheet's row, the master's card (title and rows), and the
+ * bard's question wrap inside the screen, and nothing scrolls sideways.
+ */
+export async function longNameFlow(t: NpcTable, v: NpcView): Promise<void> {
+  const { m, p, campaignId, other } = t;
+  if (!other) {
+    throw new Error('longNameFlow wants a second bard');
+  }
+  const sheet = await openNpcSheet(m, campaignId);
+  await pickNpc(sheet, LONG_NPC);
+  await see(v, m, 'sheet-long-name', sheet.locator('label.row', { hasText: LONG_NPC }).first());
+  await expectFits(m, sheet, 'Teste de um NPC, a folha com um nome longo');
+  await rollChosen(m, sheet);
+  const card = npcCard(m);
+  await expect(card.getByRole('heading', { name: new RegExp(`^${LONG_NPC} · `) })).toBeVisible();
+  await expect(card).toContainText(`Esperando ${LONG_BARD}`);
+  await expect(card).toContainText(`depois de ${LONG_BARD}`);
+  await expectFits(m, card, 'o cartão com nomes longos');
+  await see(v, m, 'card-long-name', card);
+  await bardReady(p, campaignId);
+  const q = cutSheet(p);
+  await expect(q.getByRole('heading', { name: `${LONG_NPC} faz um teste` })).toBeVisible();
+  await expectFits(p, q, 'a pergunta com um nome longo');
+  await see(v, p, 'bard-long-name');
+  await q.getByRole('button', { name: 'Deixar passar' }).click();
+  await expect(card).toContainText('Deixou passar');
+}
+
+/** The server refuses the next roll as for a combat, while the page shows none (the combat began and ended, or the page has not heard). */
+async function refuseForCombat(m: Page): Promise<void> {
+  const body = { code: 'failed_precondition', message: 'x', details: [{ type: 'meurpg.play.v1.ResourceBlocked', value: 'CAE' }] };
+  await m.route('**/*PlayService/RollNpcCheck', (route) => route.fulfill({ status: 400, contentType: 'application/json', body: JSON.stringify(body) }));
+}
+
+/**
+ * A roll was refused for a combat that the page does not show (it ended, or the page had not heard of it): the entry says so, and
+ * the next click opens the sheet again and rolls the same check, with no reload.
+ */
+export async function combatEndedFlow(t: NpcTable): Promise<void> {
+  const { m, campaignId } = t;
+  const sheet = await openNpcSheet(m, campaignId);
+  await pickNpc(sheet, 'Capitão bandido');
+  await refuseForCombat(m);
+  await sheet.getByRole('button', { name: 'Rolar Enganação de Capitão bandido' }).click();
+  await expect(sheet.getByRole('alert')).toContainText('Um combate começou.');
+  await sheet.getByRole('button', { name: 'Cancelar' }).click();
+  await expect(npcSheet(m)).toHaveCount(0);
+  await expect(m.getByText('Há um combate aberto: os testes das criaturas são do combate.').first()).toBeVisible();
+  await m.unroute('**/*PlayService/RollNpcCheck');
+  const entry = m.getByRole('button', { name: 'Teste de um NPC' }).first();
+  await entry.click();
+  const again = npcSheet(m);
+  await expect(again.getByRole('heading', { name: 'Teste de um NPC' })).toBeVisible();
+  await pickNpc(again, 'Capitão bandido');
+  await rollChosen(m, again);
+  await expect(npcCard(m)).toContainText(/d20 \(\d+\) [+−] \d+ = \d+/);
+  // The roll went through: the entry no longer waits.
+  await expect(m.getByText('Há um combate aberto: os testes das criaturas são do combate.')).toHaveCount(0);
 }

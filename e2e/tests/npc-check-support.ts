@@ -38,6 +38,10 @@ export const bilboBard: CharacterBuild = { ...brisaBard, name: 'bilbo', level: 3
 /** The sheet's setting "Perguntar": on every check of an enemy the bard sees. */
 export const askAll = { cuttingWordsAsk: 'CUTTING_WORDS_ASK_ALL' };
 
+/** A creature and a bard with names too long for one line at 390 px, the second with a word no space can break. */
+export const LONG_NPC = 'Guardião Supremo Aurelianus de Montanhaverdeprofundadosreinos Terceiro';
+export const LONG_BARD = 'Brisa-da-Montanhaverdeprofundadosreinos de Alto Vale Primeira';
+
 export interface NpcTable {
   m: Page;
   /** Brisa's page. */
@@ -47,7 +51,7 @@ export interface NpcTable {
   sceneId: string;
   /** The second player, when the table was asked for one: bilbo (a bard, asked after Brisa) or Toren (a fighter, never asked). */
   other?: ThirdPlayer;
-  npc: { bartolo: string; capitao: string; espiao: string };
+  npc: { bartolo: string; capitao: string; espiao: string; longo?: string };
   done: () => Promise<void>;
 }
 
@@ -63,6 +67,8 @@ export interface NpcOptions {
   other?: 'bard' | 'fighter';
   /** Brisa rolls her die by hand (the table's dice mode is the real dice). */
   physical?: boolean;
+  /** The first bard and one NPC on the stage have the long names `LONG_BARD` and `LONG_NPC`. */
+  longName?: boolean;
   /** The map has fog, in bright light: a token the master hides reaches the players as a vision hint only. */
   fog?: boolean;
   /** No scene is open: the master's entry is the one beside "Pedir teste em grupo". */
@@ -75,13 +81,13 @@ const shotsDir = process.env.E2E_SHOTS_DIR;
 export const npcShotScale = shotsDir ? { deviceScaleFactor: 2 } : {};
 
 export async function npcTable(browser: Browser, look: NpcLook = {}, options: NpcOptions = {}): Promise<NpcTable> {
-  const master: BrowserContext = await newSignedInContext(browser, 'Mestre Teste', { viewport: { width: look.masterWidth ?? 1280, height: 900 }, colorScheme: look.colorScheme, deviceScaleFactor: look.deviceScaleFactor });
+  const master: BrowserContext = await newSignedInContext(browser, 'Mestre Teste', { viewport: { width: look.masterWidth ?? 1280, height: 844 }, colorScheme: look.colorScheme, deviceScaleFactor: look.deviceScaleFactor });
   const player: BrowserContext = await newSignedInContext(browser, 'Jogador Teste', { viewport: { width: look.playerWidth ?? 390, height: 844 }, colorScheme: look.colorScheme, deviceScaleFactor: look.deviceScaleFactor });
   const m = await master.newPage();
   const p = await player.newPage();
   await m.goto('/');
   await p.goto('/');
-  const table = await tableForCombat(m, p, `Palavras de Interrupção ${Date.now()}`, true, false, { build: brisaBard, sheet: askAll });
+  const table = await tableForCombat(m, p, `Palavras de Interrupção ${Date.now()}`, true, false, { build: options.longName ? { ...brisaBard, name: LONG_BARD } : brisaBard, sheet: askAll });
   const { campaignId } = table;
   if (options.physical) {
     await setTableRulesRPC(m, campaignId, { diceMode: 'DICE_MODE_PHYSICAL' });
@@ -97,12 +103,18 @@ export async function npcTable(browser: Browser, look: NpcLook = {}, options: Np
   if (!options.noScene) {
     await openSceneRPC(m, campaignId, sceneId);
   }
-  const npc = {
+  const npc: NpcTable['npc'] = {
     bartolo: await npcRPC(m, campaignId, 'Bartolo', 'STORY'),
     capitao: await npcRPC(m, campaignId, 'Capitão bandido', 'ENEMY'),
     espiao: await npcRPC(m, campaignId, 'Espião', 'ENEMY'),
   };
+  if (options.longName) {
+    npc.longo = await npcRPC(m, campaignId, LONG_NPC, 'ENEMY');
+  }
   if (!options.noScene) {
+    if (npc.longo) {
+      await onStage(m, campaignId, npc.longo);
+    }
     await onStage(m, campaignId, npc.bartolo);
     await onStage(m, campaignId, npc.capitao);
     await onStage(m, campaignId, npc.espiao, true);
