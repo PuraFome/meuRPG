@@ -22920,7 +22920,7 @@ type ConsumableUseLogLine struct {
 	// The name of the receiver when it is not the user (a potion given to another creature); empty for the user.
 	TargetLabel string `protobuf:"bytes,9,opt,name=target_label,json=targetLabel,proto3" json:"target_label,omitempty"`
 	// The item's kind, which the line's verb follows (a potion is drunk or given, an oil applied, a scroll read).
-	// UNSPECIFIED when the item is no longer in the catalog.
+	// UNSPECIFIED when the item is no longer in the catalog or the campaign's rules cannot be read.
 	Kind v11.ConsumableKind `protobuf:"varint,10,opt,name=kind,proto3,enum=meurpg.characters.v1.ConsumableKind" json:"kind,omitempty"`
 	// RESISTANCE: the whole length of the effect as a sentence part ("por 1 hora"); empty on the other outcomes.
 	EffectDurationTextPt string `protobuf:"bytes,12,opt,name=effect_duration_text_pt,json=effectDurationTextPt,proto3" json:"effect_duration_text_pt,omitempty"`

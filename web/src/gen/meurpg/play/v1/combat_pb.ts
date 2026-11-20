@@ -11366,7 +11366,7 @@ export type ConsumableUseLogLine = Message<"meurpg.play.v1.ConsumableUseLogLine"
 
   /**
    * The item's kind, which the line's verb follows (a potion is drunk or given, an oil applied, a scroll read).
-   * UNSPECIFIED when the item is no longer in the catalog.
+   * UNSPECIFIED when the item is no longer in the catalog or the campaign's rules cannot be read.
    *
    * @generated from field: meurpg.characters.v1.ConsumableKind kind = 10;
    */

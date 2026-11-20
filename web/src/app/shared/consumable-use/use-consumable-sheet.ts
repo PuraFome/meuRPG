@@ -230,7 +230,7 @@ export class UseConsumableSheet {
   );
   /** The block icon says there is nobody to give to; a use the turn does not allow, or a sheet not read again, keeps the open hand, like the item's own button. */
   protected readonly giveIcon = computed(() =>
-    this.giveOff() && !this.blocked() ? 'block' : 'volunteer_activism',
+    this.giveOff() && !this.blocked() && !this.unread() ? 'block' : 'volunteer_activism',
   );
   /** What says why "Dar a…" is dashed: the line of the turn or of the empty list, or the error of the read. */
   protected readonly giveWhyId = computed(() => {

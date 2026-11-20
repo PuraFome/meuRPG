@@ -1537,7 +1537,10 @@ describe('UseConsumableSheet', () => {
     });
 
     it('says the unit was used when a read lands, as the send path does', async () => {
-      loadTargets.mockReset().mockResolvedValueOnce(unreadTargets).mockResolvedValue(read([BRISA]));
+      loadTargets
+        .mockReset()
+        .mockResolvedValueOnce(unreadTargets)
+        .mockResolvedValue(read([BRISA]));
       reread.mockResolvedValueOnce({ left: 1, rebound: true });
       const { el, settle } = render();
       await settle();
