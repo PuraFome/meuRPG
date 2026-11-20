@@ -40,7 +40,22 @@ export const releaseTexts = {
 } as const;
 
 /** What the player holds: the Bola de Fogo (3rd-level slot), or a move of the speed it has. */
-export type Held = 'fireball' | 'move';
+export type Held = 'fireball' | 'move' | 'direction' | 'wall';
+
+/** The held spells of the other pickers: the cone of Mãos Flamejantes (a direction) and the Muralha de Fogo (a wall, 4th-level slot, so a level 9 caster). */
+export const heldSpell = {
+  direction: { key: 'spell:burning-hands', level: 1, name: 'Mãos Flamejantes' },
+  wall: { key: 'spell:wall-of-fire', level: 4, name: 'Muralha de Fogo' },
+} as const;
+
+/** The caster of the table: Pensantus at level 5 with the Bola de Fogo, or at level 9 with the wall. */
+function kitOf(held: Held): typeof fireballKit {
+  if (held !== 'wall') {
+    return fireballKit;
+  }
+  const spells = [...pensantusCasting.preparedSpellKeys, heldSpell.wall.key];
+  return { build: { ...pensantus, level: 9 }, sheet: { ...pensantusCasting, knownSpellKeys: spells, preparedSpellKeys: spells } };
+}
 
 export interface ReadyMapTable {
   master: BrowserContext;
@@ -67,7 +82,7 @@ export async function readyMapTable(
   const p = await player.newPage();
   await m.goto('/');
   await p.goto('/');
-  const table = await tableForCombat(m, p, `${name} ${Date.now()}`, true, true, fireballKit);
+  const table = await tableForCombat(m, p, `${name} ${Date.now()}`, true, true, kitOf(held));
   // `blocker`: a goblin the player cannot see stands on the square next to Pensantus, on the way east.
   const at = view.blocker ? { ...mapSquares, 'Goblin 2': [mapSquares['Pensantus'][0] + 1, mapSquares['Pensantus'][1]] as [number, number] } : mapSquares;
   const begun = await beginAttackCombatRPC(m, table, mapFaces, at, view.blocker ? ['Goblin 2'] : []);
@@ -96,6 +111,9 @@ export async function readyMapTable(
 export async function holdOn(player: Page, campaignId: string, encounter: Encounter, held: Held): Promise<Encounter> {
   if (held === 'fireball') {
     return readySpellRPC(player, campaignId, encounter, 'Pensantus', 'spell:fireball', 3);
+  }
+  if (held === 'direction' || held === 'wall') {
+    return readySpellRPC(player, campaignId, encounter, 'Pensantus', heldSpell[held].key, heldSpell[held].level);
   }
   return readyRPC(player, 'ReadyAction', {
     campaignId,
@@ -128,8 +146,8 @@ export async function undoFire(m: Page, campaignId: string): Promise<void> {
 }
 
 /** The window of the held Bola de Fogo on the player's page, once the master fired. */
-export function spellWindow(p: Page): Locator {
-  return p.getByRole('alertdialog', { name: releaseTexts.spellDialog });
+export function spellWindow(p: Page, name = 'Bola de Fogo'): Locator {
+  return p.getByRole('alertdialog', { name: `Soltar ${name}` });
 }
 
 /** The window of the held move on the player's page. */
@@ -138,8 +156,8 @@ export function moveWindow(p: Page): Locator {
 }
 
 /** The cast sheet of the release (the player's) or the master's area dialog: the dialog titled "Soltar Bola de Fogo" (+ " por Pensantus" for the master). */
-export function releaseSheet(page: Page, master = false): Locator {
-  return page.getByRole('dialog', { name: master ? 'Soltar Bola de Fogo por Pensantus' : releaseTexts.spellDialog });
+export function releaseSheet(page: Page, master = false, name = 'Bola de Fogo'): Locator {
+  return page.getByRole('dialog', { name: master ? `Soltar ${name} por Pensantus` : `Soltar ${name}` });
 }
 
 /** The master's row of the readied window in the queue: it stays in the "rest" part however long the window waits (it is never a late question). */

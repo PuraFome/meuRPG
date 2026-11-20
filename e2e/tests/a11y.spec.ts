@@ -102,7 +102,7 @@ import {
 } from './table-sheet-support';
 import { masterLog, openCombatPanel, openMap, openOrderRow, openTurn } from './combat-layout';
 import { waitForEncounterRevision } from './revision-support';
-import { fireReadied, masterQueue, mapSquares, moveWindow, pickFireballPoint, placeFireball, readyMapTable, releaseSheet, releaseTexts, scrollToLegend, spellWindow, undoFire } from './ready-map-support';
+import { fireReadied, heldSpell, masterQueue, mapSquares, moveWindow, pickFireballPoint, placeFireball, readyMapTable, releaseSheet, releaseTexts, scrollToLegend, spellWindow, undoFire } from './ready-map-support';
 import { goblinTrigger, openReadySheet, pensantusReadyKit, readyAttackRPC, readyRPC, readySpellRPC, shootReady, summonOffText } from './ready-support';
 import { WIDTHS, beginVrockFight, pagesFor, shoot, useCreatureActionRPC, viewportOf } from './recharge-support';
 import { chooseRow, openTvPanel, rollForTableRPC, tvRoute } from './table-screen-support';
@@ -15443,6 +15443,17 @@ async function scanReadyMasterScreens(browser: Browser, colorScheme: 'light' | '
     await m.locator('app-readied-fold').scrollIntoViewIfNeeded();
     await shoot(m, 'mestre-dois');
 
+    // Off both readiers' turns (Goblin 2's), Pensantus' window opens first and Goblin 1's waits behind it: the queue says "Depois de Pensantus".
+    await passTurnsToAndWait(m, campaignId, 'Goblin 2', m);
+    await row.filter({ hasText: 'Pensantus' }).getByRole('button', { name: 'Disparar a ação de Pensantus' }).click();
+    await expect(row.filter({ hasText: 'Pensantus' })).toContainText('A janela de Pensantus já está aberta: espere a resposta.');
+    await row.filter({ hasText: 'Goblin 1' }).getByRole('button', { name: 'Disparar a ação de Goblin 1' }).click();
+    const behind = m.locator('app-reaction-queue[part="rest"]');
+    await expect(behind).toContainText('Depois de Pensantus');
+    await behind.scrollIntoViewIfNeeded();
+    await expectScreenPasses(m, `Preparar, a fila do mestre com uma janela esperando a outra ${where}`);
+    await shootReady(m, 'fila-depois', width, colorScheme, '857');
+
     // The fire opens the readier's window: the row says so and "Disparar" stays off.
     await row.filter({ hasText: 'Pensantus' }).getByRole('button', { name: 'Disparar a ação de Pensantus' }).click();
     await expect(row.filter({ hasText: 'Pensantus' })).toContainText('A janela de Pensantus já está aberta: espere a resposta.');
@@ -15806,8 +15817,7 @@ for (const [colorScheme, theme] of [
 /**
  * The other states of the release on the map (#857, boards 857-07 to 857-09): the cast sheet and the master's dialog when the window went away
  * under them, the typed roll and the result with "Voltar à sessão", the Mover page that something blocks, and the window that passed by itself.
- * The wall and the direction releases (cards 3 and 4) are not here: the table of `readyMapTable` holds the Bola de Fogo or a move only, and a
- * wall or a direction needs a caster who knows such a spell, its readying and the map's picker for it.
+ * The wall (Muralha de Fogo) and the direction (Mãos Flamejantes) releases (cards 3 and 4) are here too: the map's picker of each, with its start or aim chosen.
  */
 async function scanReadyMapEndScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const where = `(${colorScheme}, ${width}px)`;
@@ -15889,6 +15899,33 @@ async function scanReadyMapEndScreens(browser: Browser, colorScheme: 'light' | '
     await shoot(p, 'mover-bloqueado');
   } finally {
     await blocked.done();
+  }
+
+  // The pickers of the other kinds of spell: a wall (its start chosen) and a direction (its aim chosen), each released from the window.
+  for (const held of ['wall', 'direction'] as const) {
+    const { name } = heldSpell[held];
+    const table = await readyMapTable(browser, `Acessibilidade soltar ${held}`, held, view);
+    try {
+      const { m, p } = table;
+      m.setDefaultTimeout(20_000);
+      p.setDefaultTimeout(20_000);
+      await fireReadied(m);
+      await spellWindow(p, name).getByTestId('release-to-map').click();
+      const sheet = releaseSheet(p, false, name);
+      await expect(sheet.getByTestId('release-band')).toBeVisible();
+      const map = sheet.getByRole('application', { name: /^Mapa: escolha/ });
+      await expect(map).toBeFocused();
+      if (held === 'wall') {
+        await tapWallSquare(map, 6, 5);
+        await expect(sheet.getByText(/Começo marcado/)).toBeVisible();
+      } else {
+        await map.press('ArrowRight');
+      }
+      await expectScreenPasses(p, `Soltar, o mapa ${held === 'wall' ? 'da muralha' : 'da direção'} com a faixa da ação preparada ${where}`);
+      await shoot(p, held === 'wall' ? 'mapa-muralha' : 'mapa-direcao');
+    } finally {
+      await table.done();
+    }
   }
 
   // The window the player left alone: it passes by itself after the 30 s, and says so.
