@@ -132,8 +132,41 @@ func TestTheCreatureTypeOfASpellOfLifeIsTheMastersAlone(t *testing.T) {
 	// 4. The damage: a plant takes the most the dice can give, and only the master reads it. Ana (and Caio) read the damage as rolled,
 	// in the same shape as for a target that is not a plant: the spell's dice, and the roll's total as the amount.
 	rt.undoLast(t) // Ana's cast of step 3
-	plant := rt.blightDamage(t, "Arbusto")
-	other := rt.blightDamage(t, "Bandido")
+	plant := rt.blightDamage(t, "Arbusto", false)
+	other := rt.blightDamage(t, "Bandido", false)
+	rt.checkBlightLines(t, plant, other)
+	// 5. The same when the target passes its save: the roll's total stays whole (40) and only the amount is halved (20), for the plant
+	// and for the bandit alike; the master reads the plant's half of the maximum, 32.
+	plant = rt.blightDamage(t, "Arbusto", true)
+	other = rt.blightDamage(t, "Bandido", true)
+	rt.checkBlightLines(t, plant, other)
+	for _, p := range []*person{ana, rt.master} {
+		for target, d := range map[string]*playv1.CombatLogDamage{"the shrub": plant[p], "the bandit": other[p]} {
+			want := int32(20)
+			if p == rt.master && target == "the shrub" {
+				want = 32
+			}
+			if !d.GetHalf() || d.GetAmount() != want || d.GetRoll().GetTotal() != 40 {
+				t.Errorf("%s reads the damage on %s after a passed save as %v, want half, amount %d and the whole total 40", p.name, target, d, want)
+			}
+		}
+	}
+	for _, p := range []*person{ana, caio} {
+		for what, body := range map[string]string{"the combat": protojson.Format(rt.encounterOf(p)), "the log": protojson.Format(rt.logOf(p))} {
+			for _, word := range []string{lifeMagicReason, plantSource, typeSourceKind, "construtos"} {
+				if strings.Contains(body, word) {
+					t.Errorf("%s reads %q in %s", p.name, word, what)
+				}
+			}
+		}
+	}
+	t.Run("canaries are reachable", func(t *testing.T) { checkCanariesAreReachable(t, w, rt.got) })
+}
+
+// checkBlightLines checks the damage lines of Blight on the shrub and on the bandit as each person reads them.
+func (rt *rollsTable) checkBlightLines(t *testing.T, plant, other map[*person]*playv1.CombatLogDamage) {
+	t.Helper()
+	ana, caio, m := rt.ana, rt.caio, rt.master
 	for _, p := range []*person{ana, caio} {
 		for target, d := range map[string]*playv1.CombatLogDamage{"the shrub": plant[p], "the bandit": other[p]} {
 			if p == caio { // Caio reads the amount alone, and it is the one Ana reads: as rolled
@@ -153,16 +186,6 @@ func TestTheCreatureTypeOfASpellOfLifeIsTheMastersAlone(t *testing.T) {
 	if d := other[m]; d.GetAmount() != rolledAmount(d) {
 		t.Errorf("the master reads the damage on the bandit as %v, want it as rolled", d)
 	}
-	for _, p := range []*person{ana, caio} {
-		for what, body := range map[string]string{"the combat": protojson.Format(rt.encounterOf(p)), "the log": protojson.Format(rt.logOf(p))} {
-			for _, word := range []string{lifeMagicReason, plantSource, typeSourceKind, "construtos"} {
-				if strings.Contains(body, word) {
-					t.Errorf("%s reads %q in %s", p.name, word, what)
-				}
-			}
-		}
-	}
-	t.Run("canaries are reachable", func(t *testing.T) { checkCanariesAreReachable(t, w, rt.got) })
 }
 
 // rolledAmount is the damage as it was rolled: the total of the dice, halved when the target saved.
@@ -183,8 +206,16 @@ func maximumAmount(d *playv1.CombatLogDamage) int32 {
 
 // blightDamage has Ana cast Blight at the target and roll its damage, takes both back, and answers the damage line of the cast as
 // each person reads it, as the master, Ana and Caio.
-func (rt *rollsTable) blightDamage(t *testing.T, target string) map[*person]*playv1.CombatLogDamage {
+func (rt *rollsTable) blightDamage(t *testing.T, target string, saved bool) map[*person]*playv1.CombatLogDamage {
 	t.Helper()
+	if saved { // a high save (two d20 when the plant rolls with disadvantage) and eight fives for the 8d8
+		faces := []int{20}
+		if target == "Arbusto" {
+			faces = []int{20, 20}
+		}
+		rt.dice.ScriptFor(t, 20, faces...)
+		rt.dice.ScriptFor(t, 8, 5, 5, 5, 5, 5, 5, 5, 5)
+	}
 	got, _ := rt.lifeSpell(t, rt.ana, labelPens, "spell:blight", 4, target)
 	if got.GetPendingDamageId() == "" {
 		t.Fatalf("Blight on %s opened no damage: %v", target, got)
@@ -208,9 +239,12 @@ func (rt *rollsTable) blightDamage(t *testing.T, target string) map[*person]*pla
 	if rolled.GetDiceCount() != 8 || rolled.GetAmount() != asRolled(rolled) {
 		t.Errorf("Ana's roll of the damage on %s answers %v, want 8d8 and the amount as rolled", target, rolled)
 	}
-	for _, d := range rt.optionsOf(rt.ana, labelPens).GetPendingDamages() {
-		if d.GetId() == rolled.GetId() && d.GetAmount() != asRolled(d) {
-			t.Errorf("Ana's options on %s read the amount %d, want %d as rolled", target, d.GetAmount(), asRolled(d))
+	// The turn's options list no pending damage of an NPC target once it is rolled (it lands at once), so the answer to the roll and the
+	// retry of the cast are the views of it, and both are reached through pendingFor.
+	if saved {
+		// The dice were scripted: 8 fives, a total of 40 whole, and the amount its half, 20, for the plant as for the bandit.
+		if !rolled.GetHalf() || rolled.GetAmount() != 20 || rolled.GetRoll().GetTotal() != 40 {
+			t.Errorf("Ana's roll of the damage on %s after a passed save answers %v, want half, amount 20 and the whole total 40", target, rolled)
 		}
 	}
 	rt.ask(t, "Blight damage on "+target)

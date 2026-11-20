@@ -1455,6 +1455,9 @@ func showAsRolled(out *playv1.PendingDamage, p playdb.PendingDamage) {
 		out.Amount = shown
 		if out.Roll != nil {
 			out.Roll.Total = shown
+			if p.RollTotal != nil && len(readPartRolls(p.PartRolls)) == 0 { // the roll's total stays whole, as for a target that took it as rolled: only the amount is halved
+				out.Roll.Total = *p.RollTotal
+			}
 		}
 	}
 }

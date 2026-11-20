@@ -3,6 +3,7 @@ package play
 import (
 	"context"
 	"errors"
+	"slices"
 
 	"github.com/jackc/pgx/v5"
 
@@ -206,7 +207,7 @@ func (s *Service) castProto(ctx context.Context, res combatResult, ev actionEven
 		}
 		r := targetResultProto(ev, h, v, caster, target)
 		if h.Pending != "" && (v.master || v.owns(caster)) {
-			if err := s.attachPendingDamages(ctx, res, h, cs, r, out); err != nil {
+			if err := s.attachPendingDamages(ctx, res, h, cs, r, out, v); err != nil {
 				return nil, err
 			}
 		}
@@ -260,7 +261,7 @@ func targetResultProto(ev actionEvent, h castHit, v combatViewer, caster, target
 
 // attachPendingDamages reads the pending damages a hit opened and adds them to the cast and to the target's
 // result: the first one by its own field, the others in the list that follows.
-func (s *Service) attachPendingDamages(ctx context.Context, res combatResult, h castHit, cs []playdb.Combatant, r *playv1.SpellTargetResult, out *playv1.SpellCast) error {
+func (s *Service) attachPendingDamages(ctx context.Context, res combatResult, h castHit, cs []playdb.Combatant, r *playv1.SpellTargetResult, out *playv1.SpellCast, v combatViewer) error {
 	for i, id := range append([]string{h.Pending}, h.More...) {
 		p, err := s.queries.GetPendingDamage(ctx, playdb.GetPendingDamageParams{EncounterID: res.encounterID, ID: id})
 		switch {
@@ -273,7 +274,11 @@ func (s *Service) attachPendingDamages(ctx context.Context, res combatResult, h 
 			} else {
 				r.MorePendingDamageIds = append(r.MorePendingDamageIds, id)
 			}
-			out.PendingDamages = append(out.PendingDamages, pendingProto(p, cs))
+			shown := pendingProto(p, cs)
+			if i := slices.IndexFunc(cs, func(c playdb.Combatant) bool { return c.ID == p.TargetID }); i >= 0 && !v.master && holdsHP(cs[i]) && !v.owns(cs[i]) {
+				showAsRolled(shown, p) // a retry of the cast after the roll reads the damage as rolled too
+			}
+			out.PendingDamages = append(out.PendingDamages, shown)
 		}
 	}
 	return nil

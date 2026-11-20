@@ -279,27 +279,54 @@ func (a *armed) castDamage(t *testing.T, u *user, e *playv1.Encounter) *playv1.C
 	return targets[0].GetDamage()
 }
 
-// The caster's player rolls Blight's damage on a plant and reads it as rolled, in the answer to the roll and in the options of the
-// turn, as on a creature that is not a plant: the pending damage holds the roll's total (8), never the maximum the plant took (64).
+// The caster's player rolls Blight's damage on a plant and reads it as rolled, as on a creature that is not a plant, whether the
+// target failed the save (amount 8, total 8) or passed it (amount 4, the half, and the whole roll's total 8): in the answer to the
+// roll and in a retry of the cast, never the maximum the plant took. The options of the turn list no pending damage of an NPC
+// target once it is rolled (it is applied at once), so the view they would use is the one of the answer (pendingView).
 func TestBlightOnAPlantReadsAsRolledToTheCastersPlayer(t *testing.T) {
 	t.Parallel()
-	for _, target := range []string{"Arbusto", "Goblin"} {
-		t.Run(target, func(t *testing.T) {
+	for _, tc := range []struct {
+		name         string
+		target       string
+		save         []int
+		half         bool
+		amount, roll int32
+	}{
+		{"the shrub fails", "Arbusto", []int{1, 1}, false, 8, 8},
+		{"the goblin fails", "Goblin", []int{1}, false, 8, 8},
+		{"the shrub saves", "Arbusto", []int{20, 20}, true, 4, 8},
+		{"the goblin saves", "Goblin", []int{20}, true, 4, 8},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			a, e := typeTable(t)
 			e = a.passTo(t, e, "Pensantus")
 			a.put(t, "Goblin", 4, 6)
-			a.h.roller.queue(1, 1)
-			got := a.targetOf(t, e, a.mustCast(t, a.ana, e, "Pensantus", blightSpell, slotOfLevel(4), a.at(t, target), noCastRoll), target)
+			a.h.roller.queue(tc.save...)
+			key := newKey()
+			res, err := a.castKey(t, a.ana, e, "Pensantus", blightSpell, slotOfLevel(4), a.at(t, tc.target), noCastRoll, key)
+			if err != nil {
+				t.Fatalf("CastSpell() error = %v", err)
+			}
+			got := a.targetOf(t, e, res, tc.target)
 			a.h.roller.queue(1, 1, 1, 1, 1, 1, 1, 1)
 			dmg := a.mustDamage(t, a.ana, e, got.GetPendingDamageId(), inAppDamage).GetPendingDamage()
-			if dmg.GetAmount() != 8 || dmg.GetRoll().GetTotal() != 8 {
-				t.Errorf("the answer to the roll reads amount %d and total %d, want 8 and 8 as rolled", dmg.GetAmount(), dmg.GetRoll().GetTotal())
-			}
-			for _, d := range a.mustOptions(t, a.ana, e, "Pensantus").GetPendingDamages() {
-				if d.GetId() == got.GetPendingDamageId() && (d.GetAmount() != 8 || d.GetRoll().GetTotal() != 8) {
-					t.Errorf("the options of the turn read amount %d and total %d, want 8 and 8 as rolled", d.GetAmount(), d.GetRoll().GetTotal())
+			check := func(what string, d *playv1.PendingDamage) {
+				t.Helper()
+				if d.GetHalf() != tc.half || d.GetAmount() != tc.amount || d.GetRoll().GetTotal() != tc.roll {
+					t.Errorf("%s reads half %v, amount %d and total %d, want %v, %d and %d as rolled", what, d.GetHalf(), d.GetAmount(), d.GetRoll().GetTotal(), tc.half, tc.amount, tc.roll)
 				}
+			}
+			check("the answer to the roll", dmg)
+			// The same cast asked again after the roll (a retry) holds the damage as rolled too.
+			again, err := a.castKey(t, a.ana, e, "Pensantus", blightSpell, slotOfLevel(4), a.at(t, tc.target), noCastRoll, key)
+			if err != nil {
+				t.Fatalf("the retry of the cast: %v", err)
+			}
+			if pd := again.GetCast().GetPendingDamages(); len(pd) != 1 {
+				t.Errorf("the retry holds %d pending damages, want 1", len(pd))
+			} else {
+				check("the retry of the cast", pd[0])
 			}
 		})
 	}
