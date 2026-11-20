@@ -43,6 +43,8 @@ export class NpcCutHost {
   readonly campaignId = input.required<string>();
   /** Moves when the stream says the held rolls changed, and after a reconnection. */
   readonly tick = input(0);
+  /** Moves when the map, the vision, the scene or the stage changed: read again only while a question is asked. */
+  readonly recheck = input(0);
   readonly diceMode = input<DiceMode>(DiceMode.PLAYERS_CHOOSE);
   readonly preference = input<DicePreference>(DicePreference.APP);
   protected readonly flow = new CuttingFlow(inject(NpcCheckClient), () => this.campaignId());
@@ -59,6 +61,14 @@ export class NpcCutHost {
       this.tick();
       this.campaignId();
       untracked(() => void this.load());
+    });
+    effect(() => {
+      this.recheck();
+      untracked(() => {
+        if (this.flow.offer() !== null && this.flow.phase() === 'asking') {
+          void this.load();
+        }
+      });
     });
     effect(() => {
       if (this.flow.offer() !== null) {
@@ -86,6 +96,8 @@ export class NpcCutHost {
   private closed(passed: boolean): void {
     this.open = false;
     this.flow.acknowledge();
+    // The question that waited behind the one that closed comes in now.
+    void this.load();
     if (passed) {
       this.note.set(PASS_NOTE_TEXT);
       clearTimeout(this.noteTimer);

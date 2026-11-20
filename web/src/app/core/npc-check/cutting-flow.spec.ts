@@ -91,6 +91,29 @@ describe('CuttingFlow', () => {
     expect(flow.busy()).toBe(false);
   });
 
+  it('keeps a result on screen, or an answer on its way, when another question comes, and takes it once acknowledged', async () => {
+    const { flow } = flowWith();
+    flow.sync([cuttingOffer()]);
+    await flow.answer(true, null);
+    flow.sync([cuttingOffer({ holdId: 'hold-2' })]);
+    expect(flow.offer()?.holdId).toBe('hold-1');
+    expect(flow.phase()).toBe('result');
+    flow.acknowledge();
+    flow.sync([cuttingOffer({ holdId: 'hold-2' })]);
+    expect(flow.offer()?.holdId).toBe('hold-2');
+
+    let finish: (v: ReturnType<typeof answered>) => void = () => undefined;
+    const sending = flowWith(
+      vi.fn(() => new Promise<ReturnType<typeof answered>>((r) => (finish = r))),
+    );
+    sending.flow.sync([cuttingOffer()]);
+    const sent = sending.flow.answer(false, null);
+    sending.flow.sync([cuttingOffer({ holdId: 'hold-3' })]);
+    expect(sending.flow.offer()?.holdId).toBe('hold-1');
+    finish(answered(false));
+    await sent;
+  });
+
   it('reads "já foi respondida" for an answer that came after the master went on, and spent nothing', async () => {
     const { flow } = flowWith(
       vi.fn(() => Promise.reject(new ConnectError('closed', Code.FailedPrecondition))),

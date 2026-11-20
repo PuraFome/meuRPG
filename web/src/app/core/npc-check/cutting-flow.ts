@@ -20,7 +20,7 @@ export interface CutApi {
 /**
  * Where the bard is in the question of an NPC check: `asking` (the question is open), `result` (it cut and reads its die),
  * `passed` (it let it pass), `skipped` (the master went on without the answer: the offer is gone) or `late` (its answer came
- * after the master went on). The list of held rolls feeds `sync`; a hold the bard has answered or seen closed is never asked
+ * after the master went on). The list of held rolls feeds `sync` (a different question waits while a result is on screen or an answer is on its way); a hold the bard has answered or seen closed is never asked
  * again. The offer holds the die and the uses, never a number of the creature's (RN-10).
  */
 export type CutPhase = 'asking' | 'result' | 'passed' | 'skipped' | 'late';
@@ -47,6 +47,10 @@ export class CuttingFlow {
     const next = offers.find((o) => isCuttingOffer(o) && !this.done.has(o.holdId));
     if (next) {
       const same = this.offer()?.holdId === next.holdId;
+      // A result on screen or an answer on its way is not replaced: the next question comes in once the sheet is acknowledged.
+      if (!same && this.offer() && (this.phase() !== 'asking' || this.busy())) {
+        return;
+      }
       this.offer.set(next);
       if (!same) {
         this.phase.set('asking');

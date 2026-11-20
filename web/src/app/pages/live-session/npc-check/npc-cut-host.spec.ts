@@ -71,6 +71,24 @@ describe('NpcCutHost', () => {
     expect(open).toHaveBeenCalledTimes(1);
   });
 
+  it('reads again on a recheck only while a question is asked, and never for a held-rolls tick it did not get', async () => {
+    const asked = setup(() => [cuttingOffer()]);
+    await asked.flush();
+    expect(asked.list).toHaveBeenCalledTimes(1);
+    asked.fixture.componentRef.setInput('recheck', 1);
+    await asked.flush();
+    expect(asked.list).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not read again on a recheck when no question is asked', async () => {
+    const idle = setup(() => []);
+    await idle.flush();
+    expect(idle.list).toHaveBeenCalledTimes(1);
+    idle.fixture.componentRef.setInput('recheck', 1);
+    await idle.flush();
+    expect(idle.list).toHaveBeenCalledTimes(1);
+  });
+
   it('opens nothing when no offer is a question for the bard', async () => {
     const { flush, open } = setup(() => []);
     await flush();

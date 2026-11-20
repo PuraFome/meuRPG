@@ -127,6 +127,8 @@ export class LiveSessionEvents {
       onCurrentMap: (mapId) => this.showMap(mapId),
       onMapChanged: (mapId) => this.mapChanged(mapId),
       onVisionChanged: (mapId) => {
+        // On a fog map a token hidden reaches the players only as a vision hint.
+        this.heldRollsMayHaveChanged();
         // The fog map's tokens, points and squares come from reads: read them again.
         if (mapId === state.currentMapId()) {
           void parts.mapState.refresh();
@@ -278,11 +280,11 @@ export class LiveSessionEvents {
 
   /**
    * The server judges a check that waits again when its held rolls are read (the token the creature was rolled on, the stage, who
-   * is in the scene) and sends no hint of its own for it: a map, a stage or a scene that changed makes the master's card and the
-   * bard's question read again.
+   * is in the scene) and sends no hint of its own for it. A map, a vision, a stage or a scene that changed moves `heldRollsRecheck`:
+   * the master's card (while the check waits) and the bard's question (while it is asked) read again, and nothing else does.
    */
   private heldRollsMayHaveChanged(): void {
-    this.state.heldRollsTick.update((n) => n + 1);
+    this.state.heldRollsRecheck.update((n) => n + 1);
   }
 
   private mapChanged(mapId: string): void {

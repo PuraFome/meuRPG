@@ -14,5 +14,5 @@
   <p class="combat" role="status"><mat-icon aria-hidden="true">block</mat-icon>{{ combatText }}</p>
 }
 @if (state.card(); as card) {
-  <app-npc-check-card [card]="card" [busy]="state.busy()" [error]="state.error()" (skip)="state.skip(campaignId())" (dismiss)="state.dismiss()" />
+  <app-npc-check-card [card]="card" [busy]="state.busy()" [error]="state.error()" (skip)="state.skip(campaignId())" (dismiss)="dismiss()" />
 }

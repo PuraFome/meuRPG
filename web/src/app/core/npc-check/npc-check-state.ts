@@ -1,4 +1,4 @@
-import { computed, signal } from '@angular/core';
+import { Injectable, type WritableSignal, computed, signal } from '@angular/core';
 
 import type { NpcCheckRead } from '../../../gen/meurpg/play/v1/scene_pb';
 import { ActionKey, newKey } from '../connect/idempotency';
@@ -15,11 +15,10 @@ export interface NpcCheckApi {
 /**
  * The master's card of the NPC check: the check the server holds or settled last (`GetNpcCheck`, read again on every hint that
  * the held rolls changed and after a reload), "Continuar sem esperar", and the "X" that hides a settled card on this device
- * only, in memory (nothing is stored in the browser). A hidden card comes back when the next check is rolled.
+ * only, in memory (nothing is stored in the browser) until the page reloads. A hidden card comes back when the next check is rolled. A skip that failed reads the card again.
  */
 export class NpcCheckState {
   private readonly current = signal<NpcCheckRead | null>(null);
-  private readonly hidden = signal('');
   private reads = 0;
   private readonly keys: ActionKey;
   readonly error = signal('');
@@ -35,6 +34,8 @@ export class NpcCheckState {
   constructor(
     private readonly api: NpcCheckApi,
     make: () => string = newKey,
+    /** The key of the card the master hid. The page keeps it beyond this object (see `NpcCheckHidden`), so a scene opening or closing does not bring the card back. */
+    private readonly hidden: WritableSignal<string> = signal(''),
   ) {
     this.keys = new ActionKey(make);
   }
@@ -80,10 +81,17 @@ export class NpcCheckState {
       this.keys.renew();
       this.reads++;
       this.current.set(read);
-    } catch (err) {
-      this.error.set(skipErrorText(err));
+    } catch {
+      this.error.set(skipErrorText());
+      await this.load(campaignId);
     } finally {
       this.busy.set(false);
     }
   }
+}
+
+/** The key of the settled card the master hid with the "X", kept for the page (root-provided) so that the master's board, recreated by a scene opening or closing, does not draw it again. A reload clears it. */
+@Injectable({ providedIn: 'root' })
+export class NpcCheckHidden {
+  readonly key = signal('');
 }

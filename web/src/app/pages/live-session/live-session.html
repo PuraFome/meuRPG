@@ -53,6 +53,7 @@
         <app-npc-cut-host
           [campaignId]="state.campaignId()"
           [tick]="state.heldRollsTick()"
+          [recheck]="state.heldRollsRecheck()"
           [diceMode]="state.campaign()?.diceMode ?? 1"
           [preference]="state.campaign()?.dicePreference ?? 1"
         />
@@ -335,7 +336,7 @@
                   (taken)="loader.takenBack($event)"
                 />
                 <!-- The master's NPC check outside a combat (591): the scene's own button asks, and the card shows who answered. -->
-                <app-npc-check-master sceneTools [campaignId]="state.campaignId()" [tick]="state.heldRollsTick()" />
+                <app-npc-check-master sceneTools [campaignId]="state.campaignId()" [tick]="state.heldRollsTick()" [recheck]="state.heldRollsRecheck()" />
                 <!-- The master's group check (W7-X): the scene's own button asks, and the card shows who answered. -->
                 <app-group-check-master
                   sceneTools
@@ -367,7 +368,7 @@
                 (leftChanged)="loader.reloadLeftImages()"
                 (taken)="loader.takenBack($event)"
               />
-              <app-npc-check-master [entry]="true" [campaignId]="state.campaignId()" [tick]="state.heldRollsTick()" />
+              <app-npc-check-master [entry]="true" [campaignId]="state.campaignId()" [tick]="state.heldRollsTick()" [recheck]="state.heldRollsRecheck()" />
               <app-group-check-master
                 [collapsible]="true"
                 [campaignId]="state.campaignId()"

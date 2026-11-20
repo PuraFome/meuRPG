@@ -2,6 +2,7 @@ import { Code, ConnectError } from '@connectrpc/connect';
 
 import { NpcCheckAskState } from '../../../gen/meurpg/play/v1/combat_pb';
 import type { NpcCheckRead } from '../../../gen/meurpg/play/v1/scene_pb';
+import { signal } from '@angular/core';
 import { NpcCheckState, type NpcCheckApi } from './npc-check-state';
 import { ask, npcCheckRead } from './npc-check-testing';
 
@@ -113,6 +114,7 @@ describe('NpcCheckState', () => {
     expect(state.error()).toBe('Não deu para continuar sem esperar agora. Tente de novo.');
     expect(state.busy()).toBe(false);
     expect(state.card()?.settled).toBe(false);
+    expect(calls.filter((c) => c === 'latest c1')).toHaveLength(2);
     await state.skip('c1');
     expect(calls.filter((c) => c === 'skip hold-1')).toHaveLength(2);
     expect(skipKeys[0]).toBe(skipKeys[1]);
@@ -125,5 +127,18 @@ describe('NpcCheckState', () => {
     expect(state.card()?.settled).toBe(true);
     expect(state.card()?.rows[0].tag).toBe('Sem resposta');
     expect(state.error()).toBe('');
+  });
+
+  it('keeps the hidden card in the signal it was given, so a board built again does not draw it', async () => {
+    const hidden = signal('');
+    const read = () => Promise.resolve(npcCheckRead({ settled: true, total: 17, asks: [] }));
+    const api: NpcCheckApi = { latest: read, skip: () => Promise.reject(new Error('x')) };
+    const first = new NpcCheckState(api, undefined, hidden);
+    await first.load('c1');
+    first.dismiss();
+    expect(first.card()).toBeNull();
+    const second = new NpcCheckState(api, undefined, hidden);
+    await second.load('c1');
+    expect(second.card()).toBeNull();
   });
 });
