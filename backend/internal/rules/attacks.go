@@ -292,7 +292,13 @@ func (x *deriver) cantripAttack(key string) {
 		a.AttackBonus = sc.AttackBonus
 		// A ranged_attack effect may multiply the range of a spell that needs an
 		// attack roll (a range in feet only: feet gives 0 for touch and self).
-		a.RangeFt = x.d.SpellRangeFt(s.AttackType, RangeRanged, a.RangeFt)
+		// A Self spell that picks a creature (Produce Flame) reaches as far as
+		// its target says, and nothing multiplies it.
+		if reach := c.srdTargets[key].ReachFt; reach > 0 {
+			a.RangeFt = reach
+		} else {
+			a.RangeFt = x.d.SpellRangeFt(s.AttackType, RangeRanged, a.RangeFt)
+		}
 	case s.SaveAbility != "":
 		a.SaveDC = sc.SaveDC
 		a.SaveAbility = Ability(s.SaveAbility)

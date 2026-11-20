@@ -68,6 +68,7 @@ import { ownIssues } from './sheet-lost';
 import { SheetWrites, playerNameOf } from './character-sheet-writes';
 import { StoryPanel } from './story-panel/story-panel';
 import { XpWatcher } from '../../core/play/xp-watcher';
+import { NewestRead } from '../../core/system/newest-read';
 import { ResourceCounters } from './resource-counters/resource-counters';
 import type { VitalsVm } from '../../core/play/live-session.types';
 
@@ -237,6 +238,8 @@ export class CharacterSheetPage {
       const characterId = params.get('characterId');
       if (campaignId && characterId) {
         this.campaignId.set(campaignId);
+        // The reads still in flight for the character the page leaves no longer hold.
+        this.reads.next(this.characterId);
         this.characterId = characterId;
         this.load(campaignId, characterId);
       }
@@ -309,14 +312,14 @@ export class CharacterSheetPage {
   private destroyed = false;
   private livingCheckedFor = '';
   /** Numbers every read and every answer that sets the sheet: an answer older than the latest one, or for a character the page left, is dropped. */
-  private sheetSeq = 0;
+  private readonly reads = new NewestRead();
 
   /** The answer of a write is the newest word on its character: reads still in flight no longer count. */
   private applyWrite(characterId: string, vm: CharacterSheetVm): boolean {
     if (this.destroyed || characterId !== this.characterId) {
       return false;
     }
-    this.sheetSeq++;
+    this.reads.next(characterId);
     this.state.set({ status: 'ready', vm });
     return true;
   }
@@ -329,7 +332,7 @@ export class CharacterSheetPage {
     }
     this.source.getPendingChoiceCount(campaignId, vm.id).then(
       (n) => {
-        if (seq === this.sheetSeq && !this.destroyed) {
+        if (this.reads.holds(vm.id, seq) && !this.destroyed) {
           this.pendingChoices.set(n);
         }
       },
@@ -377,32 +380,31 @@ export class CharacterSheetPage {
     apply: (characterId, vm) => this.applyWrite(characterId, vm),
   });
 
-  /** Reads the character again without the loading state, so the page does not blink; `true` when the new sheet is on screen. */
-  private async reloadQuietly(): Promise<boolean> {
-    const campaignId = this.campaignId();
-    if (!campaignId || !this.characterId) {
-      return false;
-    }
-    const seq = ++this.sheetSeq;
-    try {
-      const vm = await this.source.getCharacterSheet(campaignId, this.characterId);
-      if (seq !== this.sheetSeq) {
-        return true; // a newer read owns the screen (a stream's, a tab's): the sheet shown is at least as new
+  /** Reads the character again without the loading state, so the page does not blink; `true` when the newest sheet is on screen. */
+  private reloadQuietly(): Promise<boolean> {
+    const characterId = this.characterId;
+    return this.reads.start(characterId, async (seq) => {
+      const campaignId = this.campaignId();
+      if (!campaignId || !characterId) {
+        return false;
       }
-      if (this.state().status === 'ready') {
-        this.state.set({ status: 'ready', vm });
-        this.refreshPendingChoices(campaignId, vm, seq);
-        return true;
+      // A read that fails keeps what is on screen: the next change reads again.
+      const vm = await this.source.getCharacterSheet(campaignId, characterId).catch(() => null);
+      if (!this.reads.holds(characterId, seq)) {
+        // A newer read of this character owns the screen: the answer is its own, once it has landed (a page load that took over has its own state).
+        return this.reads.overtaken(characterId, seq);
       }
-      return false;
-    } catch {
-      // Keep what is on screen: the next change reads again.
-      return false;
-    }
+      if (vm === null || this.state().status !== 'ready') {
+        return false;
+      }
+      this.state.set({ status: 'ready', vm });
+      this.refreshPendingChoices(campaignId, vm, seq);
+      return true;
+    });
   }
 
   private load(campaignId: string, characterId: string): void {
-    const seq = ++this.sheetSeq;
+    const seq = this.reads.next(characterId);
     this.wasLive = null;
     this.state.set({ status: 'loading' });
     this.vitals.set(null);
@@ -412,13 +414,13 @@ export class CharacterSheetPage {
     this.pendingChoices.set(0);
     this.source.getCharacterSheet(campaignId, characterId).then(
       (vm) => {
-        if (seq === this.sheetSeq) {
+        if (this.reads.holds(characterId, seq)) {
           this.state.set({ status: 'ready', vm });
           this.refreshPendingChoices(campaignId, vm, seq);
         }
       },
       (err: unknown) => {
-        if (seq !== this.sheetSeq) {
+        if (!this.reads.holds(characterId, seq)) {
           return;
         }
         if (ConnectError.from(err, Code.Unavailable).code === Code.NotFound) {

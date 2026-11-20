@@ -369,8 +369,10 @@ var playSubpackages = map[string][]string{
 	"advantage":   {}, // the modes, the source kinds of the API and the sentence of each source
 	"consumable":  {}, // the dice, the healing, the resistance and the payload of the use of a consumable
 	"damagesteps": {}, // what a damage lands as after the target's modifiers, the stored steps and their text
+	"effecttext":  {}, // the words of the card of an effect on a character: its title, its whole length and the time left
 	"infusion":    {}, // the session event kinds of an Artificer's infusions, their payload and the characters a change names
 	"steed":       {}, // the rules of Find Steed over plain values: the spells that reach the steed, its notes, the Intelligence floor
+	"cutting":     {}, // the rules of Cutting Words on an NPC check over plain values: the bards asked, their sight, the asks and the settled total
 }
 
 // playSeamPackages are the subpackages of play that are not moved logic: the seam to other modules, the live hub, the

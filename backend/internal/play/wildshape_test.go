@@ -766,7 +766,7 @@ func TestMR037_BeastSpellsLetADruidOfLevel18CastInBeastForm(t *testing.T) {
 				scores := &rulesv1.AbilityScores{Strength: 10, Dexterity: 14, Constitution: 14, Intelligence: 10, Wisdom: 18, Charisma: 8}
 				a.toren = a.caio.hero(t, a.campaignID, "Toren", "class:fighter", "race:human", 2, scores, []string{battleaxe}, nil)
 				a.pens = a.ana.hero(t, a.campaignID, "Pensantus", "class:wizard", "race:gnome", 1, scores, nil, []string{fireBolt})
-				a.bri = a.bia.caster(t, a.campaignID, "Sálvia", "class:druid", "race:half-elf", level, scores, nil, []string{"spell:produce-flame"}, nil, nil)
+				a.bri = a.bia.caster(t, a.campaignID, "Sálvia", "class:druid", "race:half-elf", level, scores, nil, []string{"spell:druidcraft"}, nil, nil)
 			})
 			a.start(t, plan{
 				npcs: []*playv1.Participant{{CharacterId: a.goblin.GetId()}}, npcRolls: []int{1},
@@ -776,9 +776,7 @@ func TestMR037_BeastSpellsLetADruidOfLevel18CastInBeastForm(t *testing.T) {
 			})
 			e := a.mustAssume(t, a.bia, a.bri, wolfKey).GetEncounter()
 			e = a.passTo(t, a.mustEndTurn(t, a.bia, e), "Sálvia") // Wild Shape took this turn's action
-			_, err := a.cast(t, a.bia, e, "Sálvia", "spell:produce-flame", nil, nil, func(r *playv1.CastSpellRequest) {
-				r.D20Faces = []int32{10, 20} // a hostile creature stands next to her
-			})
+			_, err := a.cast(t, a.bia, e, "Sálvia", "spell:druidcraft", nil, nil, noCastRoll)
 			if level < 18 {
 				wantEncounterBlocked(t, err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_WILD_SHAPE_NO_SPELLS)
 				return

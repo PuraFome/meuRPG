@@ -6,6 +6,8 @@ import {
   MagicCategories,
   magicCategoryIcon,
 } from '../../../core/characters/attunement';
+import type { ConsumableVm } from '../../../core/characters/consumable-vm';
+import type { ConsumableNotice } from '../../../core/characters/consumables';
 import type { FullSheetVm } from '../character-sheet.types';
 import { ItemChargesVm } from '../../../core/characters/charges';
 import {
@@ -76,10 +78,12 @@ function sheetWith(
       [canAddAmmunition]="addAmmo()"
       [combatRunning]="combat()"
       [chargesResult]="result()"
+      [consumableResult]="consumableResult()"
       [chargesError]="chargesError()"
       [ammunitionNotice]="ammoNotice()"
       [ammunitionError]="ammoError()"
       (chargesUsed)="used.push($event.id)"
+      (consumableUsed)="consumed.push($event.id)"
       (lastChargeRolled)="rolled.push($event.id)"
       (ammunitionAdding)="ammoAdding.push($event)"
       (ammunitionRecovered)="recovered = recovered + 1"
@@ -100,6 +104,7 @@ class Host {
   readonly combat = signal(false);
   readonly result = signal<{ text: string; tone: 'good' | 'bad' } | null>(null);
   readonly chargesError = signal('');
+  readonly consumableResult = signal<ConsumableNotice | null>(null);
   readonly ammoNotice = signal('');
   readonly ammoError = signal('');
   opened = 0;
@@ -107,6 +112,7 @@ class Host {
   recovered = 0;
   readonly removed: string[] = [];
   readonly used: string[] = [];
+  readonly consumed: string[] = [];
   readonly rolled: string[] = [];
   readonly ammoAdding: unknown[] = [];
 }
@@ -130,7 +136,9 @@ describe('EquipmentPanel, the magic items and the attunement', () => {
       providers: [
         {
           provide: MagicCategories,
-          useValue: { iconOf: (k: string) => magicCategoryIcon(CATEGORY_OF.get(k)) },
+          useValue: {
+            iconOf: (k: string) => magicCategoryIcon(CATEGORY_OF.get(k)),
+          },
         },
       ],
     }),
@@ -251,7 +259,9 @@ describe('EquipmentPanel, the magic items and the attunement', () => {
       h.sheet.set(sheetWith([entry({})]));
       h.notice.set('Item mágico adicionado.');
     });
-    expect(flat(el.querySelector('.magic [role=status]'))).toBe('Item mágico adicionado.');
+    expect(flat(el.querySelector('.magic .gear__notice[role=status]'))).toBe(
+      'Item mágico adicionado.',
+    );
   });
 
   it('marks a gear row with the chip of its attunement: attuned, or asking for it', () => {
@@ -402,7 +412,12 @@ const charged = (
 describe('EquipmentPanel, the item rows with charges', () => {
   beforeEach(() =>
     TestBed.configureTestingModule({
-      providers: [{ provide: MagicCategories, useValue: { iconOf: () => 'auto_fix_high' } }],
+      providers: [
+        {
+          provide: MagicCategories,
+          useValue: { iconOf: () => 'auto_fix_high', categoryOf: () => 'wand' },
+        },
+      ],
     }),
   );
 
@@ -515,7 +530,12 @@ describe('EquipmentPanel, the item rows with charges', () => {
 describe('EquipmentPanel, the recharge rules on the item rows', () => {
   beforeEach(() =>
     TestBed.configureTestingModule({
-      providers: [{ provide: MagicCategories, useValue: { iconOf: () => 'auto_fix_high' } }],
+      providers: [
+        {
+          provide: MagicCategories,
+          useValue: { iconOf: () => 'auto_fix_high', categoryOf: () => 'wand' },
+        },
+      ],
     }),
   );
 
@@ -596,7 +616,9 @@ describe('EquipmentPanel, the recharge rules on the item rows', () => {
 describe('EquipmentPanel, the ammunition list', () => {
   beforeEach(() =>
     TestBed.configureTestingModule({
-      providers: [{ provide: MagicCategories, useValue: { iconOf: () => 'diamond' } }],
+      providers: [
+        { provide: MagicCategories, useValue: { iconOf: () => 'diamond', categoryOf: () => '' } },
+      ],
     }),
   );
 
@@ -709,5 +731,364 @@ describe('EquipmentPanel, the ammunition list', () => {
     });
     expect(flat(el.querySelector('.ammo [role="status"]'))).toBe('Flechas: 20.');
     expect(flat(el.querySelector('.ammo [role="alert"]'))).toContain('Não foi possível.');
+  });
+});
+
+/** The text of a node as read, without the ligature names of its icons. */
+const plain = (n: Element | null | undefined) => {
+  if (!n) {
+    return undefined;
+  }
+  const copy = n.cloneNode(true) as Element;
+  copy.querySelectorAll('mat-icon').forEach((i) => i.remove());
+  return flat(copy);
+};
+
+const POTION_CATEGORY = new Map([
+  ['item:potion-of-healing', 'potion'],
+  ['item:potion-of-climbing', 'potion'],
+  ['item:potion-of-fire-resistance', 'potion'],
+  ['item:spell-scroll', 'scroll'],
+  ['item:wand', 'wand'],
+]);
+
+const HEALING: ConsumableVm = {
+  kind: 'potion',
+  costsAction: true,
+  heal: { count: 2, sides: 4, modifier: 2, text: '2d4 + 2' },
+};
+const NO_DICE: ConsumableVm = { kind: 'potion', costsAction: true, heal: null };
+const SCROLL: ConsumableVm = { kind: 'scroll', costsAction: false, heal: null };
+const OIL: ConsumableVm = { kind: 'oil', costsAction: false, heal: null };
+
+const potion = (id: string, over: Partial<AttunementEntryVm> = {}) =>
+  entry({
+    id,
+    key: 'item:potion-of-healing',
+    namePt: 'Poção de cura',
+    asks: false,
+    effectPt: 'Cura 2d4 + 2',
+    consumable: HEALING,
+    ...over,
+  });
+
+describe('EquipmentPanel, the potions and the scrolls', () => {
+  beforeEach(() =>
+    TestBed.configureTestingModule({
+      providers: [
+        {
+          provide: MagicCategories,
+          useValue: {
+            iconOf: (k: string) => magicCategoryIcon(POTION_CATEGORY.get(k)),
+          },
+        },
+      ],
+    }),
+  );
+
+  const rowsOf = (el: HTMLElement) => Array.from(el.querySelectorAll('.magic-row--consumable'));
+
+  it('draws a flask, the name, the line of its effect and "Usar" for a potion', () => {
+    const { el } = render((h) => h.sheet.set(sheetWith([potion('p1')])));
+    const [row] = rowsOf(el);
+    expect(row.querySelector('.magic-row__icon')?.textContent).toBe('science');
+    expect(plain(row.querySelector('.magic-row__name'))).toBe('Poção de cura');
+    expect(plain(row.querySelector('.magic-row__line'))).toBe('Cura 2d4 + 2');
+    expect(row.querySelector('.magic-row__line mat-icon')?.textContent).toBe('favorite');
+    const use = row.querySelector<HTMLButtonElement>('.magic-row__use')!;
+    expect(plain(use)).toBe('Usar');
+    expect(use.getAttribute('aria-label')).toBe('Usar Poção de cura');
+    // A supporting button is ink, not crimson: crimson is the one primary action.
+    expect(use.classList).toContain('mr-button--ink');
+  });
+
+  it('draws a page for a scroll', () => {
+    const { el } = render((h) =>
+      h.sheet.set(
+        sheetWith([
+          potion('s1', {
+            key: 'item:spell-scroll',
+            namePt: 'Pergaminho de magia',
+            effectPt: '',
+            consumable: SCROLL,
+          }),
+        ]),
+      ),
+    );
+    expect(rowsOf(el)[0].querySelector('.magic-row__icon')?.textContent).toBe('description');
+  });
+
+  it('says a potion with no effect of its own only shows its text', () => {
+    const { el } = render((h) =>
+      h.sheet.set(
+        sheetWith([
+          potion('c1', {
+            key: 'item:potion-of-climbing',
+            namePt: 'Poção de escalada',
+            effectPt: '',
+            consumable: NO_DICE,
+          }),
+        ]),
+      ),
+    );
+    expect(plain(rowsOf(el)[0].querySelector('.magic-row__line'))).toBe('Só mostra o texto');
+    expect(rowsOf(el)[0].querySelector('.magic-row__line mat-icon')?.textContent).toBe('menu_book');
+  });
+
+  it('makes one row of the same potion twice, with "×2", and "Usar" sends the id of the first', () => {
+    const { el, host } = render((h) => h.sheet.set(sheetWith([potion('p1'), potion('p2')])));
+    const rows = rowsOf(el);
+    expect(rows).toHaveLength(1);
+    const times = rows[0].querySelector('.magic-row__times')!;
+    expect(plain(times.querySelector('[aria-hidden=true]'))).toBe('×2');
+    // A plain span has no role: its aria-label would not be read. Visually hidden text is.
+    expect(times.hasAttribute('aria-label')).toBe(false);
+    expect(plain(times.querySelector('.mr-visually-hidden'))).toBe(', 2 unidades');
+    rows[0].querySelector<HTMLButtonElement>('.magic-row__use')!.click();
+    expect(host.consumed).toEqual(['p1']);
+  });
+
+  it('counts every unit in the heading, as the sheet holds them', () => {
+    const { el } = render((h) => h.sheet.set(sheetWith([potion('p1'), potion('p2')])));
+    expect(plain(el.querySelector('#magic-heading'))).toContain('Itens mágicos 2');
+  });
+
+  it('keeps a row for each different potion, in the order of the sheet', () => {
+    const { el } = render((h) =>
+      h.sheet.set(
+        sheetWith([
+          potion('p1'),
+          potion('f1', {
+            key: 'item:potion-of-fire-resistance',
+            namePt: 'Poção de resistência',
+            effectPt: 'Resistência a fogo por 1 hora',
+            consumable: NO_DICE,
+          }),
+        ]),
+      ),
+    );
+    expect(rowsOf(el).map((r) => plain(r.querySelector('.magic-row__name')))).toEqual([
+      'Poção de cura',
+      'Poção de resistência',
+    ]);
+    expect(rowsOf(el)[1].querySelector('.magic-row__line mat-icon')?.textContent).toBe('shield');
+  });
+
+  it('works on a locked sheet, and gives the master the "⋮" that removes one unit', () => {
+    const locked = render((h) => h.sheet.set(sheetWith([potion('p1')])));
+    expect(rowsOf(locked.el)[0].querySelector('.magic-row__use')).not.toBeNull();
+    expect(rowsOf(locked.el)[0].querySelector('.magic-row__more')).toBeNull();
+    const master = render((h) => {
+      h.sheet.set(sheetWith([potion('p1'), potion('p2')]));
+      h.manage.set(true);
+    });
+    master.el.querySelector<HTMLButtonElement>('.magic-row--consumable .magic-row__more')!.click();
+    expect(master.host.removed).toEqual(['p1']);
+  });
+
+  it('says on a locked sheet with potions and charges what keeps working', () => {
+    const { el } = render((h) =>
+      h.sheet.set(
+        sheetWith([
+          potion('p1'),
+          entry({
+            id: 'w1',
+            key: 'item:wand',
+            namePt: 'Varinha',
+            charges: { max: 7, left: 5, state: 'ready' },
+          }),
+        ]),
+      ),
+    );
+    expect(plain(el.querySelector('.gear__lock'))).toContain(
+      'Travada: usar poções e cargas continua valendo; o resto, só o mestre muda.',
+    );
+  });
+
+  it('says on a locked sheet with potions only that using them keeps working', () => {
+    const { el } = render((h) => h.sheet.set(sheetWith([potion('p1')])));
+    expect(plain(el.querySelector('.gear__lock'))).toContain(
+      'Travada: usar poções continua valendo; o resto, só o mestre muda.',
+    );
+  });
+
+  it('says on a locked sheet with scrolls only that using them keeps working, and not potions', () => {
+    const { el } = render((h) =>
+      h.sheet.set(
+        sheetWith([
+          potion('s1', {
+            key: 'item:spell-scroll',
+            namePt: 'Pergaminho de magia',
+            consumable: SCROLL,
+          }),
+        ]),
+      ),
+    );
+    expect(plain(el.querySelector('.gear__lock'))).toContain(
+      'Travada: usar pergaminhos continua valendo; o resto, só o mestre muda.',
+    );
+    expect(plain(el.querySelector('.gear__lock'))).not.toContain('poções');
+  });
+
+  it('names potions and scrolls both when the sheet holds both', () => {
+    const { el } = render((h) =>
+      h.sheet.set(
+        sheetWith([
+          potion('p1'),
+          potion('s1', {
+            key: 'item:spell-scroll',
+            namePt: 'Pergaminho de magia',
+            consumable: SCROLL,
+          }),
+        ]),
+      ),
+    );
+    expect(plain(el.querySelector('.gear__lock'))).toContain(
+      'Travada: usar poções e pergaminhos continua valendo; o resto, só o mestre muda.',
+    );
+  });
+
+  it('names scrolls and charges, and potions, scrolls and charges, by what the sheet holds', () => {
+    const wand = entry({
+      id: 'w1',
+      key: 'item:wand',
+      namePt: 'Varinha',
+      charges: { max: 7, left: 5, state: 'ready' },
+    });
+    const scroll = potion('s1', {
+      key: 'item:spell-scroll',
+      namePt: 'Pergaminho de magia',
+      consumable: SCROLL,
+    });
+    const scrollAndWand = render((h) => h.sheet.set(sheetWith([scroll, wand])));
+    expect(plain(scrollAndWand.el.querySelector('.gear__lock'))).toContain(
+      'Travada: usar pergaminhos e cargas continua valendo; o resto, só o mestre muda.',
+    );
+    const all = render((h) => h.sheet.set(sheetWith([potion('p1'), scroll, wand])));
+    expect(plain(all.el.querySelector('.gear__lock'))).toContain(
+      'Travada: usar poções, pergaminhos e cargas continua valendo; o resto, só o mestre muda.',
+    );
+  });
+
+  it('keeps the heading, the empty line and the notice when the last potion was drunk on a locked sheet', () => {
+    const { el } = render((h) => {
+      h.sheet.set(sheetWith([]));
+      h.consumableResult.set({
+        tone: 'good',
+        icon: 'favorite',
+        headline: 'Tor recebeu 7 PV.',
+        detail: '2d4 + 2: 3 + 2 + 2 = 7. Era a última unidade.',
+        text: [],
+      });
+    });
+    const section = el.querySelector('section.magic')!;
+    expect(plain(section.querySelector('#magic-heading'))).toBe('Itens mágicos');
+    expect(plain(section.querySelector('p.mr-muted'))).toBe('Nenhum item mágico.');
+    const notice = section.querySelector('.consumable__result')!;
+    expect(plain(notice)).toContain('Era a última unidade.');
+    expect(notice.closest('[role=status]')).not.toBeNull();
+    expect(section.querySelector('.magic__add')).toBeNull();
+  });
+
+  it('draws no section for a locked sheet with no magic item and nothing to say', () => {
+    const { el } = render((h) => h.sheet.set(sheetWith([])));
+    expect(el.querySelector('section.magic')).toBeNull();
+  });
+
+  it('shows the notice of a heal in the live region, with the line of the dice', () => {
+    const { el } = render((h) => {
+      h.sheet.set(sheetWith([potion('p1')]));
+      h.consumableResult.set({
+        tone: 'good',
+        icon: 'favorite',
+        headline: 'Brisa recebeu 7 PV e acorda.',
+        detail: '2d4 + 2: 3 + 2 + 2 = 7. Resta 1 Poção de cura.',
+        text: [],
+      });
+    });
+    const notice = el.querySelector('.consumable__result')!;
+    expect(notice.classList).toContain('consumable__result--good');
+    expect(plain(notice.querySelector('strong'))).toBe('Brisa recebeu 7 PV e acorda.');
+    expect(plain(notice)).toContain('2d4 + 2: 3 + 2 + 2 = 7. Resta 1 Poção de cura.');
+    expect(notice.closest('[role=status]')).not.toBeNull();
+  });
+
+  it('shows a neutral notice with the text of the item', () => {
+    const { el } = render((h) => {
+      h.sheet.set(sheetWith([potion('p1')]));
+      h.consumableResult.set({
+        tone: 'neutral',
+        icon: 'menu_book',
+        headline: 'Tor bebeu a Poção de escalada.',
+        detail: 'O app não aplica este efeito: o mestre e você seguem o texto.',
+        text: ['Por 1 hora, você escala com o mesmo deslocamento.'],
+      });
+    });
+    const notice = el.querySelector('.consumable__result')!;
+    expect(notice.classList).not.toContain('consumable__result--good');
+    expect(notice.className).toBe('consumable__result');
+    expect(plain(el.querySelector('.consumable__text'))).toBe(
+      'Por 1 hora, você escala com o mesmo deslocamento.',
+    );
+  });
+
+  it('draws a drop and the word of an oil on a locked sheet, which an oil is not a potion', () => {
+    const { el } = render((h) =>
+      h.sheet.set(
+        sheetWith([
+          potion('o1', {
+            key: 'item:oil-of-sharpness',
+            namePt: 'Óleo de afiar',
+            effectPt: '',
+            consumable: OIL,
+          }),
+        ]),
+      ),
+    );
+    expect(rowsOf(el)[0].querySelector('.magic-row__icon')?.textContent).toBe('water_drop');
+    expect(plain(el.querySelector('.gear__lock'))).toContain(
+      'Travada: usar óleos continua valendo; o resto, só o mestre muda.',
+    );
+    expect(plain(el.querySelector('.gear__lock'))).not.toContain('poções');
+  });
+
+  it('reads what is a consumable from the server field: a potion with none is a plain magic item', () => {
+    const { el } = render((h) => h.sheet.set(sheetWith([potion('p1', { consumable: undefined })])));
+    expect(rowsOf(el)).toHaveLength(0);
+    expect(el.querySelectorAll('.magic-row')).toHaveLength(1);
+  });
+
+  it('puts the notice of a use at the top of "Itens mágicos", before the rows', () => {
+    const { el } = render((h) => {
+      h.sheet.set(sheetWith([potion('p1')]));
+      h.consumableResult.set({
+        tone: 'good',
+        icon: 'favorite',
+        headline: 'Tor recebeu 7 PV.',
+        detail: '',
+        text: [],
+      });
+    });
+    const section = el.querySelector('section.magic')!;
+    const notice = section.querySelector('.consumable__result')!;
+    const rows = section.querySelector('.magic__rows')!;
+    expect(notice.compareDocumentPosition(rows) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(
+      section.querySelector('#magic-heading')!.compareDocumentPosition(notice) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it('keeps the live region of the notice on the page before the words come', () => {
+    const { el } = render((h) => h.sheet.set(sheetWith([potion('p1')])));
+    expect(el.querySelector('section.magic > [role=status]')).not.toBeNull();
+  });
+
+  it('leaves a magic item that is no consumable as the row it was', () => {
+    const { el } = render((h) =>
+      h.sheet.set(sheetWith([entry({ key: 'item:wand', effectPt: '' })])),
+    );
+    expect(rowsOf(el)).toHaveLength(0);
+    expect(el.querySelectorAll('.magic-row')).toHaveLength(1);
   });
 });

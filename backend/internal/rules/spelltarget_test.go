@@ -71,9 +71,9 @@ func TestEverySRDSpellHasATarget(t *testing.T) {
 			areas++
 		}
 	}
-	// 88 in the database, 7 of them not areas for us, and 4 that the database lacks.
-	if areas != 85 {
-		t.Errorf("%d SRD spells are areas, want 85", areas)
+	// 88 in the database, 7 of them not areas for us, 4 that the database lacks, and 5 that name their creatures.
+	if areas != 80 {
+		t.Errorf("%d SRD spells are areas, want 80", areas)
 	}
 }
 
@@ -128,21 +128,27 @@ func TestSpellTargetOverrides(t *testing.T) {
 			delete(kindOf, k)
 		}
 	}
-	want(TargetCreature, "spell:telekinesis")
+	want(TargetCreature, "spell:telekinesis", "spell:disintegrate", "spell:vampiric-touch", "spell:produce-flame", "spell:eyebite")
 	want(TargetSelf, "spell:detect-evil-and-good", "spell:detect-magic", "spell:detect-poison-and-disease", "spell:speak-with-plants",
-		"spell:branding-smite", "spell:divine-favor", "spell:flame-blade", "spell:contact-other-plane", "spell:magic-jar", "spell:scrying", "spell:wish")
+		"spell:branding-smite", "spell:divine-favor", "spell:flame-blade", "spell:contact-other-plane", "spell:magic-jar", "spell:scrying", "spell:wish",
+		"spell:fire-shield", "spell:dimension-door")
 	want(TargetNone, "spell:arcane-eye", "spell:magnificent-mansion", "spell:dancing-lights", "spell:druidcraft", "spell:fabricate",
-		"spell:light", "spell:major-image", "spell:minor-illusion")
+		"spell:light", "spell:major-image", "spell:minor-illusion", "spell:animate-objects", "spell:passwall", "spell:wall-of-force", "spell:wall-of-stone",
+		"spell:stone-shape", "spell:secret-chest", "spell:giant-insect", "spell:mage-hand", "spell:mending", "spell:prestidigitation", "spell:shillelagh",
+		"spell:thaumaturgy", "spell:faithful-hound")
 	want(TargetArea, "spell:flame-strike", "spell:forbiddance", "spell:mirage-arcane", "spell:teleportation-circle", "spell:guards-and-wards",
 		"spell:fire-storm", "spell:hypnotic-pattern", "spell:plant-growth", "spell:purify-food-and-drink", "spell:glyph-of-warding")
 	want(TargetCreatures, "spell:aid", "spell:bless", "spell:bane", "spell:mass-healing-word", "spell:prayer-of-healing", "spell:mass-suggestion",
-		"spell:telepathic-bond", "spell:water-walk", "spell:wind-walk", "spell:astral-projection", "spell:heroes-feast")
+		"spell:telepathic-bond", "spell:water-walk", "spell:wind-walk", "spell:astral-projection", "spell:heroes-feast",
+		"spell:acid-splash", "spell:water-breathing", "spell:mass-cure-wounds", "spell:chain-lightning", "spell:wall-of-ice", "spell:slow", "spell:seeming")
 	if len(kindOf) != 0 {
 		t.Errorf("entries nobody pinned: %v", kindOf)
 	}
 	for key, count := range map[string]int{
 		"spell:aid": 3, "spell:bless": 3, "spell:bane": 3, "spell:mass-healing-word": 6, "spell:prayer-of-healing": 6, "spell:mass-suggestion": 12,
 		"spell:telepathic-bond": 8, "spell:water-walk": 10, "spell:wind-walk": 11, "spell:astral-projection": 9, "spell:heroes-feast": 12,
+		"spell:acid-splash": 2, "spell:water-breathing": 10, "spell:mass-cure-wounds": 6, "spell:chain-lightning": 4, "spell:wall-of-ice": 10,
+		"spell:slow": 6, "spell:seeming": 10,
 	} {
 		if got := c.c.srdTargets[key].Count; got != count {
 			t.Errorf("%s takes %d, want %d", key, got, count)
@@ -151,8 +157,28 @@ func TestSpellTargetOverrides(t *testing.T) {
 	if tg := c.c.srdTargets["spell:bless"]; tg.PerSlotLevel != 1 || c.c.srdTargets["spell:bane"].PerSlotLevel != 1 {
 		t.Errorf("Bless and Bane take one more for each circle: %+v", tg)
 	}
+	if tg := c.c.srdTargets["spell:chain-lightning"]; tg.PerSlotLevel != 1 {
+		t.Errorf("Chain Lightning takes one more for each circle: %+v", tg)
+	}
+	for key, within := range map[string]int{"spell:acid-splash": 5, "spell:mass-cure-wounds": 60, "spell:chain-lightning": 30} {
+		if got := c.c.srdTargets[key].WithinFt; got != within {
+			t.Errorf("%s within %d ft, want %d", key, got, within)
+		}
+	}
+	// How the targets stay close: Acid Splash every pair within 5 ft, Mass Cure Wounds every pair within 60 ft and
+	// each within its range plus 30 ft, Chain Lightning the others within 30 ft of the first.
+	for key, want := range map[string]SpellTarget{
+		"spell:acid-splash":      {WithinFt: 5, WithinOf: WithinEach},
+		"spell:mass-cure-wounds": {WithinFt: 60, WithinOf: WithinEach, RangeExtraFt: 30},
+		"spell:chain-lightning":  {WithinFt: 30, WithinOf: WithinFirst},
+	} {
+		tg := c.c.srdTargets[key]
+		if tg.WithinOf != want.WithinOf || tg.RangeExtraFt != want.RangeExtraFt || tg.WithinFt != want.WithinFt {
+			t.Errorf("%s closeness = %d ft of %q, %d ft past the range; want %d ft of %q, %d", key, tg.WithinFt, tg.WithinOf, tg.RangeExtraFt, want.WithinFt, want.WithinOf, want.RangeExtraFt)
+		}
+	}
 	// What stays as the text says: any number, and the summons untouched.
-	for _, key := range []string{"spell:compulsion", "spell:enthrall", "spell:mass-heal", "spell:dispel-evil-and-good", "spell:eyebite", "spell:animate-dead", "spell:create-undead"} {
+	for _, key := range []string{"spell:compulsion", "spell:enthrall", "spell:mass-heal", "spell:dispel-evil-and-good", "spell:animate-dead", "spell:create-undead"} {
 		if d, _ := c.SpellDetails(key); !d.Target.AnyNumber() {
 			t.Errorf("%s = %+v, want any number of creatures", key, d.Target)
 		}
@@ -163,6 +189,9 @@ func TestSpellTargetOverrides(t *testing.T) {
 		"spell:forbiddance": "Uma área de cerca de 3.700 m²", "spell:teleportation-circle": "Círculo de 3 m de diâmetro",
 		"spell:mirage-arcane": "Terreno de até 1,6 km de lado", "spell:wind-walk": "Você e até 10 criaturas",
 		"spell:hypnotic-pattern": "Cubo de 9 m", "spell:plant-growth": "Esfera de 30 m",
+		"spell:acid-splash": "Uma criatura, ou duas a até 1,5 m uma da outra", "spell:chain-lightning": "Um alvo e até 3 outros a até 9 m do primeiro, mais 1 por nível acima do 6º",
+		"spell:dimension-door": "Só quem conjura; o mestre leva quem for junto", "spell:seeming": "Até 10 criaturas; o mestre aplica às demais",
+		"spell:wall-of-ice": "Até 10 criaturas cortadas pela muralha; o mestre aplica às demais",
 	} {
 		d, _ := c.SpellDetails(key)
 		if d.Target.LabelPT() != label {
@@ -186,14 +215,38 @@ func TestSpellTargetOverridesAreChecked(t *testing.T) {
 		t.Fatalf("a good entry: %v", err)
 	}
 	for name, body := range map[string]string{
-		"not an SRD spell":      `{"spells":{"spell:raio@mesa":{"kind":"self"}}}`,
-		"an unknown kind":       `{"spells":{"spell:bless":{"kind":"party"}}}`,
-		"a self with a count":   `{"spells":{"spell:bless":{"kind":"self","count":2}}}`,
-		"creatures of none":     `{"spells":{"spell:bless":{"kind":"creatures"}}}`,
-		"an area off the grid":  `{"spells":{"spell:bless":{"kind":"area","shape":"cone","size_ft":12}}}`,
-		"an area with no shape": `{"spells":{"spell:bless":{"kind":"area","size_ft":10}}}`,
-		"a long label":          `{"spells":{"spell:bless":{"kind":"self","label_pt":"` + strings.Repeat("a", 81) + `"}}}`,
-		"an unknown field":      `{"spells":{"spell:bless":{"kind":"self","range":3}}}`,
+		"within_ft of each, with a range past the spell's": `{"spells":{"spell:bless":{"kind":"creatures","count":3,"within_ft":30,"within_of":"each","range_extra_ft":30}}}`,
+		"within_ft of the first":                           `{"spells":{"spell:bless":{"kind":"creatures","count":3,"within_ft":30,"within_of":"first"}}}`,
+		"a creature with a reach_ft":                       `{"spells":{"spell:bless":{"kind":"creature","reach_ft":60}}}`,
+	} {
+		if err := load(body); err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+	}
+	for name, body := range map[string]string{
+		"not an SRD spell":              `{"spells":{"spell:raio@mesa":{"kind":"self"}}}`,
+		"an unknown kind":               `{"spells":{"spell:bless":{"kind":"party"}}}`,
+		"a self with a count":           `{"spells":{"spell:bless":{"kind":"self","count":2}}}`,
+		"creatures of none":             `{"spells":{"spell:bless":{"kind":"creatures"}}}`,
+		"an area off the grid":          `{"spells":{"spell:bless":{"kind":"area","shape":"cone","size_ft":12}}}`,
+		"an area with no shape":         `{"spells":{"spell:bless":{"kind":"area","size_ft":10}}}`,
+		"a long label":                  `{"spells":{"spell:bless":{"kind":"self","label_pt":"` + strings.Repeat("a", 81) + `"}}}`,
+		"an unknown field":              `{"spells":{"spell:bless":{"kind":"self","range":3}}}`,
+		"a within_ft off the grid":      `{"spells":{"spell:bless":{"kind":"creatures","count":2,"within_ft":7,"within_of":"each"}}}`,
+		"a within_ft of zero feet":      `{"spells":{"spell:bless":{"kind":"creatures","count":2,"within_ft":-5,"within_of":"each"}}}`,
+		"a within_ft too far":           `{"spells":{"spell:bless":{"kind":"creatures","count":2,"within_ft":125,"within_of":"each"}}}`,
+		"a within_ft with no within_of": `{"spells":{"spell:bless":{"kind":"creatures","count":2,"within_ft":30}}}`,
+		"a within_of that is unknown":   `{"spells":{"spell:bless":{"kind":"creatures","count":2,"within_ft":30,"within_of":"all"}}}`,
+		"a within_of with no within_ft": `{"spells":{"spell:bless":{"kind":"creatures","count":2,"within_of":"first"}}}`,
+		"a range_extra_ft of the first": `{"spells":{"spell:bless":{"kind":"creatures","count":2,"within_ft":30,"within_of":"first","range_extra_ft":30}}}`,
+		"a range_extra_ft off the grid": `{"spells":{"spell:bless":{"kind":"creatures","count":2,"within_ft":30,"within_of":"each","range_extra_ft":7}}}`,
+		"a reach_ft off the grid":       `{"spells":{"spell:bless":{"kind":"creature","reach_ft":7}}}`,
+		"a reach_ft too far":            `{"spells":{"spell:bless":{"kind":"creature","reach_ft":125}}}`,
+		"a reach_ft on a self":          `{"spells":{"spell:bless":{"kind":"self","reach_ft":30}}}`,
+		"a reach_ft on creatures":       `{"spells":{"spell:bless":{"kind":"creatures","count":2,"reach_ft":30}}}`,
+		"a reach_ft on an area":         `{"spells":{"spell:bless":{"kind":"area","shape":"cone","size_ft":10,"reach_ft":10}}}`,
+		"a within_ft on a creature":     `{"spells":{"spell:bless":{"kind":"creature","within_ft":10}}}`,
+		"a within_ft on an area":        `{"spells":{"spell:bless":{"kind":"area","shape":"cone","size_ft":10,"within_ft":10}}}`,
 	} {
 		if err := load(body); err == nil {
 			t.Errorf("%s: accepted", name)

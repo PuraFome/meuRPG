@@ -21,6 +21,9 @@ const (
 // magicCategoryPotion is the category of the SRD magic items that are potions (the oils are filed with them).
 const magicCategoryPotion = "potion"
 
+// magicCategoryScroll is the category of the SRD magic items that are scrolls.
+const magicCategoryScroll = "scroll"
+
 // PotionResistanceRounds is the hour the resistance potions last, in the rounds the lasting effects count (6 seconds).
 const PotionResistanceRounds = 600
 
@@ -126,6 +129,64 @@ func (c *Content) IsPotion(key string) bool {
 	return ok && m.Category == magicCategoryPotion && !oils[key]
 }
 
+// ConsumableKind is what kind of consumable an item is.
+type ConsumableKind int
+
+// The kinds of consumable.
+const (
+	// ConsumablePotion is a potion that is drunk or given.
+	ConsumablePotion ConsumableKind = iota + 1
+	// ConsumableOil is an oil: applied in a minute or ten, not as an action.
+	ConsumableOil
+	// ConsumableScroll is a scroll.
+	ConsumableScroll
+	// ConsumableOther is any other single-use item.
+	ConsumableOther
+)
+
+// Consumable is what the use of a consumable item is and costs: the one decision both the use and the sheet follow.
+type Consumable struct {
+	Kind ConsumableKind
+	// CostsAction says the use is the user's action in a running combat (IsPotion).
+	CostsAction bool
+	// Heal is the dice of the hit points the use restores; the zero value when it rolls nothing.
+	Heal DiceFormula
+}
+
+// CostsAction says the use of the item is the user's action in a running combat, as the sheet reads it (Consumable.CostsAction).
+func (c *Content) CostsAction(key string) bool {
+	e, ok := c.ConsumableOf(key)
+	return ok && e.CostsAction
+}
+
+// HealOf is the dice of the hit points the use of the item restores, the zero value when it rolls nothing.
+func (c *Content) HealOf(key string) DiceFormula {
+	e, _ := c.ConsumableOf(key)
+	return e.Heal
+}
+
+// ConsumableOf says whether the item is a consumable the sheet holds and what its use is. It is the test the use of a
+// consumable applies to an entry of the sheet.
+func (c *Content) ConsumableOf(key string) (Consumable, bool) {
+	m, ok := c.c.magicItems[key]
+	if !ok || !c.c.consumables[key] {
+		return Consumable{}, false
+	}
+	out := Consumable{CostsAction: c.IsPotion(key), Kind: ConsumableOther}
+	switch {
+	case oils[key]:
+		out.Kind = ConsumableOil
+	case m.Category == magicCategoryPotion:
+		out.Kind = ConsumablePotion
+	case m.Category == magicCategoryScroll:
+		out.Kind = ConsumableScroll
+	}
+	if e, has := c.PotionEffect(key); has && e.Kind == PotionHeal {
+		out.Heal = e.Heal
+	}
+	return out, true
+}
+
 // PotionEffectLinePT is the line the sheet shows for what the potion does ("Cura 2d4 + 2", "Resistência a fogo por 1
 // hora"), and "" for an item the app carries out nothing for.
 func (c *Content) PotionEffectLinePT(key string) string {
@@ -142,6 +203,40 @@ func (c *Content) PotionEffectLinePT(key string) string {
 	}
 	return "Resistência a " + strings.ToLower(c.NamePT(e.DamageType)) + " por " + durationPT(e.Rounds*SecondsPerRound)
 }
+
+// PotionTitlePT is the name of the effect a resistance potion leaves ("Resistência a fogo"), and "" for any other key.
+func (c *Content) PotionTitlePT(key string) string {
+	if e, ok := c.PotionEffect(key); ok && e.Kind == PotionResistance {
+		return "Resistência a " + strings.ToLower(c.NamePT(e.DamageType))
+	}
+	return ""
+}
+
+// PotionChipsPT is the short label of the effect a resistance potion leaves (["Resistência: fogo"]), and none for any other key.
+func (c *Content) PotionChipsPT(key string) []string {
+	if e, ok := c.PotionEffect(key); ok && e.Kind == PotionResistance {
+		return []string{"Resistência: " + strings.ToLower(c.NamePT(e.DamageType))}
+	}
+	return nil
+}
+
+// PotionSeconds is how long the effect of a resistance potion lasts in game time, and false for any other key.
+func (c *Content) PotionSeconds(key string) (int, bool) {
+	e, ok := c.PotionEffect(key)
+	return e.Rounds * SecondsPerRound, ok && e.Kind == PotionResistance
+}
+
+// PotionLengthPT is the whole length the effect of a resistance potion lasts, as a sentence part ("por 1 hora"), and "" for any other key.
+func (c *Content) PotionLengthPT(key string) string {
+	seconds, ok := c.PotionSeconds(key)
+	if !ok || seconds <= 0 {
+		return ""
+	}
+	return "por " + durationPT(seconds)
+}
+
+// DurationPT is a length of game time in seconds as a sentence says it: whole hours, else whole minutes, else seconds ("1 hora").
+func DurationPT(seconds int) string { return durationPT(seconds) }
 
 // durationPT is a time in seconds as the line says it: whole hours, else whole minutes, else seconds.
 func durationPT(seconds int) string {

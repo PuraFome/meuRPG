@@ -1,8 +1,10 @@
+@use 'row-parts' as row;
+
 :host {
   display: grid;
   // Text | "?" | button: the same columns on every row, so the "?" and the buttons
   // line up down the list (E8-02). A row without a "?" or a button leaves its cell empty.
-  grid-template-columns: minmax(0, 1fr) 44px 112px;
+  grid-template-columns: minmax(0, 1fr) 44px row.$button-width;
   align-items: center;
   column-gap: 8px;
   padding: 12px 0;
@@ -29,6 +31,14 @@
   flex-wrap: wrap;
   align-items: baseline;
   gap: 0 8px;
+}
+
+// "×2" beside the name of a group of identical items (the same mark as the sheet's rows).
+.row__times {
+  font-family: var(--mr-font-sans);
+  font-size: var(--mr-font-14);
+  font-weight: 400;
+  color: var(--mr-ink-muted);
 }
 
 // The count of a weapon's ammunition: a pill like the tags; the warning has its icon and the empty one a dashed red line, so the
@@ -193,14 +203,8 @@
 }
 
 .row__why {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+  @include row.why-line;
   margin-top: 4px;
-  font-size: var(--mr-font-14);
-  font-weight: 500;
-  line-height: 19px;
-  color: var(--mr-ink);
 
   .mat-icon {
     flex: none;
@@ -211,15 +215,9 @@
 }
 
 .row__btn {
-  grid-column: 3;
-  --mat-button-outlined-container-height: 48px;
-  // C4-03: the words of an outlined action are in the ink, not the accent (the accent is for the filled button).
-  --mat-button-outlined-label-text-color: var(--mr-ink);
-  --mat-button-outlined-outline-color: var(--mr-control-line);
+  @include row.action-button;
   flex: none;
-  width: 112px;
-  min-width: 0;
-  padding: 0;
+  width: row.$button-width;
 
   .mat-icon {
     flex: none;

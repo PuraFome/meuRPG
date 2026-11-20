@@ -265,6 +265,8 @@ var notReads = map[string]classified{
 	playv1connect.PlayServiceEndGameSessionProcedure:                            {masterWrite, masterOnlyWhy},
 	playv1connect.PlayServiceFireTrapProcedure:                                  {masterWrite, masterOnlyWhy},
 	playv1connect.PlayServiceGrantSceneAttemptProcedure:                         {masterWrite, masterOnlyWhy},
+	playv1connect.PlayServiceRollNpcCheckProcedure:                              {masterWrite, masterOnlyWhy},
+	playv1connect.PlayServiceSkipNpcCheckAsksProcedure:                          {masterWrite, masterOnlyWhy},
 	playv1connect.PlayServiceLeaveWildShapeProcedure:                            {playerAction, "a player leaves their own Wild Shape"},
 	playv1connect.PlayServiceOpenSceneProcedure:                                 {masterWrite, masterOnlyWhy},
 	playv1connect.PlayServicePutOnStageProcedure:                                {masterWrite, masterOnlyWhy},
