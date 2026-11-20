@@ -14,7 +14,7 @@ const answerNpcCheckAsk = `-- name: AnswerNpcCheckAsk :one
 UPDATE npc_check_asks
 SET state = $2, die_face = $3, physical = $4, answer_key = $5, answered_at = $6, answer_hash = $7
 WHERE id = $1 AND state = 'asked'
-RETURNING id, hold_id, bard_character_id, position, state, sides, creature_seen, die_face, physical, answer_key, answer_hash, created_at, answered_at
+RETURNING id, hold_id, map_id, bard_character_id, position, state, sides, creature_seen, die_face, physical, answer_key, answer_hash, created_at, answered_at
 `
 
 type AnswerNpcCheckAskParams struct {
@@ -44,6 +44,7 @@ func (q *Queries) AnswerNpcCheckAsk(ctx context.Context, arg AnswerNpcCheckAskPa
 	err := row.Scan(
 		&i.ID,
 		&i.HoldID,
+		&i.MapID,
 		&i.BardCharacterID,
 		&i.Position,
 		&i.State,
@@ -108,7 +109,7 @@ func (q *Queries) GetLatestNpcCheckEvent(ctx context.Context, gameSessionID stri
 }
 
 const getNpcCheckAskByAnswerKey = `-- name: GetNpcCheckAskByAnswerKey :one
-SELECT a.id, a.hold_id, a.bard_character_id, a.position, a.state, a.sides, a.creature_seen, a.die_face, a.physical, a.answer_key, a.answer_hash, a.created_at, a.answered_at FROM npc_check_asks AS a
+SELECT a.id, a.hold_id, a.map_id, a.bard_character_id, a.position, a.state, a.sides, a.creature_seen, a.die_face, a.physical, a.answer_key, a.answer_hash, a.created_at, a.answered_at FROM npc_check_asks AS a
 JOIN inspiration_holds AS h ON h.id = a.hold_id
 WHERE h.campaign_id = $1 AND a.answer_key = $2
 `
@@ -125,6 +126,7 @@ func (q *Queries) GetNpcCheckAskByAnswerKey(ctx context.Context, arg GetNpcCheck
 	err := row.Scan(
 		&i.ID,
 		&i.HoldID,
+		&i.MapID,
 		&i.BardCharacterID,
 		&i.Position,
 		&i.State,
@@ -142,9 +144,9 @@ func (q *Queries) GetNpcCheckAskByAnswerKey(ctx context.Context, arg GetNpcCheck
 
 const insertNpcCheckAsk = `-- name: InsertNpcCheckAsk :one
 
-INSERT INTO npc_check_asks (hold_id, bard_character_id, position, sides, creature_seen, physical, created_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
-RETURNING id, hold_id, bard_character_id, position, state, sides, creature_seen, die_face, physical, answer_key, answer_hash, created_at, answered_at
+INSERT INTO npc_check_asks (hold_id, bard_character_id, position, sides, creature_seen, physical, created_at, map_id)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+RETURNING id, hold_id, map_id, bard_character_id, position, state, sides, creature_seen, die_face, physical, answer_key, answer_hash, created_at, answered_at
 `
 
 type InsertNpcCheckAskParams struct {
@@ -155,9 +157,10 @@ type InsertNpcCheckAskParams struct {
 	CreatureSeen    bool
 	Physical        bool
 	CreatedAt       time.Time
+	MapID           *string
 }
 
-// The bards asked about an NPC's check outside a combat (migration 00354): one row for each bard, in the order they are asked.
+// The bards asked about an NPC's check outside a combat: one row for each bard, in the order they are asked.
 func (q *Queries) InsertNpcCheckAsk(ctx context.Context, arg InsertNpcCheckAskParams) (NpcCheckAsk, error) {
 	row := q.db.QueryRow(ctx, insertNpcCheckAsk,
 		arg.HoldID,
@@ -167,11 +170,13 @@ func (q *Queries) InsertNpcCheckAsk(ctx context.Context, arg InsertNpcCheckAskPa
 		arg.CreatureSeen,
 		arg.Physical,
 		arg.CreatedAt,
+		arg.MapID,
 	)
 	var i NpcCheckAsk
 	err := row.Scan(
 		&i.ID,
 		&i.HoldID,
+		&i.MapID,
 		&i.BardCharacterID,
 		&i.Position,
 		&i.State,
@@ -188,7 +193,7 @@ func (q *Queries) InsertNpcCheckAsk(ctx context.Context, arg InsertNpcCheckAskPa
 }
 
 const listNpcCheckAsks = `-- name: ListNpcCheckAsks :many
-SELECT id, hold_id, bard_character_id, position, state, sides, creature_seen, die_face, physical, answer_key, answer_hash, created_at, answered_at FROM npc_check_asks WHERE hold_id = $1 ORDER BY position
+SELECT id, hold_id, map_id, bard_character_id, position, state, sides, creature_seen, die_face, physical, answer_key, answer_hash, created_at, answered_at FROM npc_check_asks WHERE hold_id = $1 ORDER BY position
 `
 
 // The questions of one held check, in the order the bards are asked.
@@ -204,6 +209,7 @@ func (q *Queries) ListNpcCheckAsks(ctx context.Context, holdID string) ([]NpcChe
 		if err := rows.Scan(
 			&i.ID,
 			&i.HoldID,
+			&i.MapID,
 			&i.BardCharacterID,
 			&i.Position,
 			&i.State,
@@ -368,7 +374,7 @@ const passNpcCheckAsk = `-- name: PassNpcCheckAsk :one
 UPDATE npc_check_asks
 SET state = 'passed', answered_at = $2
 WHERE id = $1 AND state = 'asked'
-RETURNING id, hold_id, bard_character_id, position, state, sides, creature_seen, die_face, physical, answer_key, answer_hash, created_at, answered_at
+RETURNING id, hold_id, map_id, bard_character_id, position, state, sides, creature_seen, die_face, physical, answer_key, answer_hash, created_at, answered_at
 `
 
 type PassNpcCheckAskParams struct {
@@ -383,6 +389,7 @@ func (q *Queries) PassNpcCheckAsk(ctx context.Context, arg PassNpcCheckAskParams
 	err := row.Scan(
 		&i.ID,
 		&i.HoldID,
+		&i.MapID,
 		&i.BardCharacterID,
 		&i.Position,
 		&i.State,

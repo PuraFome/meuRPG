@@ -138,3 +138,50 @@ func TestNpcCheckRefusesTheAnswerOfTheBardWhosePlayerLeftTheScene(t *testing.T) 
 	}
 	n.mustCut(second, hold)
 }
+
+// TestNpcCheckReadsTheMapItWasRolledOn: the keep reads the tokens of the map the check was rolled on, not the session's current one.
+func TestNpcCheckReadsTheMapItWasRolledOn(t *testing.T) {
+	t.Parallel()
+	t.Run("the creature is hidden on the map of the roll after the master changed the map", func(t *testing.T) {
+		t.Parallel()
+		n := newNpcTable(t, charactersv1.CuttingWordsAsk_CUTTING_WORDS_ASK_ALL)
+		first := n.withTheCreatureOnTheMap(t)
+		hold, bard, _ := n.twoAsked(t)
+		second := n.mapWith(t, gridColumns)
+		n.h.placeToken(second, n.npcID, 1750, 250)
+		n.hideToken(t, first, n.npcID)
+		n.mustNothing(bard)
+		got := n.mustLatest(t)
+		if !got.GetSettled() || got.GetHoldId() != hold || got.GetAsks()[0].GetState() != playv1.NpcCheckAskState_NPC_CHECK_ASK_STATE_CLOSED {
+			t.Errorf("GetNpcCheck() = %v, want the check settled as a skip", got)
+		}
+		if ev := n.resolvedEvents(t); len(ev) != 1 || !ev[0].skipped {
+			t.Errorf("the resolved events = %+v, want one skip", ev)
+		}
+	})
+	t.Run("the creature is hidden on another map than the one of the roll", func(t *testing.T) {
+		t.Parallel()
+		n := newNpcTable(t, charactersv1.CuttingWordsAsk_CUTTING_WORDS_ASK_ALL)
+		n.withTheCreatureOnTheMap(t)
+		_, bard, _ := n.twoAsked(t)
+		second := n.mapWith(t, gridColumns)
+		n.h.placeToken(second, n.npcID, 1750, 250)
+		n.hideToken(t, second, n.npcID)
+		n.mustOne(bard)
+		if got := n.mustLatest(t); got.GetSettled() {
+			t.Errorf("GetNpcCheck() = %v, want the check still waiting", got)
+		}
+	})
+	t.Run("the check was rolled with no map", func(t *testing.T) {
+		t.Parallel()
+		n := newNpcTable(t, charactersv1.CuttingWordsAsk_CUTTING_WORDS_ASK_ALL)
+		_, bard, _ := n.twoAsked(t)
+		mapID := n.mapWith(t, gridColumns)
+		n.h.placeToken(mapID, n.npcID, 1750, 250)
+		n.hideToken(t, mapID, n.npcID)
+		n.mustOne(bard)
+		if got := n.mustLatest(t); got.GetSettled() {
+			t.Errorf("GetNpcCheck() = %v, want the check still waiting", got)
+		}
+	})
+}

@@ -74,7 +74,7 @@ func (l *heldList) playerNpcCheckOffer(ctx context.Context, h heldRoll, session 
 	if err != nil {
 		return nil, s.dbError(ctx, "read the bard's vitals", err)
 	}
-	stage, token, err := s.npcHiddenNow(ctx, session, h.CharacterID)
+	stage, token, err := s.npcHiddenNow(ctx, session, rolledOn(asks), h.CharacterID)
 	if err != nil {
 		return nil, s.dbError(ctx, "read where the creature stands", err)
 	}

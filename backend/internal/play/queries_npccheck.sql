@@ -1,8 +1,8 @@
--- The bards asked about an NPC's check outside a combat (migration 00354): one row for each bard, in the order they are asked.
+-- The bards asked about an NPC's check outside a combat: one row for each bard, in the order they are asked.
 
 -- name: InsertNpcCheckAsk :one
-INSERT INTO npc_check_asks (hold_id, bard_character_id, position, sides, creature_seen, physical, created_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
+INSERT INTO npc_check_asks (hold_id, bard_character_id, position, sides, creature_seen, physical, created_at, map_id)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 RETURNING *;
 
 -- name: ListNpcCheckAsks :many

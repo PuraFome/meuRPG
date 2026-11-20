@@ -100,7 +100,11 @@ func (s *Service) settleNpcCheck(ctx context.Context, tc *combatTx, hold playdb.
 func (s *Service) skipNpcCheck(ctx context.Context, tc *combatTx, h *hints, hold playdb.InspirationHold, asks []playdb.NpcCheckAsk, key string) (npcCheckEvent, error) {
 	var told []string
 	if cur := cutting.Current(askStates(asks)); cur >= 0 {
-		told = append(told, s.bardUser(ctx, tc.tx, tc.session.CampaignID, asks[cur].BardCharacterID))
+		user, err := s.bardUser(ctx, tc.tx, tc.session.CampaignID, asks[cur].BardCharacterID)
+		if err != nil {
+			return npcCheckEvent{}, err
+		}
+		told = append(told, user)
 	}
 	settled, err := s.settleNpcCheck(ctx, tc, hold, key, true)
 	if err != nil {
@@ -168,16 +172,19 @@ func requireNoOpenCombat(ctx context.Context, q *playdb.Queries, sessionID strin
 	return nil
 }
 
-// bardUser is the player of a bard's character.
-func (s *Service) bardUser(ctx context.Context, tx pgx.Tx, campaignID string, characterID *string) string {
+// bardUser is the player of a bard's character, "" when the character is gone.
+func (s *Service) bardUser(ctx context.Context, tx pgx.Tx, campaignID string, characterID *string) (string, error) {
 	if characterID == nil {
-		return "" // the bard's character was deleted
+		return "", nil // the bard's character was deleted
 	}
 	cs, err := s.roster.CombatCharacters(ctx, tx, campaignID, []string{*characterID})
-	if err != nil || len(cs) != 1 {
-		return ""
+	if err != nil {
+		return "", fmt.Errorf("read the bard's character: %w", err)
 	}
-	return cs[0].PlayerUserID
+	if len(cs) != 1 {
+		return "", nil
+	}
+	return cs[0].PlayerUserID, nil
 }
 
 // forgetNpcCheck drops a held check that can never be answered, in a transaction of its own: the master's, or one of a bard it asks,
@@ -227,9 +234,16 @@ func (s *Service) mayForgetNpcCheck(ctx context.Context, tx pgx.Tx, q *playdb.Qu
 	if err != nil {
 		return false, fmt.Errorf("list the asks of the check: %w", err)
 	}
-	return slices.ContainsFunc(asks, func(k playdb.NpcCheckAsk) bool {
-		return s.bardUser(ctx, tx, m.CampaignID, k.BardCharacterID) == m.UserID
-	}), nil
+	for _, k := range asks {
+		user, err := s.bardUser(ctx, tx, m.CampaignID, k.BardCharacterID)
+		if err != nil {
+			return false, err
+		}
+		if user == m.UserID {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 // answerNpcCheck is the cutting_words arm of AnswerHeldRoll.
@@ -376,7 +390,11 @@ func (a *npcAnswer) write(ctx context.Context, hold playdb.InspirationHold, asks
 	}
 	told := []string{a.m.UserID}
 	if mine+1 < len(asks) {
-		told = append(told, s.bardUser(ctx, a.tx, a.m.CampaignID, asks[mine+1].BardCharacterID))
+		next, err := s.bardUser(ctx, a.tx, a.m.CampaignID, asks[mine+1].BardCharacterID)
+		if err != nil {
+			return nil, err
+		}
+		told = append(told, next)
 	} else if _, err := s.settleNpcCheck(ctx, tc, hold, a.key, false); err != nil {
 		return nil, err
 	}

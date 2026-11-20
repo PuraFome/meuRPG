@@ -278,6 +278,7 @@ func (c *npcCheckCall) hold(ctx context.Context, tc *combatTx, h *hints, ev npcC
 	for i, b := range bards {
 		if _, err := tc.q.InsertNpcCheckAsk(ctx, playdb.InsertNpcCheckAskParams{
 			HoldID: row.ID, BardCharacterID: &b.char.ID, Position: conv.Int32(i), Sides: conv.Int32(b.sides), CreatureSeen: b.named, CreatedAt: tc.now,
+			MapID: tc.session.CurrentMapID,
 		}); err != nil {
 			return fmt.Errorf("ask a bard: %w", err)
 		}
@@ -507,21 +508,26 @@ func (s *Service) npcPlacement(ctx context.Context, tx pgx.Tx, q *playdb.Queries
 	return p, err
 }
 
-// mapTokensOf reads the tokens of the session's current map, none when there is no map. On a map with no grid the tokens are still read
-// (a hidden one stays hidden) but stand on no square: they are marked Unmeasured.
+// mapTokensOf reads the tokens of the session's current map, none when there is no map.
 func (s *Service) mapTokensOf(ctx context.Context, tx pgx.Tx, session playdb.GameSession) (map[string]cutting.Token, error) {
+	return s.tokensOfMap(ctx, tx, session.CampaignID, session.CurrentMapID)
+}
+
+// tokensOfMap reads the tokens of a map of the campaign, none when there is no map. On a map with no grid the tokens are still read
+// (a hidden one stays hidden) but stand on no square: they are marked Unmeasured.
+func (s *Service) tokensOfMap(ctx context.Context, tx pgx.Tx, campaignID string, mapID *string) (map[string]cutting.Token, error) {
 	out := map[string]cutting.Token{}
-	if session.CurrentMapID == nil {
+	if mapID == nil {
 		return out, nil
 	}
-	g, err := s.maps.MapGrid(ctx, tx, session.CampaignID, *session.CurrentMapID)
+	g, err := s.maps.MapGrid(ctx, tx, campaignID, *mapID)
 	if connect.CodeOf(err) == connect.CodeNotFound {
 		return out, nil
 	}
 	if err != nil {
 		return nil, err
 	}
-	tokens, err := s.maps.MapTokens(ctx, tx, *session.CurrentMapID)
+	tokens, err := s.maps.MapTokens(ctx, tx, *mapID)
 	if err != nil {
 		return nil, fmt.Errorf("read the tokens: %w", err)
 	}
