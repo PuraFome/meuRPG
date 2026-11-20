@@ -2,11 +2,15 @@ package play
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
 )
 
@@ -14,10 +18,32 @@ import (
 // them while it waited is what it decides on. The tests here are the shape of TestCancelOfAnAskReadsTheOwnerUnderTheSessionLock for
 // the ask (the giver's owner), the grant and the accept (the receiver in the reserve).
 
+// lateHolder is a transaction starter that takes the session's row in a transaction of the test's, once, just before the first
+// transaction of the call begins. A call through the RPC reads the session through the pool before its transaction (the plain read
+// waits for the lock on CockroachDB, and the transaction then starts on a fresh snapshot): the holder taking the row after that read and
+// before the transaction's own lock is what a write that loses the race to another write has, and it is made here without a clock.
+type lateHolder struct {
+	pool *pgxpool.Pool
+	hold func()
+	once sync.Once
+}
+
+func (l *lateHolder) Begin(ctx context.Context) (pgx.Tx, error) {
+	return l.BeginTx(ctx, pgx.TxOptions{})
+}
+
+func (l *lateHolder) BeginTx(ctx context.Context, o pgx.TxOptions) (pgx.Tx, error) {
+	l.once.Do(l.hold)
+	return l.pool.BeginTx(ctx, o)
+}
+
 // whileTheSessionIsHeld holds the session's row in a transaction of its own, starts call and waits, on a condition and not on a clock,
 // until call is stopped at the session's lock. Then change runs on a connection of its own (what it writes commits at once), and the
-// transaction that held the session writes it and commits. It returns what call returned.
-func (f *favorParty) whileTheSessionIsHeld(t *testing.T, call func() error, change func(ctx context.Context, side *pgxpool.Pool)) error {
+// transaction that held the session writes it and commits. It returns what call returned. call is a request through the RPC, which
+// reads the session before it begins, so the row is held before it starts (a call that waits at that read starts its transaction after
+// the holder's commit, and has nothing to test); a call that opens its transaction with the starter it is given has the row taken
+// just before the transaction begins: pass early = false.
+func (f *favorParty) whileTheSessionIsHeld(t *testing.T, early bool, call func(starter db.TxStarter) error, change func(ctx context.Context, side *pgxpool.Pool)) error {
 	t.Helper()
 	ctx := t.Context()
 	side := dbtest.SideConnection(t, f.h.pool)
@@ -26,11 +52,18 @@ func (f *favorParty) whileTheSessionIsHeld(t *testing.T, call func() error, chan
 		t.Fatalf("Begin() error = %v", err)
 	}
 	defer func() { _ = holder.Rollback(t.Context()) }()
-	if _, err := holder.Exec(ctx, `SELECT id FROM game_sessions WHERE id = $1 FOR UPDATE`, f.sessionID); err != nil {
-		t.Fatalf("lock the session: %v", err)
+	lock := func() {
+		if _, err := holder.Exec(ctx, `SELECT id FROM game_sessions WHERE id = $1 FOR UPDATE`, f.sessionID); err != nil {
+			t.Errorf("lock the session: %v", err)
+		}
+	}
+	starter := &lateHolder{pool: f.h.pool, hold: lock}
+	if early {
+		lock()
+		starter.hold = func() {}
 	}
 	done := make(chan error, 1)
-	go func() { done <- call() }()
+	go func() { done <- call(starter) }()
 	observer := dbtest.SideConnection(t, f.h.pool)
 	for deadline := time.Now().Add(30 * time.Second); ; time.Sleep(5 * time.Millisecond) {
 		n, err := dbtest.WaitingForTable(ctx, observer, "game_sessions")
@@ -78,9 +111,13 @@ func TestAskReadsTheGiversOwnerAfterTheSessionLock(t *testing.T) {
 		t.Fatalf("GrantFavor() error = %v", err)
 	}
 	w := f.world(t)
-	err := f.whileTheSessionIsHeld(t, func() error {
-		_, err := f.askAs(f.caio, f.toren.GetId(), f.pens.GetId(), newKey())
-		return err
+	m := authz.Membership{CampaignID: f.campaignID, UserID: f.caio.id, Role: authz.RolePlayer}
+	call := favorPassCall{m: m, sessionID: f.sessionID, from: f.toren.GetId(), to: f.pens.GetId(), key: newKey()}
+	err := f.whileTheSessionIsHeld(t, false, func(starter db.TxStarter) error {
+		return f.h.svc.txOn(t.Context(), starter, f.sessionID, func(tx pgx.Tx, h *hints) error {
+			_, err := f.h.svc.askPassIn(t.Context(), tx, h, call)
+			return err
+		})
 	}, func(ctx context.Context, side *pgxpool.Pool) {
 		// Bia gives up Brisa (she may own one living character) and takes Toren over from Caio.
 		execAll(ctx, t, side,
@@ -99,7 +136,10 @@ func TestGrantReadsTheReceiverAfterTheSessionLock(t *testing.T) {
 	f := newFavorParty(t)
 	w := f.world(t)
 	granted := f.grantedEvents(t)
-	err := f.whileTheSessionIsHeld(t, func() error { return f.grant(f.pens.GetId()) }, func(ctx context.Context, side *pgxpool.Pool) {
+	g := favorGrant{m: authz.Membership{CampaignID: f.campaignID, UserID: f.master.id, Role: authz.RoleMaster}, sessionID: f.sessionID, characterID: f.pens.GetId(), key: newKey()}
+	err := f.whileTheSessionIsHeld(t, false, func(starter db.TxStarter) error {
+		return f.h.svc.txOn(t.Context(), starter, f.sessionID, func(tx pgx.Tx, h *hints) error { return f.h.svc.grantFavorIn(t.Context(), tx, h, g) })
+	}, func(ctx context.Context, side *pgxpool.Pool) {
 		execAll(ctx, t, side, [2]any{`UPDATE characters SET reserved = true, player_user_id = NULL WHERE id = $1`, []any{f.pens.GetId()}})
 	})
 	wantFavorBlocked(t, "the grant to a receiver sent to the reserve while it waited", err, blockedNotAPlayer)
@@ -120,7 +160,7 @@ func TestAcceptReadsTheReceiverAfterTheSessionLock(t *testing.T) {
 	}
 	p := f.mustAsk(t, f.toren.GetId(), f.pens.GetId())
 	w := f.world(t)
-	err := f.whileTheSessionIsHeld(t, func() error {
+	err := f.whileTheSessionIsHeld(t, true, func(db.TxStarter) error {
 		_, err := f.answer(p.GetId(), true)
 		return err
 	}, func(ctx context.Context, side *pgxpool.Pool) {
