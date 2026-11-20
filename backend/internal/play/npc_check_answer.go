@@ -97,10 +97,10 @@ func (s *Service) settleNpcCheck(ctx context.Context, tc *combatTx, hold playdb.
 
 // skipNpcCheck settles the check without the bards that still wait: the history says it was skipped, and the master and the bard asked
 // now hear that the question is gone.
-func (s *Service) skipNpcCheck(ctx context.Context, tc *combatTx, h *hints, hold playdb.InspirationHold, asks []playdb.NpcCheckAsk, key string) (npcCheckEvent, error) {
+func (s *Service) skipNpcCheck(ctx context.Context, tc *combatTx, h *hints, view *npcCheckView, hold playdb.InspirationHold, asks []playdb.NpcCheckAsk, key string) (npcCheckEvent, error) {
 	var told []string
 	if cur := cutting.Current(askStates(asks)); cur >= 0 {
-		user, err := s.bardHeard(ctx, tc.tx, tc.session, asks[cur].BardCharacterID)
+		user, err := view.heard(ctx, tc.tx, tc.session.CampaignID, asks[cur].BardCharacterID)
 		if err != nil {
 			return npcCheckEvent{}, err
 		}
@@ -123,15 +123,21 @@ func (s *Service) settleOpenNpcChecks(ctx context.Context, tc *combatTx, h *hint
 	if err != nil {
 		return fmt.Errorf("list the checks held for the bards: %w", err)
 	}
+	var view *npcCheckView
 	for _, hold := range holds {
 		if hold.CreatedAt.Before(tc.session.StartedAt) {
 			continue
+		}
+		if view == nil {
+			if view, err = s.npcCheckViewOf(ctx, tc.tx, tc.session); err != nil {
+				return err
+			}
 		}
 		asks, err := tc.q.ListNpcCheckAsks(ctx, hold.ID)
 		if err != nil {
 			return fmt.Errorf("list the asks of the check: %w", err)
 		}
-		if _, err := s.skipNpcCheck(ctx, tc, h, hold, asks, uuid.NewString()); err != nil {
+		if _, err := s.skipNpcCheck(ctx, tc, h, view, hold, asks, uuid.NewString()); err != nil {
 			return err
 		}
 	}
@@ -192,8 +198,13 @@ func (s *Service) bardUser(ctx context.Context, tx pgx.Tx, campaignID string, ch
 func (a *npcAnswer) moveOn(ctx context.Context, tc *combatTx, hold playdb.InspirationHold, asks []playdb.NpcCheckAsk, mine int) error {
 	told := []string{a.m.UserID}
 	more := mine+1 < len(asks)
+	var view *npcCheckView
 	if more {
-		next, err := a.s.bardHeard(ctx, a.tx, a.session, asks[mine+1].BardCharacterID)
+		var err error
+		if view, err = a.s.npcCheckViewOf(ctx, a.tx, a.session); err != nil {
+			return err
+		}
+		next, err := view.heard(ctx, a.tx, a.m.CampaignID, asks[mine+1].BardCharacterID)
 		if err != nil {
 			return err
 		}
@@ -202,35 +213,10 @@ func (a *npcAnswer) moveOn(ctx context.Context, tc *combatTx, hold playdb.Inspir
 		return err
 	}
 	tellNpcCheck(a.h, a.m.CampaignID, told...)
-	if more {
-		return a.keep(ctx, tc, hold)
+	if more { // a next bard out of play is let pass, and the bard after it is asked
+		return a.s.keepNpcCheck(ctx, tc, a.h, view, hold)
 	}
 	return nil
-}
-
-// bardHeard is the player of a bard's character when the hint of a question may reach it: the character is in play of a member and the
-// open scene is open to the player. It is "" otherwise, so nobody outside the scene hears of a check.
-func (s *Service) bardHeard(ctx context.Context, tx pgx.Tx, session playdb.GameSession, characterID *string) (string, error) {
-	if characterID == nil {
-		return "", nil
-	}
-	view, err := s.npcCheckViewOf(ctx, tx, session)
-	if err != nil {
-		return "", err
-	}
-	if !view.inPlay[*characterID] {
-		return "", nil
-	}
-	return s.bardUser(ctx, tx, session.CampaignID, characterID)
-}
-
-// keep makes the moves the check needs after the answer: see keepNpcCheck.
-func (a *npcAnswer) keep(ctx context.Context, tc *combatTx, hold playdb.InspirationHold) error {
-	view, err := a.s.npcCheckViewOf(ctx, a.tx, a.session)
-	if err != nil {
-		return err
-	}
-	return a.s.keepNpcCheck(ctx, tc, a.h, view, hold)
 }
 
 // forgetNpcCheck drops a held check that can never be answered, in a transaction of its own: the master's, or one of a bard it asks,
@@ -571,7 +557,11 @@ func (s *Service) skipAsks(ctx context.Context, tx pgx.Tx, h *hints, session pla
 	if err != nil {
 		return nil, err
 	}
-	settled, err := s.skipNpcCheck(ctx, tc, h, hold, asks, key)
+	view, err := s.npcCheckViewOf(ctx, tx, session)
+	if err != nil {
+		return nil, err
+	}
+	settled, err := s.skipNpcCheck(ctx, tc, h, view, hold, asks, key)
 	if err != nil {
 		return nil, err
 	}

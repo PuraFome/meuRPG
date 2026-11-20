@@ -70,6 +70,13 @@ func (l *heldList) playerNpcCheckOffer(ctx context.Context, h heldRoll, session 
 	if err != nil || !mine {
 		return nil, err
 	}
+	scene, err := sceneViewersOf(ctx, s.queries, session)
+	if err != nil {
+		return nil, s.dbError(ctx, "read the viewers of the scene", err)
+	}
+	if !scene.has(l.m.UserID) {
+		return nil, nil // the scene is not open to the bard's player: the next read passes the question
+	}
 	vit, err := s.vitals.GetVitals(ctx, h.CampaignID, bard)
 	if err != nil {
 		return nil, s.dbError(ctx, "read the bard's vitals", err)

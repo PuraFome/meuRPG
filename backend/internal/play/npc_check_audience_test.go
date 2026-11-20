@@ -172,6 +172,21 @@ func TestNpcCheckReadsTheMapItWasRolledOn(t *testing.T) {
 			t.Errorf("GetNpcCheck() = %v, want the check still waiting", got)
 		}
 	})
+	t.Run("the map of the roll is deleted", func(t *testing.T) {
+		t.Parallel()
+		n := newNpcTable(t, charactersv1.CuttingWordsAsk_CUTTING_WORDS_ASK_ALL)
+		first := n.withTheCreatureOnTheMap(t)
+		_, bard, _ := n.twoAsked(t)
+		second := n.mapWith(t, gridColumns)
+		n.h.placeToken(second, n.npcID, 1750, 250)
+		if _, err := n.h.pool.Exec(t.Context(), `DELETE FROM maps WHERE id = $1`, first); err != nil {
+			t.Fatalf("delete the map of the roll: %v", err)
+		}
+		n.mustOne(bard)
+		if got := n.mustLatest(t); got.GetSettled() {
+			t.Errorf("GetNpcCheck() = %v, want the check still waiting", got)
+		}
+	})
 	t.Run("the check was rolled with no map", func(t *testing.T) {
 		t.Parallel()
 		n := newNpcTable(t, charactersv1.CuttingWordsAsk_CUTTING_WORDS_ASK_ALL)

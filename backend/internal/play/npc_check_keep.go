@@ -65,6 +65,15 @@ func (v *npcCheckView) tokensOf(ctx context.Context, tx pgx.Tx, campaignID strin
 	return t, nil
 }
 
+// heard is the player of a bard's character when the hint of a question may reach it: the character is in play of a member and the
+// open scene is open to the player. It is "" otherwise, so nobody outside the scene hears of a check.
+func (v *npcCheckView) heard(ctx context.Context, tx pgx.Tx, campaignID string, characterID *string) (string, error) {
+	if characterID == nil || !v.inPlay[*characterID] {
+		return "", nil
+	}
+	return v.s.bardUser(ctx, tx, campaignID, characterID)
+}
+
 // moveOf is what the check needs now, with its asks: the creature is hidden when its token is hidden on the map the check was rolled on.
 func (v *npcCheckView) moveOf(ctx context.Context, tx pgx.Tx, hold playdb.InspirationHold, asks []playdb.NpcCheckAsk) (cutting.Move, int, error) {
 	tokens, err := v.tokensOf(ctx, tx, hold.CampaignID, rolledOn(asks))
@@ -199,7 +208,7 @@ func (s *Service) keepNpcCheck(ctx context.Context, tc *combatTx, h *hints, view
 		}
 		switch move {
 		case cutting.Skip:
-			_, err := s.skipNpcCheck(ctx, tc, h, hold, asks, uuid.NewString())
+			_, err := s.skipNpcCheck(ctx, tc, h, view, hold, asks, uuid.NewString())
 			return err
 		case cutting.Finish:
 			return s.finishNpcCheck(ctx, tc, h, hold)
@@ -210,7 +219,7 @@ func (s *Service) keepNpcCheck(ctx context.Context, tc *combatTx, h *hints, view
 			moved = true
 		default:
 			if moved { // the next bard is asked now
-				return s.tellNextBard(ctx, tc, h, asks)
+				return s.tellNextBard(ctx, tc, h, view, asks)
 			}
 			return nil
 		}
@@ -227,9 +236,9 @@ func (s *Service) finishNpcCheck(ctx context.Context, tc *combatTx, h *hints, ho
 }
 
 // tellNextBard tells the master and the bard asked now that the question moved.
-func (s *Service) tellNextBard(ctx context.Context, tc *combatTx, h *hints, asks []playdb.NpcCheckAsk) error {
+func (s *Service) tellNextBard(ctx context.Context, tc *combatTx, h *hints, view *npcCheckView, asks []playdb.NpcCheckAsk) error {
 	cur := cutting.Current(askStates(asks))
-	next, err := s.bardHeard(ctx, tc.tx, tc.session, asks[cur].BardCharacterID)
+	next, err := view.heard(ctx, tc.tx, tc.session.CampaignID, asks[cur].BardCharacterID)
 	if err != nil {
 		return err
 	}
