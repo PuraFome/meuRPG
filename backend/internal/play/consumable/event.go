@@ -64,9 +64,11 @@ func OutcomeOf(outcome string) playv1.ConsumableUseOutcome {
 	return playv1.ConsumableUseOutcome_CONSUMABLE_USE_OUTCOME_TEXT_ONLY
 }
 
-// Line is the line of a use in the combat's log: the item, its kind, the outcome, the damage type (with its name), the length of the
-// effect a resistance leaves ("por 1 hora", from lengthText) and the receiver's label are the table's; the dice, the faces, the total and the hit points regained only when numbers is true (the master and the owners of
-// the user and of the receiver, RN-10).
+// Line is the line of a use in the combat's log.
+// The item, its kind, the outcome, the damage type with its name and the receiver's label are the table's.
+// So is the length of the effect a resistance leaves ("por 1 hora", from lengthText).
+// The dice, the faces, the total and the hit points regained go only when numbers is true.
+// That is the master and the owners of the user and of the receiver (RN-10).
 func Line(use Used, kind charactersv1.ConsumableKind, damageTypeName, lengthText, targetLabel string, numbers bool) *playv1.ConsumableUseLogLine {
 	line := &playv1.ConsumableUseLogLine{
 		ItemNamePt: use.Name, Kind: kind, Outcome: OutcomeOf(use.Outcome), DamageTypeKey: use.DamageType, DamageTypeNamePt: damageTypeName, TargetLabel: targetLabel,

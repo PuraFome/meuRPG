@@ -1914,13 +1914,15 @@ type keyNames struct {
 	traps       map[string]string       // the names of the traps that fired, by point
 	content     func(key string) string // the names of the content, from the campaign's content
 	rules       *rules.Content          // the campaign's rules, read once when a line needs them
+	rulesFailed bool                    // the read failed: the lines of this call do not try again
 }
 
 // rulesContent is the campaign's rules, nil when they cannot be read (the line then says what it can).
 func (n *keyNames) rulesContent(ctx context.Context) *rules.Content {
-	if n.rules == nil {
+	if n.rules == nil && !n.rulesFailed {
 		var err error
 		if n.rules, err = n.s.roster.RulesContent(ctx, nil, n.campaignID); err != nil {
+			n.rulesFailed = true
 			n.s.logger.WarnContext(ctx, "play: cannot read the rules for the log", "error", err)
 		}
 	}

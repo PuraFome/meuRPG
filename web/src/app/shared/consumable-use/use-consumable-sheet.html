@@ -13,7 +13,7 @@
   }
   <div class="mr-live" role="alert">
     @if (error(); as e) {
-      <p class="mr-notice mr-notice--danger refusal">
+      <p class="mr-notice mr-notice--danger refusal" [id]="refusalId">
         <span class="mr-notice__said">
           <mat-icon aria-hidden="true">error</mat-icon>
           <span><strong>{{ e.lead }}</strong> {{ e.text }}</span>

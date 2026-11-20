@@ -37,6 +37,7 @@ import { focusWithRing } from '../../core/creatures/focus-ring';
 import type { ConsumableRoll } from '../../core/play/charges-client';
 import {
   type ConsumableRefusal,
+  goneSheetRefusal,
   turnBlockParts,
   unreadSheetRefusal,
 } from '../../core/play/charges-errors';
@@ -215,6 +216,8 @@ export class UseConsumableSheet {
   /** The server lists only who is within reach for what costs the action in a running combat; any other use lists the party. */
   private readonly byReach = computed(() => this.inCombat() === true && this.costs);
   protected readonly whyId = 'use-consumable-why';
+  /** The line of the refusal under the effect: what "Dar a…" points to while the sheet is not read again. */
+  protected readonly refusalId = 'use-consumable-refusal';
   protected readonly targetsErrorId = 'use-consumable-targets-error';
   /** A potion and an oil are given: a scroll and the rest have no "Dar a…", so nobody is listed for them. */
   protected readonly gives = canGive(this.data.kind);
@@ -225,7 +228,7 @@ export class UseConsumableSheet {
   protected readonly giveOff = computed(
     () => !!this.blocked() || this.unread() || (this.targets() !== null && !this.canGive()),
   );
-  /** The block icon says there is nobody to give to; a use the turn does not allow keeps the open hand, like the item's own button. */
+  /** The block icon says there is nobody to give to; a use the turn does not allow, or a sheet not read again, keeps the open hand, like the item's own button. */
   protected readonly giveIcon = computed(() =>
     this.giveOff() && !this.blocked() ? 'block' : 'volunteer_activism',
   );
@@ -233,6 +236,9 @@ export class UseConsumableSheet {
   protected readonly giveWhyId = computed(() => {
     if (!this.giveOff()) {
       return null;
+    }
+    if (this.unread()) {
+      return this.refusalId;
     }
     if (this.reasonText() || this.blockedLine()) {
       return this.whyId;
@@ -274,14 +280,14 @@ export class UseConsumableSheet {
   /** A request in the air: Esc and the backdrop do not close the sheet under it. */
   protected readonly lockWhileBusy = effect(() => this.sheet.lock(this.busy()));
   private key = new ActionKey();
-  /** The receiver of the last call, for "Tente de novo". */
+  /** The receiver of the last call, for "Tentar de novo". */
   private lastTarget: ConsumableTargetVm | null = null;
   /** What the gone unit's refusal said, for when a later read lands: the unit was used, and the sheet is up to date now. */
   private goneRefusal: ConsumableRefusal | null = null;
 
   /** Why the first state offers less than two buttons: the turn does not allow it, or the list is read and has nobody. */
   protected readonly reasonText = computed(() => {
-    if (this.blocked() || !this.gives || this.targets() === null) {
+    if (this.blocked() || this.unread() || !this.gives || this.targets() === null) {
       return '';
     }
     if (this.canGive() || this.targetsError()) {
@@ -326,6 +332,7 @@ export class UseConsumableSheet {
     if (out.unread) {
       // The unit is gone and the sheet was not read: one message, with the way to read it again.
       this.targetsError.set(null);
+      this.goneRefusal = goneSheetRefusal(this.data.kind);
       this.error.set(unreadSheetRefusal(this.data.kind));
     }
     const still = this.targets()?.find((t) => t.id === this.chosen());

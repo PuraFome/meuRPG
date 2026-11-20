@@ -243,8 +243,10 @@ export interface UseCost {
 }
 
 /**
- * The cost line under the buttons of the "Usar" sheet. One line for one case: in a combat the action is spent, out of one
- * the turn is not, and a use that does not cost the action says so whatever the case. `inCombat` is `null` while the page does
+ * The cost line under the buttons of the "Usar" sheet. One line for one case.
+ * In a combat the subtitle says the action is spent, so the line says only who the item acts on, and only in the give phase.
+ * Out of a combat it says the turn is not spent, in words that differ by phase.
+ * A use that does not cost the action says so whatever the case. `inCombat` is `null` while the page does
  * not know (the targets are not read yet, or could not be): the line then says nothing of the action. `acts` is
  * who the item acts on once a receiver is chosen ("A poção age em Brisa.").
  */

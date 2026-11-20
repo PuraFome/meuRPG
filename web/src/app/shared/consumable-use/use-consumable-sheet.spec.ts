@@ -1359,29 +1359,32 @@ describe('UseConsumableSheet', () => {
     });
   });
 
-  describe('a give with nobody chosen', () => {
-    it('sends nothing and keeps the button off while no receiver is chosen', async () => {
-      const { el, settle, fixture } = render();
+  describe('a give with nobody left to receive', () => {
+    it('sends nothing more once the list is read again with nobody in it', async () => {
+      loadTargets
+        .mockReset()
+        .mockResolvedValueOnce(read([BRISA], true))
+        .mockResolvedValue(read([], true));
+      use.mockResolvedValueOnce(
+        refused('Brisa morreu.', 'Nada foi gasto.', { cause: 'target-dead' }),
+      );
+      const { el, settle } = render();
       await settle();
-      Array.from(el.querySelectorAll('button'))
-        .find((b) => label(b) === 'Dar a…')!
-        .click();
-      await settle();
-      // The chosen receiver goes away (the list is read again with nobody in it, and the sheet is still in the give phase).
-      const sheet = fixture.componentInstance as unknown as {
-        chosen: { set: (v: string) => void };
-        give: () => void;
+      const press = async (name: string) => {
+        Array.from(el.querySelectorAll('button'))
+          .find((b) => label(b).startsWith(name))!
+          .click();
+        await settle();
       };
-      sheet.chosen.set('nobody');
-      fixture.detectChanges();
-      const dar = Array.from(el.querySelectorAll('button')).find((b) =>
-        label(b).startsWith('Dar a'),
-      )!;
+      await press('Dar a…');
+      await press('Dar a Brisa');
+      expect(use).toHaveBeenCalledTimes(1);
+      // Nobody is left: the sheet is back to the first choice, and "Dar a…" is off.
+      const dar = Array.from(el.querySelectorAll('button')).find((b) => label(b) === 'Dar a…')!;
       expect(dar.getAttribute('aria-disabled')).toBe('true');
       dar.click();
-      sheet.give();
       await settle();
-      expect(use).not.toHaveBeenCalled();
+      expect(use).toHaveBeenCalledTimes(1);
       expect(close).not.toHaveBeenCalled();
     });
   });
@@ -1475,7 +1478,7 @@ describe('UseConsumableSheet', () => {
       expect(el.querySelector('.refusal__retry')).toBeNull();
       expect(flat(el.querySelector('.frame__sub'))).toBe('Resta 1 · em combate, gasta a ação');
       const foot = Array.from(el.querySelectorAll<HTMLButtonElement>('.foot button'));
-      expect(foot.map((b) => b.getAttribute('aria-disabled'))).not.toContain('true');
+      expect(foot.map((b) => b.getAttribute('aria-disabled'))).toEqual([null, null]);
       await press(el, settle, 'Beber');
       expect(use).toHaveBeenCalledTimes(2);
     });
@@ -1504,6 +1507,44 @@ describe('UseConsumableSheet', () => {
       await press(el, settle, 'Beber');
       await press(el, settle, 'Tentar de novo');
       expect(close).toHaveBeenCalledWith(true);
+    });
+  });
+  describe('a unit that is gone at open, with a sheet that cannot be read again', () => {
+    const unreadTargets = { targets: [], inCombat: null, error: null, unread: true };
+    const press = async (
+      el: HTMLElement,
+      settle: () => Promise<void>,
+      name: string,
+    ): Promise<void> => {
+      Array.from(el.querySelectorAll('button'))
+        .find((b) => label(b) === name)!
+        .click();
+      await settle();
+    };
+
+    it('says only that the sheet was not read: no reason about nobody to give to, and "Dar a…" points to the refusal', async () => {
+      loadTargets.mockReset().mockResolvedValue(unreadTargets);
+      const { el, settle } = render();
+      await settle();
+      expect(flat(el.querySelector('.refusal'))).toContain('Não conseguimos reler a ficha.');
+      expect(el.querySelector('.why .none')).toBeNull();
+      const give = Array.from(el.querySelectorAll<HTMLButtonElement>('.foot button')).find(
+        (b) => label(b) === 'Dar a…',
+      )!;
+      expect(give.getAttribute('aria-disabled')).toBe('true');
+      expect(give.getAttribute('aria-describedby')).toBe(el.querySelector('.refusal')?.id);
+      expect(give.querySelector('mat-icon')?.textContent?.trim()).toBe('volunteer_activism');
+    });
+
+    it('says the unit was used when a read lands, as the send path does', async () => {
+      loadTargets.mockReset().mockResolvedValueOnce(unreadTargets).mockResolvedValue(read([BRISA]));
+      reread.mockResolvedValueOnce({ left: 1, rebound: true });
+      const { el, settle } = render();
+      await settle();
+      await press(el, settle, 'Tentar de novo');
+      expect(flat(el.querySelector('.refusal'))).toBe(
+        'Essa poção já foi usada. A ficha foi atualizada.',
+      );
     });
   });
 });

@@ -188,9 +188,14 @@ function combatRefusal(
         { cause: 'target-away' },
       );
     case EncounterBlockedReason.ITEM_GONE:
-      return refusal(`${words.goneUsed}.`, 'A ficha foi atualizada.', { cause: 'item-gone' });
+      return goneSheetRefusal(ctx.kind);
   }
   return refusal('Não foi possível.', blockedMessage(encounter));
+}
+
+/** The refusal of an item that is gone and whose sheet was read again: it was used, and the sheet is up to date. */
+export function goneSheetRefusal(kind: ConsumableKind): ConsumableRefusal {
+  return refusal(`${kindWords(kind).goneUsed}.`, 'A ficha foi atualizada.', { cause: 'item-gone' });
 }
 
 /**
@@ -290,7 +295,7 @@ export function consumableTargetsRefusal(
 ): ConsumableRefusal {
   const words = kindWords(ctx.kind);
   if (encounterBlocked(err)?.reason === EncounterBlockedReason.ITEM_GONE) {
-    return refusal(`${words.goneUsed}.`, 'A ficha foi atualizada.', { cause: 'item-gone' });
+    return goneSheetRefusal(ctx.kind);
   }
   const connectErr = ConnectError.from(err, Code.Unavailable);
   if (
