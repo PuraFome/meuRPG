@@ -43,7 +43,7 @@
         } @else {
           <p class="line"><mat-icon aria-hidden="true">info</mat-icon>Escolha quem rola para ver os testes.</p>
         }
-        <h3 class="col__head" id="npc-check-die-h">Como rolar o d20</h3>
+        <h3 class="col__head" id="npc-check-die-h" aria-hidden="true">Como rolar o d20</h3>
         <app-segmented label="Como rolar o d20" [segments]="modes" [value]="form.mode()" (choose)="form.setMode($event)" />
         @if (form.mode() === 'type') {
           <app-text-field

@@ -22,6 +22,9 @@ export interface NpcCardVm {
   /** What a hidden card is remembered by: the hold, or the roll of a check that settled at once. */
   readonly key: string;
   readonly title: string;
+  /** The creature and the check, apart: the title keeps "· Enganação" in one piece. */
+  readonly creature: string;
+  readonly check: string;
   readonly settled: boolean;
   /** The number in the box: the d20 with its bonus, less what the bards cut. */
   readonly box: number;
@@ -122,6 +125,11 @@ function rowOf(read: NpcCheckRead, index: number, firstWaiting: number): AskRowV
   }
 }
 
+/** The cut off the d20: settled, the server's own sum; while it waits, the cuts seen so far. */
+function cutOf(read: NpcCheckRead, seen: number): number {
+  return read.settled ? read.cut : seen;
+}
+
 /** The card the master reads for the check the server holds or settled (`GetNpcCheck`, `RollNpcCheck`, `SkipNpcCheckAsks`). */
 export function cardOf(read: NpcCheckRead, reason: NobodyReason = nobodyReasonOf(read)): NpcCardVm {
   const total = read.d20?.total ?? 0;
@@ -130,10 +138,11 @@ export function cardOf(read: NpcCheckRead, reason: NobodyReason = nobodyReasonOf
   const box = read.settled ? read.total : total - cutSoFar;
   const firstWaiting = read.asks.findIndex((a) => a.state === NpcCheckAskState.WAITING);
   const rows = read.asks.map((_, i) => rowOf(read, i, firstWaiting));
+  const cut = cutOf(read, cutSoFar);
   let formula = `${d20Text(read)} = ${total}`;
   let detail = read.settled ? 'Ninguém cortou o teste.' : WAIT_DETAIL;
   if (cutters.length > 0) {
-    formula = `${total} − ${cutSoFar} = ${box}${read.settled ? '' : ', por enquanto'}`;
+    formula = `${total} − ${cut} = ${box}${read.settled ? '' : ', por enquanto'}`;
     detail = `${d20Text(read)}, menos ${cutters.length === 1 ? 'o corte' : 'os cortes'} de ${joinNames(cutters.map((a) => a.characterName))}`;
   }
   const nobody = read.settled && read.asks.length === 0;
@@ -141,6 +150,8 @@ export function cardOf(read: NpcCheckRead, reason: NobodyReason = nobodyReasonOf
     key:
       read.holdId || `${read.creatureLabel}|${read.checkKey}|${read.d20?.faces.join(',')}|${total}`,
     title: `${read.creatureLabel} · ${read.checkName}`,
+    creature: read.creatureLabel,
+    check: read.checkName,
     settled: read.settled,
     box,
     formula,

@@ -1,7 +1,7 @@
 <section class="card" [class.card--waiting]="!card().settled" [attr.aria-label]="'Teste de um NPC: ' + card().title" data-testid="npc-check-card">
   <header class="card__head">
     <mat-icon class="card__icon" aria-hidden="true">record_voice_over</mat-icon>
-    <h3 class="card__title">{{ card().title }}</h3>
+    <h3 class="card__title">{{ card().creature }} <span class="card__check">· {{ card().check }}</span></h3>
     @if (card().settled) {
       <button type="button" class="card__close" aria-label="Esconder o teste" title="Esconder o teste" (click)="dismiss.emit()">
         <mat-icon aria-hidden="true">close</mat-icon>

@@ -14,7 +14,7 @@
       <div class="who__set" role="radiogroup" [attr.aria-labelledby]="'npc-check-who-' + g.source">
         @for (r of g.rows; track r.id) {
           <label class="row" [class.row--on]="r.id === selected()">
-            <input type="radio" class="mr-visually-hidden" name="npc-check-who" [value]="r.id" [checked]="r.id === selected()" (change)="choose.emit(r)" />
+            <input type="radio" class="mr-visually-hidden" [name]="'npc-check-who-' + g.source" [value]="r.id" [checked]="r.id === selected()" (change)="choose.emit(r)" />
             <span class="row__mark" aria-hidden="true"></span>
             <span class="row__text">
               <span class="row__name">{{ r.name }}</span>

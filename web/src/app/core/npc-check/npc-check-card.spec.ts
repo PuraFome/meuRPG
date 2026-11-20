@@ -9,6 +9,7 @@ describe('cardOf', () => {
   it('names the card by its roll and, while it waits, shows the d20 and the bards in order', () => {
     const card = cardOf(npcCheckRead());
     expect(card.title).toBe('Capitão bandido · Enganação');
+    expect([card.creature, card.check]).toEqual(['Capitão bandido', 'Enganação']);
     expect(card.settled).toBe(false);
     expect(card.box).toBe(17);
     expect(card.formula).toBe('d20 (13) + 4 = 17');
@@ -160,5 +161,18 @@ describe('cardOf', () => {
       expect(nobodyReasonOf(read)).toBe(reason);
       expect(cardOf(read).nobodyText).toBe(nobodyText(reason));
     }
+  });
+
+  it('takes the cut of a settled check from the server, not from the rows', () => {
+    const card = cardOf(
+      npcCheckRead({
+        settled: true,
+        total: 12,
+        cut: 5,
+        asks: [ask('Brisa', CUT, { face: 4 })],
+      }),
+    );
+    expect(card.box).toBe(12);
+    expect(card.formula).toBe('17 − 5 = 12');
   });
 });

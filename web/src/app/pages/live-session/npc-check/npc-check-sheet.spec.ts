@@ -134,7 +134,7 @@ describe('NpcCheckSheet', () => {
     expect(
       el.querySelector<HTMLInputElement>('app-check-row input[type="checkbox"]')?.checked,
     ).toBe(false);
-    expect(text()).toContain('os bardos leem “uma criatura”, sem o nome');
+    expect(text()).toContain('leem “uma criatura”, sem o nome');
   });
 
   it('shows no box when the map measures, only the quiet line', async () => {

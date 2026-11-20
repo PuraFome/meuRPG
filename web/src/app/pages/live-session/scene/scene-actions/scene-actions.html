@@ -21,7 +21,7 @@
       class="sa__group"
       [class.mr-button--off]="npc.combatOpen()"
       [attr.aria-disabled]="npc.combatOpen() ? 'true' : null"
-      (click)="!npc.combatOpen() && npc.ask()"
+      (click)="!npc.blocked() && npc.ask()"
     >
       <mat-icon aria-hidden="true">{{ npc.combatOpen() ? 'block' : 'record_voice_over' }}</mat-icon>Teste de um NPC
     </button>

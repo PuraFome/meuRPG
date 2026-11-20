@@ -50,6 +50,7 @@ describe('NpcCheckCard', () => {
     const read = npcCheckRead({
       settled: true,
       total: 13,
+      cut: 4,
       asks: [
         ask('Brisa', NpcCheckAskState.CUT, { face: 4 }),
         ask('bilbo', NpcCheckAskState.CLOSED, { sides: 6 }),

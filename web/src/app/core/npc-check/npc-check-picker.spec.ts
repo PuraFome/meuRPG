@@ -75,8 +75,13 @@ describe('the checkbox "Os bardos veem a criatura e ela os ouve"', () => {
     expect(boxHint(candidate())).toBe(
       'O mapa não mede Capitão bandido: é você quem diz. Com o token da criatura e o de um bardo na grade do mapa, o app mede os 18 m e a visão.',
     );
+    // On the stage: the master hid it, or its token is hidden on the map; the line holds for both.
     expect(boxHint(candidate({ name: 'Espião', hidden: true }))).toBe(
-      'O token de Espião está escondido dos jogadores, então a caixa começa desmarcada: ninguém é perguntado. Se você marcar, os bardos leem “uma criatura”, sem o nome.',
+      'A caixa começa desmarcada porque os jogadores não veem a criatura. Se você marcar, os bardos da cena leem “uma criatura”, sem o nome. Se o token de Espião estiver escondido no mapa, nenhum bardo é perguntado, com a caixa marcada ou não.',
+    );
+    // Listed from the map alone, its token is the hidden thing: no bard is asked, ticked or not.
+    expect(boxHint(candidate({ name: 'Espião', hidden: true, source: NpcCheckSource.TOKEN }))).toBe(
+      'O token de Espião está escondido no mapa: nenhum bardo é perguntado, com a caixa marcada ou não.',
     );
   });
 

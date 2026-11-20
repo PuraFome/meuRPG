@@ -1,10 +1,11 @@
-import { Component, TemplateRef, computed, effect, signal, viewChild } from '@angular/core';
+import { Component, TemplateRef, computed, effect, inject, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 import { MapPointKind } from '../../../gen/meurpg/maps/v1/maps_pb';
 import { type Encounter, EncounterStatus } from '../../../gen/meurpg/play/v1/combat_pb';
 import type { VitalsVm } from '../../core/play/live-session.types';
 import { applyVitals } from '../../core/play/vitals';
+import { NpcCheckLauncher } from '../../core/npc-check/npc-check-launcher';
 import { setPageSubject } from '../../core/title/page-title';
 import { PHONE_QUERY, mediaQuery } from '../../shared/map-view/media-query';
 import { CombatLaunch } from './combat/combat-launch';
@@ -184,6 +185,15 @@ export class LiveSession {
   protected readonly combatGroupEnds = effect(() => {
     if (!this.view.combatOnScreen()) {
       this.combatGroup.set(false);
+    }
+  });
+  private readonly npcLauncher = inject(NpcCheckLauncher);
+  /** The entry "Teste de um NPC" that a refusal for a combat made wait is free again once the combat is gone from the page. */
+  protected readonly npcEntryFollowsCombat = effect(() => {
+    const combat = this.view.combatOnScreen();
+    this.npcLauncher.pageCombat.set(combat);
+    if (!combat) {
+      this.npcLauncher.combatOpen.set(false);
     }
   });
   protected readonly loader = new LiveSessionLoader(this.services, this.state, this.parts);

@@ -12,6 +12,11 @@
 .entry {
   align-self: flex-start;
   min-height: 44px;
+
+  &:focus-visible {
+    outline: 3px solid var(--mr-focus);
+    outline-offset: 2px;
+  }
 }
 
 .combat {

@@ -94,8 +94,13 @@ export function boxHint(c: NpcCheckCandidate): string {
   if (c.mapMeasures) {
     return `O token ${ofName(c.name)} e os dos bardos estão no mapa: o app mede os 18 m e a visão. Com o token escondido, nenhum bardo é perguntado.`;
   }
+  if (c.hidden && c.source === NpcCheckSource.TOKEN) {
+    // Listed from the map alone: the token is what is hidden, and no bard is asked about a hidden token, ticked or not.
+    return `O token ${ofName(c.name)} está escondido no mapa: nenhum bardo é perguntado, com a caixa marcada ou não.`;
+  }
   if (c.hidden) {
-    return `O token ${ofName(c.name)} está escondido dos jogadores, então a caixa começa desmarcada: ninguém é perguntado. Se você marcar, os bardos leem “uma criatura”, sem o nome.`;
+    // On the stage the master hid it, or its token on the map is hidden: the list does not say which, so the line holds for both.
+    return `A caixa começa desmarcada porque os jogadores não veem a criatura. Se você marcar, os bardos da cena leem “uma criatura”, sem o nome. Se o token ${ofName(c.name)} estiver escondido no mapa, nenhum bardo é perguntado, com a caixa marcada ou não.`;
   }
   return `O mapa não mede ${c.name}: é você quem diz. Com o token da criatura e o de um bardo na grade do mapa, o app mede os 18 m e a visão.`;
 }

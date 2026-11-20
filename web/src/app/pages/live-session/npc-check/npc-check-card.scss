@@ -10,7 +10,7 @@
   padding: 14px 16px;
   border: 1px solid var(--mr-line);
   border-radius: var(--mr-radius-lg);
-  background: var(--mr-surface-sunken, var(--mr-surface));
+  background: var(--mr-ground);
 
   p {
     margin: 0;
@@ -195,6 +195,7 @@
 }
 
 .row__sub {
+  overflow-wrap: anywhere;
   font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
@@ -210,4 +211,8 @@
   &--closed {
     border-style: dashed;
   }
+}
+
+.card__check {
+  white-space: nowrap;
 }
