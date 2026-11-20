@@ -201,11 +201,7 @@ func (s *Service) keepNpcCheck(ctx context.Context, tc *combatTx, h *hints, view
 			_, err := s.skipNpcCheck(ctx, tc, h, hold, asks, uuid.NewString())
 			return err
 		case cutting.Finish:
-			if _, err := s.settleNpcCheck(ctx, tc, hold, uuid.NewString(), false); err != nil {
-				return err
-			}
-			tellNpcCheck(h, tc.session.CampaignID)
-			return nil
+			return s.finishNpcCheck(ctx, tc, h, hold)
 		case cutting.Pass:
 			if _, err := tc.q.PassNpcCheckAsk(ctx, playdb.PassNpcCheckAskParams{ID: asks[i].ID, AnsweredAt: &tc.now}); err != nil {
 				return fmt.Errorf("let the question of a bard that left pass: %w", err)
@@ -213,16 +209,31 @@ func (s *Service) keepNpcCheck(ctx context.Context, tc *combatTx, h *hints, view
 			moved = true
 		default:
 			if moved { // the next bard is asked now
-				cur := cutting.Current(askStates(asks))
-				next, err := s.bardUser(ctx, tc.tx, tc.session.CampaignID, asks[cur].BardCharacterID)
-				if err != nil {
-					return err
-				}
-				tellNpcCheck(h, tc.session.CampaignID, next)
+				return s.tellNextBard(ctx, tc, h, asks)
 			}
 			return nil
 		}
 	}
+}
+
+// finishNpcCheck settles a check no question of which is open any more, as the last answer settles it.
+func (s *Service) finishNpcCheck(ctx context.Context, tc *combatTx, h *hints, hold playdb.InspirationHold) error {
+	if _, err := s.settleNpcCheck(ctx, tc, hold, uuid.NewString(), false); err != nil {
+		return err
+	}
+	tellNpcCheck(h, tc.session.CampaignID)
+	return nil
+}
+
+// tellNextBard tells the master and the bard asked now that the question moved.
+func (s *Service) tellNextBard(ctx context.Context, tc *combatTx, h *hints, asks []playdb.NpcCheckAsk) error {
+	cur := cutting.Current(askStates(asks))
+	next, err := s.bardUser(ctx, tc.tx, tc.session.CampaignID, asks[cur].BardCharacterID)
+	if err != nil {
+		return err
+	}
+	tellNpcCheck(h, tc.session.CampaignID, next)
+	return nil
 }
 
 // npcHiddenNow says the master hides the creature from the players now: its mark on the stage says so (stage), or its token on the

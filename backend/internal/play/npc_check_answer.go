@@ -317,27 +317,32 @@ func (a *npcAnswer) run(ctx context.Context, holdID string) (*playv1.CuttingWord
 	if k := asks[mine]; k.AnswerKey != nil && *k.AnswerKey == a.key {
 		return a.answered(ctx, k)
 	}
-	if viewers, err := sceneViewersOf(ctx, a.q, a.session); err != nil {
-		return nil, err
-	} else if !viewers.has(a.m.UserID) {
-		return nil, errHeldNotFound() // the scene is not open to this player any more: the question is gone for them
-	}
-	if err := a.requireFreshKey(ctx); err != nil {
-		return nil, err
-	}
-	if asks[mine].State == askClosed {
-		return nil, errHeldNotFound() // closed with no answer: the question is gone
-	}
-	if asks[mine].State != askAsked || hold.AnswerKey != nil {
-		return nil, errAnsweredAlready()
-	}
-	if cutting.Current(askStates(asks)) != mine {
-		return nil, errHeldNotFound() // their turn has not come: they are not told there is a check
-	}
-	if err := requireNoOpenCombat(ctx, a.q, a.session.ID); err != nil {
+	if err := a.requireOpenQuestion(ctx, hold, asks, mine); err != nil {
 		return nil, err
 	}
 	return a.write(ctx, hold, asks, mine, who.ID)
+}
+
+// requireOpenQuestion refuses an answer to a question that is gone, answered already or not the bard's turn, and a key already used.
+func (a *npcAnswer) requireOpenQuestion(ctx context.Context, hold playdb.InspirationHold, asks []playdb.NpcCheckAsk, mine int) error {
+	if viewers, err := sceneViewersOf(ctx, a.q, a.session); err != nil {
+		return err
+	} else if !viewers.has(a.m.UserID) {
+		return errHeldNotFound() // the scene is not open to this player any more: the question is gone for them
+	}
+	if err := a.requireFreshKey(ctx); err != nil {
+		return err
+	}
+	if asks[mine].State == askClosed {
+		return errHeldNotFound() // closed with no answer: the question is gone
+	}
+	if asks[mine].State != askAsked || hold.AnswerKey != nil {
+		return errAnsweredAlready()
+	}
+	if cutting.Current(askStates(asks)) != mine {
+		return errHeldNotFound() // their turn has not come: they are not told there is a check
+	}
+	return requireNoOpenCombat(ctx, a.q, a.session.ID)
 }
 
 // requireFreshKey refuses a key another answer of the campaign holds, and the key of any event of the session: the last answer settles
