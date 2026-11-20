@@ -485,12 +485,11 @@
             "HAS_NONE",
             "ADDS_NOTHING",
             "AFTER_THE_ROLL",
-            "NOTHING_TO_ROLL",
+            "NOTHING_TO_ROLL"
+          ],
+          "unsent": [
             "CANNOT_RECEIVE",
-            "SELF",
-            "PASS_PENDING",
-            "PASS_CLOSED",
-            "NO_SESSION"
+            "SELF"
           ]
         }
       ]
