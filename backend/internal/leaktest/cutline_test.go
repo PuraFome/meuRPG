@@ -38,7 +38,10 @@ type cutTable struct {
 }
 
 // newCutTable builds the table and puts the skeleton's attack at the question of its die.
-func newCutTable(t *testing.T) *cutTable { return newCutTableAt(t, false) }
+func newCutTable(t *testing.T) *cutTable {
+	t.Helper()
+	return newCutTableAt(t, false)
+}
 
 // newCutTableAt is newCutTable with the bard and the skeleton on the east side of the wall (east): Caio, in the west, does not see them,
 // and the skeleton attacks the bard herself.
