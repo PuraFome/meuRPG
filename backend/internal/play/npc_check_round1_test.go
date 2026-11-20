@@ -75,6 +75,7 @@ func TestNpcCheckAnswerWrapsTheErrorOfItsTransaction(t *testing.T) {
 	}
 	first := n.firstAsked(res)
 	hold := res.GetCheck().GetHoldId()
+	before := n.uses(t, n.charOf(first))
 	name := "refuse_npc_answer_" + strings.ReplaceAll(newKey(), "-", "")
 	run := func(ctx context.Context, sql string) {
 		t.Helper()
@@ -104,6 +105,12 @@ END $$`)
 	}
 	_, err = n.h.svc.answerNpcCheck(t.Context(), m, req, req.GetIdempotencyKey(), req.GetHoldId())
 	wantCode(t, "the answer whose write the database refuses", err, connect.CodeInternal)
+	if row, ok := n.hold(t, hold); !ok || row.answered {
+		t.Errorf("the hold = %+v, %v after the refused answer; want it still waiting", row, ok)
+	}
+	if after := n.uses(t, n.charOf(first)); after != before {
+		t.Errorf("the bard's uses %d -> %d after the refused answer, want none spent", before, after)
+	}
 }
 
 // TestNpcCheckRerunSettlesNothing: the rerun the registry holds for the kind refuses with an internal error and writes nothing: the check
@@ -486,7 +493,8 @@ func TestNpcCheckAnswerAfterTheSceneClosedStillWorks(t *testing.T) {
 	}
 }
 
-// TestNpcCheckOfADeletedCreatureIsNotSettled: the creature's character is deleted (the master's account goes, say) while its check waits
+// TestNpcCheckOfADeletedCreatureIsNotSettled: the only way there is an erased master account (docs/privacy.md, "Delete the account").
+// The creature's character is deleted while its check waits
 // after a cut. The hold goes with it (inspiration_holds.character_id cascades) and so do its asks: nobody is asked any more, the cut
 // stays spent (it was the bard's die, rolled for that check), and the master reads the check as neither held nor settled: its total is not
 // an outcome, with no way to skip what is gone; the next check the master rolls goes on as usual.

@@ -372,8 +372,9 @@ A hold of kind `npc_check` is neither: it waits for the bards' dice, so the swee
 ## `npc_check_asks`
 
 One row per Lore bard asked about an NPC's check outside a combat; the check itself is an `inspiration_holds` row of kind `npc_check` (`character_id` the NPC, `user_id` the master, `faces` the d20), and the asks cascade with it.
-Rows exist only while a check of the open session waits or stays readable, and the end of the session deletes them, with at most one check held at a time.
-`bard_character_id` has no index: the table holds a handful of rows, so scanning it for the foreign key is cheap.
+A settled check keeps its asks while its session is open.
+The end of the session deletes the asks of its checks.
+The table holds only the checks of open sessions, a few rows each, so scanning it for the foreign key is cheap.
 `hold_id` (`CASCADE`) and `bard_character_id` (`SET NULL`: a bard whose character is deleted keeps its question, which the next read lets pass) are unique together, and so are `hold_id` and `position` (the order the bards are asked in).
 `state` is `asked`, `cut`, `passed` or `closed`; the one asked now is the first with `asked`.
 `sides` is the die of the bard's Bardic Inspiration, `creature_seen` whether the bard's player may read the creature's name, `die_face` the face that came off (`NULL` until the bard cuts), `physical` whether it was typed, `answer_key`, `answer_hash` and `answered_at` the answer, which a retry finds by key and whose body must be the same (another body under the key is a reused key; `answer_hash` is `NULL` until the bard answers).
