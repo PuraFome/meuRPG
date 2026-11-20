@@ -66,10 +66,6 @@ export async function shootReady(page: Page, screen: string, width: number, sche
   }
   mkdirSync(shotsDir, { recursive: true });
   await page.evaluate(() => document.fonts.ready);
-  if (issue === '857-ready-map') {
-    // The first button of a window takes the focus when it opens (its ring and state layer are the app's focus look); the boards draw the screens at rest.
-    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
-  }
   await page.screenshot({ path: join(shotsDir, `${issue}-${screen}-${width}-${scheme === 'light' ? 'claro' : 'escuro'}.png`) });
 }
 

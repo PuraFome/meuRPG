@@ -60,7 +60,7 @@ export interface ReadiedWindowSheetData {
 /**
  * "O mestre disse que o gatilho aconteceu: ‘Quando o zumbi passar pela porta’. Atacar com a Espada longa agora?" (#582, boards
  * 582-06 to 582-08): the `alertdialog` of a readied action's window, opened by itself for its readier and answered with
- * `AnswerReaction`. "Deixar passar" comes first and has the focus; an attack picks its target from the server's list (the one the
+ * `AnswerReaction`. "Deixar passar" comes first (the focus opens on the title, so no answer shows a ring unasked); an attack picks its target from the server's list (the one the
  * player named is chosen when it is within reach); another action has one button. A held spell splits its darts or ticks its creatures
  * with the cast screens' own list (#857); a spell that needs the map and a move go there (`toMap`, "Soltar no mapa" and "Mover agora").
  * The master's screen passes the window after 30 s, or after the one wait of 120 s once the player is choosing or on the map, so the
@@ -256,8 +256,7 @@ export class ReadiedWindowSheet {
     if (this.isMove && this.data.toMap) {
       void this.readMoveLeft();
     }
-    // The safe answer has the focus, and its ring: the sheet opens for a keyboard-style answer.
-    afterNextRender(() => this.focusInitial(), { injector: this.injector });
+    // The window opens with the focus on its title: "Deixar passar" is the first button of the Tab order, with no ring or state layer before a key or a tap reaches it.
   }
 
   /** What the move can spend in this window: the server's own number, so a grapple or a speed of 0 shows before the map opens. */

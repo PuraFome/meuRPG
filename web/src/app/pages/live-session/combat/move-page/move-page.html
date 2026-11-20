@@ -37,7 +37,7 @@
     }
 
     @if (!soloHeight() && !goneView()) {
-      <div class="move__map">
+      <div class="move__map" [style.--move-ratio]="encounter().gridColumns / encounter().gridRows">
         <div #scroller class="move__scroll">
           <app-combat-map
             [fog]="fog()"

@@ -195,7 +195,9 @@ describe('ReadiedWindowSheet (#582, boards 582-06 to 582-08)', () => {
       'Deixar passar',
       'Atacar o Zumbi 1',
     ]);
-    expect(button('Deixar passar').hasAttribute('data-initial-focus')).toBe(true);
+    // The focus opens on the title: no answer shows a ring or a state layer before a key or a tap reaches it.
+    expect(el.querySelector('.frame__title')?.hasAttribute('data-initial-focus')).toBe(true);
+    expect(button('Deixar passar').hasAttribute('data-initial-focus')).toBe(false);
     expect(flat(el.querySelector('.foot__clock'))).toMatch(
       /^Se você não responder, passa sozinho em \d+ s\.$/,
     );
@@ -669,7 +671,7 @@ describe('ReadiedWindowSheet (#582, boards 582-06 to 582-08)', () => {
   it('moves the focus to "Fechar" when the window goes away under the prompt', async () => {
     const { el, settle, button, state } = setup();
     await settle();
-    expect(document.activeElement).toBe(button('Deixar passar'));
+    expect(document.activeElement).not.toBe(button('Deixar passar'));
     state.apply(
       encounter({
         revision: 9,
