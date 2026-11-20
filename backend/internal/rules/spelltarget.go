@@ -69,6 +69,9 @@ type spellTargetOverride struct {
 	Shape        string `json:"shape,omitempty"`
 	SizeFt       int    `json:"size_ft,omitempty"`
 	WithinFt     int    `json:"within_ft,omitempty"`
+	WithinOf     string `json:"within_of,omitempty"`
+	RangeExtraFt int    `json:"range_extra_ft,omitempty"`
+	ReachFt      int    `json:"reach_ft,omitempty"`
 	LabelPT      string `json:"label_pt,omitempty"`
 }
 
@@ -80,6 +83,7 @@ const (
 	maxTargetLabel        = 80
 	minTargetWithinFt     = 5
 	maxTargetWithinFt     = 120
+	maxTargetReachFt      = 120
 )
 
 // targetShapes are the shapes of an area target.
@@ -102,7 +106,7 @@ func (c *content) loadSpellTargets(fsys fs.FS) error {
 		if msg := checkSpellTarget(in); msg != "" {
 			return fmt.Errorf("effects/spell_targets.json: %s: %s", key, msg)
 		}
-		c.srdTargets[key] = SpellTarget{Kind: in.Kind, Count: in.Count, PerSlotLevel: in.PerSlotLevel, WithinFt: in.WithinFt, Shape: in.Shape, SizeFt: in.SizeFt, Label: in.LabelPT}
+		c.srdTargets[key] = SpellTarget{Kind: in.Kind, Count: in.Count, PerSlotLevel: in.PerSlotLevel, WithinFt: in.WithinFt, WithinOf: in.WithinOf, RangeExtraFt: in.RangeExtraFt, ReachFt: in.ReachFt, Shape: in.Shape, SizeFt: in.SizeFt, Label: in.LabelPT}
 	}
 	return nil
 }
@@ -134,26 +138,47 @@ func checkSpellTargetKind(in spellTargetOverride) string {
 }
 
 // checkSingleTarget: self, none and creature take no other field, but a
-// creature may take more per slot level.
+// creature may take more per slot level and a reach_ft.
 func checkSingleTarget(in spellTargetOverride) string {
-	if in.Count != 0 || in.Shape != "" || in.SizeFt != 0 || in.WithinFt != 0 || (in.Kind != TargetCreature && in.PerSlotLevel != 0) {
+	if in.Count != 0 || in.Shape != "" || in.SizeFt != 0 || in.WithinFt != 0 || in.WithinOf != "" || in.RangeExtraFt != 0 || (in.Kind != TargetCreature && (in.PerSlotLevel != 0 || in.ReachFt != 0)) {
 		return fmt.Sprintf("a %s target takes no other field", in.Kind)
+	}
+	if in.ReachFt != 0 && (in.ReachFt < minTargetWithinFt || in.ReachFt > maxTargetReachFt || in.ReachFt%targetSizeStepFt != 0) {
+		return "creature: reach_ft is a multiple of 5, from 5 to 120"
 	}
 	return ""
 }
 
 func checkCreaturesOverride(in spellTargetOverride) string {
-	if in.Count < 1 || in.Count > maxTargetCount || in.PerSlotLevel < 0 || in.PerSlotLevel > maxTargetPerSlotLevel || in.Shape != "" || in.SizeFt != 0 {
+	if in.Count < 1 || in.Count > maxTargetCount || in.PerSlotLevel < 0 || in.PerSlotLevel > maxTargetPerSlotLevel || in.Shape != "" || in.SizeFt != 0 || in.ReachFt != 0 {
 		return "creatures: a count of 1 to 20 and 0 to 10 more per slot level"
 	}
-	if in.WithinFt != 0 && (in.WithinFt < minTargetWithinFt || in.WithinFt > maxTargetWithinFt || in.WithinFt%targetSizeStepFt != 0) {
+	return checkCloseness(in)
+}
+
+// checkCloseness checks how close the creatures of a "creatures" target must be: within_ft says how far, within_of
+// whom ("each" other, or the "first"), and range_extra_ft how far past the spell's range an "each" creature may be.
+func checkCloseness(in spellTargetOverride) string {
+	if in.WithinFt == 0 {
+		if in.WithinOf != "" || in.RangeExtraFt != 0 {
+			return "creatures: within_of and range_extra_ft need within_ft"
+		}
+		return ""
+	}
+	if in.WithinFt < minTargetWithinFt || in.WithinFt > maxTargetWithinFt || in.WithinFt%targetSizeStepFt != 0 {
 		return "creatures: within_ft is a multiple of 5, from 5 to 120"
+	}
+	if in.WithinOf != WithinEach && in.WithinOf != WithinFirst {
+		return "creatures: within_of is each or first"
+	}
+	if in.RangeExtraFt < 0 || in.RangeExtraFt > maxTargetWithinFt || in.RangeExtraFt%targetSizeStepFt != 0 || (in.WithinOf == WithinFirst && in.RangeExtraFt != 0) {
+		return "creatures: range_extra_ft is a multiple of 5, from 0 to 120, and only with within_of each"
 	}
 	return ""
 }
 
 func checkAreaOverride(in spellTargetOverride) string {
-	if !slices.Contains(targetShapes, in.Shape) || in.SizeFt < targetSizeStepFt || in.SizeFt%targetSizeStepFt != 0 || in.Count != 0 || in.PerSlotLevel != 0 || in.WithinFt != 0 {
+	if !slices.Contains(targetShapes, in.Shape) || in.SizeFt < targetSizeStepFt || in.SizeFt%targetSizeStepFt != 0 || in.Count != 0 || in.PerSlotLevel != 0 || in.WithinFt != 0 || in.WithinOf != "" || in.RangeExtraFt != 0 || in.ReachFt != 0 {
 		return "an area is a cone, cube, cylinder, line or sphere of a multiple of 5 ft"
 	}
 	return ""

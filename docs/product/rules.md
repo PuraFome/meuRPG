@@ -558,7 +558,9 @@ A hidden member is never named: the turn waits for the master's part as "Falta o
 - The key and the uses a day of an innate use go to the master and the caster's owner, and every other player reads only that the cast was innate ("conjuração inata").
 - A cast that touches a hidden combatant leaves no line for the player. The reaction prompt carries neither the attacker nor the hit's total. The player cannot aim at a hidden target.
 - **Spells that read HP** (Sleep, Color Spray, Power Word Stun, Power Word Kill, Spare the Dying, Heal; "Sono", "Leque Cromático", "Palavra de Poder Atordoar", "Palavra de Poder Matar", "Estabilizar", "Cura Completa") are resolved with the real hit points, and the player still sees only words. The caster sees their own total (`5d8 (2, 4, 1, 5, 3) = 15`) and who was affected ("adormeceu", "não foi afetado"), never a target's hit points or the reason. The master sees the total, each creature's hit points, what remained and the reason. Other players see only who was affected and the condition. Targets are listed in the caster's order, not the order of the total, which would reveal who has the least hit points. Power Word Kill on a player character takes them to 0 with three failures, and the master confirms the death (RN-03).
-- **A heal that depends on the damage dealt** (Vampiric Touch) uses the damage after the target's resistances, and the healed character's hit points show it.
+- **A heal that depends on the damage dealt** (Vampiric Touch) is half the damage the hit dealt, after the target's resistances, wherever the damage lands: temporary hit points, hit points, and what goes past 0 all count.
+  The heal is a line of the log, written on every hit that lands, with 0 when nothing heals.
+  Its numbers go only to the master and the caster's owner; another player reads the line with no numbers, and no line when the target is hidden.
 
 **RP scenes** (MR-015).
 An action's DC belongs to the master. A player never receives another player's roll.
@@ -919,8 +921,11 @@ On a map with a grid the caster does not list who an area spell touches: they pl
 - **Who is hit.** Everyone inside: allies, the caster when inside, hidden creatures. The damage is one roll for all. Cover is measured from the point of origin, and adds +2 (half) or +5 (three-quarters) only to a Dexterity saving throw. A creature reached only around a corner gets no automatic cover; the master marks it by hand.
 - **An empty area** is still cast and spends the slot and the action. The app asks first: "Ninguém que você vê está na área".
 - **Several creatures with a closeness limit.** Some spells take several creatures that must stay near each other.
-  Acid Splash takes two within 1.5 m of each other, Chain Lightning takes others within 9 m of the first, and Mass Cure Wounds takes up to six within 18 m of the first.
-  On a map a player's picks are refused when they are too far apart.
+  The app never refuses a legal cast; where it cannot check the exact shape, it checks only what any legal cast must meet.
+  Acid Splash takes two creatures within its range and within 1.5 m of each other.
+  Chain Lightning takes a first creature within its range and others within 9 m of the first; the caster's range does not hold the others.
+  Mass Cure Wounds takes up to six creatures, each within 27 m of the caster (its 18 m range plus the 9 m radius of the sphere) and within 18 m of every other.
+  On a map a player's picks that break these limits are refused.
   Without a map the app does not check.
   The master is not held to the number of creatures or to the closeness.
 - **Without a grid** (combat without a map, RN-25) none of this exists: the caster lists who is hit, and the master judges who is inside and the cover.

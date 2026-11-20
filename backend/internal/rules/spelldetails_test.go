@@ -277,7 +277,8 @@ func TestSpellsWithoutTheirDamageInTheSnapshot(t *testing.T) {
 	}
 }
 
-// TestSelfRangeSpellsAimedAtOthers: a spell aimed at another creature has the SRD's range, not Self.
+// TestSelfRangeSpellsAimedAtOthers: a spell aimed at another creature keeps the SRD's range (Self) and names the
+// distance at which it picks its creature in its target, which only the target check reads.
 // A spell whose attack comes on later turns carries no attack at the cast.
 func TestSelfRangeSpellsAimedAtOthers(t *testing.T) {
 	t.Parallel()
@@ -287,15 +288,18 @@ func TestSelfRangeSpellsAimedAtOthers(t *testing.T) {
 		feet   int
 		attack string
 	}{
-		"spell:vampiric-touch": {RangeTouch, 0, "melee"},
-		"spell:produce-flame":  {RangeRanged, 30, "ranged"},
-		"spell:eyebite":        {RangeRanged, 60, ""},
+		"spell:vampiric-touch": {RangeSelf, 0, "melee"},
+		"spell:produce-flame":  {RangeSelf, 0, "ranged"},
+		"spell:eyebite":        {RangeSelf, 0, ""},
 		"spell:faithful-hound": {RangeRanged, 30, ""},
 		"spell:flame-blade":    {RangeSelf, 0, ""},
 	} {
 		d, ok := c.SpellDetails(key)
 		if !ok || d.Range.Kind != want.kind || d.Range.DistanceFt != want.feet || d.AttackType != want.attack {
 			t.Errorf("%s = range %+v, attack %q; want %s %d ft, attack %q", key, d.Range, d.AttackType, want.kind, want.feet, want.attack)
+		}
+		if want.kind == RangeSelf && d.Range.Raw != "Self" {
+			t.Errorf("%s shows the range %q, want the SRD's Self", key, d.Range.Raw)
 		}
 	}
 	// Flame Blade and Faithful Hound keep their damage for the later turns; nothing opens at the cast.
@@ -305,9 +309,9 @@ func TestSelfRangeSpellsAimedAtOthers(t *testing.T) {
 		}
 	}
 	for key, want := range map[string]SpellTarget{
-		"spell:vampiric-touch": {Kind: TargetCreature},
-		"spell:produce-flame":  {Kind: TargetCreature},
-		"spell:eyebite":        {Kind: TargetCreature},
+		"spell:vampiric-touch": {Kind: TargetCreature, ReachFt: 5},
+		"spell:produce-flame":  {Kind: TargetCreature, ReachFt: 30},
+		"spell:eyebite":        {Kind: TargetCreature, ReachFt: 60},
 		"spell:faithful-hound": {Kind: TargetNone},
 		"spell:flame-blade":    {Kind: TargetSelf},
 	} {

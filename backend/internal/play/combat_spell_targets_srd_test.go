@@ -362,3 +362,27 @@ func TestSRDMassCureWoundsRefusesTargetsFarApart(t *testing.T) {
 		t.Errorf("missing %d ft, want 5", b.GetMissingFt())
 	}
 }
+
+// TestSRDMassCureWoundsReachesPastItsRange: the sphere starts within 60 ft of the caster and is 30 ft in radius, so a
+// creature 90 ft away is a legal target and one 95 ft away is not.
+func TestSRDMassCureWoundsReachesPastItsRange(t *testing.T) {
+	t.Parallel()
+	a, e := newSrdTargets(t, "Clerigo", 2)
+	a.put(t, "Clerigo", 0, 5)
+	a.put(t, "Goblin 1", 18, 5) // 90 ft
+	a.put(t, "Goblin 2", 19, 5) // 95 ft
+	a.takes(t, e, "Clerigo", massCureWounds, slotOfLevel(5), []string{"Goblin 1"})
+}
+
+// TestSRDMassCureWoundsRefusesPastItsRange is the refusal of TestSRDMassCureWoundsReachesPastItsRange.
+func TestSRDMassCureWoundsRefusesPastItsRange(t *testing.T) {
+	t.Parallel()
+	a, e := newSrdTargets(t, "Clerigo", 2)
+	a.put(t, "Clerigo", 0, 5)
+	a.put(t, "Goblin 2", 19, 5) // 95 ft
+	_, err := a.cast(t, a.bia, e, "Clerigo", massCureWounds, slotOfLevel(5), a.at(t, "Goblin 2"), noCastRoll)
+	b := wantEncounterBlocked(t, err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_TARGET_OUT_OF_REACH)
+	if b.GetMissingFt() != 5 {
+		t.Errorf("missing %d ft, want 5", b.GetMissingFt())
+	}
+}

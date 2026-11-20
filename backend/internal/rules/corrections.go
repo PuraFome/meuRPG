@@ -51,13 +51,11 @@ type creatureCorrection struct {
 // spellAttackNone is the attack_type of a correction that clears a spell's attack.
 const spellAttackNone = "none"
 
-// spellCorrection sets the range, the attack, the saving throw, the damage and
+// spellCorrection sets the attack, the saving throw, the damage and
 // the damage choice of a spell.
 type spellCorrection struct {
 	Spell  string `json:"spell"`
 	Source string `json:"source"`
-	// Range is the SRD range text ("Touch", "30 feet"); never a special one.
-	Range string `json:"range"`
 	// AttackType is "melee" or "ranged", or "none" for a spell with no attack at the cast.
 	AttackType  string `json:"attack_type"`
 	SaveAbility string `json:"save_ability"`
@@ -212,14 +210,11 @@ func (c *content) correctSpells(name string, corrections []spellCorrection) erro
 	return nil
 }
 
-// correctSpell writes one spell correction over the spell: its range, its attack,
+// correctSpell writes one spell correction over the spell: its attack,
 // its saving throw, its damage table and its damage choice, in that order.
 func (c *content) correctSpell(name string, corr spellCorrection, s *srd51.Spell) error {
-	if corr.Range == "" && corr.AttackType == "" && corr.SaveAbility == "" && corr.Damage == nil && corr.DamageChoice == "" {
+	if corr.AttackType == "" && corr.SaveAbility == "" && corr.Damage == nil && corr.DamageChoice == "" {
 		return fmt.Errorf("%s: %s corrects nothing", name, corr.Spell)
-	}
-	if err := correctSpellRange(name, corr, s); err != nil {
-		return err
 	}
 	if err := correctSpellAttack(name, corr, s); err != nil {
 		return err
@@ -235,19 +230,6 @@ func (c *content) correctSpell(name string, corr spellCorrection, s *srd51.Spell
 		s.Damage = dmg
 	}
 	return correctSpellChoice(name, corr, s)
-}
-
-// correctSpellRange writes the range of a correction.
-// A range the app reads as special is refused.
-func correctSpellRange(name string, corr spellCorrection, s *srd51.Spell) error {
-	if corr.Range == "" {
-		return nil
-	}
-	if parseRange(corr.Range).Kind == RangeSpecial {
-		return fmt.Errorf("%s: %s: range %q is not a range the app reads", name, corr.Spell, corr.Range)
-	}
-	s.Range = corr.Range
-	return nil
 }
 
 func correctSpellAttack(name string, corr spellCorrection, s *srd51.Spell) error {

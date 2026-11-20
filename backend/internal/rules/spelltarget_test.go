@@ -128,7 +128,7 @@ func TestSpellTargetOverrides(t *testing.T) {
 			delete(kindOf, k)
 		}
 	}
-	want(TargetCreature, "spell:telekinesis", "spell:disintegrate")
+	want(TargetCreature, "spell:telekinesis", "spell:disintegrate", "spell:vampiric-touch", "spell:produce-flame", "spell:eyebite")
 	want(TargetSelf, "spell:detect-evil-and-good", "spell:detect-magic", "spell:detect-poison-and-disease", "spell:speak-with-plants",
 		"spell:branding-smite", "spell:divine-favor", "spell:flame-blade", "spell:contact-other-plane", "spell:magic-jar", "spell:scrying", "spell:wish",
 		"spell:fire-shield", "spell:dimension-door")
@@ -163,6 +163,18 @@ func TestSpellTargetOverrides(t *testing.T) {
 	for key, within := range map[string]int{"spell:acid-splash": 5, "spell:mass-cure-wounds": 60, "spell:chain-lightning": 30} {
 		if got := c.c.srdTargets[key].WithinFt; got != within {
 			t.Errorf("%s within %d ft, want %d", key, got, within)
+		}
+	}
+	// How the targets stay close: Acid Splash every pair within 5 ft, Mass Cure Wounds every pair within 60 ft and
+	// each within its range plus 30 ft, Chain Lightning the others within 30 ft of the first.
+	for key, want := range map[string]SpellTarget{
+		"spell:acid-splash":      {WithinFt: 5, WithinOf: WithinEach},
+		"spell:mass-cure-wounds": {WithinFt: 60, WithinOf: WithinEach, RangeExtraFt: 30},
+		"spell:chain-lightning":  {WithinFt: 30, WithinOf: WithinFirst},
+	} {
+		tg := c.c.srdTargets[key]
+		if tg.WithinOf != want.WithinOf || tg.RangeExtraFt != want.RangeExtraFt || tg.WithinFt != want.WithinFt {
+			t.Errorf("%s closeness = %d ft of %q, %d ft past the range; want %d ft of %q, %d", key, tg.WithinFt, tg.WithinOf, tg.RangeExtraFt, want.WithinFt, want.WithinOf, want.RangeExtraFt)
 		}
 	}
 	// What stays as the text says: any number, and the summons untouched.
@@ -202,23 +214,39 @@ func TestSpellTargetOverridesAreChecked(t *testing.T) {
 	if err := load(`{"spells":{"spell:bless":{"kind":"creatures","count":3}}}`); err != nil {
 		t.Fatalf("a good entry: %v", err)
 	}
-	if err := load(`{"spells":{"spell:bless":{"kind":"creatures","count":3,"within_ft":30}}}`); err != nil {
-		t.Fatalf("an entry with within_ft: %v", err)
+	for name, body := range map[string]string{
+		"within_ft of each, with a range past the spell's": `{"spells":{"spell:bless":{"kind":"creatures","count":3,"within_ft":30,"within_of":"each","range_extra_ft":30}}}`,
+		"within_ft of the first":                           `{"spells":{"spell:bless":{"kind":"creatures","count":3,"within_ft":30,"within_of":"first"}}}`,
+		"a creature with a reach_ft":                       `{"spells":{"spell:bless":{"kind":"creature","reach_ft":60}}}`,
+	} {
+		if err := load(body); err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
 	}
 	for name, body := range map[string]string{
-		"not an SRD spell":          `{"spells":{"spell:raio@mesa":{"kind":"self"}}}`,
-		"an unknown kind":           `{"spells":{"spell:bless":{"kind":"party"}}}`,
-		"a self with a count":       `{"spells":{"spell:bless":{"kind":"self","count":2}}}`,
-		"creatures of none":         `{"spells":{"spell:bless":{"kind":"creatures"}}}`,
-		"an area off the grid":      `{"spells":{"spell:bless":{"kind":"area","shape":"cone","size_ft":12}}}`,
-		"an area with no shape":     `{"spells":{"spell:bless":{"kind":"area","size_ft":10}}}`,
-		"a long label":              `{"spells":{"spell:bless":{"kind":"self","label_pt":"` + strings.Repeat("a", 81) + `"}}}`,
-		"an unknown field":          `{"spells":{"spell:bless":{"kind":"self","range":3}}}`,
-		"a within_ft off the grid":  `{"spells":{"spell:bless":{"kind":"creatures","count":2,"within_ft":7}}}`,
-		"a within_ft of zero feet":  `{"spells":{"spell:bless":{"kind":"creatures","count":2,"within_ft":-5}}}`,
-		"a within_ft too far":       `{"spells":{"spell:bless":{"kind":"creatures","count":2,"within_ft":125}}}`,
-		"a within_ft on a creature": `{"spells":{"spell:bless":{"kind":"creature","within_ft":10}}}`,
-		"a within_ft on an area":    `{"spells":{"spell:bless":{"kind":"area","shape":"cone","size_ft":10,"within_ft":10}}}`,
+		"not an SRD spell":              `{"spells":{"spell:raio@mesa":{"kind":"self"}}}`,
+		"an unknown kind":               `{"spells":{"spell:bless":{"kind":"party"}}}`,
+		"a self with a count":           `{"spells":{"spell:bless":{"kind":"self","count":2}}}`,
+		"creatures of none":             `{"spells":{"spell:bless":{"kind":"creatures"}}}`,
+		"an area off the grid":          `{"spells":{"spell:bless":{"kind":"area","shape":"cone","size_ft":12}}}`,
+		"an area with no shape":         `{"spells":{"spell:bless":{"kind":"area","size_ft":10}}}`,
+		"a long label":                  `{"spells":{"spell:bless":{"kind":"self","label_pt":"` + strings.Repeat("a", 81) + `"}}}`,
+		"an unknown field":              `{"spells":{"spell:bless":{"kind":"self","range":3}}}`,
+		"a within_ft off the grid":      `{"spells":{"spell:bless":{"kind":"creatures","count":2,"within_ft":7,"within_of":"each"}}}`,
+		"a within_ft of zero feet":      `{"spells":{"spell:bless":{"kind":"creatures","count":2,"within_ft":-5,"within_of":"each"}}}`,
+		"a within_ft too far":           `{"spells":{"spell:bless":{"kind":"creatures","count":2,"within_ft":125,"within_of":"each"}}}`,
+		"a within_ft with no within_of": `{"spells":{"spell:bless":{"kind":"creatures","count":2,"within_ft":30}}}`,
+		"a within_of that is unknown":   `{"spells":{"spell:bless":{"kind":"creatures","count":2,"within_ft":30,"within_of":"all"}}}`,
+		"a within_of with no within_ft": `{"spells":{"spell:bless":{"kind":"creatures","count":2,"within_of":"first"}}}`,
+		"a range_extra_ft of the first": `{"spells":{"spell:bless":{"kind":"creatures","count":2,"within_ft":30,"within_of":"first","range_extra_ft":30}}}`,
+		"a range_extra_ft off the grid": `{"spells":{"spell:bless":{"kind":"creatures","count":2,"within_ft":30,"within_of":"each","range_extra_ft":7}}}`,
+		"a reach_ft off the grid":       `{"spells":{"spell:bless":{"kind":"creature","reach_ft":7}}}`,
+		"a reach_ft too far":            `{"spells":{"spell:bless":{"kind":"creature","reach_ft":125}}}`,
+		"a reach_ft on a self":          `{"spells":{"spell:bless":{"kind":"self","reach_ft":30}}}`,
+		"a reach_ft on creatures":       `{"spells":{"spell:bless":{"kind":"creatures","count":2,"reach_ft":30}}}`,
+		"a reach_ft on an area":         `{"spells":{"spell:bless":{"kind":"area","shape":"cone","size_ft":10,"reach_ft":10}}}`,
+		"a within_ft on a creature":     `{"spells":{"spell:bless":{"kind":"creature","within_ft":10}}}`,
+		"a within_ft on an area":        `{"spells":{"spell:bless":{"kind":"area","shape":"cone","size_ft":10,"within_ft":10}}}`,
 	} {
 		if err := load(body); err == nil {
 			t.Errorf("%s: accepted", name)

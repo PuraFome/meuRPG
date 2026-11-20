@@ -180,7 +180,7 @@ func spellTargets(out *link.Spell, det *rules.SpellDetails) {
 	out.CasterOnly = det.Target.CasterOnly()
 	out.TargetCount = det.Target.MaxTargets(det.Spell.Level, det.Spell.Level)
 	out.TargetPerLevel = det.Target.PerSlotLevel
-	out.WithinFt = det.Target.WithinFt
+	out.WithinFt, out.WithinFirst, out.RangeExtraFt, out.ReachFt = det.Target.WithinFt, det.Target.WithinOf == rules.WithinFirst, det.Target.RangeExtraFt, det.Target.ReachFt
 	out.ExtraTargetPerLevel = det.Target.PerSlotLevel > 0
 	if out.CasterOnly {
 		// There is nobody else to roll for: a spell that only reaches the caster

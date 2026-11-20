@@ -1,8 +1,11 @@
 {
-  "_comment": "Quem uma magia do SRD alcança, onde a área estruturada do 5e-database ou o texto do SRD erram. Escrito à mão, com as nossas palavras; toda chave é uma magia do SRD (o carregamento recusa outra coisa) e os tipos são fechados: creature, creatures (count, per_slot_level, within_ft), area (shape, size_ft), self e none (nenhuma criatura: um ponto, um objeto, um lugar). label_pt troca só o texto da página Magias. As magias que não estão aqui seguem a área estruturada e, sem ela, o texto.",
+  "_comment": "Quem uma magia do SRD alcança, onde a área estruturada do 5e-database ou o texto do SRD erram. Escrito à mão, com as nossas palavras; toda chave é uma magia do SRD (o carregamento recusa outra coisa) e os tipos são fechados: creature (per_slot_level; reach_ft, a distância a que uma magia de alcance Pessoal escolhe a criatura), creatures (count, per_slot_level, within_ft, within_of each|first, range_extra_ft), area (shape, size_ft), self e none (nenhuma criatura: um ponto, um objeto, um lugar). label_pt troca só o texto da página Magias. As magias que não estão aqui seguem a área estruturada e, sem ela, o texto.",
   "spells": {
     "spell:telekinesis": { "kind": "creature" },
     "spell:disintegrate": { "kind": "creature" },
+    "spell:vampiric-touch": { "kind": "creature", "reach_ft": 5 },
+    "spell:produce-flame": { "kind": "creature", "reach_ft": 30 },
+    "spell:eyebite": { "kind": "creature", "reach_ft": 60 },
 
     "spell:detect-evil-and-good": { "kind": "self" },
     "spell:detect-magic": { "kind": "self" },
@@ -62,10 +65,10 @@
     "spell:wind-walk": { "kind": "creatures", "count": 11, "label_pt": "Você e até 10 criaturas" },
     "spell:astral-projection": { "kind": "creatures", "count": 9, "label_pt": "Você e até 8 criaturas" },
     "spell:heroes-feast": { "kind": "creatures", "count": 12 },
-    "spell:acid-splash": { "kind": "creatures", "count": 2, "within_ft": 5, "label_pt": "Uma criatura, ou duas a até 1,5 m uma da outra" },
+    "spell:acid-splash": { "kind": "creatures", "count": 2, "within_ft": 5, "within_of": "each", "label_pt": "Uma criatura, ou duas a até 1,5 m uma da outra" },
     "spell:water-breathing": { "kind": "creatures", "count": 10 },
-    "spell:mass-cure-wounds": { "kind": "creatures", "count": 6, "within_ft": 60 },
-    "spell:chain-lightning": { "kind": "creatures", "count": 4, "per_slot_level": 1, "within_ft": 30, "label_pt": "Um alvo e até 3 outros a até 9 m do primeiro" },
+    "spell:mass-cure-wounds": { "kind": "creatures", "count": 6, "within_ft": 60, "within_of": "each", "range_extra_ft": 30 },
+    "spell:chain-lightning": { "kind": "creatures", "count": 4, "per_slot_level": 1, "within_ft": 30, "within_of": "first", "label_pt": "Um alvo e até 3 outros a até 9 m do primeiro" },
     "spell:wall-of-ice": { "kind": "creatures", "count": 10, "label_pt": "Até 10 criaturas cortadas pela muralha; o mestre aplica às demais" },
     "spell:slow": { "kind": "creatures", "count": 6 },
     "spell:seeming": { "kind": "creatures", "count": 10, "label_pt": "Até 10 criaturas; o mestre aplica às demais" }
