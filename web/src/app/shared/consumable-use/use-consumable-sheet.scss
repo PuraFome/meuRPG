@@ -219,12 +219,6 @@
 .foot button {
   min-height: 48px;
 }
-// The receiver's button is the first in the reading order, so a footer with two ways to use it sets it last: the primary action at the
-// right edge, whatever the width.
-.foot--swap {
-  flex-direction: row-reverse;
-  justify-content: flex-start;
-}
 // A grid, so the halves are equal whatever each button's own padding and border are (a flex basis would add them to the share).
 .foot--phone {
   display: grid;
@@ -232,9 +226,6 @@
 }
 .foot--phone .go--wide {
   grid-column: 1 / -1;
-}
-.foot--phone.foot--swap > :first-child {
-  order: 2;
 }
 .give--off {
   cursor: default;

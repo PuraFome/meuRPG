@@ -142,8 +142,8 @@
       </span>
     </p>
   }
-  <!-- Two equal halves on the phone, in every case (board 565-07-3a); a receiver in a combat has two ways to use it, and the receiver's button is the one at the right. -->
-  <div foot class="foot" [class.foot--phone]="inSheet" [class.foot--swap]="phase() === 'give' && inCombat() === true">
+  <!-- Two equal halves on the phone, in every case (board 565-07-3a); a receiver in a combat has two ways to use it: the self-use button first and the receiver's button last, at the right edge, in the order they are shown and read. -->
+  <div foot class="foot" [class.foot--phone]="inSheet">
     @if (phase() === 'choose') {
       @if (gives) {
         <button
@@ -185,6 +185,20 @@
       @if (inCombat() !== true) {
         <button matButton="outlined" type="button" class="go--half mr-button--ink" [disabled]="busy()" disabledInteractive (click)="back()">Voltar</button>
       }
+      @if (inCombat() === true) {
+        <button
+          matButton="outlined"
+          type="button"
+          class="go--half mr-button--ink"
+          [class.mr-button--off]="!!blocked()"
+          [disabled]="!canSend()"
+          disabledInteractive
+          [attr.aria-describedby]="blocked() ? whyId : null"
+          (click)="send(null)"
+        >
+          <mat-icon aria-hidden="true">{{ itemIcon }}</mat-icon>{{ selfWord() }}
+        </button>
+      }
       <button
         matButton="filled"
         type="button"
@@ -203,20 +217,6 @@
           <mat-icon aria-hidden="true">volunteer_activism</mat-icon>
         }{{ busy() ? 'Usando…' : 'Dar a ' + receiverName() }}
       </button>
-      @if (inCombat() === true) {
-        <button
-          matButton="outlined"
-          type="button"
-          class="go--half mr-button--ink"
-          [class.mr-button--off]="!!blocked()"
-          [disabled]="!canSend()"
-          disabledInteractive
-          [attr.aria-describedby]="blocked() ? whyId : null"
-          (click)="send(null)"
-        >
-          <mat-icon aria-hidden="true">{{ itemIcon }}</mat-icon>{{ selfWord() }}
-        </button>
-      }
     }
   </div>
 </app-sheet-frame>

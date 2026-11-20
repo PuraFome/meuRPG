@@ -233,7 +233,7 @@ A scroll or another item that is no potion or oil has no "Dar a…": the sheet r
 A blocked sheet keeps the open hand on its dashed "Dar a…".
 The dashed button is described by the line that says why, or by the error of the read.
 The line that comes after the read sits in a polite live region that is already on the page, so it is announced.
-The list of receivers is a group of radio rows, and its buttons follow the combat: "Dar a <nome>" and "Beber eu mesmo" in a running combat, "Voltar" and "Dar a <nome>" everywhere else.
+The list of receivers is a group of radio rows, and its buttons follow the combat: "Beber eu mesmo" and "Dar a <nome>" in a running combat, "Voltar" and "Dar a <nome>" everywhere else.
 The sheet says what the action costs once: the subtitle reads "em combate, gasta a ação" only for an item that costs the action when the server says there is a combat.
 In a combat the cost line under the list says only what the potion does to the receiver ("A poção age em Brisa."), with an info icon and no mark.
 Out of a combat the first choice reads "Fora de combate: não gasta a vez." and, when someone may receive it, "“Dar a…” lista o grupo todo.".

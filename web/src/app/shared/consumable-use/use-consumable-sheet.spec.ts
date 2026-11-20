@@ -465,7 +465,7 @@ describe('UseConsumableSheet', () => {
       const foot = Array.from(el.querySelectorAll('.foot button')).map((b) =>
         label(b as HTMLButtonElement),
       );
-      expect(foot).toEqual(['Dar a Brisa', 'Beber eu mesmo']);
+      expect(foot).toEqual(['Beber eu mesmo', 'Dar a Brisa']);
       expect(buttons(el)).not.toContain('Voltar');
     });
 
@@ -893,7 +893,7 @@ describe('UseConsumableSheet', () => {
       const { el, settle } = render(oil);
       await settle();
       await press(el, settle, 'Dar a…');
-      expect(names(el)).toEqual(['Dar a Brisa', 'Usar eu mesmo']);
+      expect(names(el)).toEqual(['Usar eu mesmo', 'Dar a Brisa']);
       expect(flat(el.querySelector('.cost'))).toBe(
         'Não gasta a ação: o mestre decide o tempo que isso leva. O óleo age em Brisa.',
       );
@@ -906,7 +906,7 @@ describe('UseConsumableSheet', () => {
       await settle();
       expect(names(el)).toEqual(['Dar a…', 'Beber']);
       await press(el, settle, 'Dar a…');
-      expect(names(el)).toEqual(['Dar a Brisa', 'Beber eu mesmo']);
+      expect(names(el)).toEqual(['Beber eu mesmo', 'Dar a Brisa']);
     });
 
     it('uses it on its user with "Usar eu mesmo"', async () => {
@@ -1046,7 +1046,7 @@ describe('UseConsumableSheet', () => {
       const names = Array.from(el.querySelectorAll('.foot button')).map((b) =>
         label(b as HTMLButtonElement),
       );
-      expect(names).toEqual(['Dar a Jabuti', 'Beber eu mesmo']);
+      expect(names).toEqual(['Beber eu mesmo', 'Dar a Jabuti']);
       expect(names).not.toContain('Dar a Brisa');
     });
 
@@ -1291,14 +1291,22 @@ describe('UseConsumableSheet', () => {
     it("right-aligns the dialog's buttons at their own width, with or without a receiver chosen", async () => {
       const { el, settle } = await giveIn({}, false);
       expect(foot(el).classList).not.toContain('foot--phone');
-      expect(foot(el).classList).not.toContain('foot--swap');
       Array.from(el.querySelectorAll('button'))
         .find((b) => label(b) === 'Dar a…')!
         .click();
       await settle();
-      // In a combat the receiver's button sets the last at the right edge of the dialog.
-      expect(foot(el).classList).toContain('foot--swap');
+      // The dialog right-aligns the buttons at their own width; the footer is no phone grid.
       expect(foot(el).classList).not.toContain('foot--phone');
+    });
+
+    it('has the footer buttons of the give phase in a combat in the order they are shown: self-use first, the receiver last', async () => {
+      const { el, settle } = await giveIn({}, true);
+      Array.from(el.querySelectorAll('button'))
+        .find((b) => label(b) === 'Dar a…')!
+        .click();
+      await settle();
+      const order = Array.from(foot(el).querySelectorAll('button')).map((b) => label(b));
+      expect(order).toEqual(['Beber eu mesmo', 'Dar a Brisa']);
     });
 
     it('halves the two buttons of a receiver chosen in a combat on the phone, as it does out of one', async () => {
@@ -1342,8 +1350,8 @@ describe('UseConsumableSheet', () => {
         .click();
       await settle();
       expect(ink()).toEqual([
-        ['Dar a Brisa', false],
         ['Beber eu mesmo', true],
+        ['Dar a Brisa', false],
       ]);
     });
 
