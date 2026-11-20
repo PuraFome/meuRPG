@@ -79,7 +79,7 @@ func (l *heldList) playerNpcCheckOffer(ctx context.Context, h heldRoll, session 
 		return nil, s.dbError(ctx, "read where the creature stands", err)
 	}
 	if token {
-		return nil, nil // hidden since the keep read the check: the next read settles it
+		return nil, nil // hidden after the keep read the check: the next read settles it
 	}
 	offer.RollerLabel = cutting.Label(ev.Name, asks[cur].CreatureSeen && !stage) // the name is as the bard's player may know it now
 	offer.Question = &playv1.HeldRollOffer_CuttingWords{CuttingWords: &playv1.CuttingWordsQuestion{Sides: asks[cur].Sides, UsesLeft: bardUsesLeft(vit)}}

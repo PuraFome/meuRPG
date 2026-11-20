@@ -185,3 +185,50 @@ func TestNpcCheckReadsTheMapItWasRolledOn(t *testing.T) {
 		}
 	})
 }
+
+// TestNpcCheckTellsNoBardOutsideTheSceneOfAMove: the next bard's player is outside the scene when the question moves to it, by an answer
+// or by the master's skip: the bard hears no held rolls change, and the bard after it is asked in its place.
+func TestNpcCheckTellsNoBardOutsideTheSceneOfAMove(t *testing.T) {
+	t.Parallel()
+	t.Run("the bard asked first answers", func(t *testing.T) {
+		t.Parallel()
+		n := newNpcTable(t, charactersv1.CuttingWordsAsk_CUTTING_WORDS_ASK_ALL)
+		hold, first, second := n.bothInTheScene(t)
+		ears := listen(t, n.h, n.campaignID, second.id, false)
+		n.mustSetAudience(t, first)
+		n.mustCut(first, hold)
+		if n.changed(t, ears) {
+			t.Error("the bard outside the scene heard the held rolls change, want nothing")
+		}
+		if got := n.mustLatest(t); !got.GetSettled() || got.GetAsks()[1].GetState() != playv1.NpcCheckAskState_NPC_CHECK_ASK_STATE_PASSED {
+			t.Errorf("GetNpcCheck() = %v, want it settled with the bard outside the scene passed", got)
+		}
+	})
+	t.Run("the master skips", func(t *testing.T) {
+		t.Parallel()
+		n := newNpcTable(t, charactersv1.CuttingWordsAsk_CUTTING_WORDS_ASK_ALL)
+		hold, first, second := n.bothInTheScene(t)
+		ears := listen(t, n.h, n.campaignID, first.id, false)
+		n.mustSetAudience(t, second)
+		if _, err := n.skip(n.master, hold, newKey()); err != nil {
+			t.Fatalf("the skip error = %v", err)
+		}
+		if n.changed(t, ears) {
+			t.Error("the bard outside the scene heard the held rolls change, want nothing")
+		}
+	})
+}
+
+// TestNpcCheckRefusesThePassedBardAsGone: a bard whose question was passed for it, while its player was outside the scene, is told the
+// check is not found when it answers back inside the scene.
+func TestNpcCheckRefusesThePassedBardAsGone(t *testing.T) {
+	t.Parallel()
+	n := newNpcTable(t, charactersv1.CuttingWordsAsk_CUTTING_WORDS_ASK_ALL)
+	hold, first, second := n.bothInTheScene(t)
+	n.mustSetAudience(t, second)
+	n.mustOne(second) // the keep passes the first bard's question
+	n.mustSetAudience(t, first, second)
+	if _, err := n.answerAs(first, hold, newKey(), typedCut(3)); connect.CodeOf(err) != connect.CodeNotFound {
+		t.Errorf("the passed bard's cut error = %v, want %v", err, connect.CodeNotFound)
+	}
+}

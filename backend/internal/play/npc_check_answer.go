@@ -21,10 +21,10 @@ import (
 )
 
 // The bard's answer to the question of an NPC's check and the master's way out of it. The questions are asked in order: only the bard
-// of the first ask still open may answer, anyone else is told the roll is not found, and so is a bard whose ask closed with no answer or
-// whose player the open scene is not open to; a bard that answered already is told so.
+// of the first ask still open may answer, anyone else is told the roll is not found, and so is a bard whose ask closed or passed with no
+// answer, or whose player the open scene is not open to; a bard that answered already is told so.
 
-// errStaleNpcCheck says the held check belongs to a session that is over: nothing can answer it any more.
+// errStaleNpcCheck says the held check belongs to a session that is over: nothing can answer it.
 var errStaleNpcCheck = errors.New("the held check is from an earlier session")
 
 // askStates are the states of the asks, for cutting.Current.
@@ -100,7 +100,7 @@ func (s *Service) settleNpcCheck(ctx context.Context, tc *combatTx, hold playdb.
 func (s *Service) skipNpcCheck(ctx context.Context, tc *combatTx, h *hints, hold playdb.InspirationHold, asks []playdb.NpcCheckAsk, key string) (npcCheckEvent, error) {
 	var told []string
 	if cur := cutting.Current(askStates(asks)); cur >= 0 {
-		user, err := s.bardUser(ctx, tc.tx, tc.session.CampaignID, asks[cur].BardCharacterID)
+		user, err := s.bardHeard(ctx, tc.tx, tc.session, asks[cur].BardCharacterID)
 		if err != nil {
 			return npcCheckEvent{}, err
 		}
@@ -187,6 +187,52 @@ func (s *Service) bardUser(ctx context.Context, tx pgx.Tx, campaignID string, ch
 	return cs[0].PlayerUserID, nil
 }
 
+// moveOn tells who hears of the answer and goes on: the next question is asked (a next bard out of play is let pass, and the bard after
+// it is asked), or the check settles when it was the last.
+func (a *npcAnswer) moveOn(ctx context.Context, tc *combatTx, hold playdb.InspirationHold, asks []playdb.NpcCheckAsk, mine int) error {
+	told := []string{a.m.UserID}
+	more := mine+1 < len(asks)
+	if more {
+		next, err := a.s.bardHeard(ctx, a.tx, a.session, asks[mine+1].BardCharacterID)
+		if err != nil {
+			return err
+		}
+		told = append(told, next)
+	} else if _, err := a.s.settleNpcCheck(ctx, tc, hold, a.key, false); err != nil {
+		return err
+	}
+	tellNpcCheck(a.h, a.m.CampaignID, told...)
+	if more {
+		return a.keep(ctx, tc, hold)
+	}
+	return nil
+}
+
+// bardHeard is the player of a bard's character when the hint of a question may reach it: the character is in play of a member and the
+// open scene is open to the player. It is "" otherwise, so nobody outside the scene hears of a check.
+func (s *Service) bardHeard(ctx context.Context, tx pgx.Tx, session playdb.GameSession, characterID *string) (string, error) {
+	if characterID == nil {
+		return "", nil
+	}
+	view, err := s.npcCheckViewOf(ctx, tx, session)
+	if err != nil {
+		return "", err
+	}
+	if !view.inPlay[*characterID] {
+		return "", nil
+	}
+	return s.bardUser(ctx, tx, session.CampaignID, characterID)
+}
+
+// keep makes the moves the check needs after the answer: see keepNpcCheck.
+func (a *npcAnswer) keep(ctx context.Context, tc *combatTx, hold playdb.InspirationHold) error {
+	view, err := a.s.npcCheckViewOf(ctx, a.tx, a.session)
+	if err != nil {
+		return err
+	}
+	return a.s.keepNpcCheck(ctx, tc, a.h, view, hold)
+}
+
 // forgetNpcCheck drops a held check that can never be answered, in a transaction of its own: the master's, or one of a bard it asks,
 // finding that its session is over (none is open) or that it came from an earlier one. Anything else (a hold of another kind, of another
 // campaign, a check of this session, or of somebody else) is left as it is: the caller reads "not found" either way.
@@ -263,7 +309,7 @@ func (s *Service) answerNpcCheck(ctx context.Context, m authz.Membership, req *p
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("set roll_in_app or typed_face to cut"))
 		}
 	}
-	if err := s.keepNpcChecks(ctx, m.CampaignID); err != nil { // what changed since the question was asked settles first, in its own transaction
+	if err := s.keepNpcChecks(ctx, m.CampaignID); err != nil { // what changed after the question was asked settles first, in its own transaction
 		return nil, err
 	}
 	var out *playv1.CuttingWordsAnswered
@@ -328,13 +374,13 @@ func (a *npcAnswer) requireOpenQuestion(ctx context.Context, hold playdb.Inspira
 	if viewers, err := sceneViewersOf(ctx, a.q, a.session); err != nil {
 		return err
 	} else if !viewers.has(a.m.UserID) {
-		return errHeldNotFound() // the scene is not open to this player any more: the question is gone for them
+		return errHeldNotFound() // the scene is not open to this player: the question is gone for them
 	}
 	if err := a.requireFreshKey(ctx); err != nil {
 		return err
 	}
-	if asks[mine].State == askClosed {
-		return errHeldNotFound() // closed with no answer: the question is gone
+	if asks[mine].State == askClosed || (asks[mine].State == askPassed && asks[mine].AnswerKey == nil) {
+		return errHeldNotFound() // closed or passed for the bard with no answer: the question is gone
 	}
 	if asks[mine].State != askAsked || hold.AnswerKey != nil {
 		return errAnsweredAlready()
@@ -393,17 +439,9 @@ func (a *npcAnswer) write(ctx context.Context, hold playdb.InspirationHold, asks
 		}
 		return nil, fmt.Errorf("answer the ask: %w", err)
 	}
-	told := []string{a.m.UserID}
-	if mine+1 < len(asks) {
-		next, err := s.bardUser(ctx, a.tx, a.m.CampaignID, asks[mine+1].BardCharacterID)
-		if err != nil {
-			return nil, err
-		}
-		told = append(told, next)
-	} else if _, err := s.settleNpcCheck(ctx, tc, hold, a.key, false); err != nil {
+	if err := a.moveOn(ctx, tc, hold, asks, mine); err != nil {
 		return nil, err
 	}
-	tellNpcCheck(a.h, a.m.CampaignID, told...)
 	out := &playv1.CuttingWordsAnswered{Cut: a.cut, UsesLeft: bardUsesLeft(vit)}
 	if a.cut {
 		out.Die = diceRoll(1, ask.Sides, []int32{clamp32(face, 1, 20)}, 0, clamp32(face, 1, 20), physical)

@@ -17,11 +17,12 @@ import (
 )
 
 // A check that waits is read as things stand, not as they stood when it was rolled. The next read of the held rolls or of the check, and
-// the next answer, find what changed since and settle it in a transaction of their own, before they go on: the creature's token the master
-// hid on the map the check was rolled on closes every question as the skip does (the bard asked now and the master are told), and a bard that is not a character in play of a
-// member any more (in the reserve, dead, deleted, or with no player), or whose player the open scene is no longer open to, has its question let pass, the next bard is asked and told, and the
-// check settles as the last answer settles it when none is left. The hide is a write of the maps module (and the stage's of this one, which
-// only changes the name the offers give), so nothing is settled by it directly: the checks settle where they are read.
+// the next answer, find what changed and settle it in a transaction of their own, before they go on. The creature's token hidden on the
+// map the check was rolled on closes every question as the skip does (the bard asked now and the master are told). A bard that is not a
+// character in play of a member (in the reserve, dead, deleted, or with no player), or whose player the open scene is not open to, has
+// its question let pass: the next bard in play is asked and told, and the check settles as the last answer settles it when none is
+// left. The hide is a write of the maps module (and the stage's of this one, which only changes the name the offers give), so nothing
+// is settled by it directly: the checks settle where they are read. A hint goes only to a bard in play, whose player the scene is open to.
 
 // errNoCheckToKeep says the session closed between the read and the write: there is nothing to keep.
 var errNoCheckToKeep = errors.New("no open session to keep the checks of")
@@ -216,7 +217,7 @@ func (s *Service) keepNpcCheck(ctx context.Context, tc *combatTx, h *hints, view
 	}
 }
 
-// finishNpcCheck settles a check no question of which is open any more, as the last answer settles it.
+// finishNpcCheck settles a check with no question open, as the last answer settles it.
 func (s *Service) finishNpcCheck(ctx context.Context, tc *combatTx, h *hints, hold playdb.InspirationHold) error {
 	if _, err := s.settleNpcCheck(ctx, tc, hold, uuid.NewString(), false); err != nil {
 		return err
@@ -228,7 +229,7 @@ func (s *Service) finishNpcCheck(ctx context.Context, tc *combatTx, h *hints, ho
 // tellNextBard tells the master and the bard asked now that the question moved.
 func (s *Service) tellNextBard(ctx context.Context, tc *combatTx, h *hints, asks []playdb.NpcCheckAsk) error {
 	cur := cutting.Current(askStates(asks))
-	next, err := s.bardUser(ctx, tc.tx, tc.session.CampaignID, asks[cur].BardCharacterID)
+	next, err := s.bardHeard(ctx, tc.tx, tc.session, asks[cur].BardCharacterID)
 	if err != nil {
 		return err
 	}

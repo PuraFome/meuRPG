@@ -732,6 +732,82 @@ func TestNpcCheckOnAMeasuredMapOutsideTheScenesAudienceAsksNoBard(t *testing.T) 
 	}
 }
 
+// Two bards are asked about a check while the scene is open to both players. The master then narrows the scene to one of them: the
+// question that moves to the other bard, or ends, is told to the master and to the bard inside the scene alone. The bard outside hears
+// no held rolls change, reads no offer and gets no answer to a try at answering (the positive control is the bard inside).
+func TestNpcCheckTellsNoBardOutsideTheScene(t *testing.T) {
+	for name, tc := range map[string]struct {
+		insideFirst bool // the scene is narrowed to the bard asked first (it answers); otherwise to the bard asked second (the master skips)
+	}{
+		"the bard asked first answers, the next is outside": {true},
+		"the master skips, the bard asked now is outside":   {false},
+	} {
+		t.Run(name, func(t *testing.T) {
+			w := &world{stack: newStack(t), secrets: newSecrets(), pts: map[string]*mapsv1.MapPoint{}, puzzles: map[string]*playv1.Puzzle{}, notes: map[string]string{}}
+			defer func() {
+				if r := recover(); r != nil {
+					t.Fatalf("the table: %v", r)
+				}
+			}()
+			ctx := t.Context()
+			w.buildPeople()
+			w.buildGallery()
+			w.fogMap = must(w.master.maps.CreateMap(ctx, rq(&mapsv1.CreateMapRequest{CampaignId: w.campaign, Name: "Caverna", ImageId: w.imgMap}))).GetMap().GetId()
+			must(w.master.maps.SetMapRevealed(ctx, rq(&mapsv1.SetMapRevealedRequest{CampaignId: w.campaign, MapId: w.fogMap, Revealed: true})))
+			ps := w.buildPartialScene()
+			m, ana, caio := w.master, w.ana, w.caio
+			brisa, lia := loreBard(w, ana, "Brisa", 16), loreBard(w, caio, "Lia", 14)
+			w.session = must(m.play.StartGameSession(ctx, rq(&playv1.StartGameSessionRequest{CampaignId: w.campaign}))).GetGameSession().GetId()
+			w.openSceneTo(ps.point.GetId(), ana, caio)
+			watchers := map[*person]*streamWatcher{ana: w.watchStream(ana), caio: w.watchStream(caio)}
+			res := must(m.play.RollNpcCheck(ctx, rq(&playv1.RollNpcCheckRequest{
+				CampaignId: w.campaign, Npc: &playv1.RollNpcCheckRequest_MonsterKey{MonsterKey: "monster:wolf"}, CheckKey: "skill:perception",
+				Roll: &playv1.RollNpcCheckRequest_D20Face{D20Face: 17}, BardSees: true, IdempotencyKey: newKey(),
+			})))
+			asks := res.GetCheck().GetAsks()
+			if !res.GetHeld() || len(asks) != 2 {
+				t.Fatalf("the master's roll = %v, want both bards asked", res)
+			}
+			byChar := map[string]*person{brisa.GetId(): ana, lia.GetId(): caio}
+			first, second := byChar[asks[0].GetCharacterId()], byChar[asks[1].GetCharacterId()]
+			hold := res.GetCheck().GetHoldId()
+			inside, outside := second, first
+			if tc.insideFirst {
+				inside, outside = first, second
+			}
+			rolled := w.fence(t, m, watchers, "fim da rolagem")
+			w.setSceneTo(inside)
+			if tc.insideFirst {
+				must(first.resources.AnswerHeldRoll(ctx, rq(&playv1.AnswerHeldRollRequest{
+					CampaignId: w.campaign, HoldId: hold, IdempotencyKey: newKey(),
+					Answer: &playv1.AnswerHeldRollRequest_CuttingWords{CuttingWords: &playv1.CuttingWordsAnswer{Cut: false}},
+				})))
+			} else {
+				must(m.play.SkipNpcCheckAsks(ctx, rq(&playv1.SkipNpcCheckAsksRequest{CampaignId: w.campaign, HoldId: hold, IdempotencyKey: newKey()})))
+			}
+			moved := w.fence(t, m, watchers, "fim da mudança")
+			heard := func(p *person) int {
+				n := 0
+				for _, ev := range watchers[p].since(0)[rolled[p]:moved[p]] {
+					if eventCase(ev) == "held_rolls_changed" {
+						n++
+					}
+				}
+				return n
+			}
+			if got := heard(outside); got != 0 {
+				t.Errorf("the bard outside the scene heard %d held rolls changes, want none", got)
+			}
+			if tc.insideFirst && heard(inside) == 0 {
+				t.Error("the bard inside the scene heard no held rolls change, want the hint of its own answer (the positive control)")
+			}
+			if got := must(outside.resources.ListHeldRolls(ctx, rq(&playv1.ListHeldRollsRequest{CampaignId: w.campaign}))).GetOffers(); len(got) != 0 {
+				t.Errorf("the bard outside the scene lists %v, want nothing", got)
+			}
+		})
+	}
+}
+
 // A player reads the summary of a session that ended after an NPC's check a bard cut: it holds nothing of the check (the creature, its
 // roll, who cut), the bard included: a check of the master's side is nobody's roll in the summary.
 func TestNpcCheckLeavesNothingInThePlayersSummaryOfTheEndedSession(t *testing.T) {
