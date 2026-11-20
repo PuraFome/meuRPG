@@ -91,20 +91,39 @@ func outOfReachPT(kind string, limit int32) string {
 // wearsArmorPT is the reason Mage Armor refuses a target.
 const wearsArmorPT = "Está de armadura: a Armadura Arcana não funciona."
 
+// hintLimit is how far a spell is listed as reaching and whether it is limited at all.
+// The spell's own target data (the reach of a Self spell, the creatures a spell stretches past its range) wins over the
+// proto's range, so a hint never shuts out a pick the cast would accept (link.Spell.ListedSlackFt). Touch and a
+// caster-only spell are exact in the proto and cost no read.
+func (s *Service) hintLimit(ctx context.Context, campaignID string, spell *playv1.CastingSpell, casterID string) (int32, bool, error) {
+	limit, limited := reachLimit(spell.GetRangeKind(), spell.GetRangeFt(), spell.GetCasterOnly())
+	if kind := spell.GetRangeKind(); spell.GetCasterOnly() || (kind != rules.RangeSelf && kind != rules.RangeRanged) {
+		return limit, limited, nil
+	}
+	sp, err := s.roster.CombatSpell(ctx, nil, campaignID, casterID, spell.GetSpell().GetKey(), int(spell.GetSpell().GetLevel()), "")
+	if err != nil {
+		return 0, false, err
+	}
+	if ft, ok := reachOf(sp); ok {
+		return ft + clamp32(sp.ListedSlackFt(), 0, math.MaxInt32), true, nil
+	}
+	return limit, limited, nil
+}
+
+// wearsMageArmor says a target is an armored player character, which Mage Armor does not work on.
+func (s *Service) wearsMageArmor(ctx context.Context, campaignID string, spell *playv1.CastingSpell, t *playv1.CastingTarget) (bool, error) {
+	if spell.GetEffect() != playv1.CastingEffectKind_CASTING_EFFECT_KIND_ARMOR_CLASS || t.GetNpc() {
+		return false, nil
+	}
+	mage, err := s.roster.MageArmorAC(ctx, nil, campaignID, t.GetCharacterId())
+	return mage.Applies && mage.Wears, err
+}
+
 // reachOfTargets says, for each target, whether the spell reaches it from the caster.
 func (s *Service) reachOfTargets(ctx context.Context, campaignID string, spell *playv1.CastingSpell, casterID string, targets []*playv1.CastingTarget) ([]*playv1.CastingReach, error) {
-	limit, limited := reachLimit(spell.GetRangeKind(), spell.GetRangeFt(), spell.GetCasterOnly())
-	// The spell's own target data (the reach of a Self spell, the creatures a spell stretches past its range) wins over the
-	// proto's range, so a hint never shuts out a pick the cast would accept (link.Spell.ListedSlackFt). Touch and a
-	// caster-only spell are exact in the proto and cost no read.
-	if kind := spell.GetRangeKind(); !spell.GetCasterOnly() && (kind == rules.RangeSelf || kind == rules.RangeRanged) {
-		sp, err := s.roster.CombatSpell(ctx, nil, campaignID, casterID, spell.GetSpell().GetKey(), int(spell.GetSpell().GetLevel()), "")
-		if err != nil {
-			return nil, err
-		}
-		if ft, ok := reachOf(sp); ok {
-			limit, limited = ft+clamp32(sp.ListedSlackFt(), 0, math.MaxInt32), true
-		}
+	limit, limited, err := s.hintLimit(ctx, campaignID, spell, casterID)
+	if err != nil {
+		return nil, err
 	}
 	var out []*playv1.CastingReach
 	for _, t := range targets {
@@ -116,12 +135,12 @@ func (s *Service) reachOfTargets(ctx context.Context, campaignID string, spell *
 		case limited && t.GetDistanceKnown() && t.GetDistanceFt() > limit:
 			r.InRange, r.ReasonPt = false, outOfReachPT(spell.GetRangeKind(), limit)
 		}
-		if r.InRange && spell.GetEffect() == playv1.CastingEffectKind_CASTING_EFFECT_KIND_ARMOR_CLASS && !t.GetNpc() {
-			mage, err := s.roster.MageArmorAC(ctx, nil, campaignID, t.GetCharacterId())
+		if r.InRange {
+			wears, err := s.wearsMageArmor(ctx, campaignID, spell, t)
 			if err != nil {
 				return nil, err
 			}
-			if mage.Applies && mage.Wears {
+			if wears {
 				r.InRange, r.ReasonPt = false, wearsArmorPT
 			}
 		}
