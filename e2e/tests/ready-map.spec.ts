@@ -3,7 +3,7 @@ import { test } from './diagnostics';
 import { getEncounterRPC } from './combat-support';
 import { openSessionPage } from './live-session-support';
 import { tapSquare } from './move-support';
-import { fireReadied, masterQueue, moveWindow, placeFireball, readyMapTable, releaseSheet, releaseTexts, spellWindow, undoFire } from './ready-map-support';
+import { fireReadied, masterQueue, moveWindow, pickFireballPoint, placeFireball, readyMapTable, releaseSheet, releaseTexts, spellWindow, undoFire } from './ready-map-support';
 import { readiedOf } from './ready-support';
 
 /**
@@ -124,6 +124,18 @@ test('o mestre solta a Bola de Fogo por Pensantus: o rodapé diz que ele ainda p
     await expect(sheet).toBeVisible();
     await expect(sheet.getByTestId('release-foot')).toHaveText(releaseTexts.masterFoot);
     await expect(sheet.getByRole('button', { name: 'Fechar' })).toHaveCount(0);
+    // The board's header: the filled marker and a bold "Reação" before the rest, and the band under it.
+    await expect(sheet.locator('.frame__sub b')).toHaveText('Reação');
+    await expect(sheet.locator('.frame__sub')).toHaveText('Reação · a ação preparada de Pensantus · você responde por Pensantus');
+    await expect(sheet.getByTestId('release-band')).toContainText('Preparada:');
+    // The footer: "Voltar" with its back arrow, "Mudar o local" with none.
+    await pickFireballPoint(sheet);
+    await sheet.getByRole('application', { name: 'Mapa: escolha o ponto da Bola de Fogo' }).press('Enter');
+    await expect(sheet.getByRole('heading', { name: /Quem está na área/ })).toBeFocused();
+    // Opening the list does not scroll the band out from under the header.
+    await expect(sheet.getByTestId('release-band')).toBeInViewport({ ratio: 1 });
+    await expect(sheet.getByRole('button', { name: 'Voltar', exact: true }).locator('mat-icon')).toHaveText('arrow_back');
+    await expect(sheet.getByRole('button', { name: 'Mudar o local' }).locator('mat-icon')).toHaveCount(0);
     // The master does not mark the window: the player's screen still reads the plain clock.
     expect((await windowOf(m, campaignId))?.rolling ?? false).toBe(false);
     await sheet.getByRole('button', { name: releaseTexts.back, exact: true }).click();
@@ -149,6 +161,7 @@ test('o movimento preparado: "Mover agora" abre o mapa, "Voltar" volta à janela
     await expect(p.getByRole('heading', { name: 'Mover Pensantus' })).toBeVisible();
     await expect(p.getByTestId('release-band')).toContainText('Ação preparada:');
     await expect(p.getByTestId('release-note')).toContainText('É o movimento preparado: gasta a ■ Reação');
+    await expect(p.locator('.move__legend')).toContainText('Você alcança');
     await expect(masterQueue(m).getByTestId('readied-wait')).toContainText(/No mapa · passa sozinho em/);
 
     // "Voltar" is back at the window, mark cleared.
@@ -183,6 +196,8 @@ test('o mestre move por Pensantus: o rodapé da página de movimento e a volta p
     await masterQueue(m).getByRole('button', { name: 'Mover por Pensantus' }).click();
     await expect(m.getByTestId('release-band')).toContainText('Ação preparada de Pensantus:');
     await expect(m.getByTestId('release-foot')).toHaveText(releaseTexts.masterFoot);
+    // The legend names the mover when the master moves for someone; the player's own page says "Você alcança".
+    await expect(m.locator('.move__legend')).toContainText('Pensantus alcança');
     await m.getByRole('button', { name: releaseTexts.back, exact: true }).click();
     await expect(m.getByTestId('release-foot')).toHaveCount(0);
     await expect(moveWindow(p)).toBeVisible();

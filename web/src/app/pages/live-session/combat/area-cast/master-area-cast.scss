@@ -56,6 +56,11 @@
   font-weight: 700;
 }
 
+// The release's "Voltar" reads as the board draws it: the ink of the other buttons, with the back arrow.
+.quiet--release {
+  --mat-button-text-label-text-color: var(--mr-ink);
+}
+
 .missing {
   display: flex;
   align-items: center;

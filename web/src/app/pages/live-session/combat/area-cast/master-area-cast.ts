@@ -67,6 +67,7 @@ import {
   RELEASE_DONE,
   masterFoot,
   releaseBand,
+  RELEASE_LEAD,
   releaseSubtitle,
   releaseTitle,
 } from '../../../../core/combat/release-text';
@@ -140,6 +141,7 @@ export class MasterAreaCast {
     : null;
   protected readonly foot = this.release ? masterFoot(this.release.reactorLabel) : '';
   protected readonly backLabel = RELEASE_BACK;
+  protected readonly lead = this.release ? RELEASE_LEAD : '';
   protected readonly doneLabel = RELEASE_DONE;
   private readonly watch = this.release
     ? new ReleaseWatch(() => this.data.state.encounter(), {
@@ -301,7 +303,7 @@ export class MasterAreaCast {
     effect(() => {
       if (this.flow.step() === 'list') {
         untracked(() =>
-          afterNextRender(() => this.listTitle()?.focus(), { injector: this.injector }),
+          afterNextRender(() => this.listTitle()?.focus(true), { injector: this.injector }),
         );
       }
     });

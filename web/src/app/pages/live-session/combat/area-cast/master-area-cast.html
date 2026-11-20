@@ -1,4 +1,4 @@
-<app-sheet-frame [title]="title" [subtitle]="subtitle()" [icon]="release ? 'alarm' : ''" [phone]="inSheet" [closable]="!release" (closed)="close()">
+<app-sheet-frame [title]="title" [subtitle]="subtitle()" [subtitleLead]="lead" [icon]="release ? 'alarm' : ''" [phone]="inSheet" [closable]="!release" (closed)="close()">
   @if (band; as b) {
     <app-release-band [band]="b" />
   }
@@ -93,11 +93,19 @@
     @if (release) {
       <p class="footnote" role="status" data-testid="release-foot">{{ foot }}</p>
     }
-    <button matButton type="button" class="quiet" [disabled]="busy()" (click)="close()">{{ release ? backLabel : 'Cancelar' }}</button>
+    <button matButton type="button" class="quiet" [class.quiet--release]="release" [disabled]="busy()" (click)="close()">
+      @if (release) {
+        <mat-icon aria-hidden="true">arrow_back</mat-icon>
+      }
+      {{ release ? backLabel : 'Cancelar' }}
+    </button>
     @if (flow.step() === 'list') {
       @if (placement !== Placement.CASTER) {
         <button matButton="outlined" type="button" class="btn" [disabled]="busy()" (click)="back()">
-          <mat-icon aria-hidden="true">arrow_back</mat-icon>Mudar o local
+          @if (!release) {
+            <mat-icon aria-hidden="true">arrow_back</mat-icon>
+          }
+          Mudar o local
         </button>
       }
       <button matButton="filled" type="button" class="btn" [disabled]="busy()" (click)="cast()">

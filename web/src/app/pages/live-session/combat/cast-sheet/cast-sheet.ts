@@ -28,6 +28,7 @@ import { ON_MAP_TEXT } from '../../../../core/combat/readied-wait';
 import { ReleaseMark } from '../../../../core/combat/release-mark';
 import {
   RELEASE_BACK,
+  RELEASE_LEAD,
   RELEASE_DONE,
   masterFoot,
   releaseBand,
@@ -161,6 +162,7 @@ export class CastSheet {
     ? releaseBand(this.release.trigger, this.release.slotLevel)
     : null;
   protected readonly backLabel = RELEASE_BACK;
+  protected readonly releaseLead = RELEASE_LEAD;
   protected readonly doneLabel = this.release ? RELEASE_DONE : 'Voltar à sua vez';
   /** The quiet line above the buttons: the table waits (the master reads that the player may still answer). */
   protected readonly waitLine = this.data.master

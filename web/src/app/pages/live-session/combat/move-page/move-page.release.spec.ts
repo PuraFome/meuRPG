@@ -108,6 +108,13 @@ describe('MovePage: a readied move released off the readier’s turn (#856, boar
     expect(order(setup({ master: true }).el)).toEqual(['p.lead', 'app-release-band']);
   });
 
+  it('names the mover in the legend when the master moves for someone ("Tor alcança"), and keeps "Você alcança" for the player (857-07)', () => {
+    const legend = (el: HTMLElement) =>
+      Array.from(el.querySelectorAll('.mr-legend li'), (li) => plain(li.textContent));
+    expect(legend(setup({ master: true }).el)).toContain('Tor alcança');
+    expect(legend(setup().el)).toContain('Você alcança');
+  });
+
   it('keeps no way to jump or to disengage: the server’s budget is a walk', () => {
     const { el } = setup();
     expect(el.querySelector('app-segmented')).toBeNull();

@@ -1,4 +1,4 @@
-<app-sheet-frame [title]="tx.title()" [subtitle]="tx.subtitle()" [icon]="release && !s.done() ? 'alarm' : ''" [phone]="inSheet" [closable]="!release" (closed)="close()">
+<app-sheet-frame [title]="tx.title()" [subtitle]="tx.subtitle()" [subtitleLead]="release && !s.done() ? releaseLead : ''" [icon]="release && !s.done() ? 'alarm' : ''" [phone]="inSheet" [closable]="!release" (closed)="close()">
   @if (!s.done() && !gone()) {
     <app-spell-help head-action [name]="data.name" (press)="describe()" />
   }

@@ -25,9 +25,12 @@ export function releaseTitle(name: string, master: boolean, reactor: string): st
   return master ? `${what} por ${reactor}` : what;
 }
 
+/** The bold word that opens the subtitle of a release, drawn with a filled marker before it (boards 857-02, 857-04). */
+export const RELEASE_LEAD = 'Reação';
+
 /** "Reação · a ação preparada de Pensantus", and for the master "· você responde por Pensantus". */
 export function releaseSubtitle(reactor: string, master: boolean): string {
-  const line = `Reação · a ação preparada de ${reactor}`;
+  const line = `${RELEASE_LEAD} · a ação preparada de ${reactor}`;
   return master ? `${line} · você responde por ${reactor}` : line;
 }
 

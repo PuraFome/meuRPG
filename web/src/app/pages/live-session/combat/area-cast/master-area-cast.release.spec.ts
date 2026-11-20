@@ -146,6 +146,53 @@ describe('MasterAreaCast: the master releases a readied spell for the player (#8
     expect(markReactionRolling).not.toHaveBeenCalled();
   });
 
+  it('draws the subtitle with the filled marker and a bold "Reação" (857-04)', async () => {
+    const { el } = await open();
+    const sub = el.querySelector('.frame__sub');
+    expect(sub?.querySelector('.frame__mark')?.getAttribute('aria-hidden')).toBe('true');
+    expect(plain(sub?.querySelector('b')?.textContent)).toBe('Reação');
+    expect(plain(sub?.textContent)).toBe(
+      'Reação · a ação preparada de Pensantus · você responde por Pensantus',
+    );
+  });
+
+  it('shows the band under the header, and the body is not scrolled past it when the list opens', async () => {
+    const { el, button, fixture, settle } = await open();
+    const map = fixture.debugElement.query(By.directive(AreaMap)).componentInstance as AreaMap;
+    map.place.emit({ kind: 'point', square: { col: 6, row: 4 } });
+    await settle();
+    button('Confirmar local')!.click();
+    await settle();
+    expect(el.querySelector('app-release-band')).not.toBeNull();
+    const focus = vi.spyOn(HTMLElement.prototype, 'focus');
+    try {
+      button('Mudar o local')!.click();
+      await settle();
+      button('Confirmar local')!.click();
+      await settle();
+      const heading = focus.mock.contexts.findIndex(
+        (c, i) =>
+          (c as HTMLElement).closest('app-area-step') !== null &&
+          (focus.mock.calls[i]?.[0] as FocusOptions | undefined)?.preventScroll === true,
+      );
+      expect(heading).toBeGreaterThanOrEqual(0);
+    } finally {
+      focus.mockRestore();
+    }
+  });
+
+  it('puts the back arrow on "Voltar" and none on "Mudar o local" in the release foot (857-04)', async () => {
+    const { el, button, fixture, settle } = await open();
+    const map = fixture.debugElement.query(By.directive(AreaMap)).componentInstance as AreaMap;
+    map.place.emit({ kind: 'point', square: { col: 6, row: 4 } });
+    await settle();
+    button('Confirmar local')!.click();
+    await settle();
+    expect(button('Voltar')?.querySelector('mat-icon')?.textContent?.trim()).toBe('arrow_back');
+    expect(button('Mudar o local')?.querySelector('mat-icon')).toBeNull();
+    expect(el.querySelector('[data-testid=release-foot]')).not.toBeNull();
+  });
+
   it('previews and casts with no slot, then closes with the cast', async () => {
     const { fixture, button, settle, castSpell, previewSpellArea, close } = await open();
     const map = fixture.debugElement.query(By.directive(AreaMap)).componentInstance as AreaMap;
