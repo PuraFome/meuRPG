@@ -19,6 +19,9 @@ import (
 // names the group (CutGroup), and the log joins them when it reads: until then the line says nothing of the roll, and once the roll
 // is written it says what a roll that asked nothing says (completeAnswers). No event is ever changed.
 
+// markAsked, answersOf and completeAnswers read c.answered as the answers of this change alone: the window answered last, whose answer
+// released the replay. An answer written in an earlier change of the same group is not in it (#1061).
+
 // markAsked marks the answers of the windows of a held attack or spell attack whose replay asked its roller, so the log completes them
 // when the roll is written. A held check asks the same way and is not marked: its line is not completed this way, and keeps what the answer wrote when the
 // replay asked, before the roll had a total.
@@ -102,6 +105,8 @@ func (b *logBuilder) joinCut(id string, final actionEvent) {
 func (r reactionEvent) completedBy(final actionEvent) (reactionEvent, bool) {
 	outcome, ac, total := final.Outcome, final.TargetAC, final.Total
 	if len(final.Hits) > 0 {
+		// More than one hit (the rays of a Scorching Ray) cannot reach here: a replay asks only when its attack has one ray, because
+		// holdSpellAttack puts rayCombatants (one per ray) through spellMayAsk, which wants exactly one, so no such answer is Asked.
 		if len(final.Hits) != 1 {
 			return r, false
 		}

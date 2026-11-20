@@ -503,13 +503,10 @@ func TestACutLineCompletesOnlyOnTheFinalEventOfChainedQuestions(t *testing.T) {
 		"Bardo usou Palavras de Interrupção: o ataque de Pipo ainda acertou.")
 }
 
-// Two bards cut one held roll that asks its roller: both lines wait, and both complete on the one roll, each with the whole of what the
-// group took off (5 + 3): the goblin's 8 + 4 became 12 - 8 = 4.
-
 // Two bards cut one held roll that asks its roller: both lines wait, and the line of the bard whose answer released the replay completes
 // on the one roll with the whole of what the group took off (5 + 3): the goblin's 8 + 4 became 12 - 8 = 4. (The first bard's answer was
-// written before the replay, in a change of its own, and no ask or roll completes it: it reads what it read before this change.)
-func TestTwoCutLinesOfOneHeldRollCompleteTogether(t *testing.T) {
+// written before the replay, in a change of its own, and nothing completes it: it reads what it read before this change, #1061.)
+func TestTheLastOfTwoCutLinesCompletesOnTheHeldRoll(t *testing.T) {
 	t.Parallel()
 	a := newArmedWith(t, func(a *armed) {
 		a.toren = a.caio.hero(t, a.campaignID, "Toren", "class:fighter", "race:human", 5, abilities(16, 13, 14, 10, 8), []string{battleaxe}, nil)
@@ -574,4 +571,21 @@ func TestTwoCutLinesOfOneHeldRollCompleteTogether(t *testing.T) {
 		t.Fatalf("AnswerHeldRoll() error = %v", err)
 	}
 	check(true)
+}
+
+// A roll whose holding event is gone cannot name its group: the answer still goes through, and the cut line is not completed, so it
+// keeps waiting (the cut's own event says only that the roll was asked).
+func TestAnAnswerWhoseHoldingEventIsGoneStillGoesThrough(t *testing.T) {
+	t.Parallel()
+	a, e := bardTable(t)
+	offer := heldWeaponCut(t, a, e, d20(1))
+	tag, err := a.h.pool.Exec(t.Context(), `DELETE FROM session_events WHERE idempotency_key IN (SELECT idempotency_key FROM inspiration_holds WHERE id = $1)`, offer.GetHoldId())
+	if err != nil || tag.RowsAffected() != 1 {
+		t.Fatalf("delete the event that held the roll: rows %d, error %v", tag.RowsAffected(), err)
+	}
+	res, err := a.answerHeldRoll(t, a.caio, offer.GetHoldId(), luckyAnswer(15))
+	if err != nil || res.GetAttack().GetRoll().GetD20().GetFaces()[0] != 15 {
+		t.Fatalf("AnswerHeldRoll() = %v, %v; want Pipo's attack settled on the 15", res, err)
+	}
+	a.wantLines(t, e, a.bardTableReaders(), cutPendingMaster, cutPendingPlayers)
 }
