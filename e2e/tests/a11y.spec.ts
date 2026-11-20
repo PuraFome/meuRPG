@@ -16542,3 +16542,79 @@ test('a ficha com "A arma mudou." que o mestre lê na ficha do jogador passa no 
   test.setTimeout(240_000);
   await scanAxeTurnedTwoHanded(browser, 'dark', 1280, 'master');
 });
+
+/** The target step of a cast by how many creatures the spell takes: one, two, six and ten, and Chain Lightning at a 7th-level slot (one more than at its own).
+ * A spell with no creature.
+ * A spell attack with no enemy in reach, then with one (Shocking Grasp, and Produce Flame at 30 ft). */
+async function scanSpellTargetScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: 900 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  const look = async (tab: 'Ataques' | 'Magias', button: string, what: string, beforeScan?: (sheet: Locator) => Promise<void>) => {
+    await openActionTab(p, tab);
+    await p.getByRole('button', { name: button }).click();
+    const sheet = p.getByRole('dialog', { name: button });
+    await viaTargetList(p, sheet);
+    await expect(sheet).toBeVisible();
+    await beforeScan?.(sheet);
+    await expectScreenPasses(p, `${what} ${where}`);
+    await sheet.getByRole('button', { name: 'Fechar' }).click();
+    await expect(sheet).toHaveCount(0);
+  };
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const wizard = {
+      cantripKeys: ['spell:shocking-grasp', 'spell:acid-splash', 'spell:produce-flame'],
+      knownSpellKeys: ['spell:disintegrate', 'spell:slow', 'spell:seeming', 'spell:wall-of-force', 'spell:chain-lightning'],
+      preparedSpellKeys: ['spell:disintegrate', 'spell:slow', 'spell:seeming', 'spell:wall-of-force', 'spell:chain-lightning'],
+    };
+    const table = await tableForCombat(m, p, `Acessibilidade alvos ${Date.now()}`, true, true, { sheet: wizard, build: { ...pensantus, level: 17 } });
+    campaignId = table.campaignId;
+    // Pensantus far from every enemy, then next to Goblin 1.
+    const begun = await beginAttackCombatRPC(m, table, { Pensantus: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 }, { ...attackCombatSquares, Pensantus: [2, 2] });
+    const pensantusId = begun.combatants.find((c) => c.label === 'Pensantus')!.id;
+    await openSessionPage(m, campaignId);
+    await openSessionPage(p, campaignId);
+
+    await look('Ataques', 'Atacar com Toque Chocante', 'Toque Chocante, nenhum inimigo ao alcance');
+    await look('Ataques', 'Atacar com Criar Chamas', 'Criar Chamas, nenhum inimigo ao alcance', async (sheet) => {
+      await expect(sheet.locator('label.target', { hasText: 'Goblin 1' }).getByText(/Longe demais: alcance de\s+9\s+m/)).toBeVisible();
+    });
+    await combatRPC(m, 'MoveCombatant', { campaignId, encounterId: begun.id, combatantId: pensantusId, col: 8, row: 9 });
+    await openSessionPage(p, campaignId); // reload, so the state is not the stale one
+    await look('Ataques', 'Atacar com Toque Chocante', 'Toque Chocante, um inimigo ao alcance');
+    await look('Ataques', 'Atacar com Criar Chamas', 'Criar Chamas, um inimigo ao alcance', async (sheet) => {
+      const row = sheet.locator('label.target', { hasText: 'Goblin 1' });
+      await expect(row).toBeVisible();
+      await expect(row.getByText('Longe demais')).toHaveCount(0);
+    });
+    await look('Magias', 'Conjurar Desintegrar', 'Alvos, uma criatura');
+    await look('Ataques', 'Conjurar Espirro Ácido', 'Alvos, até duas criaturas');
+    await look('Magias', 'Conjurar Lentidão', 'Alvos, até seis criaturas');
+    await look('Magias', 'Conjurar Similaridade', 'Alvos, até dez criaturas');
+    await look('Magias', 'Conjurar Muralha de Energia', 'Magia sem criatura');
+    await look('Magias', 'Conjurar Corrente de Relâmpagos', 'Alvos, Corrente de Relâmpagos no espaço de 7º nível', async (sheet) => {
+      await sheet.locator('label', { hasText: /7º\s+nível/ }).click();
+      await expect(sheet.getByRole('radio', { name: /7º\s+nível/ })).toBeChecked();
+      await expect(sheet.getByText('Escolha até 5 alvos (só quem você vê)')).toBeVisible();
+    });
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+for (const [scheme, width] of [['light', 390], ['dark', 768], ['light', 1280], ['dark', 1280], ['dark', 390], ['light', 768]] as const) {
+  test(`os alvos de uma conjuração por quantidade passam no axe e nas conferências de layout no tema ${scheme === 'light' ? 'claro' : 'escuro'}, em ${width}px`, { tag: ['@a11y', '@MR-013', '@RN-20'] }, async ({ browser }) => {
+    test.setTimeout(300_000);
+    await scanSpellTargetScreens(browser, scheme, width);
+  });
+}

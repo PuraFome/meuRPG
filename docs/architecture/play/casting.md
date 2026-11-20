@@ -10,7 +10,7 @@ Summoning spells are described in [Creatures](creatures.md#casting-summons).
 Who casts: the player on their own character on their turn (a prepared spell or a save cantrip from the options list); the master on any combatant on turn (an NPC casts from its full sheet or its stat block; an NPC's slots and daily uses are counted on its combatant, and a hand-made NPC's also in `npc_spell_use` until the table's long rest; a player's character's in its vitals). The options the master gets for an NPC show the slots and uses left; a player's never do (RN-20, RN-29).
 The spell, the level (`slot`: level or pact, none for a cantrip) and the targets are checked against the character's `TurnOptions`; the targets against what they see, the range and how many targets the spell accepts:
 
-- **Range.** Self only the caster, Touch 5 ft, otherwise the spell's range; multiplied for a spell attack when the caster's table feat has a `ranged_attack` with `range_multiplier`.
+- **Range.** Self only the caster (except Vampiric Touch, Produce Flame and Eyebite, which pick a creature within their `reach_ft`: 5, 30 and 60 ft), Touch 5 ft, otherwise the spell's range plus its `range_extra_ft` (Mass Cure Wounds, 30 ft); multiplied for a spell attack when the caster's table feat has a `ranged_attack` with `range_multiplier`.
   The master is never limited.
 - **How many targets.** `SpellDetails.Target` says whether a spell hits an area and how many it takes: what the master wrote on a table spell, the 5e-database's structured area on an SRD one and, for one without a structured area, the SRD text read with two patterns (`rules/spelltarget.go`).
   A spell attack takes one target, so a wrong guess never blocks the master.
@@ -40,6 +40,7 @@ What the casting does depends on what the spell is:
 | Save (Burning Hands, Sacred Flame) | The server rolls each target's save: a full-sheet NPC uses `Derived.SavingThrows`, a basic sheet made from a creature uses the stat block's saves; a basic sheet typed by hand has no bonus, rolls d20 + 0, and the master's log says so (`bonus_known` false; for a player it is always false and the app never reads it). A player character is rolled in the app with the sheet's bonus (the master's `amount` has the last word). Whoever passes takes half (rounded down) or nothing, as the spell says; a target with Evasion (`Traits.Evasion`, not incapacitated) takes nothing on a passed Dexterity save that halves and half on a failed one (`combat.HalfSaveShare`) | One roll for the whole casting for each damage type: the pending damages of a casting share a `cast_id`, and rolling one settles all of the same type. A spell with two damage types (Ice Storm, Flame Strike, Meteor Swarm) opens one pending damage per type per target (`pending_damage_id`, `more_pending_damage_ids`), each read against the target's resistance to its own type |
 | Magic Missile | The darts (3, plus one per level above) are split among the targets, at least one in each, summing exactly; no attack roll | Each target's damage: 1d4 + 1 per dart |
 | Healing | A pending damage that is a heal | The roll with the casting modifier heals at once, up to the maximum, per NPC and per character (through `character_vitals`); whoever was at 0 HP rises and the death saves reset |
+| Drain (Vampiric Touch) | A spell attack, as above | Each hit's damage, and the caster heals half the damage dealt (the hit's damage after the target's resistances, including what temporary HP absorb and what goes past 0, rounded down, up to the maximum) in the same transaction; the heal is its own log line, written on every hit that landed, with 0 when nothing heals, linked to the pending damage (`actionEvent.DrainOf`); its numbers go only to the master and the caster's owner, and the undo of the damage takes it back |
 | Reads HP (Sleep, Colour Spray, Power Word, Spare the Dying, Heal, False Life, Aid) | The server reads each target's HP and applies the effect at once, in the same transaction | None |
 | Revivify | See [Death and revival](death-and-revival.md) | None |
 | Teleport (Misty Step, with `destination`) | Spends the slot and the bonus action, then puts the caster on the chosen square; see below | None |
@@ -208,7 +209,14 @@ What the server applies when the spell takes effect:
 | Anything else | Recorded in the log; the master narrates |
 
 An NPC has no hit points or slots outside combat, so a cast on an NPC changes nothing about it and an NPC caster spends no slot.
-Reach is measured on the session's current map (touch 5 ft, ranged the spell's distance, 5 ft a square); without a map, grid or token the master judges and nothing is refused (`TARGET_OUT_OF_REACH` carries `missing_ft`); the master is never held to reach.
+Reach is measured on the session's current map, 5 ft a square.
+Touch is 5 ft and a ranged spell its distance.
+A Self spell with a `reach_ft` reaches that far.
+The spell's `range_extra_ft` is added to the distance.
+A spell whose other targets hang off the first, such as Chain Lightning, holds only the first to the distance.
+Without a map, grid or token the master judges and nothing is refused (`TARGET_OUT_OF_REACH` carries `missing_ft`).
+The master is never held to reach.
+The options' reach hint reads the same data (`link.Spell`) for a Self or ranged spell, one roster read each, and never shuts out a legal pick.
 
 **How a lasting spell ends.** The master or the caster ends it (`EndActiveSpell`, `dismissed`), the caster's concentration moves on or stops (`concentration`), the caster is gone (`caster_gone`), or a rest covers the whole duration: a short rest is 1 hour, a long rest 8 hours.
 Durations are game time, never the wall clock.

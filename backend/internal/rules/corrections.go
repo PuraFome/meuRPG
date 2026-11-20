@@ -48,11 +48,15 @@ type creatureCorrection struct {
 	Source string          `json:"source"`
 }
 
-// spellCorrection sets the attack, the saving throw, the damage and the damage
-// choice of a spell.
+// spellAttackNone is the attack_type of a correction that clears a spell's attack.
+const spellAttackNone = "none"
+
+// spellCorrection sets the attack, the saving throw, the damage and
+// the damage choice of a spell.
 type spellCorrection struct {
-	Spell       string `json:"spell"`
-	Source      string `json:"source"`
+	Spell  string `json:"spell"`
+	Source string `json:"source"`
+	// AttackType is "melee" or "ranged", or "none" for a spell with no attack at the cast.
 	AttackType  string `json:"attack_type"`
 	SaveAbility string `json:"save_ability"`
 	SaveSuccess string `json:"save_success"`
@@ -206,8 +210,8 @@ func (c *content) correctSpells(name string, corrections []spellCorrection) erro
 	return nil
 }
 
-// correctSpell writes one spell correction over the spell: its attack, its
-// saving throw, its damage table and its damage choice, in that order.
+// correctSpell writes one spell correction over the spell: its attack,
+// its saving throw, its damage table and its damage choice, in that order.
 func (c *content) correctSpell(name string, corr spellCorrection, s *srd51.Spell) error {
 	if corr.AttackType == "" && corr.SaveAbility == "" && corr.Damage == nil && corr.DamageChoice == "" {
 		return fmt.Errorf("%s: %s corrects nothing", name, corr.Spell)
@@ -229,14 +233,17 @@ func (c *content) correctSpell(name string, corr spellCorrection, s *srd51.Spell
 }
 
 func correctSpellAttack(name string, corr spellCorrection, s *srd51.Spell) error {
-	if corr.AttackType == "" {
+	switch corr.AttackType {
+	case "":
+		return nil
+	case spellAttackNone:
+		s.AttackType = ""
+		return nil
+	case "melee", "ranged":
+		s.AttackType = corr.AttackType
 		return nil
 	}
-	if corr.AttackType != "melee" && corr.AttackType != "ranged" {
-		return fmt.Errorf("%s: %s: attack_type %q is not melee or ranged", name, corr.Spell, corr.AttackType)
-	}
-	s.AttackType = corr.AttackType
-	return nil
+	return fmt.Errorf("%s: %s: attack_type %q is not melee, ranged or %s", name, corr.Spell, corr.AttackType, spellAttackNone)
 }
 
 func correctSpellSave(name string, corr spellCorrection, s *srd51.Spell) error {

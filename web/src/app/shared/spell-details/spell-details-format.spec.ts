@@ -61,6 +61,10 @@ describe('formatCastingTime', () => {
 });
 
 describe('formatRange', () => {
+  it('shows Pessoal for the spells of range Self that pick a creature at a distance (Vampiric Touch, Produce Flame, Eyebite)', () => {
+    expect(formatRange(range('self')).text).toBe('Pessoal');
+  });
+
   it('names the fixed kinds', () => {
     expect(formatRange(range('self')).text).toBe('Pessoal');
     expect(formatRange(range('touch')).text).toBe('Toque');

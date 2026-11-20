@@ -22,6 +22,7 @@ import { article } from '../../../../core/combat/combat-log';
 import { diceName, sumRange } from '../../../../core/combat/combat-dice';
 import { circleLabel } from '../../../../core/combat/combat-grid';
 import { isHit, outcomeWord } from '../../../../core/combat/attack-flow';
+import { spellNotes } from '../../../../core/combat/spell-notes';
 import { criticalHint, criticalTypedHint, fixedParts } from '../../../../core/combat/critical';
 import { metamagicSpentLine } from '../../../../core/resources/metamagic';
 import type { Pool } from '../../../../core/resources/pools';
@@ -143,6 +144,7 @@ export function castNotes(
     out.push(`${metamagicSpentLine(names, c.sorceryPointsSpent, spell.sorceryPoints)}.`);
   }
   out.push(spentLine(spell.economy));
+  out.push(...spellNotes(c.spellKey));
   return out;
 }
 

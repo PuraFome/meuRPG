@@ -10,6 +10,7 @@
   "target_id": "x",
   "hidden": true,
   "pending_id": "x",
+  "drain_of": "x",
   "key": "x",
   "d20": 1,
   "modifier": 1,
