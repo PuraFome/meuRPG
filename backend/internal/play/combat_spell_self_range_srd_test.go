@@ -405,6 +405,61 @@ func TestSRDVampiricTouchHealGuards(t *testing.T) {
 	})
 }
 
+// TestSRDVampiricTouchHealsWhatTheSlotRolls: the heal is half the damage of the hit after resistance, wherever
+// it lands, and a higher slot rolls more dice.
+func TestSRDVampiricTouchHealsWhatTheSlotRolls(t *testing.T) {
+	t.Parallel()
+	near := map[string][2]int32{"Capitão Goblin": {2, 4}, "Goblin 1": {14, 8}, "Goblin 2": {13, 8}}
+	t.Run("temporary hit points and the damage past 0 count", func(t *testing.T) {
+		t.Parallel()
+		a := newSrdParty(t)
+		e := a.rangeFight(t, "Mago", near)
+		a.correct(t, a.pens, hpIs(10))
+		if _, err := a.adjustHP(t, e, "Capitão Goblin", func(r *playv1.AdjustCombatantHitPointsRequest) {
+			r.Change = &playv1.AdjustCombatantHitPointsRequest_Heal{Heal: 0}
+			r.HitPointsTemporary = proto.Int32(5)
+		}); err != nil {
+			t.Fatalf("AdjustCombatantHitPoints() error = %v", err)
+		}
+		before, temp, _ := a.hp(t, "Capitão Goblin")
+		if temp != 5 {
+			t.Fatalf("the target has %d temporary hit points, want 5", temp)
+		}
+		id := a.takesWith(t, e, "Mago", vampiricTouch, slotOfLevel(3), []string{"Capitão Goblin"}).GetTargets()[0].GetPendingDamageId()
+		a.h.roller.queue(3, 3, 2) // 8 necrotic: 5 go to the temporary hit points, 3 to the creature
+		if dmg := a.mustDamage(t, a.ana, e, id, inAppDamage).GetPendingDamage(); dmg.GetAmount() != 8 {
+			t.Fatalf("damage = %v, want 8", dmg)
+		}
+		if after, temp, _ := a.hp(t, "Capitão Goblin"); temp != 0 || after != before-3 {
+			t.Errorf("the target has %d hit points and %d temporary, want %d and 0", after, temp, before-3)
+		}
+		if got := a.vitals(t, a.pens).GetHitPointsCurrent(); got != 14 {
+			t.Errorf("Mago has %d hit points, want 10 + 4", got)
+		}
+		if line := a.drainHealOf(t, a.master, e, "Mago", vampiricTouch); line.GetAmount() != 4 {
+			t.Errorf("the log line of the heal = %v, want 4 hit points", line)
+		}
+	})
+	t.Run("a 4th-level slot rolls 4d6 and heals half of it", func(t *testing.T) {
+		t.Parallel()
+		a := newSrdParty(t)
+		e := a.rangeFight(t, "Mago", near)
+		a.correct(t, a.pens, hpIs(10))
+		id := a.takesWith(t, e, "Mago", vampiricTouch, slotOfLevel(4), []string{"Capitão Goblin"}).GetTargets()[0].GetPendingDamageId()
+		a.h.roller.queue(3, 3, 3, 2) // 4d6: 11 necrotic
+		dmg := a.mustDamage(t, a.ana, e, id, inAppDamage).GetPendingDamage()
+		if dmg.GetAmount() != 11 || dmg.GetDamageTypeKey() != "damage-type:necrotic" {
+			t.Fatalf("damage = %v, want 11 necrotic from four dice", dmg)
+		}
+		if got := a.vitals(t, a.pens).GetHitPointsCurrent(); got != 15 {
+			t.Errorf("Mago has %d hit points, want 10 + 5", got)
+		}
+		if line := a.drainHealOf(t, a.master, e, "Mago", vampiricTouch); line.GetAmount() != 5 {
+			t.Errorf("the log line of the heal = %v, want 5 hit points", line)
+		}
+	})
+}
+
 // TestSRDProduceFlameReach: the hurl reaches 30 ft as a ranged spell attack.
 func TestSRDProduceFlameReach(t *testing.T) {
 	t.Parallel()
