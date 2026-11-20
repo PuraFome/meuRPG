@@ -239,7 +239,7 @@ func TestNpcCheckRolledWhileAnotherIsHeldSettlesTheFirstAsASkip(t *testing.T) {
 		t.Errorf("the master reads %v, want the second check alone", got)
 	}
 	_, err = n.pass(first, a.GetCheck().GetHoldId(), newKey())
-	wantCode(t, "the bard answers the first check", err, connect.CodeFailedPrecondition)
+	wantCode(t, "the bard answers the first check", err, connect.CodeNotFound)
 	for who, h := range map[string]heardBy{"the master": master, "the bard asked": bard} {
 		heard := false
 		for _, ev := range h.heard(t, n.h) {

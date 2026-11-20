@@ -271,7 +271,7 @@ func TestNpcCheckSkipGoesOnWithoutTheBards(t *testing.T) {
 		t.Fatalf("%d resolved events after a second skip, want 1", count)
 	}
 	_, err = n.answer(t, n.bia, hold, true, 4)
-	wantCode(t, "a bard answers after the skip", err, connect.CodeFailedPrecondition)
+	wantCode(t, "a bard answers after the skip", err, connect.CodeNotFound)
 	if left := n.uses(t, n.bri); left != 3 {
 		t.Errorf("Brisa has %d uses after the skip, want 3: nothing was spent", left)
 	}

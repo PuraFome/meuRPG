@@ -21,8 +21,8 @@ import (
 )
 
 // The bard's answer to the question of an NPC's check and the master's way out of it. The questions are asked in order: only the bard
-// of the first ask still open may answer, anyone else is told the roll is not found; a bard whose ask closed is told it was answered
-// already.
+// of the first ask still open may answer, anyone else is told the roll is not found, and so is a bard whose ask closed with no answer or
+// whose player the open scene is not open to; a bard that answered already is told so.
 
 // errStaleNpcCheck says the held check belongs to a session that is over: nothing can answer it any more.
 var errStaleNpcCheck = errors.New("the held check is from an earlier session")
@@ -303,8 +303,16 @@ func (a *npcAnswer) run(ctx context.Context, holdID string) (*playv1.CuttingWord
 	if k := asks[mine]; k.AnswerKey != nil && *k.AnswerKey == a.key {
 		return a.answered(ctx, k)
 	}
+	if viewers, err := sceneViewersOf(ctx, a.q, a.session); err != nil {
+		return nil, err
+	} else if !viewers.has(a.m.UserID) {
+		return nil, errHeldNotFound() // the scene is not open to this player any more: the question is gone for them
+	}
 	if err := a.requireFreshKey(ctx); err != nil {
 		return nil, err
+	}
+	if asks[mine].State == askClosed {
+		return nil, errHeldNotFound() // closed with no answer: the question is gone
 	}
 	if asks[mine].State != askAsked || hold.AnswerKey != nil {
 		return nil, errAnsweredAlready()

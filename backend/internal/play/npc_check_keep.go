@@ -18,22 +18,27 @@ import (
 // A check that waits is read as things stand, not as they stood when it was rolled. The next read of the held rolls or of the check, and
 // the next answer, find what changed since and settle it in a transaction of their own, before they go on: the creature's token the master
 // hid closes every question as the skip does (the bard asked now and the master are told), and a bard that is not a character in play of a
-// member any more (in the reserve, dead, deleted, or with no player) has its question let pass, the next bard is asked and told, and the
+// member any more (in the reserve, dead, deleted, or with no player), or whose player the open scene is no longer open to, has its question let pass, the next bard is asked and told, and the
 // check settles as the last answer settles it when none is left. The hide is a write of the maps module (and the stage's of this one, which
 // only changes the name the offers give), so nothing is settled by it directly: the checks settle where they are read.
 
 // errNoCheckToKeep says the session closed between the read and the write: there is nothing to keep.
 var errNoCheckToKeep = errors.New("no open session to keep the checks of")
 
-// npcCheckView is what a check that waits is measured against: the tokens of the session's map, and the characters in play of a member.
+// npcCheckView is what a check that waits is measured against: the tokens of the session's map, and the characters in play of a member
+// whose player the open scene is open to.
 type npcCheckView struct {
 	tokens map[string]cutting.Token
 	inPlay map[string]bool
 }
 
-// npcCheckViewOf reads the tokens of the session's current map and the party of the campaign.
+// npcCheckViewOf reads the tokens of the session's current map, the viewers of the open scene and the party of the campaign.
 func (s *Service) npcCheckViewOf(ctx context.Context, tx pgx.Tx, session playdb.GameSession) (npcCheckView, error) {
 	tokens, err := s.mapTokensOf(ctx, tx, session)
+	if err != nil {
+		return npcCheckView{}, err
+	}
+	scene, err := sceneViewersOf(ctx, s.queries.WithTx(tx), session)
 	if err != nil {
 		return npcCheckView{}, err
 	}
@@ -43,7 +48,7 @@ func (s *Service) npcCheckViewOf(ctx context.Context, tx pgx.Tx, session playdb.
 	}
 	v := npcCheckView{tokens: tokens, inPlay: map[string]bool{}}
 	for _, c := range party {
-		v.inPlay[c.ID] = c.PlayerUserID != ""
+		v.inPlay[c.ID] = c.PlayerUserID != "" && scene.has(c.PlayerUserID)
 	}
 	return v, nil
 }

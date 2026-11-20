@@ -106,10 +106,10 @@ func TestNpcCheckOfACreatureHiddenOnTheMapNowSettlesAsASkip(t *testing.T) {
 		"the next bard reads":        {func(n *npcTable, _ string, _, second *user) { n.mustNothing(second) }},
 		"the master reads the check": {func(n *npcTable, _ string, _, _ *user) { n.mustLatest(n.h.t) }},
 		"the bard asked now answers": {func(n *npcTable, hold string, first, _ *user) {
-			n.mustRefuse(first, hold, connect.CodeFailedPrecondition)
+			n.mustRefuse(first, hold, connect.CodeNotFound)
 		}},
 		"the next bard answers": {func(n *npcTable, hold string, _, second *user) {
-			n.mustRefuse(second, hold, connect.CodeFailedPrecondition)
+			n.mustRefuse(second, hold, connect.CodeNotFound)
 		}},
 	} {
 		t.Run(name, func(t *testing.T) {

@@ -4,7 +4,10 @@ import (
 	"fmt"
 	"testing"
 
+	"connectrpc.com/connect"
+
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
+	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 )
 
 // measuredTable is a table whose current map has the creature and both bards within 60 feet of each other, and a scene on that map open
@@ -89,4 +92,49 @@ func TestNpcCheckPickerCountsOnlyTheBardsInTheScene(t *testing.T) {
 			}
 		})
 	}
+}
+
+// bothInTheScene opens a scene to Ana and Bia and rolls the check both bards are asked about.
+func (n *npcTable) bothInTheScene(t *testing.T) (hold string, first, second *user) {
+	t.Helper()
+	point, _ := n.h.newScene(n.h.newMap(n.campaignID, gridColumns), "A clareira", true, 1)
+	n.openFor(t, point, n.ana, n.bia)
+	return n.twoAsked(t)
+}
+
+// TestNpcCheckLetsPassTheBardWhosePlayerLeftTheScene: the master took the player of the bard asked now out of the scene while the question
+// waited: the question is not offered to that bard, it passes to the next bard, and the master and the next bard are told.
+func TestNpcCheckLetsPassTheBardWhosePlayerLeftTheScene(t *testing.T) {
+	t.Parallel()
+	n := newNpcTable(t, charactersv1.CuttingWordsAsk_CUTTING_WORDS_ASK_ALL)
+	_, first, second := n.bothInTheScene(t)
+	n.mustOne(first)
+	master, nextEars := listen(t, n.h, n.campaignID, n.master.id, true), listen(t, n.h, n.campaignID, second.id, false)
+	n.mustSetAudience(t, second)
+	n.mustNothing(first)
+	n.mustOne(second)
+	got := n.mustLatest(t)
+	if got.GetSettled() || got.GetAsks()[0].GetState() != playv1.NpcCheckAskState_NPC_CHECK_ASK_STATE_PASSED || got.GetAsks()[1].GetState() != playv1.NpcCheckAskState_NPC_CHECK_ASK_STATE_WAITING {
+		t.Errorf("GetNpcCheck() = %v, want the first bard passed and the second asked, waiting", got)
+	}
+	if !n.changed(t, master) || !n.changed(t, nextEars) {
+		t.Error("the master and the next bard were not told that the question moved")
+	}
+}
+
+// TestNpcCheckRefusesTheAnswerOfTheBardWhosePlayerLeftTheScene: the same bard answers after the master took the player out of the scene:
+// the answer is refused as for a question that is gone, and nothing is spent.
+func TestNpcCheckRefusesTheAnswerOfTheBardWhosePlayerLeftTheScene(t *testing.T) {
+	t.Parallel()
+	n := newNpcTable(t, charactersv1.CuttingWordsAsk_CUTTING_WORDS_ASK_ALL)
+	hold, first, second := n.bothInTheScene(t)
+	before := n.uses(t, n.charOf(first))
+	n.mustSetAudience(t, second)
+	if _, err := n.answerAs(first, hold, newKey(), typedCut(3)); connect.CodeOf(err) != connect.CodeNotFound {
+		t.Errorf("the bard's cut error = %v, want %v", err, connect.CodeNotFound)
+	}
+	if after := n.uses(t, n.charOf(first)); after != before {
+		t.Errorf("the bard's uses %d -> %d, want none spent", before, after)
+	}
+	n.mustCut(second, hold)
 }

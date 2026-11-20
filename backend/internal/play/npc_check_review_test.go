@@ -265,7 +265,7 @@ func TestNpcCheckIsSettledAsASkipWhenACombatOpens(t *testing.T) {
 	wantHeard("the bard asked", bard, true)
 	wantHeard("a player that was not asked", elsewhere, false)
 	_, err = n.pass(first, hold, newKey())
-	wantCode(t, "the bard answers after the combat opened", err, connect.CodeFailedPrecondition)
+	wantCode(t, "the bard answers after the combat opened", err, connect.CodeNotFound)
 	_, err = n.roll(t, 12, true)
 	wantResourceBlocked(t, err, playv1.ResourceBlockedReason_RESOURCE_BLOCKED_REASON_COMBAT_OPEN)
 	if left := n.uses(t, n.charOf(first)); left != 3 {
