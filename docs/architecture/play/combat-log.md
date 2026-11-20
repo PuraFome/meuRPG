@@ -93,7 +93,7 @@ They are unrelated to the live stream's `session_seq`, the hint number ([Live se
 
 ### A reaction line that waits for a roll
 
-A Cutting Words line is pending while the replay of the held attack or spell attack waits for its roller (a Bardic die, Inspiração, Lucky).
+A Cutting Words line is pending while the replay of the held attack or spell attack waits for its roller (a Bardic die or Lucky).
 The master reads the die and "(aguardando a rolagem)"; no one reads a total, an armor class or an outcome.
 Every player reads the same neutral "diminuiu", whatever the question.
 The final `attack_rolled` or `spell_cast` of the held roll completes the line, linked to it by the reaction's group.
@@ -101,7 +101,7 @@ A player's line is completed only when that player hears the final event; for a 
 Undoing the final event puts the line back to pending.
 The reaction's own event cannot be undone.
 A fresh read and a `since_seq` delta give the same line, because the builder decides it, not the stream.
-Only Cutting Words writes a line that depends on the replay; a held check (a contest, Hide) is not completed this way.
+Only Cutting Words writes a line that depends on the replay; a held check (a contest, Hide) is not completed this way: its line keeps what the answer wrote when the replay asked, which has no total yet.
 
 ### When the answer is the whole log
 

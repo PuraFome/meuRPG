@@ -87,7 +87,7 @@ type reactionEvent struct {
 	// Feather Fall: the creatures saved.
 	Saved2 []string `json:"saved_ids,omitempty"`
 	// Slow Fall: the points taken off the fall (Before and After are the damage around it). On an Asked Cutting Words, what the
-	// group of Cutting Words took off the roll, which the roll that answers the question gives its After.
+	// group took off the roll; the completed line reads Before = the roll's total + Reduction.
 	Reduction int32 `json:"reduction,omitempty"`
 	// A reaction that was not answered but closed ("A Contramágica do Mago 2 fechou")
 	// is no event: only answers are written.

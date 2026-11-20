@@ -2,8 +2,11 @@ package play
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
+
+	"github.com/jackc/pgx/v5"
 
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/reaction"
@@ -17,13 +20,14 @@ import (
 // is written it says what a roll that asked nothing says (completeAnswers). No event is ever changed.
 
 // markAsked marks the answers of the windows of a held attack or spell attack whose replay asked its roller, so the log completes them
-// when the roll is written. A held check asks the same way and is not marked (it keeps the numbers it had).
+// when the roll is written. A held check asks the same way and is not marked: its line is not completed this way, and keeps what the answer wrote when the
+// replay asked, before the roll had a total.
 func markAsked(c *combatTx, h playdb.ReactionHold, windows []playdb.ReactionWindow, st *replayState) {
 	if h.Kind != "attack" && h.Kind != "cast" {
 		return
 	}
 	for _, ref := range answersOf(c, windows) {
-		if !ref.ev.Ineffect { // an answer that did nothing says so whatever the roll becomes
+		if ref.ev.Kind == string(reaction.CuttingWords) && !ref.ev.Ineffect { // an answer that did nothing says so whatever the roll becomes
 			ref.ev.Asked, ref.ev.Group, ref.ev.Reduction = true, h.GroupID, st.reduction
 		}
 	}
@@ -52,6 +56,9 @@ func (s *Service) cutGroupOfAnswer(ctx context.Context, c *combatTx) (string, er
 		return "", nil
 	}
 	row, err := c.q.GetSessionEventByIdempotencyKey(ctx, playdb.GetSessionEventByIdempotencyKeyParams{GameSessionID: c.session.ID, IdempotencyKey: &h.Key})
+	if errors.Is(err, pgx.ErrNoRows) { // no event holds the roll: nothing to complete, and the answer goes on
+		return "", nil
+	}
 	if err != nil {
 		return "", fmt.Errorf("find the event that held the roll: %w", err)
 	}
