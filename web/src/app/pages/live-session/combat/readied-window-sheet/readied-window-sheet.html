@@ -57,7 +57,7 @@
         <ul class="legend" data-testid="readied-legend">
           @for (line of view.legend; track line.text) {
             <li>
-              <mat-icon aria-hidden="true">{{ line.icon }}</mat-icon>
+              <mat-icon aria-hidden="true" [class.mr-icon-filled]="line.icon === 'square'">{{ line.icon }}</mat-icon>
               <span>
                 @if (line.lead) {
                   <b>{{ line.lead }}</b>

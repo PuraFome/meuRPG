@@ -268,6 +268,18 @@
   }
 }
 
+// The readied move's two buttons stay stacked at full width in the side column too (board 857-07).
+.move__buttons--stack {
+  @media (min-width: 1024px) {
+    flex-direction: column;
+
+    > .move__go,
+    > .move__cancel {
+      width: 100%;
+    }
+  }
+}
+
 .move__go {
   --mat-button-filled-container-height: 48px;
   width: 100%;
