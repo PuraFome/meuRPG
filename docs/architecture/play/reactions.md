@@ -167,7 +167,7 @@ A damage roll opens its window in `damageWindows`, for every damage that is not 
 The window is the same for a player's creature and for an NPC.
 The log line of the cut names the die, what it came off (the attack, the test or the damage) and the roll before and after; a player's line says only whether the attack still hit.
 When the replay asks its roller (a Bardic die, Inspiração, Lucky), the line waits for that roll: the master reads the die and "(aguardando a rolagem)", every player reads "diminuiu", and the final `attack_rolled` or `spell_cast` completes it ([Combat log](combat-log.md#a-reaction-line-that-waits-for-a-roll)).
-Only Cutting Words on an attack or a spell attack waits this way; a held check (a contest, Hide) keeps the numbers it had.
+Only Cutting Words on an attack or a spell attack waits this way; a held check (a contest, Hide) is not completed this way.
 
 ## The feature window
 

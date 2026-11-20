@@ -120,28 +120,32 @@ func TestThePendingLineOfACutIsTheSameForEveryQuestion(t *testing.T) {
 	asks := []struct {
 		name string
 		set  func(t *testing.T, a *armed, e *playv1.Encounter) func(*playv1.RollAttackRequest)
+		asks func(*playv1.HeldRollOffer) bool
 	}{
 		{"the Bardic die", func(t *testing.T, a *armed, e *playv1.Encounter) func(*playv1.RollAttackRequest) {
 			a.giveCombatantDie(t, "Pipo", e)
 			return d20(10)
-		}},
-		{"the Inspiração", func(t *testing.T, a *armed, e *playv1.Encounter) func(*playv1.RollAttackRequest) {
+		}, func(o *playv1.HeldRollOffer) bool { return o.GetDie() != nil }},
+		{"Lucky asked after the Inspiração was spent with the roll", func(t *testing.T, a *armed, e *playv1.Encounter) func(*playv1.RollAttackRequest) {
 			favorFightOf(t, a, e).give(t, a.toren)
 			return func(r *playv1.RollAttackRequest) { r.D20Faces, r.SpendFavor = []int32{1, 1}, true }
-		}},
-		{"Lucky", func(*testing.T, *armed, *playv1.Encounter) func(*playv1.RollAttackRequest) { return d20(1) }},
+		}, func(o *playv1.HeldRollOffer) bool { return o.GetLucky() != nil }},
+		{"Lucky", func(*testing.T, *armed, *playv1.Encounter) func(*playv1.RollAttackRequest) { return d20(1) },
+			func(o *playv1.HeldRollOffer) bool { return o.GetLucky() != nil }},
 	}
 	read := map[string][]string{}
 	for _, ask := range asks {
 		a, e := bardTable(t)
-		heldWeaponCut(t, a, e, ask.set(t, a, e))
+		if offer := heldWeaponCut(t, a, e, ask.set(t, a, e)); !ask.asks(offer) {
+			t.Fatalf("%s: Pipo's question = %v, not the one the case is about", ask.name, offer)
+		}
 		for name, u := range a.bardTableReaders() {
 			read[name] = append(read[name], strings.Join(a.cutLinesOf(t, u, e), "\n"))
 		}
 	}
 	for name, lines := range read {
 		if len(lines) != len(asks) || slices.Compact(slices.Clone(lines))[0] != cutPendingPlayers || len(slices.Compact(slices.Clone(lines))) != 1 {
-			t.Errorf("%s reads %q across the Bardic die, the Inspiração and Lucky, want %q every time", name, lines, cutPendingPlayers)
+			t.Errorf("%s reads %q across the Bardic die, Lucky after the Inspiração and Lucky, want %q every time", name, lines, cutPendingPlayers)
 		}
 	}
 }
@@ -310,7 +314,24 @@ func TestACutLineOfAHiddenRollerStaysNeutralForThePlayers(t *testing.T) {
 	}
 }
 
-// reactionEntry is the reaction line u reads of the log response, "" when it holds none.
+// A roller hidden from the start cannot be cut: the bard does not see it, so no window holds the attack and no cut line is written for
+// anyone, the master included.
+func TestAHiddenRollerFromTheStartIsNotCut(t *testing.T) {
+	t.Parallel()
+	a, e := reactorFight(t, loreBard)
+	setHidden(t, a, e, "Goblin", true)
+	held := a.mustAttack(t, a.master, e, "Goblin", sword, "Toren", d20(8))
+	if held.GetRoll().GetHeldForReaction() || a.windowOf(t, a.ana, playv1.ReactionKind_REACTION_KIND_CUTTING_WORDS) != nil {
+		t.Fatalf("the hidden goblin's attack = %v, want no Cutting Words window", held.GetRoll())
+	}
+	for name, u := range map[string]*user{"the master": a.master, "the bard's player": a.ana, "Toren's player": a.caio, "Brisa's player": a.bia} {
+		if got := a.cutLinesOf(t, u, e); len(got) != 0 {
+			t.Errorf("%s reads the cut lines %q of a roller that was never cut", name, got)
+		}
+	}
+}
+
+// reactionEntry is the reaction entry of the log response, nil when it holds none.
 func reactionEntry(res *playv1.ListCombatLogResponse) *playv1.CombatLogEntry {
 	for _, r := range res.GetRounds() {
 		for _, l := range r.GetEntries() {
@@ -338,12 +359,19 @@ func TestACutLineIsCompletedInTheDeltaOfTheAnswer(t *testing.T) {
 	t.Parallel()
 	a, e := bardTable(t)
 	offer := heldWeaponCut(t, a, e, d20(1))
+	if offer.GetLucky() == nil {
+		t.Fatalf("Pipo's question = %v, want Lucky's", offer)
+	}
 	held := map[string]int64{}
 	users := map[string]*user{"the master": a.master, "Pipo's player": a.caio, "Toren's player": a.ana, "Orla's player": a.bia}
 	for name, u := range users {
 		first := a.log(t, u, e)
-		if got := reactionEntry(first).GetReactionTextPt(); got != cutPendingPlayers && got != cutPendingMaster {
-			t.Errorf("%s opens the log in the middle and reads %q, want the pending line", name, got)
+		want := cutPendingPlayers
+		if u == a.master {
+			want = cutPendingMaster
+		}
+		if got := reactionEntry(first).GetReactionTextPt(); got != want {
+			t.Errorf("%s opens the log in the middle and reads %q, want %q", name, got, want)
 		}
 		held[name] = first.GetLastSeq()
 	}
@@ -360,6 +388,9 @@ func TestACutLineIsCompletedInTheDeltaOfTheAnswer(t *testing.T) {
 		if got != want {
 			t.Errorf("%s reads %q in the delta after the answer (full = %v), want %q", name, got, delta.GetFull(), want)
 		}
+		if delta.GetFull() {
+			t.Errorf("%s is answered with the whole log, want a delta: the roll that completes the line is a kind a delta may carry", name)
+		}
 	}
 }
 
@@ -369,6 +400,9 @@ func TestUndoingTheAnsweredRollPutsTheCutLineBackToWaiting(t *testing.T) {
 	t.Parallel()
 	a, e := bardTable(t)
 	offer := heldWeaponCut(t, a, e, d20(1))
+	if offer.GetLucky() == nil {
+		t.Fatalf("Pipo's question = %v, want Lucky's", offer)
+	}
 	if _, err := a.answerHeldRoll(t, a.caio, offer.GetHoldId(), luckyAnswer(15)); err != nil {
 		t.Fatalf("AnswerHeldRoll() error = %v", err)
 	}
@@ -382,8 +416,12 @@ func TestUndoingTheAnsweredRollPutsTheCutLineBackToWaiting(t *testing.T) {
 	if got := a.log(t, a.master, e).GetUndoableEventId(); got == reactionID {
 		t.Errorf("the log offers the reaction's own event %s to undo", got)
 	}
-	if err := a.undo(t, a.master, e, reactionID); err == nil {
-		t.Error("UndoLastAction() of the reaction's own event succeeded, want it refused")
+	err := a.undo(t, a.master, e, reactionID)
+	if err == nil {
+		t.Fatal("UndoLastAction() of the reaction's own event succeeded, want it refused")
+	}
+	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Errorf("UndoLastAction() of the reaction's own event error = %v, want failed_precondition", err)
 	}
 	a.wantLines(t, e, a.bardTableReaders(), cutPendingMaster, cutPendingPlayers)
 }

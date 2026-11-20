@@ -17,6 +17,7 @@ import (
 // the answer is a roller the players never hear: their line stays neutral after it, and no line of the roll reaches them.
 //
 // The table is the attack rolls' one, with a lore bard (Reator, Ana's) next to the skeleton, who holds the die and attacks Toren (Caio's).
+// The needle is text because the line has no numeric field (as the Parry rows' words).
 // The needles are the pieces of the master's own lines that carry the numbers (they hold letters outside a to f and an arrow, and
 // match nothing else), and the master's read of each is the positive control.
 
@@ -166,11 +167,16 @@ func TestAPendingCutLineReachesPlayersWithNoNumbers(t *testing.T) {
 		t.Fatalf("the master's log holds no completed line: %s", logReplyOf(done).body)
 	}
 	ct.needle(t, "cut-completed-master-line", strings.TrimSuffix(fragment, "."), done)
+	verb := "errou" // what the players read of the outcome the master read
+	if strings.HasSuffix(fragment, "acertou.") {
+		verb = "ainda acertou"
+	}
+	wantAfter := cutBard + " usou Palavras de Interrupção: o ataque de " + ct.name + " " + verb + "."
 	after := map[*person][]reply{}
 	for _, p := range players {
 		after[p] = ct.readsOfLog(p)
-		if lines := reactionTexts(logReplyOf(after[p]).body); len(lines) != 1 || !strings.HasPrefix(lines[0], cutBard+" usou Palavras de Interrupção: o ataque de "+ct.name) {
-			t.Errorf("%s reads %q after the answer, want the bard's line about the skeleton's attack", p.name, lines)
+		if lines := reactionTexts(logReplyOf(after[p]).body); len(lines) != 1 || lines[0] != wantAfter {
+			t.Errorf("%s reads %q after the answer, want [%q]", p.name, lines, wantAfter)
 		}
 	}
 	ct.checkNothingOf(t, "after the answer", after)
@@ -196,6 +202,10 @@ func TestAHiddenRollersCutLineStaysNeutralForThePlayers(t *testing.T) {
 	players := []*person{ct.ana, ct.caio}
 	master := ct.readsOfLog(ct.master)
 	ct.needle(t, "cut-pending-master-line", cutPendingNeedle, master)
+	held := map[*person]int64{} // the number each player holds while the question waits
+	for _, p := range players {
+		held[p] = ct.logOf(p).GetLastSeq()
+	}
 
 	must(ct.master.combat.SetCombatantHidden(t.Context(), rq(&playv1.SetCombatantHiddenRequest{
 		CampaignId: ct.campaign, EncounterId: ct.encounter.GetId(), CombatantId: ct.ids["Esqueleto"], IdempotencyKey: newKey(), Hidden: true,
@@ -222,7 +232,7 @@ func TestAHiddenRollersCutLineStaysNeutralForThePlayers(t *testing.T) {
 	ct.checkNothingOf(t, "after the hidden roller's answer", after)
 	// The same reads through the other doors a player has to the log.
 	for _, p := range players {
-		since := p.call(playv1connect.CombatServiceListCombatLogProcedure, &playv1.ListCombatLogRequest{CampaignId: ct.campaign, EncounterId: ct.encounter.GetId(), SinceSeq: 1})
+		since := p.call(playv1connect.CombatServiceListCombatLogProcedure, &playv1.ListCombatLogRequest{CampaignId: ct.campaign, EncounterId: ct.encounter.GetId(), SinceSeq: held[p]})
 		for _, f := range ct.inspect(p, since, nil) {
 			t.Errorf("the delta of %s: %s", p.name, f)
 		}
