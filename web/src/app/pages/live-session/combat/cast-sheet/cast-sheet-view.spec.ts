@@ -104,6 +104,10 @@ describe('reachFtOf', () => {
     expect(reachFtOf(details())).toBeNull();
     expect(reachFtOf(null)).toBeNull();
   });
+
+  it('has no distance for a spell of range Self that picks its creature at a distance on the server (Vampiric Touch, Produce Flame, Eyebite)', () => {
+    expect(reachFtOf(details({ range: { kind: SpellRangeKind.SELF, distanceFt: 0 } }))).toBeNull();
+  });
 });
 
 describe('castRowsOf', () => {
@@ -117,6 +121,12 @@ describe('castRowsOf', () => {
     expect(castRowsOf(targets, 'heal', 's', null).map((r) => r.id)).toEqual(['s', 'g1']);
     expect(castRowsOf(targets, 'plain', 's', null).map((r) => r.id)).toEqual(['s', 'g1']);
     expect(castRowsOf(undefined, 'plain', 's', null)).toEqual([]);
+  });
+
+  it('says "Longe demais" with no distance for a creature out of reach of a spell that has no reach here (range Self, touch)', () => {
+    const far = create(SpellTargetsSchema, { targets: [reach('g1', { tooFar: true })] } as never);
+    const rows = castRowsOf(far, 'attack', 's', null);
+    expect(rows.map((r) => r.blocked)).toEqual(['Longe demais']);
   });
 });
 
@@ -550,6 +560,19 @@ describe('the result of the cast', () => {
     expect(full[2]).toContain('Acelerada');
     expect(full[2]).toContain('Metamagia');
     expect(castNotes(create(SpellCastSchema, {}), spell).length).toBe(1);
+  });
+
+  it('ends the notes of a cast with those of its spell', () => {
+    const spell = {
+      name: 'Toque Vampírico',
+      economy: ActionEconomy.ACTION,
+      metaOptions: [],
+      sorceryPoints: null,
+    };
+    const notes = castNotes(create(SpellCastSchema, { spellKey: 'spell:vampiric-touch' }), spell);
+    expect(notes.length).toBe(2);
+    expect(notes[1]).toContain('repetir o ataque');
+    expect(castNotes(create(SpellCastSchema, { spellKey: 'spell:shield' }), spell).length).toBe(1);
   });
 
   it('knows a plain cast: nothing to roll, hit or save', () => {

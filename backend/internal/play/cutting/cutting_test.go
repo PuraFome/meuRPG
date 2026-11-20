@@ -1,0 +1,353 @@
+package cutting_test
+
+import (
+	"slices"
+	"testing"
+
+	"github.com/PuraFome/meuRPG/backend/internal/play/cutting"
+	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
+)
+
+func TestAsks(t *testing.T) {
+	t.Parallel()
+	base := cutting.Bard{Feature: true, Ask: "all", HitPoints: 7, UsesLeft: 2}
+	tests := []struct {
+		name string
+		edit func(*cutting.Bard)
+		want bool
+	}{
+		{"a Lore bard that asks about everything", func(*cutting.Bard) {}, true},
+		{"asks about attacks only", func(b *cutting.Bard) { b.Ask = "attacks" }, false},
+		{"never asks", func(b *cutting.Bard) { b.Ask = "never" }, false},
+		{"an empty setting is the default, attacks", func(b *cutting.Bard) { b.Ask = "" }, false},
+		{"no Cutting Words", func(b *cutting.Bard) { b.Feature = false }, false},
+		{"no use of Bardic Inspiration left", func(b *cutting.Bard) { b.UsesLeft = 0 }, false},
+		{"at 0 hit points", func(b *cutting.Bard) { b.HitPoints = 0 }, false},
+		{"with the last use", func(b *cutting.Bard) { b.UsesLeft = 1 }, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			b := base
+			tt.edit(&b)
+			if got := b.Asks(); got != tt.want {
+				t.Errorf("Asks() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+// TestMayCut: the use left is not asked at the answer (the ask already took it into account); the setting and the hit points are.
+func TestMayCut(t *testing.T) {
+	t.Parallel()
+	base := cutting.Bard{Feature: true, Ask: "all", HitPoints: 7}
+	tests := []struct {
+		name string
+		edit func(*cutting.Bard)
+		want bool
+	}{
+		{"a Lore bard that asks about everything", func(*cutting.Bard) {}, true},
+		{"no use left is for Asks, not for MayCut", func(b *cutting.Bard) { b.UsesLeft = 0 }, true},
+		{"the setting changed to attacks only", func(b *cutting.Bard) { b.Ask = "attacks" }, false},
+		{"the setting changed to never", func(b *cutting.Bard) { b.Ask = "never" }, false},
+		{"fell to 0 hit points", func(b *cutting.Bard) { b.HitPoints = 0 }, false},
+		{"no Cutting Words", func(b *cutting.Bard) { b.Feature = false }, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			b := base
+			tt.edit(&b)
+			if got := b.MayCut(); got != tt.want {
+				t.Errorf("MayCut() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+// TestPlaceMeasures: the map measures a bard against the creature only when it places both of them.
+func TestPlaceMeasures(t *testing.T) {
+	t.Parallel()
+	place := cutting.Place{NPC: "npc", Tokens: map[string]cutting.Token{"npc": {}, "bard": {}, "other": {}}}
+	for bard, want := range map[string]bool{"bard": true, "other": true, "elsewhere": false} {
+		if got := place.Measures(bard); got != want {
+			t.Errorf("Measures(%s) = %v, want %v", bard, got, want)
+		}
+	}
+	if (cutting.Place{NPC: "npc", Tokens: map[string]cutting.Token{"bard": {}}}).Measures("bard") {
+		t.Error("Measures() = true with no token of the creature, want false")
+	}
+	if (cutting.Place{NPC: "npc"}).Measures("bard") {
+		t.Error("Measures() = true on a map with no tokens, want false")
+	}
+}
+
+func TestDie(t *testing.T) {
+	t.Parallel()
+	for level, want := range map[int]int{1: 6, 4: 6, 5: 8, 9: 8, 10: 10, 14: 10, 15: 12, 20: 12} {
+		if got := cutting.Die(level); got != want {
+			t.Errorf("Die(%d) = %d, want %d", level, got, want)
+		}
+	}
+}
+
+func TestSightOnTheMap(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name      string
+		sight     cutting.Sight
+		wantSees  bool
+		wantNamed bool
+	}{
+		{"both tokens, 60 feet, in the open", cutting.Sight{Mapped: true, DistanceFt: 60, Seen: true, InScene: true}, true, true},
+		{"both tokens, 65 feet", cutting.Sight{Mapped: true, DistanceFt: 65, Seen: true, InScene: true}, false, false},
+		{"close but in the dark of the fog", cutting.Sight{Mapped: true, DistanceFt: 10, Seen: false, InScene: true}, false, false},
+		{"close but the token is hidden", cutting.Sight{Mapped: true, DistanceFt: 10, Seen: true, TokenHidden: true, InScene: true}, false, false},
+		{"the box says yes and the map says no: the map wins", cutting.Sight{Mapped: true, DistanceFt: 100, Seen: true, Box: true, InScene: true}, false, false},
+		{"the map says yes, the bard's player is outside the scene: nobody sees it", cutting.Sight{Mapped: true, DistanceFt: 5, Seen: true}, false, false},
+		{"the map says yes and the box says yes, the bard's player is outside the scene", cutting.Sight{Mapped: true, DistanceFt: 5, Seen: true, Box: true}, false, false},
+		{"the box says no and the map says yes: the map wins", cutting.Sight{Mapped: true, DistanceFt: 5, Seen: true, InScene: true}, true, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			if got := tt.sight.Sees(); got != tt.wantSees {
+				t.Errorf("Sees() = %v, want %v", got, tt.wantSees)
+			}
+			if got := tt.sight.Named(); got != tt.wantNamed {
+				t.Errorf("Named() = %v, want %v", got, tt.wantNamed)
+			}
+		})
+	}
+}
+
+func TestSightWithoutAMap(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name      string
+		sight     cutting.Sight
+		wantSees  bool
+		wantNamed bool
+	}{
+		{"the master's box is off", cutting.Sight{}, false, false},
+		{"the box is on, the creature is off the stage", cutting.Sight{Box: true, InScene: true}, true, false},
+		{"the box is on, the creature is on the stage for the bard", cutting.Sight{Box: true, OnStage: true, InScene: true}, true, true},
+		{"the box is off, the creature is on the stage", cutting.Sight{OnStage: true, InScene: true}, false, false},
+		{"the box is on but the creature's token is hidden", cutting.Sight{Box: true, InScene: true, TokenHidden: true}, false, false},
+		{"the box is on, the creature is on the stage, its token is hidden", cutting.Sight{Box: true, OnStage: true, InScene: true, TokenHidden: true}, false, false},
+		{"the box is on, the bard's player is outside the scene", cutting.Sight{Box: true}, false, false},
+		{"the box is on, the creature is on the stage, the bard's player is outside the scene", cutting.Sight{Box: true, OnStage: true}, false, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			if got := tt.sight.Sees(); got != tt.wantSees {
+				t.Errorf("Sees() = %v, want %v", got, tt.wantSees)
+			}
+			if got := tt.sight.Named(); got != tt.wantNamed {
+				t.Errorf("Named() = %v, want %v", got, tt.wantNamed)
+			}
+		})
+	}
+}
+
+func TestLabel(t *testing.T) {
+	t.Parallel()
+	if got := cutting.Label("Capitão Brann", true); got != "Capitão Brann" {
+		t.Errorf("Label(named) = %q", got)
+	}
+	if got := cutting.Label("Capitão Brann", false); got != "uma criatura" {
+		t.Errorf("Label(unnamed) = %q, want uma criatura", got)
+	}
+}
+
+func TestSettle(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name      string
+		total     int
+		cuts      []int
+		wantTotal int
+		wantCut   int
+	}{
+		{"nobody cut", 15, nil, 15, 0},
+		{"one die", 15, []int{4}, 11, 4},
+		{"two dice come off one after the other", 15, []int{4, 3}, 8, 7},
+		{"the total may go below zero: it is a check, not a damage", 2, []int{6}, -4, 6},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			total, cut := cutting.Settle(tt.total, tt.cuts)
+			if total != tt.wantTotal || cut != tt.wantCut {
+				t.Errorf("Settle(%d, %v) = %d, %d; want %d, %d", tt.total, tt.cuts, total, cut, tt.wantTotal, tt.wantCut)
+			}
+		})
+	}
+}
+
+func TestCurrent(t *testing.T) {
+	t.Parallel()
+	asks := []cutting.State{cutting.Cut, cutting.Waiting, cutting.Waiting}
+	if got := cutting.Current(asks); got != 1 {
+		t.Errorf("Current(%v) = %d, want 1: the first question still open, in order", asks, got)
+	}
+	if got := cutting.Current([]cutting.State{cutting.Cut, cutting.Passed, cutting.Closed}); got != -1 {
+		t.Errorf("Current(all answered) = %d, want -1", got)
+	}
+	if got := cutting.Current(nil); got != -1 {
+		t.Errorf("Current(nil) = %d, want -1", got)
+	}
+}
+
+func TestChecks(t *testing.T) {
+	t.Parallel()
+	for _, key := range []string{"skill:deception", "skill:persuasion", "skill:intimidation", "ability:cha", "ability:str", "skill:sleight-of-hand"} {
+		if !cutting.ValidCheck(key) {
+			t.Errorf("ValidCheck(%q) = false", key)
+		}
+	}
+	for _, key := range []string{"", "save:wis", "skill:", "skill:bogus", "ability:luck", "monster:bandit", "initiative"} {
+		if cutting.ValidCheck(key) {
+			t.Errorf("ValidCheck(%q) = true", key)
+		}
+	}
+	keys := cutting.CheckKeys()
+	if len(keys) != 24 || !slices.IsSorted(keys[6:]) {
+		t.Errorf("CheckKeys() = %d keys %v, want the six abilities and the eighteen skills in alphabetical order", len(keys), keys)
+	}
+	if keys[0] != "ability:str" || keys[5] != "ability:cha" {
+		t.Errorf("CheckKeys() starts with %v, want the abilities in sheet order", keys[:6])
+	}
+}
+
+func TestParseState(t *testing.T) {
+	t.Parallel()
+	for in, want := range map[string]cutting.State{
+		cutting.StateAsked: cutting.Waiting, cutting.StateCut: cutting.Cut, cutting.StatePassed: cutting.Passed, cutting.StateClosed: cutting.Closed,
+		"": cutting.Waiting, "unknown": cutting.Waiting,
+	} {
+		if got := cutting.ParseState(in); got != want {
+			t.Errorf("ParseState(%q) = %v, want %v", in, got, want)
+		}
+	}
+}
+
+func TestPlaceSightOf(t *testing.T) {
+	t.Parallel()
+	yes := func(grid.Square) bool { return true }
+	both := cutting.Place{NPC: "npc", Tokens: map[string]cutting.Token{
+		"npc":  {Sq: grid.Square{Col: 10, Row: 0}, Hidden: true},
+		"bard": {Sq: grid.Square{Col: 0, Row: 0}},
+	}}
+	got := both.SightOf("bard", true, yes, true, true)
+	if !got.Mapped || got.DistanceFt != 50 || !got.Seen || !got.TokenHidden || got.Sees() {
+		t.Errorf("both tokens = %+v, want the map's sight (50 ft, the hidden token unseen), whatever the box and the stage say", got)
+	}
+	if blind := both.SightOf("bard", true, func(grid.Square) bool { return false }, true, true); blind.Seen {
+		t.Errorf("a bard whose player does not see the square = %+v, want Seen false", blind)
+	}
+	shown := cutting.Place{NPC: "npc", Tokens: map[string]cutting.Token{"npc": {Sq: grid.Square{Col: 2}}, "bard": {}}}
+	if got := shown.SightOf("bard", true, yes, true, true); !got.Mapped || !got.Sees() || !got.Named() {
+		t.Errorf("both tokens within 60 feet, the bard's player in the scene = %+v, want the creature seen and named", got)
+	}
+	if got := shown.SightOf("bard", true, yes, true, false); !got.Mapped || got.Sees() || got.Named() {
+		t.Errorf("both tokens within 60 feet, the bard's player outside the scene = %+v, want a creature nobody sees", got)
+	}
+	noBard := cutting.Place{NPC: "npc", Tokens: map[string]cutting.Token{"npc": {}}}
+	if got := noBard.SightOf("bard", true, yes, true, true); got != (cutting.Sight{Box: true, OnStage: true, InScene: true}) {
+		t.Errorf("a bard with no token = %+v, want the box, the stage and the scene", got)
+	}
+	if got := noBard.SightOf("bard", true, yes, false, false); got.Sees() {
+		t.Errorf("a bard with no token whose player is outside the scene = %+v, want a creature it does not see", got)
+	}
+	if got := (cutting.Place{NPC: "npc"}).SightOf("bard", false, yes, false, false); got != (cutting.Sight{}) {
+		t.Errorf("no map = %+v, want nothing seen", got)
+	}
+}
+
+// TestPlaceSightOfAHiddenCreatureWithNoBardToken: the creature's own token is read first: hidden, nobody sees it, whatever the box and
+// the stage say and whether or not the bard has a token (and whether or not the map has a grid).
+func TestPlaceSightOfAHiddenCreatureWithNoBardToken(t *testing.T) {
+	t.Parallel()
+	yes := func(grid.Square) bool { return true }
+	for name, place := range map[string]cutting.Place{
+		"the bard has no token": {NPC: "npc", Tokens: map[string]cutting.Token{"npc": {Hidden: true}}},
+		"a map with no grid":    {NPC: "npc", Tokens: map[string]cutting.Token{"npc": {Hidden: true, Unmeasured: true}, "bard": {Unmeasured: true}}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			got := place.SightOf("bard", true, yes, true, true)
+			if got.Sees() || got.Named() || !got.TokenHidden {
+				t.Errorf("SightOf() = %+v, want a creature nobody sees, whatever the box says", got)
+			}
+		})
+	}
+	shown := cutting.Place{NPC: "npc", Tokens: map[string]cutting.Token{"npc": {Unmeasured: true}, "bard": {Unmeasured: true}}}
+	if got := shown.SightOf("bard", true, yes, true, true); got.Mapped || !got.Sees() || !got.Named() {
+		t.Errorf("a shown creature on a map with no grid = %+v, want the box and the stage to decide", got)
+	}
+}
+
+// TestPlaceMeasuresNeedsAGrid: the tokens of a map with no grid are on it but have no square: the map measures nothing.
+func TestPlaceMeasuresNeedsAGrid(t *testing.T) {
+	t.Parallel()
+	place := cutting.Place{NPC: "npc", Tokens: map[string]cutting.Token{"npc": {Unmeasured: true}, "bard": {Unmeasured: true}}}
+	if place.Measures("bard") {
+		t.Error("Measures() = true on a map with no grid, want false")
+	}
+}
+
+func TestWhyNobody(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name                   string
+		bards, asked           int
+		charmImmune, tokenHide bool
+		want                   string
+	}{
+		{"a bard is asked", 2, 1, true, true, ""},
+		{"no bard can cut", 0, 0, true, true, cutting.NobodyNoBard},
+		{"the creature is immune to being charmed", 2, 0, true, true, cutting.NobodyCharmImmune},
+		{"its token is hidden", 2, 0, false, true, cutting.NobodyTokenHidden},
+		{"nobody sees it", 2, 0, false, false, cutting.NobodySees},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			if got := cutting.WhyNobody(tt.bards, tt.asked, tt.charmImmune, tt.tokenHide); got != tt.want {
+				t.Errorf("WhyNobody() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestNextMove(t *testing.T) {
+	t.Parallel()
+	asked, cut := cutting.Waiting, cutting.Cut
+	tests := []struct {
+		name       string
+		states     []cutting.State
+		inPlay     []bool
+		hidden     bool
+		want       cutting.Move
+		wantAtSlot int
+	}{
+		{"the bard asked is in play", []cutting.State{asked, asked}, []bool{true, true}, false, cutting.Stand, -1},
+		{"the bard asked left play", []cutting.State{asked, asked}, []bool{false, true}, false, cutting.Pass, 0},
+		{"a bard that is not asked may be out of play", []cutting.State{asked, asked}, []bool{true, false}, false, cutting.Stand, -1},
+		{"the second bard asked left play", []cutting.State{cut, asked}, []bool{true, false}, false, cutting.Pass, 1},
+		{"no question is open any more", []cutting.State{cut, cutting.Passed}, []bool{true, true}, false, cutting.Finish, -1},
+		{"a hidden creature closes the check whatever the bards are", []cutting.State{asked}, []bool{false}, true, cutting.Skip, -1},
+		{"a hidden creature closes a check with no question open", []cutting.State{cut}, []bool{true}, true, cutting.Skip, -1},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			got, at := cutting.NextMove(tt.states, tt.inPlay, tt.hidden)
+			if got != tt.want || at != tt.wantAtSlot {
+				t.Errorf("NextMove() = %v, %d; want %v, %d", got, at, tt.want, tt.wantAtSlot)
+			}
+		})
+	}
+}

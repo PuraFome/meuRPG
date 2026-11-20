@@ -5,45 +5,19 @@ import {
   CombatantState,
   type Encounter,
 } from '../../../gen/meurpg/play/v1/combat_pb';
-import { article } from './combat-log';
 import { treatedSourceName } from './combat-dice';
+import { article } from './combat-log';
+import { stateWord } from './state-word';
 import { creatureTurnTitle, isCreature } from './creature-names';
 import { afterTurn, jointTurn, listNames, type JointTurn, npcPlural } from './joint-turn';
+
+export { stateWord };
 
 /**
  * What the combat screens say about an encounter, kept as small pure
  * functions: the words, the formula, the tie groups, whose turn comes next
  * and what the player's banner reads. Tested without a DOM.
  */
-
-/** How hurt an NPC is, as a word a player may read (RN-20), and where a
- * player's character is when it is at 0 hit points: "Caído", "Estável",
- * "Morrendo" (only the master gets that one) or "Morto". The word of a
- * person has a gender, taken from the name the way `article` does
- * ("Brisa" is "Caída"). */
-export function stateWord(state: CombatantState, label = ''): string {
-  const feminine = label !== '' && article(label) === 'a';
-  switch (state) {
-    case CombatantState.UNHURT:
-      return 'Ileso';
-    case CombatantState.HURT:
-      return 'Ferido';
-    case CombatantState.BADLY_HURT:
-      return 'Muito ferido';
-    case CombatantState.DEFEATED:
-      return 'Derrotado';
-    case CombatantState.DOWN:
-      return feminine ? 'Caída' : 'Caído';
-    case CombatantState.DYING:
-      return 'Morrendo';
-    case CombatantState.STABLE:
-      return 'Estável';
-    case CombatantState.DEAD:
-      return feminine ? 'Morta' : 'Morto';
-    default:
-      return '';
-  }
-}
 
 /** Whether a player's character is at 0 hit points and still in the story:
  * down, stable or dying. */

@@ -35,6 +35,7 @@ var heldKindProto = map[heldKind]playv1.HeldRollKind{
 	heldContest:           playv1.HeldRollKind_HELD_ROLL_KIND_CONTEST,
 	heldInitiative:        playv1.HeldRollKind_HELD_ROLL_KIND_INITIATIVE,
 	heldMountSave:         playv1.HeldRollKind_HELD_ROLL_KIND_MOUNT_SAVE,
+	heldNpcCheck:          playv1.HeldRollKind_HELD_ROLL_KIND_NPC_CHECK,
 	heldSceneCheck:        playv1.HeldRollKind_HELD_ROLL_KIND_SCENE_CHECK,
 	heldGroupCheck:        playv1.HeldRollKind_HELD_ROLL_KIND_GROUP_CHECK,
 	heldTrapSearch:        playv1.HeldRollKind_HELD_ROLL_KIND_TRAP_SEARCH,
@@ -149,6 +150,13 @@ func (s *Service) AnswerHeldRoll(
 	if err != nil {
 		return nil, err
 	}
+	if req.Msg.GetCuttingWords() != nil { // the bards' question of a check of the master's side: its own answer
+		out, err := s.answerNpcCheck(ctx, m, req.Msg, key, holdID)
+		if err != nil {
+			return nil, err
+		}
+		return connect.NewResponse(out), nil
+	}
 	ans, err := answerOfHeldRoll(req.Msg)
 	if err != nil {
 		return nil, err
@@ -183,7 +191,7 @@ func answerOfHeldRoll(msg *playv1.AnswerHeldRollRequest) (answerRequest, error) 
 		ans.question, ans.yes = askReroll, a.Reroll.GetReroll()
 		return ans, nil // the server rolls the new d20 itself: no way of rolling to read
 	default:
-		return ans, connect.NewError(connect.CodeInvalidArgument, errors.New("answer must be set to a lucky, a die, an indomitable, a stroke of luck or a reroll answer"))
+		return ans, connect.NewError(connect.CodeInvalidArgument, errors.New("answer must be set to a lucky, a die, an indomitable, a stroke of luck, a reroll or a cutting words answer"))
 	}
 	if !ans.yes {
 		return ans, nil
@@ -273,6 +281,9 @@ func (s *Service) ListHeldRolls(
 	if err != nil {
 		return nil, err
 	}
+	if err := s.keepNpcChecks(ctx, m.CampaignID); err != nil {
+		return nil, err
+	}
 	holds, err := s.openHeldRolls(ctx, m.CampaignID)
 	if err != nil {
 		return nil, s.dbError(ctx, "list the held rolls", err)
@@ -319,6 +330,9 @@ type heldList struct {
 
 // offerOf is the question of a hold if the caller may answer it and it is not stale; nil otherwise.
 func (l *heldList) offerOf(ctx context.Context, h heldRoll) (*playv1.HeldRollOffer, error) {
+	if h.Kind == heldNpcCheck {
+		return l.npcCheckOffer(ctx, h)
+	}
 	if h.CombatantID != "" {
 		return l.combatOffer(ctx, h)
 	}

@@ -85,6 +85,7 @@ sql:
       - internal/play/queries_messages.sql
       - internal/play/queries_zones.sql
       - internal/play/queries_readied.sql
+      - internal/play/queries_npccheck.sql
     gen:
       go:
         <<: *go-options

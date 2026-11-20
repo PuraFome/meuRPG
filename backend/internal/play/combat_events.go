@@ -300,6 +300,9 @@ type actionEvent struct {
 	NowHidden bool `json:"hidden,omitempty"`
 	// Pending is the pending damage the attack opened and its damage follows.
 	Pending string `json:"pending_id,omitempty"`
+	// DrainOf is the pending damage a drain spell's heal came from.
+	// The undo of that damage takes the heal back with it.
+	DrainOf string `json:"drain_of,omitempty"`
 	// Key is the attack or the action.
 	Key string `json:"key,omitempty"`
 

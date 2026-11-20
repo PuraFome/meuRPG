@@ -172,6 +172,44 @@ describe('actionTabs', () => {
   it('says one in the singular', () => {
     expect(actionTabs({ ...counts, attacks: 1 }, 'x')[0].words).toBe('1 ataque');
   });
+
+  it('puts Itens after the class tab and before Outras, with the count of the rows', () => {
+    const tabs = actionTabs({ ...counts, features: 2 }, 'Guerreiro', { items: 5 });
+    expect(tabs.map((t) => t.label)).toEqual(['Ataques', 'Magias', 'Guerreiro', 'Itens', 'Outras']);
+    expect(tabs.find((t) => t.id === 'items')).toEqual({
+      id: 'items',
+      label: 'Itens',
+      badge: '5',
+      words: '5 itens',
+    });
+  });
+
+  it('says one item in the singular', () => {
+    expect(actionTabs(counts, 'x', { items: 1 }).find((t) => t.id === 'items')?.words).toBe(
+      '1 item',
+    );
+  });
+
+  it('keeps the tab, with a count of 0, while the notice of the last unit used is on screen', () => {
+    const tab = actionTabs(counts, 'x', { items: 0, itemsKept: true }).find(
+      (t) => t.id === 'items',
+    );
+    expect(tab).toMatchObject({ badge: '0', words: '0 itens' });
+  });
+
+  it('has no Itens tab with no consumable', () => {
+    expect(actionTabs(counts, 'x').map((t) => t.id)).not.toContain('items');
+    expect(actionTabs(counts, 'x', { items: 0 }).map((t) => t.id)).not.toContain('items');
+  });
+
+  it("keeps Itens in a beast's shape: a beast may drink a potion", () => {
+    expect(actionTabs(counts, 'Druida', { beast: true, items: 2 }).map((t) => t.id)).toEqual([
+      'attacks',
+      'class',
+      'items',
+      'other',
+    ]);
+  });
 });
 
 describe('actionCounts', () => {

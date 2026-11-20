@@ -24,6 +24,8 @@ import type { SheetEquipHost } from '../character-sheet-equip';
 import type { CharacterSheetVm } from '../character-sheet.types';
 import { ChargesClient } from '../../../core/play/charges-client';
 import { SheetCharges } from '../charges/sheet-charges';
+import { ConsumableUse } from '../../../shared/consumable-use/consumable-use';
+import { openUseConsumable } from '../../../shared/consumable-use/use-consumable-sheet';
 import { openAddAmmunition } from '../charges/add-ammunition-sheet';
 import { openLastCharge } from '../charges/last-charge-sheet';
 import { openUseCharges } from '../charges/use-charges-sheet';
@@ -55,6 +57,8 @@ export class SheetMagicItems {
   readonly notice = signal('');
   /** "Usar" the charges of an item, its last-charge d20 and the ammunition; set by `createSheetMagicItems`. */
   charges!: SheetCharges;
+  /** "Usar" a potion or a scroll; set by `createSheetMagicItems`. */
+  consumables!: ConsumableUse;
 
   constructor(private readonly host: SheetMagicItemsHost) {}
 
@@ -198,6 +202,10 @@ export function createSheetMagicItems(d: SheetMagicItemsDeps): SheetMagicItems {
   });
   const injector = inject(Injector);
   const page = inject<ElementRef<HTMLElement>>(ElementRef);
+  const by = (attribute: string, value: string) =>
+    Array.from(page.nativeElement.querySelectorAll<HTMLElement>(`[${attribute}]`)).find(
+      (el) => el.getAttribute(attribute) === value,
+    );
   items.charges = new SheetCharges({
     client: () => injector.get(ChargesClient),
     campaignId: d.campaignId,
@@ -205,18 +213,44 @@ export function createSheetMagicItems(d: SheetMagicItemsDeps): SheetMagicItems {
     reload: d.reload,
     focusRow: (id) =>
       afterNextRender(
-        () => {
-          const by = (attribute: string) =>
-            Array.from(page.nativeElement.querySelectorAll<HTMLElement>(`[${attribute}]`)).find(
-              (el) => el.getAttribute(attribute) === id,
-            );
-          focusWithRing(by('data-charges-action') ?? by('data-charges-row'));
-        },
+        () => focusWithRing(by('data-charges-action', id) ?? by('data-charges-row', id)),
         { injector },
       ),
     openUse: (data) => openUseCharges(d.dialog, d.bottomSheet, data),
     openRoll: (data) => openLastCharge(d.dialog, d.bottomSheet, data),
     openAdd: (data) => openAddAmmunition(d.dialog, d.bottomSheet, data),
+  });
+  items.consumables = new ConsumableUse({
+    client: () => injector.get(ChargesClient),
+    campaignId: d.campaignId,
+    owner: () => {
+      const vm = ready();
+      return vm
+        ? {
+            id: vm.id,
+            name: vm.name,
+            byMaster: vm.isMaster,
+            entries: vm.sheet.kind === 'full' ? vm.sheet.attunement.entries : [],
+          }
+        : null;
+    },
+    // The sheet does not know whether a combat is running: the "Usar" sheet learns it from the targets read.
+    inCombat: () => null,
+    turnBlock: () => null,
+    reload: d.reload,
+    dice: () => items.charges.tableDice(),
+    // The row of the last unit is gone once the sheet is drawn again: the section's heading takes the focus.
+    focusConsumable: (key) =>
+      afterNextRender(
+        () =>
+          focusWithRing(
+            by('data-consumable-action', key) ??
+              page.nativeElement.querySelector<HTMLElement>('#magic-heading') ??
+              undefined,
+          ),
+        { injector },
+      ),
+    openUse: (data) => openUseConsumable(d.dialog, d.bottomSheet, data),
   });
   // A combat that ended changes the character's vitals: the recovery is offered again.
   effect(() => {

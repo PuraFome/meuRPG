@@ -435,6 +435,14 @@ var reads = []read{
 		req: func(w *world) proto.Message { return &playv1.GetOutsideInspirationRequest{CampaignId: w.campaign} },
 	},
 	{
+		procedure: playv1connect.PlayServiceListNpcCheckPickerProcedure, allow: masterOnlyRead, why: "the picker lists the NPCs of the stage, their hidden ones included, and what each can roll",
+		req: func(w *world) proto.Message { return &playv1.ListNpcCheckPickerRequest{CampaignId: w.campaign} },
+	},
+	{
+		procedure: playv1connect.PlayServiceGetNpcCheckProcedure, allow: masterOnlyRead, why: "the latest NPC check holds the creature's d20, its bonus and the total with what each bard cut: nothing of it is a player's to read",
+		req: func(w *world) proto.Message { return &playv1.GetNpcCheckRequest{CampaignId: w.campaign} },
+	},
+	{
 		procedure: playv1connect.ResourceServiceListHeldRollsProcedure, allow: members, why: "a player reads the questions of their own rolls that wait; the master reads every one of the campaign",
 		req: func(w *world) proto.Message { return &playv1.ListHeldRollsRequest{CampaignId: w.campaign} },
 	},
@@ -547,6 +555,21 @@ var reads = []read{
 		procedure: playv1connect.ChargesServiceListConsumableTargetsProcedure, label: "Pensantus's potion", allow: onlyAna, why: "Ana's character is down: she may still hold the potion and read who is within reach",
 		req: func(w *world) proto.Message {
 			return &playv1.ListConsumableTargetsRequest{CampaignId: w.campaign, CharacterId: w.pens.GetId(), EntryId: w.withPotions().pensPotion}
+		},
+	},
+
+	{
+		procedure: charactersv1connect.CharacterServiceGetCharacterProcedure, label: "Toren's sheet holding a potion and a scroll", allow: onlyCaio, why: "the sheet's consumable (kind, cost of the action, healing dice) is the owner's and the master's, like the charges beside it",
+		req: func(w *world) proto.Message {
+			w.withPotions()
+			return &charactersv1.GetCharacterRequest{CampaignId: w.campaign, CharacterId: w.toren.GetId()}
+		},
+	},
+	{
+		procedure: charactersv1connect.CharacterServiceGetCharacterProcedure, label: "Pensantus's sheet holding a potion", allow: onlyAna, why: "the same fields on Ana's character: no other player reads them",
+		req: func(w *world) proto.Message {
+			w.withPotions()
+			return &charactersv1.GetCharacterRequest{CampaignId: w.campaign, CharacterId: w.pens.GetId()}
 		},
 	},
 
