@@ -1,5 +1,6 @@
 import { NpcCheckAskState } from '../../../gen/meurpg/play/v1/combat_pb';
-import { cardOf, nobodyReasonOf, nobodyText } from './npc-check-card';
+import { NpcCheckNobodyReason } from '../../../gen/meurpg/play/v1/scene_pb';
+import { type NobodyReason, cardOf, nobodyReasonOf, nobodyText } from './npc-check-card';
 import { ask, npcCheckRead } from './npc-check-testing';
 
 const { WAITING, CUT, PASSED, CLOSED } = NpcCheckAskState;
@@ -72,7 +73,7 @@ describe('cardOf', () => {
     expect(card.detail).toBe('Ninguém cortou o teste.');
   });
 
-  it('settles at once with nobody to ask and says nobody could cut, never why', () => {
+  it('settles at once with nobody to ask and, when the server names no reason, says nobody could cut', () => {
     const card = cardOf(
       npcCheckRead({
         holdId: '',
@@ -131,7 +132,7 @@ describe('cardOf', () => {
     expect(cardOf(npcCheckRead()).key).toBe('hold-1');
   });
 
-  it('words why nobody was asked from the reason the server will send, in neutral sentences', () => {
+  it('words why nobody was asked from the reason, in neutral sentences', () => {
     expect(nobodyText('no-bard')).toBe(
       'Ninguém foi perguntado: nenhum bardo tem Palavras de Interrupção com um uso de Inspiração de Bardo.',
     );
@@ -146,10 +147,18 @@ describe('cardOf', () => {
     expect(cardOf(read).nobodyText).toBe(nobodyText('unknown'));
   });
 
-  it('reads the reason from one mapping, which says "unknown" until the server sends the enum', () => {
-    expect(nobodyReasonOf(npcCheckRead({ settled: true, asks: [] }))).toBe('unknown');
-    expect(cardOf(npcCheckRead({ settled: true, asks: [] }), 'hidden').nobodyText).toBe(
-      'Ninguém foi perguntado: o token da criatura está escondido no mapa.',
-    );
+  it('reads the reason from one mapping of the server\'s enum', () => {
+    const rows: [NpcCheckNobodyReason, NobodyReason][] = [
+      [NpcCheckNobodyReason.UNSPECIFIED, 'unknown'],
+      [NpcCheckNobodyReason.NO_BARD_CAN_CUT, 'no-bard'],
+      [NpcCheckNobodyReason.CHARM_IMMUNE, 'immune'],
+      [NpcCheckNobodyReason.TOKEN_HIDDEN, 'hidden'],
+      [NpcCheckNobodyReason.NOBODY_SEES, 'unseen'],
+    ];
+    for (const [nobodyReason, reason] of rows) {
+      const read = npcCheckRead({ settled: true, asks: [], nobodyReason });
+      expect(nobodyReasonOf(read)).toBe(reason);
+      expect(cardOf(read).nobodyText).toBe(nobodyText(reason));
+    }
   });
 });

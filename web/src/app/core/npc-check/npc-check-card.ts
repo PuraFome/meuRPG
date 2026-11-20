@@ -1,5 +1,5 @@
 import { NpcCheckAskState } from '../../../gen/meurpg/play/v1/combat_pb';
-import type { NpcCheckRead } from '../../../gen/meurpg/play/v1/scene_pb';
+import { NpcCheckNobodyReason, type NpcCheckRead } from '../../../gen/meurpg/play/v1/scene_pb';
 import { initialOf } from '../play/scene-view';
 
 /** How a bard's row reads: the one asked now, the ones behind it, and what each answered. */
@@ -41,8 +41,8 @@ const WAIT_DETAIL =
   'Antes das Palavras de Interrupção: o total fecha quando os bardos responderem.';
 
 /**
- * Why nobody was asked, as the master may read it. The server will send it with `GetNpcCheck` (a master-only enum); until it does
- * the card reads `unknown`, and the one mapping to swap is `nobodyReasonOf`.
+ * Why nobody was asked, as the master may read it. The server sends it with the check (`NpcCheckRead.nobody_reason`, a master-only
+ * enum); `unknown` is what the card reads when the server names no reason.
  */
 export type NobodyReason = 'unknown' | 'no-bard' | 'hidden' | 'immune' | 'unseen';
 
@@ -55,13 +55,17 @@ const NOBODY_TEXTS: Readonly<Record<NobodyReason, string>> = {
   unseen: 'Ninguém foi perguntado: nenhum bardo vê a criatura.',
 };
 
-/**
- * The one place that turns what the server says into a reason. The server will add a master-only enum to `GetNpcCheck` (no bard can cut,
- * the token is hidden, the creature cannot be charmed, nobody sees it); until it does every check reads `unknown`, and this mapping is
- * what changes.
- */
-export function nobodyReasonOf(_read: NpcCheckRead): NobodyReason {
-  return 'unknown';
+const NOBODY_REASONS: Readonly<Record<NpcCheckNobodyReason, NobodyReason>> = {
+  [NpcCheckNobodyReason.UNSPECIFIED]: 'unknown',
+  [NpcCheckNobodyReason.NO_BARD_CAN_CUT]: 'no-bard',
+  [NpcCheckNobodyReason.CHARM_IMMUNE]: 'immune',
+  [NpcCheckNobodyReason.TOKEN_HIDDEN]: 'hidden',
+  [NpcCheckNobodyReason.NOBODY_SEES]: 'unseen',
+};
+
+/** The one place that turns the server's `nobody_reason` into the reason the card words. */
+export function nobodyReasonOf(read: NpcCheckRead): NobodyReason {
+  return NOBODY_REASONS[read.nobodyReason] ?? 'unknown';
 }
 
 /** The sentence under a check that settled with nobody asked. */

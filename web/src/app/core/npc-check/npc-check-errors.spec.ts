@@ -91,7 +91,13 @@ describe('cutErrorOf', () => {
     });
   });
 
-  it('reads a hold that is gone as the roll answered too', () => {
-    expect(cutErrorOf(failed(Code.NotFound), true).closed).toBe(true);
+  it('reads a question that is gone, closed or passed by the server as closed, for a cut and for a pass', () => {
+    for (const cut of [true, false]) {
+      expect(cutErrorOf(failed(Code.NotFound), cut)).toEqual({
+        lead: 'A pergunta já foi encerrada.',
+        text: 'Nada foi gasto.',
+        closed: true,
+      });
+    }
   });
 });

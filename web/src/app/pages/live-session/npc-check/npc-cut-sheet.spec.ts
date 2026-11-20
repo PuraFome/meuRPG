@@ -114,6 +114,17 @@ describe('NpcCutSheet', () => {
     expect(button('Fechar')).toBeTruthy();
   });
 
+  it('says the question is closed when the server no longer has it, and only offers to close', async () => {
+    const { flow, flush, button, text } = setup(false, vi.fn(() => Promise.reject(new ConnectError('x', Code.NotFound))));
+    button('Deixar passar')?.click();
+    await flush();
+    expect(flow.phase()).toBe('late');
+    expect(text()).toContain('A pergunta já foi encerrada. Nada foi gasto.');
+    expect(text()).not.toContain('já foi respondida');
+    expect(button('Cortar')).toBeUndefined();
+    expect(button('Fechar')).toBeTruthy();
+  });
+
   it('says it could not cut and keeps both answers open', async () => {
     const { el, flush, button } = setup(false, vi.fn(() => Promise.reject(new ConnectError('x', Code.Unavailable))));
     button('Cortar')?.click();
