@@ -49,9 +49,9 @@ function setup(typed: boolean, answer = vi.fn(() => Promise.resolve(answered(tru
 describe('NpcCutSheet', () => {
   it('asks the question with what it costs and what the bard does not read', () => {
     const { el, text } = setup(false);
-    expect(el.querySelector('h2')?.textContent).toBe('O Capitão bandido faz um teste');
+    expect(el.querySelector('h2')?.textContent).toBe('Capitão bandido faz um teste');
     expect(text()).toContain(
-      'Usar Palavras de Interrupção? Você tira o seu dado de Inspiração de Bardo (d8) do teste do Capitão bandido.',
+      'Usar Palavras de Interrupção? Você tira o seu dado de Inspiração de Bardo (d8) do teste de Capitão bandido.',
     );
     expect(text()).toContain('Gasta 1 Inspiração de Bardo');
     expect(text()).toContain('Você tem 3');
@@ -117,7 +117,9 @@ describe('NpcCutSheet', () => {
     const { flow, flush, button, text } = setup(false);
     flow.sync([]);
     await flush();
-    expect(text()).toContain('O mestre seguiu sem a sua resposta. Nada foi gasto.');
+    expect(text()).toContain('A pergunta foi encerrada. Nada foi gasto.');
+    expect(el.querySelector('[role="alert"]')?.textContent).toContain('A pergunta foi encerrada.');
+    expect(el.querySelector('[aria-live="polite"]')).toBeTruthy();
     expect(button('Cortar')).toBeUndefined();
     expect(button('Fechar')).toBeTruthy();
   });

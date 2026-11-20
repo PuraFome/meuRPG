@@ -11,9 +11,9 @@
     }
   </header>
 
-  <div class="total" aria-live="polite">
-    <span class="total__box" [attr.aria-label]="'Total ' + card().box">{{ card().box }}</span>
-    <div class="total__text">
+  <div class="total">
+    <span class="total__box"><span aria-hidden="true">{{ card().box }}</span><span class="mr-visually-hidden">Total {{ card().box }}</span></span>
+    <div class="total__text" aria-live="polite">
       <p class="total__formula">{{ card().formula }}</p>
       @if (card().detail) {
         <p class="total__detail">{{ card().detail }}</p>

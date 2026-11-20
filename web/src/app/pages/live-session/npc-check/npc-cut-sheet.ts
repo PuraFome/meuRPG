@@ -1,4 +1,15 @@
-import { ChangeDetectionStrategy, Component, computed, effect, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  ElementRef,
+  Injector,
+  afterNextRender,
+  computed,
+  effect,
+  inject,
+  signal,
+  untracked,
+} from '@angular/core';
 import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
@@ -77,6 +88,26 @@ export class NpcCutSheet {
     () => !this.flow.busy() && (!this.data.typed || this.face() !== null),
   );
   protected readonly lockWhileBusy = effect(() => this.sheet.lock(this.flow.busy()));
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly injector = inject(Injector);
+  private phase = this.flow.phase();
+  /** The phase changed (the result, the master going on, the answer refused): the button that was pressed may be gone, so the new primary button takes the focus. */
+  protected readonly focusOnPhase = effect(() => {
+    const phase = this.flow.phase();
+    if (phase === this.phase) {
+      return;
+    }
+    this.phase = phase;
+    untracked(() =>
+      afterNextRender(
+        () =>
+          this.host.nativeElement
+            .querySelector<HTMLElement>('[data-initial-focus]:not([disabled])')
+            ?.focus(),
+        { injector: this.injector },
+      ),
+    );
+  });
 
   protected async cut(): Promise<void> {
     await this.flow.answer(true, this.data.typed ? this.face() : null);

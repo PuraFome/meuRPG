@@ -104,16 +104,18 @@ describe('NpcCheckSheet', () => {
     const { flush, choose, button, text } = setup();
     await flush();
     await choose('Capitão bandido');
-    expect(button('Rolar Enganação do Capitão bandido')?.getAttribute('aria-disabled')).not.toBe(
+    expect(button('Rolar Enganação de Capitão bandido')?.getAttribute('aria-disabled')).not.toBe(
       'true',
     );
-    expect(text()).toContain('Uma perícia ou uma habilidade do Capitão bandido, com o bônus dele.');
+    expect(text()).toContain(
+      'Uma perícia ou uma habilidade de Capitão bandido, com o bônus que consta no teste.',
+    );
   });
 
   it('opens on the NPC the stage menu named', async () => {
     const { flush, button } = setup({ firstId: 'npc-bartolo' });
     await flush();
-    expect(button('Rolar Persuasão do Bartolo')).toBeTruthy();
+    expect(button('Rolar Persuasão de Bartolo')).toBeTruthy();
   });
 
   it('shows the box ticked for a creature the players see', async () => {
@@ -159,7 +161,7 @@ describe('NpcCheckSheet', () => {
     const { flush, choose, button, roll, close, state } = setup();
     await flush();
     await choose('Capitão bandido');
-    button('Rolar Enganação do Capitão bandido')?.click();
+    button('Rolar Enganação de Capitão bandido')?.click();
     await flush();
     expect(roll).toHaveBeenCalledTimes(1);
     expect(roll.mock.calls[0][1]).toEqual({
@@ -180,7 +182,7 @@ describe('NpcCheckSheet', () => {
     });
     await flush();
     await choose('Capitão bandido');
-    button('Rolar Enganação do Capitão bandido')?.click();
+    button('Rolar Enganação de Capitão bandido')?.click();
     await flush();
     expect(button('Rolando…')?.getAttribute('aria-disabled')).toBe('true');
     expect(
@@ -209,11 +211,11 @@ describe('NpcCheckSheet', () => {
     };
     await type('21');
     expect(text()).toContain('Digite um número de 1 a 20.');
-    expect(button('Rolar Enganação do Capitão bandido')?.getAttribute('aria-disabled')).toBe(
+    expect(button('Rolar Enganação de Capitão bandido')?.getAttribute('aria-disabled')).toBe(
       'true',
     );
     await type('11');
-    button('Rolar Enganação do Capitão bandido')?.click();
+    button('Rolar Enganação de Capitão bandido')?.click();
     await flush();
     expect(roll.mock.calls[0][1].die).toEqual({ face: 11 });
   });

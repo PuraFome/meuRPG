@@ -1,3 +1,4 @@
+<div class="phase" aria-live="polite">
 @if (flow.phase() === 'result' && flow.result(); as r) {
   <app-sheet-frame [title]="r.title" titleId="npc-cut-t" icon="record_voice_over" [subtitle]="r.subtitle" [phone]="inSheet" [closable]="false">
     <p class="mr-tag mr-tag--success tag"><mat-icon aria-hidden="true">content_cut</mat-icon>{{ r.tag }}</p>
@@ -18,9 +19,9 @@
 } @else if (view(); as v) {
   <app-sheet-frame [title]="v.title" titleId="npc-cut-t" icon="record_voice_over" [subtitle]="v.subtitle" [phone]="inSheet" [closable]="false">
     @if (flow.phase() === 'skipped') {
-      <div class="mr-notice mr-notice--neutral" role="status">
+      <div class="mr-notice mr-notice--neutral" role="alert">
         <mat-icon aria-hidden="true">info</mat-icon>
-        <p><strong>O mestre seguiu sem a sua resposta.</strong> Nada foi gasto.</p>
+        <p><strong>A pergunta foi encerrada.</strong> Nada foi gasto.</p>
       </div>
     } @else if (flow.phase() === 'late') {
       <div class="mr-notice mr-notice--danger" role="alert">
@@ -75,3 +76,4 @@
     </div>
   </app-sheet-frame>
 }
+</div>
