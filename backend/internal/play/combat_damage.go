@@ -482,8 +482,11 @@ func (f *damageFlow) land(ctx context.Context, g playdb.PendingDamage) error {
 
 // drink is the heal a drain spell's damage gives its caster, when the damage landed on its target at once.
 func (f *damageFlow) drink(ctx context.Context, g playdb.PendingDamage, tgt playdb.Combatant, hit damageHit) error {
-	if !hit.Applied || hit.Before == nil || hit.Before.HP <= 0 {
+	if !hit.Applied {
 		return nil
+	}
+	if hit.Before == nil || hit.Before.HP <= 0 {
+		hit.Amount = 0
 	}
 	vit, err := f.s.drainHeal(ctx, f.c, g, f.attacker, tgt, hit.Amount)
 	if vit != nil {

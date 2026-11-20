@@ -13,21 +13,19 @@ import (
 const drainSpell = "spell:vampiric-touch"
 
 // drainHeal heals the caster of a drain spell by half the damage dealt.
-// The half rounds down and the heal stops at the maximum.
-// The heal is a line of the log, written just before the event of the damage.
+// The half rounds down and the heal stops at the maximum; the heal is a line of the log, written just before the event of the damage.
 // It answers the caster's vitals when the caster is a player's character.
-// A damage of another spell, or one too small to heal, does nothing.
+// Every hit that landed writes the line, with a heal of 0 when half the damage rounds to nothing, so no absence tells how little it dealt.
 func (s *Service) drainHeal(ctx context.Context, c *combatTx, p playdb.PendingDamage, caster, target playdb.Combatant, dealt int32) (*playv1.CharacterVitals, error) {
-	if p.AttackKey != drainSpell || p.Healing || dealt/2 <= 0 {
+	if p.AttackKey != drainSpell || p.Healing {
 		return nil, nil
 	}
 	hit, vit, err := s.healCombatant(ctx, c, caster, dealt/2)
 	if err != nil {
 		return nil, err
 	}
-	ev := actionEvent{
+	return vit, insertEvent(ctx, c, eventActionTaken, &c.actorUserID, nil, actionEvent{
 		Round: c.enc.Round, Secret: secretOf(caster, target), Actor: caster.ID, Key: p.AttackKey, Heal: true, Amount: hit.Amount,
 		Before: hit.Before, After: hit.After, DeathBefore: hit.DeathBefore, DrainOf: p.ID,
-	}
-	return vit, insertEvent(ctx, c, eventActionTaken, &c.actorUserID, nil, ev)
+	})
 }

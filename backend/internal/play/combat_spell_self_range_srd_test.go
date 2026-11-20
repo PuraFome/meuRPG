@@ -125,6 +125,30 @@ func (a *armed) drainCast(t *testing.T, hp int32, faces ...int) (*playv1.Encount
 	return e, a.mustDamage(t, a.ana, e, id, inAppDamage).GetPendingDamage()
 }
 
+// drainImmuneOpen casts Vampiric Touch at a ghost (immune to necrotic) with the caster hurt to hp, and answers the open damage.
+func (a *armed) drainImmuneOpen(t *testing.T, hp int32) (*playv1.Encounter, string) {
+	t.Helper()
+	e := a.rangeFight(t, "Mago", map[string][2]int32{"Capitão Goblin": {14, 8}, "Goblin 1": {14, 7}, "Goblin 2": {13, 8}})
+	ghost := a.monsterNextTo(t, e, "monster:ghost", [2]int32{2, 4})
+	a.correct(t, a.pens, hpIs(hp))
+	return e, a.takesWith(t, e, "Mago", vampiricTouch, slotOfLevel(3), []string{ghost}).GetTargets()[0].GetPendingDamageId()
+}
+
+// drainImmune is drainImmuneOpen with the necrotic damage rolled: the ghost takes none of it.
+func (a *armed) drainImmune(t *testing.T, hp int32) (*playv1.Encounter, *playv1.PendingDamage) {
+	t.Helper()
+	e, id := a.drainImmuneOpen(t, hp)
+	a.h.roller.queue(3, 3, 3)
+	return e, a.mustDamage(t, a.ana, e, id, inAppDamage).GetPendingDamage()
+}
+
+// sameLine is a log line with what differs from one fight to the next (ids, the time) cleared.
+func sameLine(en *playv1.CombatLogEntry) *playv1.CombatLogEntry {
+	c := proto.Clone(en).(*playv1.CombatLogEntry)
+	c.Id, c.ActorId, c.TargetId, c.At = "", "", "", nil
+	return c
+}
+
 // TestSRDVampiricTouchHeals: the caster regains half the necrotic damage dealt (rounded down), up to the
 // maximum, the log says so and the master's undo takes it back.
 func TestSRDVampiricTouchHeals(t *testing.T) {
@@ -231,7 +255,7 @@ func TestSRDVampiricTouchHealGuards(t *testing.T) {
 			t.Errorf("the log has %d lines of a heal, want none", n)
 		}
 	})
-	t.Run("a creature already down heals nothing", func(t *testing.T) {
+	t.Run("a creature already down gives a heal of 0", func(t *testing.T) {
 		t.Parallel()
 		a := newSrdParty(t)
 		e := a.rangeFight(t, "Mago", near)
@@ -245,11 +269,11 @@ func TestSRDVampiricTouchHealGuards(t *testing.T) {
 		if got := a.vitals(t, a.pens).GetHitPointsCurrent(); got != 10 {
 			t.Errorf("Mago has %d hit points, want 10", got)
 		}
-		if n := len(a.drainLines(t, a.master, e, "Mago", vampiricTouch)); n != 0 {
-			t.Errorf("the log has %d lines of a heal, want none", n)
+		if line := a.drainHealOf(t, a.master, e, "Mago", vampiricTouch); line == nil || line.GetAmount() != 0 {
+			t.Errorf("the log line of the heal = %v, want a heal of 0", line)
 		}
 	})
-	t.Run("a character already at 0 heals nothing when the master applies", func(t *testing.T) {
+	t.Run("a character already at 0 gives a heal of 0 when the master applies", func(t *testing.T) {
 		t.Parallel()
 		a := newSrdParty(t)
 		e := a.rangeFight(t, "Mago", map[string][2]int32{"Druida": {2, 4}, "Goblin 1": {14, 8}, "Goblin 2": {13, 8}, "Capitão Goblin": {12, 8}})
@@ -264,8 +288,8 @@ func TestSRDVampiricTouchHealGuards(t *testing.T) {
 		if got := a.vitals(t, a.pens).GetHitPointsCurrent(); got != 10 {
 			t.Errorf("Mago has %d hit points, want 10", got)
 		}
-		if n := len(a.drainLines(t, a.master, e, "Mago", vampiricTouch)); n != 0 {
-			t.Errorf("the log has %d lines of a heal, want none", n)
+		if line := a.drainHealOf(t, a.master, e, "Mago", vampiricTouch); line == nil || line.GetAmount() != 0 {
+			t.Errorf("the log line of the heal = %v, want a heal of 0", line)
 		}
 	})
 	t.Run("one line, with the numbers for the master and the caster's player only", func(t *testing.T) {
@@ -280,6 +304,43 @@ func TestSRDVampiricTouchHealGuards(t *testing.T) {
 			if got := lines[0].GetDamage() != nil; got != want {
 				t.Errorf("numbers shown = %v, want %v", got, want)
 			}
+		}
+	})
+	t.Run("a heal of 0 reads as a heal of 4 to another player", func(t *testing.T) {
+		t.Parallel()
+		a := newSrdParty(t)
+		four, _ := a.drainCast(t, 10, 3, 3, 3) // 9 necrotic: a heal of 4
+		b := newSrdParty(t)
+		zero, _ := b.drainImmune(t, 10)
+		got, want := b.drainLines(t, b.bia, zero, "Mago", vampiricTouch), a.drainLines(t, a.bia, four, "Mago", vampiricTouch)
+		if len(got) != 1 || len(want) != 1 {
+			t.Fatalf("another player reads %d and %d lines of the heal, want 1 and 1", len(got), len(want))
+		}
+		if !proto.Equal(sameLine(got[0]), sameLine(want[0])) {
+			t.Errorf("another player reads %v for a heal of 0 and %v for a heal of 4, want the same line", got[0], want[0])
+		}
+	})
+	t.Run("a heal of 0 changes nothing of a caster at 0 and the undo takes the line back", func(t *testing.T) {
+		t.Parallel()
+		a := newSrdParty(t)
+		e, id := a.drainImmuneOpen(t, 10)
+		a.correct(t, a.pens, hpIs(0))
+		before := byLabel(t, a.get(t, a.master), "Mago")
+		a.h.roller.queue(3, 3, 3)
+		a.undoes(t, "the damage of Vampiric Touch", func() {
+			a.mustDamage(t, a.ana, e, id, inAppDamage)
+			if line := a.drainHealOf(t, a.master, e, "Mago", vampiricTouch); line == nil || line.GetAmount() != 0 {
+				t.Fatalf("the log line of the heal = %v, want a heal of 0", line)
+			}
+			if got := byLabel(t, a.get(t, a.master), "Mago"); !proto.Equal(got, before) {
+				t.Errorf("Mago = %v after a heal of 0, want %v", got, before)
+			}
+		})
+		if n := len(a.drainLines(t, a.master, e, "Mago", vampiricTouch)); n != 0 {
+			t.Errorf("the log keeps %d lines of the heal after the undo, want none", n)
+		}
+		if got := byLabel(t, a.get(t, a.master), "Mago"); !proto.Equal(got, before) {
+			t.Errorf("Mago = %v after the undo, want %v", got, before)
 		}
 	})
 	t.Run("an undone roll rolled again undoes only its own heal", func(t *testing.T) {
@@ -496,9 +557,12 @@ func TestSRDVampiricTouchHealFollowsTheModifiers(t *testing.T) {
 			t.Errorf("Mago has %d hit points, want 10", got)
 		}
 		for _, who := range []*user{a.master, a.ana, a.bia} {
-			if n := len(a.drainLines(t, who, e, "Mago", vampiricTouch)); n != 0 {
-				t.Errorf("a viewer reads %d lines of a heal, want none", n)
+			if n := len(a.drainLines(t, who, e, "Mago", vampiricTouch)); n != 1 {
+				t.Errorf("a viewer reads %d lines of the heal, want 1", n)
 			}
+		}
+		if line := a.drainHealOf(t, a.master, e, "Mago", vampiricTouch); line == nil || line.GetAmount() != 0 {
+			t.Errorf("the log line of the heal = %v, want a heal of 0", line)
 		}
 		noModifierWords(t, "Mago's player", a.log(t, a.ana, e), a.get(t, a.ana))
 		noModifierWords(t, "another player", a.log(t, a.bia, e), a.get(t, a.bia))

@@ -75,18 +75,18 @@ func (s *Service) landDamage(ctx context.Context, c *combatTx, p playdb.PendingD
 	return hit, nil, nil
 }
 
-// healCombatant heals a combatant: an NPC's hit points, up to its maximum (it
-// comes back above 0), or a player's character's through the vitals, up to its
-// maximum (healed from 0 it gets up and its death saves reset, RN-03). The hit
-// says how much it regained, with what an undo needs; the vitals are the
-// character's after.
+// healCombatant heals a combatant: an NPC's hit points, up to its maximum, or a player's character's through the vitals
+// (healed from 0 it gets up and its death saves reset, RN-03). A heal of 0 changes nothing. The hit says how much it
+// regained, with what an undo needs; the vitals are the character's after.
 func (s *Service) healCombatant(ctx context.Context, c *combatTx, target playdb.Combatant, amount int32) (damageHit, *playv1.CharacterVitals, error) {
 	hit := damageHit{Target: target.ID, Applied: true}
 	if holdsHP(target) {
 		before := hpOf(target)
 		r := combat.ApplyHeal(int(before.HP), int(conv.OrZero(target.HpMax)), int(amount))
 		after := hpState{HP: clamp32(r.HP, 0, math.MaxInt32), Temp: before.Temp, Defeated: r.HP == 0}
-		if err := c.q.SetCombatantHitPoints(ctx, playdb.SetCombatantHitPointsParams{ID: target.ID, HpCurrent: &after.HP, HpTemp: &after.Temp, Defeated: after.Defeated}); err != nil {
+		if amount <= 0 {
+			after = before
+		} else if err := c.q.SetCombatantHitPoints(ctx, playdb.SetCombatantHitPointsParams{ID: target.ID, HpCurrent: &after.HP, HpTemp: &after.Temp, Defeated: after.Defeated}); err != nil {
 			return hit, nil, fmt.Errorf("apply the heal: %w", err)
 		}
 		hit.Before, hit.After, hit.Amount = &before, &after, clamp32(r.Healed, 0, math.MaxInt32)
@@ -97,14 +97,13 @@ func (s *Service) healCombatant(ctx context.Context, c *combatTx, target playdb.
 		return hit, nil, err
 	}
 	req, healed := healRequest(now, amount)
-	before, after, err := s.vitalsOf(ctx, c, target.CharacterID, req)
-	if err != nil {
-		return hit, nil, err
+	before, after := now, now
+	if amount > 0 {
+		if before, after, err = s.vitalsOf(ctx, c, target.CharacterID, req); err != nil {
+			return hit, nil, err
+		}
 	}
-	hit.DeathBefore = deathOf(target)
-	hit.Before = new(hpStateOf(before))
-	hit.After = new(hpStateOf(after))
-	hit.Amount = healed
+	hit.DeathBefore, hit.Before, hit.After, hit.Amount = deathOf(target), new(hpStateOf(before)), new(hpStateOf(after)), healed
 	return hit, after, nil
 }
 
