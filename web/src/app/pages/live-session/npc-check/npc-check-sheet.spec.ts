@@ -5,7 +5,10 @@ import { Code, ConnectError } from '@connectrpc/connect';
 import { vi } from 'vitest';
 
 import { NpcCheckSource } from '../../../../gen/meurpg/play/v1/scene_pb';
-import { ResourceBlockedReason, ResourceBlockedSchema } from '../../../../gen/meurpg/play/v1/resources_pb';
+import {
+  ResourceBlockedReason,
+  ResourceBlockedSchema,
+} from '../../../../gen/meurpg/play/v1/resources_pb';
 import { CreaturesClient } from '../../../core/creatures/creatures-client';
 import { NpcCheckClient, type NpcCheckRoll } from '../../../core/npc-check/npc-check-client';
 import { NpcCheckLauncher } from '../../../core/npc-check/npc-check-launcher';
@@ -29,15 +32,27 @@ const espiaoEscondido = candidate({
   hidden: true,
   checks: [{ key: 'skill:stealth', name: 'Furtividade', bonus: 4, known: true }],
 });
-const guarda = candidate({ characterId: 'npc-g', monsterKey: '', name: 'Guarda', mapMeasures: true });
+const guarda = candidate({
+  characterId: 'npc-g',
+  monsterKey: '',
+  name: 'Guarda',
+  mapMeasures: true,
+});
 
-function setup(over: { picker?: () => Promise<unknown>; roll?: () => Promise<unknown>; firstId?: string } = {}) {
+function setup(
+  over: { picker?: () => Promise<unknown>; roll?: () => Promise<unknown>; firstId?: string } = {},
+) {
   const roll = vi.fn<(id: string, r: NpcCheckRoll, key: string) => Promise<unknown>>(
     over.roll ?? (() => Promise.resolve(npcCheckRead())),
   );
-  const picker = vi.fn(over.picker ?? (() => Promise.resolve([capitao, bartolo, espiaoEscondido, guarda])));
+  const picker = vi.fn(
+    over.picker ?? (() => Promise.resolve([capitao, bartolo, espiaoEscondido, guarda])),
+  );
   const close = vi.fn();
-  const state = new NpcCheckState({ latest: () => Promise.resolve(null), skip: () => Promise.resolve(npcCheckRead()) });
+  const state = new NpcCheckState({
+    latest: () => Promise.resolve(null),
+    skip: () => Promise.resolve(npcCheckRead()),
+  });
   const data: NpcCheckSheetData = { campaignId: 'c1', firstId: over.firstId ?? '', state };
   TestBed.configureTestingModule({
     providers: [
@@ -57,7 +72,9 @@ function setup(over: { picker?: () => Promise<unknown>; roll?: () => Promise<unk
   };
   const text = () => (el.textContent ?? '').replace(/\s+/g, ' ');
   const choose = async (name: string) => {
-    const row = Array.from(el.querySelectorAll('label.row')).find((l) => l.textContent?.includes(name));
+    const row = Array.from(el.querySelectorAll('label.row')).find((l) =>
+      l.textContent?.includes(name),
+    );
     row?.querySelector<HTMLInputElement>('input')?.click();
     await flush();
   };
@@ -73,7 +90,9 @@ describe('NpcCheckSheet', () => {
     expect(text()).toContain('Lendo quem está em cena e no mapa…');
     await flush();
     expect(el.querySelector('h2')?.textContent).toBe('Teste de um NPC');
-    expect(text()).toContain('Fora de combate · a rolagem é só sua · um bardo do Conhecimento pode cortar');
+    expect(text()).toContain(
+      'Fora de combate · a rolagem é só sua · um bardo do Conhecimento pode cortar',
+    );
     expect(text()).toContain('Sem bloco de estatísticas: rola com +0');
     expect(text()).toContain('Os jogadores veem');
     expect(text()).toContain('Escondido dos jogadores');
@@ -85,7 +104,9 @@ describe('NpcCheckSheet', () => {
     const { flush, choose, button, text } = setup();
     await flush();
     await choose('Capitão bandido');
-    expect(button('Rolar Enganação do Capitão bandido')?.getAttribute('aria-disabled')).not.toBe('true');
+    expect(button('Rolar Enganação do Capitão bandido')?.getAttribute('aria-disabled')).not.toBe(
+      'true',
+    );
     expect(text()).toContain('Uma perícia ou uma habilidade do Capitão bandido, com o bônus dele.');
   });
 
@@ -108,7 +129,9 @@ describe('NpcCheckSheet', () => {
     const { el, flush, choose, text } = setup();
     await flush();
     await choose('Espião');
-    expect(el.querySelector<HTMLInputElement>('app-check-row input[type="checkbox"]')?.checked).toBe(false);
+    expect(
+      el.querySelector<HTMLInputElement>('app-check-row input[type="checkbox"]')?.checked,
+    ).toBe(false);
     expect(text()).toContain('os bardos leem “uma criatura”, sem o nome');
   });
 
@@ -117,7 +140,9 @@ describe('NpcCheckSheet', () => {
     await flush();
     await choose('Guarda');
     expect(el.querySelector('app-check-row')).toBeNull();
-    expect(el.querySelector('[data-testid="measured"]')?.textContent).toContain('o app mede os 18 m e a visão');
+    expect(el.querySelector('[data-testid="measured"]')?.textContent).toContain(
+      'o app mede os 18 m e a visão',
+    );
   });
 
   it('says a creature with no number for the check rolls +0, beside the check', async () => {
@@ -150,13 +175,18 @@ describe('NpcCheckSheet', () => {
 
   it('says "Rolando…" while the roll is on the way, dashed, and rolls once', async () => {
     let finish: (v: unknown) => void = () => undefined;
-    const { flush, choose, button, roll } = setup({ roll: () => new Promise((resolve) => (finish = resolve)) });
+    const { flush, choose, button, roll } = setup({
+      roll: () => new Promise((resolve) => (finish = resolve)),
+    });
     await flush();
     await choose('Capitão bandido');
     button('Rolar Enganação do Capitão bandido')?.click();
     await flush();
     expect(button('Rolando…')?.getAttribute('aria-disabled')).toBe('true');
-    expect(button('Cancelar')?.getAttribute('aria-disabled') ?? button('Cancelar')?.hasAttribute('disabled')).toBeTruthy();
+    expect(
+      button('Cancelar')?.getAttribute('aria-disabled') ??
+        button('Cancelar')?.hasAttribute('disabled'),
+    ).toBeTruthy();
     expect(roll).toHaveBeenCalledTimes(1);
     finish(npcCheckRead());
     await flush();
@@ -179,7 +209,9 @@ describe('NpcCheckSheet', () => {
     };
     await type('21');
     expect(text()).toContain('Digite um número de 1 a 20.');
-    expect(button('Rolar Enganação do Capitão bandido')?.getAttribute('aria-disabled')).toBe('true');
+    expect(button('Rolar Enganação do Capitão bandido')?.getAttribute('aria-disabled')).toBe(
+      'true',
+    );
     await type('11');
     button('Rolar Enganação do Capitão bandido')?.click();
     await flush();
@@ -188,9 +220,14 @@ describe('NpcCheckSheet', () => {
 
   it('says a combat began, rolls nothing and tells the entry', async () => {
     const blocked = new ConnectError('x', Code.FailedPrecondition, undefined, [
-      { desc: ResourceBlockedSchema, value: create(ResourceBlockedSchema, { reason: ResourceBlockedReason.COMBAT_OPEN }) },
+      {
+        desc: ResourceBlockedSchema,
+        value: create(ResourceBlockedSchema, { reason: ResourceBlockedReason.COMBAT_OPEN }),
+      },
     ]);
-    const { el, flush, choose, button, close, state } = setup({ roll: () => Promise.reject(blocked) });
+    const { el, flush, choose, button, close, state } = setup({
+      roll: () => Promise.reject(blocked),
+    });
     await flush();
     await choose('Capitão bandido');
     button('Rolar Enganação')?.click();
@@ -206,7 +243,9 @@ describe('NpcCheckSheet', () => {
     const picker = vi.fn().mockRejectedValueOnce(new Error('x')).mockResolvedValueOnce([capitao]);
     const { el, flush, button, text } = setup({ picker });
     await flush();
-    expect(el.querySelector('[role="alert"]')?.textContent).toContain('Não deu para ler as criaturas.');
+    expect(el.querySelector('[role="alert"]')?.textContent).toContain(
+      'Não deu para ler as criaturas.',
+    );
     button('Tentar de novo')?.click();
     await flush();
     expect(text()).toContain('Capitão bandido');

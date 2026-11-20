@@ -19,7 +19,12 @@ const espiao = candidate({
   mapMeasures: false,
   checks: [{ key: 'skill:stealth', name: 'Furtividade', bonus: 4, known: true }],
 });
-const medido = candidate({ characterId: 'npc-m', monsterKey: '', name: 'Guarda', mapMeasures: true });
+const medido = candidate({
+  characterId: 'npc-m',
+  monsterKey: '',
+  name: 'Guarda',
+  mapMeasures: true,
+});
 
 function formWith(...list: ReturnType<typeof candidate>[]): NpcCheckForm {
   const form = new NpcCheckForm();
@@ -49,7 +54,9 @@ describe('NpcCheckForm', () => {
   it('says a creature with no number for the check rolls +0, beside the check', () => {
     const form = formWith(capitao, bartolo);
     form.select('npc-bartolo');
-    expect(form.noBonus()).toBe('Sem bônus para Persuasão: o d20 conta com +0 e você soma o bônus que achar justo.');
+    expect(form.noBonus()).toBe(
+      'Sem bônus para Persuasão: o d20 conta com +0 e você soma o bônus que achar justo.',
+    );
     expect(form.options()[0].side).toBe('sem bônus');
     form.select('npc-cb');
     expect(form.noBonus()).toBe('');
@@ -97,7 +104,7 @@ describe('NpcCheckForm', () => {
     expect(form.roll()?.die).toEqual({ face: 11 });
   });
 
-  it('asks nothing of the d20 field while the dice are the app\'s', () => {
+  it("asks nothing of the d20 field while the dice are the app's", () => {
     const form = formWith(capitao);
     form.select('npc-cb');
     form.setText('77');
@@ -118,11 +125,26 @@ describe('NpcCheckForm', () => {
       source: NpcCheckSource.MONSTER,
     });
     form.addFound(found);
-    expect(form.groups().at(-1)?.rows.map((r) => r.name)).toEqual(['Goblin']);
+    expect(
+      form
+        .groups()
+        .at(-1)
+        ?.rows.map((r) => r.name),
+    ).toEqual(['Goblin']);
     expect(form.selected()?.monsterKey).toBe('goblin');
-    const other = candidate({ characterId: '', monsterKey: 'orc', name: 'Orc', source: NpcCheckSource.MONSTER });
+    const other = candidate({
+      characterId: '',
+      monsterKey: 'orc',
+      name: 'Orc',
+      source: NpcCheckSource.MONSTER,
+    });
     form.addFound(other);
-    expect(form.groups().at(-1)?.rows.map((r) => r.name)).toEqual(['Orc']);
+    expect(
+      form
+        .groups()
+        .at(-1)
+        ?.rows.map((r) => r.name),
+    ).toEqual(['Orc']);
   });
 
   it('keeps the choice when the list is read again and drops it when the creature is gone', () => {

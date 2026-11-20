@@ -95,7 +95,11 @@ describe('the check', () => {
       ['skill:persuasion', 'Persuasão', '+2'],
     ]);
     expect(checkOptions(bartolo)[0]).toMatchObject({ side: 'sem bônus', known: false });
-    expect(checkOptions(candidate({ checks: [{ key: 'skill:x', name: 'X', bonus: -1, known: true }] }))[0].side).toBe('−1');
+    expect(
+      checkOptions(
+        candidate({ checks: [{ key: 'skill:x', name: 'X', bonus: -1, known: true }] }),
+      )[0].side,
+    ).toBe('−1');
   });
 
   it('starts on Enganação when the creature has it, else on its first check', () => {
@@ -113,7 +117,9 @@ describe('the check', () => {
 
   it('names the roll on the button, with the creature as the board writes it', () => {
     expect(rollLabel(candidate(), 'skill:deception')).toBe('Rolar Enganação do Capitão bandido');
-    expect(rollLabel(candidate({ name: 'Brisa' }), 'skill:deception')).toBe('Rolar Enganação da Brisa');
+    expect(rollLabel(candidate({ name: 'Brisa' }), 'skill:deception')).toBe(
+      'Rolar Enganação da Brisa',
+    );
   });
 
   it('writes "do" or "da" before a name', () => {
@@ -136,7 +142,9 @@ describe('parseD20', () => {
 
 describe('checkHint', () => {
   it('says whose checks the select lists, with the article of the creature', () => {
-    expect(checkHint(candidate())).toBe('Uma perícia ou uma habilidade do Capitão bandido, com o bônus dele.');
+    expect(checkHint(candidate())).toBe(
+      'Uma perícia ou uma habilidade do Capitão bandido, com o bônus dele.',
+    );
     expect(checkHint(candidate({ name: 'Aranha-lobo' }))).toBe(
       'Uma perícia ou uma habilidade da Aranha-lobo, com o bônus dela.',
     );

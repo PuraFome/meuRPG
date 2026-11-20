@@ -15,7 +15,9 @@ import { NpcCutHost, PASS_NOTE_MS, PASS_NOTE_TEXT } from './npc-cut-host';
 function setup(offers: () => unknown[]) {
   const closing = new Subject<boolean | undefined>();
   const open = vi.fn(() => ({ afterClosed: () => closing, afterDismissed: () => closing }));
-  const list = vi.fn(() => Promise.resolve(create(ListHeldRollsResponseSchema, { offers: offers() as never })));
+  const list = vi.fn(() =>
+    Promise.resolve(create(ListHeldRollsResponseSchema, { offers: offers() as never })),
+  );
   TestBed.configureTestingModule({
     providers: [
       { provide: ResourceClient, useValue: { listHeldRolls: list } },
@@ -41,7 +43,11 @@ function setup(offers: () => unknown[]) {
 
 describe('NpcCutHost', () => {
   beforeEach(() => {
-    vi.stubGlobal('matchMedia', () => ({ matches: false, addEventListener: () => undefined, removeEventListener: () => undefined }));
+    vi.stubGlobal('matchMedia', () => ({
+      matches: false,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+    }));
   });
   afterEach(() => {
     vi.unstubAllGlobals();
@@ -52,7 +58,12 @@ describe('NpcCutHost', () => {
     const { flush, open, fixture } = setup(() => [cuttingOffer()]);
     await flush();
     expect(open).toHaveBeenCalledTimes(1);
-    const config = (open.mock.calls[0] as unknown as [unknown, { data: { typed: boolean }; disableClose: boolean }])[1];
+    const config = (
+      open.mock.calls[0] as unknown as [
+        unknown,
+        { data: { typed: boolean }; disableClose: boolean },
+      ]
+    )[1];
     expect(config.data.typed).toBe(true);
     expect(config.disableClose).toBe(true);
     fixture.componentRef.setInput('tick', 1);

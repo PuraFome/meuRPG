@@ -18,7 +18,11 @@ function answered(cut: boolean, face = 4, usesLeft = 2) {
 
 function flowWith(answer = vi.fn(() => Promise.resolve(answered(true)))) {
   let n = 0;
-  const flow = new CuttingFlow({ answer }, () => 'c1', () => `k${++n}`);
+  const flow = new CuttingFlow(
+    { answer },
+    () => 'c1',
+    () => `k${++n}`,
+  );
   return { flow, answer };
 }
 
@@ -46,14 +50,19 @@ describe('CuttingFlow', () => {
     const { flow, answer } = flowWith();
     flow.sync([cuttingOffer()]);
     await flow.answer(true, 5);
-    expect((answer.mock.calls[0] as unknown as [string, string, CutAnswer])[2]).toEqual({ cut: true, die: { face: 5 } });
+    expect((answer.mock.calls[0] as unknown as [string, string, CutAnswer])[2]).toEqual({
+      cut: true,
+      die: { face: 5 },
+    });
   });
 
   it('lets it pass: nothing is spent and there is no result to read', async () => {
-    const { flow, answer } = flowWith(vi.fn(() => Promise.resolve(answered(false)))) ;
+    const { flow, answer } = flowWith(vi.fn(() => Promise.resolve(answered(false))));
     flow.sync([cuttingOffer()]);
     await flow.answer(false, null);
-    expect((answer.mock.calls[0] as unknown as [string, string, CutAnswer])[2]).toEqual({ cut: false });
+    expect((answer.mock.calls[0] as unknown as [string, string, CutAnswer])[2]).toEqual({
+      cut: false,
+    });
     expect(flow.phase()).toBe('passed');
     expect(flow.result()).toBeNull();
   });
@@ -66,9 +75,11 @@ describe('CuttingFlow', () => {
     expect(flow.offer()?.holdId).toBe('hold-1');
   });
 
-  it('does not take the offer going for the master\'s while its own answer is on the way', async () => {
+  it("does not take the offer going for the master's while its own answer is on the way", async () => {
     let finish: (v: ReturnType<typeof answered>) => void = () => undefined;
-    const { flow } = flowWith(vi.fn(() => new Promise<ReturnType<typeof answered>>((r) => (finish = r))));
+    const { flow } = flowWith(
+      vi.fn(() => new Promise<ReturnType<typeof answered>>((r) => (finish = r))),
+    );
     flow.sync([cuttingOffer()]);
     const sent = flow.answer(true, null);
     expect(flow.busy()).toBe(true);
@@ -81,7 +92,9 @@ describe('CuttingFlow', () => {
   });
 
   it('reads "já foi respondida" for an answer that came after the master went on, and spent nothing', async () => {
-    const { flow } = flowWith(vi.fn(() => Promise.reject(new ConnectError('closed', Code.FailedPrecondition))));
+    const { flow } = flowWith(
+      vi.fn(() => Promise.reject(new ConnectError('closed', Code.FailedPrecondition))),
+    );
     flow.sync([cuttingOffer()]);
     await flow.answer(true, null);
     expect(flow.phase()).toBe('late');

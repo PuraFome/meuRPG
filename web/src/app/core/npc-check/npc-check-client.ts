@@ -45,7 +45,11 @@ export class NpcCheckClient implements NpcCheckApi {
     return res.candidates;
   }
 
-  async roll(campaignId: string, roll: NpcCheckRoll, idempotencyKey: string): Promise<NpcCheckRead> {
+  async roll(
+    campaignId: string,
+    roll: NpcCheckRoll,
+    idempotencyKey: string,
+  ): Promise<NpcCheckRead> {
     const res = await this.play.rollNpcCheck({
       campaignId,
       npc: roll.characterId
@@ -73,7 +77,10 @@ export class NpcCheckClient implements NpcCheckApi {
       const res = await this.play.getNpcCheck({ campaignId });
       return res.check ?? null;
     } catch (err) {
-      if (sessionClosed(err) || ConnectError.from(err, Code.Unavailable).code === Code.PermissionDenied) {
+      if (
+        sessionClosed(err) ||
+        ConnectError.from(err, Code.Unavailable).code === Code.PermissionDenied
+      ) {
         return null;
       }
       throw err;
@@ -104,7 +111,7 @@ export class NpcCheckClient implements NpcCheckApi {
       },
     });
     if (res.result.case !== 'cuttingWords') {
-      throw new Error('AnswerHeldRoll answered with another result than the bard\'s');
+      throw new Error("AnswerHeldRoll answered with another result than the bard's");
     }
     return res.result.value;
   }

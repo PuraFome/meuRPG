@@ -16,14 +16,19 @@ function mount(read = npcCheckRead(), busy = false, error = '') {
 }
 
 const buttons = (el: HTMLElement) => Array.from(el.querySelectorAll('button'));
-const named = (el: HTMLElement, words: string) => buttons(el).find((b) => (b.textContent ?? '').includes(words) || b.getAttribute('aria-label') === words);
+const named = (el: HTMLElement, words: string) =>
+  buttons(el).find(
+    (b) => (b.textContent ?? '').includes(words) || b.getAttribute('aria-label') === words,
+  );
 
 describe('NpcCheckCard', () => {
   it('waits for the bards: the creature and the check, the total, who is asked, and the only way out is to go on', () => {
     const { el, text } = mount();
     expect(el.querySelector('h3')?.textContent).toBe('Capitão bandido · Enganação');
     expect(text()).toContain('d20 (13) + 4 = 17');
-    expect(text()).toContain('Antes das Palavras de Interrupção: o total fecha quando os bardos responderem.');
+    expect(text()).toContain(
+      'Antes das Palavras de Interrupção: o total fecha quando os bardos responderem.',
+    );
     expect(text()).toContain('Esperando Brisa');
     expect(text()).toContain('Na fila');
     expect(text()).toContain('Só você vê');
@@ -45,7 +50,10 @@ describe('NpcCheckCard', () => {
     const read = npcCheckRead({
       settled: true,
       total: 13,
-      asks: [ask('Brisa', NpcCheckAskState.CUT, { face: 4 }), ask('bilbo', NpcCheckAskState.CLOSED, { sides: 6 })],
+      asks: [
+        ask('Brisa', NpcCheckAskState.CUT, { face: 4 }),
+        ask('bilbo', NpcCheckAskState.CLOSED, { sides: 6 }),
+      ],
     });
     const { fixture, el, text } = mount(read);
     expect(text()).toContain('17 − 4 = 13');
@@ -69,12 +77,20 @@ describe('NpcCheckCard', () => {
 
   it('says nobody was asked when the check settled at once', () => {
     const { el } = mount(npcCheckRead({ settled: true, asks: [] }));
-    expect(el.querySelector('[data-testid="nobody"]')?.textContent).toContain('Ninguém foi perguntado');
+    expect(el.querySelector('[data-testid="nobody"]')?.textContent).toContain(
+      'Ninguém foi perguntado',
+    );
   });
 
   it('shows the error of a skip that did not go through', () => {
-    const { el } = mount(npcCheckRead(), false, 'Não deu para continuar sem esperar agora. Tente de novo.');
-    expect(el.querySelector('[role="alert"]')?.textContent).toContain('Não deu para continuar sem esperar agora.');
+    const { el } = mount(
+      npcCheckRead(),
+      false,
+      'Não deu para continuar sem esperar agora. Tente de novo.',
+    );
+    expect(el.querySelector('[role="alert"]')?.textContent).toContain(
+      'Não deu para continuar sem esperar agora.',
+    );
   });
 
   it('never reads "Sem efeito"', () => {

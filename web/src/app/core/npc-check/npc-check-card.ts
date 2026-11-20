@@ -107,7 +107,12 @@ function rowOf(read: NpcCheckRead, index: number, firstWaiting: number): AskRowV
       };
     default:
       return index === firstWaiting
-        ? { ...base, tag: `Esperando ${a.characterName}`, sub: `${die} · a pergunta está aberta`, tone: 'waiting' }
+        ? {
+            ...base,
+            tag: `Esperando ${a.characterName}`,
+            sub: `${die} · a pergunta está aberta`,
+            tone: 'waiting',
+          }
         : {
             ...base,
             tag: 'Na fila',
@@ -133,7 +138,8 @@ export function cardOf(read: NpcCheckRead, reason: NobodyReason = nobodyReasonOf
   }
   const nobody = read.settled && read.asks.length === 0;
   return {
-    key: read.holdId || `${read.creatureLabel}|${read.checkKey}|${read.d20?.faces.join(',')}|${total}`,
+    key:
+      read.holdId || `${read.creatureLabel}|${read.checkKey}|${read.d20?.faces.join(',')}|${total}`,
     title: `${read.creatureLabel} · ${read.checkName}`,
     settled: read.settled,
     box,

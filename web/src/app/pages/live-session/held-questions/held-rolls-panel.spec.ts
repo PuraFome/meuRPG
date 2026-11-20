@@ -84,7 +84,7 @@ describe('HeldRollsPanel', () => {
     ]);
   });
 
-  it('keeps the NPC check out of the pending questions: its card is the master\'s own', async () => {
+  it("keeps the NPC check out of the pending questions: its card is the master's own", async () => {
     list.mockImplementation(() => reply(brisa(), cuttingOffer({ holdId: 'h-npc' }) as never));
     const { el, flush } = mount();
     await flush();

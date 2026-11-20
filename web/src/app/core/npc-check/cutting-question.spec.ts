@@ -2,20 +2,16 @@ import { create } from '@bufbuild/protobuf';
 
 import { DiceRollSchema, HeldRollKind } from '../../../gen/meurpg/play/v1/combat_pb';
 import { CuttingWordsAnsweredSchema } from '../../../gen/meurpg/play/v1/resources_pb';
-import {
-  cutLabel,
-  cuttingView,
-  isCuttingOffer,
-  resultView,
-  typedFace,
-} from './cutting-question';
+import { cutLabel, cuttingView, isCuttingOffer, resultView, typedFace } from './cutting-question';
 import { cuttingOffer } from './npc-check-testing';
 
 describe('isCuttingOffer', () => {
   it('is the bard question of an NPC check, and nothing else', () => {
     expect(isCuttingOffer(cuttingOffer())).toBe(true);
     expect(isCuttingOffer(cuttingOffer({ kind: HeldRollKind.GROUP_CHECK }))).toBe(false);
-    expect(isCuttingOffer(cuttingOffer({ question: { case: 'lucky', value: { luckyIndex: 0 } } }))).toBe(false);
+    expect(
+      isCuttingOffer(cuttingOffer({ question: { case: 'lucky', value: { luckyIndex: 0 } } })),
+    ).toBe(false);
     expect(isCuttingOffer(undefined)).toBe(false);
   });
 });
@@ -51,13 +47,17 @@ describe('cuttingView', () => {
     expect(all).not.toMatch(/d20|bônus|total do|CD \d|Sem efeito|segundos| s\b/);
   });
 
-  it('asks for the face of the bard\'s own die when the table rolls physical dice', () => {
+  it("asks for the face of the bard's own die when the table rolls physical dice", () => {
     const v = cuttingView(cuttingOffer());
     expect(v.fieldLabel).toBe('Número que saiu no seu d8 (1 a 8)');
-    expect(v.fieldHint).toBe('Role o seu d8 e digite o que saiu. Para deixar passar, não precisa rolar.');
-    expect(cuttingView(cuttingOffer({ question: { case: 'cuttingWords', value: { sides: 6, usesLeft: 1 } } })).fieldLabel).toBe(
-      'Número que saiu no seu d6 (1 a 6)',
+    expect(v.fieldHint).toBe(
+      'Role o seu d8 e digite o que saiu. Para deixar passar, não precisa rolar.',
     );
+    expect(
+      cuttingView(
+        cuttingOffer({ question: { case: 'cuttingWords', value: { sides: 6, usesLeft: 1 } } }),
+      ).fieldLabel,
+    ).toBe('Número que saiu no seu d6 (1 a 6)');
   });
 });
 
@@ -79,8 +79,11 @@ describe('cutLabel and typedFace', () => {
 describe('resultView', () => {
   const die = create(DiceRollSchema, { diceCount: 1, diceSides: 8, faces: [4], total: 4 });
 
-  it('says what the bard cut and what is left, and never the creature\'s roll', () => {
-    const v = resultView(cuttingOffer(), create(CuttingWordsAnsweredSchema, { cut: true, die, usesLeft: 2 }));
+  it("says what the bard cut and what is left, and never the creature's roll", () => {
+    const v = resultView(
+      cuttingOffer(),
+      create(CuttingWordsAnsweredSchema, { cut: true, die, usesLeft: 2 }),
+    );
     expect(v.title).toBe('Palavras de Interrupção usadas');
     expect(v.subtitle).toBe('O teste do Capitão bandido · fora de combate');
     expect(v.tag).toBe('Você cortou: −4');

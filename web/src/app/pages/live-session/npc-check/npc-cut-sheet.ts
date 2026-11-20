@@ -66,10 +66,16 @@ export class NpcCutSheet {
     const v = this.view();
     return this.data.typed && v ? typedFace(this.text(), v.sides) : null;
   });
-  protected readonly invalid = computed(() => this.data.typed && this.text().trim() !== '' && this.face() === null);
+  protected readonly invalid = computed(
+    () => this.data.typed && this.text().trim() !== '' && this.face() === null,
+  );
   /** The button reads "Cortar", then "Cortar com 4" once the face is typed, and "Cortando…" while the answer is on the way. */
-  protected readonly cutText = computed(() => (this.flow.busy() ? 'Cortando…' : cutLabel(this.face())));
-  protected readonly cutReady = computed(() => !this.flow.busy() && (!this.data.typed || this.face() !== null));
+  protected readonly cutText = computed(() =>
+    this.flow.busy() ? 'Cortando…' : cutLabel(this.face()),
+  );
+  protected readonly cutReady = computed(
+    () => !this.flow.busy() && (!this.data.typed || this.face() !== null),
+  );
   protected readonly lockWhileBusy = effect(() => this.sheet.lock(this.flow.busy()));
 
   protected async cut(): Promise<void> {

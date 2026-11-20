@@ -66,7 +66,8 @@ export function cutErrorOf(err: unknown, cut: boolean): CutError {
     return { lead: 'A pergunta já foi encerrada.', text: 'Nada foi gasto.', closed: true };
   }
   // failed_precondition: this bard answered it already.
-  const answeredAlready = connectErr.code === Code.FailedPrecondition && !blocked && !sessionClosed(err);
+  const answeredAlready =
+    connectErr.code === Code.FailedPrecondition && !blocked && !sessionClosed(err);
   if (answeredAlready || sessionClosed(err)) {
     return { lead: 'Essa pergunta já foi respondida.', text: 'Nada foi gasto.', closed: true };
   }

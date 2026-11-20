@@ -32,7 +32,13 @@ export function ask(
   state: NpcCheckAskState,
   over: { sides?: number; face?: number } = {},
 ) {
-  return { characterId: name.toLowerCase(), characterName: name, state, sides: over.sides ?? BARD_DIE_SIDES, face: over.face ?? 0 };
+  return {
+    characterId: name.toLowerCase(),
+    characterName: name,
+    state,
+    sides: over.sides ?? BARD_DIE_SIDES,
+    face: over.face ?? 0,
+  };
 }
 
 /** A check that waits for Brisa and bilbo: the d20 13 + 4 = 17 of the Capitão bandido's Enganação. */
@@ -54,7 +60,9 @@ export function npcCheckRead(over: MessageInitShape<typeof NpcCheckReadSchema> =
 }
 
 /** A creature of the picker: the Capitão bandido of the stage, seen by the players, with two checks. */
-export function candidate(over: MessageInitShape<typeof NpcCheckCandidateSchema> = {}): NpcCheckCandidate {
+export function candidate(
+  over: MessageInitShape<typeof NpcCheckCandidateSchema> = {},
+): NpcCheckCandidate {
   const init = {
     characterId: 'npc-capitao',
     monsterKey: 'monster:bandit-captain',
@@ -74,7 +82,9 @@ export function candidate(over: MessageInitShape<typeof NpcCheckCandidateSchema>
 }
 
 /** The bard's question: the die and the uses left, and the creature's name only when the bard's player may read it. */
-export function cuttingOffer(over: MessageInitShape<typeof HeldRollOfferSchema> = {}): HeldRollOffer {
+export function cuttingOffer(
+  over: MessageInitShape<typeof HeldRollOfferSchema> = {},
+): HeldRollOffer {
   const init = {
     holdId: 'hold-1',
     kind: HeldRollKind.NPC_CHECK,

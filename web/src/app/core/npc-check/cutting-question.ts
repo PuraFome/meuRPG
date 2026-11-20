@@ -55,7 +55,9 @@ export function cuttingView(offer: HeldRollOffer): CuttingViewVm {
   const sides = q?.sides ?? 0;
   const name = nameOf(offer);
   return {
-    title: name ? `${article(name) === 'a' ? 'A' : 'O'} ${name} faz um teste` : 'Uma criatura faz um teste',
+    title: name
+      ? `${article(name) === 'a' ? 'A' : 'O'} ${name} faz um teste`
+      : 'Uma criatura faz um teste',
     subtitle: 'Palavras de Interrupção · fora de combate',
     lead: 'Usar Palavras de Interrupção?',
     text: `Você tira o seu dado de Inspiração de Bardo (d${sides}) do teste ${ofCreature(offer)}. O resultado ainda não foi dito.`,

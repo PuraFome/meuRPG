@@ -31,7 +31,10 @@ interface Seen {
   skip?: string;
 }
 
-function setup(over: { latest?: () => unknown; answer?: () => unknown } = {}): { client: NpcCheckClient; seen: Seen } {
+function setup(over: { latest?: () => unknown; answer?: () => unknown } = {}): {
+  client: NpcCheckClient;
+  seen: Seen;
+} {
   TestBed.resetTestingModule();
   const seen: Seen = {};
   const transport = createRouterTransport(({ service }) => {
@@ -60,12 +63,20 @@ function setup(over: { latest?: () => unknown; answer?: () => unknown } = {}): {
         seen.answer = req;
         return (over.answer?.() ??
           create(AnswerHeldRollResponseSchema, {
-            result: { case: 'cuttingWords', value: create(CuttingWordsAnsweredSchema, { cut: req.answer.case === 'cuttingWords' && req.answer.value.cut, usesLeft: 2 }) },
+            result: {
+              case: 'cuttingWords',
+              value: create(CuttingWordsAnsweredSchema, {
+                cut: req.answer.case === 'cuttingWords' && req.answer.value.cut,
+                usesLeft: 2,
+              }),
+            },
           })) as never;
       },
     });
   });
-  TestBed.configureTestingModule({ providers: [{ provide: CONNECT_TRANSPORT, useValue: transport }] });
+  TestBed.configureTestingModule({
+    providers: [{ provide: CONNECT_TRANSPORT, useValue: transport }],
+  });
   return { client: TestBed.inject(NpcCheckClient), seen };
 }
 
@@ -78,7 +89,17 @@ describe('NpcCheckClient', () => {
 
   it('rolls an NPC of the table in the app, with the box and the key', async () => {
     const { client, seen } = setup();
-    await client.roll('c1', { characterId: 'npc-1', monsterKey: '', checkKey: 'skill:deception', die: { inApp: true }, bardSees: true }, 'k1');
+    await client.roll(
+      'c1',
+      {
+        characterId: 'npc-1',
+        monsterKey: '',
+        checkKey: 'skill:deception',
+        die: { inApp: true },
+        bardSees: true,
+      },
+      'k1',
+    );
     expect(seen.roll?.npc).toEqual({ case: 'npcCharacterId', value: 'npc-1' });
     expect(seen.roll?.roll).toEqual({ case: 'rollInApp', value: true });
     expect(seen.roll?.bardSees).toBe(true);
@@ -88,7 +109,17 @@ describe('NpcCheckClient', () => {
 
   it('rolls a creature of the bestiary with the typed d20', async () => {
     const { client, seen } = setup();
-    await client.roll('c1', { characterId: '', monsterKey: 'spy', checkKey: 'skill:stealth', die: { face: 11 }, bardSees: false }, 'k2');
+    await client.roll(
+      'c1',
+      {
+        characterId: '',
+        monsterKey: 'spy',
+        checkKey: 'skill:stealth',
+        die: { face: 11 },
+        bardSees: false,
+      },
+      'k2',
+    );
     expect(seen.roll?.npc).toEqual({ case: 'monsterKey', value: 'spy' });
     expect(seen.roll?.roll).toEqual({ case: 'd20Face', value: 11 });
   });
@@ -102,17 +133,43 @@ describe('NpcCheckClient', () => {
   it('reads the latest check, and reads none when no session is open or the caller is not the master', async () => {
     expect((await setup().client.latest('c1'))?.holdId).toBe('hold-1');
     const closed = new ConnectError('x', Code.FailedPrecondition, undefined, [
-      { desc: GameSessionBlockedSchema, value: create(GameSessionBlockedSchema, { reason: GameSessionBlockedReason.NO_OPEN_SESSION }) },
+      {
+        desc: GameSessionBlockedSchema,
+        value: create(GameSessionBlockedSchema, {
+          reason: GameSessionBlockedReason.NO_OPEN_SESSION,
+        }),
+      },
     ]);
-    expect(await setup({ latest: () => { throw closed; } }).client.latest('c1')).toBeNull();
-    expect(await setup({ latest: () => { throw new ConnectError('x', Code.PermissionDenied); } }).client.latest('c1')).toBeNull();
-    await expect(setup({ latest: () => { throw new ConnectError('x', Code.Unavailable); } }).client.latest('c1')).rejects.toThrow();
+    expect(
+      await setup({
+        latest: () => {
+          throw closed;
+        },
+      }).client.latest('c1'),
+    ).toBeNull();
+    expect(
+      await setup({
+        latest: () => {
+          throw new ConnectError('x', Code.PermissionDenied);
+        },
+      }).client.latest('c1'),
+    ).toBeNull();
+    await expect(
+      setup({
+        latest: () => {
+          throw new ConnectError('x', Code.Unavailable);
+        },
+      }).client.latest('c1'),
+    ).rejects.toThrow();
   });
 
   it('answers a cut with the app die or a typed face, and a pass with no die', async () => {
     const { client, seen } = setup();
     await client.answer('c1', 'hold-1', { cut: true, die: { inApp: true } }, 'k4');
-    expect(seen.answer?.answer).toMatchObject({ case: 'cuttingWords', value: { cut: true, roll: { case: 'rollInApp', value: true } } });
+    expect(seen.answer?.answer).toMatchObject({
+      case: 'cuttingWords',
+      value: { cut: true, roll: { case: 'rollInApp', value: true } },
+    });
     await client.answer('c1', 'hold-1', { cut: true, die: { face: 5 } }, 'k5');
     expect(seen.answer?.answer).toMatchObject({ value: { roll: { case: 'typedFace', value: 5 } } });
     const read = await client.answer('c1', 'hold-1', { cut: false }, 'k6');
@@ -120,8 +177,10 @@ describe('NpcCheckClient', () => {
     expect(seen.answer?.answer).toMatchObject({ value: { cut: false, roll: { case: undefined } } });
   });
 
-  it('refuses an answer that is not the bard\'s', async () => {
+  it("refuses an answer that is not the bard's", async () => {
     const { client } = setup({ answer: () => create(AnswerHeldRollResponseSchema, {}) });
-    await expect(client.answer('c1', 'hold-1', { cut: false }, 'k7')).rejects.toThrow(/another result/);
+    await expect(client.answer('c1', 'hold-1', { cut: false }, 'k7')).rejects.toThrow(
+      /another result/,
+    );
   });
 });

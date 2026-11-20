@@ -66,11 +66,18 @@ export class CuttingFlow {
     if (!offer || this.busy() || this.phase() !== 'asking') {
       return;
     }
-    const answer: CutAnswer = cut ? { cut, die: face === null ? { inApp: true } : { face } } : { cut };
+    const answer: CutAnswer = cut
+      ? { cut, die: face === null ? { inApp: true } : { face } }
+      : { cut };
     this.busy.set(true);
     this.error.set(null);
     try {
-      const read = await this.api.answer(this.campaignId(), offer.holdId, answer, this.keys.keyFor({ hold: offer.holdId, answer }));
+      const read = await this.api.answer(
+        this.campaignId(),
+        offer.holdId,
+        answer,
+        this.keys.keyFor({ hold: offer.holdId, answer }),
+      );
       this.keys.renew();
       this.done.add(offer.holdId);
       this.result.set(cut ? resultView(offer, read) : null);

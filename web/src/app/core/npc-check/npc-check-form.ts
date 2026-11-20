@@ -35,7 +35,9 @@ export class NpcCheckForm {
   readonly text = signal('');
 
   readonly groups = computed(() => groupsOf(this.list()));
-  readonly selected = computed(() => this.list().find((c) => rowId(c) === this.selectedId()) ?? null);
+  readonly selected = computed(
+    () => this.list().find((c) => rowId(c) === this.selectedId()) ?? null,
+  );
   readonly options = computed(() => {
     const c = this.selected();
     return c ? checkOptions(c) : [];
@@ -64,9 +66,14 @@ export class NpcCheckForm {
   /** The d20 the master typed; `null` while the dice are the app's or the text is not a d20. */
   readonly face = computed(() => (this.mode() === 'type' ? parseD20(this.text()) : null));
   /** The typed d20 is not a number from 1 to 20 (an empty field is not wrong yet). */
-  readonly invalid = computed(() => this.mode() === 'type' && this.text().trim() !== '' && this.face() === null);
+  readonly invalid = computed(
+    () => this.mode() === 'type' && this.text().trim() !== '' && this.face() === null,
+  );
   readonly ready = computed(
-    () => this.selected() !== null && this.checkKey() !== '' && (this.mode() === 'app' || this.face() !== null),
+    () =>
+      this.selected() !== null &&
+      this.checkKey() !== '' &&
+      (this.mode() === 'app' || this.face() !== null),
   );
   /** Why the roll button is dashed, above it. */
   readonly reason = computed(() => {

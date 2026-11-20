@@ -31,7 +31,9 @@ describe('rollErrorOf', () => {
     const err = failed(Code.FailedPrecondition, [
       {
         desc: GameSessionBlockedSchema,
-        value: create(GameSessionBlockedSchema, { reason: GameSessionBlockedReason.NO_OPEN_SESSION }),
+        value: create(GameSessionBlockedSchema, {
+          reason: GameSessionBlockedReason.NO_OPEN_SESSION,
+        }),
       },
     ]);
     expect(rollErrorOf(err, 'Espião')).toEqual({

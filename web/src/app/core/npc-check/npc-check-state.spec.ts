@@ -25,12 +25,19 @@ function setup(latest: () => Promise<NpcCheckRead | null> = () => Promise.resolv
   };
   let n = 0;
   const state = new NpcCheckState(api, () => `key-${++n}`);
-  return { state, calls, skipKeys, failSkip: () => (skipped = () => Promise.reject(new ConnectError('x', Code.Unavailable))) };
+  return {
+    state,
+    calls,
+    skipKeys,
+    failSkip: () => (skipped = () => Promise.reject(new ConnectError('x', Code.Unavailable))),
+  };
 }
 
 describe('NpcCheckState', () => {
   it('reads the check the server holds, so the card survives a reload', async () => {
-    const { state } = setup(() => Promise.resolve(npcCheckRead({ settled: true, total: 17, asks: [] })));
+    const { state } = setup(() =>
+      Promise.resolve(npcCheckRead({ settled: true, total: 17, asks: [] })),
+    );
     await state.load('c1');
     expect(state.card()?.title).toBe('Capitão bandido · Enganação');
     expect(state.card()?.settled).toBe(true);
@@ -44,7 +51,11 @@ describe('NpcCheckState', () => {
 
   it('keeps what it shows when a read fails', async () => {
     let fail = false;
-    const { state } = setup(() => (fail ? Promise.reject(new ConnectError('x', Code.Unavailable)) : Promise.resolve(npcCheckRead())));
+    const { state } = setup(() =>
+      fail
+        ? Promise.reject(new ConnectError('x', Code.Unavailable))
+        : Promise.resolve(npcCheckRead()),
+    );
     await state.load('c1');
     fail = true;
     await state.load('c1');
@@ -66,7 +77,9 @@ describe('NpcCheckState', () => {
   });
 
   it('shows a roll the master just made even when an old card was hidden', async () => {
-    const { state } = setup(() => Promise.resolve(npcCheckRead({ holdId: '', settled: true, asks: [] })));
+    const { state } = setup(() =>
+      Promise.resolve(npcCheckRead({ holdId: '', settled: true, asks: [] })),
+    );
     await state.load('c1');
     state.dismiss();
     state.apply(npcCheckRead({ holdId: '', settled: true, asks: [] }));

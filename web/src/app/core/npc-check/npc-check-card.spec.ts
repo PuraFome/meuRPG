@@ -65,9 +65,7 @@ describe('cardOf', () => {
   });
 
   it('says a bard let it pass without any spent', () => {
-    const card = cardOf(
-      npcCheckRead({ settled: true, total: 17, asks: [ask('Brisa', PASSED)] }),
-    );
+    const card = cardOf(npcCheckRead({ settled: true, total: 17, asks: [ask('Brisa', PASSED)] }));
     expect(card.formula).toBe('d20 (13) + 4 = 17');
     expect(card.rows[0]).toMatchObject({ tag: 'Deixou passar', sub: 'd8 · nada gasto' });
     expect(card.detail).toBe('Ninguém cortou o teste.');
@@ -139,7 +137,9 @@ describe('cardOf', () => {
     expect(nobodyText('hidden')).toBe(
       'Ninguém foi perguntado: o token da criatura está escondido no mapa.',
     );
-    expect(nobodyText('immune')).toBe('Ninguém foi perguntado: a criatura não pode ser enfeitiçada.');
+    expect(nobodyText('immune')).toBe(
+      'Ninguém foi perguntado: a criatura não pode ser enfeitiçada.',
+    );
     expect(nobodyText('unseen')).toBe('Ninguém foi perguntado: nenhum bardo vê a criatura.');
     expect(nobodyText('unknown')).toBe('Ninguém foi perguntado: nenhum bardo podia cortar.');
     const read = npcCheckRead({ holdId: '', settled: true, total: 16, asks: [] });
@@ -147,7 +147,7 @@ describe('cardOf', () => {
     expect(cardOf(read).nobodyText).toBe(nobodyText('unknown'));
   });
 
-  it('reads the reason from one mapping of the server\'s enum', () => {
+  it("reads the reason from one mapping of the server's enum", () => {
     const rows: [NpcCheckNobodyReason, NobodyReason][] = [
       [NpcCheckNobodyReason.UNSPECIFIED, 'unknown'],
       [NpcCheckNobodyReason.NO_BARD_CAN_CUT, 'no-bard'],

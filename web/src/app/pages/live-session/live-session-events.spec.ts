@@ -40,7 +40,10 @@ function setup(readSnapshot: () => Promise<boolean>, openCombat: boolean) {
       c: string,
       g: number,
     ): { onBehind(): Promise<boolean>; onReady(): void; onVitals(v: unknown): void };
-    mapHandlers(g: number): { onVisionChanged(mapId: string): void; onMapChanged(mapId: string): void };
+    mapHandlers(g: number): {
+      onVisionChanged(mapId: string): void;
+      onMapChanged(mapId: string): void;
+    };
     combatHandlers(g: number): {
       onEncounterChanged(c: { encounterId: string; revision: number }): void;
     };

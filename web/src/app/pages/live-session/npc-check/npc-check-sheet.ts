@@ -9,7 +9,11 @@ import type { Observable } from 'rxjs';
 import type { CreatureSummary } from '../../../../gen/meurpg/rules/v1/rules_pb';
 import { ActionKey } from '../../../core/connect/idempotency';
 import { NpcCheckClient } from '../../../core/npc-check/npc-check-client';
-import { type RollError, PICKER_ERROR_TEXT, rollErrorOf } from '../../../core/npc-check/npc-check-errors';
+import {
+  type RollError,
+  PICKER_ERROR_TEXT,
+  rollErrorOf,
+} from '../../../core/npc-check/npc-check-errors';
 import { NpcCheckForm } from '../../../core/npc-check/npc-check-form';
 import { NpcCheckLauncher } from '../../../core/npc-check/npc-check-launcher';
 import { rowId } from '../../../core/npc-check/npc-check-picker';
