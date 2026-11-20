@@ -221,6 +221,18 @@ type ChoiceSet struct {
 	KeptOut []string `json:"-"`
 }
 
+// choiceOfFeature is the choice that the feature makes, when the set has one.
+func (s ChoiceSet) choiceOfFeature(feature string) (Choice, bool) {
+	for _, g := range s.Groups {
+		for _, ch := range g.Choices {
+			if ch.FeatureKey == feature && ch.Kind == ChoiceKindOptions {
+				return ch, true
+			}
+		}
+	}
+	return Choice{}, false
+}
+
 // Counts is how many selections are made and how many the sheet asks: the
 // "Escolhas feitas: N de M" of every screen.
 func (s ChoiceSet) Counts() (done, total int) {
