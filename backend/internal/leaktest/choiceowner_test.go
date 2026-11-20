@@ -1,6 +1,8 @@
 package leaktest
 
 import (
+	"slices"
+	"strings"
 	"testing"
 
 	"github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1/charactersv1connect"
@@ -57,6 +59,9 @@ func TestAPickStoredUnderAnEntryTheTableKeepsOutIsAnsweredAsAKeyThatDoesNotExist
 			ana := must(wd.ana.characters.CreateCharacter(ctx, rq(&charactersv1.CreateCharacterRequest{
 				CampaignId: wd.campaign, Kind: charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, Name: "Cantora", Sheet: sheet(base, 1),
 			}))).GetCharacter()
+			mine := must(wd.master.characters.CreateCharacter(ctx, rq(&charactersv1.CreateCharacterRequest{
+				CampaignId: wd.campaign, Kind: charactersv1.CharacterKind_CHARACTER_KIND_ENEMY, Name: "Sombra", Sheet: sheet(base, 1),
+			}))).GetCharacter()
 			w.close(p, e.closed)
 
 			calls := map[string]struct {
@@ -75,8 +80,12 @@ func TestAPickStoredUnderAnEntryTheTableKeepsOutIsAnsweredAsAKeyThatDoesNotExist
 					})
 				}},
 				"UpdateCharacter": {true, func(who reader, owner string) reply {
+					target := ana
+					if who.person == wd.master {
+						target = mine // the master updates a character of her own, so Ana's revision stays
+					}
 					return who.person.call(charactersv1connect.CharacterServiceUpdateCharacterProcedure, &charactersv1.UpdateCharacterRequest{
-						CampaignId: wd.campaign, CharacterId: ana.GetId(), Revision: ana.GetRevision(), Name: ana.GetName(), Sheet: sheet(base, 1, owner+part+value),
+						CampaignId: wd.campaign, CharacterId: target.GetId(), Revision: target.GetRevision(), Name: target.GetName(), Sheet: sheet(base, 1, owner+part+value),
 					})
 				}},
 			}
@@ -84,10 +93,10 @@ func TestAPickStoredUnderAnEntryTheTableKeepsOutIsAnsweredAsAKeyThatDoesNotExist
 				t.Run(what, func(t *testing.T) {
 					for _, who := range p.readers() {
 						if who.person == wd.master {
-							// The master reads what is switched off: today's answer, not compared.
-							if !c.mutates {
-								r := c.call(who, e.owner)
-								t.Logf("the master, %s: HTTP %d %s", what, r.status, shorten(r.body))
+							// The master reads what is switched off or retired: today's answer.
+							r := c.call(who, e.owner)
+							if !r.ok() || (what == "PreviewChoices" && !slices.Contains(choicesOf(t, r).GetNotOffered(), e.owner+part+value)) {
+								t.Errorf("the master, %s: HTTP %d %s; want today's answer", what, r.status, shorten(r.body))
 							}
 							continue
 						}
@@ -108,37 +117,59 @@ func TestAPickStoredUnderAnEntryTheTableKeepsOutIsAnsweredAsAKeyThatDoesNotExist
 // A pick the sheet already holds under the key of an entry the table closed afterwards stays with its holder (RN-23): her
 // own sheet still takes it, in the preview and in the update, and nothing is refused.
 func TestAPickHeldUnderAnEntryTheTableClosedAfterwardsStaysWithItsHolder(t *testing.T) {
-	for _, way := range []string{"switched off", "archived"} {
+	for _, way := range []string{"switched off", "archived", "a feat switched off", "a feat archived"} {
 		t.Run(way, func(t *testing.T) {
 			p := newChoicesProbe(t)
 			w, ctx := p.w, t.Context()
-			e := p.createEntry(t, tableClass("Zorvak4321", &rulesv1.TableFeature{
-				NamePt: "Zorvak4321 feature", DescPt: []string{"Texto."},
-				Effects: []*rulesv1.TableEffect{{Type: "choice", Choice: "tool", Count: 1}},
-			}))
-			class := e.GetKey()
-			res := choicesOf(t, p.preview(reader{person: w.ana, kind: charactersv1.CharacterKind_CHARACTER_KIND_PLAYER}, sheet(class, 1)))
+			tool := []*rulesv1.TableEffect{{Type: "choice", Choice: "tool", Count: 1}}
+			var closed, owner string // the entry the table closes, and the key that owns the choice
+			var mk func(picks ...string) *charactersv1.CharacterSheet
+			var plain *charactersv1.CharacterSheet // the sheet Ana makes, before the master adds anything
+			if strings.HasPrefix(way, "a feat") {
+				closed = must(w.master.table.CreateTableEntry(ctx, rq(&rulesv1.CreateTableEntryRequest{
+					CampaignId: w.campaign, Body: &rulesv1.CreateTableEntryRequest_TableFeat{TableFeat: &rulesv1.TableFeat{NamePt: "Zorvak4321 feat", DescPt: []string{"Texto."}, Effects: tool}},
+				}))).GetEntry().GetKey()
+				owner = closed
+				base := p.createClass(tableClass("Guardião Base"))
+				plain = sheet(base, 1)
+				mk = func(picks ...string) *charactersv1.CharacterSheet {
+					s := sheet(base, 1, picks...)
+					s.GetFull().FeatKeys = []string{closed}
+					return s
+				}
+			} else {
+				e := p.createEntry(t, tableClass("Zorvak4321", &rulesv1.TableFeature{NamePt: "Zorvak4321 feature", DescPt: []string{"Texto."}, Effects: tool}))
+				closed = e.GetKey()
+				owner = e.GetTableClass().GetLevels()[0].GetFeatures()[0].GetKey()
+				plain = sheet(closed, 1)
+				mk = func(picks ...string) *charactersv1.CharacterSheet { return sheet(closed, 1, picks...) }
+			}
+			res := choicesOf(t, p.preview(reader{person: w.ana, kind: charactersv1.CharacterKind_CHARACTER_KIND_PLAYER}, mk()))
 			opts := optionsOf(res, "#tool")
 			if len(opts) == 0 {
-				t.Fatal("the choice of tools has no option")
+				t.Fatalf("the choice of tools has no option: %v", res)
 			}
-			pick := firstChoiceKey(res, "#tool") + "=" + opts[0]
+			pick := owner + "#tool=" + opts[0]
+			// Only the master adds a feat to a sheet: Ana's sheet gets the feat and the pick from her.
 			held := must(w.ana.characters.CreateCharacter(ctx, rq(&charactersv1.CreateCharacterRequest{
-				CampaignId: w.campaign, Kind: charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, Name: "Cantora", Sheet: sheet(class, 1, pick),
+				CampaignId: w.campaign, Kind: charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, Name: "Cantora", Sheet: plain,
 			}))).GetCharacter()
-			if way == "archived" {
-				must(w.master.table.ArchiveTableEntry(ctx, rq(&rulesv1.ArchiveTableEntryRequest{CampaignId: w.campaign, Key: class})))
+			held = must(w.master.characters.UpdateCharacter(ctx, rq(&charactersv1.UpdateCharacterRequest{
+				CampaignId: w.campaign, CharacterId: held.GetId(), Revision: held.GetRevision(), Name: held.GetName(), Sheet: mk(pick),
+			}))).GetCharacter()
+			if strings.HasSuffix(way, "archived") {
+				must(w.master.table.ArchiveTableEntry(ctx, rq(&rulesv1.ArchiveTableEntryRequest{CampaignId: w.campaign, Key: closed})))
 			} else {
-				must(w.master.table.SetOptionSwitches(ctx, rq(&rulesv1.SetOptionSwitchesRequest{CampaignId: w.campaign, Switches: []*rulesv1.OptionSwitch{{Key: class, Off: true}}})))
+				must(w.master.table.SetOptionSwitches(ctx, rq(&rulesv1.SetOptionSwitchesRequest{CampaignId: w.campaign, Switches: []*rulesv1.OptionSwitch{{Key: closed, Off: true}}})))
 			}
 			r := w.ana.call(charactersv1connect.CharacterServicePreviewChoicesProcedure, &charactersv1.PreviewChoicesRequest{
-				CampaignId: w.campaign, CharacterId: held.GetId(), Kind: charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, Sheet: sheet(class, 1, pick),
+				CampaignId: w.campaign, CharacterId: held.GetId(), Kind: charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, Sheet: mk(pick),
 			})
 			if !r.ok() || len(choicesOf(t, r).GetNotOffered()) != 0 {
 				t.Errorf("PreviewChoices of the held pick: HTTP %d %s", r.status, shorten(r.body))
 			}
 			u := w.ana.call(charactersv1connect.CharacterServiceUpdateCharacterProcedure, &charactersv1.UpdateCharacterRequest{
-				CampaignId: w.campaign, CharacterId: held.GetId(), Revision: held.GetRevision(), Name: "Cantora", Sheet: sheet(class, 1, pick),
+				CampaignId: w.campaign, CharacterId: held.GetId(), Revision: held.GetRevision(), Name: "Cantora", Sheet: mk(pick),
 			})
 			if !u.ok() {
 				t.Errorf("UpdateCharacter keeping the held pick: HTTP %d %s", u.status, shorten(u.body))

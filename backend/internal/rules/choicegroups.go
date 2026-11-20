@@ -570,9 +570,9 @@ func (cb *choiceBuilder) finish() ChoiceSet {
 	return set
 }
 
-// keepOutOwners keeps out of the offer the picks stored under the key of an entry the reader's view keeps out (switched off,
-// hidden or retired) that the sheet does not hold: for that reader the entry does not exist, and neither does the pick. They
-// leave NotOffered, which would answer that the pick is there but nothing offers it.
+// keepOutOwners keeps out the picks stored under the key of an entry the reader's view keeps out (switched off, hidden or
+// retired) that the sheet does not hold: for that reader the entry does not exist, so a new pick under it is kept out and the
+// save answers it as a key that does not exist.
 func (cb *choiceBuilder) keepOutOwners() {
 	for _, k := range cb.b.FeatureChoices {
 		choiceKey, _, ok := SplitScopedChoice(k)
