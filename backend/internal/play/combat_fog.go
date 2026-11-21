@@ -315,6 +315,7 @@ func (f *fogSight) reactorSees(r playdb.Combatant, sheet link.Sheet, at grid.Squ
 // is how the table looked when it happened; it is never worked out again from a
 // view that has changed. A Secret event (a hidden combatant is in it) is seen by no
 // player: their revision does not count it and their stream does not hear it.
+// Without fog, a Channel Divinity action gets the mark that it was made without fog (UnderFog false).
 func (c *combatTx) stamp(ctx context.Context, kind string, ev actionEvent) (actionEvent, error) {
 	if c.sight == nil {
 		if kind == eventActionTaken && ev.Channel != nil { // no fog: the action says so, as no entry has a record
