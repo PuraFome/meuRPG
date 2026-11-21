@@ -104,6 +104,8 @@ type preserveRow struct {
 	mode    turnMap
 	zombies []turnZombie
 	named   []string // nil: no one is named
+	// byMaster says the master acts for the cleric.
+	byMaster bool
 }
 
 func TestPreserveLifeResultFollowsTheCreaturesItsReaderMayRead(t *testing.T) {
@@ -113,17 +115,21 @@ func TestPreserveLifeResultFollowsTheCreaturesItsReaderMayRead(t *testing.T) {
 	half := turnZombie{label: "Quimbul4321", key: bandit, hp: 5}
 	friend := turnZombie{label: "Xandruk4321", key: bandit, ally: true, hp: 1}
 	hidFriend := turnZombie{label: "Xandruk4322", key: bandit, ally: true, hp: 1, hidden: true}
+	pens := turnZombie{label: "Pensantus", party: true, hp: 1}
 	rows := []preserveRow{
-		{"named, one hidden by the master", turnClearMap, []turnZombie{a, hid}, []string{"Quimbul4321"}},
-		{"named, one out of sight on a fog map", turnFogMap, []turnZombie{a, far}, []string{"Quimbul4321"}},
-		{"named, one hidden by the master, on a fog map", turnFogMap, []turnZombie{a, hid}, []string{"Quimbul4321"}},
-		{"named, no map, one hidden by the master", turnNoMap, []turnZombie{a, hid}, []string{"Quimbul4321"}},
-		{"named, the others are all readable", turnClearMap, []turnZombie{a, friend}, []string{"Quimbul4321", "Xandruk4321"}},
-		{"named, at half the maximum", turnClearMap, []turnZombie{half, hid}, []string{"Quimbul4321"}},
-		{"shared, one hidden by the master", turnClearMap, []turnZombie{friend, hidFriend}, nil},
-		{"shared, one hidden by the master, on a fog map", turnFogMap, []turnZombie{friend, hidFriend}, nil},
-		{"shared, no map, one hidden by the master", turnNoMap, []turnZombie{friend, hidFriend}, nil},
-		{"shared, with a creature of the other side among them", turnClearMap, []turnZombie{friend, a, hidFriend}, nil},
+		{"named, one hidden by the master", turnClearMap, []turnZombie{a, hid}, []string{"Quimbul4321"}, false},
+		{"named, one out of sight on a fog map", turnFogMap, []turnZombie{a, far}, []string{"Quimbul4321"}, false},
+		{"named, one hidden by the master, on a fog map", turnFogMap, []turnZombie{a, hid}, []string{"Quimbul4321"}, false},
+		{"named, no map, one hidden by the master", turnNoMap, []turnZombie{a, hid}, []string{"Quimbul4321"}, false},
+		{"named, the others are all readable", turnClearMap, []turnZombie{a, friend}, []string{"Quimbul4321", "Xandruk4321"}, false},
+		{"named, at half the maximum", turnClearMap, []turnZombie{half, hid}, []string{"Quimbul4321"}, false},
+		{"shared, one hidden by the master", turnClearMap, []turnZombie{friend, hidFriend}, nil, false},
+		{"shared, one hidden by the master, on a fog map", turnFogMap, []turnZombie{friend, hidFriend}, nil, false},
+		{"shared, no map, one hidden by the master", turnNoMap, []turnZombie{friend, hidFriend}, nil, false},
+		{"shared, with a creature of the other side among them", turnClearMap, []turnZombie{friend, a, hidFriend}, nil, false},
+		{"named, another player's character", turnClearMap, []turnZombie{pens}, []string{"Pensantus"}, false},
+		{"shared, no creature of the cleric's side that is read is hurt", turnClearMap, []turnZombie{a, hidFriend}, nil, false},
+		{"shared by the master, one creature hidden by the master", turnClearMap, []turnZombie{friend, hidFriend}, nil, true},
 	}
 	for _, row := range rows {
 		t.Run(row.name, func(t *testing.T) {
@@ -141,21 +147,33 @@ func TestPreserveLifeResultFollowsTheCreaturesItsReaderMayRead(t *testing.T) {
 			if row.named == nil {
 				named = func(*turnWorld) []string { return nil }
 			}
-			gotFull, err := full.preserve(full.caio, named(full)...)
+			actor := func(tw *turnWorld) *person {
+				if row.byMaster {
+					return tw.master
+				}
+				return tw.caio
+			}
+			gotFull, err := full.preserve(actor(full), named(full)...)
 			if err != nil {
 				t.Fatalf("Preserve Life with the others: %v", err)
 			}
-			gotOnly, err := only.preserve(only.caio, named(only)...)
+			gotOnly, err := only.preserve(actor(only), named(only)...)
 			if err != nil {
 				t.Fatalf("Preserve Life without the others: %v", err)
 			}
-			if a, b := same(gotFull), same(gotOnly); a != b {
-				t.Errorf("the cleric's answer with the others differs from the one without them:\n%s\n%s", a, b)
-			}
-			full.checkHeals("the cleric's answer", gotFull.GetChannelDivinity(), readable)
-			for _, h := range gotFull.GetChannelDivinity().GetHeals() {
-				if h.HitPointsAfterKnown != nil || h.ProtoReflect().Has(h.ProtoReflect().Descriptor().Fields().ByNumber(5)) {
-					t.Errorf("the cleric's answer gives the hit points after of %s", h.GetLabel())
+			restored := readable
+			if row.byMaster { // the master's reader reads every creature
+				restored = restoredBy(row.zombies, row.named, func(turnZombie) bool { return true })
+				full.checkHeals("the master's answer", gotFull.GetChannelDivinity(), restored)
+			} else {
+				if a, b := same(gotFull), same(gotOnly); a != b {
+					t.Errorf("the cleric's answer with the others differs from the one without them:\n%s\n%s", a, b)
+				}
+				full.checkHeals("the cleric's answer", gotFull.GetChannelDivinity(), readable)
+				for _, h := range gotFull.GetChannelDivinity().GetHeals() {
+					if h.HitPointsAfterKnown != nil || h.ProtoReflect().Has(h.ProtoReflect().Descriptor().Fields().ByNumber(5)) {
+						t.Errorf("the cleric's answer gives the hit points after of %s", h.GetLabel())
+					}
 				}
 			}
 			for _, p := range []*person{full.caio, full.ana} {
@@ -167,8 +185,17 @@ func TestPreserveLifeResultFollowsTheCreaturesItsReaderMayRead(t *testing.T) {
 			if full.line(full.ana).GetChannelDivinity() != nil {
 				t.Errorf("another player reads the numbers: %v", full.line(full.ana))
 			}
+			full.checkHeals("the master's line", full.line(full.master).GetChannelDivinity(), restored)
+			for _, h := range full.line(full.master).GetChannelDivinity().GetHeals() {
+				if h.HitPointsAfterKnown == nil {
+					t.Errorf("the master's line gives no hit points after of %s", h.GetLabel())
+				}
+			}
 			unread := labelsOfZombies(row.zombies, func(z turnZombie) bool { return !z.readable(row.mode) })
-			reads := map[string]string{"the cleric's answer": jsonOf(gotFull)}
+			reads := map[string]string{}
+			if !row.byMaster {
+				reads["the cleric's answer"] = jsonOf(gotFull)
+			}
 			for k, v := range full.reads(full.caio) {
 				reads[k] = v
 			}
@@ -179,23 +206,42 @@ func TestPreserveLifeResultFollowsTheCreaturesItsReaderMayRead(t *testing.T) {
 
 func TestPreserveLifeNamesOnlyWhatItsReaderMayRead(t *testing.T) {
 	bandits := func(z turnZombie) turnZombie { z.key, z.hp = bandit, 1; return z }
+	a := bandits(turnZombie{label: "Quimbul4321"})
+	// named are the ids the cleric's player names: z (a creature in the scene), another combat's creature, or a readable one and z.
+	type naming func(tw *turnWorld, z turnZombie) []string
+	onlyZ := func(tw *turnWorld, z turnZombie) []string { return []string{tw.ids[z.label]} }
 	unread := map[string]struct {
-		mode turnMap
-		z    turnZombie
+		mode   turnMap
+		z      turnZombie
+		scene  []turnZombie
+		naming naming
 	}{
-		"hidden by the master":                                 {turnClearMap, bandits(turnZombie{label: "Quimbul4322", hidden: true})},
-		"hidden by the master, no map":                         {turnNoMap, bandits(turnZombie{label: "Quimbul4322", hidden: true})},
-		"out of sight on a fog map":                            {turnFogMap, bandits(turnZombie{label: "Quimbul4322", behind: true})},
-		"an undead hidden by the master":                       {turnClearMap, turnZombie{label: "Quimbul4322", hidden: true}},
-		"an undead out of sight on a fog map":                  {turnFogMap, turnZombie{label: "Quimbul4322", behind: true}},
-		"a creature of the cleric's side hidden by the master": {turnClearMap, bandits(turnZombie{label: "Xandruk4322", ally: true, hidden: true})},
+		"hidden by the master":                                 {turnClearMap, bandits(turnZombie{label: "Quimbul4322", hidden: true}), nil, onlyZ},
+		"hidden by the master, no map":                         {turnNoMap, bandits(turnZombie{label: "Quimbul4322", hidden: true}), nil, onlyZ},
+		"out of sight on a fog map":                            {turnFogMap, bandits(turnZombie{label: "Quimbul4322", behind: true}), nil, onlyZ},
+		"an undead hidden by the master":                       {turnClearMap, turnZombie{label: "Quimbul4322", hidden: true}, nil, onlyZ},
+		"an undead out of sight on a fog map":                  {turnFogMap, turnZombie{label: "Quimbul4322", behind: true}, nil, onlyZ},
+		"a creature of the cleric's side hidden by the master": {turnClearMap, bandits(turnZombie{label: "Xandruk4322", ally: true, hidden: true}), nil, onlyZ},
+		"a creature of another combat": {turnClearMap, turnZombie{}, []turnZombie{a}, func(tw *turnWorld, _ turnZombie) []string {
+			other := newTurnWorld(tw.t, turnClearMap, []turnZombie{bandits(turnZombie{label: "Quimbul4323"})})
+			return []string{other.ids["Quimbul4323"]}
+		}},
+		"two named, one readable and one hidden by the master": {turnClearMap, bandits(turnZombie{label: "Quimbul4322", hidden: true}), nil, func(tw *turnWorld, z turnZombie) []string {
+			return []string{tw.ids[a.label], tw.ids[z.label]}
+		}},
+		"two named, one hidden by the master and one readable, no map": {turnNoMap, bandits(turnZombie{label: "Quimbul4322", hidden: true}), nil, func(tw *turnWorld, z turnZombie) []string {
+			return []string{tw.ids[z.label], tw.ids[a.label]}
+		}},
 	}
 	for name, row := range unread {
 		t.Run(name, func(t *testing.T) {
-			a := bandits(turnZombie{label: "Quimbul4321"})
-			tw := newTurnWorld(t, row.mode, []turnZombie{a, row.z})
+			scene := row.scene
+			if scene == nil {
+				scene = []turnZombie{a, row.z}
+			}
+			tw := newTurnWorld(t, row.mode, scene)
 			before := tw.reads(tw.caio)
-			_, got := tw.preserve(tw.caio, tw.ids[row.z.label])
+			_, got := tw.preserve(tw.caio, row.naming(tw, row.z)...)
 			_, madeUp := tw.preserve(tw.caio, newKey())
 			if got == nil || madeUp == nil {
 				t.Fatalf("naming a creature that is not read: %v, naming a made-up id: %v, want two refusals", got, madeUp)
@@ -206,7 +252,9 @@ func TestPreserveLifeNamesOnlyWhatItsReaderMayRead(t *testing.T) {
 			if g := refusalText(got); !strings.Contains(g, "that creature is not in the combat") {
 				t.Errorf("the refusal = %q, want the one of a creature that is not in the combat", g)
 			}
-			tw.scan([]string{row.z.label}, map[string]string{"the refusal": refusalText(got)})
+			if row.z.label != "" {
+				tw.scan([]string{row.z.label}, map[string]string{"the refusal": refusalText(got)})
+			}
 			// Nothing was spent or written: what the cleric's player reads is what it was, and the action still works.
 			for k, v := range tw.reads(tw.caio) {
 				if v != before[k] {
@@ -304,32 +352,55 @@ func TestPreserveLifeLineFollowsTheMastersSwitchAfterTheAction(t *testing.T) {
 	a, b := turnZombie{label: "Quimbul4321", key: bandit, hp: 1}, turnZombie{label: "Quimbul4322", key: bandit, hp: 1}
 	both := []string{"Quimbul4321", "Quimbul4322"}
 	t.Run("the master hides a listed creature", func(t *testing.T) {
-		tw := newTurnWorld(t, turnClearMap, []turnZombie{a, b})
+		tw, only := newTurnWorld(t, turnClearMap, []turnZombie{a, b}), newTurnWorld(t, turnClearMap, []turnZombie{a})
 		key := newKey()
 		if _, err := tw.preserveWith(tw.caio, key, tw.idsOf(both)...); err != nil {
 			t.Fatalf("Preserve Life: %v", err)
 		}
+		if _, err := only.preserveWith(only.caio, key, only.idsOf(both[:1])...); err != nil {
+			t.Fatalf("Preserve Life without the second: %v", err)
+		}
 		tw.checkHeals("the line", tw.line(tw.caio).GetChannelDivinity(), both)
 		tw.setHidden("Quimbul4322", true)
-		tw.checkHeals("the line after the switch", tw.line(tw.caio).GetChannelDivinity(), []string{"Quimbul4321"})
+		if x, y := same(tw.line(tw.caio)), same(only.line(only.caio)); x != y {
+			t.Errorf("the line after the switch differs from the one of the action without the second:\n%s\n%s", x, y)
+		}
 		retried, err := tw.preserveWith(tw.caio, key, tw.idsOf(both)...)
 		if err != nil {
 			t.Fatalf("retry: %v", err)
 		}
-		tw.checkHeals("the retried answer", retried.GetChannelDivinity(), []string{"Quimbul4321"})
+		retriedOnly, err := only.preserveWith(only.caio, key, only.idsOf(both[:1])...)
+		if err != nil {
+			t.Fatalf("retry without the second: %v", err)
+		}
+		if x, y := same(retried), same(retriedOnly); x != y {
+			t.Errorf("the retried answer differs from the one of the action without the second:\n%s\n%s", x, y)
+		}
 		tw.scan([]string{"Quimbul4322"}, tw.reads(tw.caio))
 	})
 	t.Run("the fog changes on a fog map", func(t *testing.T) {
-		tw := newTurnWorld(t, turnFogMap, []turnZombie{a})
+		tw, stays := newTurnWorld(t, turnFogMap, []turnZombie{a}), newTurnWorld(t, turnFogMap, []turnZombie{a})
 		key := newKey()
 		if _, err := tw.preserveWith(tw.caio, key, tw.ids["Quimbul4321"]); err != nil {
 			t.Fatalf("Preserve Life: %v", err)
 		}
+		if _, err := stays.preserveWith(stays.caio, key, stays.ids["Quimbul4321"]); err != nil {
+			t.Fatalf("Preserve Life in the other scene: %v", err)
+		}
 		tw.setFog(false)
-		tw.checkHeals("the line after the fog is off", tw.line(tw.caio).GetChannelDivinity(), []string{"Quimbul4321"})
+		if x, y := same(tw.line(tw.caio)), same(stays.line(stays.caio)); x != y {
+			t.Errorf("the line after the fog is off differs from the one of the scene whose fog stays on:\n%s\n%s", x, y)
+		}
 		retried, err := tw.preserveWith(tw.caio, key, tw.ids["Quimbul4321"])
 		if err != nil {
 			t.Fatalf("retry: %v", err)
+		}
+		retriedOther, err := stays.preserveWith(stays.caio, key, stays.ids["Quimbul4321"])
+		if err != nil {
+			t.Fatalf("retry in the other scene: %v", err)
+		}
+		if x, y := same(retried), same(retriedOther); x != y {
+			t.Errorf("the retried answer differs from the one of the scene whose fog stays on:\n%s\n%s", x, y)
 		}
 		tw.checkHeals("the retried answer", retried.GetChannelDivinity(), []string{"Quimbul4321"})
 	})

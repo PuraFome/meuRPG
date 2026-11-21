@@ -5138,8 +5138,11 @@ message HookResult {
 
 // ChannelDivinityResult is what a Channel Divinity action did, creature by creature.
 message ChannelDivinityResult {
-  // Preserve Life: the hit points each creature regained (after the half-maximum limit), in the order asked, for the
-  // creatures the reader may read, as `turns` are.
+  // Preserve Life: the hit points each creature regained (after the half-maximum limit), for the creatures the reader may
+  // read, in the order asked or, when the request named no creature, the lowest in proportion first. Read later (the log
+  // line, a retried answer) a player is listed a character or a creature of the party that the master has not hidden; an
+  // NPC only if that player saw it when the action was made, or, for a line stored with no record of who saw it, when the
+  // line says it was made without fog (with no such mark: on a combat with no map).
   repeated ChannelDivinityHeal heals = 1;
   // Turn Undead: the save of each undead that had to save and that the reader may read, in the order of the combat.
   repeated ChannelDivinityTurn turns = 2;
@@ -5151,13 +5154,15 @@ message ChannelDivinityResult {
 message ChannelDivinityHeal {
   string combatant_id = 1;
   string label = 2;
-  // Asked is what the cleric asked for; Healed what the creature regained after the limit of half its maximum.
+  // Asked is what the cleric asked for the creature, or what the server shared to it when the request named no one; Healed
+  // what the creature regained after the limit of half its maximum.
   int32 asked = 3;
   int32 healed = 4;
   // Deprecated: never filled. hit_points_after_known says the hit points after the action.
   int32 hit_points_after = 5 [deprecated = true];
   // The creature's hit points after the action, set only for a reader to whom the combat view gives that creature's
-  // hit points as numbers (the master and the player who plays it). Unset for any other reader.
+  // hit points as numbers (the master and the player who plays it, while the creature is still in the combat's list).
+  // Unset for any other reader.
   optional int32 hit_points_after_known = 6;
 }
 

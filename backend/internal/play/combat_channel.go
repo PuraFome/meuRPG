@@ -381,11 +381,12 @@ func (v combatViewer) atTheCall(byID map[string]playdb.Combatant) channelReader 
 	}
 }
 
-// numbersOf says, for a creature of byID, whether the viewer reads its hit points as numbers (readsHitPointsOf).
+// numbersOf says, for a creature, whether the viewer reads its hit points as numbers (readsHitPointsOf): the master always,
+// a player when the creature is in byID and theirs (a creature that left the combat has no owner left to tell).
 func (v combatViewer) numbersOf(byID map[string]playdb.Combatant) func(string) bool {
 	return func(id string) bool {
 		c, found := byID[id]
-		return found && v.readsHitPointsOf(c)
+		return v.master || found && v.readsHitPointsOf(c)
 	}
 }
 

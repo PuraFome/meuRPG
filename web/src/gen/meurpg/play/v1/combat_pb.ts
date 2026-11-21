@@ -7586,8 +7586,11 @@ export const HookResultSchema: GenMessage<HookResult> = /*@__PURE__*/
  */
 export type ChannelDivinityResult = Message<"meurpg.play.v1.ChannelDivinityResult"> & {
   /**
-   * Preserve Life: the hit points each creature regained (after the half-maximum limit), in the order asked, for the
-   * creatures the reader may read, as `turns` are.
+   * Preserve Life: the hit points each creature regained (after the half-maximum limit), for the creatures the reader may
+   * read, in the order asked or, when the request named no creature, the lowest in proportion first. Read later (the log
+   * line, a retried answer) a player is listed a character or a creature of the party that the master has not hidden; an
+   * NPC only if that player saw it when the action was made, or, for a line stored with no record of who saw it, when the
+   * line says it was made without fog (with no such mark: on a combat with no map).
    *
    * @generated from field: repeated meurpg.play.v1.ChannelDivinityHeal heals = 1;
    */
@@ -7632,7 +7635,8 @@ export type ChannelDivinityHeal = Message<"meurpg.play.v1.ChannelDivinityHeal"> 
   label: string;
 
   /**
-   * Asked is what the cleric asked for; Healed what the creature regained after the limit of half its maximum.
+   * Asked is what the cleric asked for the creature, or what the server shared to it when the request named no one; Healed
+   * what the creature regained after the limit of half its maximum.
    *
    * @generated from field: int32 asked = 3;
    */
@@ -7653,7 +7657,8 @@ export type ChannelDivinityHeal = Message<"meurpg.play.v1.ChannelDivinityHeal"> 
 
   /**
    * The creature's hit points after the action, set only for a reader to whom the combat view gives that creature's
-   * hit points as numbers (the master and the player who plays it). Unset for any other reader.
+   * hit points as numbers (the master and the player who plays it, while the creature is still in the combat's list).
+   * Unset for any other reader.
    *
    * @generated from field: optional int32 hit_points_after_known = 6;
    */

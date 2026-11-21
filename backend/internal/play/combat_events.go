@@ -238,7 +238,8 @@ type castHit struct {
 // fogSeen is the record of who saw an NPC a line names (a hit of a spell, a target of an effect, a save or a heal of
 // Channel Divinity) when the line was written on a map with the fog of war: Fogged says the NPC was in the fog, and
 // SeenMask, bits of the event's CoverUsers, says to which players it was in sight. combatTx.markSeen sets the bits;
-// combatTx.markNPC and the stamp of a placed cast set Fogged. unseenBy reads it.
+// combatTx.markNPC (the entries of a Channel Divinity action and the targets of an effect) and the stamp of a placed cast
+// (its hits) set Fogged. unseenBy reads it.
 type fogSeen struct {
 	Fogged   bool   `json:"fogged,omitempty"`
 	SeenMask uint64 `json:"seen_mask,omitempty"`

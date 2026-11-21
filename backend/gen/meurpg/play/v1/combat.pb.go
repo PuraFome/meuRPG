@@ -16671,8 +16671,11 @@ func (x *HookResult) GetSource() string {
 // ChannelDivinityResult is what a Channel Divinity action did, creature by creature.
 type ChannelDivinityResult struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Preserve Life: the hit points each creature regained (after the half-maximum limit), in the order asked, for the
-	// creatures the reader may read, as `turns` are.
+	// Preserve Life: the hit points each creature regained (after the half-maximum limit), for the creatures the reader may
+	// read, in the order asked or, when the request named no creature, the lowest in proportion first. Read later (the log
+	// line, a retried answer) a player is listed a character or a creature of the party that the master has not hidden; an
+	// NPC only if that player saw it when the action was made, or, for a line stored with no record of who saw it, when the
+	// line says it was made without fog (with no such mark: on a combat with no map).
 	Heals []*ChannelDivinityHeal `protobuf:"bytes,1,rep,name=heals,proto3" json:"heals,omitempty"`
 	// Turn Undead: the save of each undead that had to save and that the reader may read, in the order of the combat.
 	Turns []*ChannelDivinityTurn `protobuf:"bytes,2,rep,name=turns,proto3" json:"turns,omitempty"`
@@ -16738,7 +16741,8 @@ type ChannelDivinityHeal struct {
 	state       protoimpl.MessageState `protogen:"open.v1"`
 	CombatantId string                 `protobuf:"bytes,1,opt,name=combatant_id,json=combatantId,proto3" json:"combatant_id,omitempty"`
 	Label       string                 `protobuf:"bytes,2,opt,name=label,proto3" json:"label,omitempty"`
-	// Asked is what the cleric asked for; Healed what the creature regained after the limit of half its maximum.
+	// Asked is what the cleric asked for the creature, or what the server shared to it when the request named no one; Healed
+	// what the creature regained after the limit of half its maximum.
 	Asked  int32 `protobuf:"varint,3,opt,name=asked,proto3" json:"asked,omitempty"`
 	Healed int32 `protobuf:"varint,4,opt,name=healed,proto3" json:"healed,omitempty"`
 	// Deprecated: never filled. hit_points_after_known says the hit points after the action.
@@ -16746,7 +16750,8 @@ type ChannelDivinityHeal struct {
 	// Deprecated: Marked as deprecated in meurpg/play/v1/combat.proto.
 	HitPointsAfter int32 `protobuf:"varint,5,opt,name=hit_points_after,json=hitPointsAfter,proto3" json:"hit_points_after,omitempty"`
 	// The creature's hit points after the action, set only for a reader to whom the combat view gives that creature's
-	// hit points as numbers (the master and the player who plays it). Unset for any other reader.
+	// hit points as numbers (the master and the player who plays it, while the creature is still in the combat's list).
+	// Unset for any other reader.
 	HitPointsAfterKnown *int32 `protobuf:"varint,6,opt,name=hit_points_after_known,json=hitPointsAfterKnown,proto3,oneof" json:"hit_points_after_known,omitempty"`
 	unknownFields       protoimpl.UnknownFields
 	sizeCache           protoimpl.SizeCache

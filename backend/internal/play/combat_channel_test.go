@@ -289,3 +289,40 @@ func TestLaterTurnReaderFollowsTheMarksOfTheEvent(t *testing.T) {
 		})
 	}
 }
+
+// TestLaterTurnReaderGivesTheHitPointsAfterToTheMasterAndTheOwnerWhileTheCreatureIsListed: the master reads the hit points
+// after of every creature, one that left the combat included; a player reads them for a creature of byID that is theirs
+// (a dismissed one is still listed), and for none that is gone.
+func TestLaterTurnReaderGivesTheHitPointsAfterToTheMasterAndTheOwnerWhileTheCreatureIsListed(t *testing.T) {
+	t.Parallel()
+	owner, other := "u", "y"
+	byID := map[string]playdb.Combatant{
+		"mine":      {ID: "mine", Kind: kindNPC, UserID: &owner},
+		"dismissed": {ID: "dismissed", Kind: kindNPC, UserID: &owner, Dismissed: true},
+		"theirs":    {ID: "theirs", Kind: kindNPC, UserID: &other},
+		"free":      {ID: "free", Kind: kindNPC},
+	}
+	master, player := combatViewer{master: true}, combatViewer{userID: owner}
+	for _, tc := range []struct {
+		name   string
+		v      combatViewer
+		target string
+		want   bool
+	}{
+		{"the master, a creature in the list", master, "free", true},
+		{"the master, a creature that left", master, "gone", true},
+		{"the owner's player, a creature in the list", player, "mine", true},
+		{"the owner's player, a dismissed creature", player, "dismissed", true},
+		{"the owner's player, a creature that left", player, "gone", false},
+		{"a player, another's creature", player, "theirs", false},
+		{"a player, a creature of no player", player, "free", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			r := laterTurnReader(tc.v, byID, &channelEvent{}, nil, true)
+			if got := r.numbers(tc.target); got != tc.want {
+				t.Errorf("numbers(%s) = %v, want %v", tc.target, got, tc.want)
+			}
+		})
+	}
+}
