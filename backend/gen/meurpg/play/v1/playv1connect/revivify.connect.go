@@ -110,9 +110,9 @@ type RevivifyServiceClient interface {
 	//     3rd level or one the caster does not have free, the caster does not have the spell
 	//     prepared, the diamonds were not confirmed, or the caster is a combatant of a
 	//     combat that is not ended (cast inside it).
-	//   - `not_found`: the caster, the target or the session is not the campaign's, or the
-	//     caller is a player and the caster is not their character. The same answer for a
-	//     target that is not dead, is blocked by the master or does not exist.
+	//   - `permission_denied`: the caller is a player and the caster is not their character.
+	//   - `not_found`: the caster, the target or the session is not the campaign's. The same
+	//     answer for a target that is not dead, is blocked by the master or does not exist.
 	//   - `failed_precondition` (a message, no detail): there is no open game session.
 	RequestRevivify(context.Context, *connect.Request[v1.RequestRevivifyRequest]) (*connect.Response[v1.RequestRevivifyResponse], error)
 	// ListRevivifyRequests lists the casts of the open game session: all for the master,
@@ -261,9 +261,9 @@ type RevivifyServiceHandler interface {
 	//     3rd level or one the caster does not have free, the caster does not have the spell
 	//     prepared, the diamonds were not confirmed, or the caster is a combatant of a
 	//     combat that is not ended (cast inside it).
-	//   - `not_found`: the caster, the target or the session is not the campaign's, or the
-	//     caller is a player and the caster is not their character. The same answer for a
-	//     target that is not dead, is blocked by the master or does not exist.
+	//   - `permission_denied`: the caller is a player and the caster is not their character.
+	//   - `not_found`: the caster, the target or the session is not the campaign's. The same
+	//     answer for a target that is not dead, is blocked by the master or does not exist.
 	//   - `failed_precondition` (a message, no detail): there is no open game session.
 	RequestRevivify(context.Context, *connect.Request[v1.RequestRevivifyRequest]) (*connect.Response[v1.RequestRevivifyResponse], error)
 	// ListRevivifyRequests lists the casts of the open game session: all for the master,
