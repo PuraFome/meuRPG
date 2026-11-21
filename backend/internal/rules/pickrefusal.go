@@ -157,27 +157,14 @@ func (x *deriver) toolPicksByOwner() map[string][]string {
 // takes, when the sheet has a class.
 func (x *deriver) scanNewTools(held Build, xs *deriver) (unknown, unplaced *PickRefusal) {
 	byOwner := x.toolPicksByOwner()
-	stuck := map[string][]string{}
-	if xs != nil {
-		for owner, values := range xs.toolPicksByOwner() {
-			stuck[owner] = unplacedPicks(xs.c.toolSources(owner), values)
-		}
-	}
+	stuck := xs.stuckTools()
 	for i, stored := range x.b.FeatureChoices {
-		choiceKey, value, ok := SplitScopedChoice(stored)
-		if !ok || slices.Contains(held.FeatureChoices, stored) {
+		choiceKey, owner, value, ok := newToolPick(stored, held)
+		if !ok {
 			continue
 		}
-		owner, isTool := strings.CutSuffix(choiceKey, toolPickSuffix)
-		if !isTool {
-			continue
-		}
-		// An owner the sheet holds or gets is known, archived or not: its tool choice works like its skills. An owner it neither
-		// holds nor gets is known only while the table keeps it open to the reader (a player's: not archived or switched off;
-		// the master's: not archived).
-		owned := byOwner[owner] != nil
-		closed := !owned && x.closedOwner(owner)
-		if !owned && !closed {
+		known, closed := x.toolOwnerKnown(byOwner, owner)
+		if !known {
 			continue
 		}
 		if !x.c.isToolPickKey(value) || closed {
@@ -186,12 +173,53 @@ func (x *deriver) scanNewTools(held Build, xs *deriver) (unknown, unplaced *Pick
 		if unplaced != nil || len(x.classes) == 0 {
 			continue
 		}
-		heldValues := slices.DeleteFunc(slices.Clone(byOwner[owner]), func(k string) bool { return !slices.Contains(held.FeatureChoices, ScopedChoice(choiceKey, k)) })
-		if slices.Contains(unplacedNewPicks(x.c.toolSources(owner), competing(byOwner[owner], heldValues, stuck[owner]), heldValues), value) {
+		if x.toolLeftOut(held, choiceKey, owner, value, byOwner[owner], stuck[owner]) {
 			unplaced = &PickRefusal{Field: fmt.Sprintf("%s[%d]", choiceKeysField, i), Key: value}
 		}
 	}
 	return nil, unplaced
+}
+
+// newToolPick splits a feature choice of the sheet that is a tool pick the stored sheet does not hold: its choice key, its owner
+// and its value.
+func newToolPick(stored string, held Build) (choiceKey, owner, value string, ok bool) {
+	choiceKey, value, ok = SplitScopedChoice(stored)
+	if !ok || slices.Contains(held.FeatureChoices, stored) {
+		return "", "", "", false
+	}
+	owner, ok = strings.CutSuffix(choiceKey, toolPickSuffix)
+	return choiceKey, owner, value, ok
+}
+
+// toolOwnerKnown says whether the owner of a tool pick is known to the reader, and whether it is closed to them. An owner the
+// sheet holds or gets is known, archived or not: its tool choice works like its skills. An owner it neither holds nor gets is
+// known only while the table keeps it open to the reader (a player's: not archived or switched off; the master's: not archived);
+// a closed one is known too, so its pick is answered as a key that does not exist.
+func (x *deriver) toolOwnerKnown(byOwner map[string][]string, owner string) (known, closed bool) {
+	if byOwner[owner] != nil {
+		return true, false
+	}
+	closed = x.closedOwner(owner)
+	return closed, closed
+}
+
+// toolLeftOut says the tool choices of the owner have no room for the new pick value beside the owner's other picks: the held
+// ones are placed first, but those the stored sheet could not place (stuck) do not compete.
+func (x *deriver) toolLeftOut(held Build, choiceKey, owner, value string, picks, stuck []string) bool {
+	heldValues := slices.DeleteFunc(slices.Clone(picks), func(k string) bool { return !slices.Contains(held.FeatureChoices, ScopedChoice(choiceKey, k)) })
+	return slices.Contains(unplacedNewPicks(x.c.toolSources(owner), competing(picks, heldValues, stuck), heldValues), value)
+}
+
+// stuckTools are the tool picks of the stored sheet its tool choices could not place, owner by owner; none for a nil deriver.
+func (x *deriver) stuckTools() map[string][]string {
+	stuck := map[string][]string{}
+	if x == nil {
+		return stuck
+	}
+	for owner, values := range x.toolPicksByOwner() {
+		stuck[owner] = unplacedPicks(x.c.toolSources(owner), values)
+	}
+	return stuck
 }
 
 // closedOwner says the owner of a tool pick is an entry the reader does not have: archived, or for a player also switched off
