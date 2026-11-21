@@ -87,3 +87,11 @@ func RequireCampaignMemberOrPending(ctx context.Context, campaignID string) (Mem
 	m.Role = RolePlayer
 	return m, nil
 }
+
+// PendingMayCall reports whether procedure (a connect procedure name, such as
+// campaignsv1connect.CharacterServiceCreateCharacterProcedure) is in pendingMayCall:
+// whether the allowance lets a pending member in.
+func PendingMayCall(procedure string) bool {
+	_, ok := pendingMayCall[procedure]
+	return ok
+}
