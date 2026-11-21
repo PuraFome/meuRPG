@@ -144,8 +144,14 @@ func (w *world) runRead(t *testing.T, r read, got *answers) {
 	}
 
 	allowed := r.allow(w)
-	for _, p := range w.players() {
+	anon := w.anonymous()
+	replies := map[*person]reply{}
+	for _, p := range append(w.players(), anon) {
 		reply := p.call(r.procedure, r.request(w, p))
+		replies[p] = reply
+		if p == anon {
+			continue
+		}
 		got.keep(p, reply)
 		switch want := slices.Contains(allowed, p); {
 		case want && !reply.ok():
@@ -157,6 +163,18 @@ func (w *world) runRead(t *testing.T, r read, got *answers) {
 			t.Errorf("%s: %s\n\tanswer: %s", p.name, f, shorten(reply.body))
 		}
 	}
+	checkCodes(t, w, anon, r.procedure, classified{readClass(w, allowed), r.name()}, callerVariants[0], replies)
+}
+
+// readClass is the class a read is checked as by checkCodes: a read that lets a stranger in is
+// a call anyone signed in may make (only the signed-out caller is checked), any other read is
+// the campaign's own, and a stranger and a pending member are answered not_found.
+// The code of a player's answer to a read is not judged.
+func readClass(w *world, allowed []*person) class {
+	if slices.Contains(allowed, w.stranger) {
+		return signedInCall
+	}
+	return playerAction
 }
 
 func shorten(b []byte) string {

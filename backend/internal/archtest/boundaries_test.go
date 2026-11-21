@@ -73,7 +73,7 @@ var prodEdges = map[string][]string{
 var testEdges = map[string][]string{
 	"campaignpackage": {"campaigns", "characters", "identity", "maps", "notes", "play", "rules"},
 	"characters":      {"campaigns"},
-	"leaktest":        {"campaignpackage", "campaigns", "characters", "identity", "maps", "notes", "platform", "play", "progression", "rules"},
+	"leaktest":        {"authz", "campaignpackage", "campaigns", "characters", "identity", "maps", "notes", "platform", "play", "progression", "rules"},
 	"maps":            {"campaigns", "characters", "identity"},
 	"platform":        {"system"}, // platform/nostore's test serves the system service
 	"play":            {"campaigns", "characters", "identity"},
