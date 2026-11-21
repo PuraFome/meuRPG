@@ -8,6 +8,7 @@ import (
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	"github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1/charactersv1connect"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
 // The order of the refusals on a new pick: a player whose draft names an entry the master switched off or archived, that the
@@ -147,5 +148,73 @@ func TestTheClosedChoiceIsAnsweredBeforeTheFitOfANewPick(t *testing.T) {
 				}
 			}
 		}
+	}
+}
+
+// The same order for a class feature the table switched off: a tool pick under it is a key the content does not have, and that
+// answer comes first whatever skill the draft also picks (one the feature's list holds or one no list holds), on every call that
+// takes a sheet and on CompleteCharacterChoices, whose picks cannot carry a skill: the answer to the pick alone is the answer
+// to a key that does not exist.
+func TestAClosedClassFeatureIsAnsweredBeforeTheFitOfANewPick(t *testing.T) {
+	p := newChoicesProbe(t)
+	w, ctx := p.w, t.Context()
+	const inside, outside, tool, absent = "skill:performance", "skill:stealth", "proficiency:smiths-tools", "feature:nenhum--dono@mesa"
+	feature := must(w.master.table.CreateTableEntry(ctx, rq(&rulesv1.CreateTableEntryRequest{
+		CampaignId: w.campaign, Body: &rulesv1.CreateTableEntryRequest_TableClassFeature{TableClassFeature: &rulesv1.TableClassFeature{
+			NamePt: "Canto fechado", DescPt: []string{"Texto de teste."}, ClassKey: "class:wizard", Level: 1,
+			Effects: []*rulesv1.TableEffect{
+				{Type: "choice", Choice: "skill", Count: 1, From: []string{inside}},
+				{Type: "choice", Choice: "tool", Count: 1, From: []string{tool, "proficiency:thieves-tools"}},
+			},
+		}},
+	}))).GetEntry()
+	must(w.master.table.SetOptionSwitches(ctx, rq(&rulesv1.SetOptionSwitchesRequest{CampaignId: w.campaign, Switches: []*rulesv1.OptionSwitch{{Key: feature.GetKey(), Off: true}}})))
+	held := must(w.ana.characters.CreateCharacter(ctx, rq(&charactersv1.CreateCharacterRequest{
+		CampaignId: w.campaign, Kind: charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, Name: "Anã", Sheet: sheet("class:wizard", 1),
+	}))).GetCharacter()
+	draft := func(owner string, skills ...string) *charactersv1.CharacterSheet {
+		s := sheet("class:wizard", 1, rules.ScopedChoice(rules.ToolPickKey(owner), tool))
+		s.GetFull().SkillProficiencyKeys = skills
+		return s
+	}
+	calls := map[string]func(who *person, s *charactersv1.CharacterSheet) reply{
+		"create": func(who *person, s *charactersv1.CharacterSheet) reply {
+			return who.call(charactersv1connect.CharacterServiceCreateCharacterProcedure, &charactersv1.CreateCharacterRequest{CampaignId: w.campaign, Kind: charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, Name: "Nova", Sheet: s})
+		},
+		"preview": func(who *person, s *charactersv1.CharacterSheet) reply {
+			return who.call(charactersv1connect.CharacterServicePreviewCharacterProcedure, &charactersv1.PreviewCharacterRequest{CampaignId: w.campaign, Kind: charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, Sheet: s})
+		},
+		"update": func(who *person, s *charactersv1.CharacterSheet) reply {
+			return who.call(charactersv1connect.CharacterServiceUpdateCharacterProcedure, &charactersv1.UpdateCharacterRequest{CampaignId: w.campaign, CharacterId: held.GetId(), Revision: held.GetRevision(), Name: held.GetName(), Sheet: s})
+		},
+		"preview of the choices": func(who *person, s *charactersv1.CharacterSheet) reply {
+			return who.call(charactersv1connect.CharacterServicePreviewChoicesProcedure, &charactersv1.PreviewChoicesRequest{CampaignId: w.campaign, CharacterId: held.GetId(), Kind: charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, Sheet: s})
+		},
+	}
+	for call, send := range calls {
+		who := w.ana
+		if call == "create" {
+			who = w.caio
+		}
+		want, none := send(who, draft(feature.GetKey())), send(who, draft(absent))
+		if call != "preview of the choices" && (want.ok() || !sameAnswer(want, feature.GetKey(), none, absent)) {
+			t.Errorf("%s, no skill: HTTP %d %s\nan owner that does not exist: HTTP %d %s", call, want.status, shorten(want.body), none.status, shorten(none.body))
+			continue
+		}
+		for _, skill := range []string{inside, outside} {
+			got := send(who, draft(feature.GetKey(), skill))
+			if got.status != want.status || keyless(got.body, feature.GetKey()) != keyless(want.body, feature.GetKey()) {
+				t.Errorf("%s, with %s: HTTP %d %s\nwithout the skill: HTTP %d %s", call, skill, got.status, shorten(got.body), want.status, shorten(want.body))
+			}
+		}
+	}
+	complete := func(owner string) reply {
+		return w.ana.call(charactersv1connect.CharacterServiceCompleteCharacterChoicesProcedure, &charactersv1.CompleteCharacterChoicesRequest{
+			CampaignId: w.campaign, CharacterId: held.GetId(), ExpectedRevision: held.GetRevision(),
+			Picks: []*charactersv1.ChoicePick{{ChoiceKey: rules.ToolPickKey(owner), OptionKeys: []string{tool}}},
+		})
+	}
+	if got, none := complete(feature.GetKey()), complete(absent); got.ok() || !sameAnswer(got, feature.GetKey(), none, absent) {
+		t.Errorf("CompleteCharacterChoices, the tool pick of the switched-off feature: HTTP %d %s\nan owner that does not exist: HTTP %d %s", got.status, shorten(got.body), none.status, shorten(none.body))
 	}
 }

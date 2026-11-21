@@ -1,7 +1,6 @@
 package leaktest
 
 import (
-	"net/http"
 	"strings"
 	"testing"
 
@@ -209,6 +208,17 @@ func TestAPickOfAnEntryKeyIsAnsweredAsAKeyThatDoesNotExist(t *testing.T) {
 		return s
 	}
 	shapes := map[string]func(key string) *charactersv1.CharacterSheet{
+		"a skill pick": func(key string) *charactersv1.CharacterSheet {
+			s := base()
+			s.GetFull().SkillProficiencyKeys = []string{key}
+			return s
+		},
+		"an expertise pick": func(key string) *charactersv1.CharacterSheet {
+			s := base()
+			s.GetFull().SkillProficiencyKeys = []string{"skill:arcana"}
+			s.GetFull().ExpertiseSkillKeys = []string{key}
+			return s
+		},
 		"a tool pick": func(key string) *charactersv1.CharacterSheet {
 			s := base()
 			s.GetFull().FeatureChoiceKeys = []string{rules.ScopedChoice(rules.ToolPickKey("trait:tool-proficiency"), key)}
@@ -243,13 +253,6 @@ func TestAPickOfAnEntryKeyIsAnsweredAsAKeyThatDoesNotExist(t *testing.T) {
 					who = w.caio
 				}
 				named, none := send(who, closed.GetKey()), send(who, absent)
-				if what == "a tool pick" && closed != live {
-					// A pick of a closed entry's key is a new choice of that entry, which the closed-choice answer refuses first.
-					if named.status != http.StatusBadRequest || !strings.Contains(string(named.body), "failed_precondition") {
-						t.Errorf("%s, %s: the closed entry's key: HTTP %d %s", what, call, named.status, shorten(named.body))
-					}
-					continue
-				}
 				if !sameAnswer(named, closed.GetKey(), none, absent) {
 					t.Errorf("%s, %s: the entry's key: HTTP %d %s\na key that does not exist: HTTP %d %s", what, call, named.status, shorten(named.body), none.status, shorten(none.body))
 				}

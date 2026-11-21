@@ -694,7 +694,10 @@ func (c *content) sheetHolds(b Build, key string) bool {
 	}
 	return key == b.Race || key == b.Subrace || key == b.Background || slices.Contains(b.Feats, key) || slices.Contains(b.FeatureChoices, key) ||
 		slices.ContainsFunc(b.Classes, func(cl ClassLevel) bool { return cl.Class == key || cl.Subclass == key }) ||
-		slices.ContainsFunc(b.FeatureChoices, func(k string) bool { _, v, ok := SplitScopedChoice(k); return ok && v == key })
+		slices.ContainsFunc(b.FeatureChoices, func(k string) bool {
+			choice, v, ok := SplitScopedChoice(k)
+			return ok && v == key && !strings.HasSuffix(choice, toolPickSuffix) && !strings.HasSuffix(choice, languagePickSuffix)
+		})
 }
 
 // Owners are the entries (races, subraces, classes, subclasses, backgrounds and feats) a
@@ -906,6 +909,16 @@ func isPickedKey(v string) bool {
 	return strings.HasPrefix(v, "feat:") || strings.HasPrefix(v, "spell:")
 }
 
+// pickedKeyOf is the feat or spell key a scoped choice picks. The value of a tool or a language pick is no entry of the
+// sheet, whatever it is spelled like: a pick of an entry key there names a key that is not a tool, not that entry.
+func pickedKeyOf(stored string) (string, bool) {
+	choice, v, ok := SplitScopedChoice(stored)
+	if !ok || !isPickedKey(v) || strings.HasSuffix(choice, toolPickSuffix) || strings.HasSuffix(choice, languagePickSuffix) {
+		return "", false
+	}
+	return v, true
+}
+
 func buildKeys(b Build, want func(string) bool) []string {
 	seen := map[string]bool{}
 	add := func(keys ...string) {
@@ -924,7 +937,7 @@ func buildKeys(b Build, want func(string) bool) []string {
 	add(b.SpellsPrepared...)
 	add(b.FeatureChoices...)
 	for _, k := range b.FeatureChoices {
-		if _, v, ok := SplitScopedChoice(k); ok && isPickedKey(v) {
+		if v, ok := pickedKeyOf(k); ok {
 			add(v) // a feat or a spell picked through a choice is a key of the sheet
 		}
 	}
@@ -985,7 +998,7 @@ func BuildKeys(b Build) []KeyField {
 	}
 	for i, k := range b.FeatureChoices {
 		add(k, fmt.Sprintf("full.feature_choice_keys[%d]", i))
-		if _, v, ok := SplitScopedChoice(k); ok && isPickedKey(v) {
+		if v, ok := pickedKeyOf(k); ok {
 			add(v, fmt.Sprintf("full.feature_choice_keys[%d]", i))
 		}
 	}

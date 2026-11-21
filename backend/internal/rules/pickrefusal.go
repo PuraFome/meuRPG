@@ -239,7 +239,23 @@ func (c *Content) LevelPickKeys(b Build) (skills, expertise []string) {
 	default:
 		expertise = e.Keys
 	}
+	// A list a held pick has used up, or a key the sheet already holds, takes no new pick.
+	skills = x.stillOpen(x.skillSources(), skills, b.SkillProficiencies, func(k string) bool { _, ok := x.c.skills[k]; return ok && !x.automaticSkills[k] })
+	expertise = x.stillOpen(x.expertiseSources(), expertise, b.Expertise, func(k string) bool { _, ok := x.c.skills[k]; return ok })
 	return skills, expertise
+}
+
+// stillOpen are the keys of the list a new pick may take: the ones the sheet does not hold whose pick the sources still
+// place beside the held picks (counted says an entry of the sheet is a pick of the sources).
+func (x *deriver) stillOpen(sources []pickSource, keys, held []string, counted func(string) bool) []string {
+	held = pickList(held, counted)
+	var out []string
+	for _, k := range keys {
+		if !slices.Contains(held, k) && !slices.Contains(unplacedNewPicks(sources, append(slices.Clone(held), k), held), k) {
+			out = append(out, k)
+		}
+	}
+	return out
 }
 
 // pickLists are the lists of the sources of the sheet; listed says the sheet has a source of expertise.

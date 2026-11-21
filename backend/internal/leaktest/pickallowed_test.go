@@ -2,6 +2,7 @@ package leaktest
 
 import (
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1/charactersv1connect"
@@ -10,46 +11,49 @@ import (
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 )
 
-// The skills the editor offers come from the sources of the sheet, as the reader's own content sees them: a table class that
-// the table switches off adds no key to the list a player reads for a draft of the sheet they own, and the master, who reads
-// what is switched off, still sees its keys. (A sheet that already holds the class keeps it, and so its keys.)
-func TestASwitchedOffTableClassAddsNoSkillKeyToAPlayersListForADraft(t *testing.T) {
+// The skills the editor offers come from the sources of the sheet: a table class feature the table switched off is no source,
+// so the lists of PreviewChoices for a draft of the sheet are those of a table without it, for the player who owns the sheet
+// and for the master alike.
+func TestASwitchedOffClassFeatureAddsNoSkillKeyToTheListsForADraft(t *testing.T) {
 	p := newChoicesProbe(t)
-	w := p.w
+	w, ctx := p.w, t.Context()
 	const extra = "skill:performance"
-	class := p.createEntry(t, tableClass("Menestrel da Mesa", &rulesv1.TableFeature{
-		NamePt: "Canto", DescPt: []string{"Texto de teste."},
-		Effects: []*rulesv1.TableEffect{{Type: "choice", Choice: "skill", Count: 1, From: []string{extra}}},
-	}))
-	// Ana's stored sheet is an ordinary one; the draft she previews takes the table class.
-	held := must(w.ana.characters.CreateCharacter(t.Context(), rq(&charactersv1.CreateCharacterRequest{
+	held := must(w.ana.characters.CreateCharacter(ctx, rq(&charactersv1.CreateCharacterRequest{
 		CampaignId: w.campaign, Kind: charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, Name: "Menestrel", Sheet: sheet("class:wizard", 1),
 	}))).GetCharacter()
-	// listed reads the lists of the draft as who sees them: whether the answer came, and whether it lists the key.
-	listed := func(t *testing.T, who reader) (listed, answered bool) {
-		t.Helper()
-		r := who.person.call(charactersv1connect.CharacterServicePreviewChoicesProcedure, &charactersv1.PreviewChoicesRequest{
-			CampaignId: w.campaign, CharacterId: held.GetId(), Kind: charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, Sheet: sheet(class.GetKey(), 1),
+	// lists are the lists of PreviewChoices for the draft as who reads it: skills and expertise, joined.
+	lists := func(who *person) string {
+		r := who.call(charactersv1connect.CharacterServicePreviewChoicesProcedure, &charactersv1.PreviewChoicesRequest{
+			CampaignId: w.campaign, CharacterId: held.GetId(), Kind: charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, Sheet: sheet("class:wizard", 1),
 		})
 		if !r.ok() {
-			return false, false
+			t.Fatalf("PreviewChoices: HTTP %d %s", r.status, shorten(r.body))
 		}
-		return slices.Contains(choicesOf(t, r).GetSkillsAllowed().GetKeys(), extra), true
+		c := choicesOf(t, r)
+		return strings.Join(c.GetSkillsAllowed().GetKeys(), ",") + " | " + strings.Join(c.GetExpertiseAllowed().GetKeys(), ",")
 	}
-	master, ana := reader{"the master", w.master, charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, true}, reader{"Ana, the owner", w.ana, charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, true}
-	for _, who := range []reader{master, ana} { // the positive control: before the switch each reads the key
-		if l, ok := listed(t, who); !ok || !l {
-			t.Fatalf("%s: before the switch the list holds %s = %v (answered %v), the positive control", who.name, extra, l, ok)
+	without := map[string]string{"the master": lists(w.master), "Ana": lists(w.ana)}
+	if strings.Contains(without["Ana"], extra) {
+		t.Fatalf("without the feature the list holds %s: the row measures nothing", extra)
+	}
+	feature := must(w.master.table.CreateTableEntry(ctx, rq(&rulesv1.CreateTableEntryRequest{
+		CampaignId: w.campaign, Body: &rulesv1.CreateTableEntryRequest_TableClassFeature{TableClassFeature: &rulesv1.TableClassFeature{
+			NamePt: "Canto", DescPt: []string{"Texto de teste."}, ClassKey: "class:wizard", Level: 1,
+			Effects: []*rulesv1.TableEffect{{Type: "choice", Choice: "skill", Count: 1, From: []string{extra}}, {Type: "choice", Choice: "expertise", Count: 1, From: []string{extra}}},
+		}},
+	}))).GetEntry()
+	for name, who := range map[string]*person{"the master": w.master, "Ana": w.ana} { // the positive control: the open feature is listed
+		if got := lists(who); !strings.Contains(got, extra) || got == without[name] {
+			t.Fatalf("%s: before the switch the lists are %q, want %s listed (without the feature %q)", name, got, extra, without[name])
 		}
 	}
-	must(w.master.table.SetOptionSwitches(t.Context(), rq(&rulesv1.SetOptionSwitchesRequest{
-		CampaignId: w.campaign, Switches: []*rulesv1.OptionSwitch{{Key: class.GetKey(), Off: true}},
+	must(w.master.table.SetOptionSwitches(ctx, rq(&rulesv1.SetOptionSwitchesRequest{
+		CampaignId: w.campaign, Switches: []*rulesv1.OptionSwitch{{Key: feature.GetKey(), Off: true}},
 	})))
-	if l, ok := listed(t, master); !ok || !l {
-		t.Errorf("the master reads what the table switched off, answered %v with %s listed %v", ok, extra, l)
-	}
-	if l, _ := listed(t, ana); l {
-		t.Errorf("Ana's list holds %s of a class the table switched off", extra)
+	for name, who := range map[string]*person{"the master": w.master, "Ana": w.ana} {
+		if got := lists(who); got != without[name] {
+			t.Errorf("%s: with the feature switched off the lists are %q, want those of a table without it: %q", name, got, without[name])
+		}
 	}
 }
 
