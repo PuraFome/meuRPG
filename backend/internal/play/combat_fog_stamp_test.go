@@ -324,3 +324,86 @@ func TestStampLine_ALineThatTakesAnActionBackKeepsItsAudience(t *testing.T) {
 	wantStamp(t, "the removal of an extra from an ordinary damage", stamped(eventDamagePartRemoved, ""), true, brisa)
 	wantStamp(t, "another event", stamped(eventAttackRolled, ""), true, brisa)
 }
+
+func TestStamp_AnEffectLineKeepsWhoSawEachTarget(t *testing.T) {
+	t.Parallel()
+	st := newStampTable(t)
+	toren, pens, brisa := st.sees.users[0], st.sees.users[1], st.sees.users[2]
+	skel, band, bri := st.cid(t, "Esqueleto"), st.cid(t, "Bandido"), st.cid(t, "Brisa")
+	st.sees.sees[pens] = []grid.Square{st.sq["Esqueleto"]}
+	st.sees.sees[brisa] = []grid.Square{st.sq["Esqueleto"], st.sq["Bandido"]}
+	caster := st.cid(t, "Toren")
+	line := func(actor string, targets ...string) actionEvent {
+		return actionEvent{Actor: actor, Target: targets[0], Lasting: &lastingEvent{Key: "spell:bless", Change: "added", Targets: targets}}
+	}
+
+	// Two NPC targets: the players who saw at least one of them have the line, each with the mask of its targets.
+	ev := st.stamp(t, eventLastingAdded, line(caster, skel, band))
+	wantStamp(t, "two NPCs", ev, true, pens, brisa)
+	if !slices.Equal(ev.CoverUsers, []string{pens, brisa}) {
+		t.Errorf("CoverUsers = %v, want Pensantus's and Brisa's players", ev.CoverUsers)
+	}
+	if got := ev.Lasting.Seen; len(got) != 2 || got[0].SeenMask != 0b11 || got[1].SeenMask != 0b10 || !got[0].Fogged || !got[1].Fogged {
+		t.Errorf("Seen = %+v, want the masks 0b11 and 0b10", got)
+	}
+	// A character among the targets makes it every player's line.
+	wantStamp(t, "a character and an NPC", st.stamp(t, eventLastingAdded, line(caster, bri, band)), true, toren, pens, brisa)
+	// No NPC target: the line is not stamped; the one-target line keeps the stamp of its actor and target.
+	wantStamp(t, "two characters", st.stamp(t, eventLastingAdded, line(caster, bri, caster)), false)
+	wantStamp(t, "one NPC", st.stamp(t, eventLastingAdded, line(caster, skel)), true, pens, brisa)
+	// An NPC actor a player did not see keeps the line from them, whoever the targets are.
+	wantStamp(t, "an NPC actor", st.stamp(t, eventLastingAdded, line(band, bri, skel)), true, brisa)
+	// An NPC target the master hides when the line is written is seen by no one: the line is nobody's, with it alone or beside a seen one.
+	st.sees.sees[toren] = []grid.Square{st.sq["Bandido"]}
+	st.execSQL(t, `UPDATE combatants SET hidden = true WHERE id = $1`, band)
+	wantStamp(t, "a hidden target alone", st.stamp(t, eventLastingAdded, line(caster, band)), true)
+	hidden := st.stamp(t, eventLastingAdded, line(caster, skel, band))
+	wantStamp(t, "a hidden target and a seen one", hidden, true, pens, brisa)
+	if got := hidden.Lasting.Seen; len(got) != 2 || got[1].SeenMask != 0 {
+		t.Errorf("Seen = %+v, want the hidden target seen by no one", got)
+	}
+	st.execSQL(t, `UPDATE combatants SET hidden = false WHERE id = $1`, band)
+	delete(st.sees.sees, toren)
+	// Nobody saw any NPC target: a character still makes it every player's line; two NPCs make it nobody's.
+	st.sees.sees = map[string][]grid.Square{}
+	wantStamp(t, "unseen NPCs", st.stamp(t, eventLastingEnded, line(caster, skel, band)), true)
+	// A secret line stays secret.
+	secret := line(caster, skel, band)
+	secret.Secret = true
+	wantStamp(t, "secret", st.stamp(t, eventLastingChanged, secret), true)
+}
+
+func TestReadableTargets_APlayerReadsTheCharactersAndTheNPCsTheyAndTheStampSaw(t *testing.T) {
+	t.Parallel()
+	npcA := playdb.Combatant{ID: "a", Kind: kindNPC}
+	npcB := playdb.Combatant{ID: "b", Kind: kindNPC}
+	npcH := playdb.Combatant{ID: "h", Kind: kindNPC, Hidden: true}
+	pc := playdb.Combatant{ID: "c", Kind: kindPlayer}
+	byID := map[string]playdb.Combatant{"a": npcA, "b": npcB, "h": npcH, "c": pc}
+	ev := actionEvent{Fogged: true, CoverUsers: []string{"u1", "u2"}, Lasting: &lastingEvent{
+		Targets: []string{"a", "b", "h", "c"},
+		Seen:    []castHit{{Target: "a", Fogged: true, SeenMask: 0b01}, {Target: "b", Fogged: true, SeenMask: 0b10}, {Target: "h", Fogged: true, SeenMask: 0b11}},
+	}}
+	for _, tc := range []struct {
+		who  combatViewer
+		want []string
+	}{
+		{combatViewer{userID: "u1"}, []string{"a", "c"}},
+		{combatViewer{userID: "u2"}, []string{"b", "c"}},
+		{combatViewer{userID: "u3"}, []string{"c"}},
+		{combatViewer{master: true}, []string{"a", "b", "h", "c"}},
+	} {
+		if got := readableTargets(ev, tc.who, byID); !slices.Equal(got, tc.want) {
+			t.Errorf("readableTargets(%+v) = %v, want %v", tc.who, got, tc.want)
+		}
+	}
+	// A line stored before the targets were recorded lists the first target and every character, and no later NPC.
+	old := actionEvent{Fogged: true, Lasting: &lastingEvent{Targets: []string{"a", "b", "c"}}}
+	if got := readableTargets(old, combatViewer{userID: "u1"}, byID); !slices.Equal(got, []string{"a", "c"}) {
+		t.Errorf("a line with no record lists %v, want the first target and the character", got)
+	}
+	// A line no stamp fogged lists every target.
+	if got := readableTargets(actionEvent{Lasting: &lastingEvent{Targets: []string{"a", "b"}}}, combatViewer{userID: "u3"}, byID); !slices.Equal(got, []string{"a", "b"}) {
+		t.Errorf("an unfogged line lists %v, want both", got)
+	}
+}

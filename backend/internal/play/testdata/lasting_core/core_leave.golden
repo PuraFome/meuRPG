@@ -27,7 +27,7 @@ lasting_effect_added {"lasting":{"change":"added","effects":["<uuid>"],"key":"sp
 exhaustion_changed {"combatant_id":"<Toren>","lasting":{"change":"exhaustion","key":"condition:exhaustion","level":5,"owner_only":true,"targets":["<Toren>"]},"round":1}
 lasting_effect_added {"lasting":{"change":"added","effects":["<uuid>"],"key":"spell:shield-of-faith","rounds":3,"targets":["<Toren>"]},"round":1,"target_id":"<Toren>"}
 lasting_effect_ended {"lasting":{"change":"ended","effects":["<uuid>"],"key":"spell:hideous-laughter","reason":"ended_by_master","targets":["<Brisa>"]},"round":1,"target_id":"<Brisa>"}
-lasting_effect_ended {"lasting":{"change":"ended","effects":["<uuid>"],"key":"spell:hideous-laughter","reason":"ended_by_master"},"round":1,"target_id":"<a row of the casting>"}
+lasting_effect_ended {"lasting":{"change":"ended","effects":["<uuid>"],"key":"spell:hideous-laughter","reason":"ended_by_master","targets":["<Brisa>"]},"round":1,"target_id":"<Brisa>"}
 lasting_effect_ended {"lasting":{"change":"ended","effects":["<uuid>"],"key":"spell:mage-armor","reason":"ended_by_master","targets":["<Pensantus>"]},"round":1,"target_id":"<Pensantus>"}
-lasting_effect_ended {"lasting":{"change":"ended","effects":["<uuid>"],"key":"spell:mage-armor","reason":"ended_by_master"},"round":1,"target_id":"<a row of the casting>"}
+lasting_effect_ended {"lasting":{"change":"ended","effects":["<uuid>"],"key":"spell:mage-armor","reason":"ended_by_master","targets":["<Pensantus>"]},"round":1,"target_id":"<Pensantus>"}
 
