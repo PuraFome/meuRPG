@@ -138,7 +138,11 @@ export class LevelUpReader {
   /** Shows a refusal; when it names a list, the options are read again and the line is shown once more (the read clears it). */
   async showRefusal(failure: LevelUpFailure): Promise<void> {
     this.view.show(failure);
-    if (failure.kind === 'refusal' && refusesPickList(failure.reason) && (await this.reread(true))) {
+    if (
+      failure.kind === 'refusal' &&
+      refusesPickList(failure.reason) &&
+      (await this.reread(true))
+    ) {
       this.view.show(failure);
     }
   }
