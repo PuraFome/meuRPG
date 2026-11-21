@@ -178,8 +178,8 @@ func (s *Service) planLevelUp(ctx context.Context, tx pgx.Tx, q *charactersdb.Qu
 	}
 	// The level's own refusal of a skill comes first, so a pick is never refused twice with two sentences.
 	if plan.refusal == nil {
-		// The level counts every feature of the level, archived or off ones too, as main does: the fit is read on the same content.
-		if err := refuseUnfitPickIn(t.content, isMaster(m), func() *charactersv1.FullSheet { return t.full }, plan.sheet); err != nil {
+		// The sources are the sheet's own, the same for every reader: a player's pick is judged on the player's view of the content.
+		if err := refusePick(t.content, m, pickFit, func() *charactersv1.FullSheet { return t.full }, plan.sheet); err != nil {
 			return levelUpPlan{}, err
 		}
 	}

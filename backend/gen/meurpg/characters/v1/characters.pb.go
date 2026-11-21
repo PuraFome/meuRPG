@@ -9481,6 +9481,13 @@ type LevelUpOptions struct {
 	// new skill that none of them has room for (SKILLS). The master's level is not refused for a pick no
 	// list places; a wrong count or a removed skill still is.
 	SkillSources []*LevelUpSkillSource `protobuf:"bytes,45,rep,name=skill_sources,json=skillSources,proto3" json:"skill_sources,omitempty"`
+	// The skills and the expertise a new pick may be on in the sheet after the level, with no subclass and no new
+	// class taken: the lists PreviewChoices answers (skills_allowed, expertise_allowed) for that sheet, as keys. A source
+	// that names no list contributes every skill the sheet can still pick (the ones it does not hold automatically);
+	// expertise_allowed holds the skills expertise may go on, and is empty when the sheet has no source of expertise.
+	// A new class keeps the list its own entry carries (class_choices).
+	SkillsAllowed    []string `protobuf:"bytes,46,rep,name=skills_allowed,json=skillsAllowed,proto3" json:"skills_allowed,omitempty"`
+	ExpertiseAllowed []string `protobuf:"bytes,47,rep,name=expertise_allowed,json=expertiseAllowed,proto3" json:"expertise_allowed,omitempty"`
 	// Multiclassing (SRD 5.1, "Multiclassing"). is_new_class says the character
 	// does not have class_key: the level is the class's first (from_level 0), the hit
 	// die gives its average and never the maximum, and everything above is the
@@ -9815,6 +9822,20 @@ func (x *LevelUpOptions) GetSwapGroups() []*LevelUpSwapGroup {
 func (x *LevelUpOptions) GetSkillSources() []*LevelUpSkillSource {
 	if x != nil {
 		return x.SkillSources
+	}
+	return nil
+}
+
+func (x *LevelUpOptions) GetSkillsAllowed() []string {
+	if x != nil {
+		return x.SkillsAllowed
+	}
+	return nil
+}
+
+func (x *LevelUpOptions) GetExpertiseAllowed() []string {
+	if x != nil {
+		return x.ExpertiseAllowed
 	}
 	return nil
 }
@@ -10298,9 +10319,13 @@ type LevelUpSubclass struct {
 	PreparedMaxAfter int32 `protobuf:"varint,13,opt,name=prepared_max_after,json=preparedMaxAfter,proto3" json:"prepared_max_after,omitempty"`
 	// The lists the subclass's new skills come from, as LevelUpOptions.skill_sources.
 	// skill_choices stays the total.
-	SkillSources  []*LevelUpSkillSource `protobuf:"bytes,15,rep,name=skill_sources,json=skillSources,proto3" json:"skill_sources,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	SkillSources []*LevelUpSkillSource `protobuf:"bytes,15,rep,name=skill_sources,json=skillSources,proto3" json:"skill_sources,omitempty"`
+	// The skills and the expertise a new pick may be on in the sheet after the level with this subclass, as
+	// LevelUpOptions.skills_allowed and expertise_allowed.
+	SkillsAllowed    []string `protobuf:"bytes,16,rep,name=skills_allowed,json=skillsAllowed,proto3" json:"skills_allowed,omitempty"`
+	ExpertiseAllowed []string `protobuf:"bytes,17,rep,name=expertise_allowed,json=expertiseAllowed,proto3" json:"expertise_allowed,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *LevelUpSubclass) Reset() {
@@ -10434,6 +10459,20 @@ func (x *LevelUpSubclass) GetPreparedMaxAfter() int32 {
 func (x *LevelUpSubclass) GetSkillSources() []*LevelUpSkillSource {
 	if x != nil {
 		return x.SkillSources
+	}
+	return nil
+}
+
+func (x *LevelUpSubclass) GetSkillsAllowed() []string {
+	if x != nil {
+		return x.SkillsAllowed
+	}
+	return nil
+}
+
+func (x *LevelUpSubclass) GetExpertiseAllowed() []string {
+	if x != nil {
+		return x.ExpertiseAllowed
 	}
 	return nil
 }
@@ -15542,7 +15581,7 @@ const file_meurpg_characters_v1_characters_proto_rawDesc = "" +
 	"\aoptions\x18\x01 \x01(\v2$.meurpg.characters.v1.LevelUpOptionsR\aoptions\"<\n" +
 	"\x0fLevelUpNamedKey\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x17\n" +
-	"\aname_pt\x18\x02 \x01(\tR\x06namePt\"\x81\x13\n" +
+	"\aname_pt\x18\x02 \x01(\tR\x06namePt\"\xd5\x13\n" +
 	"\x0eLevelUpOptions\x12\x1b\n" +
 	"\tclass_key\x18\x01 \x01(\tR\bclassKey\x12\"\n" +
 	"\rclass_name_pt\x18\x02 \x01(\tR\vclassNamePt\x12\x1d\n" +
@@ -15592,7 +15631,9 @@ const file_meurpg_characters_v1_characters_proto_rawDesc = "" +
 	"\x13can_swap_invocation\x18+ \x01(\bR\x11canSwapInvocation\x12G\n" +
 	"\vswap_groups\x18, \x03(\v2&.meurpg.characters.v1.LevelUpSwapGroupR\n" +
 	"swapGroups\x12M\n" +
-	"\rskill_sources\x18- \x03(\v2(.meurpg.characters.v1.LevelUpSkillSourceR\fskillSources\x12 \n" +
+	"\rskill_sources\x18- \x03(\v2(.meurpg.characters.v1.LevelUpSkillSourceR\fskillSources\x12%\n" +
+	"\x0eskills_allowed\x18. \x03(\tR\rskillsAllowed\x12+\n" +
+	"\x11expertise_allowed\x18/ \x03(\tR\x10expertiseAllowed\x12 \n" +
 	"\fis_new_class\x18% \x01(\bR\n" +
 	"isNewClass\x12M\n" +
 	"\rclass_choices\x18& \x03(\v2(.meurpg.characters.v1.LevelUpClassChoiceR\fclassChoices\x12Y\n" +
@@ -15630,7 +15671,7 @@ const file_meurpg_characters_v1_characters_proto_rawDesc = "" +
 	"\x18LevelUpProficiencyOption\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x17\n" +
 	"\aname_pt\x18\x02 \x01(\tR\x06namePt\x12!\n" +
-	"\falready_have\x18\x03 \x01(\bR\valreadyHave\"\x81\x05\n" +
+	"\falready_have\x18\x03 \x01(\bR\valreadyHave\"\xd5\x05\n" +
 	"\x0fLevelUpSubclass\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x17\n" +
 	"\aname_pt\x18\x02 \x01(\tR\x06namePt\x12S\n" +
@@ -15648,7 +15689,9 @@ const file_meurpg_characters_v1_characters_proto_rawDesc = "" +
 	"\x0fmax_spell_level\x18\v \x01(\x05R\rmaxSpellLevel\x12\x1a\n" +
 	"\bprepares\x18\f \x01(\bR\bprepares\x12,\n" +
 	"\x12prepared_max_after\x18\r \x01(\x05R\x10preparedMaxAfter\x12M\n" +
-	"\rskill_sources\x18\x0f \x03(\v2(.meurpg.characters.v1.LevelUpSkillSourceR\fskillSources\"\xa4\x01\n" +
+	"\rskill_sources\x18\x0f \x03(\v2(.meurpg.characters.v1.LevelUpSkillSourceR\fskillSources\x12%\n" +
+	"\x0eskills_allowed\x18\x10 \x03(\tR\rskillsAllowed\x12+\n" +
+	"\x11expertise_allowed\x18\x11 \x03(\tR\x10expertiseAllowed\"\xa4\x01\n" +
 	"\x12LevelUpSkillSource\x12\x1b\n" +
 	"\towner_key\x18\x01 \x01(\tR\bownerKey\x12\x17\n" +
 	"\aname_pt\x18\x02 \x01(\tR\x06namePt\x12\x14\n" +

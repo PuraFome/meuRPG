@@ -188,8 +188,12 @@ type LevelUpOffer struct {
 	// college, the Rogue's Expertise).
 	SkillChoices     int
 	ExpertiseChoices int
-	// SkillSources are the lists the new skills come from (see LevelSkillSources).
+	// SkillSources are the lists the new skills come from: the sources of the sheet after the level that the sheet before did
+	// not have (levelSkillSources).
 	SkillSources []LevelSkillSource
+	// SkillsAllowed and ExpertiseAllowed are the skills and the expertise a new pick may be on in the sheet after the level,
+	// with no subclass and no new class taken (the lists PickLists gives; see LevelPickKeys).
+	SkillsAllowed, ExpertiseAllowed []string
 	// LateChoices are the choices an earlier level left open (a sheet written
 	// before they were asked, or saved with one skipped): the level up asks for
 	// them first and refuses without them. NewChoices are the new level's choices
@@ -242,8 +246,11 @@ type LevelUpSubclass struct {
 	// expertise. The top-level counts of the offer leave them out until the
 	// subclass is chosen.
 	Cantrips, SkillChoices, ExpertiseChoices int
-	// SkillSources are the lists the subclass's skills come from.
+	// SkillSources are the lists the subclass's skills come from: those of the sheet after the level with the subclass that
+	// the level without it lacks.
 	SkillSources []LevelSkillSource
+	// SkillsAllowed and ExpertiseAllowed are as LevelUpOffer's, for the sheet after the level with the subclass.
+	SkillsAllowed, ExpertiseAllowed []string
 	// Spells is how many spells a third caster's subclass adds (known ones, with
 	// SpellsKind PreparationKnown); the table's subclass that casts is the only one.
 	Spells     int
@@ -480,7 +487,8 @@ func levelUpOptionsWith(b Build, idx int, classKey string, c *content, sub *srd5
 	o.FeatureChoices = c.namedChoices(bare, gains.choices)
 	o.SkillChoices, o.ExpertiseChoices = c.levelAsk(b, bare)
 	o.splitMulticlassAsk()
-	o.SkillSources = c.levelSkillSources(classKey, gains, o.Multiclass)
+	o.SkillSources = c.levelSkillSources(b, bare)
+	o.SkillsAllowed, o.ExpertiseAllowed = c.pickKeys(bare)
 
 	// A subclass that is due: each candidate's own part. It is read before the
 	// spells below, so a third caster's part compares with counts still at zero.
@@ -571,11 +579,13 @@ func (o *LevelUpOffer) addSubclasses(c *content, b Build, idx int, class *srd51.
 func (o *LevelUpOffer) subclassPart(c *content, b Build, idx int, s, sub *srd51.Subclass, base levelAsked) LevelUpSubclass {
 	key := s.Key
 	g := c.subclassGains(s, o.ToLevel)
-	skills, expertise := c.levelAsk(b, bareLevelUp(b, idx, o.Class, o.ToLevel, s))
+	with := bareLevelUp(b, idx, o.Class, o.ToLevel, s)
+	skills, expertise := c.levelAsk(b, with)
 	ls := LevelUpSubclass{
 		Key: key, NamePT: c.namePT(key), Archived: c.archived[key], Off: c.off[key], FeatureChoices: c.namedChoices(bareLevelUp(b, idx, o.Class, o.ToLevel, s), g.choices),
-		Cantrips: g.cantrips, SkillChoices: max(skills-base.skills, 0), ExpertiseChoices: max(expertise-base.expertise, 0), SkillSources: c.levelSkillSources("", g, nil),
+		Cantrips: g.cantrips, SkillChoices: max(skills-base.skills, 0), ExpertiseChoices: max(expertise-base.expertise, 0), SkillSources: c.levelSkillSources(bareLevelUp(b, idx, o.Class, o.ToLevel, nil), with),
 	}
+	ls.SkillsAllowed, ls.ExpertiseAllowed = c.pickKeys(with)
 	if _, third := c.subCasting[key]; third && sub == nil {
 		// A third caster's table starts with the subclass: what it adds to
 		// the level's counts is the difference with the class alone.
@@ -840,15 +850,12 @@ type levelGains struct {
 	skills    int
 	expertise int
 	cantrips  int
-	// skillSources and expertiseSources are the lists the level's skills and expertise come from, one per choice.
-	skillSources, expertiseSources []pickSource
 }
 
 func (g levelGains) plus(o levelGains) levelGains {
 	return levelGains{
 		choices: slices.Concat(g.choices, o.choices), skills: g.skills + o.skills,
 		expertise: g.expertise + o.expertise, cantrips: g.cantrips + o.cantrips,
-		skillSources: slices.Concat(g.skillSources, o.skillSources), expertiseSources: slices.Concat(g.expertiseSources, o.expertiseSources),
 	}
 }
 
@@ -907,9 +914,6 @@ func (c *content) featureGains(keys []string, subclass string) levelGains {
 // addFeatureGains adds to g what feature f (key fk) asks the player to choose.
 func (c *content) addFeatureGains(g *levelGains, fk string, f *srd51.Feature, subclass string) {
 	g.expertise += f.ExpertiseChoices
-	if f.ExpertiseChoices > 0 {
-		g.expertiseSources = append(g.expertiseSources, pickSource{Owner: fk, Count: f.ExpertiseChoices, Any: true})
-	}
 	choose := f.OptionsChoose
 	for _, e := range c.effects[fk] {
 		if e.Type == "choice" {
@@ -935,11 +939,9 @@ func (g *levelGains) addChoiceEffect(fk string, e *Effect, choose int) int {
 		// table's say it in a choice effect.
 		if isTableKey(fk) {
 			g.expertise += e.Count
-			g.expertiseSources = append(g.expertiseSources, pickSource{Owner: fk, Count: e.Count, From: e.From, Any: len(e.From) == 0})
 		}
 	case "skill":
 		g.skills += e.Count
-		g.skillSources = append(g.skillSources, pickSource{Owner: fk, Count: e.Count, From: e.From, Any: len(e.From) == 0})
 	case "cantrip":
 		g.cantrips += e.Count
 	}

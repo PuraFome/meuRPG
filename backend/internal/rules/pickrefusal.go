@@ -10,27 +10,59 @@ import (
 // The refusal of a new pick that no source takes. A pick the stored sheet already holds is never refused here, whether it
 // fits or not: the fit issue of a stored sheet is the master's alone and the sheet still saves and plays.
 
+// PickRefusal is why a new pick is refused: Field is its place in the sheet and Key the pick.
+type PickRefusal struct {
+	Field, Key string
+	// Unknown says the pick is a key the view does not have: a tool pick that is no tool, or of an owner a player may not read
+	// that the sheet does not hold. Otherwise no list of the sheet takes the pick.
+	Unknown bool
+}
+
+// NewPickRefusal is the first new skill, expertise or tool pick of the new sheet that the view refuses (stored is the stored
+// sheet, nil for a new character): a tool pick that is an unknown key first, whatever other picks no list places, then the
+// first pick no source takes (UnplacedNewPick). c is the caller's view of the content.
+func (c *Content) NewPickRefusal(stored *Build, now Build) (PickRefusal, bool) {
+	unknown, unplaced := c.scanNewPicks(stored, now)
+	switch {
+	case unknown != nil:
+		return *unknown, true
+	case unplaced != nil:
+		return *unplaced, true
+	}
+	return PickRefusal{}, false
+}
+
 // UnplacedNewPick returns the sheet field and the key of the first skill, expertise or tool pick of the new sheet that
 // the stored sheet (nil for a new character) does not hold and that no source of the content takes: the largest placement
 // of the picks in the sources is no larger with the pick than without it.
 // A held pick that fits takes part in the placement, so a new pick that fits only when a held pick moves to another source
 // is not refused.
 // A held pick that the stored sheet could not place leaves the sources alone.
-// c is the caller's view of the content.
+// The sources are those of the sheet itself (deriver.skillSources and its twins): what the reader may read changes no list.
 func (c *Content) UnplacedNewPick(stored *Build, now Build) (field, key string, found bool) {
-	x := c.deriverFor(now)
-	if len(x.classes) == 0 {
-		return "", "", false
+	if _, unplaced := c.scanNewPicks(stored, now); unplaced != nil {
+		return unplaced.Field, unplaced.Key, true
 	}
+	return "", "", false
+}
+
+// scanNewPicks reads the new picks once: unknown is the first new tool pick that is an unknown key, unplaced the first new
+// pick no source takes (skills, then expertise, then tools).
+func (c *Content) scanNewPicks(stored *Build, now Build) (unknown, unplaced *PickRefusal) {
+	x := c.deriverFor(now)
 	var held Build
 	var xs *deriver
 	if stored != nil {
 		held, xs = *stored, c.deriverFor(*stored)
 	}
-	if f, k, ok := c.c.unplacedNewSkillPick(x, xs, held, now); ok {
-		return f, k, true
+	unknown, toolUnplaced := x.scanNewTools(held, xs)
+	if len(x.classes) == 0 {
+		return unknown, nil
 	}
-	return x.unplacedNewTool(held, xs)
+	if f, k, ok := c.c.unplacedNewSkillPick(x, xs, held, now); ok {
+		return unknown, &PickRefusal{Field: f, Key: k}
+	}
+	return unknown, toolUnplaced
 }
 
 // unplacedNewSkillPick is UnplacedNewPick for the skills and the expertise: x is the deriver of the new sheet now, xs the
@@ -44,23 +76,13 @@ func (c *content) unplacedNewSkillPick(x, xs *deriver, held, now Build) (field, 
 	heldSkills := held.SkillProficiencies
 	if xs != nil {
 		heldSkills = pickList(held.SkillProficiencies, skill(xs)) // a skill the stored sheet had by another means is no held pick
-		stuckSkills = unplacedPicks(xs.shown(xs.skillSources()), pickList(held.SkillProficiencies, skill(xs)))
-		stuckExpertise = unplacedPicks(xs.shown(xs.expertiseSources()), pickList(held.Expertise, expertise))
+		stuckSkills = unplacedPicks(xs.skillSources(), pickList(held.SkillProficiencies, skill(xs)))
+		stuckExpertise = unplacedPicks(xs.expertiseSources(), pickList(held.Expertise, expertise))
 	}
-	if f, k, ok := unplacedNewList(skillsField, x.shown(x.skillSources()), now.SkillProficiencies, heldSkills, stuckSkills, skill(x)); ok {
+	if f, k, ok := unplacedNewList(skillsField, x.skillSources(), now.SkillProficiencies, heldSkills, stuckSkills, skill(x)); ok {
 		return f, k, true
 	}
-	return unplacedNewList(expertiseField, x.shown(x.expertiseSources()), now.Expertise, held.Expertise, stuckExpertise, expertise)
-}
-
-// shown are the sources a reader may read: for a player, the ones whose owner is hidden from them and that the sheet does not
-// hold are left out, as if the owner did not exist. The master reads them all. The sources the issues count (the allowance of
-// the sheet) stay as they are.
-func (x *deriver) shown(sources []pickSource) []pickSource {
-	if !x.c.player {
-		return sources
-	}
-	return slices.DeleteFunc(slices.Clone(sources), func(s pickSource) bool { return x.c.hidden(s.Owner) && !x.c.sheetHas(x.b, s.Owner) })
+	return unplacedNewList(expertiseField, x.expertiseSources(), now.Expertise, held.Expertise, stuckExpertise, expertise)
 }
 
 // deriverFor is the deriver of the sheet b, made with the entries it loses left out.
@@ -129,13 +151,16 @@ func (x *deriver) toolPicksByOwner() map[string][]string {
 	return out
 }
 
-// unplacedNewTool is UnplacedNewPick for the tool picks of the sheet, owner by owner; xs is the stored sheet's deriver or nil.
-func (x *deriver) unplacedNewTool(held Build, xs *deriver) (string, string, bool) {
+// scanNewTools reads the new tool picks of the sheet once, in the sheet's order; xs is the stored sheet's deriver or nil.
+// unknown is the first that is no tool, or whose owner the view may not read and the sheet lacks (a key the content does not
+// have: a pick of an owner the sheet does not have is none of these). unplaced is the first that no tool choice of its owner
+// takes, when the sheet has a class.
+func (x *deriver) scanNewTools(held Build, xs *deriver) (unknown, unplaced *PickRefusal) {
 	byOwner := x.toolPicksByOwner()
 	stuck := map[string][]string{}
 	if xs != nil {
 		for owner, values := range xs.toolPicksByOwner() {
-			stuck[owner] = unplacedPicks(xs.shown(xs.c.toolSources(owner)), values)
+			stuck[owner] = unplacedPicks(xs.c.toolSources(owner), values)
 		}
 	}
 	for i, stored := range x.b.FeatureChoices {
@@ -144,57 +169,25 @@ func (x *deriver) unplacedNewTool(held Build, xs *deriver) (string, string, bool
 			continue
 		}
 		owner, isTool := strings.CutSuffix(choiceKey, toolPickSuffix)
-		if !isTool || byOwner[owner] == nil {
+		if !isTool {
+			continue
+		}
+		hidden := x.c.hiddenTo(x.b, owner)
+		if byOwner[owner] == nil && !hidden {
+			continue
+		}
+		if !x.c.isToolPickKey(value) || hidden {
+			return &PickRefusal{Field: fmt.Sprintf("%s[%d]", choiceKeysField, i), Key: value, Unknown: true}, unplaced
+		}
+		if unplaced != nil || len(x.classes) == 0 {
 			continue
 		}
 		heldValues := slices.DeleteFunc(slices.Clone(byOwner[owner]), func(k string) bool { return !slices.Contains(held.FeatureChoices, ScopedChoice(choiceKey, k)) })
-		sources := x.shown(x.c.toolSources(owner))
-		if slices.Contains(unplacedNewPicks(sources, competing(byOwner[owner], heldValues, stuck[owner]), heldValues), value) {
-			return fmt.Sprintf("full.feature_choice_keys[%d]", i), value, true
+		if slices.Contains(unplacedNewPicks(x.c.toolSources(owner), competing(byOwner[owner], heldValues, stuck[owner]), heldValues), value) {
+			unplaced = &PickRefusal{Field: fmt.Sprintf("full.feature_choice_keys[%d]", i), Key: value}
 		}
 	}
-	return "", "", false
-}
-
-// UnknownNewToolPick is the field of the first new tool pick of the sheet that is no tool or whose owner the view may not read
-// (a key the content does not have), whatever other picks no list places: UnplacedNewPick names only the first unplaced one.
-// A pick of an owner the sheet does not have is none of these, as unplacedNewTool leaves it alone.
-func (c *Content) UnknownNewToolPick(stored *Build, now Build) (string, bool) {
-	x := c.deriverFor(now)
-	byOwner := x.toolPicksByOwner()
-	var held []string
-	if stored != nil {
-		held = stored.FeatureChoices
-	}
-	for i, k := range now.FeatureChoices {
-		choiceKey, value, ok := SplitScopedChoice(k)
-		if !ok || slices.Contains(held, k) || !strings.HasSuffix(choiceKey, toolPickSuffix) {
-			continue
-		}
-		field := fmt.Sprintf("%s[%d]", ChoiceKeysField, i)
-		if owner, _ := strings.CutSuffix(choiceKey, toolPickSuffix); byOwner[owner] == nil && !c.HiddenToolOwner(now, field) {
-			continue
-		}
-		if !c.IsToolProficiency(value) || c.HiddenToolOwner(now, field) {
-			return field, true
-		}
-	}
-	return "", false
-}
-
-// HiddenToolOwner says the pick at field (a feature choice of the sheet now) is a tool pick of an owner the view is a player's
-// and may not read, which the sheet does not hold: such a pick reads as one of an owner that does not exist.
-func (c *Content) HiddenToolOwner(now Build, field string) bool {
-	var i int
-	if _, err := fmt.Sscanf(field, ChoiceKeysField+"[%d]", &i); err != nil || i < 0 || i >= len(now.FeatureChoices) {
-		return false
-	}
-	choiceKey, _, ok := SplitScopedChoice(now.FeatureChoices[i])
-	if !ok {
-		return false
-	}
-	owner, isTool := strings.CutSuffix(choiceKey, toolPickSuffix)
-	return isTool && c.c.hiddenTo(now, owner)
+	return nil, unplaced
 }
 
 // IsToolProficiency says the key is a proficiency a tool choice may offer: a tool, a vehicle, a kit or a weapon.
@@ -209,14 +202,40 @@ type PickAllowed struct {
 // PickLists are the skills the sheet's skill sources allow and, when every expertise source names a list, the skills
 // expertise may go on (nil otherwise). They are the lists the save's refusal reads (unplacedNewList).
 func (c *Content) PickLists(b Build) (skills PickAllowed, expertise *PickAllowed) {
-	x := c.deriverFor(b)
-	skills = allowedBy(x.shown(x.skillSources()))
-	if sources := x.shown(x.expertiseSources()); len(sources) > 0 {
-		if e := allowedBy(sources); !e.Any {
-			expertise = &e
-		}
+	skills, e, listed := c.deriverFor(b).pickLists()
+	if listed && !e.Any {
+		expertise = &e
 	}
 	return skills, expertise
+}
+
+// LevelPickKeys are the skills and the expertise a new pick may go on in the sheet b, as keys: PickLists, where a source that
+// names no list contributes every skill the sheet can still pick (the ones it does not hold automatically) and, for expertise,
+// every skill. Expertise is empty when the sheet has no source of it.
+func (c *Content) LevelPickKeys(b Build) (skills, expertise []string) {
+	x := c.deriverFor(b)
+	s, e, listed := x.pickLists()
+	skills = s.Keys
+	if s.Any {
+		skills = x.pickableSkills()
+	}
+	switch {
+	case !listed:
+	case e.Any:
+		expertise = slices.Clone(x.c.skillOrder)
+	default:
+		expertise = e.Keys
+	}
+	return skills, expertise
+}
+
+// pickLists are the lists of the sources of the sheet; listed says the sheet has a source of expertise.
+func (x *deriver) pickLists() (skills, expertise PickAllowed, listed bool) {
+	skills = allowedBy(x.skillSources())
+	if sources := x.expertiseSources(); len(sources) > 0 {
+		return skills, allowedBy(sources), true
+	}
+	return skills, PickAllowed{}, false
 }
 
 // allowedBy is the union of the lists of sources, each key once in the order met.
@@ -246,11 +265,11 @@ func (c *Content) OnAList(b Build, field, key string) bool {
 	var sources []pickSource
 	switch {
 	case strings.HasPrefix(field, skillsField):
-		sources = x.shown(x.skillSources())
+		sources = x.skillSources()
 	case strings.HasPrefix(field, expertiseField):
-		sources = x.shown(x.expertiseSources())
+		sources = x.expertiseSources()
 	case strings.HasPrefix(field, choiceKeysField):
-		sources = x.shown(x.toolSourcesAt(field))
+		sources = x.toolSourcesAt(field)
 	}
 	return slices.ContainsFunc(sources, func(s pickSource) bool { return s.allows(key) })
 }

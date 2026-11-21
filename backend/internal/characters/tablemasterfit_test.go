@@ -129,8 +129,8 @@ func TestTheMastersUnknownKeyAnswersHoldWhateverOtherPicksTheSheetHas(t *testing
 	t.Run("no tool", func(t *testing.T) {
 		t.Parallel()
 		pick := rules.ScopedChoice(rules.ToolPickKey(owner), "skill:nature")
-		alone := refuseUnfitPickIn(view, true, held, withPick(pick))
-		with := refuseUnfitPickIn(view, true, held, withPick(pick, unlisted...))
+		alone := refusePickIn(view, true, pickFit, held, withPick(pick))
+		with := refusePickIn(view, true, pickFit, held, withPick(pick, unlisted...))
 		if alone == nil || with == nil {
 			t.Fatalf("errors alone = %v, with an unlisted skill = %v, want both refused", alone, with)
 		}
@@ -144,12 +144,12 @@ func TestTheMastersUnknownKeyAnswersHoldWhateverOtherPicksTheSheetHas(t *testing
 		// The sheet validation takes any key the content has for an owner the content has, a tool or not.
 		for _, value := range []string{glassTools, "skill:nature"} {
 			pick := rules.ScopedChoice(rules.ToolPickKey(absentOwner), value)
-			if err := refuseUnfitPickIn(view, true, held, withPick(pick)); err != nil {
+			if err := refusePickIn(view, true, pickFit, held, withPick(pick)); err != nil {
 				t.Errorf("a pick of %s for a tool pick of an owner the sheet does not have = %v, want it accepted", value, err)
 			}
 		}
 		pick := rules.ScopedChoice(rules.ToolPickKey(absentOwner), "skill:nature")
-		if err := refuseUnfitPickIn(view, true, held, withPick(pick, unlisted...)); err != nil {
+		if err := refusePickIn(view, true, pickFit, held, withPick(pick, unlisted...)); err != nil {
 			t.Errorf("with an unlisted skill beside it = %v, want no answer for the master", err)
 		}
 	})

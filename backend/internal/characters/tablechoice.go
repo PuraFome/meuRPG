@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"slices"
 	"strings"
-	"sync"
 	"time"
 	"unicode"
 	"unicode/utf8"
@@ -96,29 +95,30 @@ func refuseKeptOutPick(content *rules.Content, m authz.Membership, before func()
 	return nil
 }
 
-// refuseUnfitPick refuses a new skill, expertise or tool pick that no list the character chooses from allows, with the
-// field of the pick and a sentence that names only the key's own name. A pick the stored sheet holds stays, whether it
-// fits or not; before is nil for a sheet that does not exist yet.
-func refuseUnfitPick(content *rules.Content, m authz.Membership, before func() *charactersv1.FullSheet, after *charactersv1.FullSheet) error {
-	return refuseUnfitPickIn(viewContent(content, m), isMaster(m), before, after)
+// pickMode is how far the check of a new skill, expertise or tool pick goes.
+type pickMode int
+
+const (
+	// pickFit refuses a pick no list places, with its sentence: the save.
+	pickFit pickMode = iota
+	// pickKeysOnly keeps only the answer of a key the content does not have (a tool pick that is no tool, or of an owner the
+	// reader may not read): the preview of a draft, so a pick the class changed under still shows in the pickers and the save
+	// is the refusal of the fit.
+	pickKeysOnly
+)
+
+// refusePick refuses a new skill, expertise or tool pick that the character's lists do not take, as mode says, on the
+// content as the caller reads it. A pick the stored sheet holds stays, whether it fits or not; before is nil for a sheet that
+// does not exist yet.
+func refusePick(content *rules.Content, m authz.Membership, mode pickMode, before func() *charactersv1.FullSheet, after *charactersv1.FullSheet) error {
+	return refusePickIn(viewContent(content, m), isMaster(m), mode, before, after)
 }
 
-// refuseUnfitPickIn is refuseUnfitPick on the content view the caller has chosen. The master is never refused for a pick no
-// list allows (the fit issue tells it on the sheet); a tool pick that is no tool stays a key the content does not have.
-func refuseUnfitPickIn(view *rules.Content, master bool, before func() *charactersv1.FullSheet, after *charactersv1.FullSheet) error {
-	return refusePickIn(view, master, before, after, true)
-}
-
-// refuseUnknownPick is refuseUnfitPick without the refusal of a pick that does not fit: what it keeps is the answer of a key
-// the content does not have (a tool pick that is no tool, or of an owner the reader may not read). The preview of a draft
-// takes it, so a pick the class changed under still shows in the pickers; the save is the refusal of the fit.
-func refuseUnknownPick(content *rules.Content, m authz.Membership, before func() *charactersv1.FullSheet, after *charactersv1.FullSheet) error {
-	return refusePickIn(viewContent(content, m), isMaster(m), before, after, false)
-}
-
-// refusePickIn is the check of a new pick on the content view the caller has chosen; fit says whether a pick no list places
-// is refused with its sentence too.
-func refusePickIn(view *rules.Content, master bool, before func() *charactersv1.FullSheet, after *charactersv1.FullSheet, fit bool) error {
+// refusePickIn is refusePick on the content view the caller has chosen. The sources of the picks are the sheet's own, whatever
+// the view: only the keys the view does not have change an answer. The master is never refused for a pick no list places (the
+// fit issue tells it on the sheet); a tool pick that is no tool stays a key the content does not have, and wins over the fit
+// of any other pick.
+func refusePickIn(view *rules.Content, master bool, mode pickMode, before func() *charactersv1.FullSheet, after *charactersv1.FullSheet) error {
 	if after == nil {
 		return nil
 	}
@@ -127,33 +127,16 @@ func refusePickIn(view *rules.Content, master bool, before func() *charactersv1.
 		b := buildOf(was)
 		stored = &b
 	}
-	field, key, found := view.UnplacedNewPick(stored, buildOf(after))
-	if found && unknownToolPick(view, after, field, key) {
-		return errUnknownKey("sheet." + field) // a tool pick of anything but a tool, or of an owner the reader may not read, is a key the content does not have
-	}
-	// A tool pick no one may take is answered before the fit of any other pick, as a key the content does not have: UnplacedNewPick
-	// names only the first unplaced pick, which may be a skill.
-	if err := refuseUnknownNewTools(view, stored, after); err != nil || master {
-		return err
-	}
-	if !found || !fit {
+	refusal, found := view.NewPickRefusal(stored, buildOf(after))
+	switch {
+	case !found:
+		return nil
+	case refusal.Unknown:
+		return errUnknownKey("sheet." + refusal.Field)
+	case master || mode != pickFit:
 		return nil
 	}
-	return invalidArgument(&fieldError{field: "sheet." + field, err: errors.New(unfitSentence(view, buildOf(after), field, key))})
-}
-
-// unknownToolPick says the unplaced pick is a tool pick of a key the content does not have.
-func unknownToolPick(view *rules.Content, after *charactersv1.FullSheet, field, key string) bool {
-	return strings.HasPrefix(field, rules.ChoiceKeysField) && (!view.IsToolProficiency(key) || view.HiddenToolOwner(buildOf(after), field))
-}
-
-// refuseUnknownNewTools gives the master the unknown-key answer of every new tool pick, whatever other pick the sheet has that
-// no list places: UnplacedNewPick names only the first of them.
-func refuseUnknownNewTools(view *rules.Content, stored *rules.Build, after *charactersv1.FullSheet) error {
-	if field, found := view.UnknownNewToolPick(stored, buildOf(after)); found {
-		return errUnknownKey("sheet." + field)
-	}
-	return nil
+	return invalidArgument(&fieldError{field: "sheet." + refusal.Field, err: errors.New(unfitSentence(view, buildOf(after), refusal.Field, refusal.Key))})
 }
 
 // unfitSentence is the sentence of a pick that cannot be placed, by the kind of pick the field holds: a skill or an
@@ -182,11 +165,9 @@ func unfitSentence(view *rules.Content, b rules.Build, field, key string) string
 func noSheet() *charactersv1.FullSheet { return nil }
 
 // storedSheetOf reads the stored sheet of a character the caller sees, nil for any other: a pick is new to a sheet the
-// caller cannot read. The sheet is read once, on the first call of the function, whatever the number of checks that ask.
+// caller cannot read. The function reads the sheet on each call, and the one check that takes it calls it once.
 func (s *Service) storedSheetOf(ctx context.Context, m authz.Membership, characterID string) func() *charactersv1.FullSheet {
-	var once sync.Once
-	var out *charactersv1.FullSheet
-	read := func() *charactersv1.FullSheet {
+	return func() *charactersv1.FullSheet {
 		row, err := s.queries.GetCharacter(ctx, charactersdb.GetCharacterParams{CampaignID: m.CampaignID, ID: characterID})
 		if err != nil || !canSee(m, row.Kind, row.Status, row.PlayerUserID) {
 			return nil
@@ -196,10 +177,6 @@ func (s *Service) storedSheetOf(ctx context.Context, m authz.Membership, charact
 			return nil
 		}
 		return stored.GetFull()
-	}
-	return func() *charactersv1.FullSheet {
-		once.Do(func() { out = read() })
-		return out
 	}
 }
 

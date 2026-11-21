@@ -466,8 +466,6 @@ func hideFromPlayer(out *charactersv1.LevelUpOptions, t levelUpTarget) {
 	out.Subclasses = slices.DeleteFunc(out.Subclasses, func(sub *charactersv1.LevelUpSubclass) bool {
 		return (sub.GetArchived() || sub.GetOff()) && !slices.ContainsFunc(t.build.Classes, func(c rules.ClassLevel) bool { return c.Subclass == sub.GetKey() })
 	})
-	// Nor a source of skills that is an entry the master retired or switched off, unless the sheet uses it.
-	out.SkillSources = slices.DeleteFunc(out.SkillSources, func(src *charactersv1.LevelUpSkillSource) bool { return hiddenOption(t, src.GetOwnerKey()) })
 	// Nor an option to swap to that the master retired or switched off.
 	for _, g := range out.SwapGroups {
 		g.Pool = slices.DeleteFunc(g.Pool, func(k *charactersv1.LevelUpNamedKey) bool { return hiddenOption(t, k.GetKey()) })
@@ -1111,6 +1109,7 @@ func levelUpOptionsToProto(o rules.LevelUpOffer) *charactersv1.LevelUpOptions {
 		SpellListClassKey: o.SpellList, MaxSpellLevel: i32(o.MaxSpellLevel),
 		Prepares: o.Prepares, PreparedMax: i32(o.PreparedMax), PreparedMaxAfter: i32(o.PreparedMaxAfter),
 		FeatureChoices: levelUpFeatureChoicesToProto(o.FeatureChoices), SkillChoices: i32(o.SkillChoices), ExpertiseChoices: i32(o.ExpertiseChoices),
+		SkillsAllowed: o.SkillsAllowed, ExpertiseAllowed: o.ExpertiseAllowed,
 		ProficiencyBonusBefore: i32(o.ProficiencyBonusBefore), ProficiencyBonusAfter: i32(o.ProficiencyBonusAfter),
 		SpellSlotsBefore: slotCountsToProto(o.SlotsBefore), SpellSlotsAfter: slotCountsToProto(o.SlotsAfter),
 		PactMagicBefore: pactMagicToProto(o.PactBefore), PactMagicAfter: pactMagicToProto(o.PactAfter),
@@ -1234,6 +1233,7 @@ func levelUpSubclassesToProto(in []rules.LevelUpSubclass) []*charactersv1.LevelU
 			Archived: sub.Archived, Off: sub.Off,
 			Spells: i32(sub.Spells), SpellsKind: spellsKindOf(sub.SpellsKind), SpellListClassKey: sub.SpellList, MaxSpellLevel: i32(sub.MaxSpellLevel),
 			Prepares: sub.Prepares, PreparedMaxAfter: i32(sub.PreparedMaxAfter),
+			SkillsAllowed: sub.SkillsAllowed, ExpertiseAllowed: sub.ExpertiseAllowed,
 		})
 	}
 	return out

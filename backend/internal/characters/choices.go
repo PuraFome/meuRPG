@@ -65,7 +65,7 @@ func (s *Service) PreviewChoices(
 		if err := checkCreatorKind(m, kind); err != nil {
 			return nil, err
 		}
-		if sheet, err = checkNewSheetOf(content, m, kind, req.Msg.GetSheet(), false, false); err != nil {
+		if sheet, err = checkNewSheetOf(content, m, pickKeysOnly, kind, req.Msg.GetSheet(), false); err != nil {
 			return nil, err
 		}
 	} else if sheet, notOffered, err = s.sheetForChoices(ctx, m, content, req.Msg.GetCharacterId(), req.Msg.GetSheet()); err != nil {
@@ -110,7 +110,7 @@ func (s *Service) sheetForChoices(ctx context.Context, m authz.Membership, conte
 		return stored, nil, nil
 	}
 	if mayEditSheet(m, row) && row.Status != statusDead {
-		sheet, _, err := s.checkEditedSheetFor(ctx, m, content, characterID, raw, false)
+		sheet, _, err := s.checkEditedSheetFor(ctx, m, content, pickKeysOnly, characterID, raw)
 		return sheet, nil, err
 	}
 	full := stored.GetFull()
@@ -129,7 +129,7 @@ func (s *Service) sheetForChoices(ctx context.Context, m authz.Membership, conte
 	fresh := newKeptOutPicks(viewContent(content, m), func() *charactersv1.FullSheet { return full }, over)
 	over.FeatureChoiceKeys = slices.DeleteFunc(over.FeatureChoiceKeys, func(k string) bool { return slices.Contains(fresh, k) })
 	// A pick is new when the stored sheet lacks it: what the master archived or switched off is not a new choice.
-	if err := refuseNewChoicesFor(content, m, row.ID, full, over, false); err != nil {
+	if err := refuseNewChoices(content, m, pickKeysOnly, row.ID, full, over); err != nil {
 		return nil, nil, err
 	}
 	return &charactersv1.CharacterSheet{Content: &charactersv1.CharacterSheet_Full{Full: over}}, fresh, nil
@@ -452,7 +452,7 @@ func pickedSheet(content *rules.Content, m authz.Membership, current charactersd
 		return nil, nil, invalidArgument(err)
 	}
 	// Nor a pick of what the master archived or switched off.
-	if err := refuseNewChoices(content, m, current.ID, full, sheet.GetFull()); err != nil {
+	if err := refuseNewChoices(content, m, pickFit, current.ID, full, sheet.GetFull()); err != nil {
 		return nil, nil, err
 	}
 	// The picks may not make the sheet worse: a prerequisite they unmeet, or a pick

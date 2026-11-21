@@ -601,19 +601,25 @@ type LevelSkillSource struct {
 	From          []string
 }
 
-// levelSkillSources lists the sources of the skills a level gives: the multiclass pick of a class the character takes
-// (classKey, when mc is not nil) and the choice effects of the level's features.
-func (c *content) levelSkillSources(classKey string, g levelGains, mc *MulticlassOffer) []LevelSkillSource {
+// levelSkillSources lists the sources of the skills a level gives: the sources of the sheet after the level that the sheet
+// before did not have, by the one list of sources a sheet has (deriver.skillSources). A source the sheet already had keeps
+// only the count the level adds. A new class's multiclass pick is a source of the sheet after the level.
+func (c *content) levelSkillSources(before, after Build) []LevelSkillSource {
+	had := c.deriverFor(before).skillSources()
 	var out []LevelSkillSource
-	if mc != nil && mc.Skills != nil {
-		src := LevelSkillSource{Owner: classKey, NamePT: c.namePT(classKey), Count: mc.Skills.Choose}
-		for _, o := range mc.Skills.From {
-			src.From = append(src.From, o.Key)
+	for _, s := range c.deriverFor(after).skillSources() {
+		if i := slices.IndexFunc(had, func(h pickSource) bool { return h.Owner == s.Owner && h.Any == s.Any && slices.Equal(h.From, s.From) }); i >= 0 {
+			s.Count -= had[i].Count
+			had = slices.Delete(had, i, i+1)
 		}
-		out = append(out, src)
-	}
-	for _, s := range g.skillSources {
-		out = append(out, LevelSkillSource{Owner: s.Owner, NamePT: c.namePT(s.Owner), Count: s.Count, From: s.From})
+		if s.Count > 0 {
+			out = append(out, LevelSkillSource{Owner: s.Owner, NamePT: c.namePT(s.Owner), Count: s.Count, From: s.From})
+		}
 	}
 	return out
+}
+
+// pickKeys are the skills and the expertise a new pick may be on in the sheet b (Content.LevelPickKeys).
+func (c *content) pickKeys(b Build) (skills, expertise []string) {
+	return (&Content{c: c}).LevelPickKeys(b)
 }

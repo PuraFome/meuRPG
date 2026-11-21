@@ -44,8 +44,6 @@ var infusionSites = map[string]string{
 	"partyMember":     "none: it reads the senses and the passive Perception",
 
 	// The checks of a new pick.
-	"unknownToolPick":       "none: it reads the keys of the picks and the owner of a tool pick, no number an infusion changes",
-	"refuseUnknownNewTools": "none: it reads the keys of the picks and the owner of a tool pick, no number an infusion changes",
 
 	// Reads of the sheet that read a number no infusion changes.
 	"maxima":                      "none: it reads the hit points, the hit dice, the slots, the resources and the states",
