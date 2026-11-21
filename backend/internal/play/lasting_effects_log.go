@@ -124,7 +124,7 @@ func (s *Service) effectLogView(ctx context.Context, e *logEntry, out *playv1.Co
 }
 
 // readableTargets are the targets of an effect's line the viewer may read: the master all; a player
-// every character, and each NPC they saw when the line was written (castHit.unseenBy over Lasting.Seen)
+// every character, and each NPC they saw when the line was written (fogSeen.unseenBy over Lasting.Seen)
 // that the master has not hidden since. A line stamped before the targets were recorded lists its first
 // target, and no later NPC.
 func readableTargets(ev actionEvent, v combatViewer, byID map[string]playdb.Combatant) []string {
@@ -139,7 +139,7 @@ func readableTargets(ev actionEvent, v combatViewer, byID map[string]playdb.Comb
 			continue
 		}
 		if t.Kind == kindNPC && ev.Fogged {
-			j := slices.IndexFunc(l.Seen, func(h castHit) bool { return h.Target == id })
+			j := slices.IndexFunc(l.Seen, func(h effectSeen) bool { return h.Target == id })
 			if (j >= 0 && l.Seen[j].unseenBy(ev.CoverUsers, v.userID)) || (len(l.Seen) == 0 && i > 0) {
 				continue
 			}

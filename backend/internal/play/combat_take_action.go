@@ -171,7 +171,7 @@ func (s *Service) takeActionResponse(ctx context.Context, m authz.Membership, re
 		resp.TempHpGained = &ev.TempGained
 	}
 	if ev.Channel != nil {
-		reads, err := s.turnsReadBy(ctx, res, out.v, ev.Channel)
+		reads, err := s.channelReadBy(ctx, res, out.v, ev)
 		if err != nil {
 			return nil, err
 		}
@@ -180,12 +180,12 @@ func (s *Service) takeActionResponse(ctx context.Context, m authz.Membership, re
 	return connect.NewResponse(resp), nil
 }
 
-// turnsReadBy says which Turn Undead saves the viewer reads in the answer: at the call, the ones of the undead they see; on a
-// retry, as the line reads them.
-func (s *Service) turnsReadBy(ctx context.Context, res combatResult, v combatViewer, ev *channelEvent) (func(channelTurn) bool, error) {
+// channelReadBy is the reader of the answer's Channel Divinity result: at the call, the one of the viewer's sight (atTheCall);
+// on a retry, as the line reads it (laterTurnReader).
+func (s *Service) channelReadBy(ctx context.Context, res combatResult, v combatViewer, ev actionEvent) (channelReader, error) {
 	cs, err := s.queries.ListCombatants(ctx, res.encounterID)
 	if err != nil {
-		return nil, s.dbError(ctx, "list the combatants", err)
+		return channelReader{}, s.dbError(ctx, "list the combatants", err)
 	}
 	byID := make(map[string]playdb.Combatant, len(cs))
 	for _, c := range cs {
@@ -194,14 +194,11 @@ func (s *Service) turnsReadBy(ctx context.Context, res combatResult, v combatVie
 	if res.repeated {
 		enc, err := s.queries.GetEncounterInSession(ctx, playdb.GetEncounterInSessionParams{GameSessionID: res.session.ID, ID: res.encounterID})
 		if err != nil {
-			return nil, s.dbError(ctx, "find the encounter", err)
+			return channelReader{}, s.dbError(ctx, "find the encounter", err)
 		}
-		return laterTurnReader(v, byID, ev, enc.MapID != nil), nil
+		return laterTurnReader(v, byID, ev.Channel, ev.CoverUsers, enc.MapID != nil), nil
 	}
-	return func(t channelTurn) bool {
-		c, found := byID[t.Target]
-		return v.master || (found && !t.HiddenAtAction && v.sees(c))
-	}, nil
+	return v.atTheCall(byID), nil
 }
 
 // takeActionFlow is one run of the action's transaction: what its steps read, and the next ones use.

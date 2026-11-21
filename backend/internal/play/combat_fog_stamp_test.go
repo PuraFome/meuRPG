@@ -216,7 +216,7 @@ func TestStamp_APlacedCastKeepsWhoSawEachTarget(t *testing.T) {
 	caster := st.cid(t, "Toren") // Toren's player owns the line of their spell
 
 	ev := st.stamp(t, eventSpellCast, actionEvent{Actor: caster, Placed: true, Hits: []castHit{
-		{Target: skel}, {Target: band}, {Target: st.cid(t, "Brisa")}, {Target: skel, HiddenAtCast: true, SeenMask: 99}, {Target: newKey()},
+		{Target: skel}, {Target: band}, {Target: st.cid(t, "Brisa")}, {Target: skel, HiddenAtCast: true, fogSeen: fogSeen{SeenMask: 99}}, {Target: newKey()},
 	}})
 	wantStamp(t, "placed cast", ev, true, pens, brisa, toren)
 	if !slices.Equal(ev.CoverUsers, []string{pens, brisa}) {
@@ -244,6 +244,37 @@ func TestStamp_APlacedCastKeepsWhoSawEachTarget(t *testing.T) {
 	wantStamp(t, "unseen target", none, true, toren)
 	if !none.Hits[0].Fogged || none.Hits[0].SeenMask != 0 {
 		t.Errorf("hit = %+v, want it fogged for everyone", none.Hits[0])
+	}
+}
+
+func TestStamp_AChannelActionKeepsWhoSawEachSaveAndHeal(t *testing.T) {
+	t.Parallel()
+	st := newStampTable(t)
+	pens, brisa := st.sees.users[1], st.sees.users[2]
+	skel, band := st.cid(t, "Esqueleto"), st.cid(t, "Bandido")
+	st.sees.sees[pens] = []grid.Square{st.sq["Esqueleto"]}
+	st.sees.sees[brisa] = []grid.Square{st.sq["Esqueleto"], st.sq["Bandido"]}
+	ch := &channelEvent{
+		Turns: []channelTurn{{Target: skel}, {Target: band}, {Target: st.cid(t, "Brisa")}, {Target: band, HiddenAtAction: true}},
+		Heals: []channelHeal{{Target: band}, {Target: st.cid(t, "Toren")}},
+	}
+	ev := st.stamp(t, eventActionTaken, actionEvent{Actor: st.cid(t, "Toren"), Channel: ch})
+	if len(ev.CoverUsers) != 2 || !slices.Contains(ev.CoverUsers, pens) || !slices.Contains(ev.CoverUsers, brisa) {
+		t.Fatalf("CoverUsers = %v, want the players who saw an entry", ev.CoverUsers)
+	}
+	only := fogSeen{Fogged: true, SeenMask: 1 << slices.Index(ev.CoverUsers, brisa)} // the one entry only Brisa's player saw
+	got := []fogSeen{ev.Channel.Turns[0].fogSeen, ev.Channel.Turns[1].fogSeen, ev.Channel.Turns[2].fogSeen, ev.Channel.Turns[3].fogSeen, ev.Channel.Heals[0].fogSeen, ev.Channel.Heals[1].fogSeen}
+	want := []fogSeen{{true, 0b11}, only, {}, {true, 0}, only, {}}
+	if !slices.Equal(got, want) {
+		t.Errorf("records = %+v, want %+v", got, want)
+	}
+	if ch.Turns[0].Fogged {
+		t.Error("the stamp changed the event it was given")
+	}
+	// No fog: no record.
+	st.c.sight = nil
+	if plain := st.stamp(t, eventActionTaken, actionEvent{Actor: st.cid(t, "Toren"), Channel: &channelEvent{Turns: []channelTurn{{Target: skel}}}}); plain.Channel.Turns[0].Fogged {
+		t.Error("an action with no fog keeps a record")
 	}
 }
 
@@ -382,7 +413,7 @@ func TestReadableTargets_APlayerReadsTheCharactersAndTheNPCsTheyAndTheStampSaw(t
 	byID := map[string]playdb.Combatant{"a": npcA, "b": npcB, "h": npcH, "c": pc}
 	ev := actionEvent{Fogged: true, CoverUsers: []string{"u1", "u2"}, Lasting: &lastingEvent{
 		Targets: []string{"a", "b", "h", "c"},
-		Seen:    []castHit{{Target: "a", Fogged: true, SeenMask: 0b01}, {Target: "b", Fogged: true, SeenMask: 0b10}, {Target: "h", Fogged: true, SeenMask: 0b11}},
+		Seen:    []effectSeen{{Target: "a", fogSeen: fogSeen{Fogged: true, SeenMask: 0b01}}, {Target: "b", fogSeen: fogSeen{Fogged: true, SeenMask: 0b10}}, {Target: "h", fogSeen: fogSeen{Fogged: true, SeenMask: 0b11}}},
 	}}
 	for _, tc := range []struct {
 		who  combatViewer

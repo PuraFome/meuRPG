@@ -1524,30 +1524,38 @@ func (e *logEntry) fillAction(c *logViewing, out *playv1.CombatLogEntry) bool {
 	return true
 }
 
-// readsTurn says which Turn Undead saves of the line the viewer reads.
-func (e *logEntry) readsTurn(c *logViewing) func(channelTurn) bool {
-	return laterTurnReader(c.v, c.byID, e.ev.Channel, !e.noMap)
+// readsTurn is the reader of the entries of the line's Channel Divinity result.
+func (e *logEntry) readsTurn(c *logViewing) channelReader {
+	return laterTurnReader(c.v, c.byID, e.ev.Channel, e.ev.CoverUsers, !e.noMap)
 }
 
-// laterTurnReader says which Turn Undead saves a read after the action gives the viewer.
-// The master reads all of them.
-// A player reads the saves of the undead the master had not hidden at the action and has not hidden since.
-// A player reads none when the action was made under the fog.
-// An event with no mark of the fog is read as made under it on a combat with a map.
-// The line and a retried answer use it.
-func laterTurnReader(v combatViewer, byID map[string]playdb.Combatant, ev *channelEvent, hasMap bool) func(channelTurn) bool {
-	return func(t channelTurn) bool {
-		if v.master {
-			return true
-		}
-		target, found := byID[t.Target]
-		if !found || t.HiddenAtAction || target.Hidden {
-			return false
-		}
-		if ev.UnderFog == nil {
+// laterTurnReader is the reader of a Channel Divinity result read after the action (the line and a retried answer), for the
+// saves and the heals alike. The master reads every entry. A player reads the entries of the creatures that are found, that
+// the master had not hidden at the action and has not hidden since, and: a character or a creature of the party always;
+// an NPC with a record of who saw it (fogSeen) when the player saw it; one with no record when the event says the fog was
+// off, and, for an event with no mark at all, on a combat with no map. The hit points as numbers follow the viewer
+// (readsHitPointsOf).
+func laterTurnReader(v combatViewer, byID map[string]playdb.Combatant, ev *channelEvent, coverUsers []string, hasMap bool) channelReader {
+	return channelReader{
+		numbers: v.numbersOf(byID),
+		reads: func(id string, hiddenAtAction bool, seen fogSeen) bool {
+			if v.master {
+				return true
+			}
+			target, found := byID[id]
+			if !found || hiddenAtAction || target.Hidden {
+				return false
+			}
+			switch {
+			case target.Kind != kindNPC:
+				return true
+			case seen.Fogged:
+				return !seen.unseenBy(coverUsers, v.userID)
+			case ev.UnderFog != nil:
+				return !*ev.UnderFog
+			}
 			return !hasMap
-		}
-		return !*ev.UnderFog
+		},
 	}
 }
 

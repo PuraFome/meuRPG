@@ -149,8 +149,8 @@ func TestPreserveLifeWithNoOneNamedHealsTheHurtOnesOfTheClericsSide(t *testing.T
 	for _, h := range res.GetChannelDivinity().GetHeals() {
 		given += h.GetHealed()
 		c := byLabel(t, a.get(t, a.master), h.GetLabel())
-		if h.GetHitPointsAfter() > c.GetHitPointsMax()/2 || c.GetKind() != playv1.CombatantKind_COMBATANT_KIND_PLAYER {
-			t.Errorf("%s ended at %d of %d (kind %v), want a player at most at half", h.GetLabel(), h.GetHitPointsAfter(), c.GetHitPointsMax(), c.GetKind())
+		if c.GetHitPointsCurrent() > c.GetHitPointsMax()/2 || c.GetKind() != playv1.CombatantKind_COMBATANT_KIND_PLAYER {
+			t.Errorf("%s ended at %d of %d (kind %v), want a player at most at half", h.GetLabel(), c.GetHitPointsCurrent(), c.GetHitPointsMax(), c.GetKind())
 		}
 	}
 	if given != 25 {
@@ -243,16 +243,20 @@ func hasLabeledEffect(c *playv1.Combatant, key string) bool {
 	return false
 }
 
-// readsAllTurns reads every save of a Turn Undead event.
-func readsAllTurns(channelTurn) bool { return true }
+// readsAllTurns reads every entry of a Channel Divinity event, with no hit points as numbers.
+var readsAllTurns = channelReader{reads: func(string, bool, fogSeen) bool { return true }, numbers: func(string) bool { return false }}
 
-// TestLaterTurnReaderFollowsTheMarksOfTheEvent: the master reads every save; a player reads the saves of the undead
-// not hidden at the action nor now, never when the action was made under the fog, and for an event with no mark of the
-// fog only on a combat with no map.
+// TestLaterTurnReaderFollowsTheMarksOfTheEvent: the master reads every entry; a player reads the entries of the
+// creatures not hidden at the action nor now: a party creature always, an NPC by its record of who saw it, and with no
+// record by the event's mark of the fog, and for an event with no mark only on a combat with no map.
 func TestLaterTurnReaderFollowsTheMarksOfTheEvent(t *testing.T) {
 	t.Parallel()
-	byID := map[string]playdb.Combatant{"shown": {ID: "shown"}, "hidden-now": {ID: "hidden-now", Hidden: true}}
+	byID := map[string]playdb.Combatant{
+		"shown": {ID: "shown", Kind: kindNPC}, "hidden-now": {ID: "hidden-now", Kind: kindNPC, Hidden: true},
+		"ally": {ID: "ally", Kind: kindPlayer},
+	}
 	player, master := combatViewer{userID: "u"}, combatViewer{master: true}
+	cover := []string{"x", "u"}
 	cases := []struct {
 		name   string
 		v      combatViewer
@@ -262,18 +266,24 @@ func TestLaterTurnReaderFollowsTheMarksOfTheEvent(t *testing.T) {
 		want   bool
 	}{
 		{"the master reads a creature that is gone", master, new(true), true, channelTurn{Target: "gone", HiddenAtAction: true}, true},
-		{"a player reads a shown undead made clear", player, new(false), true, channelTurn{Target: "shown"}, true},
-		{"a player reads no undead hidden at the action", player, new(false), true, channelTurn{Target: "shown", HiddenAtAction: true}, false},
-		{"a player reads no undead hidden now", player, new(false), true, channelTurn{Target: "hidden-now"}, false},
-		{"a player reads no undead that is gone", player, new(false), true, channelTurn{Target: "gone"}, false},
-		{"a player reads no undead made under the fog", player, new(true), false, channelTurn{Target: "shown"}, false},
-		{"a player reads an old event's undead with no map", player, nil, false, channelTurn{Target: "shown"}, true},
-		{"a player reads no old event's undead with a map", player, nil, true, channelTurn{Target: "shown"}, false},
+		{"a player reads an NPC made clear", player, new(false), true, channelTurn{Target: "shown"}, true},
+		{"a player reads no entry hidden at the action", player, new(false), true, channelTurn{Target: "shown", HiddenAtAction: true}, false},
+		{"a player reads no entry hidden now", player, new(false), true, channelTurn{Target: "hidden-now"}, false},
+		{"a player reads no entry that is gone", player, new(false), true, channelTurn{Target: "gone"}, false},
+		{"a player reads no NPC of an old event made under the fog", player, new(true), false, channelTurn{Target: "shown"}, false},
+		{"a player reads an old event's NPC with no map", player, nil, false, channelTurn{Target: "shown"}, true},
+		{"a player reads no old event's NPC with a map", player, nil, true, channelTurn{Target: "shown"}, false},
+		{"a player reads a party creature of an old event with a map", player, nil, true, channelTurn{Target: "ally"}, true},
+		{"a player reads an NPC its record says it saw", player, nil, true, channelTurn{Target: "shown", fogSeen: fogSeen{Fogged: true, SeenMask: 2}}, true},
+		{"a player reads no NPC its record says it did not see", player, nil, true, channelTurn{Target: "shown", fogSeen: fogSeen{Fogged: true, SeenMask: 1}}, false},
+		{"a player with no bit in the record reads no NPC", combatViewer{userID: "y"}, nil, true, channelTurn{Target: "shown", fogSeen: fogSeen{Fogged: true, SeenMask: 3}}, false},
+		{"a record decides before the mark of the event", player, new(true), true, channelTurn{Target: "shown", fogSeen: fogSeen{Fogged: true, SeenMask: 2}}, true},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			if got := laterTurnReader(tc.v, byID, &channelEvent{UnderFog: tc.fog}, tc.hasMap)(tc.turn); got != tc.want {
+			r := laterTurnReader(tc.v, byID, &channelEvent{UnderFog: tc.fog}, cover, tc.hasMap)
+			if got := r.reads(tc.turn.Target, tc.turn.HiddenAtAction, tc.turn.fogSeen); got != tc.want {
 				t.Errorf("reads = %v, want %v", got, tc.want)
 			}
 		})

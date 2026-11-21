@@ -605,7 +605,7 @@ func fillPayload(v reflect.Value, seen map[reflect.Type]int) {
 		seen[t]++
 		defer func() { seen[t]-- }()
 		for i := range t.NumField() {
-			if f := t.Field(i); f.IsExported() && f.Tag.Get("json") != "-" {
+			if f := t.Field(i); (f.IsExported() || f.Anonymous) && f.Tag.Get("json") != "-" {
 				fillPayload(v.Field(i), seen)
 			}
 		}
