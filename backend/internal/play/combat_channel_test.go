@@ -243,8 +243,8 @@ func hasLabeledEffect(c *playv1.Combatant, key string) bool {
 	return false
 }
 
-// readsAllTurns reads every entry of a Channel Divinity event, with no hit points as numbers.
-var readsAllTurns = channelReader{reads: func(string, bool, fogSeen) bool { return true }, numbers: func(string) bool { return false }}
+// readsAllEntries reads every entry of a Channel Divinity event, with no hit points as numbers.
+var readsAllEntries = channelReader{reads: func(string, bool, fogSeen) bool { return true }, numbers: func(string) bool { return false }}
 
 // TestLaterTurnReaderFollowsTheMarksOfTheEvent: the master reads every entry; a player reads the entries of the
 // creatures not hidden at the action nor now: a party creature always, an NPC by its record of who saw it, and with no

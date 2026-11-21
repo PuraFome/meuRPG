@@ -203,7 +203,19 @@ O mestre também pode corrigir à mão, a qualquer momento da sessão, PV, PV te
   Um monge em 0 PV está caído e não pode usá-la.
   Só o dono e o mestre leem o número no registro.
   O "Desfazer última ação" do mestre devolve os pontos de vida, o uso e a ação.
-- **Canalizar Divindade do clérigo.** Preservar a Vida (Domínio da Vida) restaura pontos de vida às criaturas a até 9 m que o clérigo nomear (o jogador do clérigo só pode nomear as criaturas que ele lê; qualquer outra é recusada como fora do combate; se o clérigo não nomear ninguém, o app divide os pontos entre o lado do clérigo que quem pede lê, quem está mais ferido primeiro), até cinco vezes o nível do clérigo no total, cada uma até no máximo metade do seu máximo; não restaura um morto-vivo nem um constructo. Expulsar Mortos-Vivos faz cada morto-vivo a até 9 m que possa ver ou ouvir o clérigo fazer um teste de resistência de Sabedoria contra a CD do clérigo, e os que falham ficam expulsos por um minuto (o mestre lê cada teste e quem foi expulso, no registro e na resposta; o jogador do clérigo lê os testes dos mortos-vivos que pode ler e, num mapa com névoa, depois só os que viu na ação e que o mestre não tinha escondido nem então nem desde então; a criatura expulsa leva o efeito "Expulso"). O resultado de Preservar a Vida lista cada criatura restaurada que quem lê pode ler, com o valor pedido e o restaurado; os pontos de vida depois vão só a quem lê os números daquela criatura, o mestre e o jogador que a controla. As duas gastam a ação e um uso.
+- **Canalizar Divindade do clérigo.**
+  Preservar a Vida (Domínio da Vida) restaura pontos de vida às criaturas a até 9 m que o clérigo nomear, até cinco vezes o nível do clérigo no total, cada uma até no máximo metade do seu máximo.
+  Não restaura um morto-vivo nem um constructo.
+  O jogador do clérigo só pode nomear as criaturas que ele lê; qualquer outra é recusada como fora do combate.
+  Se o clérigo não nomear ninguém, o app divide os pontos entre o lado do clérigo que quem pede lê, quem está mais ferido primeiro.
+  Expulsar Mortos-Vivos faz cada morto-vivo a até 9 m que possa ver ou ouvir o clérigo fazer um teste de resistência de Sabedoria contra a CD do clérigo, e os que falham ficam expulsos por um minuto.
+  A criatura expulsa leva o efeito "Expulso".
+  O mestre lê cada teste e quem foi expulso, no registro e na resposta.
+  O jogador do clérigo lê os testes dos mortos-vivos que pode ler.
+  Num mapa com névoa, depois, o jogador lê só os que viu na ação e que o mestre não tinha escondido nem então nem desde então.
+  O resultado de Preservar a Vida lista cada criatura restaurada que quem lê pode ler, com o valor pedido e o restaurado.
+  Os pontos de vida depois vão só a quem lê os números daquela criatura, o mestre e o jogador que a controla.
+  As duas gastam a ação e um uso.
 - **Magias e recursos.** Uma magia gasta o espaço (ou o espaço de pacto) quando é conjurada, e um reenvio não gasta duas vezes. Uma magia de cura cura na hora, até o máximo, e levanta quem estava em 0. Os usos de classe e raça (Retomar o Fôlego, Surto de Ação, Fúria...) também são contados. Um recurso sem limite mostra "ilimitado".
 - **O "Desfazer última ação" do mestre** desfaz a última ação; cada desfazer também fica registrado.
 

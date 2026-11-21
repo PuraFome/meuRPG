@@ -481,7 +481,7 @@ func (tw *turnWorld) forgetTheMarks(underFog *bool) {
 	}
 }
 
-func TestTurnUndeadStoredBeforeItsRecordsListsWhatItsMarkSays(t *testing.T) {
+func TestTurnUndeadStoredWithoutRecordsListsWhatItsMarkSays(t *testing.T) {
 	a, b := turnZombie{label: "Zorvak4321"}, turnZombie{label: "Zorvak4322"}
 	hid := turnZombie{label: "Zorvak4322", hidden: true}
 	both := []string{"Zorvak4321", "Zorvak4322"}

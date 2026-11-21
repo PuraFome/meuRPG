@@ -17291,8 +17291,8 @@ for (const [scheme, width] of [['light', 390], ['dark', 768], ['light', 1280], [
 }
 
 /**
- * The combat log's Channel Divinity line for Preserve Life, as the cleric's player reads it: the heal of their own character
- * names the hit points after ("agora com N PV"), the heal of an NPC ally they see names only the points given and asked.
+ * The combat log's Channel Divinity line for Preserve Life, as the cleric's player reads it: a heal whose hit points the reader
+ * reads names the hit points after ("agora com N PV"), and one whose they do not names only the points given and asked.
  * Brisa (Cleric 3, Life Domain) and Goblin 1 (marked as an ally) are hurt below half their maximum and healed in one action.
  * E2E_SHOTS_DIR, when set, also saves the player's viewport as `channel-heal-<width>-<claro|escuro>.png`.
  */

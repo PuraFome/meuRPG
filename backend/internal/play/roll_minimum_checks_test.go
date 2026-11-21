@@ -810,7 +810,7 @@ func TestTheSaveOfATurnedUndeadKeepsWhatTheMinimumDidInTheStoredEvent(t *testing
 	if err := json.Unmarshal(raw, &back); err != nil {
 		t.Fatalf("decode the event: %v", err)
 	}
-	got := channelProto(&back, readsAllTurns).GetTurns()
+	got := channelProto(&back, readsAllEntries).GetTurns()
 	if len(got) != 2 {
 		t.Fatalf("turns = %v, want 2", got)
 	}

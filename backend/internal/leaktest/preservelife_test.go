@@ -154,7 +154,7 @@ func TestPreserveLifeResultFollowsTheCreaturesItsReaderMayRead(t *testing.T) {
 			}
 			full.checkHeals("the cleric's answer", gotFull.GetChannelDivinity(), readable)
 			for _, h := range gotFull.GetChannelDivinity().GetHeals() {
-				if h.HitPointsAfterKnown != nil || h.GetHitPointsAfter() != 0 {
+				if h.HitPointsAfterKnown != nil || h.ProtoReflect().Has(h.ProtoReflect().Descriptor().Fields().ByNumber(5)) {
 					t.Errorf("the cleric's answer gives the hit points after of %s", h.GetLabel())
 				}
 			}
@@ -264,7 +264,7 @@ func TestPreserveLifeGivesTheHitPointsAfterToTheOnesWhoReadThemAsNumbers(t *test
 // The master acts for the cleric and names a creature it has hidden or that the cleric's player never saw; what the cleric's
 // player reads afterwards in the line is what it reads when the action restored only the creatures that player may
 // read, whether or not the master shows the creature later.
-func TestPreserveLifeByTheMasterListsWhatTheClericsPlayerMayRead(t *testing.T) {
+func TestPreserveLifeLineFollowsItsReaderWhenAnotherActs(t *testing.T) {
 	a := turnZombie{label: "Quimbul4321", key: bandit, hp: 1}
 	hid := turnZombie{label: "Quimbul4322", key: bandit, hp: 1, hidden: true}
 	far := turnZombie{label: "Quimbul4322", key: bandit, hp: 1, behind: true}
@@ -335,7 +335,7 @@ func TestPreserveLifeLineFollowsTheMastersSwitchAfterTheAction(t *testing.T) {
 	})
 }
 
-func TestPreserveLifeStoredBeforeItsRecordsListsWhatItsMarkSays(t *testing.T) {
+func TestPreserveLifeStoredWithoutRecordsListsWhatItsMarkSays(t *testing.T) {
 	zs := []turnZombie{{label: "Quimbul4321", key: bandit, hp: 1}, {label: "Brisa", party: true, hp: 1}}
 	both := []string{"Brisa", "Quimbul4321"}
 	for _, row := range []struct {
@@ -344,8 +344,8 @@ func TestPreserveLifeStoredBeforeItsRecordsListsWhatItsMarkSays(t *testing.T) {
 		underFog *bool
 		want     []string
 	}{
-		{"on a fog map, no mark: the party's characters", turnFogMap, nil, []string{"Brisa"}},
-		{"on a map, no mark: the party's characters", turnClearMap, nil, []string{"Brisa"}},
+		{"an old line on a fog map: its reader's rule", turnFogMap, nil, []string{"Brisa"}},
+		{"an old line on a map: its reader's rule", turnClearMap, nil, []string{"Brisa"}},
 		{"on a map, made under the fog", turnFogMap, new(true), []string{"Brisa"}},
 		{"on a map, made with no fog", turnClearMap, new(false), both},
 		{"with no map", turnNoMap, nil, both},

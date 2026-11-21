@@ -16229,8 +16229,8 @@ type TakeActionRequest struct {
 	// cleric's level; each creature is restored to no more than half of its hit point maximum (what would pass it is
 	// not spent), and an undead or a construct cannot be restored. The caller names only the creatures their view of
 	// the combat lists (the master's lists all): any other id gets the answer for a creature that is not in the
-	// combat. That, a creature more than 30 ft away and an undead or a construct are refused with
-	// `failed_precondition` (EncounterBlocked CHANNEL_DIVINITY_TARGET), and so is a total above the limit
+	// combat. An id the caller's view does not list, a creature more than 30 ft away and an undead or a construct are
+	// refused with `failed_precondition` (EncounterBlocked CHANNEL_DIVINITY_TARGET), and so is a total above the limit
 	// (CHANNEL_DIVINITY_TOO_MUCH); a refusal spends nothing. With no entry the points go to the creatures of the
 	// cleric's side that the caller's view lists, the one hurt the most in proportion first, each as far as half its
 	// maximum. Ignored by any other action.

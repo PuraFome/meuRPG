@@ -1519,13 +1519,13 @@ func (e *logEntry) fillAction(c *logViewing, out *playv1.CombatLogEntry) bool {
 		}
 	}
 	if e.ev.Channel != nil && (c.v.master || c.v.owns(c.actor)) { // Canalizar Divindade: the numbers are the master's and its player's
-		out.ChannelDivinity = channelProto(e.ev.Channel, e.readsTurn(c))
+		out.ChannelDivinity = channelProto(e.ev.Channel, e.readsEntry(c))
 	}
 	return true
 }
 
-// readsTurn is the reader of the entries of the line's Channel Divinity result.
-func (e *logEntry) readsTurn(c *logViewing) channelReader {
+// readsEntry is the reader of the entries of the line's Channel Divinity result.
+func (e *logEntry) readsEntry(c *logViewing) channelReader {
 	return laterTurnReader(c.v, c.byID, e.ev.Channel, e.ev.CoverUsers, !e.noMap)
 }
 

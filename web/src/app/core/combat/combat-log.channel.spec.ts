@@ -34,8 +34,10 @@ describe('the Canalizar Divindade lines of the log', () => {
     expect(preserve({ healed: 19 })?.notes).toEqual(['Toren: recuperou 19 PV (pedido 20)']);
   });
 
-  it('names the amount asked and no hit points after at a heal of 0 without them', () => {
-    expect(preserve({ healed: 0 })?.notes).toEqual(['Toren: recuperou 0 PV (pedido 20)']);
+  it('names the hit points after at a heal of 0 when the server sends them', () => {
+    expect(preserve({ healed: 0, hitPointsAfterKnown: 5 })?.notes).toEqual([
+      'Toren: recuperou 0 PV (pedido 20), agora com 5 PV',
+    ]);
   });
 
   it('lists the save of each undead and who was expulso', () => {
