@@ -381,13 +381,10 @@ func (v combatViewer) atTheCall(byID map[string]playdb.Combatant) channelReader 
 	}
 }
 
-// numbersOf says, for a creature, whether the viewer reads its hit points as numbers (readsHitPointsOf): the master always,
-// a player when the creature is in byID and theirs (a creature that left the combat has no owner left to tell).
+// numbersOf says, for a creature, whether the viewer reads its hit points as numbers (readsHitPointsOf). A creature
+// missing from byID is read as an empty combatant, which has no owner.
 func (v combatViewer) numbersOf(byID map[string]playdb.Combatant) func(string) bool {
-	return func(id string) bool {
-		c, found := byID[id]
-		return v.master || found && v.readsHitPointsOf(c)
-	}
+	return func(id string) bool { return v.readsHitPointsOf(byID[id]) }
 }
 
 // channelProto is what a Channel Divinity action did, for the answer and the log: the heals and the saves that the reader
