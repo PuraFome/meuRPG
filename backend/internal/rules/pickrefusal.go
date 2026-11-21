@@ -240,8 +240,19 @@ func (c *Content) LevelPickKeys(b Build) (skills, expertise []string) {
 		expertise = e.Keys
 	}
 	// A list a held pick has used up, or a key the sheet already holds, takes no new pick.
+	// A skill the sheet has by another means (race, background) is no pick: another one stands in its place.
+	skills = slices.DeleteFunc(slices.Clone(skills), func(k string) bool { return x.automaticSkills[k] })
 	skills = x.stillOpen(x.skillSources(), skills, b.SkillProficiencies, func(k string) bool { _, ok := x.c.skills[k]; return ok && !x.automaticSkills[k] })
 	expertise = x.stillOpen(x.expertiseSources(), expertise, b.Expertise, func(k string) bool { _, ok := x.c.skills[k]; return ok })
+	if len(expertise) > 0 {
+		// Expertise asks for the proficiency (a sheet issue otherwise): the skills the sheet is proficient in and the ones the
+		// same level may still give it.
+		proficient := map[string]bool{}
+		for _, s := range derive(b, c.c).Skills {
+			proficient[s.Key] = s.Proficiency >= ProficiencyFull
+		}
+		expertise = slices.DeleteFunc(expertise, func(k string) bool { return !proficient[k] && !slices.Contains(skills, k) })
+	}
 	return skills, expertise
 }
 
