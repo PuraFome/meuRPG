@@ -1234,10 +1234,10 @@ const file_meurpg_characters_v1_infusions_proto_rawDesc = "" +
 	",INFUSION_BLOCKED_REASON_ITEM_ALREADY_INFUSED\x10\x01\x12-\n" +
 	")INFUSION_BLOCKED_REASON_ITEM_NOT_ACCEPTED\x10\x02\x12(\n" +
 	"$INFUSION_BLOCKED_REASON_ITEM_CHANGED\x10\x03\x12.\n" +
-	"*INFUSION_BLOCKED_REASON_INFUSION_NOT_KNOWN\x10\x042\xbf\x04\n" +
-	"\x0fInfusionService\x12\x83\x01\n" +
-	"\x16ListCharacterInfusions\x123.meurpg.characters.v1.ListCharacterInfusionsRequest\x1a4.meurpg.characters.v1.ListCharacterInfusionsResponse\x12z\n" +
-	"\x13ListInfusionTargets\x120.meurpg.characters.v1.ListInfusionTargetsRequest\x1a1.meurpg.characters.v1.ListInfusionTargetsResponse\x12_\n" +
+	"*INFUSION_BLOCKED_REASON_INFUSION_NOT_KNOWN\x10\x042\xc9\x04\n" +
+	"\x0fInfusionService\x12\x88\x01\n" +
+	"\x16ListCharacterInfusions\x123.meurpg.characters.v1.ListCharacterInfusionsRequest\x1a4.meurpg.characters.v1.ListCharacterInfusionsResponse\"\x03\x90\x02\x02\x12\x7f\n" +
+	"\x13ListInfusionTargets\x120.meurpg.characters.v1.ListInfusionTargetsRequest\x1a1.meurpg.characters.v1.ListInfusionTargetsResponse\"\x03\x90\x02\x02\x12_\n" +
 	"\n" +
 	"InfuseItem\x12'.meurpg.characters.v1.InfuseItemRequest\x1a(.meurpg.characters.v1.InfuseItemResponse\x12e\n" +
 	"\fMoveInfusion\x12).meurpg.characters.v1.MoveInfusionRequest\x1a*.meurpg.characters.v1.MoveInfusionResponse\x12b\n" +

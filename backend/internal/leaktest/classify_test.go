@@ -22,12 +22,18 @@ import (
 //
 //   - this table of the rest, each with a class and the reason:
 //
-//     masterWrite       only the master may call it. A player, a pending member and a stranger
-//     are refused with whatever the request holds (TestMasterWritesAreRefused),
-//     and no refusal says what the request aimed at.
+//     masterWrite       only the master may call it. A player is answered permission_denied; a
+//     pending member and a stranger, not_found, as for any campaign call. Nothing
+//     in the request changes that, and no refusal says what the request aimed at.
+//     masterWriteHidden only the master may call it, and a player is answered not_found: the
+//     thing must not be known to exist (the reason of each group is on its line).
+//     Everyone else gets the answers of masterWrite.
 //     playerAction      a member may call it for their own character, notes or turn. The
-//     scripted actions (actions_test.go) and the probe (TestPlayerActionsAnswerNothingHidden)
-//     aim it at what is hidden and check the answers.
+//     scripted actions (actions_test.go) and the probe aim it at what is hidden and
+//     check the answers.
+//     signedInCall      anyone signed in may call it (CreateCampaign, AcceptInvite, ClaimCharacter).
+//     The probe calls it and inspects the answers for leaks; it requires only
+//     unauthenticated of the signed-out caller.
 //     notACampaignCall  nothing of a campaign: the caller's own account, the server's version.
 //     streamed          the live stream: stream_test.go.
 //
@@ -36,7 +42,9 @@ type class int
 
 const (
 	masterWrite class = iota + 1
+	masterWriteHidden
 	playerAction
+	signedInCall
 	notACampaignCall
 	streamed
 )
@@ -55,6 +63,15 @@ type classified struct {
 // masterOnlyWhy is the reason of every masterWrite: the .proto says "Only the master may call it".
 const masterOnlyWhy = "only the master may call it (see the .proto comment)"
 
+// The reasons of the masterWriteHidden groups.
+const (
+	dungeonHiddenWhy   = "requireDungeonMaster answers a player \"map not found\": a player never learns that the master is generating a dungeon"
+	imagesHiddenWhy    = "requireGenerationMaster answers a player not_found: nothing tells a player that the campaign generates images"
+	encounterHiddenWhy = "requireBuilder answers a player not_found: neither the builder nor the saved encounters are known to exist (RN-10)"
+	revivifyHiddenWhy  = "the role is checked first and a player gets \"revivify request not found\": a player is not told that a request waits for the master"
+	conditionsWhy      = "the conditions are the master's, and the combatant's owner ends their own concentration through it"
+)
+
 var notReads = map[string]classified{
 	campaignpackagev1connect.CampaignPackageServiceBeginCampaignImportProcedure:      {notACampaignCall, "starts the caller's own upload; it names no campaign"},
 	campaignpackagev1connect.CampaignPackageServiceCancelCampaignExportProcedure:     {masterWrite, masterOnlyWhy},
@@ -65,8 +82,8 @@ var notReads = map[string]classified{
 	campaignsv1connect.CampaignDocumentServiceUpdateCampaignDocumentProcedure:        {masterWrite, masterOnlyWhy},
 	// The campaign package: exporting is the master's; importing makes a campaign of the caller's own.
 	campaignpackagev1connect.CampaignPackageServiceStartCampaignExportProcedure: {masterWrite, masterOnlyWhy},
-	campaignsv1connect.CampaignServiceAcceptInviteProcedure:                     {playerAction, "anyone with an invite token may accept it; the answer is the campaign's id and name"},
-	campaignsv1connect.CampaignServiceCreateCampaignProcedure:                   {playerAction, "anyone may start a campaign of their own"},
+	campaignsv1connect.CampaignServiceAcceptInviteProcedure:                     {signedInCall, "anyone with an invite token may accept it; the answer is the campaign's id and name"},
+	campaignsv1connect.CampaignServiceCreateCampaignProcedure:                   {signedInCall, "anyone may start a campaign of their own"},
 	campaignsv1connect.CampaignServiceCreateInviteProcedure:                     {masterWrite, masterOnlyWhy},
 	campaignsv1connect.CampaignServiceRemovePendingMemberProcedure:              {masterWrite, masterOnlyWhy},
 	campaignsv1connect.CampaignServiceRevokeInviteProcedure:                     {masterWrite, masterOnlyWhy},
@@ -76,7 +93,7 @@ var notReads = map[string]classified{
 	campaignsv1connect.CampaignServiceSetTableRulesProcedure:                    {masterWrite, masterOnlyWhy},
 	charactersv1connect.CharacterServiceAdjustCreatureHitPointsProcedure:        {masterWrite, masterOnlyWhy},
 	charactersv1connect.CharacterServiceApproveCharacterProcedure:               {masterWrite, masterOnlyWhy},
-	charactersv1connect.CharacterServiceClaimCharacterProcedure:                 {playerAction, "a signed-in person with a working link takes the reserved character it is for; every link that does not work gets the same refusal"},
+	charactersv1connect.CharacterServiceClaimCharacterProcedure:                 {signedInCall, "a signed-in person with a working link takes the reserved character it is for; every link that does not work gets the same refusal"},
 	charactersv1connect.CharacterServiceCreateCharacterProcedure:                {playerAction, "a player (or a pending member) makes their own character"},
 	charactersv1connect.CharacterServiceCreateClaimLinkProcedure:                {masterWrite, masterOnlyWhy},
 	charactersv1connect.CharacterServiceCreateNpcFromCreatureProcedure:          {masterWrite, masterOnlyWhy},
@@ -112,16 +129,16 @@ var notReads = map[string]classified{
 	identityv1connect.IdentityServiceSignOutOtherSessionsProcedure:              {notACampaignCall, "ends the caller's own other sessions"},
 	identityv1connect.IdentityServiceSignOutProcedure:                           {notACampaignCall, "the caller's own session"},
 	identityv1connect.IdentityServiceUpdateProfileProcedure:                     {notACampaignCall, "the caller's own profile"},
-	mapsv1connect.DungeonServiceCreateDungeonMapProcedure:                       {masterWrite, masterOnlyWhy},
-	mapsv1connect.DungeonServicePlaceDungeonSceneProcedure:                      {masterWrite, masterOnlyWhy},
-	mapsv1connect.DungeonServiceRedrawDungeonMapProcedure:                       {masterWrite, masterOnlyWhy},
+	mapsv1connect.DungeonServiceCreateDungeonMapProcedure:                       {masterWriteHidden, dungeonHiddenWhy},
+	mapsv1connect.DungeonServicePlaceDungeonSceneProcedure:                      {masterWriteHidden, dungeonHiddenWhy},
+	mapsv1connect.DungeonServiceRedrawDungeonMapProcedure:                       {masterWriteHidden, dungeonHiddenWhy},
 	mapsv1connect.GalleryServiceDeleteGalleryImageProcedure:                     {masterWrite, masterOnlyWhy},
 	mapsv1connect.GalleryServiceRenameGalleryImageProcedure:                     {masterWrite, masterOnlyWhy},
-	mapsv1connect.ImageGenerationServiceCancelImageGenerationProcedure:          {masterWrite, masterOnlyWhy},
-	mapsv1connect.ImageGenerationServiceEditGeneratedImageProcedure:             {masterWrite, masterOnlyWhy},
-	mapsv1connect.ImageGenerationServiceGenerateMapImageProcedure:               {masterWrite, masterOnlyWhy},
-	mapsv1connect.ImageGenerationServiceGenerateSceneImageProcedure:             {masterWrite, masterOnlyWhy},
-	mapsv1connect.ImageGenerationServiceUseGeneratedImageAsMapImageProcedure:    {masterWrite, masterOnlyWhy},
+	mapsv1connect.ImageGenerationServiceCancelImageGenerationProcedure:          {masterWriteHidden, imagesHiddenWhy},
+	mapsv1connect.ImageGenerationServiceEditGeneratedImageProcedure:             {masterWriteHidden, imagesHiddenWhy},
+	mapsv1connect.ImageGenerationServiceGenerateMapImageProcedure:               {masterWriteHidden, imagesHiddenWhy},
+	mapsv1connect.ImageGenerationServiceGenerateSceneImageProcedure:             {masterWriteHidden, imagesHiddenWhy},
+	mapsv1connect.ImageGenerationServiceUseGeneratedImageAsMapImageProcedure:    {masterWriteHidden, imagesHiddenWhy},
 	mapsv1connect.MapServiceAddSceneActionProcedure:                             {masterWrite, masterOnlyWhy},
 	mapsv1connect.MapServiceAddSceneClueProcedure:                               {masterWrite, masterOnlyWhy},
 	mapsv1connect.MapServiceCreateMapPointProcedure:                             {masterWrite, masterOnlyWhy},
@@ -154,7 +171,7 @@ var notReads = map[string]classified{
 	mapsv1connect.MapServiceUpdateMapProcedure:                                  {masterWrite, masterOnlyWhy},
 	mapsv1connect.MapServiceUpdateSceneActionProcedure:                          {masterWrite, masterOnlyWhy},
 	mapsv1connect.MapServiceUpdateSceneClueProcedure:                            {masterWrite, masterOnlyWhy},
-	mapsv1connect.TreasureServicePlaceTreasureProcedure:                         {masterWrite, masterOnlyWhy},
+	mapsv1connect.TreasureServicePlaceTreasureProcedure:                         {masterWriteHidden, dungeonHiddenWhy},
 	notesv1connect.NotesServiceCreateNoteProcedure:                              {playerAction, "a player writes their own note"},
 	notesv1connect.NotesServiceDeleteNoteProcedure:                              {playerAction, "a player deletes their own note"},
 	notesv1connect.NotesServiceUpdateNoteProcedure:                              {playerAction, "a player edits their own note"},
@@ -218,7 +235,7 @@ var notReads = map[string]classified{
 	playv1connect.CombatServiceRollAttackProcedure:                              {playerAction, "a player attacks with their own combatant"},
 	playv1connect.CombatServiceRollDamageProcedure:                              {playerAction, "a player rolls the damage of their own attack"},
 	playv1connect.CombatServiceRollDeathSaveProcedure:                           {playerAction, "a player rolls the death save of their own character"},
-	playv1connect.CombatServiceSetCombatantConditionsProcedure:                  {masterWrite, masterOnlyWhy},
+	playv1connect.CombatServiceSetCombatantConditionsProcedure:                  {playerAction, conditionsWhy},
 	playv1connect.CombatServiceSetCombatantCoverProcedure:                       {masterWrite, masterOnlyWhy},
 	playv1connect.CombatServiceSetCombatantHiddenProcedure:                      {masterWrite, masterOnlyWhy},
 	playv1connect.CombatServiceSetMonsterReactionModeProcedure:                  {masterWrite, masterOnlyWhy},
@@ -253,8 +270,8 @@ var notReads = map[string]classified{
 	playv1connect.ContestServiceRollGroupCheckProcedure:                         {playerAction, "a player rolls the group check for their own character, once"},
 	playv1connect.ContestServiceSetSurprisedProcedure:                           {masterWrite, masterOnlyWhy},
 	playv1connect.ContestServiceStartContestProcedure:                           {playerAction, "a player starts a grapple, a shove or an escape with their own combatant on its turn; only the master starts a grapple with a fixed escape DC"},
-	playv1connect.EncounterServiceClearBattleEncounterProcedure:                 {masterWrite, masterOnlyWhy},
-	playv1connect.EncounterServiceSaveBattleEncounterProcedure:                  {masterWrite, masterOnlyWhy},
+	playv1connect.EncounterServiceClearBattleEncounterProcedure:                 {masterWriteHidden, encounterHiddenWhy},
+	playv1connect.EncounterServiceSaveBattleEncounterProcedure:                  {masterWriteHidden, encounterHiddenWhy},
 	playv1connect.PlayServiceAdjustCharacterVitalsProcedure:                     {masterWrite, masterOnlyWhy},
 	playv1connect.PlayServiceNudgePlayerProcedure:                               {masterWrite, masterOnlyWhy},
 	playv1connect.PlayServiceApplyTrapDamageProcedure:                           {masterWrite, masterOnlyWhy},
@@ -315,7 +332,7 @@ var notReads = map[string]classified{
 	playv1connect.ResourceServiceUseLayOnHandsProcedure:                         {playerAction, "a paladin's player touches a creature with their own combatant"},
 	playv1connect.TableScreenServiceSetTableScreenProcedure:                     {masterWrite, masterOnlyWhy},
 	playv1connect.TableScreenServiceWatchTableScreenProcedure:                   {streamed, "the master's TV tab; it holds no data, every event is a hint to read GetTableScreen again (the stream test, stream_test.go)"},
-	playv1connect.RevivifyServiceConfirmRevivifyTimeProcedure:                   {masterWrite, masterOnlyWhy},
+	playv1connect.RevivifyServiceConfirmRevivifyTimeProcedure:                   {masterWriteHidden, revivifyHiddenWhy},
 	playv1connect.RevivifyServicePreviewRevivifyProcedure:                       {playerAction, "a player previews who their own caster could revive; the lists it holds are the revivify tests' (RN-10)"},
 	playv1connect.RevivifyServiceRequestRevivifyProcedure:                       {playerAction, "a player casts Revivify outside a combat with their own character"},
 	playv1connect.RevivifyServiceSetRevivifyBlockedProcedure:                    {masterWrite, masterOnlyWhy},

@@ -3,7 +3,7 @@ package leaktest
 import (
 	"maps"
 	"net/http"
-	"sort"
+	"slices"
 	"strings"
 	"testing"
 	"uuid"
@@ -12,13 +12,14 @@ import (
 	"google.golang.org/protobuf/types/dynamicpb"
 )
 
-// probeRequest builds a request for any procedure, by the names of its fields: every id
-// field gets the id of a hidden thing of the fixture (the boss NPC, the hidden trap, the
-// puzzle never shown...), every other field stays empty. A call that the master only may
-// make must be refused for a player whatever else is in the request; the others are
-// asked to answer without a word of what is hidden, so the target of the probe is always
-// the hidden one. The request is rarely valid: what the probe proves is the refusal,
-// and that no refusal says too much.
+// probeRequest builds the probe's own request for any procedure, by the names of its
+// fields: every id field gets the id of a hidden thing of the fixture (the boss NPC, the
+// hidden trap, the puzzle never shown...), a fresh idempotency key and the like, and every
+// other field stays empty. A call that only the master may make must be refused for a
+// player whatever else is in the request; the others are asked to answer without a word
+// of what is hidden, so the target of the probe is always the hidden one. The request is
+// rarely valid: what the probe proves is the refusal, and that no refusal says too much.
+// The other requests of the probe (callerVariants) are made from this one.
 func (w *world) probeRequest(p *person, method protoreflect.MethodDescriptor) *dynamicpb.Message {
 	m := dynamicpb.NewMessage(method.Input())
 	byName := map[protoreflect.Name]string{
@@ -78,48 +79,86 @@ func (w *world) creatureNotOf(p *person) string {
 }
 
 // checkNotReads aims every call that is not a read at what the master hid, as each person
-// who is not the master, and checks two things. A masterWrite is refused: it must never
-// succeed for a player, a pending member, a stranger or someone with no session, whatever
-// else the request says (the .proto comment says "only the master"). And no call, master-only or
-// the player's own, answers with a word of what the request aimed at: the refusal of a
-// hidden thing says what it says for a thing that does not exist.
+// who is not the master, and checks, for each of the five requests of callerVariants:
 //
-// The requests are built from the names of the fields (probeRequest) and are rarely valid
-// in the rest, so a call that is a player's own usually fails its validation: that is why
-// the player's own actions are also scripted (actions_test.go), where the answers are real.
+//   - a masterWrite or a masterWriteHidden never succeeds for a player, a pending member, a
+//     stranger or someone with no session, whatever else the request says;
+//   - no call fails the server (5xx) or answers with a word of what the request aimed at:
+//     the refusal of a hidden thing says what it says for a thing that does not exist;
+//   - the code of the refusal is the one of the class (wantCode): unauthenticated without a
+//     session; not_found for a stranger and for a pending member, who gets the stranger's
+//     code and message; for a player, permission_denied on a masterWrite and not_found on a
+//     masterWriteHidden. The calls that anyone signed in may make (signedInCall) are checked
+//     only for the signed-out caller.
+//
+// The player's own actions (playerAction) get no code requirement as Ana or Caio: the
+// requests do not reach the owner check, so actions_test.go and the per-service matrices
+// cover the owner.
+//
+// The requests are built from the names of the fields and are rarely valid in the rest, so
+// a call that is a player's own usually fails its validation: that is why the player's own
+// actions are also scripted (actions_test.go), where the answers are real.
 func checkNotReads(t *testing.T, w *world, got *answers) {
 	t.Helper()
+	other := w.secondCampaign(t)
 	anon := w.anonymous()
-	people := append(w.players(), anon)
-	all := map[string]classified{}
-	maps.Copy(all, notReads)
-	for _, a := range actions { // the scripted actions are the player's own calls too: probe them at what is hidden
-		all[a.procedure] = classified{playerAction, a.why}
-	}
-	var procedures []string
-	for p := range all {
-		procedures = append(procedures, p)
-	}
-	sort.Strings(procedures)
-	for _, procedure := range procedures {
-		c := all[procedure]
+	for _, procedure := range probedProcedures() {
+		c := probedClass(procedure)
+		// The probe does not reach a path that a held roll runs again: that path takes its
+		// caller from the hold (play/held_caller.go).
 		if c.class == notACampaignCall || c.class == streamed {
 			continue
 		}
 		method := methodOf(t, procedure)
-		for _, p := range people {
-			r := p.call(procedure, w.probeRequest(p, method))
-			got.keep(p, r)
-			if c.class == masterWrite && r.ok() {
-				t.Errorf("%s: %s got an answer from a master-only call (%s): %s", strings.TrimPrefix(procedure, "/meurpg."), p.name, c.why, shorten(r.body))
+		for _, v := range callerVariants {
+			replies := map[*person]reply{}
+			for _, p := range append(w.players(), anon) {
+				r := p.call(procedure, v.build(w, p, method, other))
+				replies[p] = r
+				got.keep(p, r)
+				checkReply(t, w, procedure, c, p, v, r)
 			}
-			if r.status >= 500 && (!unbuilt[procedure] || r.status != http.StatusNotImplemented) {
-				t.Errorf("%s: %s made the server fail (HTTP %d): %s", strings.TrimPrefix(procedure, "/meurpg."), p.name, r.status, shorten(r.body))
-			}
-			for _, f := range w.inspect(p, r, nil) {
-				t.Errorf("%s: %s: %s\n\tanswer: %s", strings.TrimPrefix(procedure, "/meurpg."), p.name, f, shorten(r.body))
-			}
+			checkCodes(t, w, anon, procedure, c, v, replies)
 		}
+	}
+}
+
+// probedClass is the class of a procedure that is not a read, the scripted actions
+// (actions_test.go) included as the player's own calls.
+func probedClass(procedure string) classified {
+	for _, a := range actions {
+		if a.procedure == procedure {
+			return classified{playerAction, a.why}
+		}
+	}
+	return notReads[procedure]
+}
+
+// probedProcedures lists, in order, every procedure of notReads and of the scripted actions.
+func probedProcedures() []string {
+	all := map[string]bool{}
+	for p := range notReads {
+		all[p] = true
+	}
+	for _, a := range actions {
+		all[a.procedure] = true
+	}
+	return slices.Sorted(maps.Keys(all))
+}
+
+// checkReply holds what every answer must satisfy, whoever asks and whatever the code:
+// no success of a master-only call, no server failure, and nothing said of the hidden.
+func checkReply(t *testing.T, w *world, procedure string, c classified, p *person, v callerVariant, r reply) {
+	t.Helper()
+	name := strings.TrimPrefix(procedure, "/meurpg.")
+	if (c.class == masterWrite || c.class == masterWriteHidden) && r.ok() {
+		t.Errorf("%s (%s): %s got an answer from a master-only call (%s): %s", name, v.name, p.name, c.why, shorten(r.body))
+	}
+	if r.status >= 500 && (!unbuilt[procedure] || r.status != http.StatusNotImplemented) {
+		t.Errorf("%s (%s): %s made the server fail (HTTP %d): %s", name, v.name, p.name, r.status, shorten(r.body))
+	}
+	for _, f := range w.inspect(p, r, nil) {
+		t.Errorf("%s (%s): %s: %s\n\tanswer: %s", name, v.name, p.name, f, shorten(r.body))
 	}
 }
 

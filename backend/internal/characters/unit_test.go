@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -113,7 +114,24 @@ func TestNewValidatesItsConfig(t *testing.T) {
 	}
 }
 
-// TestEveryMethodNeedsASession calls every method of both services signed
+// mountedServices are the services of the module, read from the proto files that
+// Mount registers handlers for, so that no service is typed by hand in the tests.
+func mountedServices() []protoreflect.ServiceDescriptor {
+	var out []protoreflect.ServiceDescriptor
+	for _, file := range []protoreflect.FileDescriptor{
+		charactersv1.File_meurpg_characters_v1_characters_proto,
+		charactersv1.File_meurpg_characters_v1_infusions_proto,
+		rulesv1.File_meurpg_rules_v1_rules_proto,
+		rulesv1.File_meurpg_rules_v1_table_content_proto,
+	} {
+		for i := range file.Services().Len() {
+			out = append(out, file.Services().Get(i))
+		}
+	}
+	return out
+}
+
+// TestEveryMethodNeedsASession calls every method of every service of the module signed
 // out. The session check comes first, so no database is needed to see it
 // refuse, and the refusal is not cacheable either.
 func TestEveryMethodNeedsASession(t *testing.T) {
@@ -123,6 +141,7 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	server := httptest.NewServer(reqlimit.Middleware(mux))
 	t.Cleanup(server.Close)
 	c := charactersv1connect.NewCharacterServiceClient(server.Client(), server.URL)
+	infusions := charactersv1connect.NewInfusionServiceClient(server.Client(), server.URL)
 	content := rulesv1connect.NewContentServiceClient(server.Client(), server.URL)
 	table := rulesv1connect.NewTableContentServiceClient(server.Client(), server.URL)
 	ctx := t.Context()
@@ -190,12 +209,20 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	_, calls["ExportTableContent"] = table.ExportTableContent(ctx, connect.NewRequest(&rulesv1.ExportTableContentRequest{CampaignId: id}))
 	_, calls["ImportTableContent"] = table.ImportTableContent(ctx, connect.NewRequest(&rulesv1.ImportTableContentRequest{CampaignId: id}))
 	_, calls["UnarchiveTableEntry"] = table.UnarchiveTableEntry(ctx, connect.NewRequest(&rulesv1.UnarchiveTableEntryRequest{CampaignId: id, Key: "spell:x@mesa"}))
+	_, calls["ListCharacterInfusions"] = infusions.ListCharacterInfusions(ctx, connect.NewRequest(&charactersv1.ListCharacterInfusionsRequest{CampaignId: id, CharacterId: id}))
+	_, calls["ListInfusionTargets"] = infusions.ListInfusionTargets(ctx, connect.NewRequest(&charactersv1.ListInfusionTargetsRequest{CampaignId: id, CharacterId: id}))
+	_, calls["InfuseItem"] = infusions.InfuseItem(ctx, connect.NewRequest(&charactersv1.InfuseItemRequest{CampaignId: id, CharacterId: id}))
+	_, calls["MoveInfusion"] = infusions.MoveInfusion(ctx, connect.NewRequest(&charactersv1.MoveInfusionRequest{CampaignId: id, CharacterId: id, InfusionId: id}))
+	_, calls["EndInfusion"] = infusions.EndInfusion(ctx, connect.NewRequest(&charactersv1.EndInfusionRequest{CampaignId: id, CharacterId: id, InfusionId: id}))
 
-	methods := charactersv1.File_meurpg_characters_v1_characters_proto.Services().ByName("CharacterService").Methods().Len() +
-		rulesv1.File_meurpg_rules_v1_rules_proto.Services().ByName("ContentService").Methods().Len() +
-		rulesv1.File_meurpg_rules_v1_table_content_proto.Services().ByName("TableContentService").Methods().Len()
-	if len(calls) != methods {
-		t.Errorf("called %d methods, the services have %d", len(calls), methods)
+	var methods []string
+	for _, service := range mountedServices() {
+		for i := range service.Methods().Len() {
+			methods = append(methods, string(service.Methods().Get(i).Name()))
+		}
+	}
+	if called := slices.Sorted(maps.Keys(calls)); !slices.Equal(called, slices.Sorted(slices.Values(methods))) {
+		t.Errorf("called %v, the services have %v", called, slices.Sorted(slices.Values(methods)))
 	}
 	for name, err := range calls {
 		if connect.CodeOf(err) != connect.CodeUnauthenticated {
@@ -209,7 +236,7 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 
 // TestReadsWithIDsArePostOnly: every read carries a campaign ID, so it is
 // IDEMPOTENT, not NO_SIDE_EFFECTS, and the server refuses it over GET,
-// which would put the ID in the URL.
+// which would put the ID in the URL. The reads of every service the module mounts are covered.
 func TestReadsWithIDsArePostOnly(t *testing.T) {
 	t.Parallel()
 	mux := http.NewServeMux()
@@ -217,11 +244,7 @@ func TestReadsWithIDsArePostOnly(t *testing.T) {
 
 	message := `{"campaignId":"6f1c7a52-3b5e-4c55-9d0b-2a51f0c1e001","characterId":"6f1c7a52-3b5e-4c55-9d0b-2a51f0c1e001"}`
 	reads := map[string]protoreflect.MethodDescriptor{}
-	for _, service := range []protoreflect.ServiceDescriptor{
-		charactersv1.File_meurpg_characters_v1_characters_proto.Services().ByName("CharacterService"),
-		rulesv1.File_meurpg_rules_v1_rules_proto.Services().ByName("ContentService"),
-		rulesv1.File_meurpg_rules_v1_table_content_proto.Services().ByName("TableContentService"),
-	} {
+	for _, service := range mountedServices() {
 		for i := range service.Methods().Len() {
 			m := service.Methods().Get(i)
 			if strings.HasPrefix(string(m.Name()), "Get") || strings.HasPrefix(string(m.Name()), "List") || strings.HasPrefix(string(m.Name()), "Preview") {
@@ -229,8 +252,8 @@ func TestReadsWithIDsArePostOnly(t *testing.T) {
 			}
 		}
 	}
-	if len(reads) != 26 {
-		t.Errorf("found %d reads, want 26 (GetAbilityRolls, GetCharacter, ListCharacters, GetMasterNotes, GetLevelUpOptions, PreviewLevelUp, PreviewCharacter, PreviewChoices, PreviewClaim, GetCampaignOpenChoices, ListLevelUps, ListCharacterCreatures, GetSummonOptions, ListWildShapeForms, ListContent, GetSpellDetails, ListSpells, ListMagicItems, ListCreatures, GetCreature, ListTrapPresets, ListLightPresets, ListTableEntries, ListOptionSwitches, GetClassTableDefaults, GetEffectMenu)", len(reads))
+	if len(reads) != 28 {
+		t.Errorf("found %d reads, want 28 (ListCharacterInfusions, ListInfusionTargets, GetAbilityRolls, GetCharacter, ListCharacters, GetMasterNotes, GetLevelUpOptions, PreviewLevelUp, PreviewCharacter, PreviewChoices, PreviewClaim, GetCampaignOpenChoices, ListLevelUps, ListCharacterCreatures, GetSummonOptions, ListWildShapeForms, ListContent, GetSpellDetails, ListSpells, ListMagicItems, ListCreatures, GetCreature, ListTrapPresets, ListLightPresets, ListTableEntries, ListOptionSwitches, GetClassTableDefaults, GetEffectMenu)", len(reads))
 	}
 	for procedure, method := range reads {
 		opts, _ := method.Options().(*descriptorpb.MethodOptions)

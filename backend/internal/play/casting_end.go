@@ -158,7 +158,7 @@ func (s *Service) ConfirmCastTimePassed(
 	ctx context.Context,
 	req *connect.Request[playv1.ConfirmCastTimePassedRequest],
 ) (*connect.Response[playv1.ConfirmCastTimePassedResponse], error) {
-	m, err := authz.RequireCampaignMember(ctx, req.Msg.GetCampaignId())
+	m, err := authz.RequireCampaignRole(ctx, req.Msg.GetCampaignId(), authz.RoleMaster)
 	if err != nil {
 		return nil, err
 	}
@@ -218,10 +218,6 @@ func (s *Service) finishCastTx(ctx context.Context, c *combatTx, m authz.Members
 	row, caster, err := s.castRowFor(ctx, c, m, castID)
 	if err != nil {
 		return castOutcome{}, err
-	}
-	if m.Role != authz.RoleMaster {
-		// Outside a combat there is no clock: the master says the time has passed.
-		return castOutcome{}, connect.NewError(connect.CodePermissionDenied, errors.New("only the master completes a cast"))
 	}
 	if row.Status != castCasting {
 		return castOutcome{}, errCasting(playv1.CastingBlockedReason_CASTING_BLOCKED_REASON_CAST_NOT_GOING, "the spell is not being cast")
