@@ -317,6 +317,11 @@ func (f *fogSight) reactorSees(r playdb.Combatant, sheet link.Sheet, at grid.Squ
 // player: their revision does not count it and their stream does not hear it.
 func (c *combatTx) stamp(ctx context.Context, kind string, ev actionEvent) (actionEvent, error) {
 	if c.sight == nil {
+		if kind == eventActionTaken && ev.Channel != nil { // no fog: the action says so, as no entry has a record
+			ch := *ev.Channel
+			ch.UnderFog = new(false)
+			ev.Channel = &ch
+		}
 		return ev, nil
 	}
 	cs, err := c.q.ListCombatantsWithDismissed(ctx, c.enc.ID)
@@ -362,10 +367,7 @@ func (c *combatTx) stampChannel(ev actionEvent, cs []playdb.Combatant) actionEve
 		if j < 0 || cs[j].Kind != kindNPC {
 			return
 		}
-		*s = fogSeen{Fogged: true}
-		if placed(cs[j]) && !hidden {
-			c.markSeen(&ev, s, cs[j], nil)
-		}
+		c.markNPC(&ev, s, cs[j], hidden, nil)
 	}
 	for i := range ch.Heals {
 		mark(ch.Heals[i].Target, ch.Heals[i].HiddenAtAction, &ch.Heals[i].fogSeen)
@@ -508,6 +510,17 @@ func (c *combatTx) markSeen(ev *actionEvent, s *fogSeen, npc playdb.Combatant, s
 	return seenSome
 }
 
+// markNPC is the record of an NPC a save, a heal or an effect target names, made on a fog map: it is fogged, and each player
+// who sees it is marked (markSeen) unless the master had it hidden or it stands on no square, and then no one saw it. It returns
+// the list of players who saw some target, with this NPC's.
+func (c *combatTx) markNPC(ev *actionEvent, s *fogSeen, npc playdb.Combatant, hidden bool, seenSome []string) []string {
+	*s = fogSeen{Fogged: true}
+	if placed(npc) && !hidden {
+		return c.markSeen(ev, s, npc, seenSome)
+	}
+	return seenSome
+}
+
 // lastingLineNamesTargets says the event is the line of an effect (added, changed or ended), which names
 // the creatures it is on in Lasting.Targets.
 func lastingLineNamesTargets(kind string, ev actionEvent) bool {
@@ -557,10 +570,8 @@ func (c *combatTx) markEffectTargets(ev *actionEvent, l *lastingEvent, cs []play
 			continue
 		}
 		anyNPC = true
-		h := effectSeen{Target: id, fogSeen: fogSeen{Fogged: true}}
-		if placed(cs[j]) && !cs[j].Hidden {
-			seenSome = c.markSeen(ev, &h.fogSeen, cs[j], seenSome)
-		}
+		h := effectSeen{Target: id}
+		seenSome = c.markNPC(ev, &h.fogSeen, cs[j], cs[j].Hidden, seenSome)
 		l.Seen = append(l.Seen, h)
 	}
 	return seenSome, anyNPC, anyChar

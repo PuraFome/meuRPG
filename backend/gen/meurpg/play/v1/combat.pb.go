@@ -16668,7 +16668,8 @@ func (x *HookResult) GetSource() string {
 // ChannelDivinityResult is what a Channel Divinity action did, creature by creature.
 type ChannelDivinityResult struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Preserve Life: the hit points each creature regained (after the half-maximum limit), in the order asked.
+	// Preserve Life: the hit points each creature regained (after the half-maximum limit), in the order asked, for the
+	// creatures the reader may read, as `turns` are.
 	Heals []*ChannelDivinityHeal `protobuf:"bytes,1,rep,name=heals,proto3" json:"heals,omitempty"`
 	// Turn Undead: the save of each undead that had to save and that the reader may read, in the order of the combat.
 	Turns []*ChannelDivinityTurn `protobuf:"bytes,2,rep,name=turns,proto3" json:"turns,omitempty"`

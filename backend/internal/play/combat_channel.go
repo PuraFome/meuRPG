@@ -48,9 +48,9 @@ type channelEvent struct {
 	// Effects are the rows of the effect "turned" the action made, on Targets, which the undo takes away.
 	Effects []string `json:"effects,omitempty"`
 	Targets []string `json:"targets,omitempty"`
-	// UnderFog says whether the action was made with the fog on. The record of each entry (fogSeen) tells who saw it
-	// when the fog was on, so it is written only as false, for an action on a map with no fog. An older event may
-	// carry it as true, and then lists no entry to a player that has no record.
+	// UnderFog is written by combatTx.stamp, only as false, for an action made without fog (no map, or a map with no
+	// fog): it tells a new event, whose entries carry their own record (fogSeen) when the fog was on, from an older one
+	// with no record. An older event may carry it as true, and then lists no entry to a player that has no record.
 	UnderFog *bool `json:"under_fog,omitempty"`
 }
 
@@ -134,9 +134,6 @@ func (f *takeActionFlow) preserveLife(ctx context.Context, sheet link.Sheet) err
 		}
 	}
 	ev := &channelEvent{}
-	if f.c.sight == nil {
-		ev.UnderFog = new(false)
-	}
 	for _, h := range asked {
 		target, err := f.preserveTarget(ctx, may, h.target)
 		if err != nil {
@@ -274,9 +271,6 @@ func (f *takeActionFlow) turnUndead(ctx context.Context, sheet link.Sheet) error
 	}
 	dc := clamp32(sheet.ChannelDC, 0, math.MaxInt32)
 	ev := &channelEvent{DC: dc}
-	if f.c.sight == nil {
-		ev.UnderFog = new(false)
-	}
 	var turned []playdb.Combatant
 	for _, target := range cs {
 		if target.ID == f.who.ID || target.Defeated || target.Dismissed || !f.hearsTheCleric(target) {

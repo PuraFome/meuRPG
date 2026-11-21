@@ -7583,7 +7583,8 @@ export const HookResultSchema: GenMessage<HookResult> = /*@__PURE__*/
  */
 export type ChannelDivinityResult = Message<"meurpg.play.v1.ChannelDivinityResult"> & {
   /**
-   * Preserve Life: the hit points each creature regained (after the half-maximum limit), in the order asked.
+   * Preserve Life: the hit points each creature regained (after the half-maximum limit), in the order asked, for the
+   * creatures the reader may read, as `turns` are.
    *
    * @generated from field: repeated meurpg.play.v1.ChannelDivinityHeal heals = 1;
    */

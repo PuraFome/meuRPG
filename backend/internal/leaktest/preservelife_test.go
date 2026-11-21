@@ -86,7 +86,7 @@ func (tw *turnWorld) checkHeals(what string, got *playv1.ChannelDivinityResult, 
 	}
 }
 
-// restored are the labels of the creatures an action restores: the named ones, or the hurt ones of the cleric's side.
+// restoredBy are the labels of the creatures an action restores: the named ones, or the hurt ones of the cleric's side.
 func restoredBy(zs []turnZombie, named []string, keep func(turnZombie) bool) []string {
 	return labelsOfZombies(zs, func(z turnZombie) bool {
 		if !keep(z) {
@@ -222,7 +222,7 @@ func TestPreserveLifeNamesOnlyWhatItsReaderMayRead(t *testing.T) {
 	}
 }
 
-func TestPreserveLifeAnswersTheMasterWithEveryCreatureAndItsHitPoints(t *testing.T) {
+func TestPreserveLifeAnswersTheMasterWithWhatTheMastersReaderReads(t *testing.T) {
 	for _, mode := range []turnMap{turnNoMap, turnClearMap, turnFogMap} {
 		t.Run(fmt.Sprint("mode ", int(mode)), func(t *testing.T) {
 			zs := []turnZombie{{label: "Quimbul4321", key: bandit, hp: 1}, {label: "Quimbul4322", key: bandit, hp: 1, hidden: true}, {label: "Quimbul4323", key: bandit, hp: 1, behind: true}}
@@ -258,6 +258,45 @@ func TestPreserveLifeGivesTheHitPointsAfterToTheOnesWhoReadThemAsNumbers(t *test
 		if got, want := h.HitPointsAfterKnown != nil, h.GetLabel() == "Brisa"; got != want {
 			t.Errorf("the cleric's line gives the hit points after of %s: %v, want %v", h.GetLabel(), got, want)
 		}
+	}
+}
+
+// The master acts for the cleric and names a creature it has hidden or that the cleric's player never saw; what the cleric's
+// player reads afterwards in the line is what it reads when the action restored only the creatures that player may
+// read, whether or not the master shows the creature later.
+func TestPreserveLifeByTheMasterListsWhatTheClericsPlayerMayRead(t *testing.T) {
+	a := turnZombie{label: "Quimbul4321", key: bandit, hp: 1}
+	hid := turnZombie{label: "Quimbul4322", key: bandit, hp: 1, hidden: true}
+	far := turnZombie{label: "Quimbul4322", key: bandit, hp: 1, behind: true}
+	for _, row := range []struct {
+		name string
+		mode turnMap
+		z    turnZombie
+		show bool // the master shows the creature after the action
+	}{
+		{"hidden at the action, shown after", turnClearMap, hid, true},
+		{"hidden at the action, shown after, on a fog map", turnFogMap, hid, true},
+		{"hidden at the action, shown after, no map", turnNoMap, hid, true},
+		{"out of the player's sight on a fog map", turnFogMap, far, false},
+	} {
+		t.Run(row.name, func(t *testing.T) {
+			full, only := newTurnWorld(t, row.mode, []turnZombie{a, row.z}), newTurnWorld(t, row.mode, []turnZombie{a})
+			key := newKey()
+			if _, err := full.preserveWith(full.master, key, full.idsOf([]string{a.label, row.z.label})...); err != nil {
+				t.Fatalf("Preserve Life with the creature: %v", err)
+			}
+			if _, err := only.preserveWith(only.master, key, only.idsOf([]string{a.label})...); err != nil {
+				t.Fatalf("Preserve Life without it: %v", err)
+			}
+			if row.show {
+				full.setHidden(row.z.label, false)
+			}
+			full.checkHeals("the cleric's line", full.line(full.caio).GetChannelDivinity(), []string{a.label})
+			if x, y := same(full.line(full.caio)), same(only.line(only.caio)); x != y {
+				t.Errorf("the cleric's line differs from the one of the action without the creature:\n%s\n%s", x, y)
+			}
+			full.scan([]string{row.z.label}, map[string]string{"the cleric's line": jsonOf(full.line(full.caio))})
+		})
 	}
 }
 

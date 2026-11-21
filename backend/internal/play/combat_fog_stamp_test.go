@@ -275,6 +275,8 @@ func TestStamp_AChannelActionKeepsWhoSawEachSaveAndHeal(t *testing.T) {
 	st.c.sight = nil
 	if plain := st.stamp(t, eventActionTaken, actionEvent{Actor: st.cid(t, "Toren"), Channel: &channelEvent{Turns: []channelTurn{{Target: skel}}}}); plain.Channel.Turns[0].Fogged {
 		t.Error("an action with no fog keeps a record")
+	} else if plain.Channel.UnderFog == nil || *plain.Channel.UnderFog {
+		t.Errorf("an action with no fog: UnderFog = %v, want false", plain.Channel.UnderFog)
 	}
 }
 

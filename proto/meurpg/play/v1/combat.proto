@@ -5135,7 +5135,8 @@ message HookResult {
 
 // ChannelDivinityResult is what a Channel Divinity action did, creature by creature.
 message ChannelDivinityResult {
-  // Preserve Life: the hit points each creature regained (after the half-maximum limit), in the order asked.
+  // Preserve Life: the hit points each creature regained (after the half-maximum limit), in the order asked, for the
+  // creatures the reader may read, as `turns` are.
   repeated ChannelDivinityHeal heals = 1;
   // Turn Undead: the save of each undead that had to save and that the reader may read, in the order of the combat.
   repeated ChannelDivinityTurn turns = 2;

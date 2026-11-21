@@ -115,8 +115,9 @@ func (v combatViewer) sees(c playdb.Combatant) bool {
 	return v.master || (!c.Hidden && !v.unseen[c.ID])
 }
 
-// readsHitPointsOf says the combat view gives the viewer the hit points of the combatant as numbers: the master, and the
-// player who plays it (a character or one of its creatures). Every other viewer reads its state word.
+// readsHitPointsOf says the viewer reads the hit points of the combatant as numbers: the master, and the player who plays it
+// (a character or one of its creatures). Every other viewer reads its state word. The combat view applies it to creatures; the
+// numbers of a character's own come from its vitals.
 func (v combatViewer) readsHitPointsOf(c playdb.Combatant) bool {
 	return v.master || v.owns(c)
 }

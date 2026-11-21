@@ -59,7 +59,7 @@ type turnWorld struct {
 	mode   turnMap
 	cleric string // the cleric's combatant
 	ids    map[string]string
-	count  int
+	count  int // the creatures with no key of their own (zombies): the undead that save against Turn Undead
 	rolled bool
 }
 
@@ -111,7 +111,6 @@ func newTurnWorld(t *testing.T, mode turnMap, zombies []turnZombie) *turnWorld {
 		CampaignId: w.campaign, IdempotencyKey: newKey(), Name: "Cripta", Mode: mode.encounterMode(),
 		Participants: []*playv1.Participant{{CharacterId: cleric.GetId()}, {CharacterId: friend.GetId()}},
 	}
-
 	e := must(m.combat.StartEncounter(ctx, rq(start))).GetEncounter()
 	initiative := func(id string, face int32) {
 		must(m.combat.SubmitInitiative(ctx, rq(&playv1.SubmitInitiativeRequest{
