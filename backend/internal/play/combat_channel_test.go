@@ -8,6 +8,7 @@ import (
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
 
 // Channel Divinity (SRD 5.1, Cleric). Preserve Life restores up to five times the cleric's level among the creatures
@@ -240,4 +241,41 @@ func hasLabeledEffect(c *playv1.Combatant, key string) bool {
 		}
 	}
 	return false
+}
+
+// readsAllTurns reads every save of a Turn Undead event.
+func readsAllTurns(channelTurn) bool { return true }
+
+// TestLaterTurnReaderFollowsTheMarksOfTheEvent: the master reads every save; a player reads the saves of the undead
+// not hidden at the action nor now, never when the action was made under the fog, and for an event with no mark of the
+// fog only on a combat with no map.
+func TestLaterTurnReaderFollowsTheMarksOfTheEvent(t *testing.T) {
+	t.Parallel()
+	byID := map[string]playdb.Combatant{"shown": {ID: "shown"}, "hidden-now": {ID: "hidden-now", Hidden: true}}
+	player, master := combatViewer{userID: "u"}, combatViewer{master: true}
+	cases := []struct {
+		name   string
+		v      combatViewer
+		fog    *bool
+		hasMap bool
+		turn   channelTurn
+		want   bool
+	}{
+		{"the master reads a creature that is gone", master, new(true), true, channelTurn{Target: "gone", HiddenAtAction: true}, true},
+		{"a player reads a shown undead made clear", player, new(false), true, channelTurn{Target: "shown"}, true},
+		{"a player reads no undead hidden at the action", player, new(false), true, channelTurn{Target: "shown", HiddenAtAction: true}, false},
+		{"a player reads no undead hidden now", player, new(false), true, channelTurn{Target: "hidden-now"}, false},
+		{"a player reads no undead that is gone", player, new(false), true, channelTurn{Target: "gone"}, false},
+		{"a player reads no undead made under the fog", player, new(true), false, channelTurn{Target: "shown"}, false},
+		{"a player reads an old event's undead with no map", player, nil, false, channelTurn{Target: "shown"}, true},
+		{"a player reads no old event's undead with a map", player, nil, true, channelTurn{Target: "shown"}, false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			if got := laterTurnReader(tc.v, byID, &channelEvent{UnderFog: tc.fog}, tc.hasMap)(tc.turn); got != tc.want {
+				t.Errorf("reads = %v, want %v", got, tc.want)
+			}
+		})
+	}
 }

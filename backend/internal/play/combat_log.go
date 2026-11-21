@@ -75,6 +75,8 @@ type logEntry struct {
 	returned, returnBlocked bool
 	// actorUser is who made the first event of the line (the master's hand when he acted for a player).
 	actorUser *string
+	// noMap says the combat has no map.
+	noMap bool
 	// masterOnly is a line only the master gets, whatever the combatants.
 	masterOnly bool
 	// gear is the swap of a GEAR_SWAPPED line: its payload is its own type (equip_event.go).
@@ -220,7 +222,7 @@ func (s *Service) logEntries(ctx context.Context, m authz.Membership, snap *logS
 	entries := buildLog(snap.events)
 	rolls := newLogRolls(snap.reasons, snap.requests, s.namesFor(ctx, m.CampaignID))
 	for _, e := range entries {
-		e.rolls = rolls
+		e.rolls, e.noMap = rolls, snap.enc.MapID == nil
 	}
 	return entries
 }
@@ -1513,9 +1515,33 @@ func (e *logEntry) fillAction(c *logViewing, out *playv1.CombatLogEntry) bool {
 		}
 	}
 	if e.ev.Channel != nil && (c.v.master || c.v.owns(c.actor)) { // Canalizar Divindade: the numbers are the master's and its player's
-		out.ChannelDivinity = channelProto(e.ev.Channel)
+		out.ChannelDivinity = channelProto(e.ev.Channel, e.readsTurn(c))
 	}
 	return true
+}
+
+// readsTurn says which Turn Undead saves of the line the viewer reads.
+func (e *logEntry) readsTurn(c *logViewing) func(channelTurn) bool {
+	return laterTurnReader(c.v, c.byID, e.ev.Channel, !e.noMap)
+}
+
+// laterTurnReader says which Turn Undead saves a read after the action gives the viewer: the master's all, a player's the ones
+// of the undead the master had not hidden at the action and has not hidden since, and none when the action was made under the
+// fog (an event with no mark of it reads so on a combat with a map). The line and a retried answer read this way.
+func laterTurnReader(v combatViewer, byID map[string]playdb.Combatant, ev *channelEvent, hasMap bool) func(channelTurn) bool {
+	return func(t channelTurn) bool {
+		if v.master {
+			return true
+		}
+		target, found := byID[t.Target]
+		if !found || t.HiddenAtAction || target.Hidden {
+			return false
+		}
+		if ev.UnderFog == nil {
+			return !hasMap
+		}
+		return !*ev.UnderFog
+	}
 }
 
 func (e *logEntry) fillAnswer(c *logViewing, out *playv1.CombatLogEntry) bool {

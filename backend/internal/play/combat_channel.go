@@ -48,6 +48,8 @@ type channelEvent struct {
 	// Effects are the rows of the effect "turned" the action made, on Targets, which the undo takes away.
 	Effects []string `json:"effects,omitempty"`
 	Targets []string `json:"targets,omitempty"`
+	// UnderFog says the action was made with the fog on; a record for each entry will replace it. An older event has none.
+	UnderFog *bool `json:"under_fog,omitempty"`
 }
 
 // channelHeal is what Preserve Life gave one creature: what was asked, what the limit left, and the hit points
@@ -70,6 +72,8 @@ type channelTurn struct {
 	Modifier int32  `json:"modifier"`
 	Total    int32  `json:"total"`
 	Turned   bool   `json:"turned,omitempty"`
+	// HiddenAtAction says the master had the undead hidden at the action.
+	HiddenAtAction bool `json:"hidden_at_action,omitempty"`
 	// countedRoll is the number the d20 counted as when a minimum raised it: D20 is what came up and Total uses this one.
 	countedRoll
 }
@@ -251,7 +255,7 @@ func (f *takeActionFlow) turnUndead(ctx context.Context, sheet link.Sheet) error
 		return err
 	}
 	dc := clamp32(sheet.ChannelDC, 0, math.MaxInt32)
-	ev := &channelEvent{DC: dc}
+	ev := &channelEvent{DC: dc, UnderFog: new(f.c.sight != nil)}
 	var turned []playdb.Combatant
 	for _, target := range cs {
 		if target.ID == f.who.ID || target.Defeated || target.Dismissed || !f.hearsTheCleric(target) {
@@ -264,6 +268,7 @@ func (f *takeActionFlow) turnUndead(ctx context.Context, sheet link.Sheet) error
 			}
 			continue
 		}
+		undead.HiddenAtAction = target.Hidden
 		ev.Turns = append(ev.Turns, *undead)
 		if undead.Turned {
 			turned = append(turned, target)
@@ -344,8 +349,9 @@ func (f *takeActionFlow) turn(ctx context.Context, cs []playdb.Combatant, turned
 	return nil
 }
 
-// channelProto is what a Channel Divinity action did, for the answer and the log.
-func channelProto(ev *channelEvent) *playv1.ChannelDivinityResult {
+// channelProto is what a Channel Divinity action did, for the answer and the log: the heals, and the saves of the undead
+// that reads says its reader may read.
+func channelProto(ev *channelEvent, reads func(channelTurn) bool) *playv1.ChannelDivinityResult {
 	if ev == nil {
 		return nil
 	}
@@ -354,6 +360,9 @@ func channelProto(ev *channelEvent) *playv1.ChannelDivinityResult {
 		out.Heals = append(out.Heals, &playv1.ChannelDivinityHeal{CombatantId: h.Target, Label: h.Label, Asked: h.Asked, Healed: h.Healed, HitPointsAfter: h.After})
 	}
 	for _, t := range ev.Turns {
+		if !reads(t) {
+			continue
+		}
 		turn := &playv1.ChannelDivinityTurn{CombatantId: t.Target, Label: t.Label, D20: t.D20, Modifier: t.Modifier, Total: t.Total, Turned: t.Turned}
 		if t.CountedAs != 0 {
 			turn.TreatedAs, turn.TreatedAsSource = new(t.CountedAs), legacySource(t.CountedBy)
