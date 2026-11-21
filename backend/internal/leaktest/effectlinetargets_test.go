@@ -152,7 +152,7 @@ func (z *effTable) entriesOf(p *person, change playv1.CombatLogEffectChange) []*
 			c.Id, c.At, c.Round = "", nil, 0
 			// The order of an effect's targets is the order of its rows, which the combat does not fix: the labels
 			// are compared as a set, and the first target is one of them.
-			if !slices.Contains(c.GetEffect().GetTargetLabels(), c.GetTargetLabel()) && len(c.GetEffect().GetTargetLabels()) > 0 {
+			if c.GetTargetLabel() != "" && !slices.Contains(c.GetEffect().GetTargetLabels(), c.GetTargetLabel()) {
 				z.t.Errorf("the line's target %q is not among its labels %v", c.GetTargetLabel(), c.GetEffect().GetTargetLabels())
 			}
 			slices.Sort(c.GetEffect().TargetLabels)
@@ -178,13 +178,18 @@ func (z *effTable) clear() {
 
 func (z *effTable) cast(caster string, targets []string, audience playv1.EffectAudience, rounds int32) string {
 	z.t.Helper()
+	return z.castKey("spell:bless", caster, targets, audience, rounds)
+}
+
+func (z *effTable) castKey(key, caster string, targets []string, audience playv1.EffectAudience, rounds int32) string {
+	z.t.Helper()
 	z.clear()
 	var ids []string
 	for _, s := range targets {
 		ids = append(ids, z.ids[s])
 	}
 	req := &playv1.AddLastingEffectRequest{
-		CampaignId: z.campaign, EncounterId: z.enc.GetId(), IdempotencyKey: newKey(), CatalogKey: "spell:bless", TargetIds: ids, CasterId: z.ids[caster],
+		CampaignId: z.campaign, EncounterId: z.enc.GetId(), IdempotencyKey: newKey(), CatalogKey: key, TargetIds: ids, CasterId: z.ids[caster],
 		Duration: &playv1.EffectDurationChoice{Kind: playv1.EffectDurationKind_EFFECT_DURATION_KIND_ROUNDS, Rounds: rounds, AnchorCombatantId: z.ids[caster]},
 		Audience: audience,
 	}
@@ -247,15 +252,20 @@ var effKinds = []effKind{
 
 // untilEnded passes turns until the master's log holds an ended line of an effect since the mark.
 func (z *effTable) untilEnded() {
+	z.until(func() bool { return len(z.entriesOf(z.master, effEnded)) > 0 })
+}
+
+// until passes turns until done says so.
+func (z *effTable) until(done func() bool) {
 	ctx := z.t.Context()
 	for range 30 {
-		if len(z.entriesOf(z.master, effEnded)) > 0 {
+		if done() {
 			return
 		}
 		cur := must(z.master.combat.GetEncounter(ctx, rq(&playv1.GetEncounterRequest{CampaignId: z.campaign}))).GetEncounter()
 		must(z.master.combat.EndTurn(ctx, rq(&playv1.EndTurnRequest{CampaignId: z.campaign, EncounterId: z.enc.GetId(), IdempotencyKey: newKey(), ExpectedCombatantId: cur.GetCurrentCombatantId(), ExpectedRound: cur.GetRound()})))
 	}
-	z.t.Fatal("the effect never ended")
+	z.t.Fatal("the turns passed and the line never came")
 }
 
 // effPair says a reader's line for the targets is the line for the ones the reader may read alone.
@@ -571,5 +581,92 @@ func TestAnEffectLineLeavesOutATargetThatLeftTheCombat(t *testing.T) {
 		if _, reply := z.effectEntries(p); name != "master" && strings.Contains(reply, z.label["B"]) {
 			t.Errorf("%s's reply holds the label of B", name)
 		}
+	}
+}
+
+var (
+	effDamage = playv1.CombatLogEffectChange_COMBAT_LOG_EFFECT_CHANGE_DAMAGE
+	effTemp   = playv1.CombatLogEffectChange_COMBAT_LOG_EFFECT_CHANGE_TEMP_HP
+	effFailed = playv1.CombatLogEffectChange_COMBAT_LOG_EFFECT_CHANGE_SAVE_FAILED
+)
+
+// The lines an effect writes on one creature, as its turns come.
+var effOneTargetKinds = []effKind{
+	{"damage over time", effDamage, false, func(z *effTable, ts []string) {
+		z.castKey("effect:web-fire", "ana", ts, playv1.EffectAudience_EFFECT_AUDIENCE_ALL, 10)
+		z.mark()
+		z.until(func() bool { return len(z.entriesOf(z.master, effDamage)) > 0 })
+	}},
+	{"temporary hit points", effTemp, false, func(z *effTable, ts []string) {
+		z.castKey("spell:heroism", "ana", ts, playv1.EffectAudience_EFFECT_AUDIENCE_ALL, 10)
+		z.mark()
+		z.until(func() bool { return len(z.entriesOf(z.master, effTemp)) > 0 })
+	}},
+	{"a save against the effect", effFailed, false, func(z *effTable, ts []string) {
+		z.castKey("spell:hold-person", "ana", ts, playv1.EffectAudience_EFFECT_AUDIENCE_ALL, 10)
+		z.mark()
+		window := ""
+		z.until(func() bool {
+			for _, rw := range must(z.master.combat.GetEncounter(z.t.Context(), rq(&playv1.GetEncounterRequest{CampaignId: z.campaign}))).GetEncounter().GetReactionWindows() {
+				if rw.GetKind() == playv1.ReactionKind_REACTION_KIND_EFFECT_SAVE {
+					window = rw.GetId()
+				}
+			}
+			return window != ""
+		})
+		must(z.master.lasting.RollEffectSave(z.t.Context(), rq(&playv1.RollEffectSaveRequest{
+			CampaignId: z.campaign, EncounterId: z.enc.GetId(), WindowId: window, IdempotencyKey: newKey(), Roll: &playv1.RollEffectSaveRequest_D20Face{D20Face: 1},
+		})))
+	}},
+}
+
+// A line about one creature is the line of the players who saw it, and the master's.
+func TestAnEffectLineOnOneTargetIsReadByThePlayersWhoSawIt(t *testing.T) {
+	for _, k := range effOneTargetKinds {
+		t.Run(k.name, func(t *testing.T) {
+			z := newEffTable(t, false)
+			k.act(z, []string{"A"})
+			for name, want := range map[string]bool{"ana": true, "caio": false, "master": true} {
+				p := z.readers()[name]
+				if got := z.entriesOf(p, k.change); (len(got) > 0) != want {
+					t.Errorf("%s reads %d lines, want a line: %v", name, len(got), want)
+				}
+				if _, reply := z.effectEntries(p); name == "caio" && strings.Contains(reply, z.label["A"]) {
+					t.Errorf("%s's reply holds the label of A", name)
+				}
+			}
+		})
+	}
+}
+
+// The undo of the change that ended an effect on several creatures takes back the line that ended it for the readers who held it,
+// and a reader who held none still holds none and hears no hint.
+func TestTheUndoOfAChangeThatEndedAnEffectTakesBackItsLineForItsReadersOnly(t *testing.T) {
+	z := newEffTable(t, false)
+	z.cast("A", []string{"A", "C"}, playv1.EffectAudience_EFFECT_AUDIENCE_ALL, 10)
+	z.mark()
+	must(z.master.combat.AdjustCombatantHitPoints(t.Context(), rq(&playv1.AdjustCombatantHitPointsRequest{
+		CampaignId: z.campaign, EncounterId: z.enc.GetId(), CombatantId: z.ids["A"], IdempotencyKey: newKey(),
+		Change: &playv1.AdjustCombatantHitPointsRequest_HitPoints{HitPoints: 0},
+	})))
+	before := map[string][]*playv1.CombatLogEntry{}
+	for name, p := range z.readers() {
+		before[name] = z.entriesOf(p, effEnded)
+	}
+	if len(before["master"]) == 0 || len(before["ana"]) == 0 || len(before["caio"]) != 0 {
+		t.Fatalf("the lines of the ended effect: master %d, ana %d, caio %d", len(before["master"]), len(before["ana"]), len(before["caio"]))
+	}
+	hints := z.logHints(func() {
+		must(z.master.combat.UndoLastAction(t.Context(), rq(&playv1.UndoLastActionRequest{
+			CampaignId: z.campaign, EncounterId: z.enc.GetId(), ExpectedEventId: z.log(z.master).GetUndoableEventId(), IdempotencyKey: newKey(),
+		})))
+		for name, p := range z.readers() {
+			if after := z.entriesOf(p, effEnded); len(after) != 0 {
+				t.Errorf("%s reads %d lines of the ended effect after the undo, want none", name, len(after))
+			}
+		}
+	})
+	if hints["caio"] != 0 {
+		t.Errorf("Caio hears %d hints that the log changed, want none", hints["caio"])
 	}
 }
