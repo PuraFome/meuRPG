@@ -19,15 +19,16 @@ func TestAHiddenToolOwnerIsAnsweredAsAMissingOneBesideAnUnfitSkill(t *testing.T)
 	held := must(w.ana.characters.CreateCharacter(ctx, rq(&charactersv1.CreateCharacterRequest{
 		CampaignId: w.campaign, Kind: charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, Name: "Perita", Sheet: sheet("class:wizard", 1),
 	}))).GetCharacter()
-	feature := func(name string) *rulesv1.TableEntry {
+	feature := func(name string, level int32) *rulesv1.TableEntry {
 		return must(w.master.table.CreateTableEntry(ctx, rq(&rulesv1.CreateTableEntryRequest{
 			CampaignId: w.campaign, Body: &rulesv1.CreateTableEntryRequest_TableClassFeature{TableClassFeature: &rulesv1.TableClassFeature{
-				NamePt: name, DescPt: []string{"Texto de teste."}, ClassKey: "class:wizard", Level: 1,
+				NamePt: name, DescPt: []string{"Texto de teste."}, ClassKey: "class:wizard", Level: level,
 				Effects: []*rulesv1.TableEffect{{Type: "choice", Choice: "tool", Count: 1, From: []string{tool, "proficiency:thieves-tools"}}},
 			}},
 		}))).GetEntry()
 	}
-	off, archived := feature("Oficio fechado"), feature("Oficio arquivado")
+	// The archived one is of level 20: the level-1 sheet neither holds nor gets it (an archived feature it gets is a source, as for skills).
+	off, archived := feature("Oficio fechado", 1), feature("Oficio arquivado", 20)
 	must(w.master.table.SetOptionSwitches(ctx, rq(&rulesv1.SetOptionSwitchesRequest{CampaignId: w.campaign, Switches: []*rulesv1.OptionSwitch{{Key: off.GetKey(), Off: true}}})))
 	must(w.master.table.ArchiveTableEntry(ctx, rq(&rulesv1.ArchiveTableEntryRequest{CampaignId: w.campaign, Key: archived.GetKey()})))
 	draft := func(owner string) *charactersv1.CharacterSheet {

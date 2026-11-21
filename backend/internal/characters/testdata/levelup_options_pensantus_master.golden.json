@@ -231,6 +231,14 @@
   "prepares": true,
   "proficiencyBonusAfter": 2,
   "proficiencyBonusBefore": 2,
+  "skillsAllowed": [
+    "skill:arcana",
+    "skill:history",
+    "skill:insight",
+    "skill:investigation",
+    "skill:medicine",
+    "skill:religion"
+  ],
   "spellListClassKey": "class:wizard",
   "spellSlotsAfter": [
     4,

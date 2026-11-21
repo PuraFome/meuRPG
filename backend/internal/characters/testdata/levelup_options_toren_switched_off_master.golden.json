@@ -221,6 +221,16 @@
   ],
   "proficiencyBonusAfter": 2,
   "proficiencyBonusBefore": 2,
+  "skillsAllowed": [
+    "skill:acrobatics",
+    "skill:animal-handling",
+    "skill:athletics",
+    "skill:history",
+    "skill:insight",
+    "skill:intimidation",
+    "skill:perception",
+    "skill:survival"
+  ],
   "spellSlotsAfter": [
     0,
     0,
@@ -248,13 +258,33 @@
     {
       "key": "subclass:champion",
       "namePt": "Campeão",
-      "off": true
+      "off": true,
+      "skillsAllowed": [
+        "skill:acrobatics",
+        "skill:animal-handling",
+        "skill:athletics",
+        "skill:history",
+        "skill:insight",
+        "skill:intimidation",
+        "skill:perception",
+        "skill:survival"
+      ]
     },
     {
       "cantrips": 2,
       "key": "\u003cink-blade\u003e",
       "maxSpellLevel": 1,
       "namePt": "Lâmina de Tinta",
+      "skillsAllowed": [
+        "skill:acrobatics",
+        "skill:animal-handling",
+        "skill:athletics",
+        "skill:history",
+        "skill:insight",
+        "skill:intimidation",
+        "skill:perception",
+        "skill:survival"
+      ],
       "spellListClassKey": "class:wizard",
       "spells": 3,
       "spellsKind": "LEVEL_UP_SPELLS_KIND_KNOWN"

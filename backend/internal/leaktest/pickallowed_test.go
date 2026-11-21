@@ -54,8 +54,8 @@ func TestASwitchedOffTableClassAddsNoSkillKeyToAPlayersListForADraft(t *testing.
 }
 
 // The same list with the source one table class feature the master archived: the feature is on a class the table keeps (the
-// SRD wizard), so no class filter can hide it, and only the filter of the sources keeps its key out of a player's list.
-func TestAnArchivedClassFeatureAddsNoSkillKeyToAPlayersListForADraft(t *testing.T) {
+// SRD wizard) and the character still gets it, so its key is on a player's list as on the master's.
+func TestAnArchivedClassFeatureTheCharacterGetsAddsItsSkillKeyToAPlayersListForADraft(t *testing.T) {
 	p := newChoicesProbe(t)
 	w, ctx := p.w, t.Context()
 	const extra = "skill:performance"
@@ -86,7 +86,7 @@ func TestAnArchivedClassFeatureAddsNoSkillKeyToAPlayersListForADraft(t *testing.
 	if !listed(w.master) {
 		t.Errorf("the master reads what is archived, and the list lacks %s", extra)
 	}
-	if listed(w.ana) {
-		t.Errorf("Ana's list holds %s of an archived class feature", extra)
+	if !listed(w.ana) {
+		t.Errorf("Ana's list lacks %s of an archived class feature the character gets", extra)
 	}
 }

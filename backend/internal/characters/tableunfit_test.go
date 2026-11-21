@@ -91,9 +91,14 @@ func TestAnUpdateWithANewPickNoListAllowsIsRefused(t *testing.T) {
 	pc := u.player.create(t, u.campaign, charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, "Pensantus", u.sheet("skill:investigation", "skill:insight", "skill:survival"))
 	_, err := u.player.update(t, pc, "Pensantus", u.sheet("skill:investigation", "skill:insight", "skill:nature"))
 	wantUnfit(t, err, "sheet.full.skill_proficiency_keys[2]", "Natureza")
-	// The same refusal answers the preview.
-	_, err = u.player.preview(t, u.campaign, pc.GetId(), charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, u.sheet("skill:investigation", "skill:insight", "skill:nature"))
-	wantUnfit(t, err, "sheet.full.skill_proficiency_keys[2]", "Natureza")
+	// The preview of a draft never refuses a pick that does not fit (S1): the save does.
+	res, err := u.player.preview(t, u.campaign, pc.GetId(), charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, u.sheet("skill:investigation", "skill:insight", "skill:nature"))
+	if err != nil {
+		t.Fatalf("preview of a draft with a pick no list allows = %v, want it answered", err)
+	}
+	if res.GetDerived().GetHitPointsMax() <= 0 || len(res.GetDerived().GetSpellcasting()) == 0 {
+		t.Errorf("the preview answers hit points %d and %d spellcasting blocks, want the numbers of the draft", res.GetDerived().GetHitPointsMax(), len(res.GetDerived().GetSpellcasting()))
+	}
 }
 
 func TestAStoredSheetThatNoLongerFitsStillSaves(t *testing.T) {

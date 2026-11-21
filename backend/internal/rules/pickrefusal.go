@@ -153,7 +153,7 @@ func (x *deriver) toolPicksByOwner() map[string][]string {
 
 // scanNewTools reads the new tool picks of the sheet once, in the sheet's order; xs is the stored sheet's deriver or nil.
 // unknown is the first that is no tool, or whose owner the view may not read and the sheet lacks (a key the content does not
-// have: a pick of an owner the sheet does not have is none of these). unplaced is the first that no tool choice of its owner
+// have: a pick of an owner the sheet does not have is none of these unless the owner is closed to the reader). unplaced is the first that no tool choice of its owner
 // takes, when the sheet has a class.
 func (x *deriver) scanNewTools(held Build, xs *deriver) (unknown, unplaced *PickRefusal) {
 	byOwner := x.toolPicksByOwner()
@@ -172,11 +172,15 @@ func (x *deriver) scanNewTools(held Build, xs *deriver) (unknown, unplaced *Pick
 		if !isTool {
 			continue
 		}
-		hidden := x.c.hiddenTo(x.b, owner)
-		if byOwner[owner] == nil && !hidden {
+		// An owner the sheet holds or gets is known, archived or not: its tool choice works like its skills. An owner it neither
+		// holds nor gets is known only while the table keeps it open to the reader (a player's: not archived or switched off;
+		// the master's: not archived).
+		owned := byOwner[owner] != nil
+		closed := !owned && x.closedOwner(owner)
+		if !owned && !closed {
 			continue
 		}
-		if !x.c.isToolPickKey(value) || hidden {
+		if !x.c.isToolPickKey(value) || closed {
 			return &PickRefusal{Field: fmt.Sprintf("%s[%d]", choiceKeysField, i), Key: value, Unknown: true}, unplaced
 		}
 		if unplaced != nil || len(x.classes) == 0 {
@@ -188,6 +192,15 @@ func (x *deriver) scanNewTools(held Build, xs *deriver) (unknown, unplaced *Pick
 		}
 	}
 	return nil, unplaced
+}
+
+// closedOwner says the owner of a tool pick is an entry the reader does not have: archived, or for a player also switched off
+// (hidden). It is asked of an owner the sheet neither holds nor gets.
+func (x *deriver) closedOwner(owner string) bool {
+	if x.c.player {
+		return x.c.hidden(owner)
+	}
+	return x.c.archived[owner]
 }
 
 // IsToolProficiency says the key is a proficiency a tool choice may offer: a tool, a vehicle, a kit or a weapon.

@@ -291,6 +291,14 @@
       "namePt": "Armas marciais"
     }
   ],
+  "skillsAllowed": [
+    "skill:arcana",
+    "skill:history",
+    "skill:insight",
+    "skill:investigation",
+    "skill:medicine",
+    "skill:religion"
+  ],
   "spellSlotsAfter": [
     4,
     2,

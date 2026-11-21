@@ -13,10 +13,9 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
-// A class feature the master archived is no source for a player: every answer a player gets is the one they would get if the
-// feature did not exist, with a skill its list holds and with one it does not. The master, who reads what is archived, keeps
-// the list.
-func TestAnArchivedClassFeatureIsNoSourceOfAPickForAPlayer(t *testing.T) {
+// A class feature the master archived is still given to a character of the class, so its list is a source for a player who
+// gets it, as for the master: a skill its list holds is taken, one it does not is refused, and the options name the source.
+func TestAnArchivedClassFeatureTheCharacterGetsIsASourceOfAPickForAPlayer(t *testing.T) {
 	p := newChoicesProbe(t)
 	w, ctx := p.w, t.Context()
 	must(w.master.campaigns.SetCampaignXpMode(ctx, rq(&campaignsv1.SetCampaignXpModeRequest{CampaignId: w.campaign, XpMode: campaignsv1.XpMode_XP_MODE_ENEMIES})))
@@ -100,21 +99,31 @@ func TestAnArchivedClassFeatureIsNoSourceOfAPickForAPlayer(t *testing.T) {
 		}
 	}
 	must(w.master.table.ArchiveTableEntry(ctx, rq(&rulesv1.ArchiveTableEntryRequest{CampaignId: w.campaign, Key: feature.GetKey()})))
-	with := lists(w.ana, answers(w.ana, feature.GetKey()))
-	for name, want := range without {
-		if name == "options" {
-			continue // main counts the feature's pick in the level (skillChoices), so only its sources are compared, below
-		}
-		if with[name] != want {
-			t.Errorf("Ana, %s, with the archived feature: %s\nwithout the feature: %s", name, with[name], want)
-		}
+	create := func(skill string) reply {
+		return w.caio.call(charactersv1connect.CharacterServiceCreateCharacterProcedure, &charactersv1.CreateCharacterRequest{
+			CampaignId: w.campaign, Kind: charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, Name: "Nova", Sheet: draft(skill),
+		})
 	}
-	// The options keep main's count of the level's picks; the feature is named as a source of none of them.
-	if body := with["options"]; strings.Contains(body, "skillSources") || strings.Contains(body, inside) {
-		t.Errorf("Ana's options list the archived feature as a source of skills: %s", body)
+	if got := create(inside); !got.ok() {
+		t.Errorf("Caio, create %s, with the archived feature the character gets: %d %s, want it accepted", inside, got.status, shorten(got.body))
 	}
-	// A level-up is counted by the level itself, as on main: the pick the archived feature lists goes through, any other is
-	// refused as it is without the feature. Last, because it moves the character.
+	if got := create(outside); got.ok() || got.status != 400 {
+		t.Errorf("Caio, create %s, with the archived feature: %d %s, want it refused (off the list)", outside, got.status, shorten(got.body))
+	}
+	if got := w.ana.call(charactersv1connect.CharacterServiceUpdateCharacterProcedure, &charactersv1.UpdateCharacterRequest{
+		CampaignId: w.campaign, CharacterId: stored.GetId(), Revision: stored.GetRevision(), Name: stored.GetName(), Sheet: draft(outside),
+	}); got.ok() || got.status != 400 {
+		t.Errorf("Ana, update %s, with the archived feature: %d %s, want it refused (off the list)", outside, got.status, shorten(got.body))
+	}
+	if got := lists(w.ana, map[string]string{})["skills_allowed"]; !slices.Contains(strings.Split(got, ","), inside) {
+		t.Errorf("Ana: with the archived feature skills_allowed is %q, want %s listed", got, inside)
+	}
+	// The options name the feature as a source of the level's skills, with its list.
+	if body := string(w.ana.call(charactersv1connect.CharacterServiceGetLevelUpOptionsProcedure, &charactersv1.GetLevelUpOptionsRequest{CampaignId: w.campaign, CharacterId: rising.GetId(), ClassKey: "class:wizard"}).body); !strings.Contains(body, feature.GetKey()) || !strings.Contains(body, inside) {
+		t.Errorf("Ana's options leave out the archived feature as a source of skills: %s", body)
+	}
+	// A level-up: the pick the archived feature lists goes through, any other is refused as it is without the feature. Last,
+	// because it moves the character.
 	if got, want := levelUp(outside), bareStealth; strings.ReplaceAll(string(got.body), feature.GetKey(), "K") != string(want.body) {
 		t.Errorf("Ana, level-up %s, with the archived feature: %s\nwithout the feature: %s", outside, shorten(got.body), shorten(want.body))
 	}
@@ -129,10 +138,10 @@ func TestAnArchivedClassFeatureIsNoSourceOfAPickForAPlayer(t *testing.T) {
 	}
 }
 
-// A tool pick of the owner an archived class feature is answers a player as a tool pick of an owner that does not exist,
-// whether the tool is on the feature's list or not, on every call that takes a pick. The master, who reads the feature,
-// is not asked here.
-func TestAToolPickOfAnArchivedClassFeatureIsAnsweredAsOneOfNoOwner(t *testing.T) {
+// A tool pick of the owner an archived class feature the character gets works like its skills for a player: a tool on the
+// feature's list is taken, one off it is refused with the sentence of a pick no list allows, on every call that takes a pick.
+// A pick of an owner that does not exist is a key the content does not have.
+func TestAToolPickOfAnArchivedClassFeatureTheCharacterGetsWorksLikeItsSkills(t *testing.T) {
 	p := newChoicesProbe(t)
 	w, ctx := p.w, t.Context()
 	const inside, outside, absent = "proficiency:smiths-tools", "proficiency:glaives", "feature:nenhum--dono@mesa"
@@ -186,16 +195,19 @@ func TestAToolPickOfAnArchivedClassFeatureIsAnsweredAsOneOfNoOwner(t *testing.T)
 			if none.ok() {
 				t.Errorf("%s, %s: accepted (archived %d, absent %d): the row measures nothing", call, tool, named.status, none.status)
 			}
-			if !sameAnswer(named, feature.GetKey(), none, absent) {
-				t.Errorf("%s, %s: the archived owner: HTTP %d %s\nan owner that does not exist: HTTP %d %s", call, tool, named.status, shorten(named.body), none.status, shorten(none.body))
+			// The preview of a draft keeps only the unknown keys; the stored sheet holds the feature's one pick, so the update of a
+			// second one has no room, as it has for skills; the create is the plain case.
+			wantOK := call == "preview" || (call == "create" && tool == inside)
+			if named.ok() != wantOK || sameAnswer(named, feature.GetKey(), none, absent) {
+				t.Errorf("%s, %s: the archived owner the character gets: HTTP %d %s, want accepted=%v and not the answer of a missing owner", call, tool, named.status, shorten(named.body), wantOK)
 			}
 		}
 	}
 }
 
-// A class feature the master archived is no source of expertise for a player either: the answer to a new expertise is the
-// one it gets when the feature does not exist, with a skill on its list and with one off it.
-func TestAnArchivedClassFeatureIsNoSourceOfExpertiseForAPlayer(t *testing.T) {
+// A class feature the master archived that the character gets is a source of expertise for a player too: a new expertise on
+// its list is taken, one off it is refused.
+func TestAnArchivedClassFeatureTheCharacterGetsIsASourceOfExpertiseForAPlayer(t *testing.T) {
 	p := newChoicesProbe(t)
 	w, ctx := p.w, t.Context()
 	const inside, outside = "skill:arcana", "skill:history"
@@ -247,16 +259,17 @@ func TestAnArchivedClassFeatureIsNoSourceOfExpertiseForAPlayer(t *testing.T) {
 	}))).GetEntry()
 	must(w.master.table.ArchiveTableEntry(ctx, rq(&rulesv1.ArchiveTableEntryRequest{CampaignId: w.campaign, Key: feature.GetKey()})))
 	with := answers(feature.GetKey())
-	for name, want := range without {
-		if with[name] != want {
-			t.Errorf("Ana, %s, with the archived feature: %s\nwithout the feature: %s", name, with[name], want)
-		}
+	if got := with["create "+inside]; !strings.Contains(got, "HTTP 2") {
+		t.Errorf("Caio, create with expertise on %s, with the archived feature: %s, want it accepted", inside, got)
+	}
+	if got := with["create "+outside]; !strings.Contains(got, "HTTP 4") {
+		t.Errorf("Caio, create with expertise on %s, with the archived feature: %s, want it refused", outside, got)
 	}
 }
 
-// The list of the skills expertise may go on, which PreviewChoices returns, holds no skill of an archived class feature for a
-// player: the master reads it, Ana's list is the one she reads when the feature does not exist.
-func TestAnArchivedClassFeatureAddsNoExpertiseKeyToAPlayersListForADraft(t *testing.T) {
+// The list of the skills expertise may go on, which PreviewChoices returns, holds the skill of an archived class feature the
+// character gets, for a player as for the master.
+func TestAnArchivedClassFeatureTheCharacterGetsAddsItsExpertiseKeyToAPlayersListForADraft(t *testing.T) {
 	p := newChoicesProbe(t)
 	w, ctx := p.w, t.Context()
 	const inside = "skill:arcana"
@@ -293,7 +306,7 @@ func TestAnArchivedClassFeatureAddsNoExpertiseKeyToAPlayersListForADraft(t *test
 	if got := listed(w.master); !strings.Contains(got, inside) {
 		t.Errorf("the master reads what is archived, and the expertise list is %q", got)
 	}
-	if got := listed(w.ana); got != without {
-		t.Errorf("Ana's expertise list with the archived feature is %q, without the feature %q", got, without)
+	if got := listed(w.ana); !strings.Contains(got, inside) {
+		t.Errorf("Ana's expertise list with the archived feature is %q, want %s (without the feature %q)", got, inside, without)
 	}
 }

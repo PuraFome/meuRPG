@@ -571,15 +571,23 @@ func (cb *choiceBuilder) finish() ChoiceSet {
 }
 
 // keepOutOwners keeps out the picks stored under the key of an entry the reader's view keeps out (switched off, hidden or
-// retired) that the sheet does not hold: for that reader the entry does not exist, so a new pick under it is kept out and the
-// save answers it as a key that does not exist.
+// retired) that the sheet neither holds nor gets (a class feature of its class, archived or not, is given to the character):
+// for that reader the entry does not exist, so a new pick under it is kept out and the save answers it as a key that does not
+// exist.
 func (cb *choiceBuilder) keepOutOwners() {
+	var gets *deriver // the sheet's own derivation, read once and only for a pick under an entry the reader does not have
 	for _, k := range cb.b.FeatureChoices {
 		choiceKey, _, ok := SplitScopedChoice(k)
 		if !ok {
 			continue
 		}
 		if base, _, _ := strings.Cut(choiceKey, textSeparator); cb.c.hiddenTo(cb.b, base) {
+			if gets == nil {
+				gets = cb.c.deriverFor(cb.b)
+			}
+			if gets.owned[base] {
+				continue
+			}
 			cb.keptOut = append(cb.keptOut, k)
 		}
 	}
