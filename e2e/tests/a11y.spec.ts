@@ -17334,6 +17334,7 @@ async function scanChannelHeal(browser: Browser, colorScheme: 'light' | 'dark', 
     await expectScreenPasses(p, `Registro do combate, a cura de Canalizar Divindade ${where}`);
     if (shots) {
       mkdirSync(shots, { recursive: true });
+      await log.getByText('Goblin 1: recuperou 2 PV (pedido 2)', { exact: false }).scrollIntoViewIfNeeded();
       await p.screenshot({ path: join(shots, `channel-heal-${width}-${colorScheme === 'light' ? 'claro' : 'escuro'}.png`) });
     }
   } finally {
