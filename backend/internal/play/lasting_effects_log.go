@@ -123,6 +123,48 @@ func (s *Service) effectLogView(ctx context.Context, e *logEntry, out *playv1.Co
 	out.Effect = le
 }
 
+// readableTargets are the targets of an effect's line the viewer may read: the master all; a player
+// every character, and each NPC they saw when the line was written (the same test as a hit of an area
+// spell) that the master has not hidden since. A line stamped before the targets were recorded lists its
+// first target, and no later NPC.
+func readableTargets(ev actionEvent, v combatViewer, byID map[string]playdb.Combatant) []string {
+	l := ev.Lasting
+	if v.master {
+		return l.Targets
+	}
+	var out []string
+	for i, id := range l.Targets {
+		t, ok := byID[id]
+		if !ok || t.Hidden {
+			continue
+		}
+		if t.Kind == kindNPC && ev.Fogged {
+			j := slices.IndexFunc(l.Seen, func(h castHit) bool { return h.Target == id })
+			if (j >= 0 && l.Seen[j].unseenBy(ev.CoverUsers, v.userID)) || (len(l.Seen) == 0 && i > 0) {
+				continue
+			}
+		}
+		out = append(out, id)
+	}
+	return out
+}
+
+// forViewer is the entry as the viewer reads it: for a line on several creatures, the line as if its
+// targets were only the ones the viewer may read, and false when there is none.
+func (e *logEntry) forViewer(v combatViewer, byID map[string]playdb.Combatant) (*logEntry, bool) {
+	if v.master || e.ev.Lasting == nil || len(e.ev.Lasting.Targets) < 2 || kindKeyOf(e.kind) != eventLastingAdded {
+		return e, true
+	}
+	ids := readableTargets(e.ev, v, byID)
+	if len(ids) == 0 {
+		return nil, false
+	}
+	cp, l := *e, *e.ev.Lasting
+	l.Targets, l.Seen = ids, nil
+	cp.ev.Lasting, cp.ev.Target = &l, ids[0]
+	return &cp, true
+}
+
 // exhaustionLogEffect is the effect part of an exhaustion line: it names every target, whoever reads it.
 func exhaustionLogEffect(l *lastingEvent, names func(string) string, byID map[string]playdb.Combatant) *playv1.CombatLogEffect {
 	le := &playv1.CombatLogEffect{SourceKey: l.Key, SourceNamePt: names(l.Key), ExhaustionLevel: l.Level, ExhaustionBefore: l.Before, Reason: l.Reason}

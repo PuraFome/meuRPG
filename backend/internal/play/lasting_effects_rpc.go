@@ -798,9 +798,18 @@ func (s *Service) endEffectTx(ctx context.Context, c *combatTx, rawID string, sc
 		return nil, err
 	}
 	return actionEvent{
-		Round: c.enc.Round, Secret: s.effectHiddenFrom(first, targetsOf(cs, []string{first.CombatantID})), Actor: conv.OrZero(first.SourceID), Target: first.CombatantID,
-		Lasting: &lastingEvent{Key: conv.OrZero(first.SourceKey), Change: "ended", Reason: reason, Effects: []string{first.ID}, Unused: unused},
+		Round: c.enc.Round, Secret: s.effectHiddenFrom(first, targetsOf(cs, combatantIDsOf(rows))), Actor: conv.OrZero(first.SourceID), Target: first.CombatantID,
+		Lasting: &lastingEvent{Key: conv.OrZero(first.SourceKey), Change: "ended", Targets: combatantIDsOf(rows), Reason: reason, Effects: []string{first.ID}, Unused: unused},
 	}, nil
+}
+
+// combatantIDsOf lists the combatants the rows are on, in the rows' order.
+func combatantIDsOf(rows []playdb.CombatantState) []string {
+	ids := make([]string, 0, len(rows))
+	for _, st := range rows {
+		ids = append(ids, st.CombatantID)
+	}
+	return ids
 }
 
 // stopCasterOf makes the caster stop concentrating, with the line of the combat log, when it holds
