@@ -48,7 +48,9 @@ type channelEvent struct {
 	// Effects are the rows of the effect "turned" the action made, on Targets, which the undo takes away.
 	Effects []string `json:"effects,omitempty"`
 	Targets []string `json:"targets,omitempty"`
-	// UnderFog says the action was made with the fog on. An older event has none.
+	// UnderFog says the action was made with the fog on.
+	// The record for each entry replaces it.
+	// An older event has none.
 	UnderFog *bool `json:"under_fog,omitempty"`
 }
 
