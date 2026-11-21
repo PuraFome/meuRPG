@@ -203,18 +203,25 @@ export async function changeGuardianSkillsRPC(master: Page, campaignId: string, 
   await post(master, 'UpdateTableEntry', { campaignId, key, expectedRevision: entry.revision, tableClass: body });
 }
 
-/** A table race whose trait lets the player choose one skill from `from`, and one expertise from athletics or nature (#574, part D). */
-export function skillTraitRaceBody(from: string[]): Record<string, unknown> {
+/**
+ * A table race whose trait lets the player choose one skill from `from`, and one expertise from `expertiseFrom` (#574, part D);
+ * with `toolFrom`, a third trait lets the player choose one tool from that list.
+ */
+export function skillTraitRaceBody(from: string[], expertiseFrom: string[] = ['skill:athletics', 'skill:nature'], toolFrom?: string[]): Record<string, unknown> {
+  const traits: Record<string, unknown>[] = [
+    { namePt: 'Olho de rastro', descPt: ['Você aprende a achar o que se esconde.'], effects: [{ type: 'choice', choice: 'skill', count: 1, from }] },
+    { namePt: 'Estudo de campo', descPt: ['Você domina o que já sabe.'], effects: [{ type: 'choice', choice: 'expertise', count: 1, from: expertiseFrom }] },
+  ];
+  if (toolFrom) {
+    traits.push({ namePt: 'Ofício do cais', descPt: ['Você aprende o ofício de quem vive no cais.'], effects: [{ type: 'choice', choice: 'tool', count: 1, from: toolFrom }] });
+  }
   return {
     namePt: 'Rastreador',
     size: 'Medium',
     speedFt: 30,
     abilityBonuses: { wisdom: 1 },
     languages: ['language:common'],
-    traits: [
-      { namePt: 'Olho de rastro', descPt: ['Você aprende a achar o que se esconde.'], effects: [{ type: 'choice', choice: 'skill', count: 1, from }] },
-      { namePt: 'Estudo de campo', descPt: ['Você domina o que já sabe.'], effects: [{ type: 'choice', choice: 'expertise', count: 1, from: ['skill:athletics', 'skill:nature'] }] },
-    ],
+    traits,
   };
 }
 

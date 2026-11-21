@@ -7703,6 +7703,36 @@ async function scanPickLists(browser: Browser, colorScheme: 'light' | 'dark', wi
     await expect(skills.locator('mat-error')).toHaveCount(0);
     await expect(page.getByRole('alert').filter({ hasText: 'Veja o passo Perícias.' })).toHaveCount(0);
 
+    // The master narrows the race's expertise list to nature while the editor is open: the expertise the player takes on athletics is
+    // a new pick no list places, and the server refuses it at its own field, in the step of the skills.
+    await updateEntryRPC(m, campaignId, raceKey, 'tableRace', skillTraitRaceBody(['skill:stealth'], ['skill:nature']));
+    await skills.getByRole('checkbox', { name: 'Especialização em Atletismo' }).check();
+    await page.getByRole('button', { name: 'Salvar ficha' }).click();
+    const expertiseSentence = 'A especialização em Atletismo não está em nenhuma das listas de onde o personagem escolhe especializações.';
+    await expect(skills.locator('mat-error', { hasText: expertiseSentence })).toHaveCount(1);
+    await expect(page.getByRole('alert').filter({ hasText: 'Veja o passo Perícias.' })).toHaveCount(1);
+    await expect(page.getByRole('tab', { name: 'Perícias' })).toContainText('(com erro)');
+    await expectScreenPasses(page, `Editor, a recusa de uma especialização que nenhuma lista permite ${where}`);
+    await skills.getByRole('checkbox', { name: 'Especialização em Atletismo' }).uncheck();
+    await expect(skills.locator('mat-error')).toHaveCount(0);
+
+    // A tool pick: the race gets a trait that lets the player choose one tool, the editor reads it, the player takes the thieves' tools, and the
+    // master narrows the trait to the smiths' tools before the save. The refusal is the error of that option in the marked "Escolhas" step.
+    await updateEntryRPC(m, campaignId, raceKey, 'tableRace', skillTraitRaceBody(['skill:stealth'], ['skill:nature'], ['proficiency:smiths-tools', 'proficiency:thieves-tools']));
+    await open(page, edit);
+    await page.getByRole('tab', { name: /^Escolhas/ }).click();
+    const toolCard = page.getByRole('region', { name: 'Ofício do cais' });
+    await toolCard.getByRole('radio', { name: /Ferramentas de ladrão/ }).click();
+    await updateEntryRPC(m, campaignId, raceKey, 'tableRace', skillTraitRaceBody(['skill:stealth'], ['skill:nature'], ['proficiency:smiths-tools']));
+    await page.getByRole('button', { name: 'Salvar ficha' }).click();
+    const toolSentence = 'A ferramenta Ferramentas de ladrão não está em nenhuma das escolhas de ferramenta do personagem.';
+    await expect(toolCard.locator('mat-error', { hasText: toolSentence })).toHaveCount(1);
+    await expect(page.getByRole('alert').filter({ hasText: 'Veja o passo Escolhas.' })).toHaveCount(1);
+    await expect(page.getByRole('tab', { name: /^Escolhas/ })).toContainText('(com erro)');
+    await expectScreenPasses(page, `Editor, a recusa de uma ferramenta que nenhuma escolha permite ${where}`);
+    await toolCard.getByRole('radio', { name: /Ferramentas de ferreiro/ }).click();
+    await expect(page.locator('mat-error', { hasText: toolSentence })).toHaveCount(0);
+
     // The master narrows the lists: stealth is in none, and the stored sheet still holds it.
     await changeGuardianSkillListRPC(m, campaignId, guardian, ['skill:athletics', 'skill:nature']);
     await updateEntryRPC(m, campaignId, raceKey, 'tableRace', skillTraitRaceBody(['skill:animal-handling']));
@@ -7728,15 +7758,19 @@ async function scanPickLists(browser: Browser, colorScheme: 'light' | 'dark', wi
     await expect(page.getByText('Escolha fora das listas.')).toHaveCount(0);
 
     // A sheet no entry changed since it was saved has no changed-entry notice to tell the sentence: the master is never refused a pick no list places, so it creates
-    // an NPC with a skill in no list, and "Pendências de regra" carries "Escolha fora das listas." once. The player never reads it.
+    // an NPC with a skill in no list, and "Pendências de regra" carries "Escolha fora das listas." once.
     const npcBody = icaroSheetWith(guardian, raceKey, ['skill:athletics', 'skill:nature', 'skill:stealth']);
     const npcId = await createSheetRPC(m, campaignId, { ...npcBody, kind: 'CHARACTER_KIND_ENEMY', name: 'Capitão Fora da Lista' });
     const npcSheet = `/campaigns/${campaignId}/characters/${npcId}`;
     await open(m, npcSheet);
     await expect(m.getByRole('note', { name: 'Pendências de regra' }).getByText('Escolha fora das listas.')).toHaveCount(1);
     await expectScreenPasses(m, `Ficha de um NPC, a pendência de uma escolha fora das listas, lida pelo mestre ${where}`);
-    await page.goto(npcSheet);
+    // The player reads none of it on the player's own stored sheet, whose picks do not fit: no sentence and no "Pendências de regra".
+    await open(page, sheet);
+    await expect(page.getByText('Ícaro').first()).toBeVisible();
     await expect(page.getByText('Escolha fora das listas.')).toHaveCount(0);
+    await expect(page.getByText(fitSentence)).toHaveCount(0);
+    await expect(page.getByRole('note', { name: 'Pendências de regra' })).toHaveCount(0);
   } finally {
     await masterContext.close();
     await context.close();
