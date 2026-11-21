@@ -161,7 +161,10 @@ func (e *logEntry) forViewer(v combatViewer, byID map[string]playdb.Combatant) (
 	}
 	cp, l := *e, *e.ev.Lasting
 	l.Targets, l.Seen = ids, nil
-	cp.ev.Lasting, cp.ev.Target = &l, ids[0]
+	cp.ev.Lasting = &l
+	if cp.ev.Target != "" && !slices.Contains(ids, cp.ev.Target) {
+		cp.ev.Target = ids[0]
+	}
 	return &cp, true
 }
 
