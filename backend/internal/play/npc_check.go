@@ -301,9 +301,11 @@ func (c *npcCheckCall) replay(ctx context.Context, q *playdb.Queries, h *hints, 
 	if err != nil {
 		return false, fmt.Errorf("find the event of this idempotency key: %w", err)
 	}
-	if (done.Kind != eventNpcCheckHeld && done.Kind != eventNpcCheckResolved) || hashDiffers(done.IdempotencyHash, c.hash) ||
-		done.ActorUserID == nil || *done.ActorUserID != c.m.UserID {
+	if (done.Kind != eventNpcCheckHeld && done.Kind != eventNpcCheckResolved) || hashDiffers(done.IdempotencyHash, c.hash) {
 		return false, errKeyReused()
+	}
+	if err := keyAuthorOnly(done, c.m.UserID); err != nil {
+		return false, err
 	}
 	var ev npcCheckEvent
 	if err := json.Unmarshal(done.Payload, &ev); err != nil {

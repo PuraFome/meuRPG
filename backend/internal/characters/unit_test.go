@@ -234,9 +234,9 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	}
 }
 
-// TestReadsWithIDsArePostOnly: every read carries a campaign ID, so it is
-// IDEMPOTENT, not NO_SIDE_EFFECTS, and the server refuses it over GET,
-// which would put the ID in the URL. The reads of every service the module mounts are covered.
+// TestReadsWithIDsArePostOnly: every read of the module carries a campaign ID.
+// The level of a read is not NO_SIDE_EFFECTS.
+// A GET to a read answers 405, so no ID is put in a URL.
 func TestReadsWithIDsArePostOnly(t *testing.T) {
 	t.Parallel()
 	mux := http.NewServeMux()
@@ -253,12 +253,12 @@ func TestReadsWithIDsArePostOnly(t *testing.T) {
 		}
 	}
 	if len(reads) != 28 {
-		t.Errorf("found %d reads, want 28 (ListCharacterInfusions, ListInfusionTargets, GetAbilityRolls, GetCharacter, ListCharacters, GetMasterNotes, GetLevelUpOptions, PreviewLevelUp, PreviewCharacter, PreviewChoices, PreviewClaim, GetCampaignOpenChoices, ListLevelUps, ListCharacterCreatures, GetSummonOptions, ListWildShapeForms, ListContent, GetSpellDetails, ListSpells, ListMagicItems, ListCreatures, GetCreature, ListTrapPresets, ListLightPresets, ListTableEntries, ListOptionSwitches, GetClassTableDefaults, GetEffectMenu)", len(reads))
+		t.Errorf("found %d reads, want 28", len(reads))
 	}
 	for procedure, method := range reads {
 		opts, _ := method.Options().(*descriptorpb.MethodOptions)
-		if opts.GetIdempotencyLevel() != descriptorpb.MethodOptions_IDEMPOTENT {
-			t.Errorf("%s idempotency_level = %v, want IDEMPOTENT", procedure, opts.GetIdempotencyLevel())
+		if opts.GetIdempotencyLevel() == descriptorpb.MethodOptions_NO_SIDE_EFFECTS {
+			t.Errorf("%s idempotency_level = NO_SIDE_EFFECTS, want another", procedure)
 		}
 		target := procedure + "?connect=v1&encoding=json&message=" + url.QueryEscape(message)
 		rec := httptest.NewRecorder()

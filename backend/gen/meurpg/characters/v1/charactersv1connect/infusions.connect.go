@@ -118,14 +118,12 @@ func NewInfusionServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 			httpClient,
 			baseURL+InfusionServiceListCharacterInfusionsProcedure,
 			connect.WithSchema(infusionServiceMethods.ByName("ListCharacterInfusions")),
-			connect.WithIdempotency(connect.IdempotencyIdempotent),
 			connect.WithClientOptions(opts...),
 		),
 		listInfusionTargets: connect.NewClient[v1.ListInfusionTargetsRequest, v1.ListInfusionTargetsResponse](
 			httpClient,
 			baseURL+InfusionServiceListInfusionTargetsProcedure,
 			connect.WithSchema(infusionServiceMethods.ByName("ListInfusionTargets")),
-			connect.WithIdempotency(connect.IdempotencyIdempotent),
 			connect.WithClientOptions(opts...),
 		),
 		infuseItem: connect.NewClient[v1.InfuseItemRequest, v1.InfuseItemResponse](
@@ -242,14 +240,12 @@ func NewInfusionServiceHandler(svc InfusionServiceHandler, opts ...connect.Handl
 		InfusionServiceListCharacterInfusionsProcedure,
 		svc.ListCharacterInfusions,
 		connect.WithSchema(infusionServiceMethods.ByName("ListCharacterInfusions")),
-		connect.WithIdempotency(connect.IdempotencyIdempotent),
 		connect.WithHandlerOptions(opts...),
 	)
 	infusionServiceListInfusionTargetsHandler := connect.NewUnaryHandler(
 		InfusionServiceListInfusionTargetsProcedure,
 		svc.ListInfusionTargets,
 		connect.WithSchema(infusionServiceMethods.ByName("ListInfusionTargets")),
-		connect.WithIdempotency(connect.IdempotencyIdempotent),
 		connect.WithHandlerOptions(opts...),
 	)
 	infusionServiceInfuseItemHandler := connect.NewUnaryHandler(

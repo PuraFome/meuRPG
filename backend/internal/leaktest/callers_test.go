@@ -107,7 +107,7 @@ func (r reply) errorOf() (code, message string) {
 }
 
 // wantCode is the code that p must be answered with by a procedure of class c, and whether
-// the probe requires one (see checkNotReads).
+// the probe requires one. It serves the calls that are not reads (checkNotReads) and the reads (runRead).
 func (w *world) wantCode(procedure string, c class, p, anon *person, v callerVariant) (string, bool) {
 	switch {
 	case p == anon:
@@ -125,7 +125,7 @@ func (w *world) wantCode(procedure string, c class, p, anon *person, v callerVar
 	case c == masterWriteHidden:
 		return "not_found", true
 	}
-	return "", false // a player's own action: see checkNotReads
+	return "", false // a player's own action, or a player's read: the code is not judged
 }
 
 // checkCodes checks the code of every answer to one request, and that the pending member
