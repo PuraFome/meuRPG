@@ -5150,7 +5150,11 @@ message ChannelDivinityHeal {
   // Asked is what the cleric asked for; Healed what the creature regained after the limit of half its maximum.
   int32 asked = 3;
   int32 healed = 4;
-  int32 hit_points_after = 5;
+  // Deprecated: never filled. hit_points_after_known says the hit points after the action.
+  int32 hit_points_after = 5 [deprecated = true];
+  // The creature's hit points after the action, set only for a reader to whom the combat view gives that creature's
+  // hit points as numbers (the master and the player who plays it). Unset for any other reader.
+  optional int32 hit_points_after_known = 6;
 }
 
 // ChannelDivinityTurn is the Wisdom saving throw of one undead against Turn Undead.

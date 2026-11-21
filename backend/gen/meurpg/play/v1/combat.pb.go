@@ -16735,11 +16735,17 @@ type ChannelDivinityHeal struct {
 	CombatantId string                 `protobuf:"bytes,1,opt,name=combatant_id,json=combatantId,proto3" json:"combatant_id,omitempty"`
 	Label       string                 `protobuf:"bytes,2,opt,name=label,proto3" json:"label,omitempty"`
 	// Asked is what the cleric asked for; Healed what the creature regained after the limit of half its maximum.
-	Asked          int32 `protobuf:"varint,3,opt,name=asked,proto3" json:"asked,omitempty"`
-	Healed         int32 `protobuf:"varint,4,opt,name=healed,proto3" json:"healed,omitempty"`
+	Asked  int32 `protobuf:"varint,3,opt,name=asked,proto3" json:"asked,omitempty"`
+	Healed int32 `protobuf:"varint,4,opt,name=healed,proto3" json:"healed,omitempty"`
+	// Deprecated: never filled. hit_points_after_known says the hit points after the action.
+	//
+	// Deprecated: Marked as deprecated in meurpg/play/v1/combat.proto.
 	HitPointsAfter int32 `protobuf:"varint,5,opt,name=hit_points_after,json=hitPointsAfter,proto3" json:"hit_points_after,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// The creature's hit points after the action, set only for a reader to whom the combat view gives that creature's
+	// hit points as numbers (the master and the player who plays it). Unset for any other reader.
+	HitPointsAfterKnown *int32 `protobuf:"varint,6,opt,name=hit_points_after_known,json=hitPointsAfterKnown,proto3,oneof" json:"hit_points_after_known,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *ChannelDivinityHeal) Reset() {
@@ -16800,9 +16806,17 @@ func (x *ChannelDivinityHeal) GetHealed() int32 {
 	return 0
 }
 
+// Deprecated: Marked as deprecated in meurpg/play/v1/combat.proto.
 func (x *ChannelDivinityHeal) GetHitPointsAfter() int32 {
 	if x != nil {
 		return x.HitPointsAfter
+	}
+	return 0
+}
+
+func (x *ChannelDivinityHeal) GetHitPointsAfterKnown() int32 {
+	if x != nil && x.HitPointsAfterKnown != nil {
+		return *x.HitPointsAfterKnown
 	}
 	return 0
 }
@@ -31413,13 +31427,15 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x15ChannelDivinityResult\x129\n" +
 	"\x05heals\x18\x01 \x03(\v2#.meurpg.play.v1.ChannelDivinityHealR\x05heals\x129\n" +
 	"\x05turns\x18\x02 \x03(\v2#.meurpg.play.v1.ChannelDivinityTurnR\x05turns\x12\x17\n" +
-	"\asave_dc\x18\x03 \x01(\x05R\x06saveDc\"\xa6\x01\n" +
+	"\asave_dc\x18\x03 \x01(\x05R\x06saveDc\"\xff\x01\n" +
 	"\x13ChannelDivinityHeal\x12!\n" +
 	"\fcombatant_id\x18\x01 \x01(\tR\vcombatantId\x12\x14\n" +
 	"\x05label\x18\x02 \x01(\tR\x05label\x12\x14\n" +
 	"\x05asked\x18\x03 \x01(\x05R\x05asked\x12\x16\n" +
-	"\x06healed\x18\x04 \x01(\x05R\x06healed\x12(\n" +
-	"\x10hit_points_after\x18\x05 \x01(\x05R\x0ehitPointsAfter\"\xbe\x02\n" +
+	"\x06healed\x18\x04 \x01(\x05R\x06healed\x12,\n" +
+	"\x10hit_points_after\x18\x05 \x01(\x05B\x02\x18\x01R\x0ehitPointsAfter\x128\n" +
+	"\x16hit_points_after_known\x18\x06 \x01(\x05H\x00R\x13hitPointsAfterKnown\x88\x01\x01B\x19\n" +
+	"\x17_hit_points_after_known\"\xbe\x02\n" +
 	"\x13ChannelDivinityTurn\x12!\n" +
 	"\fcombatant_id\x18\x01 \x01(\tR\vcombatantId\x12\x14\n" +
 	"\x05label\x18\x02 \x01(\tR\x05label\x12\x10\n" +
@@ -34194,6 +34210,7 @@ func file_meurpg_play_v1_combat_proto_init() {
 		(*TakeActionRequest_TypedSum)(nil),
 	}
 	file_meurpg_play_v1_combat_proto_msgTypes[122].OneofWrappers = []any{}
+	file_meurpg_play_v1_combat_proto_msgTypes[125].OneofWrappers = []any{}
 	file_meurpg_play_v1_combat_proto_msgTypes[126].OneofWrappers = []any{}
 	file_meurpg_play_v1_combat_proto_msgTypes[127].OneofWrappers = []any{
 		(*AdjustCombatantHitPointsRequest_Damage)(nil),
