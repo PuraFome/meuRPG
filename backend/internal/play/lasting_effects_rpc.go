@@ -773,6 +773,7 @@ func (s *Service) endEffectTx(ctx context.Context, c *combatTx, rawID string, sc
 		return nil, err
 	}
 	first := rows[0]
+	targets := combatantIDsOf(rows)
 	reason := endByMaster
 	if scope == playv1.EffectEndScope_EFFECT_END_SCOPE_CONCENTRATION_GROUP && first.Concentration && first.SourceID != nil {
 		// The whole concentration: the caster stops concentrating and everything it held ends.
@@ -798,12 +799,13 @@ func (s *Service) endEffectTx(ctx context.Context, c *combatTx, rawID string, sc
 		return nil, err
 	}
 	return actionEvent{
-		Round: c.enc.Round, Secret: s.effectHiddenFrom(first, targetsOf(cs, combatantIDsOf(rows))), Actor: conv.OrZero(first.SourceID), Target: first.CombatantID,
-		Lasting: &lastingEvent{Key: conv.OrZero(first.SourceKey), Change: "ended", Targets: combatantIDsOf(rows), Reason: reason, Effects: []string{first.ID}, Unused: unused},
+		Round: c.enc.Round, Secret: s.effectHiddenFrom(first, targetsOf(cs, targets)), Actor: conv.OrZero(first.SourceID), Target: first.CombatantID,
+		Lasting: &lastingEvent{Key: conv.OrZero(first.SourceKey), Change: "ended", Targets: targets, Reason: reason, Effects: []string{first.ID}, Unused: unused},
 	}, nil
 }
 
-// combatantIDsOf lists the combatants the rows are on, in the rows' order.
+// combatantIDsOf lists the combatants the rows are on, in the rows' order. The line of a master's end names the
+// targets of the casting it names, whatever else the scope ends.
 func combatantIDsOf(rows []playdb.CombatantState) []string {
 	ids := make([]string, 0, len(rows))
 	for _, st := range rows {

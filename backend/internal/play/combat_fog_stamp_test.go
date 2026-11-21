@@ -353,6 +353,17 @@ func TestStamp_AnEffectLineKeepsWhoSawEachTarget(t *testing.T) {
 	wantStamp(t, "one NPC", st.stamp(t, eventLastingAdded, line(caster, skel)), true, pens, brisa)
 	// An NPC actor a player did not see keeps the line from them, whoever the targets are.
 	wantStamp(t, "an NPC actor", st.stamp(t, eventLastingAdded, line(band, bri, skel)), true, brisa)
+	// An NPC target the master hides when the line is written is seen by no one: the line is nobody's, with it alone or beside a seen one.
+	st.sees.sees[toren] = []grid.Square{st.sq["Bandido"]}
+	st.execSQL(t, `UPDATE combatants SET hidden = true WHERE id = $1`, band)
+	wantStamp(t, "a hidden target alone", st.stamp(t, eventLastingAdded, line(caster, band)), true)
+	hidden := st.stamp(t, eventLastingAdded, line(caster, skel, band))
+	wantStamp(t, "a hidden target and a seen one", hidden, true, pens, brisa)
+	if got := hidden.Lasting.Seen; len(got) != 2 || got[1].SeenMask != 0 {
+		t.Errorf("Seen = %+v, want the hidden target seen by no one", got)
+	}
+	st.execSQL(t, `UPDATE combatants SET hidden = false WHERE id = $1`, band)
+	delete(st.sees.sees, toren)
 	// Nobody saw any NPC target: a character still makes it every player's line; two NPCs make it nobody's.
 	st.sees.sees = map[string][]grid.Square{}
 	wantStamp(t, "unseen NPCs", st.stamp(t, eventLastingEnded, line(caster, skel, band)), true)

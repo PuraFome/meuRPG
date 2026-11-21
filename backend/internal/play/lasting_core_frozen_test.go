@@ -166,11 +166,6 @@ func (a *armed) coreCanonical(t *testing.T, payload string) string {
 			if ts, ok := l["targets"].([]any); ok && len(ts) > 1 && slices.Contains(ts, m["target_id"]) {
 				m["target_id"] = "<one of the targets>"
 			}
-			// The line of the change itself (the master ended an effect) names a row of the casting.
-			if _, listed := l["targets"]; !listed && l["change"] == "ended" && m["target_id"] != nil {
-				m["target_id"] = "<a row of the casting>"
-				delete(m, "secret") // read from that row too
-			}
 		}
 	}
 	var sorted func(x any) any

@@ -4,6 +4,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"google.golang.org/protobuf/proto"
 
@@ -355,6 +356,14 @@ func TestAnEffectLineKeepsItsAudienceWhenTheTargetsAreNotAllReadable(t *testing.
 			t.Errorf("an NPC nobody sees casts: %s reads %d lines", name, len(got))
 		}
 	}
+	// An NPC that nobody sees casts on NPCs the players saw: neither player has the line, the master does.
+	z.mark()
+	z.cast("C", []string{"A", "B"}, playv1.EffectAudience_EFFECT_AUDIENCE_ALL, 10)
+	for name, p := range z.readers() {
+		if got := z.entriesOf(p, effAdded); (len(got) > 0) != (name == "master") {
+			t.Errorf("an NPC nobody sees casts on NPCs: %s reads %d lines", name, len(got))
+		}
+	}
 	// An effect for its targets' players alone, on NPCs: only the master reads it.
 	z.mark()
 	z.cast("ana", []string{"A", "B"}, playv1.EffectAudience_EFFECT_AUDIENCE_OWNER, 10)
@@ -402,5 +411,165 @@ func TestTheLineOfAnEffectKeepsWhoSawEachTargetWhenItWasWritten(t *testing.T) {
 	after := z.entriesOf(z.ana, effAdded)
 	if len(before) != 1 || len(after) != 1 || !proto.Equal(before[0], after[0]) {
 		t.Errorf("Ana's line changed when A left her sight: %v then %v", before, after)
+	}
+}
+
+// effectLines are all the lines of the person's log that add an effect, as text.
+func (z *effTable) effectLines(p *person) string {
+	var out []*playv1.CombatLogEntry
+	for _, r := range z.log(p).GetRounds() {
+		for _, en := range r.GetEntries() {
+			if en.GetKind() == playv1.CombatLogKind_COMBAT_LOG_KIND_EFFECT && en.GetEffect().GetChange() == effAdded {
+				out = append(out, en)
+			}
+		}
+	}
+	return jsonOf(&playv1.CombatLogRound{Entries: out})
+}
+
+// revision is the number of the combat a player reads (the count of the lines they could see).
+func (z *effTable) revision(p *person) int32 {
+	return must(p.combat.GetEncounter(z.t.Context(), rq(&playv1.GetEncounterRequest{CampaignId: z.campaign}))).GetEncounter().GetRevision()
+}
+
+// logHints runs act with every reader's stream open, ends the session (the marker after which the streams say nothing more) and
+// counts, for each reader, the hints that the combat's log changed.
+func (z *effTable) logHints(act func()) map[string]int {
+	z.t.Helper()
+	z.hints.Settle(z.t)
+	streams := map[string]*streamWatcher{}
+	for name, p := range z.readers() {
+		streams[name] = z.watchStream(p)
+	}
+	act()
+	must(z.master.play.EndGameSession(z.t.Context(), rq(&playv1.EndGameSessionRequest{CampaignId: z.campaign, GameSessionId: z.session})))
+	out := map[string]int{}
+	for name, sw := range streams {
+		select {
+		case <-sw.done:
+		case <-time.After(30 * time.Second):
+			z.t.Fatalf("%s's stream did not end", name)
+		}
+		for _, ev := range sw.events {
+			if eventCase(ev) == "combat_log_changed" {
+				out[name]++
+			}
+		}
+	}
+	return out
+}
+
+// A reader who may read no target of a line has no entry, hears no hint of it and reads the same number of the combat after it.
+func TestAnEffectLineOfTargetsAReaderMayNotReadIsNeitherHeardNorCounted(t *testing.T) {
+	for _, c := range []struct {
+		name    string
+		hideB   bool
+		targets []string
+		readers []string // who may read no target
+	}{
+		{"NPCs the reader did not see", false, []string{"A", "C"}, []string{"caio"}},
+		{"the only target hidden by the master", true, []string{"B"}, []string{"ana", "caio"}},
+	} {
+		for _, k := range effKinds {
+			t.Run(c.name+"/"+k.name, func(t *testing.T) {
+				z := newEffTable(t, c.hideB)
+				before := map[string]int32{}
+				for _, r := range c.readers {
+					before[r] = z.revision(z.readers()[r])
+				}
+				lines, after := map[string]int{}, map[string]int32{}
+				hints := z.logHints(func() {
+					k.act(z, c.targets)
+					for _, r := range c.readers {
+						lines[r] = len(z.entriesOf(z.readers()[r], k.change))
+						after[r] = z.revision(z.readers()[r])
+					}
+				})
+				for _, r := range c.readers {
+					if lines[r] != 0 {
+						t.Errorf("%s reads %d lines for %v, want none", r, lines[r], c.targets)
+					}
+					if !k.only {
+						continue
+					}
+					if hints[r] != 0 {
+						t.Errorf("%s hears %d hints that the log changed, want none", r, hints[r])
+					}
+					if after[r] != before[r] {
+						t.Errorf("%s's number of the combat moved from %d to %d", r, before[r], after[r])
+					}
+				}
+				if k.only && hints["master"] == 0 {
+					t.Error("the master hears no hint that the log changed")
+				}
+			})
+		}
+	}
+}
+
+// A line keeps the sight and the hiding of the moment it was written: a target the master hid then is listed to no player after
+// the master shows it, and one the master hides afterwards is left out.
+func TestAnEffectLineListsTheTargetsOfTheMomentItWasWritten(t *testing.T) {
+	for _, hiddenWhenWritten := range []bool{true, false} {
+		name := "hidden when written, shown after"
+		if !hiddenWhenWritten {
+			name = "shown when written, hidden after"
+		}
+		t.Run(name, func(t *testing.T) {
+			z := newEffTable(t, hiddenWhenWritten)
+			z.mark()
+			z.cast("ana", []string{"A", "B"}, playv1.EffectAudience_EFFECT_AUDIENCE_ALL, 10)
+			must(z.master.combat.SetCombatantHidden(t.Context(), rq(&playv1.SetCombatantHiddenRequest{
+				CampaignId: z.campaign, EncounterId: z.enc.GetId(), CombatantId: z.ids["B"], IdempotencyKey: newKey(), Hidden: !hiddenWhenWritten,
+			})))
+			got := map[string][]*playv1.CombatLogEntry{}
+			for name, p := range z.readers() {
+				got[name] = z.entriesOf(p, effAdded)
+				if name != "master" && strings.Contains(z.effectLines(p), z.label["B"]) {
+					t.Errorf("%s's adding lines hold the label of B", name)
+				}
+			}
+			z.mark()
+			must(z.master.combat.SetCombatantHidden(t.Context(), rq(&playv1.SetCombatantHiddenRequest{
+				CampaignId: z.campaign, EncounterId: z.enc.GetId(), CombatantId: z.ids["B"], IdempotencyKey: newKey(), Hidden: false,
+			})))
+			z.cast("ana", []string{"A"}, playv1.EffectAudience_EFFECT_AUDIENCE_ALL, 10)
+			own := z.entriesOf(z.ana, effAdded)
+			if len(got["ana"]) != 1 || len(own) != 1 || !proto.Equal(got["ana"][0], own[0]) {
+				t.Errorf("Ana reads %v, want the line of A alone: %v", got["ana"], own)
+			}
+			if len(got["caio"]) != 0 {
+				t.Errorf("Caio reads %d lines, want none", len(got["caio"]))
+			}
+			if len(got["master"]) != 1 {
+				t.Errorf("the master reads %d lines, want one", len(got["master"]))
+			}
+
+		})
+	}
+}
+
+// A target that left the combat before the line is read is left out of it.
+func TestAnEffectLineLeavesOutATargetThatLeftTheCombat(t *testing.T) {
+	z := newEffTable(t, false)
+	z.mark()
+	z.cast("ana", []string{"A", "B"}, playv1.EffectAudience_EFFECT_AUDIENCE_ALL, 10)
+	must(z.master.combat.RemoveCombatant(t.Context(), rq(&playv1.RemoveCombatantRequest{CampaignId: z.campaign, EncounterId: z.enc.GetId(), CombatantId: z.ids["B"], IdempotencyKey: newKey()})))
+	want := map[string][]string{"ana": {z.label["A"]}, "caio": nil, "master": {z.label["A"]}}
+	for name, p := range z.readers() {
+		var got []string
+		lines := z.entriesOf(p, effAdded)
+		for _, en := range lines {
+			got = append(got, en.GetEffect().GetTargetLabels()...)
+		}
+		if name == "caio" && len(lines) != 0 {
+			t.Errorf("Caio reads %d lines, want none", len(lines))
+		}
+		if !slices.Equal(got, want[name]) {
+			t.Errorf("%s reads the labels %v, want %v", name, got, want[name])
+		}
+		if _, reply := z.effectEntries(p); name != "master" && strings.Contains(reply, z.label["B"]) {
+			t.Errorf("%s's reply holds the label of B", name)
+		}
 	}
 }

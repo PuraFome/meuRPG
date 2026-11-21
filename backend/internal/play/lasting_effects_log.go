@@ -124,9 +124,9 @@ func (s *Service) effectLogView(ctx context.Context, e *logEntry, out *playv1.Co
 }
 
 // readableTargets are the targets of an effect's line the viewer may read: the master all; a player
-// every character, and each NPC they saw when the line was written (the same test as a hit of an area
-// spell) that the master has not hidden since. A line stamped before the targets were recorded lists its
-// first target, and no later NPC.
+// every character, and each NPC they saw when the line was written (castHit.unseenBy over Lasting.Seen)
+// that the master has not hidden since. A line stamped before the targets were recorded lists its first
+// target, and no later NPC.
 func readableTargets(ev actionEvent, v combatViewer, byID map[string]playdb.Combatant) []string {
 	l := ev.Lasting
 	if v.master {
@@ -152,7 +152,7 @@ func readableTargets(ev actionEvent, v combatViewer, byID map[string]playdb.Comb
 // forViewer is the entry as the viewer reads it: for a line on several creatures, the line as if its
 // targets were only the ones the viewer may read, and false when there is none.
 func (e *logEntry) forViewer(v combatViewer, byID map[string]playdb.Combatant) (*logEntry, bool) {
-	if v.master || e.ev.Lasting == nil || len(e.ev.Lasting.Targets) < 2 || kindKeyOf(e.kind) != eventLastingAdded {
+	if v.master || e.ev.Lasting == nil || len(e.ev.Lasting.Targets) < 2 || e.kind != playv1.CombatLogKind_COMBAT_LOG_KIND_EFFECT {
 		return e, true
 	}
 	ids := readableTargets(e.ev, v, byID)

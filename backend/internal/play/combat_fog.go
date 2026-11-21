@@ -456,7 +456,7 @@ func (c *combatTx) stampPlacedCast(ev actionEvent, cs []playdb.Combatant) action
 	return ev
 }
 
-// markCastHitSeen records, for an NPC a line names (a hit of an area spell, a target of an effect), each
+// markCastHitSeen records, for an NPC a line names (a hit of a spell, a target of an effect), each
 // player who sees it: as a bit of the target's mask (of the event's CoverUsers) and in the list of the
 // players who saw some target. It returns that list.
 func (c *combatTx) markCastHitSeen(ev *actionEvent, h *castHit, npc playdb.Combatant, seenSome []string) []string {
@@ -479,22 +479,45 @@ func (c *combatTx) markCastHitSeen(ev *actionEvent, h *castHit, npc playdb.Comba
 	return seenSome
 }
 
-// lastingLineNamesTargets says the event is the line of an effect on several creatures
-// (added, changed or ended), which names them in Lasting.Targets.
+// lastingLineNamesTargets says the event is the line of an effect (added, changed or ended), which names
+// the creatures it is on in Lasting.Targets.
 func lastingLineNamesTargets(kind string, ev actionEvent) bool {
-	return (kind == eventLastingAdded || kind == eventLastingChanged || kind == eventLastingEnded) && ev.Lasting != nil && len(ev.Lasting.Targets) > 1
+	return (kind == eventLastingAdded || kind == eventLastingChanged || kind == eventLastingEnded) && ev.Lasting != nil && len(ev.Lasting.Targets) > 0
 }
 
-// stampEffectLine is stamp for the line of an effect on several creatures (RN-10). Each NPC target
-// keeps who saw it (Lasting.Seen, as a hit of an area spell does, over the event's CoverUsers). The line
-// is the players' who may read at least one target: a character among them is every player's, an NPC
-// only those who saw it. A line whose actor is an NPC a player did not see is not theirs.
+// stampEffectLine is stamp for the line of an effect (RN-10). Each NPC target keeps
+// who saw it (Lasting.Seen, a mask over the event's CoverUsers); an NPC the master hides is seen by no one.
+// The line is the players' who may read at least one target: a character among them is every player's,
+// an NPC only those who saw it. A line whose actor is an NPC a player did not see is not theirs.
 // A line with no NPC target is stamped as any line is, by its actor.
 func (c *combatTx) stampEffectLine(kind string, ev actionEvent, cs []playdb.Combatant) actionEvent {
 	l := *ev.Lasting
+	seenSome, anyNPC, anyChar := c.markEffectTargets(&ev, &l, cs)
+	actorSquares := npcSquaresOf(kind, actionEvent{Actor: ev.Actor}, cs)
+	if !anyNPC && len(actorSquares) == 0 {
+		return ev
+	}
+	ev.Fogged = true
+	byActor := c.seenByAll(actorSquares)
+	if !anyNPC {
+		ev.SeenBy = byActor
+		return ev
+	}
+	ev.Lasting = &l
+	audience := seenSome
+	if anyChar {
+		audience = c.sight.sight.Users()
+	}
+	ev.SeenBy = slices.DeleteFunc(slices.Clone(audience), func(u string) bool {
+		return len(actorSquares) > 0 && !slices.Contains(byActor, u)
+	})
+	return ev
+}
+
+// markEffectTargets writes into l.Seen the record of each NPC target (and into ev.CoverUsers the users its
+// masks count). It returns the players who saw some NPC target, and whether the targets hold an NPC and a character.
+func (c *combatTx) markEffectTargets(ev *actionEvent, l *lastingEvent, cs []playdb.Combatant) (seenSome []string, anyNPC, anyChar bool) {
 	l.Seen = nil
-	var seenSome []string
-	anyNPC, anyChar := false, false
 	for _, id := range l.Targets {
 		j := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return o.ID == id })
 		if j < 0 {
@@ -506,33 +529,12 @@ func (c *combatTx) stampEffectLine(kind string, ev actionEvent, cs []playdb.Comb
 		}
 		anyNPC = true
 		h := castHit{Target: id, Fogged: true}
-		if placed(cs[j]) {
-			seenSome = c.markCastHitSeen(&ev, &h, cs[j], seenSome)
+		if placed(cs[j]) && !cs[j].Hidden {
+			seenSome = c.markCastHitSeen(ev, &h, cs[j], seenSome)
 		}
 		l.Seen = append(l.Seen, h)
 	}
-	actorSquares := npcSquaresOf(kind, actionEvent{Actor: ev.Actor}, cs)
-	if !anyNPC && len(actorSquares) == 0 {
-		return ev
-	}
-	ev.Fogged = true
-	if !anyNPC {
-		ev.SeenBy = c.seenByAll(actorSquares)
-		return ev
-	}
-	ev.Lasting = &l
-	audience := seenSome
-	if anyChar {
-		audience = c.sight.sight.Users()
-	}
-	ev.SeenBy = nil
-	byActor := c.seenByAll(actorSquares)
-	for _, u := range audience {
-		if len(actorSquares) == 0 || slices.Contains(byActor, u) {
-			ev.SeenBy = append(ev.SeenBy, u)
-		}
-	}
-	return ev
+	return seenSome, anyNPC, anyChar
 }
 
 // stampDoor writes into a door_opened event who may have the line, on a fog map,

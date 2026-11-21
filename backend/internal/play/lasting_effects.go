@@ -65,22 +65,22 @@ type lastingEvent struct {
 	Key     string   `json:"key"`
 	Change  string   `json:"change"`
 	Targets []string `json:"targets,omitempty"`
-	// Seen is, for each NPC among Targets, who saw it when the line was written on a map with fog: a hit
-	// of an area spell holds the same (Fogged, SeenMask over the event's CoverUsers). A line with none keeps no record.
-	Seen    []castHit `json:"seen,omitempty"`
-	Caster  string    `json:"caster,omitempty"`
-	Reason  string    `json:"reason,omitempty"`
-	Ability string    `json:"ability,omitempty"`
-	D20     int32     `json:"d20,omitempty"`
-	Total   int32     `json:"total,omitempty"`
-	DC      int32     `json:"dc,omitempty"`
-	Amount  int32     `json:"amount,omitempty"`
-	DType   string    `json:"damage_type,omitempty"`
-	Level   int32     `json:"level,omitempty"`
-	Before  int32     `json:"before,omitempty"`
-	Rounds  int32     `json:"rounds,omitempty"`
+	Caster  string   `json:"caster,omitempty"`
+	Reason  string   `json:"reason,omitempty"`
+	Ability string   `json:"ability,omitempty"`
+	D20     int32    `json:"d20,omitempty"`
+	Total   int32    `json:"total,omitempty"`
+	DC      int32    `json:"dc,omitempty"`
+	Amount  int32    `json:"amount,omitempty"`
+	DType   string   `json:"damage_type,omitempty"`
+	Level   int32    `json:"level,omitempty"`
+	Before  int32    `json:"before,omitempty"`
+	Rounds  int32    `json:"rounds,omitempty"`
 	// Effects are the ids of the rows it concerns.
 	Effects []string `json:"effects,omitempty"`
+	// Seen is, for each NPC among Targets, who saw it when the line was written on a map with fog:
+	// Fogged, and SeenMask over the event's CoverUsers. A line written without it has none.
+	Seen []castHit `json:"seen,omitempty"`
 	// OwnerOnly says only the targets' players read the line (an effect for its owner alone,
 	// the owner-class conditions, exhaustion): the master reads it always.
 	OwnerOnly bool `json:"owner_only,omitempty"`
