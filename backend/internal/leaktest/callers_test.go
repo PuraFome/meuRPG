@@ -5,13 +5,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/dynamicpb"
 
 	campaignsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/campaigns/v1"
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	mapsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/authz"
 )
 
 // callerVariant is one of the five requests the probe sends to a procedure, as each caller.
