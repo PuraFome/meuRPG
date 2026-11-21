@@ -5137,7 +5137,7 @@ message HookResult {
 message ChannelDivinityResult {
   // Preserve Life: the hit points each creature regained (after the half-maximum limit), in the order asked.
   repeated ChannelDivinityHeal heals = 1;
-  // Turn Undead: each undead that had to save, in the order of the combat.
+  // Turn Undead: the save of each undead that had to save and that the reader may read, in the order of the combat.
   repeated ChannelDivinityTurn turns = 2;
   // Turn Undead: the cleric's save DC.
   int32 save_dc = 3;

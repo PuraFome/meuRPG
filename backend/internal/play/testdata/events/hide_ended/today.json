@@ -104,7 +104,8 @@
         "d20": 1,
         "modifier": 1,
         "total": 1,
-        "turned": true
+        "turned": true,
+        "hidden_at_action": true
       }
     ],
     "dc": 1,
@@ -113,7 +114,8 @@
     ],
     "targets": [
       "x"
-    ]
+    ],
+    "under_fog": true
   },
   "relentless": true,
   "before": {
