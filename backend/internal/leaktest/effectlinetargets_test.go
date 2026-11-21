@@ -554,7 +554,6 @@ func TestAnEffectLineListsTheTargetsOfTheMomentItWasWritten(t *testing.T) {
 			if len(got["master"]) != 1 {
 				t.Errorf("the master reads %d lines, want one", len(got["master"]))
 			}
-
 		})
 	}
 }
