@@ -84,22 +84,19 @@ func (c *content) isToolPickKey(key string) bool {
 	return p != nil && slices.Contains(filterKinds, p.Kind)
 }
 
-// toolSpec is what the choices of tools that owner has ask in all: how many picks, the proficiencies they list (a
-// filter lists the ones of its kinds), and whether one of them lists none, which offers every tool.
-func (c *content) toolSpec(owner string) (picks int, from []string, open, ok bool) {
-	for _, e := range c.effectChoices(owner, "tool") {
+// toolSpec is what the choices of tools that owner has ask in all, read from toolSources: how many picks, and the
+// proficiencies they offer, each once.
+func (c *content) toolSpec(owner string) (picks int, offered []string, ok bool) {
+	for _, s := range c.toolSources(owner) {
 		ok = true
-		picks += max(e.Count, 1)
-		switch {
-		case e.Filter != nil:
-			from = append(from, c.proficiencyKeysOfKinds(e.Filter.ProficiencyKinds...)...)
-		case len(e.From) == 0:
-			open = true
-		default:
-			from = append(from, e.From...)
+		picks += s.Count
+		for _, k := range s.From {
+			if !slices.Contains(offered, k) {
+				offered = append(offered, k)
+			}
 		}
 	}
-	return picks, from, open, ok
+	return picks, offered, ok
 }
 
 // toolSources are the lists the owner's tool choices offer, one source each: the tools the choice lists, its filter names

@@ -9406,7 +9406,9 @@ type LevelUpOptions struct {
 	// subclass's (LevelUpChoices.feature_choice_keys).
 	FeatureChoices []*LevelUpFeatureChoice `protobuf:"bytes,22,rep,name=feature_choices,json=featureChoices,proto3" json:"feature_choices,omitempty"`
 	// How many new skills (LevelUpChoices.skill_proficiency_keys) and how many
-	// new expertise (LevelUpChoices.expertise_skill_keys) the new level gives.
+	// new expertise (LevelUpChoices.expertise_skill_keys) the new level asks in all:
+	// what the sheet after the level may pick beyond what the sheet before holds or
+	// allows. skill_sources says where the skills may come from.
 	SkillChoices     int32 `protobuf:"varint,23,opt,name=skill_choices,json=skillChoices,proto3" json:"skill_choices,omitempty"`
 	ExpertiseChoices int32 `protobuf:"varint,24,opt,name=expertise_choices,json=expertiseChoices,proto3" json:"expertise_choices,omitempty"`
 	// What changes by itself: the proficiency bonus, the spell slots per
@@ -9474,19 +9476,21 @@ type LevelUpOptions struct {
 	// the rule and whether the level has an Ability Score Improvement: `group` is the feature's key.
 	// Their swap is LevelUpChoices.swap_feature_options.
 	SwapGroups []*LevelUpSwapGroup `protobuf:"bytes,44,rep,name=swap_groups,json=swapGroups,proto3" json:"swap_groups,omitempty"`
-	// The sources the level adds for the sheet after the level: the class's multiclass pick when
+	// The sources of the sheet after the level that the level adds picks to: the class's multiclass pick when
 	// the level takes a new class, and each feature of the level that lets the player choose
-	// skills (the sources the sheet already had are not listed). skill_choices stays the total.
+	// skills. A source the sheet did not have comes with its whole count and one the sheet had
+	// with the count the level adds. skill_choices is the total of the level's new skills.
 	// LevelUpCharacter judges the sources of the sheet after the level and refuses a player's
 	// new skill that none of them has room for (SKILLS). The master's level is not refused for a pick no
-	// list places; a wrong count or a removed skill still is.
+	// list places; a wrong count or a removed skill is refused.
 	SkillSources []*LevelUpSkillSource `protobuf:"bytes,45,rep,name=skill_sources,json=skillSources,proto3" json:"skill_sources,omitempty"`
-	// The skills and the expertise a new pick may be on in the sheet after the level, with no subclass and no new
-	// class taken: what PreviewChoices answers (skills_allowed, expertise_allowed) for that sheet, from the same
-	// rules function, as keys. A source
-	// that names no list contributes every skill the sheet can still pick (the ones it does not hold automatically);
-	// expertise_allowed holds the skills expertise may go on, and is empty when the sheet has no source of expertise.
-	// A new class keeps the list its own entry carries (class_choices).
+	// The skills and the expertise a new pick may be on in the sheet after the level (for a multiclass, the sheet
+	// with the new class, so its row is in them; the subclass the level is due to pick is not: each subclass carries
+	// its own lists). They are the lists PreviewChoices answers for that sheet (skills_allowed, expertise_allowed),
+	// as keys, narrowed in one step: a source that names no list lists every skill the sheet can pick (every skill,
+	// for expertise); the skills the sheet has by race or background, the keys it holds and the lists its held picks
+	// use up are left out; expertise is left only on the skills the sheet is proficient in or the level's skills give.
+	// expertise_allowed is empty when the sheet has no source of expertise.
 	SkillsAllowed    []string `protobuf:"bytes,46,rep,name=skills_allowed,json=skillsAllowed,proto3" json:"skills_allowed,omitempty"`
 	ExpertiseAllowed []string `protobuf:"bytes,47,rep,name=expertise_allowed,json=expertiseAllowed,proto3" json:"expertise_allowed,omitempty"`
 	// Multiclassing (SRD 5.1, "Multiclassing"). is_new_class says the character
@@ -10319,7 +10323,7 @@ type LevelUpSubclass struct {
 	Prepares         bool  `protobuf:"varint,12,opt,name=prepares,proto3" json:"prepares,omitempty"`
 	PreparedMaxAfter int32 `protobuf:"varint,13,opt,name=prepared_max_after,json=preparedMaxAfter,proto3" json:"prepared_max_after,omitempty"`
 	// The sources the subclass adds for the sheet after the level with this subclass, as
-	// LevelUpOptions.skill_sources. skill_choices stays the total.
+	// LevelUpOptions.skill_sources. skill_choices is the total.
 	SkillSources []*LevelUpSkillSource `protobuf:"bytes,15,rep,name=skill_sources,json=skillSources,proto3" json:"skill_sources,omitempty"`
 	// The skills and the expertise a new pick may be on in the sheet after the level with this subclass, as
 	// LevelUpOptions.skills_allowed and expertise_allowed.
@@ -14384,7 +14388,7 @@ type PreviewChoicesResponse struct {
 	SpellSources []*ChoiceSpellSource `protobuf:"bytes,5,rep,name=spell_sources,json=spellSources,proto3" json:"spell_sources,omitempty"`
 	// The skills the sheet's skill sources allow: the starting class, a multiclass pick,
 	// the traits and the effects of the entries the sheet holds or gets (an archived class
-	// feature of the class still counts; a switched-off one does not), the same for every reader.
+	// feature of the class counts; a switched-off one does not), the same for every reader.
 	// The editor offers only these, and the ones the sheet already holds; a player's accepted new
 	// skills are the same set.
 	SkillsAllowed *PickAllowed `protobuf:"bytes,6,opt,name=skills_allowed,json=skillsAllowed,proto3" json:"skills_allowed,omitempty"`

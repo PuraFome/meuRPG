@@ -446,13 +446,17 @@ func levelUpOptionsFor(m authz.Membership, r levelUpOptionsRead) *charactersv1.L
 }
 
 // skillSourcesToProto is the level's skill sources as the reader sees them: the names are the content's visible ones and each
-// option says whether the sheet has the skill.
+// option says whether the sheet has the skill as a proficiency, from any source (class, race, background or a pick).
 func skillSourcesToProto(view *rules.Content, b rules.Build, in []rules.LevelSkillSource) []*charactersv1.LevelUpSkillSource {
 	var out []*charactersv1.LevelUpSkillSource
+	have := map[string]bool{}
+	for _, s := range rules.Derive(b, view).Skills {
+		have[s.Key] = s.Proficiency >= rules.ProficiencyFull // half (Jack of All Trades) is not a proficiency
+	}
 	for _, src := range in {
 		p := &charactersv1.LevelUpSkillSource{OwnerKey: src.Owner, NamePt: view.NamePT(src.Owner), Count: i32(src.Count)}
 		for _, k := range src.From {
-			p.From = append(p.From, &charactersv1.LevelUpProficiencyOption{Key: k, NamePt: view.NamePT(k), AlreadyHave: slices.Contains(b.SkillProficiencies, k)})
+			p.From = append(p.From, &charactersv1.LevelUpProficiencyOption{Key: k, NamePt: view.NamePT(k), AlreadyHave: have[k]})
 		}
 		out = append(out, p)
 	}

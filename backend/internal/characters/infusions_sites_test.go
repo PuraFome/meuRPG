@@ -43,8 +43,6 @@ var infusionSites = map[string]string{
 	"combatCharacter": "none: it reads the initiative, the speeds, the size, the hit points and the jumps",
 	"partyMember":     "none: it reads the senses and the passive Perception",
 
-	// The checks of a new pick.
-
 	// Reads of the sheet that read a number no infusion changes.
 	"maxima":                      "none: it reads the hit points, the hit dice, the slots, the resources and the states",
 	"fullReactionStats":           "none: it reads whether a shield counts, from the equipped keys",

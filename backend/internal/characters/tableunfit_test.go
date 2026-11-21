@@ -301,3 +301,22 @@ func TestACallerWhoMayNotSeeTheSheetGetsThePermissionAnswerBeforeTheFit(t *testi
 	_, err = owner.update(t, pc, "Pensantus", unfit)
 	wantUnfit(t, err, "sheet.full.skill_proficiency_keys[2]", "Natureza")
 }
+
+// A player's sheet a package brings holds its picks too: it imports though no list of its table takes one, where the same
+// sheet a player makes now is refused.
+func TestAnImportedSheetOfAPlayerHoldsItsPicks(t *testing.T) {
+	t.Parallel()
+	u := newUnfitTable(t, "skill:survival")
+	content, err := u.h.svc.contentFor(t.Context(), nil, u.campaign)
+	if err != nil {
+		t.Fatal(err)
+	}
+	player := authz.Membership{CampaignID: u.campaign, Role: authz.RolePlayer}
+	sheet := u.sheet("skill:investigation", "skill:insight", "skill:nature")
+	if _, err := checkNewSheet(content, player, kindPlayer, proto.CloneOf(sheet)); err == nil {
+		t.Fatal("a sheet a player makes now with a pick no list allows is accepted: the row measures nothing")
+	}
+	if _, err := checkImportedSheet(content, player, kindPlayer, proto.CloneOf(sheet)); err != nil {
+		t.Errorf("the player's imported sheet is refused: %v", err)
+	}
+}

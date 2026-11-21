@@ -762,9 +762,10 @@ type CharacterServiceClient interface {
 	// UpdateCharacter take; the fields that do not change the numbers (name,
 	// portrait, story, idempotency key) are not part of the request.
 	//
-	// It accepts exactly the callers and sheets that the save it previews
-	// accepts, so a preview never shows a sheet the save would refuse and never
-	// tells anyone more than the save would. Without a character_id, what
+	// It accepts the callers and sheets that the save it previews accepts, and
+	// tells no one more than the save would, with one difference: a skill,
+	// expertise or tool pick that no list of the sheet places is not refused here
+	// (the save refuses it), so the editor shows the draft. Without a character_id, what
 	// CreateCharacter checks: a member or a pending member; a player previews
 	// only a PLAYER sheet and the master only an NPC kind; the sheet's own rules,
 	// the sheet that fits the kind, a new choice of an archived table entry
@@ -805,7 +806,7 @@ type CharacterServiceClient interface {
 	// A skill, expertise or tool pick that no list of the sheet places is not refused here:
 	// the answer carries the lists of the draft as it is, and the picks stay for the editor
 	// to show and remove; the save refuses them. A key that is no tool, an entry kept out
-	// of the player's view and a closed entry are still refused.
+	// of the player's view and a closed entry are refused.
 	PreviewChoices(context.Context, *connect.Request[v1.PreviewChoicesRequest]) (*connect.Response[v1.PreviewChoicesResponse], error)
 	// CompleteCharacterChoices makes the choices a sheet left open, on a sheet that is
 	// locked for the player (RN-01) as well as on a draft: it writes only the picks of
@@ -2161,9 +2162,10 @@ type CharacterServiceHandler interface {
 	// UpdateCharacter take; the fields that do not change the numbers (name,
 	// portrait, story, idempotency key) are not part of the request.
 	//
-	// It accepts exactly the callers and sheets that the save it previews
-	// accepts, so a preview never shows a sheet the save would refuse and never
-	// tells anyone more than the save would. Without a character_id, what
+	// It accepts the callers and sheets that the save it previews accepts, and
+	// tells no one more than the save would, with one difference: a skill,
+	// expertise or tool pick that no list of the sheet places is not refused here
+	// (the save refuses it), so the editor shows the draft. Without a character_id, what
 	// CreateCharacter checks: a member or a pending member; a player previews
 	// only a PLAYER sheet and the master only an NPC kind; the sheet's own rules,
 	// the sheet that fits the kind, a new choice of an archived table entry
@@ -2204,7 +2206,7 @@ type CharacterServiceHandler interface {
 	// A skill, expertise or tool pick that no list of the sheet places is not refused here:
 	// the answer carries the lists of the draft as it is, and the picks stay for the editor
 	// to show and remove; the save refuses them. A key that is no tool, an entry kept out
-	// of the player's view and a closed entry are still refused.
+	// of the player's view and a closed entry are refused.
 	PreviewChoices(context.Context, *connect.Request[v1.PreviewChoicesRequest]) (*connect.Response[v1.PreviewChoicesResponse], error)
 	// CompleteCharacterChoices makes the choices a sheet left open, on a sheet that is
 	// locked for the player (RN-01) as well as on a draft: it writes only the picks of

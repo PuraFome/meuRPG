@@ -4264,7 +4264,9 @@ export type LevelUpOptions = Message<"meurpg.characters.v1.LevelUpOptions"> & {
 
   /**
    * How many new skills (LevelUpChoices.skill_proficiency_keys) and how many
-   * new expertise (LevelUpChoices.expertise_skill_keys) the new level gives.
+   * new expertise (LevelUpChoices.expertise_skill_keys) the new level asks in all:
+   * what the sheet after the level may pick beyond what the sheet before holds or
+   * allows. skill_sources says where the skills may come from.
    *
    * @generated from field: int32 skill_choices = 23;
    */
@@ -4415,24 +4417,26 @@ export type LevelUpOptions = Message<"meurpg.characters.v1.LevelUpOptions"> & {
   swapGroups: LevelUpSwapGroup[];
 
   /**
-   * The sources the level adds for the sheet after the level: the class's multiclass pick when
+   * The sources of the sheet after the level that the level adds picks to: the class's multiclass pick when
    * the level takes a new class, and each feature of the level that lets the player choose
-   * skills (the sources the sheet already had are not listed). skill_choices stays the total.
+   * skills. A source the sheet did not have comes with its whole count and one the sheet had
+   * with the count the level adds. skill_choices is the total of the level's new skills.
    * LevelUpCharacter judges the sources of the sheet after the level and refuses a player's
    * new skill that none of them has room for (SKILLS). The master's level is not refused for a pick no
-   * list places; a wrong count or a removed skill still is.
+   * list places; a wrong count or a removed skill is refused.
    *
    * @generated from field: repeated meurpg.characters.v1.LevelUpSkillSource skill_sources = 45;
    */
   skillSources: LevelUpSkillSource[];
 
   /**
-   * The skills and the expertise a new pick may be on in the sheet after the level, with no subclass and no new
-   * class taken: what PreviewChoices answers (skills_allowed, expertise_allowed) for that sheet, from the same
-   * rules function, as keys. A source
-   * that names no list contributes every skill the sheet can still pick (the ones it does not hold automatically);
-   * expertise_allowed holds the skills expertise may go on, and is empty when the sheet has no source of expertise.
-   * A new class keeps the list its own entry carries (class_choices).
+   * The skills and the expertise a new pick may be on in the sheet after the level (for a multiclass, the sheet
+   * with the new class, so its row is in them; the subclass the level is due to pick is not: each subclass carries
+   * its own lists). They are the lists PreviewChoices answers for that sheet (skills_allowed, expertise_allowed),
+   * as keys, narrowed in one step: a source that names no list lists every skill the sheet can pick (every skill,
+   * for expertise); the skills the sheet has by race or background, the keys it holds and the lists its held picks
+   * use up are left out; expertise is left only on the skills the sheet is proficient in or the level's skills give.
+   * expertise_allowed is empty when the sheet has no source of expertise.
    *
    * @generated from field: repeated string skills_allowed = 46;
    */
@@ -4816,7 +4820,7 @@ export type LevelUpSubclass = Message<"meurpg.characters.v1.LevelUpSubclass"> & 
 
   /**
    * The sources the subclass adds for the sheet after the level with this subclass, as
-   * LevelUpOptions.skill_sources. skill_choices stays the total.
+   * LevelUpOptions.skill_sources. skill_choices is the total.
    *
    * @generated from field: repeated meurpg.characters.v1.LevelUpSkillSource skill_sources = 15;
    */
@@ -7145,7 +7149,7 @@ export type PreviewChoicesResponse = Message<"meurpg.characters.v1.PreviewChoice
   /**
    * The skills the sheet's skill sources allow: the starting class, a multiclass pick,
    * the traits and the effects of the entries the sheet holds or gets (an archived class
-   * feature of the class still counts; a switched-off one does not), the same for every reader.
+   * feature of the class counts; a switched-off one does not), the same for every reader.
    * The editor offers only these, and the ones the sheet already holds; a player's accepted new
    * skills are the same set.
    *
@@ -10328,9 +10332,10 @@ export const CharacterService: GenService<{
    * UpdateCharacter take; the fields that do not change the numbers (name,
    * portrait, story, idempotency key) are not part of the request.
    *
-   * It accepts exactly the callers and sheets that the save it previews
-   * accepts, so a preview never shows a sheet the save would refuse and never
-   * tells anyone more than the save would. Without a character_id, what
+   * It accepts the callers and sheets that the save it previews accepts, and
+   * tells no one more than the save would, with one difference: a skill,
+   * expertise or tool pick that no list of the sheet places is not refused here
+   * (the save refuses it), so the editor shows the draft. Without a character_id, what
    * CreateCharacter checks: a member or a pending member; a player previews
    * only a PLAYER sheet and the master only an NPC kind; the sheet's own rules,
    * the sheet that fits the kind, a new choice of an archived table entry
@@ -10379,7 +10384,7 @@ export const CharacterService: GenService<{
    * A skill, expertise or tool pick that no list of the sheet places is not refused here:
    * the answer carries the lists of the draft as it is, and the picks stay for the editor
    * to show and remove; the save refuses them. A key that is no tool, an entry kept out
-   * of the player's view and a closed entry are still refused.
+   * of the player's view and a closed entry are refused.
    *
    * @generated from rpc meurpg.characters.v1.CharacterService.PreviewChoices
    */

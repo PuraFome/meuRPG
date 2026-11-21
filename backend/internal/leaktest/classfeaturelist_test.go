@@ -151,7 +151,7 @@ func TestAToolPickOfAnArchivedClassFeatureTheCharacterGetsWorksLikeItsSkills(t *
 			Effects: []*rulesv1.TableEffect{{Type: "choice", Choice: "tool", Count: 1, From: []string{inside, "proficiency:thieves-tools"}}}, // two tools: one alone would be picked for the sheet
 		}},
 	}))).GetEntry()
-	// The stored sheet holds the feature's other tool, as its owner: a pick the stored sheet holds stays, so the draft keeps it and adds the new one.
+	// The stored sheet holds the feature's other tool, as its owner: a pick the stored sheet holds is kept, so the draft keeps it and adds the new one.
 	const heldTool = "proficiency:thieves-tools"
 	heldPick := rules.ScopedChoice(rules.ToolPickKey(feature.GetKey()), heldTool)
 	held := must(w.ana.characters.CreateCharacter(ctx, rq(&charactersv1.CreateCharacterRequest{

@@ -385,3 +385,51 @@ for (const { width, height } of [
     },
   );
 }
+
+// The picks step offers exactly the skills the server lists for the new class (the multiclass table's own list), never a
+// list of the page's own: Doran, Guerreiro 5, takes the Ladino at level 1 and picks the one skill of its table.
+test(
+  'Doran, Guerreiro 5, toma o Ladino 1: a perícia nova sai só da lista da classe, e o que Doran já tem fica desligado @MR-040 @RN-12 @RN-33',
+  { tag: ['@MR-040', '@RN-12', '@RN-33'] },
+  async ({ browser }) => {
+    test.setTimeout(150_000);
+    const master = await newSignedInContext(browser, 'Mestre Teste', { viewport: { width: 1280, height: 800 } });
+    const player = await newSignedInContext(browser, 'Jogador Teste', { viewport: { width: 1280, height: 800 } });
+    const m = await master.newPage();
+    const p = await player.newPage();
+    let campaignId = '';
+    try {
+      await m.goto('/');
+      await p.goto('/');
+      const doran = { ...toren, name: 'Doran', level: 5, scores: { for: 15, des: 13, con: 13, int: 12, sab: 10, car: 8 } };
+      const table = await tableForLevelUp(m, p, `Subida com perícia da lista ${Date.now()}`, { build: doran });
+      campaignId = table.campaignId;
+      await p.goto(`/campaigns/${campaignId}/characters/${table.characterId}/level-up`);
+
+      await expect(p.getByRole('heading', { name: 'Subir em qual classe?' })).toBeVisible();
+      await classCard(p, /^Uma classe nova/).click();
+      await classCard(p, /^Ladino/).click();
+      await expect(p.getByText('Doran · Guerreiro 5 → Guerreiro 5 · Ladino 1')).toBeVisible();
+      await p.getByRole('button', { name: 'Próximo' }).click();
+      // Vida, then Escolhas.
+      await p.getByRole('button', { name: 'Próximo' }).click();
+      await expect(p.getByText(/Passo \d de \d · Escolhas/)).toBeVisible();
+
+      const skills = p.locator('#pick-skills');
+      await expect(skills.getByRole('heading', { name: 'Perícia nova' })).toBeVisible();
+      await showAllPicks(skills);
+      // On the Ladino's list, and not on any other: the rows are the server's list and nothing else.
+      await expect(skills.getByRole('checkbox', { name: /^Furtividade/ })).toBeVisible();
+      await expect(skills.getByRole('checkbox', { name: /^Arcanismo/ })).toHaveCount(0);
+      await expect(skills.getByRole('checkbox', { name: /^Medicina/ })).toHaveCount(0);
+      await expect(skills.getByRole('checkbox', { name: /^Religião/ })).toHaveCount(0);
+      await expect(p.getByText('Falta escolher 1 perícia.')).toBeVisible();
+      await skills.getByRole('checkbox', { name: /^Furtividade/ }).check();
+      await expect(p.getByText('Falta escolher 1 perícia.')).toHaveCount(0);
+    } finally {
+      await endOpenSessionRPC(m, campaignId);
+      await master.close();
+      await player.close();
+    }
+  },
+);

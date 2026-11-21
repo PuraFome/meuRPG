@@ -62,7 +62,7 @@ func newOffChoice(content *rules.Content, before, after *charactersv1.FullSheet)
 // newKeptOutPicks are the picks that the sheet adds and the pool of a choice of the options of another feature keeps out
 // of its offer for the reader (content is the reader's view): the table retired them or, for a player, switched them off
 // with their entry. before reads the stored sheet (nil for a sheet that does not exist yet), only when a pick is kept
-// out; a pick the stored sheet holds stays.
+// out; the picks the stored sheet holds are kept.
 func newKeptOutPicks(content *rules.Content, before func() *charactersv1.FullSheet, after *charactersv1.FullSheet) []string {
 	kept := content.Choices(buildOf(after)).KeptOut
 	if len(kept) == 0 {
@@ -102,13 +102,13 @@ const (
 	// pickFit refuses a pick no list places, with its sentence: the save.
 	pickFit pickMode = iota
 	// pickKeysOnly keeps only the answer of a key the content does not have (a tool pick that is no tool, or of an owner the
-	// reader may not read): the preview of a draft, so a pick the class changed under still shows in the pickers and the save
+	// reader may not read): the preview of a draft, so a pick the class changed under shows in the pickers and the save
 	// is the refusal of the fit.
 	pickKeysOnly
 )
 
 // refusePick refuses a new skill, expertise or tool pick that the character's lists do not take, as mode says, on the
-// content as the caller reads it. A pick the stored sheet holds stays, whether it fits or not; before is nil for a sheet that
+// content as the caller reads it. A pick the stored sheet holds is kept, whether it fits or not; before is nil for a sheet that
 // does not exist yet.
 func refusePick(content *rules.Content, m authz.Membership, mode pickMode, before func() *charactersv1.FullSheet, after *charactersv1.FullSheet) error {
 	return refusePickIn(viewContent(content, m), isMaster(m), mode, before, after)
@@ -116,7 +116,7 @@ func refusePick(content *rules.Content, m authz.Membership, mode pickMode, befor
 
 // refusePickIn is refusePick on the content view the caller has chosen. The sources of the picks are the sheet's own, whatever
 // the view: only the keys the view does not have change an answer. The master is never refused for a pick no list places (the
-// fit issue tells it on the sheet); a tool pick that is no tool stays a key the content does not have, and wins over the fit
+// fit issue tells it on the sheet); a tool pick that is no tool is a key the content does not have, and wins over the fit
 // of any other pick.
 func refusePickIn(view *rules.Content, master bool, mode pickMode, before func() *charactersv1.FullSheet, after *charactersv1.FullSheet) error {
 	if after == nil {

@@ -119,8 +119,8 @@ func hasPick(picks []proficiencyPick, value string) bool {
 
 // toolOffers says some tool choice of the owner offers the tool.
 func (c *content) toolOffers(owner, tool string) bool {
-	_, from, open, ok := c.toolSpec(owner)
-	return ok && slices.Contains(c.toolsOffered(from, open), tool)
+	_, offered, ok := c.toolSpec(owner)
+	return ok && slices.Contains(offered, tool)
 }
 
 // placeToolPicks splits the picks into the ones an owner's tool choices take (each choice takes its count of the tools it
@@ -218,7 +218,7 @@ func (x *deriver) toolPicksAsked() int {
 			continue
 		}
 		seen = append(seen, a.owner)
-		picks, from, open, ok := x.c.toolSpec(a.owner)
+		picks, offered, ok := x.c.toolSpec(a.owner)
 		if !ok {
 			continue
 		}
@@ -228,7 +228,7 @@ func (x *deriver) toolPicksAsked() int {
 				held = append(held, p.Value)
 			}
 		}
-		total += requiredToolPicks(picks, x.c.toolsOffered(from, open), had, held)
+		total += requiredToolPicks(picks, offered, had, held)
 	}
 	return total
 }
@@ -304,7 +304,7 @@ func (cb *choiceBuilder) languageChoice(g *groupBuild, owner string) {
 // tool without a list), but the ones the character has already and the ones another pick took.
 func (cb *choiceBuilder) toolChoice(g *groupBuild, owner string) {
 	c := cb.c
-	picks, from, open, ok := c.toolSpec(owner)
+	picks, from, ok := c.toolSpec(owner)
 	if !ok {
 		return
 	}
@@ -313,7 +313,6 @@ func (cb *choiceBuilder) toolChoice(g *groupBuild, owner string) {
 	if picks > 1 {
 		title, hint = "Ferramentas", fmt.Sprintf("%d proficiências com ferramentas à escolha.", picks)
 	}
-	from = c.toolsOffered(from, open)
 	slices.SortFunc(from, func(a, b string) int {
 		return strings.Compare(foldPT(c.proficiencyNamePT(a)), foldPT(c.proficiencyNamePT(b)))
 	})

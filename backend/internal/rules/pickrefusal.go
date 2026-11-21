@@ -8,7 +8,7 @@ import (
 )
 
 // The refusal of a new pick that no source takes. A pick the stored sheet already holds is never refused here, whether it
-// fits or not: the fit issue of a stored sheet is the master's alone and the sheet still saves and plays.
+// fits or not: the fit issue of a stored sheet is the master's alone and the sheet saves and plays.
 
 // PickRefusal is why a new pick is refused: Field is its place in the sheet and Key the pick.
 type PickRefusal struct {
@@ -188,7 +188,7 @@ func (x *deriver) scanNewTools(held Build, xs *deriver) (unknown, unplaced *Pick
 		}
 		heldValues := slices.DeleteFunc(slices.Clone(byOwner[owner]), func(k string) bool { return !slices.Contains(held.FeatureChoices, ScopedChoice(choiceKey, k)) })
 		if slices.Contains(unplacedNewPicks(x.c.toolSources(owner), competing(byOwner[owner], heldValues, stuck[owner]), heldValues), value) {
-			unplaced = &PickRefusal{Field: fmt.Sprintf("full.feature_choice_keys[%d]", i), Key: value}
+			unplaced = &PickRefusal{Field: fmt.Sprintf("%s[%d]", choiceKeysField, i), Key: value}
 		}
 	}
 	return nil, unplaced
@@ -222,12 +222,21 @@ func (c *Content) PickLists(b Build) (skills PickAllowed, expertise *PickAllowed
 	return skills, expertise
 }
 
-// LevelPickKeys are the skills and the expertise a new pick may go on in the sheet b, as keys: PickLists, where a source that
-// names no list contributes every skill the sheet can still pick (the ones it does not hold automatically) and, for expertise,
-// every skill. Expertise is empty when the sheet has no source of it.
+// LevelPickKeys are the skills and the expertise a new pick may go on in the sheet b (the sheet after a level), as keys: the
+// lists of PickLists, then one narrowing step (narrowPickKeys).
 func (c *Content) LevelPickKeys(b Build) (skills, expertise []string) {
 	x := c.deriverFor(b)
 	s, e, listed := x.pickLists()
+	return x.narrowPickKeys(b, s, e, listed)
+}
+
+// narrowPickKeys turns the lists of the sources of the sheet b (pickLists) into the keys a new pick may take:
+//   - a source that names no list gives every skill the sheet can pick (the ones it does not hold automatically) and, for
+//     expertise, every skill; expertise is empty when listed is false;
+//   - a skill the sheet has by another means (race, background) is no pick: another one stands in its place;
+//   - a key the sheet already holds, or whose pick the sources have no room for beside the held picks, takes no new pick;
+//   - an expertise asks for the proficiency: it stays when the sheet is proficient in the skill or the skills list gives it.
+func (x *deriver) narrowPickKeys(b Build, s, e PickAllowed, listed bool) (skills, expertise []string) {
 	skills = s.Keys
 	if s.Any {
 		skills = x.pickableSkills()
@@ -239,24 +248,20 @@ func (c *Content) LevelPickKeys(b Build) (skills, expertise []string) {
 	default:
 		expertise = e.Keys
 	}
-	// A list a held pick has used up, or a key the sheet already holds, takes no new pick.
-	// A skill the sheet has by another means (race, background) is no pick: another one stands in its place.
 	skills = slices.DeleteFunc(slices.Clone(skills), func(k string) bool { return x.automaticSkills[k] })
 	skills = x.stillOpen(x.skillSources(), skills, b.SkillProficiencies, func(k string) bool { _, ok := x.c.skills[k]; return ok && !x.automaticSkills[k] })
 	expertise = x.stillOpen(x.expertiseSources(), expertise, b.Expertise, func(k string) bool { _, ok := x.c.skills[k]; return ok })
 	if len(expertise) > 0 {
-		// Expertise asks for the proficiency (a sheet issue otherwise): the skills the sheet is proficient in and the ones the
-		// same level may still give it.
 		proficient := map[string]bool{}
-		for _, s := range derive(b, c.c).Skills {
-			proficient[s.Key] = s.Proficiency >= ProficiencyFull
+		for _, sk := range derive(b, x.c).Skills {
+			proficient[sk.Key] = sk.Proficiency >= ProficiencyFull
 		}
 		expertise = slices.DeleteFunc(expertise, func(k string) bool { return !proficient[k] && !slices.Contains(skills, k) })
 	}
 	return skills, expertise
 }
 
-// stillOpen are the keys of the list a new pick may take: the ones the sheet does not hold whose pick the sources still
+// stillOpen are the keys of the list a new pick may take: the ones the sheet does not hold whose pick the sources
 // place beside the held picks (counted says an entry of the sheet is a pick of the sources).
 func (x *deriver) stillOpen(sources []pickSource, keys, held []string, counted func(string) bool) []string {
 	held = pickList(held, counted)

@@ -81,7 +81,7 @@ func TestTheMasterEditsAPlayersCharacterWithAPickNoListAllows(t *testing.T) {
 }
 
 // Completing the choices of a character, the master is not refused a tool no source takes with the held picks; an owner that
-// is no tool stays an unknown key.
+// is no tool is an unknown key.
 func TestTheMasterCompletesAToolNoSourceTakes(t *testing.T) {
 	t.Parallel()
 	u := newUnfitTable(t, "skill:nature")
@@ -98,9 +98,9 @@ func TestTheMasterCompletesAToolNoSourceTakes(t *testing.T) {
 	}
 }
 
-// The master's unknown-key answers stay main's whatever other picks the sheet has: an unlisted skill beside a tool pick that is
+// The master's unknown-key answers are the same whatever other picks the sheet has: an unlisted skill beside a tool pick that is
 // no tool is refused as an unknown key as the tool pick alone is, and a tool pick of an owner the sheet does not have is
-// accepted, as it was before the fit check, whatever the pick is beside. The level up reaches the check without the sheet
+// accepted, whatever the pick is beside. The level up reaches the check without the sheet
 // validation before it, so the check is called as the level up calls it.
 func TestTheMastersUnknownKeyAnswersHoldWhateverOtherPicksTheSheetHas(t *testing.T) {
 	t.Parallel()

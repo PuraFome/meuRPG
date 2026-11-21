@@ -1542,6 +1542,37 @@ describe('LevelUpPage', () => {
       expect(text(f)).toContain('Passo 4 de 5 · Magias');
       expect(el(f).querySelector('.js-failure')).toBeNull();
     });
+
+    it('reads the options again after a refusal about a list, and keeps the fixed line', async () => {
+      const f = await setup();
+      await click(f, pickRow(f, 'Inteligência').querySelector('input'));
+      await click(f, button(f, 'Próximo'));
+      await click(f, button(f, 'Próximo'));
+      await click(f, pickRow(f, 'Prestidigitação').querySelector('input'));
+      await click(f, pickRow(f, 'Passo Nebuloso').querySelector('input'));
+      await click(f, pickRow(f, 'Reflexos').querySelector('input'));
+      await click(f, el(f).querySelector('#pick-prepared .row__input'));
+      await click(f, el(f).querySelectorAll('#pick-prepared .row__input')[1]);
+      await click(f, button(f, 'Próximo'));
+      client.levelUp.mockRejectedValueOnce(
+        new ConnectError('x', Code.FailedPrecondition, undefined, [
+          {
+            desc: LevelUpRefusalSchema,
+            value: create(LevelUpRefusalSchema, {
+              reason: LevelUpRefusalReason.SKILLS,
+              field: 'full.skill_proficiency_keys',
+            }),
+          },
+        ]),
+      );
+      client.options.mockClear();
+      await click(f, button(f, 'Confirmar o nível 4'));
+      await load(f);
+      expect(client.options).toHaveBeenCalledTimes(1);
+      expect(el(f).querySelector('.js-failure')?.textContent).toContain(
+        refusalMessage({ reason: LevelUpRefusalReason.SKILLS }),
+      );
+    });
   });
 
   it('stops following the route when the page is destroyed', async () => {

@@ -1311,7 +1311,7 @@ As escolhas cobrem as seções do SRD 5.1 Fighting Style, Draconic Ancestry e Br
 - **De onde vêm perícias, especializações e ferramentas.** As fontes das escolhas são as das entradas que a ficha tem ou ganha depois da mudança, para qualquer leitor e em todo caminho: criação, salvamento, as duas prévias, completar escolhas e subida de nível.
   Cada escolha de perícia, especialização ou ferramenta escolhe da sua própria lista, e as escolhas da ficha são combinadas com as listas de onde podem vir.
   Uma escolha que só cabe quando outra passa para uma lista diferente é aceita.
-  Uma lista que cita uma perícia que o personagem já tem pelo antecedente continua pedindo a quantidade inteira quando as outras perícias dela bastam.
+  Uma lista que cita uma perícia que o personagem já tem pelo antecedente pede a quantidade inteira quando as outras perícias dela bastam.
   Quando são poucas, ela aceita qualquer outra perícia para cada uma que lhe falta (SRD 5.1).
   O que o mestre fechou muda o que um jogador pode escolher, nunca o que uma entrada que a ficha tem ou ganha dá.
   Uma característica de classe da mesa que o mestre arquivou dá a sua lista a um personagem da classe, e a lista é mostrada.
@@ -1321,11 +1321,11 @@ As escolhas cobrem as seções do SRD 5.1 Fighting Style, Draconic Ancestry e Br
   Uma perícia que a ficha guardada tinha pelo antecedente é uma escolha nova quando o antecedente muda.
   O mestre nunca é recusado por uma escolha que nenhuma lista acomoda: a ficha é salva, e só o mestre lê o aviso sobre isso.
   Uma ficha guardada cujas escolhas não cabem salva, sobe de nível e joga, e as escolhas dela contam e dão o que dão.
-  O mestre é recusado numa escolha de ferramenta que não é ferramenta.
+  O mestre é recusado numa escolha de ferramenta que não é ferramenta quando a ficha tem o dono dela ou a mesa fechou o dono; uma escolha sob um dono que a ficha não tem e que a mesa mantém aberto é salva.
   Uma escolha de ferramenta sob um dono arquivado que a ficha não tem nem ganha é respondida, para um jogador e para o mestre, como um dono que não existe.
   Sob um dono desligado ela é salva para o mestre.
-  A prévia das escolhas responde as listas do rascunho como ele está: depois de trocar a classe, as escolhas que as listas da nova classe não acomodam mais continuam marcadas, podem ser desmarcadas, e só o salvar as recusa, no próprio campo.
-  A prévia de um rascunho ou de uma ficha trancada recusa só uma chave que não é ferramenta ou cujo dono está oculto.
+  A prévia das escolhas responde as listas do rascunho como ele está: depois de trocar a classe, as escolhas que as listas da nova classe não acomodam mais ficam marcadas, podem ser desmarcadas, e só o salvar as recusa, no próprio campo.
+  A prévia de um rascunho ou de uma ficha trancada recusa uma chave que não é ferramenta, uma escolha de uma entrada que o mestre fechou ou que a visão do jogador deixa de fora, e uma escolha sob um dono que um jogador não pode ler; ela não recusa uma escolha que nenhuma lista acomoda.
   A frase de uma escolha recusada fica no campo dela até mudar uma escolha, a classe, a raça, a sub-raça ou o antecedente.
   A subida de nível pede tantas perícias novas quanto a ficha depois do nível pode escolher, contando as que já tem, e recusa uma perícia nova de um jogador para a qual nenhuma lista da ficha depois do nível tem vaga.
   As fontes de perícia dela listam as fontes que o nível acrescenta à ficha depois do nível.

@@ -464,9 +464,9 @@ func checkCreatorKind(m authz.Membership, kind string) error {
 // table's content, and returns the sheet to store: the sheet's own rules, the
 // sheet that fits the kind, the ability origin cleared (the server's record,
 // set later for a player), and no new choice of an archived or switched-off
-// entry. The errors are the ones CreateCharacter answers. CreateCharacter and
-// PreviewCharacter share it, so a preview never shows a sheet the save
-// refuses.
+// entry. The errors are the ones CreateCharacter answers. The save takes it with
+// pickFit; PreviewCharacter checks the same except for a pick no list places
+// (pickKeysOnly), which only the save refuses.
 func checkNewSheet(content *rules.Content, m authz.Membership, kind string, raw *charactersv1.CharacterSheet) (*charactersv1.CharacterSheet, error) {
 	return checkNewSheetOf(content, m, pickFit, kind, raw, false)
 }

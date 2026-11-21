@@ -191,8 +191,8 @@ type LevelUpOffer struct {
 	// SkillSources are the lists the new skills come from: the sources of the sheet after the level that the sheet before did
 	// not have (levelSkillSources).
 	SkillSources []LevelSkillSource
-	// SkillsAllowed and ExpertiseAllowed are the skills and the expertise a new pick may be on in the sheet after the level,
-	// with no subclass and no new class taken (the lists PickLists gives; see LevelPickKeys).
+	// SkillsAllowed and ExpertiseAllowed are the skills and the expertise a new pick may be on in the sheet after the level
+	// (for a multiclass, with the new class), without the subclass the level is due to pick: LevelPickKeys.
 	SkillsAllowed, ExpertiseAllowed []string
 	// LateChoices are the choices an earlier level left open (a sheet written
 	// before they were asked, or saved with one skipped): the level up asks for
@@ -846,17 +846,12 @@ type dueChoice struct {
 
 // levelGains is what a set of features asks the player to choose.
 type levelGains struct {
-	choices   []dueChoice
-	skills    int
-	expertise int
-	cantrips  int
+	choices  []dueChoice
+	cantrips int
 }
 
 func (g levelGains) plus(o levelGains) levelGains {
-	return levelGains{
-		choices: slices.Concat(g.choices, o.choices), skills: g.skills + o.skills,
-		expertise: g.expertise + o.expertise, cantrips: g.cantrips + o.cantrips,
-	}
+	return levelGains{choices: slices.Concat(g.choices, o.choices), cantrips: g.cantrips + o.cantrips}
 }
 
 // levelAsked is how many skills and how much expertise a sheet asks.
@@ -900,7 +895,7 @@ func (o *LevelUpOffer) splitMulticlassAsk() {
 // featureGains reads the choices of the features with these keys: their
 // options (the feature's options_choose or, for one that does not say how
 // many, the hand-written choice effect's count; a feature with neither is not
-// enforced), the skills and expertise they give, and the extra cantrips.
+// enforced), and the extra cantrips. The skills and the expertise a level asks are read from the sheet's sources (levelAsk).
 func (c *content) featureGains(keys []string, subclass string) levelGains {
 	var g levelGains
 	for _, fk := range keys {
@@ -913,7 +908,6 @@ func (c *content) featureGains(keys []string, subclass string) levelGains {
 
 // addFeatureGains adds to g what feature f (key fk) asks the player to choose.
 func (c *content) addFeatureGains(g *levelGains, fk string, f *srd51.Feature, subclass string) {
-	g.expertise += f.ExpertiseChoices
 	choose := f.OptionsChoose
 	for _, e := range c.effects[fk] {
 		if e.Type == "choice" {
@@ -934,14 +928,6 @@ func (g *levelGains) addChoiceEffect(fk string, e *Effect, choose int) int {
 		if choose == 0 {
 			choose = e.Count
 		}
-	case "expertise":
-		// An SRD feature says its expertise in the data (ExpertiseChoices); the
-		// table's say it in a choice effect.
-		if isTableKey(fk) {
-			g.expertise += e.Count
-		}
-	case "skill":
-		g.skills += e.Count
 	case "cantrip":
 		g.cantrips += e.Count
 	}
@@ -1403,7 +1389,7 @@ func (c *content) checkLevelUpSkills(before, after Build, offer LevelUpOffer, mc
 	case removedSkills:
 		return refuse(skillsField, LevelUpReasonSkills, "a skill was removed")
 	case mc != nil:
-		if lerr := c.checkMulticlassSkills(askedPick(mc, offer.Multiclass), got, wantSkills); lerr != nil {
+		if lerr := c.checkMulticlassSkills(mc, got, wantSkills); lerr != nil {
 			return lerr
 		}
 	case len(got) != wantSkills:
@@ -1414,18 +1400,6 @@ func (c *content) checkLevelUpSkills(before, after Build, offer LevelUpOffer, mc
 		return refuse(expertiseField, LevelUpReasonExpertise, "the new level gives %d expertise", wantExpertise)
 	}
 	return c.checkNewPicksPlaced(before, after)
-}
-
-// askedPick is the multiclass offer mc with the multiclass skill pick the level's offer asks.
-func askedPick(mc, asked *MulticlassOffer) *MulticlassOffer {
-	if mc.Skills == nil || asked == nil || asked.Skills == nil {
-		return mc
-	}
-	skills := *mc.Skills
-	skills.Choose = asked.Skills.Choose
-	out := *mc
-	out.Skills = &skills
-	return &out
 }
 
 // checkNewPicksPlaced refuses a new skill or expertise that the sources of the sheet after cannot place with the others.
