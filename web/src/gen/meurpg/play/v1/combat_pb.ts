@@ -7590,7 +7590,7 @@ export type ChannelDivinityResult = Message<"meurpg.play.v1.ChannelDivinityResul
   heals: ChannelDivinityHeal[];
 
   /**
-   * Turn Undead: each undead that had to save, in the order of the combat.
+   * Turn Undead: the save of each undead that had to save and that the reader may read, in the order of the combat.
    *
    * @generated from field: repeated meurpg.play.v1.ChannelDivinityTurn turns = 2;
    */

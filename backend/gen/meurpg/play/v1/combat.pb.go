@@ -16670,7 +16670,7 @@ type ChannelDivinityResult struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Preserve Life: the hit points each creature regained (after the half-maximum limit), in the order asked.
 	Heals []*ChannelDivinityHeal `protobuf:"bytes,1,rep,name=heals,proto3" json:"heals,omitempty"`
-	// Turn Undead: each undead that had to save, in the order of the combat.
+	// Turn Undead: the save of each undead that had to save and that the reader may read, in the order of the combat.
 	Turns []*ChannelDivinityTurn `protobuf:"bytes,2,rep,name=turns,proto3" json:"turns,omitempty"`
 	// Turn Undead: the cleric's save DC.
 	SaveDc        int32 `protobuf:"varint,3,opt,name=save_dc,json=saveDc,proto3" json:"save_dc,omitempty"`
