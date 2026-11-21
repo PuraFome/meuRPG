@@ -231,15 +231,27 @@ function skillItem(skill: Skill): PickItem {
   return { key: skill.key, name: skill.namePt, sub: key ? abilityLabel(key) : '' };
 }
 
-/** New skills: any the character is not trained in yet. A class taken as a later class gives its own list, in which the
+/** The server's list of skills for a new pick (`skillsAllowed`, `expertiseAllowed`): the sheet after the level with
+ * the picked subclass, else without one. The browser computes no list of its own. */
+function allowedKeys(
+  o: LevelUpOptions,
+  subclassKey: string,
+  of: 'skillsAllowed' | 'expertiseAllowed',
+): ReadonlySet<string> {
+  const sub = o.subclasses.find((s) => s.key === subclassKey);
+  return new Set((sub ?? o)[of]);
+}
+
+/** New skills: exactly the server's list for the level. A class taken as a later class gives its own list, in which the
  * skills the character already has stay, turned off ("Você já tem"). */
 export function skillOptions(
   skills: readonly Skill[],
   have: SheetKeys,
-  o?: LevelUpOptions,
+  o: LevelUpOptions,
+  subclassKey = '',
 ): PickItem[] {
   const owned = new Set(have.skills);
-  const pick = o?.proficiencyChoices.find((c) => c.kind === LevelUpProficiencyKind.SKILL);
+  const pick = o.proficiencyChoices.find((c) => c.kind === LevelUpProficiencyKind.SKILL);
   if (pick) {
     const from = new Map(pick.from.map((f) => [f.key, f.alreadyHave]));
     return skills
@@ -251,22 +263,22 @@ export function skillOptions(
       )
       .sort((a, b) => COLLATOR.compare(a.name, b.name));
   }
+  const allowed = allowedKeys(o, subclassKey, 'skillsAllowed');
   return skills
-    .filter((s) => !owned.has(s.key))
+    .filter((s) => allowed.has(s.key))
     .map(skillItem)
     .sort((a, b) => COLLATOR.compare(a.name, b.name));
 }
 
-/** New expertise: a skill the character is trained in (today, or picked just now) and has no expertise in. */
+/** New expertise: exactly the server's list for the level. */
 export function expertiseOptions(
   skills: readonly Skill[],
-  have: SheetKeys,
-  newSkills: ReadonlySet<string>,
+  o: LevelUpOptions,
+  subclassKey = '',
 ): PickItem[] {
-  const trained = new Set([...have.skills, ...newSkills]);
-  const done = new Set(have.expertise);
+  const allowed = allowedKeys(o, subclassKey, 'expertiseAllowed');
   return skills
-    .filter((s) => trained.has(s.key) && !done.has(s.key))
+    .filter((s) => allowed.has(s.key))
     .map(skillItem)
     .sort((a, b) => COLLATOR.compare(a.name, b.name));
 }

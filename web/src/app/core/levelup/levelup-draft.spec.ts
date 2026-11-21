@@ -166,6 +166,8 @@ describe('LevelUpDraft: subclass, feature options, skills and expertise', () => 
           key: 'sub:lore',
           namePt: 'Colégio do Conhecimento',
           skillChoices: 1,
+          skillsAllowed: ['skill:stealth', 'skill:perception'],
+          expertiseAllowed: ['skill:arcana', 'skill:history', 'skill:stealth', 'skill:perception'],
           featureChoices: [
             create(LevelUpFeatureChoiceSchema, {
               feature: { key: 'feature:x', namePt: 'Estilo' },
@@ -181,6 +183,7 @@ describe('LevelUpDraft: subclass, feature options, skills and expertise', () => 
         create(LevelUpSubclassSchema, { key: 'sub:champion', namePt: 'Campeão' }),
       ],
       expertiseChoices: 1,
+      expertiseAllowed: ['skill:arcana', 'skill:history', 'skill:stealth', 'skill:perception'],
     });
 
   it('needs the subclass first, then what it adds', () => {
@@ -260,7 +263,13 @@ describe('LevelUpDraft: picks that follow the counts', () => {
       subclassDue: true,
       expertiseChoices: 1,
       subclasses: [
-        create(LevelUpSubclassSchema, { key: 'sub:lore', namePt: 'Conhecimento', skillChoices }),
+        create(LevelUpSubclassSchema, {
+          key: 'sub:lore',
+          namePt: 'Conhecimento',
+          skillChoices,
+          skillsAllowed: ['skill:stealth', 'skill:perception'],
+          expertiseAllowed: ['skill:arcana', 'skill:history', 'skill:stealth', 'skill:perception'],
+        }),
         create(LevelUpSubclassSchema, { key: 'sub:champion', namePt: 'Campeão' }),
       ],
     });
@@ -319,7 +328,13 @@ describe('LevelUpDraft: adopt after the sheet is read again', () => {
       subclassDue: true,
       expertiseChoices: 1,
       subclasses: [
-        create(LevelUpSubclassSchema, { key: 'sub:lore', namePt: 'Conhecimento', skillChoices }),
+        create(LevelUpSubclassSchema, {
+          key: 'sub:lore',
+          namePt: 'Conhecimento',
+          skillChoices,
+          skillsAllowed: ['skill:stealth', 'skill:perception'],
+          expertiseAllowed: ['skill:arcana', 'skill:history', 'skill:stealth', 'skill:perception'],
+        }),
       ],
     });
 

@@ -130,7 +130,6 @@ export class LevelUpDraft {
     const lists = new LevelUpLists(options, have, catalog, {
       subclassKey: this.subclassKey,
       spells: this.spells,
-      skills: this.skills,
       preparedMax: this.preparedMax,
     });
     this.effective = lists.effective;
