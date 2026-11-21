@@ -5,7 +5,6 @@ model: sonnet
 effort: medium
 disallowedTools: Agent
 maxTurns: 60
-autoCompactWindow: 150000
 experimental:
   cacheTtl: 1h
 ---
