@@ -48,7 +48,7 @@ type channelEvent struct {
 	// Effects are the rows of the effect "turned" the action made, on Targets, which the undo takes away.
 	Effects []string `json:"effects,omitempty"`
 	Targets []string `json:"targets,omitempty"`
-	// UnderFog says the action was made with the fog on; a record for each entry will replace it. An older event has none.
+	// UnderFog says the action was made with the fog on. An older event has none.
 	UnderFog *bool `json:"under_fog,omitempty"`
 }
 
@@ -349,8 +349,8 @@ func (f *takeActionFlow) turn(ctx context.Context, cs []playdb.Combatant, turned
 	return nil
 }
 
-// channelProto is what a Channel Divinity action did, for the answer and the log: the heals, and the saves of the undead
-// that reads says its reader may read.
+// channelProto is what a Channel Divinity action did, for the answer and the log: the heals, and the saves that `reads`
+// keeps.
 func channelProto(ev *channelEvent, reads func(channelTurn) bool) *playv1.ChannelDivinityResult {
 	if ev == nil {
 		return nil

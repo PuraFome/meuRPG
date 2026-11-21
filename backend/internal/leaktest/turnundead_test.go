@@ -33,7 +33,7 @@ const (
 	turnFogMap
 )
 
-// turnUndead is one zombie of a scene: behind the wall (out of the player's sight on a fog map), or hidden by the master.
+// turnZombie is one zombie of a scene: behind the wall (out of the player's sight on a fog map), or hidden by the master.
 type turnZombie struct {
 	label  string
 	behind bool
@@ -42,7 +42,7 @@ type turnZombie struct {
 
 // readable says the cleric's player may read the zombie when the action is made.
 func (z turnZombie) readable(m turnMap) bool {
-	return !z.hidden && !(m == turnFogMap && z.behind)
+	return !z.hidden && (m != turnFogMap || !z.behind)
 }
 
 // lineReadable says the cleric's player reads the zombie's save in the line of the action.
@@ -61,8 +61,6 @@ type turnWorld struct {
 }
 
 const turnWallCol = 5
-
-var turnSeqRE = regexp.MustCompile(`"(seq|revision|lastSeq)":"?\d+"?`)
 
 func newTurnWorld(t *testing.T, mode turnMap, zombies []turnZombie) *turnWorld {
 	t.Helper()
@@ -106,8 +104,11 @@ func newTurnWorld(t *testing.T, mode turnMap, zombies []turnZombie) *turnWorld {
 		w.place(w.fogMap, cleric.GetId(), 3, 5)
 		w.place(w.fogMap, friend.GetId(), 2, 6)
 	}
-	e := must(m.combat.StartEncounter(ctx, rq(&playv1.StartEncounterRequest{CampaignId: w.campaign, IdempotencyKey: newKey(), Name: "Cripta", Mode: mode.encounterMode(),
-		Participants: []*playv1.Participant{{CharacterId: cleric.GetId()}, {CharacterId: friend.GetId()}}}))).GetEncounter()
+	start := &playv1.StartEncounterRequest{
+		CampaignId: w.campaign, IdempotencyKey: newKey(), Name: "Cripta", Mode: mode.encounterMode(),
+		Participants: []*playv1.Participant{{CharacterId: cleric.GetId()}, {CharacterId: friend.GetId()}},
+	}
+	e := must(m.combat.StartEncounter(ctx, rq(start))).GetEncounter()
 	initiative := func(id string, face int32) {
 		must(m.combat.SubmitInitiative(ctx, rq(&playv1.SubmitInitiativeRequest{
 			CampaignId: w.campaign, EncounterId: e.GetId(), CombatantId: id, IdempotencyKey: newKey(), Roll: &playv1.SubmitInitiativeRequest_D20Face{D20Face: face},
@@ -193,9 +194,13 @@ func (tw *turnWorld) line(p *person) *playv1.CombatLogEntry {
 	return nil
 }
 
-// same is the text of a read with the ids and the times of the fixture, and the counters that differ between fixtures, made alike.
+// turnRevisionRE is the revision of the encounter: it counts the events of the combat, which differ between the two scenes
+// by the undead that only one of them has.
+var turnRevisionRE = regexp.MustCompile(`"revision":\d+`)
+
+// same is the text of a read with the ids and the times of the fixture, and the revision of the encounter, made alike.
 func same(m proto.Message) string {
-	return normalized(turnSeqRE.ReplaceAllString(jsonOf(m), `"$1":"N"`))
+	return normalized(turnRevisionRE.ReplaceAllString(jsonOf(m), `"revision":0`))
 }
 
 func labelsOf(turns []*playv1.ChannelDivinityTurn) []string {
@@ -224,7 +229,7 @@ func (tw *turnWorld) checkLabels(what string, got *playv1.ChannelDivinityResult,
 		tw.t.Errorf("%s: no result of Channel Divinity", what)
 		return
 	}
-	if l := labelsOf(got.GetTurns()); !slices.Equal(l, want) && (len(l) > 0 || len(want) > 0) {
+	if l := labelsOf(got.GetTurns()); !slices.Equal(l, want) {
 		tw.t.Errorf("%s lists %v, want %v", what, l, want)
 	}
 }
@@ -309,11 +314,12 @@ func TestTurnUndeadListsTheUndeadEachReaderMayRead(t *testing.T) {
 				}
 			}
 			full.scan(unread, reads)
-			for _, l := range unread { // the master reads the effect "turned" of the undead the players may not read
+			for _, l := range unread { // the master reads the save of the undead the players may not read
 				if !slices.Contains(labelsOf(full.line(full.master).GetChannelDivinity().GetTurns()), l) {
 					t.Errorf("the master does not read the save of %s", l)
 				}
 			}
+			full.checkTurnedEffects(row.zombies, row.mode)
 		})
 		t.Run(row.name+", the master acts for the cleric", func(t *testing.T) {
 			tw := newTurnWorld(t, row.mode, row.zombies)
@@ -383,4 +389,79 @@ func (m turnMap) encounterMode() playv1.EncounterMode {
 		return playv1.EncounterMode_ENCOUNTER_MODE_THEATRE
 	}
 	return playv1.EncounterMode_ENCOUNTER_MODE_GRID
+}
+
+// turnedEffects are the ids of the undead that carry the effect "turned" in the encounter p reads.
+func (tw *turnWorld) turnedEffects(p *person) []string {
+	tw.t.Helper()
+	enc := must(p.combat.GetEncounter(tw.t.Context(), rq(&playv1.GetEncounterRequest{CampaignId: tw.campaign}))).GetEncounter()
+	var out []string
+	for _, c := range enc.GetCombatants() {
+		for _, e := range c.GetEffects() {
+			if e.GetSourceKey() == "effect:turned" {
+				out = append(out, e.GetTargetIds()...)
+			}
+		}
+	}
+	slices.Sort(out)
+	return out
+}
+
+// checkTurnedEffects says the master reads the effect "turned" on every undead and each player only on the ones they may read.
+func (tw *turnWorld) checkTurnedEffects(zs []turnZombie, mode turnMap) {
+	tw.t.Helper()
+	var all, readable []string
+	for _, z := range zs {
+		all = append(all, tw.ids[z.label])
+		if z.readable(mode) {
+			readable = append(readable, tw.ids[z.label])
+		}
+	}
+	slices.Sort(all)
+	slices.Sort(readable)
+	if got := tw.turnedEffects(tw.master); !slices.Equal(got, all) {
+		tw.t.Errorf("the master reads the effect \"turned\" on %v, want %v", got, all)
+	}
+	for _, p := range []*person{tw.caio, tw.ana} {
+		for _, id := range tw.turnedEffects(p) {
+			if !slices.Contains(readable, id) {
+				tw.t.Errorf("%s reads the effect \"turned\" on %s, which they may not read", p.name, id)
+			}
+		}
+	}
+}
+
+// forgetTheMarks strips the marks of the fog and of the master's switch from the stored event, as an event stored without them reads.
+func (tw *turnWorld) forgetTheMarks() {
+	tw.t.Helper()
+	tag, err := tw.pool.Exec(tw.t.Context(), `UPDATE session_events SET payload = payload #- '{channel,under_fog}' WHERE game_session_id = $1 AND payload->'channel' ? 'under_fog'`, tw.session)
+	if err != nil || tag.RowsAffected() != 1 {
+		tw.t.Fatalf("strip the marks of the stored event: %v, %d rows", err, tag.RowsAffected())
+	}
+}
+
+func TestTurnUndeadStoredWithNoMarkListsNoSaveOnAMap(t *testing.T) {
+	a, b := turnZombie{label: "Zorvak4321"}, turnZombie{label: "Zorvak4322"}
+	hid := turnZombie{label: "Zorvak4322", hidden: true}
+	for _, row := range []struct {
+		name    string
+		mode    turnMap
+		zombies []turnZombie
+		want    []string
+	}{
+		{"on a map", turnClearMap, []turnZombie{a, b}, nil},
+		{"on a fog map", turnFogMap, []turnZombie{a, b}, nil},
+		{"with no map", turnNoMap, []turnZombie{a, b}, []string{"Zorvak4321", "Zorvak4322"}},
+		{"with no map, one hidden by the master", turnNoMap, []turnZombie{a, hid}, []string{"Zorvak4321"}},
+	} {
+		t.Run(row.name, func(t *testing.T) {
+			tw := newTurnWorld(t, row.mode, row.zombies)
+			key := newKey()
+			tw.turnWith(tw.caio, key)
+			tw.forgetTheMarks()
+			tw.checkLabels("the cleric's line", tw.line(tw.caio).GetChannelDivinity(), row.want)
+			tw.checkLabels("the retried answer", tw.turnWith(tw.caio, key).GetChannelDivinity(), row.want)
+			tw.checkLabels("the master's line", tw.line(tw.master).GetChannelDivinity(), labelsOfZombies(row.zombies, func(turnZombie) bool { return true }))
+		})
+	}
 }

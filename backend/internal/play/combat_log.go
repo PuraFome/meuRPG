@@ -1525,9 +1525,12 @@ func (e *logEntry) readsTurn(c *logViewing) func(channelTurn) bool {
 	return laterTurnReader(c.v, c.byID, e.ev.Channel, !e.noMap)
 }
 
-// laterTurnReader says which Turn Undead saves a read after the action gives the viewer: the master's all, a player's the ones
-// of the undead the master had not hidden at the action and has not hidden since, and none when the action was made under the
-// fog (an event with no mark of it reads so on a combat with a map). The line and a retried answer read this way.
+// laterTurnReader says which Turn Undead saves a read after the action gives the viewer.
+// The master reads all of them.
+// A player reads the saves of the undead the master had not hidden at the action and has not hidden since.
+// A player reads none when the action was made under the fog.
+// An event with no mark of the fog is read as made under it on a combat with a map.
+// The line and a retried answer use it.
 func laterTurnReader(v combatViewer, byID map[string]playdb.Combatant, ev *channelEvent, hasMap bool) func(channelTurn) bool {
 	return func(t channelTurn) bool {
 		if v.master {

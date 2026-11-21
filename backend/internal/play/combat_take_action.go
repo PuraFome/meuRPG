@@ -124,7 +124,7 @@ func (s *Service) TakeAction(
 	if err != nil {
 		return nil, err
 	}
-	out := &takeActionOut{}
+	out := &takeActionOut{v: viewerOf(heldViewer(ctx, m))}
 	res, err := s.write(ctx, combatWrite{m: m, key: call.key, hash: idem.Hash(req.Msg), kind: eventActionTaken, encounterID: call.encounterID}, func(c *combatTx) (any, error) {
 		return newTakeActionFlow(s, c, m, call, out).run(ctx)
 	})
@@ -137,13 +137,14 @@ func (s *Service) TakeAction(
 // takeActionResponse answers from what the transaction left: the encounter as the caller sees it, and the
 // roll and the hit points of an action that heals.
 func (s *Service) takeActionResponse(ctx context.Context, m authz.Membership, res combatResult, out *takeActionOut) (*connect.Response[playv1.TakeActionResponse], error) {
-	var err error
-	if out.v, err = s.viewerAfter(ctx, m, res, out.v); err != nil { // a replay never ran the closure: the fog filter still holds
-		return nil, s.dbError(ctx, "work out what the player sees", err)
-	}
 	ev, err := resultEvent(res, out.made)
 	if err != nil {
 		return nil, s.dbError(ctx, "read the action", err)
+	}
+	if ev.Channel != nil { // a replay never ran the closure: the fog filter of the saves still holds
+		if out.v, err = s.viewerAfter(ctx, m, res, out.v); err != nil {
+			return nil, s.dbError(ctx, "work out what the player sees", err)
+		}
 	}
 	enc, err := s.finish(ctx, m, res, func(ctx context.Context, d *encounterData) {
 		s.publishEncounterChanged(ctx, m.CampaignID, d.enc)
@@ -199,7 +200,7 @@ func (s *Service) turnsReadBy(ctx context.Context, res combatResult, v combatVie
 	}
 	return func(t channelTurn) bool {
 		c, found := byID[t.Target]
-		return v.master || (found && v.sees(c))
+		return v.master || (found && !t.HiddenAtAction && v.sees(c))
 	}, nil
 }
 
