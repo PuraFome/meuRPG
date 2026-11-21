@@ -1061,6 +1061,10 @@ func (e *logEntry) view(ctx context.Context, v combatViewer, byID map[string]pla
 	if e.kind == playv1.CombatLogKind_COMBAT_LOG_KIND_REACTION_WINDOW {
 		return e.reactionEntry(ctx, v, byID, names)
 	}
+	e, ok := e.forViewer(v, byID)
+	if !ok {
+		return nil, false
+	}
 	actor, target := e.parties(byID)
 	visible, seen := e.visibility(v, byID, actor, target)
 	if !e.viewerGets(v, actor, target, visible, seen, byID) {

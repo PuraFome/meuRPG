@@ -78,6 +78,9 @@ type lastingEvent struct {
 	Rounds  int32    `json:"rounds,omitempty"`
 	// Effects are the ids of the rows it concerns.
 	Effects []string `json:"effects,omitempty"`
+	// Seen is, for each NPC among Targets, who saw it when the line was written on a map with fog:
+	// Fogged, and SeenMask over the event's CoverUsers. A line written without it has none.
+	Seen []castHit `json:"seen,omitempty"`
 	// OwnerOnly says only the targets' players read the line (an effect for its owner alone,
 	// the owner-class conditions, exhaustion): the master reads it always.
 	OwnerOnly bool `json:"owner_only,omitempty"`

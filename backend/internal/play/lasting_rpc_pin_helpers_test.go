@@ -352,8 +352,8 @@ func rpcAnyTarget(v any, labels map[string]string) {
 	if ts, ok := l["targets"].([]any); ok && len(ts) > 1 && slices.Contains(ts, m["target_id"]) {
 		m["target_id"] = "<one of the targets>"
 	}
-	// The line of an end names the first row of the casting too.
-	if effs, ok := l["effects"].([]any); ok && len(effs) == 1 && (l["change"] == "ended" || l["change"] == "visibility") && l["targets"] == nil {
+	// The line of a visibility change names the first row of the casting.
+	if effs, ok := l["effects"].([]any); ok && len(effs) == 1 && l["change"] == "visibility" && l["targets"] == nil {
 		if id, ok := effs[0].(string); ok && strings.Contains(labels[id], "+") {
 			m["target_id"] = "<a row of the casting>"
 		}
