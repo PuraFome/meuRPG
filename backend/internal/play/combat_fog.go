@@ -315,8 +315,14 @@ func (f *fogSight) reactorSees(r playdb.Combatant, sheet link.Sheet, at grid.Squ
 // is how the table looked when it happened; it is never worked out again from a
 // view that has changed. A Secret event (a hidden combatant is in it) is seen by no
 // player: their revision does not count it and their stream does not hear it.
+// Without fog, a Channel Divinity action gets the mark that it was made without fog (UnderFog false).
 func (c *combatTx) stamp(ctx context.Context, kind string, ev actionEvent) (actionEvent, error) {
 	if c.sight == nil {
+		if kind == eventActionTaken && ev.Channel != nil { // no fog: the action says so, as no entry has a record
+			ch := *ev.Channel
+			ch.UnderFog = new(false)
+			ev.Channel = &ch
+		}
 		return ev, nil
 	}
 	cs, err := c.q.ListCombatantsWithDismissed(ctx, c.enc.ID)
@@ -334,6 +340,9 @@ func (c *combatTx) stamp(ctx context.Context, kind string, ev actionEvent) (acti
 		ev.Fogged, ev.SeenBy = true, nil
 		return ev, nil
 	}
+	if kind == eventActionTaken && ev.Channel != nil {
+		ev = c.stampChannel(ev, cs) // the line itself is stamped below, as any line is
+	}
 	if kind == eventSpellCast && ev.Placed {
 		return c.stampPlacedCast(ev, cs), nil
 	}
@@ -346,6 +355,29 @@ func (c *combatTx) stamp(ctx context.Context, kind string, ev actionEvent) (acti
 	ev.Fogged = true
 	ev.SeenBy = c.seenByAll(npcSquares)
 	return ev, nil
+}
+
+// stampChannel is stamp for the entries of a Channel Divinity action: each NPC a save or a heal names keeps who saw it
+// (fogSeen, a mask over the event's CoverUsers), nobody for one the master had hidden or that stands on no square. The
+// event keeps its own copy of the channel event.
+func (c *combatTx) stampChannel(ev actionEvent, cs []playdb.Combatant) actionEvent {
+	ch := *ev.Channel
+	ch.Heals, ch.Turns = slices.Clone(ch.Heals), slices.Clone(ch.Turns)
+	mark := func(id string, hidden bool, s *fogSeen) {
+		j := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return o.ID == id })
+		if j < 0 || cs[j].Kind != kindNPC {
+			return
+		}
+		c.markNPC(&ev, s, cs[j], hidden, nil)
+	}
+	for i := range ch.Heals {
+		mark(ch.Heals[i].Target, ch.Heals[i].HiddenAtAction, &ch.Heals[i].fogSeen)
+	}
+	for i := range ch.Turns {
+		mark(ch.Turns[i].Target, ch.Turns[i].HiddenAtAction, &ch.Turns[i].fogSeen)
+	}
+	ev.Channel = &ch
+	return ev
 }
 
 // stampLine is stamp for the event being written: the line of an event is stamped with who could see it, except one that takes
@@ -443,8 +475,8 @@ func (c *combatTx) stampPlacedCast(ev actionEvent, cs []playdb.Combatant) action
 		if h.HiddenAtCast || j < 0 || cs[j].Kind != kindNPC || !placed(cs[j]) {
 			continue
 		}
-		anySeen, h.Fogged, h.SeenMask = true, true, 0
-		seenSome = c.markCastHitSeen(&ev, h, cs[j], seenSome)
+		anySeen, h.fogSeen = true, fogSeen{Fogged: true}
+		seenSome = c.markSeen(&ev, &h.fogSeen, cs[j], seenSome)
 	}
 	if !anySeen {
 		return ev
@@ -456,10 +488,10 @@ func (c *combatTx) stampPlacedCast(ev actionEvent, cs []playdb.Combatant) action
 	return ev
 }
 
-// markCastHitSeen records, for an NPC a line names (a hit of a spell, a target of an effect), each
-// player who sees it: as a bit of the target's mask (of the event's CoverUsers) and in the list of the
+// markSeen records, for an NPC a line names (a hit of a spell, a target of an effect, a save or a heal of Channel
+// Divinity), each player who sees it: as a bit of the target's mask (of the event's CoverUsers) and in the list of the
 // players who saw some target. It returns that list.
-func (c *combatTx) markCastHitSeen(ev *actionEvent, h *castHit, npc playdb.Combatant, seenSome []string) []string {
+func (c *combatTx) markSeen(ev *actionEvent, s *fogSeen, npc playdb.Combatant, seenSome []string) []string {
 	for _, u := range c.sight.sight.Users() {
 		if !c.sight.sight.Sees(u, squareOfCombatant(npc)) {
 			continue
@@ -470,11 +502,22 @@ func (c *combatTx) markCastHitSeen(ev *actionEvent, h *castHit, npc playdb.Comba
 			k = len(ev.CoverUsers) - 1
 		}
 		if k >= 0 {
-			h.SeenMask |= 1 << k
+			s.SeenMask |= 1 << k
 		}
 		if !slices.Contains(seenSome, u) {
 			seenSome = append(seenSome, u)
 		}
+	}
+	return seenSome
+}
+
+// markNPC is the record of an NPC a save, a heal or an effect target names, made on a fog map: it is fogged, and each player
+// who sees it is marked (markSeen) unless the master had it hidden or it stands on no square, and then no one saw it. It returns
+// the list of players who saw some target, with this NPC's.
+func (c *combatTx) markNPC(ev *actionEvent, s *fogSeen, npc playdb.Combatant, hidden bool, seenSome []string) []string {
+	*s = fogSeen{Fogged: true}
+	if placed(npc) && !hidden {
+		return c.markSeen(ev, s, npc, seenSome)
 	}
 	return seenSome
 }
@@ -528,10 +571,8 @@ func (c *combatTx) markEffectTargets(ev *actionEvent, l *lastingEvent, cs []play
 			continue
 		}
 		anyNPC = true
-		h := castHit{Target: id, Fogged: true}
-		if placed(cs[j]) && !cs[j].Hidden {
-			seenSome = c.markCastHitSeen(ev, &h, cs[j], seenSome)
-		}
+		h := effectSeen{Target: id}
+		seenSome = c.markNPC(ev, &h.fogSeen, cs[j], cs[j].Hidden, seenSome)
 		l.Seen = append(l.Seen, h)
 	}
 	return seenSome, anyNPC, anyChar

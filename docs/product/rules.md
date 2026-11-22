@@ -203,7 +203,19 @@ The master can also correct hit points, temporary hit points, spell slots (and p
   A monk at 0 hit points is down and cannot use it.
   Only the owner and the master read the number in the log.
   The master's undo gives back the hit points, the use and the action.
-- **Channel Divinity of the cleric.** Preserve Life (Life Domain) restores hit points to the creatures within 30 ft that the cleric names (when the cleric names no one, the app shares the points among the party, the most hurt first), up to five times the cleric's level in all, each to no more than half of its maximum; it cannot restore an undead or a construct. Turn Undead makes each undead within 30 ft that can see or hear the cleric make a Wisdom saving throw against the cleric's DC, and the ones that fail are turned for a minute (the master reads each save and who was turned, in the log and on the response; the cleric's player reads the saves of the undead they may read; the turned creature carries the effect "Expulso"). Both spend the action and a use.
+- **Channel Divinity of the cleric.**
+  Preserve Life (Life Domain) restores hit points to the creatures within 30 ft that the cleric names, up to five times the cleric's level in all, each to no more than half of its maximum.
+  It cannot restore an undead or a construct.
+  The cleric's player may name only the creatures they read; any other is refused as not in the combat.
+  When the cleric names no one, the app shares the points among the cleric's side that the caller reads, the most hurt first.
+  Turn Undead makes each undead within 30 ft that can see or hear the cleric make a Wisdom saving throw against the cleric's DC, and the ones that fail are turned for a minute.
+  The turned creature carries the effect "Expulso".
+  The master reads each save and who was turned, in the log and on the response.
+  The cleric's player reads the saves of the undead they may read.
+  On a map with fog, later, the player reads only the undead they saw at the action that the master had not hidden then or since.
+  The result of Preserve Life lists each creature restored that the reader may read, with the amount asked and restored.
+  The hit points after go only to who reads that creature's numbers, the master and the player who plays it.
+  Both spend the action and a use.
 - **Spells and resources.** A spell spends its slot (or pact slot) when it is cast, and a resend does not spend twice. A healing spell heals at once, up to the maximum, and raises whoever was at 0. Class and race uses (Second Wind, Action Surge, Rage...) are counted too. A resource without a limit shows "ilimitado".
 - **The master's "Desfazer última ação"** undoes the last action; each undo is itself recorded.
 
