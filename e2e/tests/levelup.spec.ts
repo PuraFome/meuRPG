@@ -317,24 +317,24 @@ test(
       await expect(p.getByText(/Passo 3 de \d · Escolhas/)).toBeVisible();
 
       // The college comes first and brings its 3 skills: none of the skills the sheet trains is a row.
-      await p.locator('#pick-subclass label.row').first().click();
+      await p.locator('#pick-subclass label.row__main').first().click();
       const skills = p.locator('#pick-skills');
       await expect(skills).toContainText('0 de 3');
       await p.getByRole('button', { name: /Ver as outras \d+ perícias/ }).first().click();
-      await expect(skills.locator('label.row').filter({ hasText: 'Furtividade' })).toBeVisible();
-      await expect(skills.locator('label.row').filter({ hasText: 'Acrobacia' })).toHaveCount(0);
-      await expect(skills.locator('label.row').filter({ hasText: 'Enganação' })).toHaveCount(0);
+      await expect(skills.locator('label.row__main').filter({ hasText: 'Furtividade' })).toBeVisible();
+      await expect(skills.locator('label.row__main').filter({ hasText: 'Acrobacia' })).toHaveCount(0);
+      await expect(skills.locator('label.row__main').filter({ hasText: 'Enganação' })).toHaveCount(0);
 
       // Expertise: no row for a skill the sheet lacks, one once it is picked, none again when it is unpicked.
       const expertise = p.locator('#pick-expertise');
-      const stealth = expertise.locator('label.row').filter({ hasText: 'Furtividade' });
-      await expect(expertise.locator('label.row').filter({ hasText: 'Atuação' })).toBeVisible();
+      const stealth = expertise.locator('label.row__main').filter({ hasText: 'Furtividade' });
+      await expect(expertise.locator('label.row__main').filter({ hasText: 'Enganação' })).toBeVisible();
       await expect(stealth).toHaveCount(0);
-      await skills.locator('label.row').filter({ hasText: 'Furtividade' }).click();
+      await skills.locator('label.row__main').filter({ hasText: 'Furtividade' }).click();
       await expect(stealth).toHaveCount(1);
       await stealth.click();
       await expect(stealth.locator('input')).toBeChecked();
-      await skills.locator('label.row').filter({ hasText: 'Furtividade' }).click();
+      await skills.locator('label.row__main').filter({ hasText: 'Furtividade' }).click();
       await expect(stealth).toHaveCount(0);
     } finally {
       await endOpenSessionRPC(m, campaignId);

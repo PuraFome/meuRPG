@@ -7772,7 +7772,13 @@ async function scanPickLists(browser: Browser, colorScheme: 'light' | 'dark', wi
     await expect(page.getByText('Ícaro').first()).toBeVisible();
     await expect(page.getByText('Escolha fora das listas.')).toHaveCount(0);
     await expect(page.getByText(fitSentence)).toHaveCount(0);
-    await expect(page.getByRole('note', { name: 'Pendências de regra' })).toHaveCount(0);
+    // The one note the player does read is the sheet's own open choice from the start (the saved sheet never picked the race trait's expertise);
+    // it says that and nothing about the pick left outside the lists.
+    const ownNote = page.getByRole('note', { name: 'Pendências de regra' });
+    await expect(ownNote).toHaveCount(1);
+    await expect(ownNote).toContainText('Falta escolher 1 especialização.');
+    await expect(ownNote).not.toContainText('Furtividade');
+    await expect(ownNote).not.toContainText('lista');
   } finally {
     await masterContext.close();
     await context.close();
