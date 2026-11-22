@@ -141,8 +141,9 @@ The automatic pass of 30 s counts on the master's screen from when the window op
 It can pass a window whose player is still choosing a square for a move, or a target: the row is then ignored.
 The readier's player sets the mark (`MarkReactionRolling`) on the first touch of the list of creatures or the darts in the window, or on entering the map.
 The player can clear it, and the master's wait is 120 s from `wait_began_at`, not the 30 s of the window.
+The wait is one, begun by whoever acts on the window first: the player's first mark, or the master's call of `MarkReactionRolling` when he opens a release for the player (without `clear`).
 The readier's prompt says it: once the player is on the map, its line reads that the table waits for the player for up to 2 minutes.
-The master's own touch does not mark it: the mark is the reactor player's alone.
+The master's call begins the wait and never sets or clears `rolling`: the mark is the reactor player's alone.
 
 ## The reaction
 
@@ -228,15 +229,16 @@ The release is checked as a cast: a spell the caster no longer has prepared is r
 Another combatant's window of the same spell, and an open window of another kind for the caster, are not its release.
 Metamagic at the release is `invalid_argument`.
 A cast of another spell while the window is open is refused as a cast off the caster's turn (`NOT_YOUR_TURN`).
-A concentration spell keeps the concentration, now with its own key; another spell ends it.
+A concentration spell keeps the concentration under its own key; another spell ends it.
 The cast waits for the windows any cast opens (Counterspell), with the READIED window open and `REACTION_PENDING` (`readiedHeld`).
 A spell attack's d20 held for a die waits the same way, and the master's window reads `answer_now` false.
 A countered release is the use: the row is `fired`, the reaction spent, the concentration ended and the slot lost.
 A refused release spends nothing and the window stays open.
 The readier's player sets the mark on entering the map (`MarkReactionRolling`) and clears it on going back (the same call with `clear`).
-The first set starts one wait of 120 s, and no later set or clear restarts it.
+The first set, or the master's call, starts one wait of 120 s, and no later set, clear or call restarts it.
+The master's call on an open READIED window of a player's character, without `clear`, only begins that wait; one already begun writes nothing and tells nothing.
 A set or a clear that changes nothing (already set, already clear) writes nothing and tells nothing.
-One that changes the mark tells the master and the reactor's player alone, through `Audience{Master, UserID}`: no other player counts the hints of a wait they do not read.
+One that changes the window (the mark or the beginning of the wait) tells the master and the reactor's player alone, through `Audience{Master, UserID}`: no other player counts the hints of a wait they do not read.
 It is two events, one to the master and one to the reactor's player, each an encounter hint.
 On a fog map the player's copy is blind (revision 0), as every player's hint is there; the master's carries the real revision.
 The server records when the wait began, once, in the window's trigger, and no later mark or clear changes it.
@@ -246,7 +248,7 @@ The master's row reads whether the player is on the map now (`rolling`), when th
 The master's screen passes the window when the 120 s end, with `AnswerReaction` PASS: the server runs no timer.
 The reactor's player reads the mark back too (a second device of the same player shows it), `rolling`, `wait_began_at` and `waited_ms`.
 No other player reads either: another player and the TV read the same wait line in every moment.
-Both ways are idempotent and the reactor's player's alone (the master and another player are refused), nothing is written to the log, and the window stays open and answerable.
+Both ways are idempotent and the reactor's player's alone, and the master's `clear` is refused as another player's is, and his call on a window of another kind or a creature's READIED window, nothing is written to the log, and the window stays open and answerable.
 "Usar" on a window that was answered or closed is `NOT_YOUR_TURN_TO_ANSWER`, even on the readier's own turn: only an open window releases the spell, and the cast an answer makes names its window.
 A held release whose spell breaks before the Counterspell windows are answered is lost: the row is `broken` and its window closes, the replay is refused as any cast off the readier's turn, and the master reads `held_dropped` in the log (`settleReplay`).
 Nothing is cast, and no write fails.

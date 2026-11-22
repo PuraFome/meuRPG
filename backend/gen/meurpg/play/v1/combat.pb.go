@@ -27797,7 +27797,7 @@ func (*AnswerReactionRequest_Typed) isAnswerReactionRequest_Roll() {}
 
 func (*AnswerReactionRequest_PoolSum) isAnswerReactionRequest_Roll() {}
 
-// MarkReactionRollingRequest marks a window as being rolled.
+// MarkReactionRollingRequest marks a window as being rolled, or, from the master on a READIED window, begins its wait.
 type MarkReactionRollingRequest struct {
 	state       protoimpl.MessageState `protogen:"open.v1"`
 	CampaignId  string                 `protobuf:"bytes,1,opt,name=campaign_id,json=campaignId,proto3" json:"campaign_id,omitempty"`

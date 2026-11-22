@@ -212,10 +212,11 @@ func (s *Service) MarkReactionRolling(
 		return nil, err
 	}
 	var changed bool
+	var reactorUser string
 	// The window's own id is the key: no event is written, so it is never looked up as one.
 	res, err := s.write(ctx, combatWrite{m: m, key: winID, kind: eventReactionAnswered, encounterID: encID}, func(c *combatTx) (any, error) {
 		var err error
-		changed, err = s.markRolling(ctx, c, m, winID, req.Msg.GetClear())
+		changed, reactorUser, err = s.markRolling(ctx, c, m, winID, req.Msg.GetClear())
 		return nil, err
 	})
 	if err != nil {
@@ -231,7 +232,7 @@ func (s *Service) MarkReactionRolling(
 			mine = blind
 		}
 		say(m.CampaignID, live.Event{Audience: live.Audience{Master: true}, Message: msg})
-		say(m.CampaignID, live.Event{Audience: live.Audience{UserID: m.UserID}, Message: mine})
+		say(m.CampaignID, live.Event{Audience: live.Audience{UserID: reactorUser}, Message: mine})
 	})
 	if err != nil {
 		return nil, err
@@ -240,33 +241,44 @@ func (s *Service) MarkReactionRolling(
 }
 
 // markRolling is the write of MarkReactionRolling: the mark on, or off when asked to. The mark is the reactor
-// player's own: the master reads it, never sets it or takes it off. It returns no payload: the change is kept and nothing
-// is written to the log; changed says the mark was a change, and one already as asked writes nothing (a retry or a second
-// tab only sets or clears the same mark).
-func (s *Service) markRolling(ctx context.Context, c *combatTx, m authz.Membership, winID string, off bool) (changed bool, err error) {
+// player's own: the master reads it, never sets it or takes it off. The master's call on an open READIED window of a
+// player's character only begins the wait, once, and leaves the mark as it is. It returns no payload: the change is kept
+// and nothing is written to the log; changed says the call was a change (one already as asked writes nothing: a retry
+// or a second tab only sets or clears the same mark), and reactorUser is the reactor's player, who is told with the master.
+func (s *Service) markRolling(ctx context.Context, c *combatTx, m authz.Membership, winID string, off bool) (changed bool, reactorUser string, err error) {
 	if err := notEnded(c.enc); err != nil {
-		return false, err
+		return false, "", err
 	}
-	if m.Role == authz.RoleMaster {
-		return false, errWindowDenied()
+	master := m.Role == authz.RoleMaster
+	if master && off {
+		return false, "", errWindowDenied()
 	}
-	w, _, err := s.windowToAnswer(ctx, c, m, winID)
+	w, reactor, err := s.windowToAnswer(ctx, c, m, winID)
 	if err != nil {
-		return false, err
+		return false, "", err
 	}
 	t := windowTriggerOf(w)
-	if t.Rolling == !off && (off || t.WaitBegan != nil) {
-		return false, nil
+	if master && (reaction.Kind(w.Kind) != reaction.Readied || reactor.UserID == nil || isCreature(reactor)) {
+		return false, "", errWindowDenied()
 	}
-	t.Rolling = !off
-	if !off && t.WaitBegan == nil {
-		now := c.now // the transaction's clock; the first mark starts the wait and nothing after it moves it
+	reactorUser = conv.OrZero(reactor.UserID)
+	if master { // the master begins the wait and nothing else: the mark stays the player's
+		if t.WaitBegan != nil {
+			return false, reactorUser, nil
+		}
+	} else if t.Rolling == !off && (off || t.WaitBegan != nil) {
+		return false, reactorUser, nil
+	} else {
+		t.Rolling = !off
+	}
+	if t.WaitBegan == nil && (master || !off) {
+		now := c.now // the transaction's clock; the first mark or the master's release starts the wait and nothing after it moves it
 		t.WaitBegan = &now
 	}
 	if err := setWindowTrigger(ctx, c.q, w.ID, t); err != nil {
-		return false, err
+		return false, "", err
 	}
-	return true, touch(ctx, c)
+	return true, reactorUser, touch(ctx, c)
 }
 
 // setWindowTrigger writes the trigger of an open window and nothing else.

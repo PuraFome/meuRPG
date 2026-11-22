@@ -1516,11 +1516,16 @@ type CombatServiceClient interface {
 	// a spell or a move; on a window of any other kind it is the player rolling a die. In no kind
 	// does it keep the window from being answered or closed.
 	//
-	// Only the reactor's player may call it: the master is refused (`permission_denied`),
-	// and so is a player for a window that is not theirs, the same answer for a real
+	// The reactor's player may call it, with or without `clear`.
+	// The master may call it, without `clear`, on an open READIED window of a player's character:
+	// it begins the wait if it has not begun, and changes nothing else (`rolling` stays the player's own).
+	// A wait that has begun is not touched: nothing is written and nobody is told.
+	// The master's `clear`, and his call on a window of any other kind or on a creature's READIED window,
+	// is refused (`permission_denied`).
+	// A player is refused for a window that is not theirs, the same answer for a real
 	// and an invented window_id (RN-10).
 	//
-	// The reactor and the master get `encounter_changed`.
+	// A call that changes something tells the master and the reactor's player with `encounter_changed`, and nobody else.
 	//
 	// Errors:
 	//   - `not_found`: the combat is not in the open session.
@@ -3796,11 +3801,16 @@ type CombatServiceHandler interface {
 	// a spell or a move; on a window of any other kind it is the player rolling a die. In no kind
 	// does it keep the window from being answered or closed.
 	//
-	// Only the reactor's player may call it: the master is refused (`permission_denied`),
-	// and so is a player for a window that is not theirs, the same answer for a real
+	// The reactor's player may call it, with or without `clear`.
+	// The master may call it, without `clear`, on an open READIED window of a player's character:
+	// it begins the wait if it has not begun, and changes nothing else (`rolling` stays the player's own).
+	// A wait that has begun is not touched: nothing is written and nobody is told.
+	// The master's `clear`, and his call on a window of any other kind or on a creature's READIED window,
+	// is refused (`permission_denied`).
+	// A player is refused for a window that is not theirs, the same answer for a real
 	// and an invented window_id (RN-10).
 	//
-	// The reactor and the master get `encounter_changed`.
+	// A call that changes something tells the master and the reactor's player with `encounter_changed`, and nobody else.
 	//
 	// Errors:
 	//   - `not_found`: the combat is not in the open session.
