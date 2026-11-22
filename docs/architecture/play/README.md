@@ -164,8 +164,8 @@ What a player may not see stays out of the response, never blank or zero.
 A question about the caller's role goes through the reader.
 The reader is `combatViewer` and its questions, built by `viewerOf`, `viewerFor` or `combatTx.viewer`.
 The scene's players are read through `sceneViewersOf` or `readsScene`.
-`TestRoleQuestionsGoThroughTheReader` holds it.
-`reader_exceptions.txt` lists the places that exist, and its queue only shrinks.
+The build runs `TestRoleQuestionsGoThroughTheReader`, which holds the rule.
+`reader_exceptions.txt` lists the places that still ask without the reader, and its queue only shrinks.
 
 ## Pages
 
