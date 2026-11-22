@@ -12,6 +12,7 @@ import {
   type StepKey,
   cantripOptions,
   expertiseOptions,
+  newSkillKeys,
   preparedMore,
   preparedOptions,
   proficiencyPick,
@@ -92,12 +93,13 @@ export class LevelUpLists {
   readonly instrumentAsked = computed(() =>
     proficiencyPick(this.options, LevelUpProficiencyKind.INSTRUMENT),
   );
-  /** The server's expertise list, kept to the skills trained once the picks are in: a row the draft would drop
-   * (a skill of the list that is not trained, or that was just unpicked) is not offered. */
+  /** The server's expertise list (every skill the sheet is proficient in), except a skill this level could newly
+   * give that the draft has not picked: that row appears once the skill is picked. */
   readonly expertiseItems = computed<PickItem[]>(() => {
-    const trained = new Set([...this.have.skills, ...this.picks.skills()]);
+    const unpicked = newSkillKeys(this.options, this.picks.subclassKey());
+    const picked = this.picks.skills();
     return expertiseOptions(this.catalog.skills, this.options, this.picks.subclassKey()).filter(
-      (i) => trained.has(i.key),
+      (i) => !unpicked.has(i.key) || picked.has(i.key),
     );
   });
 

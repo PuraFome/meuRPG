@@ -270,6 +270,14 @@ export function skillOptions(
     .sort((a, b) => COLLATOR.compare(a.name, b.name));
 }
 
+/** The skills this level could newly give (the rows `skillOptions` leaves open), read from the level's own lists:
+ * a later class's SKILL choice rows the character does not have, else the (sub)class's `skillsAllowed`. */
+export function newSkillKeys(o: LevelUpOptions, subclassKey = ''): ReadonlySet<string> {
+  const pick = o.proficiencyChoices.find((c) => c.kind === LevelUpProficiencyKind.SKILL);
+  if (pick) return new Set(pick.from.filter((f) => !f.alreadyHave).map((f) => f.key));
+  return allowedKeys(o, subclassKey, 'skillsAllowed');
+}
+
 /** New expertise: exactly the server's list for the level. */
 export function expertiseOptions(
   skills: readonly Skill[],

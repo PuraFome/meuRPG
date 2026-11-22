@@ -7767,13 +7767,13 @@ async function scanPickLists(browser: Browser, colorScheme: 'light' | 'dark', wi
     await open(m, npcSheet);
     await expect(m.getByRole('note', { name: 'Pendências de regra' }).getByText('Escolha fora das listas.')).toHaveCount(1);
     await expectScreenPasses(m, `Ficha de um NPC, a pendência de uma escolha fora das listas, lida pelo mestre ${where}`);
-    // The player reads none of it on the player's own stored sheet, whose picks do not fit: no sentence and no "Pendências de regra".
+    // The player reads none of it on the player's own stored sheet, whose picks do not fit: no sentence about the pick left outside the lists.
     await open(page, sheet);
     await expect(page.getByText('Ícaro').first()).toBeVisible();
     await expect(page.getByText('Escolha fora das listas.')).toHaveCount(0);
     await expect(page.getByText(fitSentence)).toHaveCount(0);
-    // The one note the player does read is the sheet's own open choice from the start (the saved sheet never picked the race trait's expertise);
-    // it says that and nothing about the pick left outside the lists.
+    // The one note on the page is the sheet's own open expertise choice from the start (the saved sheet never picked the race trait's expertise):
+    // it says that, and it names no pick left outside the lists.
     const ownNote = page.getByRole('note', { name: 'Pendências de regra' });
     await expect(ownNote).toHaveCount(1);
     await expect(ownNote).toContainText('Falta escolher 1 especialização.');

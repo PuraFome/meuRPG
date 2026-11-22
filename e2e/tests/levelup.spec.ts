@@ -329,6 +329,9 @@ test(
       const expertise = p.locator('#pick-expertise');
       const stealth = expertise.locator('label.row__main').filter({ hasText: 'Furtividade' });
       await expect(expertise.locator('label.row__main').filter({ hasText: 'Enganação' })).toBeVisible();
+      // The skills the background gives are on the list from the start, though the stored picks do not hold them.
+      await expect(expertise.locator('label.row__main').filter({ hasText: 'Atuação' })).toBeVisible();
+      await expect(expertise.locator('label.row__main').filter({ hasText: 'Acrobacia' })).toBeVisible();
       await expect(stealth).toHaveCount(0);
       await skills.locator('label.row__main').filter({ hasText: 'Furtividade' }).click();
       await expect(stealth).toHaveCount(1);
@@ -489,6 +492,7 @@ test(
       const skills = p.locator('#pick-skills');
       await expect(skills.getByRole('heading', { name: 'Perícia nova' })).toBeVisible();
       await showAllPicks(skills);
+      await expect(p.locator('#pick-expertise').locator('label.row__main').filter({ hasText: 'Atletismo' })).toBeVisible();
       // On the Ladino's list, and not on any other: the rows are the server's list and nothing else.
       // One skill asked: the rows are radios (a list of several picks has checkboxes).
       await expect(skills.getByRole('radio', { name: /^Furtividade/ })).toBeVisible();
