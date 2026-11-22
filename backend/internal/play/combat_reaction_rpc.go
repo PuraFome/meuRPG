@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"time"
 
 	"connectrpc.com/connect"
 
@@ -258,28 +259,50 @@ func (s *Service) markRolling(ctx context.Context, c *combatTx, m authz.Membersh
 	if err != nil {
 		return false, "", err
 	}
-	t := windowTriggerOf(w)
-	if master && (reaction.Kind(w.Kind) != reaction.Readied || reactor.UserID == nil || isCreature(reactor)) {
+	if master && !waitsForItsPlayer(w, reactor) {
 		return false, "", errWindowDenied()
 	}
 	reactorUser = conv.OrZero(reactor.UserID)
-	if master { // the master begins the wait and nothing else: the mark stays the player's
-		if t.WaitBegan != nil {
-			return false, reactorUser, nil
-		}
-	} else if t.Rolling == !off && (off || t.WaitBegan != nil) {
-		return false, reactorUser, nil
+	t := windowTriggerOf(w)
+	if master {
+		changed = beginWait(&t, c.now)
 	} else {
-		t.Rolling = !off
+		changed = setMark(&t, off, c.now)
 	}
-	if t.WaitBegan == nil && (master || !off) {
-		now := c.now // the transaction's clock; the first mark or the master's release starts the wait and nothing after it moves it
-		t.WaitBegan = &now
+	if !changed {
+		return false, reactorUser, nil
 	}
 	if err := setWindowTrigger(ctx, c.q, w.ID, t); err != nil {
 		return false, "", err
 	}
 	return true, reactorUser, touch(ctx, c)
+}
+
+// waitsForItsPlayer says the window is a READIED window of a player's character: the only one the master's call begins the wait of.
+func waitsForItsPlayer(w playdb.ReactionWindow, reactor playdb.Combatant) bool {
+	return reaction.Kind(w.Kind) == reaction.Readied && reactor.UserID != nil && !isCreature(reactor)
+}
+
+// beginWait is the master's call: it begins the wait, once, and leaves the mark the player's. It says whether t changed.
+func beginWait(t *windowTrigger, now time.Time) bool {
+	if t.WaitBegan != nil {
+		return false
+	}
+	t.WaitBegan = &now
+	return true
+}
+
+// setMark is the player's call: the mark on, or off with off; the first mark begins the wait and nothing after it moves it. It says
+// whether t changed.
+func setMark(t *windowTrigger, off bool, now time.Time) bool {
+	if t.Rolling == !off && (off || t.WaitBegan != nil) {
+		return false
+	}
+	t.Rolling = !off
+	if !off && t.WaitBegan == nil {
+		t.WaitBegan = &now
+	}
+	return true
 }
 
 // setWindowTrigger writes the trigger of an open window and nothing else.
