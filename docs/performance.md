@@ -87,7 +87,7 @@ The live source (through the database) for a campaign:
 | 1,000, 6,000 effects | 88 ms | 0.12 ms | 13.5 MB |
 
 A revision bump (any write or switch) makes the next read a miss; the old content stays until it is the least recently used.
-The cache keeps at most 8 contents: 8 times 13.5 MB is about 108 MB, 26% of the 400 MiB `GOMEMLIMIT`, and the worst case the budgets allow, 8 contents of 6,000 effects with 480 distinct formulas at the 16.2 MB read with the overlay dropped, is about 130 MB, 31%; the 24 MiB of stored data (`maxLiveBytes`) is not reached by 1,000 entries of 1 to 1.3 MiB and holds back a table of long texts.
+The cache keeps at most 8 contents: 8 times 13.5 MB is about 108 MB, 26% of the 400 MiB `GOMEMLIMIT`, and 8 contents of the heaviest table measured, 6,000 effects with 480 distinct formulas at the 16.2 MB read with the overlay dropped, come to about 130 MB, 31%; the 24 MiB of stored data (`maxLiveBytes`) is not reached by 1,000 entries of 1 to 1.3 MiB and holds back a table of long texts.
 
 What a person waits for, with that content cached:
 
