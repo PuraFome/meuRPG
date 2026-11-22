@@ -18,6 +18,7 @@ const DEFAULT_LEVEL = 3;
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     class: 'mr-panel mr-panel--fold',
+    '[class.mr-panel--fold-aligned]': 'aligned()',
     '[class.mr-panel--fold-row]': "appearance() === 'row'",
     '[class.mr-panel--fold-flush]': "appearance() === 'flush'",
     '[class.mr-fold--muted]': 'muted()',
@@ -35,12 +36,18 @@ const DEFAULT_LEVEL = 3;
           [attr.aria-controls]="id + '-body'"
           (click)="open.set(!open())"
         >
+          @if (chevron() === 'start') {
+            <mat-icon aria-hidden="true">{{ open() ? 'expand_less' : 'expand_more' }}</mat-icon>
+          }
           @if (icon()) {
             <mat-icon class="mr-fold__icon" aria-hidden="true">{{ icon() }}</mat-icon>
           }
+          <ng-content select="[foldMark]" />
           <span class="mr-fold__title">{{ title() }}</span>
           <span class="mr-fold__note"><ng-content select="[foldNote]" /></span>
-          <mat-icon aria-hidden="true">{{ open() ? 'expand_less' : 'expand_more' }}</mat-icon>
+          @if (chevron() === 'end') {
+            <mat-icon aria-hidden="true">{{ open() ? 'expand_less' : 'expand_more' }}</mat-icon>
+          }
         </button>
       } @else {
         <span class="mr-fold__title">{{ title() }}</span>
@@ -65,6 +72,10 @@ export class Fold {
   readonly appearance = input<'section' | 'row' | 'flush'>('section');
   /** The row's icon, at the left of its words. */
   readonly icon = input('');
+  /** Where the chevron sits: after the words and the note (the default), or before everything (a group row that reads like a list). */
+  readonly chevron = input<'start' | 'end'>('end');
+  /** The body's content takes the width of the rows above the fold, so a column of buttons lines up through it. */
+  readonly aligned = input(false);
   /** The words in the muted ink: a group that is spent ("Ação bônus · Usada"). */
   readonly muted = input(false);
   /** The panel is a landmark named by its title (a section the person looks for by name). */

@@ -10,7 +10,8 @@
    "id": "\u003ccfx:condition:charmed@bri\u003e",
    "secondsLeft": 1,
    "sourceKey": "condition:charmed",
-   "sourceNamePt": "Enfeitiçado"
+   "sourceNamePt": "Enfeitiçado",
+   "titlePt": "Enfeitiçado"
   },
   {
    "characterId": "\u003cchar:bri\u003e",
@@ -22,7 +23,8 @@
    "id": "\u003ccfx:condition:prone@bri\u003e",
    "secondsLeft": 3661,
    "sourceKey": "condition:prone",
-   "sourceNamePt": "Derrubado"
+   "sourceNamePt": "Derrubado",
+   "titlePt": "Derrubado"
   },
   {
    "characterId": "\u003cchar:bri\u003e",
@@ -35,7 +37,8 @@
    "tagsPt": [
     "Imune a Amedrontado",
     "PV temporários a cada turno seu"
-   ]
+   ],
+   "titlePt": "Heroísmo"
   },
   {
    "characterId": "\u003cchar:pens\u003e",
@@ -44,7 +47,9 @@
    "id": "\u003ccfx:spell:mage-armor@pens\u003e",
    "secondsLeft": 28800,
    "sourceKey": "spell:mage-armor",
-   "sourceNamePt": "Armadura Arcana"
+   "sourceNamePt": "Armadura Arcana",
+   "titlePt": "Armadura Arcana",
+   "totalDurationTextPt": "por 8 horas"
   }
  ]
 }

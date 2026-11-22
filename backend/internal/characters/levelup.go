@@ -424,6 +424,11 @@ func levelUpOptionsFor(m authz.Membership, r levelUpOptionsRead) *charactersv1.L
 	out := levelUpOptionsToProto(r.offer)
 	out.ClassChoices = classChoicesToProto(t.content, m, rules.LevelUpClasses(t.build, t.content))
 	out.Feats = featOptionsToProto(r.offer.Feats, t.rules.FeatsAllowed, isMaster(m))
+	view := viewContent(t.content, m)
+	out.SkillSources = skillSourcesToProto(view, t.build, r.offer.SkillSources)
+	for i, sub := range r.offer.Subclasses {
+		out.Subclasses[i].SkillSources = skillSourcesToProto(view, t.build, sub.SkillSources)
+	}
 	if !t.rules.PickSwapAllowed {
 		out.SwapGroups = nil // the table does not use the swap rule
 	}
@@ -436,6 +441,24 @@ func levelUpOptionsFor(m authz.Membership, r levelUpOptionsRead) *charactersv1.L
 	out.HitPointsRule = hitPointsRuleToProto(t.rules.HitPoints)
 	if r.rollFound {
 		out.KeptHitPointRoll, out.KeptHitPointRollClassKey = r.roll.Value, r.roll.ClassKey
+	}
+	return out
+}
+
+// skillSourcesToProto is the level's skill sources as the reader sees them: the names are the content's visible ones and each
+// option says whether the sheet has the skill as a proficiency, from any source (class, race, background or a pick).
+func skillSourcesToProto(view *rules.Content, b rules.Build, in []rules.LevelSkillSource) []*charactersv1.LevelUpSkillSource {
+	var out []*charactersv1.LevelUpSkillSource
+	have := map[string]bool{}
+	for _, s := range rules.Derive(b, view).Skills {
+		have[s.Key] = s.Proficiency >= rules.ProficiencyFull // half (Jack of All Trades) is not a proficiency
+	}
+	for _, src := range in {
+		p := &charactersv1.LevelUpSkillSource{OwnerKey: src.Owner, NamePt: view.NamePT(src.Owner), Count: i32(src.Count)}
+		for _, k := range src.From {
+			p.From = append(p.From, &charactersv1.LevelUpProficiencyOption{Key: k, NamePt: view.NamePT(k), AlreadyHave: have[k]})
+		}
+		out = append(out, p)
 	}
 	return out
 }
@@ -1090,6 +1113,7 @@ func levelUpOptionsToProto(o rules.LevelUpOffer) *charactersv1.LevelUpOptions {
 		SpellListClassKey: o.SpellList, MaxSpellLevel: i32(o.MaxSpellLevel),
 		Prepares: o.Prepares, PreparedMax: i32(o.PreparedMax), PreparedMaxAfter: i32(o.PreparedMaxAfter),
 		FeatureChoices: levelUpFeatureChoicesToProto(o.FeatureChoices), SkillChoices: i32(o.SkillChoices), ExpertiseChoices: i32(o.ExpertiseChoices),
+		SkillsAllowed: o.SkillsAllowed, ExpertiseAllowed: o.ExpertiseAllowed,
 		ProficiencyBonusBefore: i32(o.ProficiencyBonusBefore), ProficiencyBonusAfter: i32(o.ProficiencyBonusAfter),
 		SpellSlotsBefore: slotCountsToProto(o.SlotsBefore), SpellSlotsAfter: slotCountsToProto(o.SlotsAfter),
 		PactMagicBefore: pactMagicToProto(o.PactBefore), PactMagicAfter: pactMagicToProto(o.PactAfter),
@@ -1213,6 +1237,7 @@ func levelUpSubclassesToProto(in []rules.LevelUpSubclass) []*charactersv1.LevelU
 			Archived: sub.Archived, Off: sub.Off,
 			Spells: i32(sub.Spells), SpellsKind: spellsKindOf(sub.SpellsKind), SpellListClassKey: sub.SpellList, MaxSpellLevel: i32(sub.MaxSpellLevel),
 			Prepares: sub.Prepares, PreparedMaxAfter: i32(sub.PreparedMaxAfter),
+			SkillsAllowed: sub.SkillsAllowed, ExpertiseAllowed: sub.ExpertiseAllowed,
 		})
 	}
 	return out

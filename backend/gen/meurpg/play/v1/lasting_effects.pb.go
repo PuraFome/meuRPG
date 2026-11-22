@@ -2325,8 +2325,15 @@ type CharacterEffect struct {
 	// Only the master: whether the players read this effect, and to whom.
 	PlayerVisible bool           `protobuf:"varint,11,opt,name=player_visible,json=playerVisible,proto3" json:"player_visible,omitempty"`
 	Audience      EffectAudience `protobuf:"varint,12,opt,name=audience,proto3,enum=meurpg.play.v1.EffectAudience" json:"audience,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// The effect's own name in Portuguese ("Resistência a fogo"), set for every effect whatever its source. When the content gives the
+	// effect no name of its own it is the source's name, so a spell's effect is titled by the spell. Whoever reads source_name_pt reads it.
+	TitlePt string `protobuf:"bytes,13,opt,name=title_pt,json=titlePt,proto3" json:"title_pt,omitempty"`
+	// How long the effect was given in all, as the end of a sentence ("por 1 hora"); empty when it has no fixed length (until it is
+	// dismissed, or while the caster concentrates) and when the master chose its length, which the effect does not keep. A potion
+	// drunk and a spell cast by a character have the catalog's length. duration_text_pt keeps saying what is left.
+	TotalDurationTextPt string `protobuf:"bytes,14,opt,name=total_duration_text_pt,json=totalDurationTextPt,proto3" json:"total_duration_text_pt,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *CharacterEffect) Reset() {
@@ -2441,6 +2448,20 @@ func (x *CharacterEffect) GetAudience() EffectAudience {
 		return x.Audience
 	}
 	return EffectAudience_EFFECT_AUDIENCE_UNSPECIFIED
+}
+
+func (x *CharacterEffect) GetTitlePt() string {
+	if x != nil {
+		return x.TitlePt
+	}
+	return ""
+}
+
+func (x *CharacterEffect) GetTotalDurationTextPt() string {
+	if x != nil {
+		return x.TotalDurationTextPt
+	}
+	return ""
 }
 
 var File_meurpg_play_v1_lasting_effects_proto protoreflect.FileDescriptor
@@ -2636,7 +2657,7 @@ const file_meurpg_play_v1_lasting_effects_proto_rawDesc = "" +
 	"\treason_pt\x18\x05 \x01(\tR\breasonPt\"C\n" +
 	"\vEffectLabel\x12\x1b\n" +
 	"\teffect_id\x18\x01 \x01(\tR\beffectId\x12\x17\n" +
-	"\atext_pt\x18\x02 \x01(\tR\x06textPt\"\xe3\x03\n" +
+	"\atext_pt\x18\x02 \x01(\tR\x06textPt\"\xb3\x04\n" +
 	"\x0fCharacterEffect\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12!\n" +
 	"\fcharacter_id\x18\x02 \x01(\tR\vcharacterId\x12%\n" +
@@ -2651,7 +2672,9 @@ const file_meurpg_play_v1_lasting_effects_proto_rawDesc = "" +
 	"\x12condition_names_pt\x18\n" +
 	" \x03(\tR\x10conditionNamesPt\x12%\n" +
 	"\x0eplayer_visible\x18\v \x01(\bR\rplayerVisible\x12:\n" +
-	"\baudience\x18\f \x01(\x0e2\x1e.meurpg.play.v1.EffectAudienceR\baudienceB\x0f\n" +
+	"\baudience\x18\f \x01(\x0e2\x1e.meurpg.play.v1.EffectAudienceR\baudience\x12\x19\n" +
+	"\btitle_pt\x18\r \x01(\tR\atitlePt\x123\n" +
+	"\x16total_duration_text_pt\x18\x0e \x01(\tR\x13totalDurationTextPtB\x0f\n" +
 	"\r_seconds_left*\xd2\x01\n" +
 	"\x10EffectSourceKind\x12\"\n" +
 	"\x1eEFFECT_SOURCE_KIND_UNSPECIFIED\x10\x00\x12\x1c\n" +

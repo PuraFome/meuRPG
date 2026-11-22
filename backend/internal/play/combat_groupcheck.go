@@ -112,8 +112,11 @@ func groupReplay(ctx context.Context, q *playdb.Queries, sessionID string, call 
 	if err != nil {
 		return groupCheckEvent{}, false, fmt.Errorf("find the event of this idempotency key: %w", err)
 	}
-	if done.Kind != call.kind || done.ActorUserID == nil || *done.ActorUserID != call.m.UserID || hashDiffers(done.IdempotencyHash, call.hash) {
+	if done.Kind != call.kind || hashDiffers(done.IdempotencyHash, call.hash) {
 		return groupCheckEvent{}, false, errKeyReused()
+	}
+	if err := keyAuthorOnly(done, call.m.UserID); err != nil {
+		return groupCheckEvent{}, false, err
 	}
 	// A retry answers what the first call made: the check it names is in the event.
 	if err := json.Unmarshal(done.Payload, &ev); err != nil {

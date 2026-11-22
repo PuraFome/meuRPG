@@ -91,8 +91,10 @@ The package `play` itself is capped in size (`.github/play-cap`, [CI](../../ci.m
 | `play/playdb` | The sqlc queries (generated) |
 | `play/voice` | The voice generator and its fake |
 | `play/damagesteps` | What a damage comes to after resistance, vulnerability, immunity and flat reductions, the steps as the store keeps them (JSON), and the Portuguese text of each step with the hiding of an effect the master does not show |
+| `play/cutting` | Cutting Words over plain values: which bards are asked about an NPC's check and which may still cut it at the answer (the setting, the hit points, the sight, the name the bard may read), the order and the states of the asks as the rows spell them, the settled total and the checks the picker offers |
 | `play/advantage` | The roll modes as the database and the API spell them, the API's source kinds, and the sentence of each advantage source with the hiding of the ones a viewer may not know |
 | `play/consumable` | The dice and the healing of a potion, the resistance it gives, the text of a consumable with no effect and the payload and the answer of the use of a consumable |
+| `play/effecttext` | The words of the card of an effect on a character: its own title, the whole length it was given (told only when the catalog gave it) and the time it has left |
 | `play/infusion` | The session event kinds of an Artificer's infusions, their payload and the characters a set of changes names |
 | `play/steed` | The rules of Find Steed over plain values: the spells that reach the steed with the caster, the notes of such a cast, and the Intelligence floor read by Hideous Laughter |
 
@@ -158,6 +160,12 @@ What a player may not see stays out of the response, never blank or zero.
 - Armor class, an NPC's numbers, the DC of a check, a hidden combatant, a puzzle's answer and a clue's text never reach a player who may not have them.
 - The leak tests (`internal/leaktest`) read every response and stream event as every person against a campaign with one hidden thing of each kind; a new RPC must be classified or the test fails (see [Architecture](../../testing.md#leak-tests-rn-10)).
 - A test that proves something absent looks for a unique needle and has a positive control (see [Contributing](../../testing.md)).
+
+A question about the caller's role goes through the reader.
+The reader is `combatViewer` and its questions, built by `viewerOf`, `viewerFor` or `combatTx.viewer`.
+The scene's players are read through `sceneViewersOf` or `readsScene`.
+The build runs `TestRoleQuestionsGoThroughTheReader`, which holds the rule.
+`reader_exceptions.txt` lists the places that still ask without the reader, and its queue only shrinks.
 
 ## Pages
 

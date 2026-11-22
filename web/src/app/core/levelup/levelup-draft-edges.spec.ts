@@ -46,6 +46,8 @@ const lore = create(LevelUpSubclassSchema, {
   key: 'sub:lore',
   namePt: 'Colégio do Conhecimento',
   skillChoices: 1,
+  skillsAllowed: ['skill:stealth', 'skill:perception'],
+  expertiseAllowed: ['skill:arcana', 'skill:history', 'skill:stealth', 'skill:perception'],
   featureChoices: [
     create(LevelUpFeatureChoiceSchema, {
       feature: { key: 'feature:x', namePt: 'Estilo' },
@@ -61,6 +63,7 @@ function rich(): LevelUpDraft {
     wizardOptions({
       preparedMaxAfter: 3,
       expertiseChoices: 1,
+      expertiseAllowed: ['skill:arcana', 'skill:history', 'skill:stealth', 'skill:perception'],
       feats: featOptions(),
       subclassDue: true,
       subclasses: [lore],

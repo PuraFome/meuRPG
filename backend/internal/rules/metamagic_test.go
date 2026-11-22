@@ -79,6 +79,12 @@ func TestMetamagicEligibilityOfRealSpells(t *testing.T) {
 		{"spell:scorching-ray", 2, want{MetamagicTwinned: false}},
 		// Shield has a range of self.
 		{"spell:shield", 1, want{MetamagicDistant: false, MetamagicTwinned: false, MetamagicQuickened: false}},
+		// The spells the SRD aims at another creature keep their range, Self: neither Twinned nor Distant takes them.
+		{"spell:vampiric-touch", 3, want{MetamagicTwinned: false, MetamagicDistant: false}},
+		{"spell:produce-flame", 0, want{MetamagicTwinned: false, MetamagicDistant: false}},
+		{"spell:eyebite", 6, want{MetamagicTwinned: false, MetamagicDistant: false}},
+		// Acid Splash takes up to two creatures: Twinned is for a spell of one.
+		{"spell:acid-splash", 0, want{MetamagicTwinned: false}},
 		// Cure wounds is touch: Distant makes it 30 ft, and Twinned takes the level.
 		{"spell:cure-wounds", 1, want{MetamagicDistant: true, MetamagicTwinned: true, MetamagicEmpowered: false}},
 		// Mage armor lasts 8 hours.

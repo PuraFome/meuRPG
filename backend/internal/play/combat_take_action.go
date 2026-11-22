@@ -107,6 +107,8 @@ type takeActionOut struct {
 	vitals *playv1.CharacterVitals
 	// extra are the vitals of the ally a healing action went to.
 	extra []*playv1.CharacterVitals
+	// v is the viewer of the answer.
+	v combatViewer
 }
 
 // TakeAction implements playv1connect.CombatServiceHandler.
@@ -122,7 +124,7 @@ func (s *Service) TakeAction(
 	if err != nil {
 		return nil, err
 	}
-	out := &takeActionOut{}
+	out := &takeActionOut{v: viewerOf(heldViewer(ctx, m))}
 	res, err := s.write(ctx, combatWrite{m: m, key: call.key, hash: idem.Hash(req.Msg), kind: eventActionTaken, encounterID: call.encounterID}, func(c *combatTx) (any, error) {
 		return newTakeActionFlow(s, c, m, call, out).run(ctx)
 	})
@@ -138,6 +140,11 @@ func (s *Service) takeActionResponse(ctx context.Context, m authz.Membership, re
 	ev, err := resultEvent(res, out.made)
 	if err != nil {
 		return nil, s.dbError(ctx, "read the action", err)
+	}
+	if ev.Channel != nil { // a replay never ran the closure: the fog filter of the saves still holds
+		if out.v, err = s.viewerAfter(ctx, m, res, out.v); err != nil {
+			return nil, s.dbError(ctx, "work out what the player sees", err)
+		}
 	}
 	enc, err := s.finish(ctx, m, res, func(ctx context.Context, d *encounterData) {
 		s.publishEncounterChanged(ctx, m.CampaignID, d.enc)
@@ -163,8 +170,35 @@ func (s *Service) takeActionResponse(ctx context.Context, m authz.Membership, re
 	if ev.TempTried {
 		resp.TempHpGained = &ev.TempGained
 	}
-	resp.ChannelDivinity = channelProto(ev.Channel)
+	if ev.Channel != nil {
+		reads, err := s.channelReadBy(ctx, res, out.v, ev)
+		if err != nil {
+			return nil, err
+		}
+		resp.ChannelDivinity = channelProto(ev.Channel, reads)
+	}
 	return connect.NewResponse(resp), nil
+}
+
+// channelReadBy is the reader of the answer's Channel Divinity result: at the call, the one of the viewer's sight (atTheCall);
+// on a retry, as the line reads it (laterTurnReader).
+func (s *Service) channelReadBy(ctx context.Context, res combatResult, v combatViewer, ev actionEvent) (channelReader, error) {
+	cs, err := s.queries.ListCombatants(ctx, res.encounterID)
+	if err != nil {
+		return channelReader{}, s.dbError(ctx, "list the combatants", err)
+	}
+	byID := make(map[string]playdb.Combatant, len(cs))
+	for _, c := range cs {
+		byID[c.ID] = c
+	}
+	if res.repeated {
+		enc, err := s.queries.GetEncounterInSession(ctx, playdb.GetEncounterInSessionParams{GameSessionID: res.session.ID, ID: res.encounterID})
+		if err != nil {
+			return channelReader{}, s.dbError(ctx, "find the encounter", err)
+		}
+		return laterTurnReader(v, byID, ev.Channel, ev.CoverUsers, enc.MapID != nil), nil
+	}
+	return v.atTheCall(byID), nil
 }
 
 // takeActionFlow is one run of the action's transaction: what its steps read, and the next ones use.
@@ -233,7 +267,8 @@ func (f *takeActionFlow) locate(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	f.v = f.c.viewer(f.m, cs) // the fog: an NPC the player does not see is not found
+	f.v = f.c.viewer(f.m, cs)                      // the fog: an NPC the player does not see is not found
+	f.out.v = f.c.viewer(heldViewer(ctx, f.m), cs) // what the answer reads is the answerer's
 	if f.who, err = findCombatant(cs, f.call.combatantID, f.v); err != nil {
 		return err
 	}

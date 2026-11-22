@@ -203,7 +203,19 @@ O mestre também pode corrigir à mão, a qualquer momento da sessão, PV, PV te
   Um monge em 0 PV está caído e não pode usá-la.
   Só o dono e o mestre leem o número no registro.
   O "Desfazer última ação" do mestre devolve os pontos de vida, o uso e a ação.
-- **Canalizar Divindade do clérigo.** Preservar a Vida (Domínio da Vida) restaura pontos de vida às criaturas a até 9 m que o clérigo nomear (se o clérigo não nomear ninguém, o app divide os pontos entre o grupo, quem está mais ferido primeiro), até cinco vezes o nível do clérigo no total, cada uma até no máximo metade do seu máximo; não restaura um morto-vivo nem um constructo. Expulsar Mortos-Vivos faz cada morto-vivo a até 9 m que possa ver ou ouvir o clérigo fazer um teste de resistência de Sabedoria contra a CD do clérigo, e os que falham ficam expulsos por um minuto (o mestre vê cada teste e quem foi expulso, no registro e na resposta; a criatura expulsa leva o efeito "Expulso"). As duas gastam a ação e um uso.
+- **Canalizar Divindade do clérigo.**
+  Preservar a Vida (Domínio da Vida) restaura pontos de vida às criaturas a até 9 m que o clérigo nomear, até cinco vezes o nível do clérigo no total, cada uma até no máximo metade do seu máximo.
+  Não restaura um morto-vivo nem um constructo.
+  O jogador do clérigo só pode nomear as criaturas que ele lê; qualquer outra é recusada como fora do combate.
+  Se o clérigo não nomear ninguém, o app divide os pontos entre o lado do clérigo que quem pede lê, quem está mais ferido primeiro.
+  Expulsar Mortos-Vivos faz cada morto-vivo a até 9 m que possa ver ou ouvir o clérigo fazer um teste de resistência de Sabedoria contra a CD do clérigo, e os que falham ficam expulsos por um minuto.
+  A criatura expulsa leva o efeito "Expulso".
+  O mestre lê cada teste e quem foi expulso, no registro e na resposta.
+  O jogador do clérigo lê os testes dos mortos-vivos que pode ler.
+  Num mapa com névoa, depois, o jogador lê só os que viu na ação e que o mestre não tinha escondido nem então nem desde então.
+  O resultado de Preservar a Vida lista cada criatura restaurada que quem lê pode ler, com o valor pedido e o restaurado.
+  Os pontos de vida depois vão só a quem lê os números daquela criatura, o mestre e o jogador que a controla.
+  As duas gastam a ação e um uso.
 - **Magias e recursos.** Uma magia gasta o espaço (ou o espaço de pacto) quando é conjurada, e um reenvio não gasta duas vezes. Uma magia de cura cura na hora, até o máximo, e levanta quem estava em 0. Os usos de classe e raça (Retomar o Fôlego, Surto de Ação, Fúria...) também são contados. Um recurso sem limite mostra "ilimitado".
 - **O "Desfazer última ação" do mestre** desfaz a última ação; cada desfazer também fica registrado.
 
@@ -558,6 +570,9 @@ Um membro escondido nunca é nomeado: o turno espera a parte do mestre como "Fal
 - A chave e os usos por dia de um uso inato vão ao mestre e ao dono do conjurador, e os outros jogadores leem só que a conjuração foi inata ("conjuração inata").
 - Uma conjuração que toca um combatente escondido não deixa linha para o jogador. O aviso de reação não carrega nem o atacante nem o total do acerto. O jogador não pode mirar em um alvo escondido.
 - **Magias que leem PV** (Sono, Leque Cromático, Palavra de Poder Atordoar, Palavra de Poder Matar, Estabilizar, Cura Completa) são resolvidas com os PV reais, e o jogador ainda vê só palavras. O conjurador vê o próprio total (`5d8 (2, 4, 1, 5, 3) = 15`) e quem foi afetado ("adormeceu", "não foi afetado"), nunca os PV de um alvo nem o motivo. O mestre vê o total, os PV de cada criatura, o que sobrou e o motivo. Os outros jogadores veem só quem foi afetado e a condição. Os alvos são listados na ordem do conjurador, não na ordem do total, que revelaria quem tem menos PV. Palavra de Poder Matar num personagem de jogador o leva a 0 com três falhas, e o mestre confirma a morte (RN-03).
+- **Uma cura que depende do dano causado** (Toque Vampírico) é metade do dano que o golpe causou, depois das resistências do alvo, onde quer que o dano caia: os PV temporários, os PV e o que passa de 0 contam.
+  A cura é uma linha do registro, escrita em todo golpe que acerta, com 0 quando nada cura.
+  Os números dela vão só ao mestre e ao dono de quem conjura; os outros jogadores leem a linha sem números, e, quando o alvo está escondido, nenhum jogador lê a linha, nem o dono de quem conjura.
 
 **Cenas de RP** (MR-015).
 A CD de uma ação pertence ao mestre. Um jogador nunca recebe a rolagem de outro jogador.
@@ -697,6 +712,10 @@ Uma magia preparada mantém a concentração até ser liberada ou perdida (RN-31
 Uma magia, ou o mestre, que encerra a concentração de uma magia de invocação (Conjurar Animais) dispensa as criaturas daquela conjuração.
 O "desfazer" do mestre devolve a concentração e as mesmas criaturas.
 Uma magia que força um teste de resistência mais tarde (Esfera Flamejante, Nevasca, Terremoto) rola os testes e o dano quando é conjurada; o mestre chama os testes seguintes. Espíritos Guardiões, Raio Lunar, Névoa Mortal, Teia, Área Escorregadia, Constrição, Névoa Fétida, Crescer Espinhos e Muralha de Fogo são a exceção: o app mantém a área delas e chama os testes seguintes sozinho (RN-37).
+O Toque Vampírico ataca uma criatura ao alcance quando é conjurado, e cura quem conjura em metade do dano causado.
+O registro mostra a cura, e o desfazer do mestre a devolve.
+O resultado da conjuração diz o que o mestre aplica nos turnos seguintes, como os ataques da Lâmina Flamejante e do Toque Vampírico, feitos como uma ação, a mordida do Cão Fiel e o novo alvo do Ataque Visual.
+O app não os repete.
 
 As condições são públicas ou da classe do dono.
 As públicas são legíveis por todos.
@@ -913,6 +932,14 @@ Num mapa com grade, quem conjura não lista quem a magia atinge: coloca a área,
 - **Paredes.** Um local fica fora da área quando nenhuma linha reta livre vai do ponto de origem até ele. Só a cobertura total bloqueia (uma parede, uma porta fechada; caixotes, uma coluna ou outras criaturas, não). Uma magia que "se espalha pelos cantos" (Bola de Fogo e as outras esferas) alcança a parte da forma ligada à origem, mas nunca entre duas paredes que se tocam num canto. Se um jogador põe o ponto atrás de uma parede, ele cai do lado de cá. O ponto do mestre fica onde está, e o mestre não é limitado pelo alcance.
 - **Quem é atingido.** Todos lá dentro: aliados, quem conjura quando está dentro, criaturas escondidas. O dano é uma só rolagem para todos. A cobertura é medida a partir do ponto de origem e soma +2 (metade) ou +5 (três quartos) apenas a um teste de resistência de Destreza. Uma criatura alcançada só por um canto não ganha cobertura automática; o mestre a marca à mão.
 - **Uma área vazia** ainda é conjurada e gasta o espaço de magia e a ação. O app pergunta antes: "Ninguém que você vê está na área".
+- **Várias criaturas com limite de proximidade.** Algumas magias pedem várias criaturas que fiquem perto umas das outras.
+  O app nunca recusa uma conjuração legal; onde não consegue conferir a forma exata, confere só o que toda conjuração legal cumpre.
+  Espirro Ácido pede duas criaturas dentro do alcance e a até 1,5 m uma da outra.
+  Corrente de Relâmpagos pede uma primeira criatura dentro do alcance e outras a até 9 m da primeira; o alcance de quem conjura não vale para as outras.
+  Curar Ferimentos em Massa pede até seis criaturas, cada uma a até 27 m de quem conjura (os 18 m de alcance mais os 9 m de raio da esfera) e a até 18 m de todas as outras.
+  Num mapa, as escolhas de um jogador que passam desses limites são recusadas.
+  Sem mapa o app não confere.
+  O mestre não é limitado pelo número de criaturas nem pela proximidade.
 - **Sem grade** (combate sem mapa, RN-25) nada disso existe: quem conjura lista quem é atingido, e o mestre julga quem está dentro e a cobertura.
 
 ### Magias de teletransporte na grade
@@ -993,6 +1020,12 @@ O mestre julga alcance, distância e alcance de magia, e as listas de alvos traz
 O jogador gasta o movimento por número ("Gastar movimento"), nunca mais do que o turno tem, e lê o que resta ("Restam 6 m"); o mestre gasta por qualquer um.
 O ataque de oportunidade é uma oferta do mestre, que vê quem saiu do alcance de quem e pode retirá-la ou seguir sem esperar.
 A cobertura é a que o mestre marca; a cobertura total deixa o alvo fora de alcance.
+**Os alvos de uma magia** seguem o número de criaturas do SRD também nesse modo.
+Similaridade e Muralha de Gelo pedem até 10 criaturas, e o mestre aplica as demais.
+Lentidão pede até 6 e Respirar na Água até 10.
+Uma magia sem criatura para escolher (um ponto, um objeto, um lugar) não pede alvo.
+Escudo de Fogo e Porta Dimensional pedem só quem conjura.
+O mestre não é limitado pelo número.
 Mover, pular, pôr no mapa, a prévia de alcance, armadilhas, névoa, portas, os lugares das criaturas invocadas e os olhos do familiar não existem nesse modo, e pedem um mapa.
 Tudo o mais (iniciativa, turnos, ações, ataques, magias, dano, reações, condições, testes contra a morte, destaques, registro, desfazer, XP) é igual.
 Veja a ADR-0017, a [Arquitetura](../../architecture/play/theatre.md) e o [Design](../../design/README.md).
@@ -1169,7 +1202,7 @@ Não existe "Pular": toda janela é respondida com "Usar" ou "Deixar passar", ou
 | Defletir Projéteis (monge 3) | Reduz um acerto de arma à distância em 1d10 + Destreza + nível de monge; em 0 o monge pega o projétil e, por 1 ki, o arremessa de volta. |
 | Repreensão Infernal | 2d10 de fogo (+1d10 por nível do espaço acima do 1º), teste de resistência de Destreza para metade; o Legado Infernal do tiefling a conjura uma vez por descanso longo. O teste do agressor é do mestre e não pode ser passado. |
 | Contramágica | Uma magia do nível do espaço ou menor falha; uma maior pede um teste de habilidade de conjuração contra 10 + o nível da magia. O espaço é gasto. O aviso a um jogador nunca nomeia a magia nem o nível dela. |
-| Palavras de Interrupção (bardo do Conhecimento 3) | Gasta uma Inspiração de Bardo e tira o dado de uma jogada de ataque (de arma ou de magia), teste de habilidade ou jogada de dano de uma criatura do outro lado que o bardo vê a até 18 m. No combate, os testes que ela pergunta são a rolagem de uma disputa (agarrar, empurrar, escapar), a resposta a uma disputa e um Esconder-se; a rolagem espera o bardo antes de ser feita. Um teste fora do combate não abre janela. Uma criatura que não ouve o bardo ou é imune a ser enfeitiçada não abre janela, nem uma que o jogador do bardo não vê. A configuração da ficha "Perguntar: todos / só em ataques (padrão) / nunca" escolhe o que ela pergunta: os testes só em "todos". |
+| Palavras de Interrupção (bardo do Conhecimento 3) | Gasta uma Inspiração de Bardo e tira o dado de uma jogada de ataque (de arma ou de magia), teste de habilidade ou jogada de dano de uma criatura do outro lado que o bardo vê a até 18 m. No combate, os testes que ela pergunta são a rolagem de uma disputa (agarrar, empurrar, escapar), a resposta a uma disputa e um Esconder-se; a rolagem espera o bardo antes de ser feita. Um teste que uma criatura do lado do mestre faz fora do combate também é perguntado: o mestre o rola ("Teste de um NPC") e cada bardo que pode cortá-lo é perguntado na vez, um de cada vez, só na tela (nenhuma reação é gasta, só o uso da Inspiração de Bardo); o mestre pode "Continuar sem esperar". As Palavras de Interrupção pedem que o bardo veja a criatura e que a criatura o ouça: fora do combate, sem token de ambos no mapa, o mestre diz isso na caixa "Os bardos veem a criatura e ela os ouve". Uma criatura que não ouve o bardo ou é imune a ser enfeitiçada não abre janela, nem uma que o mestre escondeu no mapa (o token) ou que o jogador do bardo não vê no mapa a até 18 m; um bardo cujo jogador a cena aberta não alcança não é perguntado, nem pelo mapa nem pela caixa. Uma criatura que o mestre escondeu só no palco abre janela quando a caixa está marcada, e a pergunta a chama de "uma criatura". O que se julga e quando: o alcance e a visão quando o teste é rolado; a característica, a configuração, os pontos de vida e os usos de novo quando o bardo responde; se a criatura está escondida a cada vez que a pergunta é lida (um token que o mestre esconde depois da rolagem fecha a pergunta como "Continuar sem esperar", e uma criatura escondida no palco aparece como "uma criatura"), e um bardo cujo personagem saiu do grupo (reserva, morto, apagado) ou cujo jogador está fora da cena aberta deixa a pergunta passar e o próximo bardo é perguntado. Quando ninguém é perguntado, o mestre lê o motivo. A configuração da ficha "Perguntar: todos / só em ataques (padrão) / nunca" escolhe o que ela pergunta: os testes só em "todos". |
 | Proteção (Estilo de Luta) | Uma criatura que o reator vê ataca alguém do lado do reator a até 1,5 m dele (não o próprio reator): a jogada de ataque tem desvantagem. Só enquanto o reator empunha um escudo, tem a reação livre e vê o atacante. Um combate sem mapa não a oferece. |
 | Queda Suave | Até cinco criaturas em queda a 18 m não sofrem dano de queda. |
 | Queda Lenta (monge 4) | O monge em queda tira 5 vezes o nível dele do próprio dano de queda. |
@@ -1290,6 +1323,29 @@ As escolhas cobrem as seções do SRD 5.1 Fighting Style, Draconic Ancestry e Br
 - **O "isso ou aquilo" de um antecedente.** Um antecedente da mesa pode oferecer até 4 grupos, cada um uma escolha de algumas entre poucas perícias, ferramentas ou peças de equipamento (SRD 5.1, "Backgrounds": um antecedente dá duas perícias, ferramentas, idiomas e equipamento; um grupo deixa parte disso para o jogador). Um grupo pede pelo menos uma escolha e sempre menos que suas opções, que são no mínimo 2 e no máximo 12, nenhuma repetida. Um grupo de perícias oferece perícias do SRD que o antecedente ainda não dá, e o antecedente continua dando 2 perícias no total: as que ele nomeia e as escolhas dos seus grupos de perícias juntas. Um grupo de ferramentas oferece ferramentas do SRD, entre elas o conjunto de dados e o baralho de cartas do SRD, e conjuntos de jogo nomeados que o mestre digita (de 1 a 40 caracteres, nenhum repetido no grupo); um conjunto nomeado aparece na ficha como "Conjunto de jogo: Trilha". Um grupo de equipamento oferece peças de 1 a 80 caracteres cada, e as escolhas entram no equipamento do antecedente da ficha. As escolhas são feitas em "Escolhas" e avisam enquanto abertas, como as de ferramentas. Uma escolha pertence ao seu grupo pelo que o grupo é (o tipo, as escolhas e as opções, em qualquer ordem): se o mestre reordena os grupos, as escolhas ficam; se edita um grupo, as escolhas antigas dele não contam, a ficha ainda é salva, e numa ficha travada o grupo vira uma escolha pendente ("Completar escolhas pendentes").
 - **Um traço com opções.** Um traço de raça ou sub-raça que o mestre cadastra pode oferecer uma escolha única de uma opção. Ela é pedida no passo "Escolhas" como as outras, guardada na ficha e recusada quando não é uma das opções. Um traço que a sub-raça substitui não pede nada.
 - **Ferramentas por tipo e as opções de outra característica.** Uma escolha de ferramentas da mesa pode oferecer todas as proficiências dos tipos que o mestre marca (arma, ferramenta, outra) em vez de uma lista; o grupo é o das proficiências do catálogo desses tipos, lido quando a ficha é lida, e nunca tem uma entrada que a mesa desligou, ocultou ou arquivou. Uma escolha de ferramentas que lista as próprias opções também pode citar proficiências dos tipos arma e outra. O SRD não nomeia nenhum conjunto de jogo, então um conjunto é escolhido pela proficiência, como qualquer outra. Uma escolha de características da mesa pode, em vez disso, oferecer as opções de outra característica que tenha opções (a do SRD ou a de outra entrada da mesa): as escolhas que oferecem as mesmas opções dividem um só grupo. O grupo de um jogador nunca tem uma opção de uma entrada que o mestre desligou, ocultou ou arquivou, a menos que a ficha tenha essa entrada; a escolha de um jogador por uma opção fora do grupo é recusada como uma chave que não existe. O mestre pode escolher uma opção que está só desligada, não uma arquivada. Uma escolha que a ficha já tem é mantida. Uma escolha está completa com tantas opções quantas um jogador pode escolher hoje, contando as que a ficha já tem, então nunca pede mais do que o grupo lista. Uma característica que oferece as opções de outra, uma sem opções e uma escolha que também cita lista, conjunto ou filtro são recusadas quando o mestre salva. Uma característica que oferece as opções de outra não pode também permitir trocas (os níveis de troca do item sobre trocas, acima): o salvamento do mestre é recusado, e o mestre tira as trocas ou dá à característica opções próprias.
+- **Uma escolha sob uma entrada que o mestre fechou.** A escolha nova de um jogador guardada sob a chave de uma entrada que o mestre desligou, ocultou ou arquivou, e que a ficha nem tem nem ganha, é recusada como uma chave que não existe. Uma escolha que a ficha já tem continua.
+- **De onde vêm perícias, especializações e ferramentas.** As fontes das escolhas são as das entradas que a ficha tem ou ganha depois da mudança, para qualquer leitor e em todo caminho: criação, salvamento, as duas prévias, completar escolhas e subida de nível.
+  Cada escolha de perícia, especialização ou ferramenta escolhe da sua própria lista, e as escolhas da ficha são combinadas com as listas de onde podem vir.
+  Uma escolha que só cabe quando outra passa para uma lista diferente é aceita.
+  Uma lista que cita uma perícia que o personagem já tem pelo antecedente pede a quantidade inteira quando as outras perícias dela bastam.
+  Quando são poucas, ela aceita qualquer outra perícia para cada uma que lhe falta (SRD 5.1).
+  O que o mestre fechou muda o que um jogador pode escolher, nunca o que uma entrada que a ficha tem ou ganha dá.
+  Uma característica de classe da mesa que o mestre arquivou dá a sua lista a um personagem da classe, e a lista é mostrada.
+  Uma desligada não é fonte.
+  Uma escolha nova que nenhuma lista acomoda é recusada para um jogador, qualquer que seja a ordem das escolhas na ficha, e a frase nomeia só essa escolha.
+  Nas perícias, o que a prévia e a subida de nível oferecem é o que o salvamento aceita: o mesmo conjunto; num nível que acrescenta uma classe por multiclasse é a lista da linha da classe, sem as perícias que a ficha já tem, e as escolhas dos níveis anteriores ficam onde estão.
+  Nas especializações, estar na lista oferecida é necessário e a proficiência decide.
+  Uma perícia que a ficha guardada tinha pelo antecedente é uma escolha nova quando o antecedente muda.
+  O mestre nunca é recusado por uma escolha que nenhuma lista acomoda: a ficha é salva, e só o mestre lê o aviso sobre isso.
+  Uma ficha guardada cujas escolhas não cabem salva, sobe de nível e joga, e as escolhas dela contam e dão o que dão.
+  O mestre é recusado numa escolha de ferramenta que não é ferramenta quando a ficha tem o dono dela ou a mesa fechou o dono; uma escolha sob um dono que a ficha não tem e que a mesa mantém aberto é salva.
+  Uma escolha de ferramenta sob um dono arquivado que a ficha não tem nem ganha é respondida, para um jogador e para o mestre, como um dono que não existe.
+  Sob um dono desligado ela é salva para o mestre.
+  A prévia das escolhas responde as listas do rascunho como ele está: depois de trocar a classe, as escolhas que as listas da nova classe não acomodam mais ficam marcadas, podem ser desmarcadas, e só o salvar as recusa, no próprio campo.
+  A prévia de um rascunho ou de uma ficha trancada recusa uma chave que não é ferramenta, uma escolha de uma entrada que o mestre fechou ou que a visão do jogador deixa de fora, e uma escolha sob um dono que um jogador não pode ler; ela não recusa uma escolha que nenhuma lista acomoda.
+  A frase de uma escolha recusada fica no campo dela até mudar uma escolha, a classe, a raça, a sub-raça ou o antecedente.
+  A subida de nível pede tantas perícias novas quanto a ficha depois do nível pode escolher, contando as que já tem, e recusa uma perícia nova de um jogador para a qual nenhuma lista da ficha depois do nível tem vaga.
+  As fontes de perícia dela listam as fontes que o nível acrescenta à ficha depois do nível.
 - **Criação.** A ficha de um jogador com uma escolha em aberto é recusada ("Criar personagem" explica o que falta), e o editor tem uma etapa "Escolhas". Os NPCs do mestre e as fichas da mesa não são obrigados a isso.
 - **Opções que ainda não podem ser tomadas** (uma invocação que pede nível 5, ou uma magia que a ficha não tem) são listadas, pontilhadas, com o motivo. Duas opções que dão a mesma coisa (a mesma resistência duas vezes) são recusadas.
 - **Uma ficha travada** cuja classe ganhou uma escolha continua jogável. O dono e o mestre leem "N escolhas pendentes", e o jogador completa só as escolhas que faltam, sem mudar mais nada na ficha (RN-01). O mestre também lê "N escolhas em aberto" na página da campanha; um jogador nunca vê as de outro.

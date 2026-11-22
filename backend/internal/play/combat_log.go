@@ -19,6 +19,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/play/consumable"
 	"github.com/PuraFome/meuRPG/backend/internal/play/damagesteps"
+	"github.com/PuraFome/meuRPG/backend/internal/play/effecttext"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
@@ -74,6 +75,8 @@ type logEntry struct {
 	returned, returnBlocked bool
 	// actorUser is who made the first event of the line (the master's hand when he acted for a player).
 	actorUser *string
+	// noMap says the combat has no map.
+	noMap bool
 	// masterOnly is a line only the master gets, whatever the combatants.
 	masterOnly bool
 	// gear is the swap of a GEAR_SWAPPED line: its payload is its own type (equip_event.go).
@@ -219,7 +222,7 @@ func (s *Service) logEntries(ctx context.Context, m authz.Membership, snap *logS
 	entries := buildLog(snap.events)
 	rolls := newLogRolls(snap.reasons, snap.requests, s.namesFor(ctx, m.CampaignID))
 	for _, e := range entries {
-		e.rolls = rolls
+		e.rolls, e.noMap = rolls, snap.enc.MapID == nil
 	}
 	return entries
 }
@@ -1058,6 +1061,10 @@ func (e *logEntry) view(ctx context.Context, v combatViewer, byID map[string]pla
 	if e.kind == playv1.CombatLogKind_COMBAT_LOG_KIND_REACTION_WINDOW {
 		return e.reactionEntry(ctx, v, byID, names)
 	}
+	e, ok := e.forViewer(v, byID)
+	if !ok {
+		return nil, false
+	}
 	actor, target := e.parties(byID)
 	visible, seen := e.visibility(v, byID, actor, target)
 	if !e.viewerGets(v, actor, target, visible, seen, byID) {
@@ -1338,7 +1345,13 @@ func (e *logEntry) fillItemUse(_ *logViewing, out *playv1.CombatLogEntry) bool {
 // dice, the roll and the hit points regained are the master's and the owners' of the user and of the receiver (RN-10). A line whose
 // user or receiver is hidden never reaches another player (visibleToTable), so the receiver is never named past the fog.
 func (e *logEntry) fillConsumableUse(c *logViewing, out *playv1.CombatLogEntry) bool {
-	out.ConsumableUse = consumable.Line(e.consumable, c.names.contentName(c.ctx, e.consumable.DamageType), c.target.Label, c.v.master || c.v.owns(c.actor) || c.v.owns(c.target))
+	var kind charactersv1.ConsumableKind
+	var length string
+	if content := c.names.rulesContent(c.ctx); content != nil {
+		consumed, ok := content.ConsumableOf(e.consumable.Item)
+		kind, length = consumable.KindOf(consumed, ok), effecttext.TotalDuration(content, e.consumable.Item, "item", false, true)
+	}
+	out.ConsumableUse = consumable.Line(e.consumable, kind, c.names.contentName(c.ctx, e.consumable.DamageType), length, c.target.Label, c.v.master || c.v.owns(c.actor) || c.v.owns(c.target))
 	return true
 }
 
@@ -1506,9 +1519,44 @@ func (e *logEntry) fillAction(c *logViewing, out *playv1.CombatLogEntry) bool {
 		}
 	}
 	if e.ev.Channel != nil && (c.v.master || c.v.owns(c.actor)) { // Canalizar Divindade: the numbers are the master's and its player's
-		out.ChannelDivinity = channelProto(e.ev.Channel)
+		out.ChannelDivinity = channelProto(e.ev.Channel, e.readsEntry(c))
 	}
 	return true
+}
+
+// readsEntry is the reader of the entries of the line's Channel Divinity result.
+func (e *logEntry) readsEntry(c *logViewing) channelReader {
+	return laterTurnReader(c.v, c.byID, e.ev.Channel, e.ev.CoverUsers, !e.noMap)
+}
+
+// laterTurnReader is the reader of a Channel Divinity result read after the action (the line and a retried answer), for the
+// saves and the heals alike. The master reads every entry. A player reads the entries of the creatures that are found, that
+// the master had not hidden at the action and has not hidden since, and: a character or a creature of the party always;
+// an NPC with a record of who saw it (fogSeen) when the player saw it; one with no record when the event says the fog was
+// off, and, for an event with no mark at all, on a combat with no map. The hit points as numbers follow the viewer
+// (readsHitPointsOf).
+func laterTurnReader(v combatViewer, byID map[string]playdb.Combatant, ev *channelEvent, coverUsers []string, hasMap bool) channelReader {
+	return channelReader{
+		numbers: v.numbersOf(byID),
+		reads: func(id string, hiddenAtAction bool, seen fogSeen) bool {
+			if v.master {
+				return true
+			}
+			target, found := byID[id]
+			if !found || hiddenAtAction || target.Hidden {
+				return false
+			}
+			switch {
+			case target.Kind != kindNPC:
+				return true
+			case seen.Fogged:
+				return !seen.unseenBy(coverUsers, v.userID)
+			case ev.UnderFog != nil:
+				return !*ev.UnderFog
+			}
+			return !hasMap
+		},
+	}
 }
 
 func (e *logEntry) fillAnswer(c *logViewing, out *playv1.CombatLogEntry) bool {
@@ -1906,6 +1954,20 @@ type keyNames struct {
 	byCharacter map[string]link.Sheet
 	traps       map[string]string       // the names of the traps that fired, by point
 	content     func(key string) string // the names of the content, from the campaign's content
+	rules       *rules.Content          // the campaign's rules, read once when a line needs them
+	rulesFailed bool                    // the read failed: the lines of this call do not try again
+}
+
+// rulesContent is the campaign's rules, nil when they cannot be read (the line then says what it can).
+func (n *keyNames) rulesContent(ctx context.Context) *rules.Content {
+	if n.rules == nil && !n.rulesFailed {
+		var err error
+		if n.rules, err = n.s.roster.RulesContent(ctx, nil, n.campaignID); err != nil {
+			n.rulesFailed = true
+			n.s.logger.WarnContext(ctx, "play: cannot read the rules for the log", "error", err)
+		}
+	}
+	return n.rules
 }
 
 // of returns the name of the key on the combatant's sheet, or "" when the

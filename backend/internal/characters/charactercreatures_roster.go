@@ -704,24 +704,38 @@ func (s *Service) CreatureSave(ctx context.Context, tx pgx.Tx, campaignID, creat
 // check from its stat block, with the passive score of the skills that have one. Known is
 // false for a key that is not a skill or an ability the stat block gives.
 func (s *Service) CreatureCheck(ctx context.Context, tx pgx.Tx, campaignID, creatureID, monsterKey, key string) (link.SceneOption, error) {
-	content, err := s.contentFor(ctx, tx, campaignID)
-	if err != nil {
-		return link.SceneOption{}, wrap("read rules content", err)
-	}
-	stat, err := s.statBlockOf(ctx, tx, content, campaignID, creatureID, monsterKey)
+	opts, err := s.CreatureChecks(ctx, tx, campaignID, creatureID, monsterKey, []string{key})
 	if err != nil {
 		return link.SceneOption{}, err
 	}
+	return opts[0], nil
+}
+
+// CreatureChecks implements play.CombatRoster: CreatureCheck for each of the keys, in order, reading the rules content and the
+// creature's stat block once for all of them.
+func (s *Service) CreatureChecks(ctx context.Context, tx pgx.Tx, campaignID, creatureID, monsterKey string, keys []string) ([]link.SceneOption, error) {
+	out := make([]link.SceneOption, len(keys))
+	content, err := s.contentFor(ctx, tx, campaignID)
+	if err != nil {
+		return nil, wrap("read rules content", err)
+	}
+	stat, err := s.statBlockOf(ctx, tx, content, campaignID, creatureID, monsterKey)
+	if err != nil {
+		return nil, err
+	}
 	d, ok := monsterDerivedOf(content, monsterKey, stat)
 	if !ok {
-		return link.SceneOption{}, nil
+		return out, nil
 	}
-	opts, err := rules.SceneOptions(d, []rules.SceneAction{{Key: key}})
-	if err != nil {
-		return link.SceneOption{}, nil //nolint:nilerr // a skill the scene rules do not list for the creature has no number: the caller reads the zero option as unknown
+	for i, key := range keys {
+		opts, err := rules.SceneOptions(d, []rules.SceneAction{{Key: key}})
+		if err != nil {
+			continue // a skill the scene rules do not list for the creature has no number: the caller reads the zero option as unknown
+		}
+		o := opts[0]
+		out[i] = link.SceneOption{Known: true, CheckName: o.NamePT, Bonus: o.Bonus, Passive: o.Passive, HasPassive: o.HasPassive}
 	}
-	o := opts[0]
-	return link.SceneOption{Known: true, CheckName: o.NamePT, Bonus: o.Bonus, Passive: o.Passive, HasPassive: o.HasPassive}, nil
+	return out, nil
 }
 
 // DamageModifiers implements play.CombatRoster: the damage types the target

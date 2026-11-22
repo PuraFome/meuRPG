@@ -44,6 +44,9 @@ let nextId = 0;
       @if (name()) {
         <span class="row__head" [class.row__head--one]="oneLine()" data-chip-row [attr.data-one-line]="oneLine() ? '' : null">
           <span class="row__name" data-chip-ref>{{ name() }}</span>
+          @if (times() > 1) {
+            <span class="row__times"><span aria-hidden="true">×{{ times() }}</span><span class="mr-visually-hidden">, {{ times() }} unidades</span></span>
+          }
           @if (ammo(); as a) {
             <span class="row__ammo" [class.row__ammo--warning]="a.level === 'warning'" [class.row__ammo--empty]="a.level === 'empty'" data-testid="ammo-tag" data-wrap-group>
               @if (a.level === 'warning') {
@@ -125,6 +128,8 @@ let nextId = 0;
 })
 export class ActionRow {
   readonly name = input.required<string>();
+  /** How many identical units the row stands for ("×2" beside the name, read as "2 unidades"); 1 for a row of one. */
+  readonly times = input(1);
   /** The small tags under the name: the circle, and "Reação" or "Ação bônus" for a spell of another economy. */
   readonly tags = input<readonly string[]>([]);
   /** The spell's name, when the row has the "?": it names the button ("Detalhes de Sono"). */

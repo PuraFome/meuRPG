@@ -268,8 +268,11 @@ func (s *Service) searchRetried(ctx context.Context, q *playdb.Queries, session 
 	done, err := q.GetSessionEventByIdempotencyKey(ctx, playdb.GetSessionEventByIdempotencyKeyParams{GameSessionID: session.ID, IdempotencyKey: &ts.key})
 	switch {
 	case err == nil:
-		if done.Kind != eventTrapSearched || done.ActorUserID == nil || *done.ActorUserID != ts.m.UserID || hashDiffers(done.IdempotencyHash, ts.hash) {
+		if done.Kind != eventTrapSearched || hashDiffers(done.IdempotencyHash, ts.hash) {
 			return true, errKeyReused()
+		}
+		if err := keyAuthorOnly(done, ts.m.UserID); err != nil {
+			return true, err
 		}
 		ts.repeated = true
 		return true, json.Unmarshal(done.Payload, &ts.ev)

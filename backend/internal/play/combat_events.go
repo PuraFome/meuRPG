@@ -189,8 +189,7 @@ type castHit struct {
 	// Fogged says the target is an NPC that a map with the fog of war made visible to some
 	// players only, and SeenMask (bits of the event's CoverUsers) says to which, as they stood
 	// when the spell hit: the players' line lists the target only to them.
-	Fogged   bool   `json:"fogged,omitempty"`
-	SeenMask uint64 `json:"seen_mask,omitempty"`
+	fogSeen
 
 	// A spell that lasts (RN-22): whether its effect took hold of the target
 	// (lastingApplied) or the spell did nothing to it (lastingNoEffect), and why, which
@@ -236,13 +235,23 @@ type castHit struct {
 	DeathRound   *int32 `json:"death_round,omitempty"`
 }
 
-// unseenBy says the target was an NPC in the fog that this player did not see when it was hit.
-func (h castHit) unseenBy(users []string, userID string) bool {
-	if !h.Fogged {
+// fogSeen is the record of who saw an NPC a line names (a hit of a spell, a target of an effect, a save or a heal of
+// Channel Divinity) when the line was written on a map with the fog of war: Fogged says the NPC was in the fog, and
+// SeenMask, bits of the event's CoverUsers, says to which players it was in sight. combatTx.markSeen sets the bits;
+// combatTx.markNPC (the entries of a Channel Divinity action and the targets of an effect) and the stamp of a placed cast
+// (its hits) set Fogged. unseenBy reads it.
+type fogSeen struct {
+	Fogged   bool   `json:"fogged,omitempty"`
+	SeenMask uint64 `json:"seen_mask,omitempty"`
+}
+
+// unseenBy says the target was an NPC in the fog that this player did not see when the line was written.
+func (s fogSeen) unseenBy(users []string, userID string) bool {
+	if !s.Fogged {
 		return false
 	}
 	j := slices.Index(users, userID)
-	return j < 0 || h.SeenMask&(1<<j) == 0
+	return j < 0 || s.SeenMask&(1<<j) == 0
 }
 
 // What a spell that reads hit points did to a target, as a cast event stores it.
@@ -300,6 +309,9 @@ type actionEvent struct {
 	NowHidden bool `json:"hidden,omitempty"`
 	// Pending is the pending damage the attack opened and its damage follows.
 	Pending string `json:"pending_id,omitempty"`
+	// DrainOf is the pending damage a drain spell's heal came from.
+	// The undo of that damage takes the heal back with it.
+	DrainOf string `json:"drain_of,omitempty"`
 	// Key is the attack or the action.
 	Key string `json:"key,omitempty"`
 

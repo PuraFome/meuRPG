@@ -1,3 +1,5 @@
+import { effect, untracked } from '@angular/core';
+
 import { type DicePreference, XpMode } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import {
   CharacterBlockedReason,
@@ -9,6 +11,7 @@ import { LevelUpDraft } from '../../core/levelup/levelup-draft';
 import {
   cannotLevelUpMessage,
   describeLevelUpFailure,
+  refusesPickList,
   type LevelUpFailure,
 } from '../../core/levelup/levelup-errors';
 import type { SheetKeys } from '../../core/levelup/levelup-flow';
@@ -108,6 +111,40 @@ export class LevelUpReader {
       preference,
       (key, name) => this.view.describeSpell(key, name),
     );
+  }
+
+  /**
+   * The server refused a skill or an expertise the screen thought complete: the lists on screen are out of date. The options
+   * are then read again, once for each refusal, so the picker shows the current lists; the refusal's own line stays.
+   * Call it in an injection context.
+   */
+  watchListRefusals(): void {
+    let done = false;
+    effect(() => {
+      const s = this.view.session();
+      const p = s?.preview.state();
+      if (!s || !p || p.loading) {
+        return;
+      }
+      if (!p.refusal || !refusesPickList(p.refusal.reason)) {
+        done = false;
+      } else if (!done && s.draft.missingIn('picks').length === 0) {
+        done = true;
+        untracked(() => void this.reread(true));
+      }
+    });
+  }
+
+  /** Shows a refusal; when it names a list, the options are read again and the line is shown once more (the read clears it). */
+  async showRefusal(failure: LevelUpFailure): Promise<void> {
+    this.view.show(failure);
+    if (
+      failure.kind === 'refusal' &&
+      refusesPickList(failure.reason) &&
+      (await this.reread(true))
+    ) {
+      this.view.show(failure);
+    }
   }
 
   async load(campaignId: string, characterId: string): Promise<void> {

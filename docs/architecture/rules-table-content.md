@@ -74,6 +74,7 @@ A table feature has effects of these types only; anything else is `forbidden_eff
 | `extra_damage` | See [Extra damage](#extra-damage). May carry `while`. |
 | `power_attack` | See [Power attack](#power-attack). |
 | `choice` | Picks among SRD options (a key the SRD has) or, for kind `feature`, among the option list of a table feature. Kinds: `skill`, `expertise`, `cantrip`, `spell`, `language`, `tool`, `feature`, `feat`, and, in a feat only, `ability` and `damage_type` (see [Feat options and picks](#feat-options-and-picks)). A `feature` choice never asks for more than the options it lists. A `tool` choice may carry `filter.proficiency_kinds` (`weapon`, `tool`, `other`, each once, at most 3) in place of `from`, and offers every catalog proficiency of those kinds, computed at read time; its `from` may name proficiencies of those kinds too, and a write, an import or a package that names a key of another kind there is refused (at `.from`, `bad_value`; a package reports an invalid entry), while an entry stored with one loads: the pool leaves the key out and the master reads an issue on the entry (`loaded_with_issues`). A `feature` choice may carry `from_feature`, the key of a class or subclass feature with options (never an option, itself, the invocations or a feature that offers another's options), and offers that feature's options; at read time the pool of that choice leaves out the options of an entry the table switched off (for a player; the master reads them) or archived (for everyone) unless the sheet holds the entry, and asks for no more than it lists; a sheet that already holds such a pick keeps it, and a new pick naming one is refused as an unknown key. `filter` and `from_feature` are refused together with `from`, `set` and each other. |
+| `choice` (skill, expertise or tool) `from` | A choice's `from` is enforced per effect: each effect is a source with its own count and list, and an empty list allows any key. See [Sources of skill, expertise and tool picks](#sources-of-skill-expertise-and-tool-picks). |
 | `ability_increase` | Feats only. `count` different abilities from `from`, `value` 1 or 2; at most one per feat. The sheet keeps the result in `ExtraAbilityBonuses`. |
 | `ambush` | See [Ambush](#ambush). |
 | `reroll` | See [Reroll](#reroll). |
@@ -83,6 +84,32 @@ A table feature has effects of these types only; anything else is `forbidden_eff
 | `spell_modifier` | See [Spell modifier](#spell-modifier). |
 | `superiority_die` | See [Maneuvers](#maneuvers). |
 | Spells in a `note` | A `note` with `spells` (like the SRD's Infernal Legacy): the character knows the cantrip, or a spell once per day when the same feature has a `resource`. The spell is on the sheet's list and does not count in the class numbers. Only a `note` carries `spells`. The structured way is [`granted_spell`](#granted-spells). |
+
+**Sources of skill, expertise and tool picks.**
+The sources of a sheet are those of the entries it holds or gets after the change, for every reader and on every path.
+The paths are creation, save, both previews, complete-choices and level up.
+The sheet's picks are matched to the sources, so a pick is placed in any source that allows it.
+What the master closed changes what a player may take, never what a held or granted entry gives.
+A class feature of the table that the master archived gives its list to a character of the class.
+A switched-off class feature is no source.
+A stored sheet whose picks do not fit saves, levels up and plays.
+Its picks count and give what they give, and the master alone reads the `pick_fit` issue.
+A player's new pick no source has room for is refused at its field.
+The sentence says whether no list has it or the lists that have it are full.
+The master's new pick is saved with the `pick_fit` issue, except a tool pick that is no tool under an owner the sheet has or the table closed: it is refused as an unknown key.
+A tool pick under an archived owner the sheet neither holds nor gets is answered, for a player and for the master, as an owner that does not exist.
+Under a switched-off owner the master's pick is saved.
+The first new pick the placement leaves out is named, the held picks being placed first.
+A skill the stored sheet had from its background is a new pick when the background changes.
+A source whose list holds a skill the sheet has from its background takes any other skill for it only when the list has too few other skills left for its count (SRD 5.1).
+The level ask derives the sheet with its lost feats and options settled, as the sheet's own derivation does.
+`PreviewChoices` refuses no pick that no list places: a draft whose class changed under its picks gets the lists, and the save refuses the picks.
+Its `skills_allowed` and `expertise_allowed` are the union of the lists of the sources.
+`LevelUpOptions` and `LevelUpSubclass` give the same lists of the sheet after the level, narrowed in one step (`LevelPickKeys`).
+The narrowing drops the skills the sheet has from race or background, the keys it holds and the lists its held picks use up.
+It lists expertise only on skills the sheet is proficient in or the level gives.
+A level up asks for what the sheet after the level may pick less what it held or was allowed before, one number for the offer, the subclass part and the check.
+`skill_sources` of the level up lists the sources the level adds picks to, with the count it adds.
 
 Never allowed: `handler` (not even one that exists, since a handler reads columns of an SRD class a table class lacks), `spellcasting` (the engine writes casting from the class), `replaces`, `beast_spells`, `song_of_rest`.
 A text-only feature always holds.
@@ -96,6 +123,7 @@ The choice engine deals one pool of picks to choices that share options, in leve
 A race or subrace trait may carry options too, but there they are a one-time choice of one, not a choice of features.
 Each option is a trait with a server-made key (`trait:<stem>--<option name>@mesa`) that no race lists: it is gained only when picked.
 The pick is stored with the sheet's choices and checked against the options; one outside them is reported as not offered.
+A player's new pick stored under the key of an entry the master switched off, hid or archived, which the sheet does not hold, is refused as a key that does not exist; a pick the sheet holds stays.
 A trait with options takes no `choice` of kind `feature` (refused at `.effects[i].choice`, `bad_value`).
 The character picks one option, never more.
 A feature may offer another feature's options with `from_feature` instead: it carries no options of its own, the option keys stay the source feature's, and the content records which features ask for each option (`askedBy`, apart from `offeredBy`: an asker is no owner, so the option stays hidden with the entry it belongs to), and read time leaves out of the asking choice's pool, and of no other pool, the options of an entry the table keeps out. A pick the sheet already holds stays; a new pick of such an option is refused by the server, where the stored sheet is known, with the answer of a key the content does not have. A pool left with fewer options asks for no more than it lists.

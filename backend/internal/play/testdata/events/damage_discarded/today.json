@@ -10,6 +10,7 @@
   "target_id": "x",
   "hidden": true,
   "pending_id": "x",
+  "drain_of": "x",
   "key": "x",
   "d20": 1,
   "modifier": 1,
@@ -49,6 +50,8 @@
     "hidden": true
   },
   "target_ac": 1,
+  "counted_as": 1,
+  "counted_by": "x",
   "floor": 1,
   "floor_by": "x",
   "reliable_talent": true,
@@ -93,7 +96,10 @@
           "failures": 1,
           "rolled": true,
           "dead": true
-        }
+        },
+        "hidden_at_action": true,
+        "fogged": true,
+        "seen_mask": 1
       }
     ],
     "turns": [
@@ -103,7 +109,12 @@
         "d20": 1,
         "modifier": 1,
         "total": 1,
-        "turned": true
+        "turned": true,
+        "hidden_at_action": true,
+        "fogged": true,
+        "seen_mask": 1,
+        "counted_as": 1,
+        "counted_by": "x"
       }
     ],
     "dc": 1,
@@ -112,7 +123,8 @@
     ],
     "targets": [
       "x"
-    ]
+    ],
+    "under_fog": true
   },
   "relentless": true,
   "before": {
@@ -187,6 +199,8 @@
         "total": 1,
         "dc": 1,
         "saved": true,
+        "counted_as": 1,
+        "counted_by": "x",
         "d20_b": 1,
         "counted": 1,
         "roll_mode": "x",
@@ -213,6 +227,8 @@
         "resisted": true,
         "resisted_left": 1
       },
+      "counted_as": 1,
+      "counted_by": "x",
       "pushed": {
         "target_id": "x",
         "from": {
@@ -459,6 +475,13 @@
     "rounds": 1,
     "effects": [
       "x"
+    ],
+    "seen": [
+      {
+        "target_id": "x",
+        "fogged": true,
+        "seen_mask": 1
+      }
     ],
     "owner_only": true,
     "unused": true
@@ -764,6 +787,8 @@
             "total": 1,
             "dc": 1,
             "saved": true,
+            "counted_as": 1,
+            "counted_by": "x",
             "d20_b": 1,
             "counted": 1,
             "roll_mode": "x",
@@ -800,9 +825,37 @@
         ],
         "damages": [
           {
-            "pending_id": "",
-            "target_id": "",
-            "amount": 0,
+            "pending_id": "x",
+            "target_id": "x",
+            "amount": 1,
+            "shown": 1,
+            "half": true,
+            "applied": true,
+            "before": {
+              "hp": 1,
+              "temp": 1,
+              "defeated": true,
+              "shape": {
+                "beast": "x",
+                "hp": 1
+              }
+            },
+            "after": {
+              "hp": 1,
+              "temp": 1,
+              "defeated": true,
+              "shape": {
+                "beast": "x",
+                "hp": 1
+              }
+            },
+            "death_before": {
+              "successes": 1,
+              "failures": 1,
+              "rolled": true,
+              "dead": true
+            },
+            "concentration_dc": 1,
             "damage_type": "x",
             "dice_count": 1,
             "dice_sides": 1,
@@ -994,6 +1047,8 @@
     "d20": 1,
     "total": 1,
     "dc": 1,
+    "counted_as": 1,
+    "counted_by": "x",
     "pushed": {
       "target_id": "x",
       "from": {

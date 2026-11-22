@@ -11,6 +11,7 @@ import {
   RestThatEnds,
 } from '../../../gen/meurpg/play/v1/casting_pb';
 import { circleLabel } from '../combat/combat-options';
+import { spellNotes } from '../combat/spell-notes';
 import { joinDots } from '../format/text';
 import { metersText } from '../units';
 
@@ -325,6 +326,7 @@ export function resultSentences(cast: OutsideCast): string[] {
   if (cast.targets.length === 0) {
     out.push(RECORDED);
   }
+  out.push(...spellNotes(cast.spellKey));
   return out;
 }
 

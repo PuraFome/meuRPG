@@ -603,24 +603,25 @@ func TestSpellAndSubclassCorrectionsAreClosed(t *testing.T) {
 		return `{"spell_corrections":[{"spell":"spell:ray",` + body + `,"source":"SRD"}]}`
 	}
 	for name, doc := range map[string]string{
-		"unknown spell":               `{"spell_corrections":[{"spell":"spell:nope","attack_type":"ranged","source":"SRD"}]}`,
-		"nothing to correct":          spell(`"attack_type":""`),
-		"attack that is not a type":   spell(`"attack_type":"thrown"`),
-		"save that is not an ability": spell(`"save_ability":"luck","save_success":"half"`),
-		"save without an outcome":     spell(`"save_ability":"dex"`),
-		"outcome without a save":      spell(`"save_success":"half"`),
-		"damage of a condition":       spell(`"damage":[{"damage_type":"condition:deafened","at_slot_level":{"2":"2d6"}}]`),
-		"damage without slot levels":  spell(`"damage":[{"damage_type":"damage-type:fire","at_slot_level":{}}]`),
-		"slot below the spell":        spell(`"damage":[{"damage_type":"damage-type:fire","at_slot_level":{"1":"2d6"}}]`),
-		"slot above the ninth":        spell(`"damage":[{"damage_type":"damage-type:fire","at_slot_level":{"10":"2d6"}}]`),
-		"dice that are not dice":      spell(`"damage":[{"damage_type":"damage-type:fire","at_slot_level":{"2":"lots"}}]`),
-		"without a source":            `{"spell_corrections":[{"spell":"spell:ray","attack_type":"ranged"}]}`,
-		"corrected twice":             `{"spell_corrections":[{"spell":"spell:ray","attack_type":"ranged","source":"SRD"},{"spell":"spell:ray","attack_type":"melee","source":"SRD"}]}`,
-		"unknown subclass":            `{"subclass_corrections":[{"subclass":"subclass:nope","add_spells":[{"spell":"spell:ray","class_level":7}],"source":"SRD"}]}`,
-		"subclass spell unknown":      `{"subclass_corrections":[{"subclass":"subclass:life","add_spells":[{"spell":"spell:nope","class_level":7}],"source":"SRD"}]}`,
-		"subclass level out":          `{"subclass_corrections":[{"subclass":"subclass:life","add_spells":[{"spell":"spell:ward","class_level":21}],"source":"SRD"}]}`,
-		"subclass spell already has":  `{"subclass_corrections":[{"subclass":"subclass:life","add_spells":[{"spell":"spell:ray","class_level":3}],"source":"SRD"}]}`,
-		"subclass without a source":   `{"subclass_corrections":[{"subclass":"subclass:life","add_spells":[{"spell":"spell:ward","class_level":7}]}]}`,
+		"unknown spell":                     `{"spell_corrections":[{"spell":"spell:nope","attack_type":"ranged","source":"SRD"}]}`,
+		"nothing to correct":                spell(`"attack_type":""`),
+		"a range, which no correction sets": spell(`"range":"Touch","attack_type":"melee"`),
+		"attack that is not a type":         spell(`"attack_type":"thrown"`),
+		"save that is not an ability":       spell(`"save_ability":"luck","save_success":"half"`),
+		"save without an outcome":           spell(`"save_ability":"dex"`),
+		"outcome without a save":            spell(`"save_success":"half"`),
+		"damage of a condition":             spell(`"damage":[{"damage_type":"condition:deafened","at_slot_level":{"2":"2d6"}}]`),
+		"damage without slot levels":        spell(`"damage":[{"damage_type":"damage-type:fire","at_slot_level":{}}]`),
+		"slot below the spell":              spell(`"damage":[{"damage_type":"damage-type:fire","at_slot_level":{"1":"2d6"}}]`),
+		"slot above the ninth":              spell(`"damage":[{"damage_type":"damage-type:fire","at_slot_level":{"10":"2d6"}}]`),
+		"dice that are not dice":            spell(`"damage":[{"damage_type":"damage-type:fire","at_slot_level":{"2":"lots"}}]`),
+		"without a source":                  `{"spell_corrections":[{"spell":"spell:ray","attack_type":"ranged"}]}`,
+		"corrected twice":                   `{"spell_corrections":[{"spell":"spell:ray","attack_type":"ranged","source":"SRD"},{"spell":"spell:ray","attack_type":"melee","source":"SRD"}]}`,
+		"unknown subclass":                  `{"subclass_corrections":[{"subclass":"subclass:nope","add_spells":[{"spell":"spell:ray","class_level":7}],"source":"SRD"}]}`,
+		"subclass spell unknown":            `{"subclass_corrections":[{"subclass":"subclass:life","add_spells":[{"spell":"spell:nope","class_level":7}],"source":"SRD"}]}`,
+		"subclass level out":                `{"subclass_corrections":[{"subclass":"subclass:life","add_spells":[{"spell":"spell:ward","class_level":21}],"source":"SRD"}]}`,
+		"subclass spell already has":        `{"subclass_corrections":[{"subclass":"subclass:life","add_spells":[{"spell":"spell:ray","class_level":3}],"source":"SRD"}]}`,
+		"subclass without a source":         `{"subclass_corrections":[{"subclass":"subclass:life","add_spells":[{"spell":"spell:ward","class_level":7}]}]}`,
 	} {
 		if err := newContent().applyCorrections(fstest.MapFS{"effects/corrections.json": {Data: []byte(doc)}}); err == nil {
 			t.Errorf("%s: the loader accepted it", name)
@@ -635,6 +636,16 @@ func TestSpellAndSubclassCorrectionsAreClosed(t *testing.T) {
 	}
 	if s := c.spells["spell:ray"]; s.AttackType != "ranged" || s.SaveAbility != "dex" || s.SaveSuccess != "half" || len(s.Damage) != 1 || s.Damage[0].AtSlotLevel["3"] != "3d6" {
 		t.Errorf("corrected spell = %+v, want attack, save and damage written", s)
+	}
+	// A none clears the attack a spell has.
+	cleared := newContent()
+	cleared.spells["spell:ray"].AttackType = "melee"
+	if err := cleared.applyCorrections(fstest.MapFS{"effects/corrections.json": {Data: []byte(`{"spell_corrections":[
+		{"spell":"spell:ray","attack_type":"none","source":"SRD"}]}`)}}); err != nil {
+		t.Fatalf("attack none: %v", err)
+	}
+	if got := cleared.spells["spell:ray"].AttackType; got != "" {
+		t.Errorf("attack after none = %q, want none", got)
 	}
 	if got := c.subclasses["subclass:life"].Spells; len(got) != 2 || got[1].Spell != "spell:ward" || got[1].ClassLevel != 7 {
 		t.Errorf("corrected subclass spells = %+v, want the new spell at level 7 after the old one", got)

@@ -843,6 +843,67 @@ service PlayService {
   // nothing. Same errors as ApplyTrapDamage.
   rpc DiscardTrapDamage(DiscardTrapDamageRequest) returns (DiscardTrapDamageResponse);
 
+  // RollNpcCheck ("Teste de um NPC") is the master's ability check for a creature of the master's side outside a combat: an NPC's Enganação,
+  // Persuasão or Intimidação against the party in a scene with no map (SRD 5.1, College of Lore, Cutting Words). The
+  // creature is an NPC of the campaign or an SRD creature; the d20 follows the master's choice of rolling in the app or
+  // typing a real die, whatever the table's dice setting says for the players.
+  //
+  // The bards of the party that may cut it are asked, one at a time, in the order of the party, through the held rolls
+  // (HeldRollKind NPC_CHECK: ListHeldRolls, HeldRollsChanged, AnswerHeldRoll with a CuttingWordsAnswer). A bard is asked
+  // when its character is alive, above 0 hit points, in the campaign's party, a College of Lore bard with Cutting Words,
+  // its player is among the viewers of the open scene, its setting "Perguntar" is "todos" (checks are asked only then),
+  // it has a Bardic Inspiration use left, the creature is not immune to being charmed, and it sees the creature within 60
+  // feet: a creature whose token the master hid on the map is seen by no bard, whatever `bard_sees` says (the bard needs
+  // no token for that, and the map no grid); otherwise, with a token of the creature and one of the bard on the grid of
+  // the session's map, by the distance and, on a fog map,
+  // by what the bard's player sees; with no such pair, `bard_sees` says it for every bard. The server has no source for a creature
+  // that cannot hear the bard outside a combat, so the master's `bard_sees` (the box "Os bardos veem a criatura e ela os
+  // ouve": Cutting Words needs the bard to see the creature and the creature to hear the bard) is what it relies on. Nobody
+  // is asked when no bard qualifies, and the check settles at once. Only the use of Bardic Inspiration is spent.
+  //
+  // The check is a `npc_check_held` event while it waits, and a `npc_check_resolved` one when it settles (the master's own
+  // history: no player ever reads either). A retry with the same idempotency_key answers with the first read.
+  //
+  // Errors:
+  //   - `invalid_argument`: neither roll_in_app nor d20_face is set, roll_in_app is false, d20_face is not 1 to 20, the
+  //     key is not a UUID, neither an NPC nor a creature is named, or the check is not an ability or a skill;
+  //   - `not_found`: the NPC is not a living NPC of the campaign (a player's character is not one), the creature is not
+  //     an SRD creature, or the caller is not a member;
+  //   - `permission_denied`: the caller is a player;
+  //   - `failed_precondition`: no open session (GameSessionBlocked, NO_OPEN_SESSION); or ResourceBlocked COMBAT_OPEN
+  //     while a combat is running: the creature's checks are the combat's then.
+  rpc RollNpcCheck(RollNpcCheckRequest) returns (RollNpcCheckResponse);
+
+  // SkipNpcCheckAsks is the master's "Continuar sem esperar": it closes every question of a held NPC check that still
+  // waits for a bard and settles the check with the dice already taken off. Master only. The same call again, with the
+  // same key or another, answers with the settled check and changes nothing; a bard's answer that comes after it is
+  // refused with `not_found`, as for a question that is gone.
+  //
+  // Errors: `invalid_argument` for a key that is not a UUID; `not_found` for a check that is gone or is not the campaign's;
+  // `permission_denied` for a player; `failed_precondition` with no open session.
+  rpc SkipNpcCheckAsks(SkipNpcCheckAsksRequest) returns (SkipNpcCheckAsksResponse);
+
+  // ListNpcCheckPicker lists the creatures the master can pick for RollNpcCheck: the NPCs on the stage of the open scene
+  // (the hidden ones marked), the NPCs with a token on the session's current map, and the SRD creature named by
+  // `monster_key`, each with its checks and the bonus the master reads. Master only.
+  //
+  // Errors: `not_found` for a creature that is not an SRD one or a caller who is not a member; `permission_denied` for a
+  // player.
+  rpc ListNpcCheckPicker(ListNpcCheckPickerRequest) returns (ListNpcCheckPickerResponse);
+
+  // GetNpcCheck is the latest NPC check of the open session, as the master reads it: the check that waits for the bards (not
+  // settled yet, the asks as they stand) or the one that settled last, with the creature, the check, the d20 with its bonus
+  // and `modifier_known`, what each bard did (cut with the die, let it pass, or was not waited for) and the total. It answers
+  // until the next check is rolled or the session ends, so the master reads the settled card again after reopening the table
+  // (GetGroupCheck's way of answering the latest group check of the open session). `check` is unset when the session has had no
+  // NPC check. Master only: no player reads a check of the master's side (RN-10), and nothing of it is sent to one. IDEMPOTENT.
+  //
+  // Errors: `permission_denied` for a player; `not_found` for a caller who is not a member; `failed_precondition` with no open
+  // session (GameSessionBlocked, NO_OPEN_SESSION).
+  rpc GetNpcCheck(GetNpcCheckRequest) returns (GetNpcCheckResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+
   // GrantSceneAttempt gives one character one more attempt at one action of
   // the open scene: "Dar mais uma tentativa" (MR-015, question 55). Only the
   // campaign's master may call it, and only while a scene is open. The

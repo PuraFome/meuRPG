@@ -14,7 +14,7 @@ import type { Timestamp } from "@bufbuild/protobuf/wkt";
 import { file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
 import type { SceneClue, SceneImage } from "../../maps/v1/maps_pb";
 import { file_meurpg_maps_v1_maps } from "../../maps/v1/maps_pb";
-import type { BonusDie, DiceRoll, HeldRollOffer, LuckyOffer, OutsideInspirationOffer } from "./combat_pb";
+import type { BonusDie, DiceRoll, HeldRollOffer, LuckyOffer, NpcCheckAsk, OutsideInspirationOffer } from "./combat_pb";
 import { file_meurpg_play_v1_combat } from "./combat_pb";
 import type { AdvantageSource, RollMode } from "./combat_rolls_pb";
 import { file_meurpg_play_v1_combat_rolls } from "./combat_rolls_pb";
@@ -24,7 +24,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file meurpg/play/v1/scene.proto.
  */
 export const file_meurpg_play_v1_scene: GenFile = /*@__PURE__*/
-  fileDesc("ChptZXVycGcvcGxheS92MS9zY2VuZS5wcm90bxIObWV1cnBnLnBsYXkudjEiQgoMU2NlbmVCbG9ja2VkEjIKBnJlYXNvbhgBIAEoDjIiLm1ldXJwZy5wbGF5LnYxLlNjZW5lQmxvY2tlZFJlYXNvbiLPAwoNT3BlblNjZW5lSW5mbxIQCghwb2ludF9pZBgBIAEoCRIMCgRuYW1lGAIgASgJEhMKC2Rlc2NyaXB0aW9uGAMgASgJEjAKB2FjdGlvbnMYBCADKAsyHy5tZXVycGcucGxheS52MS5TY2VuZUFjdGlvblZpZXcSKAoFcm9sbHMYBSADKAsyGS5tZXVycGcucGxheS52MS5TY2VuZVJvbGwSLQoJb3BlbmVkX2F0GAYgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBINCgVob29rcxgHIAEoCRIoCgVjbHVlcxgIIAMoCzIZLm1ldXJwZy5tYXBzLnYxLlNjZW5lQ2x1ZRInCgVzdGFnZRgKIAMoCzIYLm1ldXJwZy5wbGF5LnYxLlN0YWdlTnBjEg8KB3Nob3dfZGMYCyABKAgSKgoGaW1hZ2VzGAwgAygLMhoubWV1cnBnLm1hcHMudjEuU2NlbmVJbWFnZRIzCghhdWRpZW5jZRgNIAEoCzIhLm1ldXJwZy5wbGF5LnYxLlNjZW5lQXVkaWVuY2VWaWV3EhgKEHBsYXllcnNfbWF5X2pvaW4YDiABKAgSEAoIam9pbmFibGUYDyABKAgiMwoNU2NlbmVBdWRpZW5jZRIQCghldmVyeW9uZRgBIAEoCBIQCgh1c2VyX2lkcxgCIAMoCSJkCgtTY2VuZVBsYXllchIPCgd1c2VyX2lkGAEgASgJEhQKDGNoYXJhY3Rlcl9pZBgCIAEoCRIWCg5jaGFyYWN0ZXJfbmFtZRgDIAEoCRIWCg5qb2luZWRfYnlfc2VsZhgEIAEoCCKAAQoRU2NlbmVBdWRpZW5jZVZpZXcSEAoIZXZlcnlvbmUYASABKAgSKwoGaW5zaWRlGAIgAygLMhsubWV1cnBnLnBsYXkudjEuU2NlbmVQbGF5ZXISLAoHb3V0c2lkZRgDIAMoCzIbLm1ldXJwZy5wbGF5LnYxLlNjZW5lUGxheWVyInIKCFN0YWdlTnBjEgoKAmlkGAEgASgJEgwKBG5hbWUYAiABKAkSFAoMcG9ydHJhaXRfdXJsGAMgASgJEhAKCHNwZWFraW5nGAQgASgIEhQKDGNoYXJhY3Rlcl9pZBgFIAEoCRIOCgZoaWRkZW4YBiABKAgiTgoRUHV0T25TdGFnZVJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSFAoMY2hhcmFjdGVyX2lkGAIgASgJEg4KBmhpZGRlbhgDIAEoCCI9ChJQdXRPblN0YWdlUmVzcG9uc2USJwoFc3RhZ2UYASADKAsyGC5tZXVycGcucGxheS52MS5TdGFnZU5wYyJAChNUYWtlT2ZmU3RhZ2VSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhQKDGNoYXJhY3Rlcl9pZBgCIAEoCSI/ChRUYWtlT2ZmU3RhZ2VSZXNwb25zZRInCgVzdGFnZRgBIAMoCzIYLm1ldXJwZy5wbGF5LnYxLlN0YWdlTnBjIlUKGFNldFN0YWdlTnBjSGlkZGVuUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxjaGFyYWN0ZXJfaWQYAiABKAkSDgoGaGlkZGVuGAMgASgIIkQKGVNldFN0YWdlTnBjSGlkZGVuUmVzcG9uc2USJwoFc3RhZ2UYASADKAsyGC5tZXVycGcucGxheS52MS5TdGFnZU5wYyI+ChFTZXRTcGVha2VyUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxjaGFyYWN0ZXJfaWQYAiABKAkiPQoSU2V0U3BlYWtlclJlc3BvbnNlEicKBXN0YWdlGAEgAygLMhgubWV1cnBnLnBsYXkudjEuU3RhZ2VOcGMi7AEKD1NjZW5lQWN0aW9uVmlldxIKCgJpZBgBIAEoCRILCgNrZXkYAiABKAkSDAoEbmFtZRgDIAEoCRISCgpjaGVja19uYW1lGAQgASgJEgoKAmRjGAUgASgFEhIKBWJvbnVzGAYgASgFSACIAQESFAoHcGFzc2l2ZRgHIAEoBUgBiAEBEhQKDG1heF9hdHRlbXB0cxgIIAEoBRIaCg1hdHRlbXB0c19sZWZ0GAkgASgFSAKIAQESDgoGaGlkZGVuGAogASgIQggKBl9ib251c0IKCghfcGFzc2l2ZUIQCg5fYXR0ZW1wdHNfbGVmdCKFAwoJU2NlbmVSb2xsEgoKAmlkGAEgASgJEhEKCWFjdGlvbl9pZBgCIAEoCRIUCgxjaGFyYWN0ZXJfaWQYAyABKAkSFgoOY2hhcmFjdGVyX25hbWUYBCABKAkSJgoEcm9sbBgFIAEoCzIYLm1ldXJwZy5wbGF5LnYxLkRpY2VSb2xsEhMKBnBhc3NlZBgGIAEoCEgAiAEBEi0KCXJvbGxlZF9hdBgHIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASGgoNYXR0ZW1wdHNfbGVmdBgIIAEoBUgBiAEBEiYKBG1vZGUYCSABKA4yGC5tZXVycGcucGxheS52MS5Sb2xsTW9kZRIwCgdzb3VyY2VzGAogAygLMh8ubWV1cnBnLnBsYXkudjEuQWR2YW50YWdlU291cmNlEiwKCmJvbnVzX2RpY2UYCyADKAsyGC5tZXVycGcucGxheS52MS5Cb251c0RpZUIJCgdfcGFzc2VkQhAKDl9hdHRlbXB0c19sZWZ0IoQBChBPcGVuU2NlbmVSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhAKCHBvaW50X2lkGAIgASgJEi8KCGF1ZGllbmNlGAMgASgLMh0ubWV1cnBnLnBsYXkudjEuU2NlbmVBdWRpZW5jZRIYChBwbGF5ZXJzX21heV9qb2luGAQgASgIIkEKEU9wZW5TY2VuZVJlc3BvbnNlEiwKBXNjZW5lGAEgASgLMh0ubWV1cnBnLnBsYXkudjEuT3BlblNjZW5lSW5mbyIoChFDbG9zZVNjZW5lUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCSIUChJDbG9zZVNjZW5lUmVzcG9uc2UiKgoTR2V0T3BlblNjZW5lUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCSJEChRHZXRPcGVuU2NlbmVSZXNwb25zZRIsCgVzY2VuZRgBIAEoCzIdLm1ldXJwZy5wbGF5LnYxLk9wZW5TY2VuZUluZm8i4gEKFVJvbGxTY2VuZUNoZWNrUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIRCglhY3Rpb25faWQYAiABKAkSFQoLcm9sbF9pbl9hcHAYAyABKAhIABISCghkMjBfZmFjZRgEIAEoBUgAEhcKD2lkZW1wb3RlbmN5X2tleRgFIAEoCRIRCglkMjBfZmFjZXMYBiADKAUSFwoPZXh0cmFfZGllX2ZhY2VzGAcgAygFEhQKDG1hbmV1dmVyX2tleRgIIAEoCRITCgtzcGVuZF9mYXZvchgJIAEoCEIGCgRyb2xsIvYBChZSb2xsU2NlbmVDaGVja1Jlc3BvbnNlEicKBHJvbGwYASABKAsyGS5tZXVycGcucGxheS52MS5TY2VuZVJvbGwSRgoRaW5zcGlyYXRpb25fb2ZmZXIYAiABKAsyJy5tZXVycGcucGxheS52MS5PdXRzaWRlSW5zcGlyYXRpb25PZmZlckICGAESMwoLbHVja3lfb2ZmZXIYAyABKAsyGi5tZXVycGcucGxheS52MS5MdWNreU9mZmVyQgIYARI2Cg9oZWxkX3JvbGxfb2ZmZXIYBCABKAsyHS5tZXVycGcucGxheS52MS5IZWxkUm9sbE9mZmVyInEKGEdyYW50U2NlbmVBdHRlbXB0UmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIRCglhY3Rpb25faWQYAiABKAkSFAoMY2hhcmFjdGVyX2lkGAMgASgJEhcKD2lkZW1wb3RlbmN5X2tleRgEIAEoCSJJChlHcmFudFNjZW5lQXR0ZW1wdFJlc3BvbnNlEiwKBXNjZW5lGAEgASgLMh0ubWV1cnBnLnBsYXkudjEuT3BlblNjZW5lSW5mbyJfChdTZXRTY2VuZUF1ZGllbmNlUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIvCghhdWRpZW5jZRgCIAEoCzIdLm1ldXJwZy5wbGF5LnYxLlNjZW5lQXVkaWVuY2UiSAoYU2V0U2NlbmVBdWRpZW5jZVJlc3BvbnNlEiwKBXNjZW5lGAEgASgLMh0ubWV1cnBnLnBsYXkudjEuT3BlblNjZW5lSW5mbyJOCh1TZXRTY2VuZVBsYXllcnNNYXlKb2luUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIYChBwbGF5ZXJzX21heV9qb2luGAIgASgIIk4KHlNldFNjZW5lUGxheWVyc01heUpvaW5SZXNwb25zZRIsCgVzY2VuZRgBIAEoCzIdLm1ldXJwZy5wbGF5LnYxLk9wZW5TY2VuZUluZm8iJwoQSm9pblNjZW5lUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCSJBChFKb2luU2NlbmVSZXNwb25zZRIsCgVzY2VuZRgBIAEoCzIdLm1ldXJwZy5wbGF5LnYxLk9wZW5TY2VuZUluZm8q0gIKElNjZW5lQmxvY2tlZFJlYXNvbhIkCiBTQ0VORV9CTE9DS0VEX1JFQVNPTl9VTlNQRUNJRklFRBAAEiMKH1NDRU5FX0JMT0NLRURfUkVBU09OX05PX0FDVElPTlMQARImCiJTQ0VORV9CTE9DS0VEX1JFQVNPTl9OT19PUEVOX1NDRU5FEAISJwojU0NFTkVfQkxPQ0tFRF9SRUFTT05fQUxSRUFEWV9ST0xMRUQQAxIoCiRTQ0VORV9CTE9DS0VEX1JFQVNPTl9XUk9OR19ESUNFX01PREUQBBIlCiFTQ0VORV9CTE9DS0VEX1JFQVNPTl9OT19DSEFSQUNURVIQBRIjCh9TQ0VORV9CTE9DS0VEX1JFQVNPTl9TVEFHRV9GVUxMEAYSKgomU0NFTkVfQkxPQ0tFRF9SRUFTT05fU0NFTkVfTk9UX1BBUlRJQUwQB0K4AQoSY29tLm1ldXJwZy5wbGF5LnYxQgpTY2VuZVByb3RvUAFaPGdpdGh1Yi5jb20vUHVyYUZvbWUvbWV1UlBHL2JhY2tlbmQvZ2VuL21ldXJwZy9wbGF5L3YxO3BsYXl2MaICA01QWKoCDk1ldXJwZy5QbGF5LlYxygIOTWV1cnBnXFBsYXlcVjHiAhpNZXVycGdcUGxheVxWMVxHUEJNZXRhZGF0YeoCEE1ldXJwZzo6UGxheTo6VjFiBnByb3RvMw", [file_google_protobuf_timestamp, file_meurpg_maps_v1_maps, file_meurpg_play_v1_combat, file_meurpg_play_v1_combat_rolls]);
+  fileDesc("ChptZXVycGcvcGxheS92MS9zY2VuZS5wcm90bxIObWV1cnBnLnBsYXkudjEiQgoMU2NlbmVCbG9ja2VkEjIKBnJlYXNvbhgBIAEoDjIiLm1ldXJwZy5wbGF5LnYxLlNjZW5lQmxvY2tlZFJlYXNvbiLPAwoNT3BlblNjZW5lSW5mbxIQCghwb2ludF9pZBgBIAEoCRIMCgRuYW1lGAIgASgJEhMKC2Rlc2NyaXB0aW9uGAMgASgJEjAKB2FjdGlvbnMYBCADKAsyHy5tZXVycGcucGxheS52MS5TY2VuZUFjdGlvblZpZXcSKAoFcm9sbHMYBSADKAsyGS5tZXVycGcucGxheS52MS5TY2VuZVJvbGwSLQoJb3BlbmVkX2F0GAYgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBINCgVob29rcxgHIAEoCRIoCgVjbHVlcxgIIAMoCzIZLm1ldXJwZy5tYXBzLnYxLlNjZW5lQ2x1ZRInCgVzdGFnZRgKIAMoCzIYLm1ldXJwZy5wbGF5LnYxLlN0YWdlTnBjEg8KB3Nob3dfZGMYCyABKAgSKgoGaW1hZ2VzGAwgAygLMhoubWV1cnBnLm1hcHMudjEuU2NlbmVJbWFnZRIzCghhdWRpZW5jZRgNIAEoCzIhLm1ldXJwZy5wbGF5LnYxLlNjZW5lQXVkaWVuY2VWaWV3EhgKEHBsYXllcnNfbWF5X2pvaW4YDiABKAgSEAoIam9pbmFibGUYDyABKAgiMwoNU2NlbmVBdWRpZW5jZRIQCghldmVyeW9uZRgBIAEoCBIQCgh1c2VyX2lkcxgCIAMoCSJkCgtTY2VuZVBsYXllchIPCgd1c2VyX2lkGAEgASgJEhQKDGNoYXJhY3Rlcl9pZBgCIAEoCRIWCg5jaGFyYWN0ZXJfbmFtZRgDIAEoCRIWCg5qb2luZWRfYnlfc2VsZhgEIAEoCCKAAQoRU2NlbmVBdWRpZW5jZVZpZXcSEAoIZXZlcnlvbmUYASABKAgSKwoGaW5zaWRlGAIgAygLMhsubWV1cnBnLnBsYXkudjEuU2NlbmVQbGF5ZXISLAoHb3V0c2lkZRgDIAMoCzIbLm1ldXJwZy5wbGF5LnYxLlNjZW5lUGxheWVyInIKCFN0YWdlTnBjEgoKAmlkGAEgASgJEgwKBG5hbWUYAiABKAkSFAoMcG9ydHJhaXRfdXJsGAMgASgJEhAKCHNwZWFraW5nGAQgASgIEhQKDGNoYXJhY3Rlcl9pZBgFIAEoCRIOCgZoaWRkZW4YBiABKAgiTgoRUHV0T25TdGFnZVJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSFAoMY2hhcmFjdGVyX2lkGAIgASgJEg4KBmhpZGRlbhgDIAEoCCI9ChJQdXRPblN0YWdlUmVzcG9uc2USJwoFc3RhZ2UYASADKAsyGC5tZXVycGcucGxheS52MS5TdGFnZU5wYyJAChNUYWtlT2ZmU3RhZ2VSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhQKDGNoYXJhY3Rlcl9pZBgCIAEoCSI/ChRUYWtlT2ZmU3RhZ2VSZXNwb25zZRInCgVzdGFnZRgBIAMoCzIYLm1ldXJwZy5wbGF5LnYxLlN0YWdlTnBjIlUKGFNldFN0YWdlTnBjSGlkZGVuUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxjaGFyYWN0ZXJfaWQYAiABKAkSDgoGaGlkZGVuGAMgASgIIkQKGVNldFN0YWdlTnBjSGlkZGVuUmVzcG9uc2USJwoFc3RhZ2UYASADKAsyGC5tZXVycGcucGxheS52MS5TdGFnZU5wYyI+ChFTZXRTcGVha2VyUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxjaGFyYWN0ZXJfaWQYAiABKAkiPQoSU2V0U3BlYWtlclJlc3BvbnNlEicKBXN0YWdlGAEgAygLMhgubWV1cnBnLnBsYXkudjEuU3RhZ2VOcGMi7AEKD1NjZW5lQWN0aW9uVmlldxIKCgJpZBgBIAEoCRILCgNrZXkYAiABKAkSDAoEbmFtZRgDIAEoCRISCgpjaGVja19uYW1lGAQgASgJEgoKAmRjGAUgASgFEhIKBWJvbnVzGAYgASgFSACIAQESFAoHcGFzc2l2ZRgHIAEoBUgBiAEBEhQKDG1heF9hdHRlbXB0cxgIIAEoBRIaCg1hdHRlbXB0c19sZWZ0GAkgASgFSAKIAQESDgoGaGlkZGVuGAogASgIQggKBl9ib251c0IKCghfcGFzc2l2ZUIQCg5fYXR0ZW1wdHNfbGVmdCKFAwoJU2NlbmVSb2xsEgoKAmlkGAEgASgJEhEKCWFjdGlvbl9pZBgCIAEoCRIUCgxjaGFyYWN0ZXJfaWQYAyABKAkSFgoOY2hhcmFjdGVyX25hbWUYBCABKAkSJgoEcm9sbBgFIAEoCzIYLm1ldXJwZy5wbGF5LnYxLkRpY2VSb2xsEhMKBnBhc3NlZBgGIAEoCEgAiAEBEi0KCXJvbGxlZF9hdBgHIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASGgoNYXR0ZW1wdHNfbGVmdBgIIAEoBUgBiAEBEiYKBG1vZGUYCSABKA4yGC5tZXVycGcucGxheS52MS5Sb2xsTW9kZRIwCgdzb3VyY2VzGAogAygLMh8ubWV1cnBnLnBsYXkudjEuQWR2YW50YWdlU291cmNlEiwKCmJvbnVzX2RpY2UYCyADKAsyGC5tZXVycGcucGxheS52MS5Cb251c0RpZUIJCgdfcGFzc2VkQhAKDl9hdHRlbXB0c19sZWZ0IoQBChBPcGVuU2NlbmVSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhAKCHBvaW50X2lkGAIgASgJEi8KCGF1ZGllbmNlGAMgASgLMh0ubWV1cnBnLnBsYXkudjEuU2NlbmVBdWRpZW5jZRIYChBwbGF5ZXJzX21heV9qb2luGAQgASgIIkEKEU9wZW5TY2VuZVJlc3BvbnNlEiwKBXNjZW5lGAEgASgLMh0ubWV1cnBnLnBsYXkudjEuT3BlblNjZW5lSW5mbyIoChFDbG9zZVNjZW5lUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCSIUChJDbG9zZVNjZW5lUmVzcG9uc2UiKgoTR2V0T3BlblNjZW5lUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCSJEChRHZXRPcGVuU2NlbmVSZXNwb25zZRIsCgVzY2VuZRgBIAEoCzIdLm1ldXJwZy5wbGF5LnYxLk9wZW5TY2VuZUluZm8i4gEKFVJvbGxTY2VuZUNoZWNrUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIRCglhY3Rpb25faWQYAiABKAkSFQoLcm9sbF9pbl9hcHAYAyABKAhIABISCghkMjBfZmFjZRgEIAEoBUgAEhcKD2lkZW1wb3RlbmN5X2tleRgFIAEoCRIRCglkMjBfZmFjZXMYBiADKAUSFwoPZXh0cmFfZGllX2ZhY2VzGAcgAygFEhQKDG1hbmV1dmVyX2tleRgIIAEoCRITCgtzcGVuZF9mYXZvchgJIAEoCEIGCgRyb2xsIvYBChZSb2xsU2NlbmVDaGVja1Jlc3BvbnNlEicKBHJvbGwYASABKAsyGS5tZXVycGcucGxheS52MS5TY2VuZVJvbGwSRgoRaW5zcGlyYXRpb25fb2ZmZXIYAiABKAsyJy5tZXVycGcucGxheS52MS5PdXRzaWRlSW5zcGlyYXRpb25PZmZlckICGAESMwoLbHVja3lfb2ZmZXIYAyABKAsyGi5tZXVycGcucGxheS52MS5MdWNreU9mZmVyQgIYARI2Cg9oZWxkX3JvbGxfb2ZmZXIYBCABKAsyHS5tZXVycGcucGxheS52MS5IZWxkUm9sbE9mZmVyItYBChNSb2xsTnBjQ2hlY2tSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhoKEG5wY19jaGFyYWN0ZXJfaWQYAiABKAlIABIVCgttb25zdGVyX2tleRgDIAEoCUgAEhEKCWNoZWNrX2tleRgEIAEoCRIVCgtyb2xsX2luX2FwcBgFIAEoCEgBEhIKCGQyMF9mYWNlGAYgASgFSAESEQoJYmFyZF9zZWVzGAcgASgIEhcKD2lkZW1wb3RlbmN5X2tleRgIIAEoCUIFCgNucGNCBgoEcm9sbCJRChRSb2xsTnBjQ2hlY2tSZXNwb25zZRIMCgRoZWxkGAEgASgIEisKBWNoZWNrGAIgASgLMhwubWV1cnBnLnBsYXkudjEuTnBjQ2hlY2tSZWFkIrICCgxOcGNDaGVja1JlYWQSDwoHaG9sZF9pZBgBIAEoCRIWCg5jcmVhdHVyZV9sYWJlbBgCIAEoCRIRCgljaGVja19rZXkYAyABKAkSEgoKY2hlY2tfbmFtZRgEIAEoCRIlCgNkMjAYBSABKAsyGC5tZXVycGcucGxheS52MS5EaWNlUm9sbBIWCg5tb2RpZmllcl9rbm93bhgGIAEoCBIpCgRhc2tzGAcgAygLMhsubWV1cnBnLnBsYXkudjEuTnBjQ2hlY2tBc2sSDwoHc2V0dGxlZBgIIAEoCBINCgV0b3RhbBgJIAEoBRILCgNjdXQYCiABKAUSOwoNbm9ib2R5X3JlYXNvbhgLIAEoDjIkLm1ldXJwZy5wbGF5LnYxLk5wY0NoZWNrTm9ib2R5UmVhc29uIlgKF1NraXBOcGNDaGVja0Fza3NSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEg8KB2hvbGRfaWQYAiABKAkSFwoPaWRlbXBvdGVuY3lfa2V5GAMgASgJIkcKGFNraXBOcGNDaGVja0Fza3NSZXNwb25zZRIrCgVjaGVjaxgBIAEoCzIcLm1ldXJwZy5wbGF5LnYxLk5wY0NoZWNrUmVhZCJFChlMaXN0TnBjQ2hlY2tQaWNrZXJSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhMKC21vbnN0ZXJfa2V5GAIgASgJIlMKGkxpc3ROcGNDaGVja1BpY2tlclJlc3BvbnNlEjUKCmNhbmRpZGF0ZXMYASADKAsyIS5tZXVycGcucGxheS52MS5OcGNDaGVja0NhbmRpZGF0ZSLqAQoRTnBjQ2hlY2tDYW5kaWRhdGUSFAoMY2hhcmFjdGVyX2lkGAEgASgJEhMKC21vbnN0ZXJfa2V5GAIgASgJEgwKBG5hbWUYAyABKAkSFgoOaGFzX3N0YXRfYmxvY2sYBCABKAgSLgoGc291cmNlGAUgASgOMh4ubWV1cnBnLnBsYXkudjEuTnBjQ2hlY2tTb3VyY2USDgoGaGlkZGVuGAYgASgIEi4KBmNoZWNrcxgHIAMoCzIeLm1ldXJwZy5wbGF5LnYxLk5wY0NoZWNrT3B0aW9uEhQKDG1hcF9tZWFzdXJlcxgIIAEoCCIpChJHZXROcGNDaGVja1JlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkiQgoTR2V0TnBjQ2hlY2tSZXNwb25zZRIrCgVjaGVjaxgBIAEoCzIcLm1ldXJwZy5wbGF5LnYxLk5wY0NoZWNrUmVhZCJJCg5OcGNDaGVja09wdGlvbhILCgNrZXkYASABKAkSDAoEbmFtZRgCIAEoCRINCgVib251cxgDIAEoBRINCgVrbm93bhgEIAEoCCJxChhHcmFudFNjZW5lQXR0ZW1wdFJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSEQoJYWN0aW9uX2lkGAIgASgJEhQKDGNoYXJhY3Rlcl9pZBgDIAEoCRIXCg9pZGVtcG90ZW5jeV9rZXkYBCABKAkiSQoZR3JhbnRTY2VuZUF0dGVtcHRSZXNwb25zZRIsCgVzY2VuZRgBIAEoCzIdLm1ldXJwZy5wbGF5LnYxLk9wZW5TY2VuZUluZm8iXwoXU2V0U2NlbmVBdWRpZW5jZVJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSLwoIYXVkaWVuY2UYAiABKAsyHS5tZXVycGcucGxheS52MS5TY2VuZUF1ZGllbmNlIkgKGFNldFNjZW5lQXVkaWVuY2VSZXNwb25zZRIsCgVzY2VuZRgBIAEoCzIdLm1ldXJwZy5wbGF5LnYxLk9wZW5TY2VuZUluZm8iTgodU2V0U2NlbmVQbGF5ZXJzTWF5Sm9pblJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSGAoQcGxheWVyc19tYXlfam9pbhgCIAEoCCJOCh5TZXRTY2VuZVBsYXllcnNNYXlKb2luUmVzcG9uc2USLAoFc2NlbmUYASABKAsyHS5tZXVycGcucGxheS52MS5PcGVuU2NlbmVJbmZvIicKEEpvaW5TY2VuZVJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkiQQoRSm9pblNjZW5lUmVzcG9uc2USLAoFc2NlbmUYASABKAsyHS5tZXVycGcucGxheS52MS5PcGVuU2NlbmVJbmZvKtICChJTY2VuZUJsb2NrZWRSZWFzb24SJAogU0NFTkVfQkxPQ0tFRF9SRUFTT05fVU5TUEVDSUZJRUQQABIjCh9TQ0VORV9CTE9DS0VEX1JFQVNPTl9OT19BQ1RJT05TEAESJgoiU0NFTkVfQkxPQ0tFRF9SRUFTT05fTk9fT1BFTl9TQ0VORRACEicKI1NDRU5FX0JMT0NLRURfUkVBU09OX0FMUkVBRFlfUk9MTEVEEAMSKAokU0NFTkVfQkxPQ0tFRF9SRUFTT05fV1JPTkdfRElDRV9NT0RFEAQSJQohU0NFTkVfQkxPQ0tFRF9SRUFTT05fTk9fQ0hBUkFDVEVSEAUSIwofU0NFTkVfQkxPQ0tFRF9SRUFTT05fU1RBR0VfRlVMTBAGEioKJlNDRU5FX0JMT0NLRURfUkVBU09OX1NDRU5FX05PVF9QQVJUSUFMEAcqiAEKDk5wY0NoZWNrU291cmNlEiAKHE5QQ19DSEVDS19TT1VSQ0VfVU5TUEVDSUZJRUQQABIaChZOUENfQ0hFQ0tfU09VUkNFX1NUQUdFEAESGgoWTlBDX0NIRUNLX1NPVVJDRV9UT0tFThACEhwKGE5QQ19DSEVDS19TT1VSQ0VfTU9OU1RFUhADKukBChROcGNDaGVja05vYm9keVJlYXNvbhInCiNOUENfQ0hFQ0tfTk9CT0RZX1JFQVNPTl9VTlNQRUNJRklFRBAAEisKJ05QQ19DSEVDS19OT0JPRFlfUkVBU09OX05PX0JBUkRfQ0FOX0NVVBABEigKJE5QQ19DSEVDS19OT0JPRFlfUkVBU09OX0NIQVJNX0lNTVVORRACEigKJE5QQ19DSEVDS19OT0JPRFlfUkVBU09OX1RPS0VOX0hJRERFThADEicKI05QQ19DSEVDS19OT0JPRFlfUkVBU09OX05PQk9EWV9TRUVTEARCuAEKEmNvbS5tZXVycGcucGxheS52MUIKU2NlbmVQcm90b1ABWjxnaXRodWIuY29tL1B1cmFGb21lL21ldVJQRy9iYWNrZW5kL2dlbi9tZXVycGcvcGxheS92MTtwbGF5djGiAgNNUFiqAg5NZXVycGcuUGxheS5WMcoCDk1ldXJwZ1xQbGF5XFYx4gIaTWV1cnBnXFBsYXlcVjFcR1BCTWV0YWRhdGHqAhBNZXVycGc6OlBsYXk6OlYxYgZwcm90bzM", [file_google_protobuf_timestamp, file_meurpg_maps_v1_maps, file_meurpg_play_v1_combat, file_meurpg_play_v1_combat_rolls]);
 
 /**
  * SceneBlocked is the error detail of a scene call's `failed_precondition`
@@ -1064,6 +1064,462 @@ export const RollSceneCheckResponseSchema: GenMessage<RollSceneCheckResponse> = 
   messageDesc(file_meurpg_play_v1_scene, 23);
 
 /**
+ * RollNpcCheckRequest is the master's ability check for a creature of the master's side outside a combat: an NPC's Enganação,
+ * Persuasão or Intimidação against the party in a scene with no map, say. The creature is a character of the campaign that
+ * is an NPC, or an SRD creature by its key.
+ *
+ * @generated from message meurpg.play.v1.RollNpcCheckRequest
+ */
+export type RollNpcCheckRequest = Message<"meurpg.play.v1.RollNpcCheckRequest"> & {
+  /**
+   * @generated from field: string campaign_id = 1;
+   */
+  campaignId: string;
+
+  /**
+   * The creature that rolls: exactly one.
+   *
+   * @generated from oneof meurpg.play.v1.RollNpcCheckRequest.npc
+   */
+  npc: {
+    /**
+     * An NPC of the campaign (a UUID): a stage NPC, one with a token or any living NPC.
+     *
+     * @generated from field: string npc_character_id = 2;
+     */
+    value: string;
+    case: "npcCharacterId";
+  } | {
+    /**
+     * An SRD creature ("monster:bandit"): the app keeps a hidden NPC for it, as it does for the monsters of a combat.
+     *
+     * @generated from field: string monster_key = 3;
+     */
+    value: string;
+    case: "monsterKey";
+  } | { case: undefined; value?: undefined };
+
+  /**
+   * The check ("skill:deception", "ability:cha"). A saving throw ("save:wis") is not a check.
+   *
+   * @generated from field: string check_key = 4;
+   */
+  checkKey: string;
+
+  /**
+   * How the d20 comes: exactly one. The master rolls either way, whatever the campaign's dice setting says for the players.
+   *
+   * @generated from oneof meurpg.play.v1.RollNpcCheckRequest.roll
+   */
+  roll: {
+    /**
+     * True: the server rolls the d20.
+     *
+     * @generated from field: bool roll_in_app = 5;
+     */
+    value: boolean;
+    case: "rollInApp";
+  } | {
+    /**
+     * The face of the real d20, 1 to 20. The server adds the creature's bonus.
+     *
+     * @generated from field: int32 d20_face = 6;
+     */
+    value: number;
+    case: "d20Face";
+  } | { case: undefined; value?: undefined };
+
+  /**
+   * Whether the bards of the table see the creature and the creature hears them (the master's box "Os bardos veem a criatura
+   * e ela os ouve"): Cutting Words needs both. Read only when the session's map has no placement of both the creature's token
+   * and a bard's (no usable map): then it decides for every bard whose player the open scene is open to. With both tokens on
+   * the map the server measures the 60 feet and, on a fog map, what the bard's player sees, and ignores this for that bard.
+   * A creature whose token the master hid on the map is seen by no bard, whatever this says, whether or not the bard has a
+   * token and whether or not the map has a grid. A bard whose player the open scene is not open to is not asked, whatever the
+   * map measures and this says. `NpcCheckCandidate.map_measures` says which creatures the map measures.
+   *
+   * @generated from field: bool bard_sees = 7;
+   */
+  bardSees: boolean;
+
+  /**
+   * A UUID the app makes for each roll. Repeating it answers with the first roll's read and changes nothing.
+   *
+   * @generated from field: string idempotency_key = 8;
+   */
+  idempotencyKey: string;
+};
+
+/**
+ * Describes the message meurpg.play.v1.RollNpcCheckRequest.
+ * Use `create(RollNpcCheckRequestSchema)` to create a new message.
+ */
+export const RollNpcCheckRequestSchema: GenMessage<RollNpcCheckRequest> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_scene, 24);
+
+/**
+ * RollNpcCheckResponse is the master's read of the check. Nothing of it reaches a player (RN-10, RN-20).
+ *
+ * @generated from message meurpg.play.v1.RollNpcCheckResponse
+ */
+export type RollNpcCheckResponse = Message<"meurpg.play.v1.RollNpcCheckResponse"> & {
+  /**
+   * True when at least one bard was asked: the check waits for them (see `check.asks`) and `check.settled` is false.
+   *
+   * @generated from field: bool held = 1;
+   */
+  held: boolean;
+
+  /**
+   * @generated from field: meurpg.play.v1.NpcCheckRead check = 2;
+   */
+  check?: NpcCheckRead | undefined;
+};
+
+/**
+ * Describes the message meurpg.play.v1.RollNpcCheckResponse.
+ * Use `create(RollNpcCheckResponseSchema)` to create a new message.
+ */
+export const RollNpcCheckResponseSchema: GenMessage<RollNpcCheckResponse> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_scene, 25);
+
+/**
+ * NpcCheckRead is the master's read of an NPC's check outside a combat.
+ *
+ * @generated from message meurpg.play.v1.NpcCheckRead
+ */
+export type NpcCheckRead = Message<"meurpg.play.v1.NpcCheckRead"> & {
+  /**
+   * The held check (a UUID); empty when nobody was asked and the check settled at once.
+   *
+   * @generated from field: string hold_id = 1;
+   */
+  holdId: string;
+
+  /**
+   * The creature's name and the check's name in Portuguese.
+   *
+   * @generated from field: string creature_label = 2;
+   */
+  creatureLabel: string;
+
+  /**
+   * @generated from field: string check_key = 3;
+   */
+  checkKey: string;
+
+  /**
+   * @generated from field: string check_name = 4;
+   */
+  checkName: string;
+
+  /**
+   * The creature's d20 with its bonus and the total before any die is taken off.
+   *
+   * @generated from field: meurpg.play.v1.DiceRoll d20 = 5;
+   */
+  d20?: DiceRoll | undefined;
+
+  /**
+   * False when the creature's sheet gives no number for the check (an NPC typed by hand has no skills): the bonus is +0.
+   *
+   * @generated from field: bool modifier_known = 6;
+   */
+  modifierKnown: boolean;
+
+  /**
+   * The bards asked, in the order they are asked (one at a time: the next one is asked after the one before answers).
+   *
+   * @generated from field: repeated meurpg.play.v1.NpcCheckAsk asks = 7;
+   */
+  asks: NpcCheckAsk[];
+
+  /**
+   * True once the check has no question open (every bard answered or the master went on without them).
+   *
+   * @generated from field: bool settled = 8;
+   */
+  settled: boolean;
+
+  /**
+   * When settled: the total after the dice the bards took off, and what they took off.
+   *
+   * @generated from field: int32 total = 9;
+   */
+  total: number;
+
+  /**
+   * @generated from field: int32 cut = 10;
+   */
+  cut: number;
+
+  /**
+   * Why nobody was asked, when no bard was (`asks` is empty and the check settled at once): the first reason that applies, in the order
+   * of the enum. UNSPECIFIED when a bard was asked. Stored with the roll, so the master reads it again after a reload (GetNpcCheck).
+   *
+   * @generated from field: meurpg.play.v1.NpcCheckNobodyReason nobody_reason = 11;
+   */
+  nobodyReason: NpcCheckNobodyReason;
+};
+
+/**
+ * Describes the message meurpg.play.v1.NpcCheckRead.
+ * Use `create(NpcCheckReadSchema)` to create a new message.
+ */
+export const NpcCheckReadSchema: GenMessage<NpcCheckRead> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_scene, 26);
+
+/**
+ * SkipNpcCheckAsksRequest is the master's "Continuar sem esperar": it closes the questions that wait for the bards and settles
+ * the check with the dice already taken off.
+ *
+ * @generated from message meurpg.play.v1.SkipNpcCheckAsksRequest
+ */
+export type SkipNpcCheckAsksRequest = Message<"meurpg.play.v1.SkipNpcCheckAsksRequest"> & {
+  /**
+   * @generated from field: string campaign_id = 1;
+   */
+  campaignId: string;
+
+  /**
+   * The held check (a UUID), `NpcCheckRead.hold_id`.
+   *
+   * @generated from field: string hold_id = 2;
+   */
+  holdId: string;
+
+  /**
+   * @generated from field: string idempotency_key = 3;
+   */
+  idempotencyKey: string;
+};
+
+/**
+ * Describes the message meurpg.play.v1.SkipNpcCheckAsksRequest.
+ * Use `create(SkipNpcCheckAsksRequestSchema)` to create a new message.
+ */
+export const SkipNpcCheckAsksRequestSchema: GenMessage<SkipNpcCheckAsksRequest> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_scene, 27);
+
+/**
+ * SkipNpcCheckAsksResponse is the settled check.
+ *
+ * @generated from message meurpg.play.v1.SkipNpcCheckAsksResponse
+ */
+export type SkipNpcCheckAsksResponse = Message<"meurpg.play.v1.SkipNpcCheckAsksResponse"> & {
+  /**
+   * @generated from field: meurpg.play.v1.NpcCheckRead check = 1;
+   */
+  check?: NpcCheckRead | undefined;
+};
+
+/**
+ * Describes the message meurpg.play.v1.SkipNpcCheckAsksResponse.
+ * Use `create(SkipNpcCheckAsksResponseSchema)` to create a new message.
+ */
+export const SkipNpcCheckAsksResponseSchema: GenMessage<SkipNpcCheckAsksResponse> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_scene, 28);
+
+/**
+ * ListNpcCheckPickerRequest asks for the creatures the master can pick for RollNpcCheck.
+ *
+ * @generated from message meurpg.play.v1.ListNpcCheckPickerRequest
+ */
+export type ListNpcCheckPickerRequest = Message<"meurpg.play.v1.ListNpcCheckPickerRequest"> & {
+  /**
+   * @generated from field: string campaign_id = 1;
+   */
+  campaignId: string;
+
+  /**
+   * An SRD creature ("monster:bandit") to read too, besides the NPCs of the table: the catalogue is searched elsewhere, and
+   * this reads the checks of one entry. Empty adds none.
+   *
+   * @generated from field: string monster_key = 2;
+   */
+  monsterKey: string;
+};
+
+/**
+ * Describes the message meurpg.play.v1.ListNpcCheckPickerRequest.
+ * Use `create(ListNpcCheckPickerRequestSchema)` to create a new message.
+ */
+export const ListNpcCheckPickerRequestSchema: GenMessage<ListNpcCheckPickerRequest> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_scene, 29);
+
+/**
+ * ListNpcCheckPickerResponse lists the creatures: the NPCs on the stage, those with a token on the session's map, and the
+ * creature asked for.
+ *
+ * @generated from message meurpg.play.v1.ListNpcCheckPickerResponse
+ */
+export type ListNpcCheckPickerResponse = Message<"meurpg.play.v1.ListNpcCheckPickerResponse"> & {
+  /**
+   * @generated from field: repeated meurpg.play.v1.NpcCheckCandidate candidates = 1;
+   */
+  candidates: NpcCheckCandidate[];
+};
+
+/**
+ * Describes the message meurpg.play.v1.ListNpcCheckPickerResponse.
+ * Use `create(ListNpcCheckPickerResponseSchema)` to create a new message.
+ */
+export const ListNpcCheckPickerResponseSchema: GenMessage<ListNpcCheckPickerResponse> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_scene, 30);
+
+/**
+ * NpcCheckCandidate is a creature the master may roll a check for, as the master reads it.
+ *
+ * @generated from message meurpg.play.v1.NpcCheckCandidate
+ */
+export type NpcCheckCandidate = Message<"meurpg.play.v1.NpcCheckCandidate"> & {
+  /**
+   * The NPC's character (a UUID), for an NPC of the table; empty for an SRD creature that has no NPC of the table.
+   *
+   * @generated from field: string character_id = 1;
+   */
+  characterId: string;
+
+  /**
+   * The SRD creature's key, when it is one (an NPC made from a creature has it too).
+   *
+   * @generated from field: string monster_key = 2;
+   */
+  monsterKey: string;
+
+  /**
+   * @generated from field: string name = 3;
+   */
+  name: string;
+
+  /**
+   * False for an NPC typed by hand with no skills: its checks have no number and roll +0.
+   *
+   * @generated from field: bool has_stat_block = 4;
+   */
+  hasStatBlock: boolean;
+
+  /**
+   * Where it was found, and whether the players do not see it (the stage or the token hides it).
+   *
+   * @generated from field: meurpg.play.v1.NpcCheckSource source = 5;
+   */
+  source: NpcCheckSource;
+
+  /**
+   * True for an NPC the master marked hidden from the players on the stage ("Escondido dos jogadores"), or whose token is hidden
+   * on the session's current map: when the creature is both on the stage and on the map, either one makes it true (it is listed
+   * once, as a stage creature). The app starts the checkbox unticked for it.
+   *
+   * @generated from field: bool hidden = 6;
+   */
+  hidden: boolean;
+
+  /**
+   * The checks, with the bonus the master sees: six abilities and the skills, in the sheet's order.
+   *
+   * @generated from field: repeated meurpg.play.v1.NpcCheckOption checks = 7;
+   */
+  checks: NpcCheckOption[];
+
+  /**
+   * True when the session's current map can measure this creature against a bard: the creature has a token on the grid of the
+   * map, and so has at least one bard that would be asked (a bard of the party with Cutting Words in "todos", awake, with a use
+   * left) whose player the open scene is open to. It is per creature: another creature of the same map, with no such pair, has
+   * it false. Then the server measures the 60 feet and the sight itself for each bard with a token and the app shows no
+   * checkbox, so it sends `bard_sees` false and a bard with no token on the map is not asked about this creature; when false
+   * the checkbox "Os bardos veem a criatura e ela os ouve" decides for every bard whose player the open scene is open to (a
+   * creature whose token is hidden is the exception: no bard is asked).
+   *
+   * @generated from field: bool map_measures = 8;
+   */
+  mapMeasures: boolean;
+};
+
+/**
+ * Describes the message meurpg.play.v1.NpcCheckCandidate.
+ * Use `create(NpcCheckCandidateSchema)` to create a new message.
+ */
+export const NpcCheckCandidateSchema: GenMessage<NpcCheckCandidate> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_scene, 31);
+
+/**
+ * GetNpcCheckRequest names the campaign.
+ *
+ * @generated from message meurpg.play.v1.GetNpcCheckRequest
+ */
+export type GetNpcCheckRequest = Message<"meurpg.play.v1.GetNpcCheckRequest"> & {
+  /**
+   * @generated from field: string campaign_id = 1;
+   */
+  campaignId: string;
+};
+
+/**
+ * Describes the message meurpg.play.v1.GetNpcCheckRequest.
+ * Use `create(GetNpcCheckRequestSchema)` to create a new message.
+ */
+export const GetNpcCheckRequestSchema: GenMessage<GetNpcCheckRequest> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_scene, 32);
+
+/**
+ * GetNpcCheckResponse is the latest NPC check of the open session, unset when there was none.
+ *
+ * @generated from message meurpg.play.v1.GetNpcCheckResponse
+ */
+export type GetNpcCheckResponse = Message<"meurpg.play.v1.GetNpcCheckResponse"> & {
+  /**
+   * @generated from field: meurpg.play.v1.NpcCheckRead check = 1;
+   */
+  check?: NpcCheckRead | undefined;
+};
+
+/**
+ * Describes the message meurpg.play.v1.GetNpcCheckResponse.
+ * Use `create(GetNpcCheckResponseSchema)` to create a new message.
+ */
+export const GetNpcCheckResponseSchema: GenMessage<GetNpcCheckResponse> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_scene, 33);
+
+/**
+ * NpcCheckOption is one check of a creature.
+ *
+ * @generated from message meurpg.play.v1.NpcCheckOption
+ */
+export type NpcCheckOption = Message<"meurpg.play.v1.NpcCheckOption"> & {
+  /**
+   * "skill:deception", "ability:cha".
+   *
+   * @generated from field: string key = 1;
+   */
+  key: string;
+
+  /**
+   * @generated from field: string name = 2;
+   */
+  name: string;
+
+  /**
+   * What the creature adds to the d20, 0 when `known` is false.
+   *
+   * @generated from field: int32 bonus = 3;
+   */
+  bonus: number;
+
+  /**
+   * @generated from field: bool known = 4;
+   */
+  known: boolean;
+};
+
+/**
+ * Describes the message meurpg.play.v1.NpcCheckOption.
+ * Use `create(NpcCheckOptionSchema)` to create a new message.
+ */
+export const NpcCheckOptionSchema: GenMessage<NpcCheckOption> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_scene, 34);
+
+/**
  * GrantSceneAttemptRequest gives one character one more attempt at one action.
  *
  * @generated from message meurpg.play.v1.GrantSceneAttemptRequest
@@ -1103,7 +1559,7 @@ export type GrantSceneAttemptRequest = Message<"meurpg.play.v1.GrantSceneAttempt
  * Use `create(GrantSceneAttemptRequestSchema)` to create a new message.
  */
 export const GrantSceneAttemptRequestSchema: GenMessage<GrantSceneAttemptRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_scene, 24);
+  messageDesc(file_meurpg_play_v1_scene, 35);
 
 /**
  * GrantSceneAttemptResponse returns the open scene as the master sees it.
@@ -1122,7 +1578,7 @@ export type GrantSceneAttemptResponse = Message<"meurpg.play.v1.GrantSceneAttemp
  * Use `create(GrantSceneAttemptResponseSchema)` to create a new message.
  */
 export const GrantSceneAttemptResponseSchema: GenMessage<GrantSceneAttemptResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_scene, 25);
+  messageDesc(file_meurpg_play_v1_scene, 36);
 
 /**
  * SetSceneAudienceRequest names the players the open scene is open to.
@@ -1148,7 +1604,7 @@ export type SetSceneAudienceRequest = Message<"meurpg.play.v1.SetSceneAudienceRe
  * Use `create(SetSceneAudienceRequestSchema)` to create a new message.
  */
 export const SetSceneAudienceRequestSchema: GenMessage<SetSceneAudienceRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_scene, 26);
+  messageDesc(file_meurpg_play_v1_scene, 37);
 
 /**
  * SetSceneAudienceResponse returns the scene as the master sees it.
@@ -1167,7 +1623,7 @@ export type SetSceneAudienceResponse = Message<"meurpg.play.v1.SetSceneAudienceR
  * Use `create(SetSceneAudienceResponseSchema)` to create a new message.
  */
 export const SetSceneAudienceResponseSchema: GenMessage<SetSceneAudienceResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_scene, 27);
+  messageDesc(file_meurpg_play_v1_scene, 38);
 
 /**
  * SetScenePlayersMayJoinRequest sets the switch "Os jogadores podem entrar".
@@ -1191,7 +1647,7 @@ export type SetScenePlayersMayJoinRequest = Message<"meurpg.play.v1.SetScenePlay
  * Use `create(SetScenePlayersMayJoinRequestSchema)` to create a new message.
  */
 export const SetScenePlayersMayJoinRequestSchema: GenMessage<SetScenePlayersMayJoinRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_scene, 28);
+  messageDesc(file_meurpg_play_v1_scene, 39);
 
 /**
  * SetScenePlayersMayJoinResponse returns the scene as the master sees it.
@@ -1210,7 +1666,7 @@ export type SetScenePlayersMayJoinResponse = Message<"meurpg.play.v1.SetScenePla
  * Use `create(SetScenePlayersMayJoinResponseSchema)` to create a new message.
  */
 export const SetScenePlayersMayJoinResponseSchema: GenMessage<SetScenePlayersMayJoinResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_scene, 29);
+  messageDesc(file_meurpg_play_v1_scene, 40);
 
 /**
  * JoinSceneRequest names the campaign.
@@ -1229,7 +1685,7 @@ export type JoinSceneRequest = Message<"meurpg.play.v1.JoinSceneRequest"> & {
  * Use `create(JoinSceneRequestSchema)` to create a new message.
  */
 export const JoinSceneRequestSchema: GenMessage<JoinSceneRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_scene, 30);
+  messageDesc(file_meurpg_play_v1_scene, 41);
 
 /**
  * JoinSceneResponse returns the scene as the player who joined reads it.
@@ -1248,7 +1704,7 @@ export type JoinSceneResponse = Message<"meurpg.play.v1.JoinSceneResponse"> & {
  * Use `create(JoinSceneResponseSchema)` to create a new message.
  */
 export const JoinSceneResponseSchema: GenMessage<JoinSceneResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_scene, 31);
+  messageDesc(file_meurpg_play_v1_scene, 42);
 
 /**
  * SceneBlockedReason says why PlayService refused a scene call with
@@ -1334,4 +1790,85 @@ export enum SceneBlockedReason {
  */
 export const SceneBlockedReasonSchema: GenEnum<SceneBlockedReason> = /*@__PURE__*/
   enumDesc(file_meurpg_play_v1_scene, 0);
+
+/**
+ * NpcCheckSource is where the picker found a creature.
+ *
+ * @generated from enum meurpg.play.v1.NpcCheckSource
+ */
+export enum NpcCheckSource {
+  /**
+   * @generated from enum value: NPC_CHECK_SOURCE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: NPC_CHECK_SOURCE_STAGE = 1;
+   */
+  STAGE = 1,
+
+  /**
+   * @generated from enum value: NPC_CHECK_SOURCE_TOKEN = 2;
+   */
+  TOKEN = 2,
+
+  /**
+   * @generated from enum value: NPC_CHECK_SOURCE_MONSTER = 3;
+   */
+  MONSTER = 3,
+}
+
+/**
+ * Describes the enum meurpg.play.v1.NpcCheckSource.
+ */
+export const NpcCheckSourceSchema: GenEnum<NpcCheckSource> = /*@__PURE__*/
+  enumDesc(file_meurpg_play_v1_scene, 1);
+
+/**
+ * NpcCheckNobodyReason is why a check of the master's side asked no bard. The master reads it; no player does.
+ *
+ * @generated from enum meurpg.play.v1.NpcCheckNobodyReason
+ */
+export enum NpcCheckNobodyReason {
+  /**
+   * @generated from enum value: NPC_CHECK_NOBODY_REASON_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * No bard of the party can cut a check: none has Cutting Words with the setting "todos", is awake and has a use of Bardic
+   * Inspiration left.
+   *
+   * @generated from enum value: NPC_CHECK_NOBODY_REASON_NO_BARD_CAN_CUT = 1;
+   */
+  NO_BARD_CAN_CUT = 1,
+
+  /**
+   * The creature is immune to being charmed.
+   *
+   * @generated from enum value: NPC_CHECK_NOBODY_REASON_CHARM_IMMUNE = 2;
+   */
+  CHARM_IMMUNE = 2,
+
+  /**
+   * The master hid the creature's token on the map: no player sees it, whatever the box says.
+   *
+   * @generated from enum value: NPC_CHECK_NOBODY_REASON_TOKEN_HIDDEN = 3;
+   */
+  TOKEN_HIDDEN = 3,
+
+  /**
+   * Some bard could cut the check but none sees the creature within 60 feet and is seen by it: the map's distance or fog, or the master's
+   * box and the players the scene is open to.
+   *
+   * @generated from enum value: NPC_CHECK_NOBODY_REASON_NOBODY_SEES = 4;
+   */
+  NOBODY_SEES = 4,
+}
+
+/**
+ * Describes the enum meurpg.play.v1.NpcCheckNobodyReason.
+ */
+export const NpcCheckNobodyReasonSchema: GenEnum<NpcCheckNobodyReason> = /*@__PURE__*/
+  enumDesc(file_meurpg_play_v1_scene, 2);
 

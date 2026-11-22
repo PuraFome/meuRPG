@@ -1071,8 +1071,11 @@ func (c *sceneRollCall) replay(ctx context.Context, sessionID string) (bool, err
 	if done.Kind != eventSceneCheckRolled {
 		return false, errKeyReused()
 	}
-	if done.ActorUserID == nil || *done.ActorUserID != c.m.UserID || hashDiffers(done.IdempotencyHash, c.hash) {
+	if hashDiffers(done.IdempotencyHash, c.hash) {
 		return false, errKeyReused()
+	}
+	if err := keyAuthorOnly(done, c.m.UserID); err != nil {
+		return false, err
 	}
 	c.out.repeated = true
 	c.out.rollID, c.out.at = done.ID, done.CreatedAt
