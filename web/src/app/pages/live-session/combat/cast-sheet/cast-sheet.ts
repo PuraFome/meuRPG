@@ -269,7 +269,8 @@ export class CastSheet {
       api: this.api,
       animator: this.animator,
       fav: this.fav,
-      windowClosed: () => this.watch?.closedByServer(),
+      // Only a release has a window to lose: an ordinary cast shows every refusal's sentence.
+      windowClosed: this.release ? () => this.watch?.closedByServer() : undefined,
       reactor: this.data.master ? this.release?.reactorLabel : undefined,
     },
   );
