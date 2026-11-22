@@ -298,4 +298,21 @@ describe('MasterAreaCast: the master releases a readied spell for the player (#8
     expect(plain(el.textContent)).not.toContain('Não é a sua vez');
     expect(button('Voltar à sessão')).toBeDefined();
   });
+
+  it('reads the reaction used with the reactor named, not "sua vez" (S1b)', async () => {
+    const { el, fixture, button, settle } = await open({
+      castRefusal: blocked(EncounterBlockedReason.REACTION_USED),
+    });
+    const map = fixture.debugElement.query(By.directive(AreaMap)).componentInstance as AreaMap;
+    map.place.emit({ kind: 'point', square: { col: 6, row: 4 } });
+    await settle();
+    button('Confirmar local')!.click();
+    await settle();
+    button('Conjurar Bola de Fogo')!.click();
+    await settle();
+    expect(plain(el.querySelector('[role=alert]')?.textContent)).toContain(
+      'A reação de Pensantus já foi usada: ela volta no começo da vez de Pensantus.',
+    );
+    expect(plain(el.querySelector('[role=alert]')?.textContent)).not.toMatch(/\b(você|sua)\b/i);
+  });
 });

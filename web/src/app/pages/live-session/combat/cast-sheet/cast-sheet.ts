@@ -270,6 +270,7 @@ export class CastSheet {
       animator: this.animator,
       fav: this.fav,
       windowClosed: () => this.watch?.closedByServer(),
+      reactor: this.data.master ? this.release?.reactorLabel : undefined,
     },
   );
   /** Tells the caster that the master answered the question for them: the question goes and a line takes its place. */

@@ -229,4 +229,17 @@ describe('MoveReleaseFlow, the page of a readied move (#856)', () => {
     expect(flow.refusedAsClosed(new ConnectError('x', Code.Unavailable))).toBe(false);
     expect(flow.gone()).toBe(false);
   });
+
+  it('words the reaction used with the reactor for the master, and keeps the player sentence (S1b)', () => {
+    const player = setup(false);
+    player.flow.open('w1');
+    expect(player.flow.refusal(blocked(EncounterBlockedReason.REACTION_USED))).toBe(
+      'A reação já foi usada: ela volta no começo da sua vez.',
+    );
+    const master = setup(true);
+    master.flow.open('w1');
+    expect(master.flow.refusal(blocked(EncounterBlockedReason.REACTION_USED))).toBe(
+      'A reação de Tor já foi usada: ela volta no começo da vez de Tor.',
+    );
+  });
 });

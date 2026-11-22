@@ -12,7 +12,7 @@ import { currentCombatant, isPlayer } from '../../../core/combat/combat-view';
 import { type MoveRelease, moveReleaseView } from '../../../core/combat/move-release';
 import { readiedOfWindow } from '../../../core/combat/reaction-readied';
 import { ReleaseMark, beginReleaseWait } from '../../../core/combat/release-mark';
-import { turnOfText } from '../../../core/combat/release-text';
+import { releaseRefusal, turnOfText } from '../../../core/combat/release-text';
 import { ReleaseWatch, windowClosedRefusal } from '../../../core/combat/release-watch';
 
 /** What the Mover page of a release says when the walk stopped before its first square (588-10 card 4's words, for a release). */
@@ -132,6 +132,12 @@ export class MoveReleaseFlow {
     }
     this.watch.closedByServer();
     return true;
+  }
+
+  /** The words of a refusal of a call of the release: the master reads the reactor's name where the player's sentence says "sua". */
+  refusal(err: unknown): string {
+    const r = this.current();
+    return releaseRefusal(err, 'mover', r?.master ? r.reactor : undefined);
   }
 
   /** The window went away under the page. */

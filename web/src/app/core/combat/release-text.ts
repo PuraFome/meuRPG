@@ -1,4 +1,6 @@
 import { joinDots, tight } from '../format/text';
+import { combatErrorMessage, encounterBlocked } from './combat-errors';
+import { EncounterBlockedReason } from '../../../gen/meurpg/play/v1/combat_pb';
 import { article } from '../format/article';
 import { ofThe } from './move-plan';
 import { circleLabel } from './combat-grid';
@@ -222,4 +224,18 @@ function masterGone(state: ReturnType<typeof goneState>, o: GoneInput, who: stri
     default:
       return playerGone(state, o);
   }
+}
+
+/**
+ * What a release says when the server refuses a call that is not a closed window. The reaction already used is the one refusal whose
+ * player sentence says "sua vez"; the master reads the reactor's name instead (`reactor` set). Every other refusal keeps its own words.
+ */
+export function releaseRefusal(err: unknown, what: string, reactor?: string): string {
+  if (
+    reactor !== undefined &&
+    encounterBlocked(err)?.reason === EncounterBlockedReason.REACTION_USED
+  ) {
+    return `A reação de ${reactor} já foi usada: ela volta no começo da vez de ${reactor}.`;
+  }
+  return combatErrorMessage(err, what);
 }

@@ -1,4 +1,11 @@
+import { create } from '@bufbuild/protobuf';
+import { Code, ConnectError } from '@connectrpc/connect';
 import { describe, expect, it } from 'vitest';
+
+import {
+  EncounterBlockedReason,
+  EncounterBlockedSchema,
+} from '../../../gen/meurpg/play/v1/combat_pb';
 
 import {
   RELEASE_BACK,
@@ -10,6 +17,7 @@ import {
   releaseBand,
   MASTER_GONE,
   releaseGoneView,
+  releaseRefusal,
   releaseSubtitle,
   releaseTitle,
   turnOfText,
@@ -218,6 +226,24 @@ describe('a release whose window went away (857-09 card 1)', () => {
       ]) {
         expect(text(g)).not.toMatch(/\b(você|sua)\b/i);
       }
+    });
+  });
+
+  describe('the refusal of a call of a release', () => {
+    const used = new ConnectError('x', Code.FailedPrecondition, undefined, [
+      {
+        desc: EncounterBlockedSchema,
+        value: create(EncounterBlockedSchema, { reason: EncounterBlockedReason.REACTION_USED }),
+      },
+    ]);
+
+    it('names the reactor for the master and keeps the player sentence', () => {
+      expect(releaseRefusal(used, 'mover')).toBe(
+        'A reação já foi usada: ela volta no começo da sua vez.',
+      );
+      const said = releaseRefusal(used, 'mover', 'Tor');
+      expect(said).toBe('A reação de Tor já foi usada: ela volta no começo da vez de Tor.');
+      expect(said).not.toMatch(/\b(você|sua)\b/i);
     });
   });
 });

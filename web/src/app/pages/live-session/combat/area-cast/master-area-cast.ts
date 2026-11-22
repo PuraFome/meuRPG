@@ -46,7 +46,6 @@ import {
 } from '../../../../core/combat/cast-flow';
 import { CombatClient } from '../../../../core/combat/combat-client';
 import { type AreaChoice, type SlotRef } from '../../../../core/combat/combat-client-types';
-import { combatErrorMessage } from '../../../../core/combat/combat-errors';
 import { circleLabel } from '../../../../core/combat/combat-grid';
 import type { CombatState } from '../../../../core/combat/combat-state';
 import { isPlayer } from '../../../../core/combat/combat-view';
@@ -68,6 +67,7 @@ import {
   RELEASE_DONE,
   masterFoot,
   releaseBand,
+  releaseRefusal,
   RELEASE_LEAD,
   releaseSubtitle,
   releaseTitle,
@@ -376,7 +376,7 @@ export class MasterAreaCast {
       if (this.watch && windowClosedRefusal(err)) {
         this.watch.closedByServer();
       } else {
-        this.error.set(combatErrorMessage(err, 'conjurar a magia'));
+        this.error.set(releaseRefusal(err, 'conjurar a magia', this.release?.reactorLabel));
       }
     } finally {
       this.busy.set(false);
