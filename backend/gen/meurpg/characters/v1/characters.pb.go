@@ -9486,11 +9486,13 @@ type LevelUpOptions struct {
 	SkillSources []*LevelUpSkillSource `protobuf:"bytes,45,rep,name=skill_sources,json=skillSources,proto3" json:"skill_sources,omitempty"`
 	// The skills and the expertise a new pick may be on in the sheet after the level (for a multiclass, the sheet
 	// with the new class, so its row is in them; the subclass the level is due to pick is not: each subclass carries
-	// its own lists). They are the lists PreviewChoices answers for that sheet (skills_allowed, expertise_allowed),
-	// as keys, narrowed in one step: a source that names no list lists every skill the sheet can pick (every skill,
-	// for expertise); the skills the sheet has by race or background, the keys it holds and the lists its held picks
-	// use up are left out; expertise is left only on the skills the sheet is proficient in or the level's skills give.
-	// expertise_allowed is empty when the sheet has no source of expertise.
+	// its own lists), as keys. For skills, what is offered is what LevelUpCharacter accepts: the same set. A class added by
+	// multiclassing gives one skill from its own row, without the skills the sheet has; the picks made at earlier levels stay
+	// where they are and the sources they use are not offered again. At the other levels a source that names no list lists
+	// every skill the sheet can pick; the skills the sheet has by race or background, the keys it holds and the lists its held
+	// picks use up are left out. For expertise, being on the list is necessary and the proficiency decides: it is left only
+	// on the skills the sheet is proficient in or the level's skills give. expertise_allowed is empty when the sheet has no
+	// source of expertise.
 	SkillsAllowed    []string `protobuf:"bytes,46,rep,name=skills_allowed,json=skillsAllowed,proto3" json:"skills_allowed,omitempty"`
 	ExpertiseAllowed []string `protobuf:"bytes,47,rep,name=expertise_allowed,json=expertiseAllowed,proto3" json:"expertise_allowed,omitempty"`
 	// Multiclassing (SRD 5.1, "Multiclassing"). is_new_class says the character
@@ -10326,7 +10328,8 @@ type LevelUpSubclass struct {
 	// LevelUpOptions.skill_sources. skill_choices is the total.
 	SkillSources []*LevelUpSkillSource `protobuf:"bytes,15,rep,name=skill_sources,json=skillSources,proto3" json:"skill_sources,omitempty"`
 	// The skills and the expertise a new pick may be on in the sheet after the level with this subclass, as
-	// LevelUpOptions.skills_allowed and expertise_allowed.
+	// LevelUpOptions.skills_allowed and expertise_allowed: offered and accepted are the same set for skills, and for expertise
+	// the list is necessary and the proficiency decides.
 	SkillsAllowed    []string `protobuf:"bytes,16,rep,name=skills_allowed,json=skillsAllowed,proto3" json:"skills_allowed,omitempty"`
 	ExpertiseAllowed []string `protobuf:"bytes,17,rep,name=expertise_allowed,json=expertiseAllowed,proto3" json:"expertise_allowed,omitempty"`
 	unknownFields    protoimpl.UnknownFields

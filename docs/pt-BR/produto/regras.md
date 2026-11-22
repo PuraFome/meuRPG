@@ -1317,7 +1317,8 @@ As escolhas cobrem as seções do SRD 5.1 Fighting Style, Draconic Ancestry e Br
   Uma característica de classe da mesa que o mestre arquivou dá a sua lista a um personagem da classe, e a lista é mostrada.
   Uma desligada não é fonte.
   Uma escolha nova que nenhuma lista acomoda é recusada para um jogador, qualquer que seja a ordem das escolhas na ficha, e a frase nomeia só essa escolha.
-  As perícias e especializações que um jogador pode escolher são as que a prévia e a subida de nível oferecem: aceitas e oferecidas são o mesmo conjunto.
+  Nas perícias, o que a prévia e a subida de nível oferecem é o que o salvamento aceita: o mesmo conjunto; num nível que acrescenta uma classe por multiclasse é a lista da linha da classe, sem as perícias que a ficha já tem, e as escolhas dos níveis anteriores ficam onde estão.
+  Nas especializações, estar na lista oferecida é necessário e a proficiência decide.
   Uma perícia que a ficha guardada tinha pelo antecedente é uma escolha nova quando o antecedente muda.
   O mestre nunca é recusado por uma escolha que nenhuma lista acomoda: a ficha é salva, e só o mestre lê o aviso sobre isso.
   Uma ficha guardada cujas escolhas não cabem salva, sobe de nível e joga, e as escolhas dela contam e dão o que dão.

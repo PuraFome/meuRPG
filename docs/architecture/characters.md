@@ -526,8 +526,10 @@ The module does the part that needs the database; what a level gives and what th
   `skill_choices` and `expertise_choices` are what the sheet after the level may pick beyond what the sheet before holds or allows.
   `skill_sources` lists the sources the level adds picks to, with the count it adds; a skill the sheet has from any source shows as `already_have`.
   `skills_allowed` and `expertise_allowed` are the keys a new pick may take in the sheet after the level (with the new class for a multiclass; each `LevelUpSubclass` carries its own).
-  They start from the lists `PreviewChoices` answers and drop the skills the sheet has from race or background, the keys it holds and the lists its held picks use up (`LevelPickKeys`).
-  Expertise is listed only on skills the sheet is proficient in or the level gives.
+  For skills, offered and accepted are the same set.
+  A class added by multiclassing gives one skill from its own row, without the skills the sheet has (`MulticlassPick.openSkills`, read by the list and by `checkMulticlassSkills`); the picks made at earlier levels stay where they are.
+  At the other levels the lists start from the ones `PreviewChoices` answers and drop the skills the sheet has from race or background, the keys it holds and the lists its held picks use up (`LevelPickKeys`).
+  For expertise, being on the list is necessary and the proficiency decides: it is listed only on skills the sheet is proficient in or the level gives.
 - **`PreviewLevelUp`** (read): the derived sheet of afterwards with the choices applied, and the first refusal if any (`LevelUpRefusal`, as data, not as an error).
   The web has no rules engine, so the server does the arithmetic, including the new maximum of prepared spells.
   A choice refused as archived or switched off returns no `after`, so a player guessing a key does not read its features.

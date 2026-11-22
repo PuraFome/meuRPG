@@ -157,8 +157,19 @@ func (pw *pickWorld) answers() map[string]string {
 			CampaignId: w.campaign, CharacterId: rising.GetId(), Revision: rising.GetRevision(), Choices: levelUpChoices([]string{skill}, nil),
 		}))
 		done()
+		up, done := pw.stored(sheet("class:wizard", skillFeatureLevel))
+		put("UpdateCharacter "+skill, w.ana.call(charactersv1connect.CharacterServiceUpdateCharacterProcedure, &charactersv1.UpdateCharacterRequest{
+			CampaignId: w.campaign, CharacterId: up.GetId(), Revision: up.GetRevision(), Name: up.GetName(), Sheet: skillDraft(skill),
+		}))
+		done()
 	}
 	for _, tool := range []string{toolInside, toolOutside} {
+		pending, done := pw.stored(sheet("class:wizard", toolFeatureLevel))
+		put("CompleteCharacterChoices "+tool, w.ana.call(charactersv1connect.CharacterServiceCompleteCharacterChoicesProcedure, &charactersv1.CompleteCharacterChoicesRequest{
+			CampaignId: w.campaign, CharacterId: pending.GetId(), ExpectedRevision: pending.GetRevision(),
+			Picks: []*charactersv1.ChoicePick{{ChoiceKey: rules.ToolPickKey(pw.toolOwner), OptionKeys: []string{tool}}},
+		}))
+		done()
 		held, done := pw.stored(sheet("class:wizard", 1))
 		put("tool PreviewChoices "+tool, w.ana.call(charactersv1connect.CharacterServicePreviewChoicesProcedure, &charactersv1.PreviewChoicesRequest{
 			CampaignId: w.campaign, CharacterId: held.GetId(), Kind: charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, Sheet: toolDraft(tool),
@@ -195,12 +206,12 @@ func compareAnswers(t *testing.T, what string, got, want map[string]string) {
 func TestAnArchivedClassFeatureIsAnsweredAsAnOpenOneOnEveryCallThatTakesAPick(t *testing.T) {
 	pw := newPickWorld(t, true)
 	open := pw.answers()
-	for _, name := range []string{"CreateCharacter " + pickInside, "LevelUpCharacter " + pickInside, "tool CreateCharacter " + toolInside, "tool UpdateCharacter " + toolInside} {
+	for _, name := range []string{"CreateCharacter " + pickInside, "LevelUpCharacter " + pickInside, "UpdateCharacter " + pickInside, "tool CreateCharacter " + toolInside, "tool UpdateCharacter " + toolInside} {
 		if !accepted(open[name]) {
 			t.Fatalf("with the feature open, %s: %s, want it accepted (the positive control)", name, shorten([]byte(open[name])))
 		}
 	}
-	for _, name := range []string{"CreateCharacter " + pickOutside, "LevelUpCharacter " + pickOutside, "tool CreateCharacter " + toolOutside, "tool UpdateCharacter " + toolOutside} {
+	for _, name := range []string{"CreateCharacter " + pickOutside, "LevelUpCharacter " + pickOutside, "UpdateCharacter " + pickOutside, "tool CreateCharacter " + toolOutside, "tool UpdateCharacter " + toolOutside} {
 		if accepted(open[name]) {
 			t.Fatalf("with the feature open, %s is accepted: the pick is off the list", name)
 		}
@@ -213,7 +224,7 @@ func TestAnArchivedClassFeatureIsAnsweredAsAnOpenOneOnEveryCallThatTakesAPick(t 
 // had the feature, and a tool pick under it as a key that does not exist.
 func TestASwitchedOffClassFeatureIsAnsweredAsATableWithoutIt(t *testing.T) {
 	without := newPickWorld(t, false).answers()
-	for _, name := range []string{"CreateCharacter " + pickInside, "LevelUpCharacter " + pickInside, "tool CreateCharacter " + toolInside} {
+	for _, name := range []string{"CreateCharacter " + pickInside, "LevelUpCharacter " + pickInside, "UpdateCharacter " + pickInside, "tool CreateCharacter " + toolInside} {
 		if accepted(without[name]) {
 			t.Fatalf("without the feature, %s is accepted: the row measures nothing", name)
 		}

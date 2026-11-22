@@ -7716,21 +7716,23 @@ async function scanPickLists(browser: Browser, colorScheme: 'light' | 'dark', wi
     await skills.getByRole('checkbox', { name: 'Especialização em Atletismo' }).uncheck();
     await expect(skills.locator('mat-error')).toHaveCount(0);
 
-    // A tool pick: the race gets a trait that lets the player choose one tool, the editor reads it, the player takes the thieves' tools, and the
-    // master narrows the trait to the smiths' tools before the save. The refusal is the error of that option in the marked "Escolhas" step.
-    await updateEntryRPC(m, campaignId, raceKey, 'tableRace', skillTraitRaceBody(['skill:stealth'], ['skill:nature'], ['proficiency:smiths-tools', 'proficiency:thieves-tools']));
+    // A tool pick: the race gets a trait that lets the player choose one tool, the editor reads it, the player takes the smiths' tools, and the
+    // master narrows the trait to the other two before the save. (The thieves' tools are on Ícaro's custom background: that option is off.)
+    // The refusal is the error of that option in the marked "Escolhas" step. The section is named by the choice's own title, "Ferramenta";
+    // the trait's name is on its origin line.
+    await updateEntryRPC(m, campaignId, raceKey, 'tableRace', skillTraitRaceBody(['skill:stealth'], ['skill:nature'], ['proficiency:smiths-tools', 'proficiency:tinkers-tools', 'proficiency:thieves-tools']));
     await open(page, edit);
     await page.getByRole('tab', { name: /^Escolhas/ }).click();
-    const toolCard = page.getByRole('region', { name: 'Ofício do cais' });
-    await toolCard.getByRole('radio', { name: /Ferramentas de ladrão/ }).click();
-    await updateEntryRPC(m, campaignId, raceKey, 'tableRace', skillTraitRaceBody(['skill:stealth'], ['skill:nature'], ['proficiency:smiths-tools']));
+    const toolCard = page.getByRole('region', { name: 'Ferramenta', exact: true });
+    await toolCard.getByRole('radio', { name: /Ferramentas de ferreiro/ }).click();
+    await updateEntryRPC(m, campaignId, raceKey, 'tableRace', skillTraitRaceBody(['skill:stealth'], ['skill:nature'], ['proficiency:tinkers-tools', 'proficiency:thieves-tools']));
     await page.getByRole('button', { name: 'Salvar ficha' }).click();
-    const toolSentence = 'A ferramenta Ferramentas de ladrão não está em nenhuma das escolhas de ferramenta do personagem.';
+    const toolSentence = 'A ferramenta Ferramentas de ferreiro não está em nenhuma das escolhas de ferramenta do personagem.';
     await expect(toolCard.locator('mat-error', { hasText: toolSentence })).toHaveCount(1);
     await expect(page.getByRole('alert').filter({ hasText: 'Veja o passo Escolhas.' })).toHaveCount(1);
     await expect(page.getByRole('tab', { name: /^Escolhas/ })).toContainText('(com erro)');
     await expectScreenPasses(page, `Editor, a recusa de uma ferramenta que nenhuma escolha permite ${where}`);
-    await toolCard.getByRole('radio', { name: /Ferramentas de ferreiro/ }).click();
+    await toolCard.getByRole('radio', { name: /Ferramentas de funileiro/ }).click();
     await expect(page.locator('mat-error', { hasText: toolSentence })).toHaveCount(0);
 
     // The master narrows the lists: stealth is in none, and the stored sheet still holds it.

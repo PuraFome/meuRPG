@@ -1317,7 +1317,8 @@ The choices cover the SRD 5.1 sections Fighting Style, Draconic Ancestry and Bre
   A class feature of the table that the master archived gives its list to a character of the class, and the list is shown.
   A switched-off one is no source.
   A new pick that no list places is refused for a player, however the picks are ordered on the sheet, and the sentence names only that pick.
-  The skills and expertise a player may take are the ones the preview and the level up offer: accepted and offered are the same set.
+  For skills, what the preview and the level up offer is what the save accepts: the same set; at a level that adds a class by multiclassing it is the class's row, without the skills the sheet has, and the picks of earlier levels stay where they are.
+  For expertise, being on the offered list is necessary and the proficiency decides.
   A skill the stored sheet had from its background is a new pick when the background changes.
   The master is never refused for a pick no list places: the sheet saves, and the master alone reads the issue about it.
   A stored sheet whose picks do not fit saves, levels up and plays, and its picks count and give what they give.

@@ -490,12 +490,14 @@ test(
       await expect(skills.getByRole('heading', { name: 'Perícia nova' })).toBeVisible();
       await showAllPicks(skills);
       // On the Ladino's list, and not on any other: the rows are the server's list and nothing else.
-      await expect(skills.getByRole('checkbox', { name: /^Furtividade/ })).toBeVisible();
-      await expect(skills.getByRole('checkbox', { name: /^Arcanismo/ })).toHaveCount(0);
-      await expect(skills.getByRole('checkbox', { name: /^Medicina/ })).toHaveCount(0);
-      await expect(skills.getByRole('checkbox', { name: /^Religião/ })).toHaveCount(0);
+      // One skill asked: the rows are radios (a list of several picks has checkboxes).
+      await expect(skills.getByRole('radio', { name: /^Furtividade/ })).toBeVisible();
+      await expect(skills.getByRole('radio', { name: /^Atletismo/ })).toBeDisabled();
+      await expect(skills.getByRole('radio', { name: /^Arcanismo/ })).toHaveCount(0);
+      await expect(skills.getByRole('radio', { name: /^Medicina/ })).toHaveCount(0);
+      await expect(skills.getByRole('radio', { name: /^Religião/ })).toHaveCount(0);
       await expect(p.getByText('Falta escolher 1 perícia.')).toBeVisible();
-      await skills.getByRole('checkbox', { name: /^Furtividade/ }).check();
+      await skills.getByRole('radio', { name: /^Furtividade/ }).check();
       await expect(p.getByText('Falta escolher 1 perícia.')).toHaveCount(0);
     } finally {
       await endOpenSessionRPC(m, campaignId);
