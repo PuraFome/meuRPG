@@ -219,7 +219,8 @@ func TestTheMastersCallOnAReadiedWindowIsReadByTheMasterAndTheReactorsPlayerAlon
 	if r := w.markRolling(w.master, id, false); !r.ok() {
 		t.Fatalf("the master's call = %d %s", r.status, r.body)
 	}
-	w.clock.advance(5 * time.Second) // the wait has run: waitedMs is not 0, and is in their reads
+	// The wait has run: waitedMs is not 0, and is in their reads.
+	w.clock.advance(5 * time.Second)
 	for _, p := range []*person{w.master, w.caio} { // the positive controls
 		if got := w.waitBeganOf(p); got == nil {
 			t.Errorf("%s reads no beginning of the wait after the master's call", p.name)
