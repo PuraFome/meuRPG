@@ -126,3 +126,33 @@ func TestAPlayersMarkAfterTheMastersCallKeepsTheOneWait(t *testing.T) {
 		t.Errorf("after the clear the master reads rolling %v and the wait began at %v, want no mark and %v", got.GetRolling(), got.GetWaitBeganAt(), first)
 	}
 }
+
+// The master's call on a READIED window of a player's creature (a summoned wolf: its user_id is the owner's player, so the
+// guard on a reactor with no player does not catch it) is refused as well: a creature has no player to wait for. The window
+// stays open and its wait does not begin.
+func TestTheMastersCallOnAPlayersCreaturesReadiedWindowIsRefused(t *testing.T) {
+	t.Parallel()
+	a := newSummoners(t)
+	e := a.summonersFight(t)
+	e = a.toSalvia(t, e)
+	if _, err := a.summonWolves(t, a.bia, e, 12); err != nil {
+		t.Fatalf("CastSpell(Conjurar Animais) error = %v", err)
+	}
+	e = a.passTo(t, a.get(t, a.master), "Lobo atroz 1")
+	wolf := byLabel(t, e, "Lobo atroz 1")
+	attacks := a.mustOptions(t, a.master, e, "Lobo atroz 1").GetOptions().GetAttacks()
+	if len(attacks) == 0 {
+		t.Fatal("the wolf has no attack")
+	}
+	a.mustReady(t, a.master, &playv1.ReadyActionRequest{
+		CampaignId: a.campaignID, EncounterId: e.GetId(), CombatantId: wolf.GetId(), IdempotencyKey: newKey(),
+		TriggerText: readyTrigger, Kind: playv1.ReadiedKind_READIED_KIND_ATTACK, ActionKey: attacks[0].GetAttack().GetKey(),
+	})
+	e = a.mustEndTurn(t, a.master, e)
+	w := a.mustFire(t, e, "Lobo atroz 1")
+	wantCode(t, "the master's call on a creature's READIED window", a.markRolling(t, a.master, e, w.GetId()), connect.CodePermissionDenied)
+	got := a.windowOf(t, a.master, kindReadied)
+	if got == nil || got.GetId() != w.GetId() || got.GetWaitBeganAt() != nil || got.GetRolling() {
+		t.Errorf("the window after the refused call = %v, want it open with no wait begun and no mark", got)
+	}
+}
