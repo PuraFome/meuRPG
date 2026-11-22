@@ -488,7 +488,7 @@ func levelUpOptionsWith(b Build, idx int, classKey string, c *content, sub *srd5
 	o.SkillChoices, o.ExpertiseChoices = c.levelAsk(b, bare)
 	o.splitMulticlassAsk()
 	o.SkillSources = c.levelSkillSources(b, bare)
-	o.SkillsAllowed, o.ExpertiseAllowed = c.pickKeys(bare)
+	o.SkillsAllowed, o.ExpertiseAllowed = c.levelPickKeys(bare, o.multiclassSkills(), o.SkillChoices)
 
 	// A subclass that is due: each candidate's own part. It is read before the
 	// spells below, so a third caster's part compares with counts still at zero.
@@ -892,6 +892,14 @@ func (o *LevelUpOffer) splitMulticlassAsk() {
 	o.SkillChoices -= pick
 }
 
+// multiclassSkills is the class's skill pick when the level adds a class whose row gives one, nil otherwise.
+func (o *LevelUpOffer) multiclassSkills() *MulticlassPick {
+	if o.Multiclass == nil {
+		return nil
+	}
+	return o.Multiclass.Skills
+}
+
 // featureGains reads the choices of the features with these keys: their
 // options (the feature's options_choose or, for one that does not say how
 // many, the hand-written choice effect's count; a feature with neither is not
@@ -1264,7 +1272,7 @@ func checkLevelUp(before, after Build, sent sentSwaps, c *content) *LevelUpError
 	if lerr := checkHitPoints(ext, after, idx, class.HitDie, c); lerr != nil {
 		return lerr
 	}
-	mc, lerr := c.checkNewClassTools(before, after, dBefore, classKey, newClass)
+	_, lerr = c.checkNewClassTools(before, after, dBefore, classKey, newClass)
 	if lerr != nil {
 		return lerr
 	}
@@ -1291,7 +1299,7 @@ func checkLevelUp(before, after Build, sent sentSwaps, c *content) *LevelUpError
 	if lerr := checkLevelUpChoices(before, after, classKey, swaps, c); lerr != nil {
 		return lerr
 	}
-	if lerr := c.checkLevelUpSkills(before, after, offer, mc); lerr != nil {
+	if lerr := c.checkLevelUpSkills(before, after, offer); lerr != nil {
 		return lerr
 	}
 	return checkNewIssues(dBefore, dAfter, offOwnList)
@@ -1380,16 +1388,17 @@ func duplicatesOf(before, after Build, newClass bool) Build {
 	return dups
 }
 
-// checkLevelUpSkills checks the new skills (the multiclass pick of a new class, mc
-// not nil) and the new expertise against what the offer of the level asks, and that the sheet's sources place the new picks.
-func (c *content) checkLevelUpSkills(before, after Build, offer LevelUpOffer, mc *MulticlassOffer) *LevelUpError {
+// checkLevelUpSkills checks the new skills (the multiclass pick of a new class, as the offer splits it from the level's other
+// skills: splitMulticlassAsk) and the new expertise against what the offer of the level asks, and that the sheet's sources
+// place the new picks.
+func (c *content) checkLevelUpSkills(before, after Build, offer LevelUpOffer) *LevelUpError {
 	wantSkills, wantExpertise := offer.SkillChoices, offer.ExpertiseChoices
 	got, removedSkills := added(before.SkillProficiencies, after.SkillProficiencies)
 	switch {
 	case removedSkills:
 		return refuse(skillsField, LevelUpReasonSkills, "a skill was removed")
-	case mc != nil:
-		if lerr := c.checkMulticlassSkills(mc, got, wantSkills); lerr != nil {
+	case offer.Multiclass != nil:
+		if lerr := c.checkMulticlassSkills(offer.Multiclass, got, wantSkills); lerr != nil {
 			return lerr
 		}
 	case len(got) != wantSkills:

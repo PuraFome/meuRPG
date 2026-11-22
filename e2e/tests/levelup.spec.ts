@@ -273,6 +273,77 @@ test(
   },
 );
 
+// A pick bound by the server's `skills_allowed` at a level of the character's own class (no multiclass): the Bardo 2 to 3
+// takes the Colégio do Conhecimento, which gives 3 skills among the ones the sheet lacks. The ones it has are not rows, and
+// an expertise row exists only for a skill the sheet trains, a skill just picked included.
+test(
+  'Orla, Bardo 2, sobe para o 3: as perícias do colégio só vêm das que ela não tem, e a especialização só aparece nas treinadas @MR-040 @RN-12',
+  { tag: ['@MR-040', '@RN-12'] },
+  async ({ browser }) => {
+    test.setTimeout(150_000);
+    const master = await newSignedInContext(browser, 'Mestre Teste', { viewport: { width: 1280, height: 800 } });
+    const player = await newSignedInContext(browser, 'Jogador Teste', { viewport: { width: 1280, height: 800 } });
+    const m = await master.newPage();
+    const p = await player.newPage();
+    let campaignId = '';
+    try {
+      await m.goto('/');
+      await p.goto('/');
+      const orla = {
+        name: 'Orla',
+        raceKey: 'race:human',
+        race: 'Humano',
+        classKey: 'class:bard',
+        class: 'Bardo',
+        level: 2,
+        background: 'Artista',
+        backgroundSkillKeys: ['skill:acrobatics', 'skill:performance'],
+        backgroundSkills: ['Acrobacia', 'Atuação'],
+        extraSkillKeys: ['skill:deception', 'skill:persuasion', 'skill:insight'],
+        extraSkills: ['Enganação', 'Persuasão', 'Intuição'],
+        scores: { for: 10, des: 14, con: 13, int: 12, sab: 10, car: 16 },
+      };
+      const spells = ['spell:charm-person', 'spell:cure-wounds', 'spell:faerie-fire', 'spell:healing-word', 'spell:sleep'];
+      const table = await tableForLevelUp(m, p, `Subida do Bardo ${Date.now()}`, {
+        build: orla,
+        sheet: { cantripKeys: ['spell:vicious-mockery', 'spell:minor-illusion'], knownSpellKeys: spells, preparedSpellKeys: spells },
+      });
+      campaignId = table.campaignId;
+      await p.goto(`${sheetOf(campaignId, table.characterId)}/level-up`);
+
+      await passClassStep(p);
+      await expect(p.getByText(/Passo 2 de \d · Vida/)).toBeVisible();
+      await p.getByRole('button', { name: 'Próximo' }).click();
+      await expect(p.getByText(/Passo 3 de \d · Escolhas/)).toBeVisible();
+
+      // The college comes first and brings its 3 skills: none of the skills the sheet trains is a row.
+      await p.locator('#pick-subclass label.row').first().click();
+      const skills = p.locator('#pick-skills');
+      await expect(skills).toContainText('0 de 3');
+      await p.getByRole('button', { name: /Ver as outras \d+ perícias/ }).first().click();
+      await expect(skills.locator('label.row').filter({ hasText: 'Furtividade' })).toBeVisible();
+      await expect(skills.locator('label.row').filter({ hasText: 'Acrobacia' })).toHaveCount(0);
+      await expect(skills.locator('label.row').filter({ hasText: 'Enganação' })).toHaveCount(0);
+
+      // Expertise: no row for a skill the sheet lacks, one once it is picked, none again when it is unpicked.
+      const expertise = p.locator('#pick-expertise');
+      const stealth = expertise.locator('label.row').filter({ hasText: 'Furtividade' });
+      await expect(expertise.locator('label.row').filter({ hasText: 'Atuação' })).toBeVisible();
+      await expect(stealth).toHaveCount(0);
+      await skills.locator('label.row').filter({ hasText: 'Furtividade' }).click();
+      await expect(stealth).toHaveCount(1);
+      await stealth.click();
+      await expect(stealth.locator('input')).toBeChecked();
+      await skills.locator('label.row').filter({ hasText: 'Furtividade' }).click();
+      await expect(stealth).toHaveCount(0);
+    } finally {
+      await endOpenSessionRPC(m, campaignId);
+      await master.close();
+      await player.close();
+    }
+  },
+);
+
 // SRD 5.1 "Multiclassing": Doran, Guerreiro 5 (Força 16, Destreza 14, Inteligência 13, Carisma 9), takes the
 // Mago at level 1. The class step opens "Uma classe nova" with each class's prerequisite (the Bardo is closed
 // with the reason), the Vida step says the die of the new class, the summary says why each number moved, and the

@@ -244,6 +244,19 @@ describe('LevelUpDraft: subclass, feature options, skills and expertise', () => 
     d.toggleSkill('skill:stealth');
     expect([...d.expertise()]).toEqual([]);
   });
+
+  it('lists an expertise row only while the skill is trained: a skill of the list that is not picked has none', () => {
+    const d = new LevelUpDraft(options(), WIZARD_KEYS, catalog);
+    d.setSubclass('sub:lore');
+    const keys = () => d.expertiseItems().map((i) => i.key);
+    expect(keys()).not.toContain('skill:stealth');
+    d.toggleSkill('skill:stealth');
+    expect(keys()).toContain('skill:stealth');
+    d.toggleExpertise('skill:stealth');
+    d.toggleSkill('skill:stealth');
+    expect(keys()).not.toContain('skill:stealth');
+    expect([...d.expertise()]).toEqual([]);
+  });
 });
 
 describe('LevelUpDraft: picks that follow the counts', () => {

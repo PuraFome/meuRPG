@@ -953,18 +953,18 @@
     "SkillsAllowed": [
       "skill:acrobatics",
       "skill:animal-handling",
-      "skill:history",
-      "skill:intimidation",
-      "skill:survival",
       "skill:arcana",
       "skill:deception",
+      "skill:history",
+      "skill:intimidation",
       "skill:investigation",
       "skill:medicine",
       "skill:nature",
       "skill:performance",
       "skill:persuasion",
       "skill:sleight-of-hand",
-      "skill:stealth"
+      "skill:stealth",
+      "skill:survival"
     ],
     "ExpertiseAllowed": null,
     "LateChoices": null,

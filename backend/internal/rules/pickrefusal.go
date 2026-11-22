@@ -253,9 +253,18 @@ func (c *Content) PickLists(b Build) (skills PickAllowed, expertise *PickAllowed
 // LevelPickKeys are the skills and the expertise a new pick may go on in the sheet b (the sheet after a level), as keys: the
 // lists of PickLists, then one narrowing step (narrowPickKeys).
 func (c *Content) LevelPickKeys(b Build) (skills, expertise []string) {
+	return c.c.levelPickKeys(b, nil, 0)
+}
+
+// levelPickKeys is LevelPickKeys for a level that may add a class: row is the class's multiclass skill pick (nil when the
+// level adds no class or its row gives no skill) and extra the skills the level asks besides it. A skill the sheet picks
+// at a class added by multiclassing comes from the row's list, without what the sheet has (openSkills), the one list the
+// write reads too (checkMulticlassSkills); the lists of the sheet's earlier sources add to it only for the extra skills.
+func (c *content) levelPickKeys(b Build, row *MulticlassPick, extra int) (skills, expertise []string) {
 	x := c.deriverFor(b)
 	s, e, listed := x.pickLists()
-	return x.narrowPickKeys(b, s, e, listed)
+	skills, expertise = x.narrowPickKeys(b, s, e, listed, row, extra)
+	return skills, expertise
 }
 
 // narrowPickKeys turns the lists of the sources of the sheet b (pickLists) into the keys a new pick may take:
@@ -263,8 +272,9 @@ func (c *Content) LevelPickKeys(b Build) (skills, expertise []string) {
 //     expertise, every skill; expertise is empty when listed is false;
 //   - a skill the sheet has by another means (race, background) is no pick: another one stands in its place;
 //   - a key the sheet already holds, or whose pick the sources have no room for beside the held picks, takes no new pick;
+//   - at a class added by multiclassing the skills are the row's (MulticlassPick.pickable);
 //   - an expertise asks for the proficiency: it stays when the sheet is proficient in the skill or the skills list gives it.
-func (x *deriver) narrowPickKeys(b Build, s, e PickAllowed, listed bool) (skills, expertise []string) {
+func (x *deriver) narrowPickKeys(b Build, s, e PickAllowed, listed bool, row *MulticlassPick, extra int) (skills, expertise []string) {
 	skills = s.Keys
 	if s.Any {
 		skills = x.pickableSkills()
@@ -278,6 +288,9 @@ func (x *deriver) narrowPickKeys(b Build, s, e PickAllowed, listed bool) (skills
 	}
 	skills = slices.DeleteFunc(slices.Clone(skills), func(k string) bool { return x.automaticSkills[k] })
 	skills = x.stillOpen(x.skillSources(), skills, b.SkillProficiencies, func(k string) bool { _, ok := x.c.skills[k]; return ok && !x.automaticSkills[k] })
+	if row != nil && row.Choose > 0 {
+		skills = row.pickable(skills, extra > 0)
+	}
 	expertise = x.stillOpen(x.expertiseSources(), expertise, b.Expertise, func(k string) bool { _, ok := x.c.skills[k]; return ok })
 	if len(expertise) > 0 {
 		proficient := map[string]bool{}

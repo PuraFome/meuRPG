@@ -26,6 +26,8 @@ import {
 export interface ListPicks {
   readonly subclassKey: Signal<string>;
   readonly spells: Signal<ReadonlySet<string>>;
+  /** The new skills picked so far. */
+  readonly skills: Signal<ReadonlySet<string>>;
   /** The new maximum of prepared spells. */
   readonly preparedMax: Signal<number>;
 }
@@ -90,9 +92,14 @@ export class LevelUpLists {
   readonly instrumentAsked = computed(() =>
     proficiencyPick(this.options, LevelUpProficiencyKind.INSTRUMENT),
   );
-  readonly expertiseItems = computed<PickItem[]>(() =>
-    expertiseOptions(this.catalog.skills, this.options, this.picks.subclassKey()),
-  );
+  /** The server's expertise list, kept to the skills trained once the picks are in: a row the draft would drop
+   * (a skill of the list that is not trained, or that was just unpicked) is not offered. */
+  readonly expertiseItems = computed<PickItem[]>(() => {
+    const trained = new Set([...this.have.skills, ...this.picks.skills()]);
+    return expertiseOptions(this.catalog.skills, this.options, this.picks.subclassKey()).filter(
+      (i) => trained.has(i.key),
+    );
+  });
 
   /** The Portuguese name of every key the screen may show. */
   readonly names = computed(() => {

@@ -1,7 +1,9 @@
 package rules
 
 import (
+	"maps"
 	"slices"
+	"strconv"
 	"testing"
 )
 
@@ -255,6 +257,127 @@ func TestALevelWithoutAPickOffersNoSkillAndNoExpertise(t *testing.T) {
 		b = mustApply(t, c, b, satisfy(t, c, b, class, "")) // level 2: no pick
 		if o, err := LevelUpOptions(b, class, c); err != nil || o.ToLevel != 3 {
 			t.Errorf("%s: %v", class, err)
+		}
+	}
+}
+
+// fighterForEveryClass is Doran with the scores every class's multiclass prerequisite asks for.
+func fighterForEveryClass() Build {
+	f := doranFighter5()
+	f.BaseScores = map[Ability]int{STR: 15, DEX: 14, CON: 13, INT: 13, WIS: 13, CHA: 13}
+	return f
+}
+
+// Cases of the sweep below: the sheet before the level and the class that gains it.
+type pickLevel struct {
+	name   string
+	before Build
+	class  string
+}
+
+// levelPickCases are the level-ups the sweep reads: every class of the SRD taken as a later class by a Fighter 5, and every
+// level of every class at its own levels.
+func levelPickCases(t *testing.T, c *Content) []pickLevel {
+	t.Helper()
+	var out []pickLevel
+	for _, class := range slices.Sorted(maps.Keys(c.c.classes)) {
+		out = append(out, pickLevel{"fighter 5 takes " + class, fighterForEveryClass(), class})
+		b := sweepBase(t, c, class, subclassKeyAtOne(c, class))
+		for lvl := 2; lvl <= 20; lvl++ {
+			sub := ""
+			if o, err := LevelUpOptions(b, class, c); err != nil {
+				break
+			} else if o.SubclassDue {
+				sub = o.Subclasses[0].Key
+			}
+			out = append(out, pickLevel{class + " to " + strconv.Itoa(lvl), b, class})
+			b = mustApply(t, c, b, satisfy(t, c, b, class, sub))
+		}
+	}
+	return out
+}
+
+// subclassKeyAtOne is the first subclass of a class that picks it at level 1, "" for the others.
+func subclassKeyAtOne(c *Content, class string) string {
+	if cl := c.c.classes[class]; cl.SubclassLevel == 1 && len(cl.Subclasses) > 0 {
+		return cl.Subclasses[0]
+	}
+	return ""
+}
+
+// askedOf is what the level asks in all, with the first subclass's part when one is due: the skills (the multiclass pick
+// included), the expertise, and the lists the offer sends.
+func askedOf(o LevelUpOffer) (skills, expertise int, allowed, expertiseAllowed []string, sub string) {
+	skills, expertise, allowed, expertiseAllowed = o.SkillChoices, o.ExpertiseChoices, o.SkillsAllowed, o.ExpertiseAllowed
+	if o.Multiclass != nil && o.Multiclass.Skills != nil {
+		skills += o.Multiclass.Skills.Choose
+	}
+	if o.SubclassDue {
+		s := o.Subclasses[0]
+		sub = s.Key
+		skills, expertise = skills+s.SkillChoices, expertise+s.ExpertiseChoices
+		allowed, expertiseAllowed = slices.Concat(allowed, s.SkillsAllowed), slices.Concat(expertiseAllowed, s.ExpertiseAllowed)
+	}
+	return skills, expertise, allowed, expertiseAllowed, sub
+}
+
+// What the server sends as allowed is what the write accepts. At a level that asks one skill, the level-up with one new
+// skill is accepted exactly when the skill is in skills_allowed; every expertise the write accepts is in expertise_allowed.
+// A class added by multiclassing gives one skill from its own row (SRD 5.1, "Multiclassing", "Proficiencies"): the picks made
+// at earlier levels stay where they are and do not move to it.
+func TestTheAllowedSkillsAreTheSkillsTheLevelUpAccepts(t *testing.T) {
+	t.Parallel()
+	c := loadForTest(t)
+	for _, tc := range levelPickCases(t, c) {
+		o, err := LevelUpOptions(tc.before, tc.class, c)
+		if err != nil {
+			t.Errorf("%s: %v", tc.name, err)
+			continue
+		}
+		skills, expertise, allowed, expertiseAllowed, sub := askedOf(o)
+		if skills != 1 && expertise == 0 {
+			continue
+		}
+		base := satisfy(t, c, tc.before, tc.class, sub)
+		for _, k := range slices.Sorted(maps.Keys(c.c.skills)) {
+			if skills == 1 {
+				ch := base
+				ch.SkillProficiencies = []string{k}
+				after := mustApply(t, c, tc.before, ch)
+				accepted := CheckLevelUp(tc.before, after, c) == nil
+				if accepted != slices.Contains(allowed, k) {
+					t.Errorf("%s: new skill %s accepted = %v, in skills_allowed = %v", tc.name, k, accepted, slices.Contains(allowed, k))
+				}
+			}
+			if expertise > 0 {
+				ch := base
+				ch.Expertise = slices.Concat([]string{k}, base.Expertise[1:])
+				after := mustApply(t, c, tc.before, ch)
+				if CheckLevelUp(tc.before, after, c) == nil && !slices.Contains(expertiseAllowed, k) {
+					t.Errorf("%s: expertise %s accepted, not in expertise_allowed", tc.name, k)
+				}
+			}
+		}
+	}
+}
+
+// For the ranger and the rogue, the skills only the fighter's list holds are not offered to a Fighter 5 who adds the class:
+// the pick comes from the new class's row.
+func TestAClassAddedByMulticlassingNamesNoSkillOfAnEarlierSource(t *testing.T) {
+	t.Parallel()
+	c := loadForTest(t)
+	for class, absent := range map[string][]string{
+		"class:ranger": {"skill:history", "skill:acrobatics", "skill:intimidation"},
+		"class:rogue":  {"skill:history", "skill:animal-handling", "skill:survival"},
+	} {
+		o, err := LevelUpOptions(fighterForEveryClass(), class, c)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, k := range absent {
+			if slices.Contains(o.SkillsAllowed, k) {
+				t.Errorf("%s: skills_allowed holds %s, which only the fighter's list gives", class, k)
+			}
 		}
 	}
 }

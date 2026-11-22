@@ -259,6 +259,32 @@ type MulticlassPick struct {
 	From   []MulticlassOption
 }
 
+// openSkills are the keys of the pick the character does not have, in the order of the list: the one list a new class's skill
+// comes from, in the offer of the level and in the write (checkMulticlassSkills).
+func (p *MulticlassPick) openSkills() []string {
+	var out []string
+	for _, o := range p.From {
+		if !o.AlreadyHave {
+			out = append(out, o.Key)
+		}
+	}
+	return out
+}
+
+// pickable are the skills a new pick of the level may take at a class added by multiclassing: the open ones of the row
+// and, when the level asks other skills too (more), the keys of the sheet's other sources (others) that the row lacks.
+func (p *MulticlassPick) pickable(others []string, more bool) []string {
+	out := p.openSkills()
+	if more {
+		for _, k := range others {
+			if !slices.Contains(out, k) {
+				out = append(out, k)
+			}
+		}
+	}
+	return out
+}
+
 // MulticlassOption is one option of a pick, marked when the character already has it.
 type MulticlassOption struct {
 	Key, NamePT string
@@ -401,12 +427,12 @@ func (c *content) checkMulticlassSkills(offer *MulticlassOffer, got []string, ex
 		return nil
 	}
 	inList := 0
+	open := offer.Skills.openSkills()
 	for _, k := range got {
-		i := slices.IndexFunc(offer.Skills.From, func(o MulticlassOption) bool { return o.Key == k })
-		if i >= 0 {
-			if offer.Skills.From[i].AlreadyHave {
-				return refuse(field, LevelUpReasonProficiencyChoice, "the character already has %s", k)
-			}
+		if slices.ContainsFunc(offer.Skills.From, func(o MulticlassOption) bool { return o.Key == k && o.AlreadyHave }) {
+			return refuse(field, LevelUpReasonProficiencyChoice, "the character already has %s", k)
+		}
+		if slices.Contains(open, k) {
 			inList++
 		}
 	}
@@ -621,5 +647,5 @@ func (c *content) levelSkillSources(before, after Build) []LevelSkillSource {
 
 // pickKeys are the skills and the expertise a new pick may be on in the sheet b (Content.LevelPickKeys).
 func (c *content) pickKeys(b Build) (skills, expertise []string) {
-	return (&Content{c: c}).LevelPickKeys(b)
+	return c.levelPickKeys(b, nil, 0)
 }
