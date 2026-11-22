@@ -71,6 +71,7 @@ import {
   releaseSubtitle,
   releaseTitle,
 } from '../../../../core/combat/release-text';
+import { beginReleaseWait } from '../../../../core/combat/release-mark';
 import { ReleaseWatch } from '../../../../core/combat/release-watch';
 import type { CastMapData, CastRelease } from '../cast-sheet/cast-sheet';
 import { ReleaseBandView } from '../release-band/release-band';
@@ -300,6 +301,17 @@ export class MasterAreaCast {
       () => this.rule.set(HiddenAreaHitRule.REVEAL),
     );
     void this.flow.start();
+    if (this.release) {
+      void beginReleaseWait(
+        this.api.attacks,
+        {
+          campaignId: this.data.campaignId,
+          encounterId: this.data.encounterId,
+          windowId: this.release.windowId,
+        },
+        (e) => this.data.state.apply(e),
+      );
+    }
     effect(() => this.sheet.lock(this.busy()));
     effect(() => {
       if (this.flow.step() === 'list') {

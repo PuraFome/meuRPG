@@ -118,3 +118,37 @@ export class ReleaseMark {
     return this.api.markReactionRolling(campaignId, encounterId, windowId, clear);
   }
 }
+
+/** The windows the master's release has a call in flight for, with how many (a window may be opened twice at once). */
+const beginning = new Map<string, number>();
+
+/** Whether the master's call that begins the wait of this window is on its way: no screen passes the window meanwhile (#857). */
+export function beginningWait(windowId: string): boolean {
+  return beginning.has(windowId);
+}
+
+/**
+ * The master opens the release of a player's readied action: the window's one wait of 120 s begins, if it has not (`rolling` stays the
+ * player's own mark, so never `clear`, and nothing on close). Resolves once the combat the server answers is applied; a refusal (the
+ * window is gone) is swallowed, the dialog shows the gone state it has. While it is on its way the screen passes no window for it.
+ */
+export async function beginReleaseWait(
+  api: Pick<CombatClient['attacks'], 'markReactionRolling'>,
+  ids: ReleaseMarkIds,
+  apply: (e: Encounter) => void,
+): Promise<void> {
+  const id = ids.windowId;
+  beginning.set(id, (beginning.get(id) ?? 0) + 1);
+  try {
+    apply(await api.markReactionRolling(ids.campaignId, ids.encounterId, id, false));
+  } catch {
+    // The window may be gone already; the stream shows it.
+  } finally {
+    const left = (beginning.get(id) ?? 1) - 1;
+    if (left > 0) {
+      beginning.set(id, left);
+    } else {
+      beginning.delete(id);
+    }
+  }
+}

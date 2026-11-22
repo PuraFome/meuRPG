@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { encounter } from './combat-testing';
-import { ReleaseMark } from './release-mark';
+import { ReleaseMark, beginReleaseWait, beginningWait } from './release-mark';
 
 function setup(over: { mark?: ReturnType<typeof vi.fn> } = {}) {
   const mark =
@@ -153,5 +153,39 @@ describe("the wait mark of a readied window's release (#857, #856)", () => {
     release();
     await Promise.all([leaving, entering]);
     expect(order).toEqual(['clear', 'mark']);
+  });
+});
+
+describe("the master's release begins the wait (#857)", () => {
+  const ids = { campaignId: 'camp', encounterId: 'enc', windowId: 'w1' };
+
+  it('calls once with no clear, applies the answer, and holds the window only while the call is on its way', async () => {
+    let answer!: (e: ReturnType<typeof encounter>) => void;
+    const mark = vi.fn(
+      () => new Promise<ReturnType<typeof encounter>>((resolve) => (answer = resolve)),
+    );
+    const apply = vi.fn();
+    const run = beginReleaseWait({ markReactionRolling: mark } as never, ids, apply);
+    expect(mark).toHaveBeenCalledOnce();
+    expect(mark).toHaveBeenCalledWith('camp', 'enc', 'w1', false);
+    expect(beginningWait('w1')).toBe(true);
+    expect(apply).not.toHaveBeenCalled();
+    answer(encounter({ revision: 7 }));
+    await run;
+    expect(apply).toHaveBeenCalledWith(expect.objectContaining({ revision: 7 }));
+    expect(beginningWait('w1')).toBe(false);
+  });
+
+  it('swallows a refusal (the window is gone) and lets the window go', async () => {
+    const apply = vi.fn();
+    await expect(
+      beginReleaseWait(
+        { markReactionRolling: vi.fn().mockRejectedValue(new Error('x')) } as never,
+        ids,
+        apply,
+      ),
+    ).resolves.toBeUndefined();
+    expect(apply).not.toHaveBeenCalled();
+    expect(beginningWait('w1')).toBe(false);
   });
 });

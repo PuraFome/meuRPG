@@ -38,7 +38,7 @@ const pen = combatant({
 const ogro = combatant({ id: 'og', label: 'Ogro', col: 6, row: 4 });
 const live = reactionWindow({ id: 'w1', kind: ReactionKind.READIED, reactorId: 'pen' } as never);
 
-async function open() {
+async function open(over: { refuse?: boolean } = {}) {
   TestBed.resetTestingModule();
   const castSpell = vi.fn().mockResolvedValue({ encounter: encounter(), cast: { targets: [] } });
   const previewSpellArea = vi.fn().mockResolvedValue(
@@ -48,7 +48,14 @@ async function open() {
       targets: [{ combatantId: 'og', label: 'Ogro' }],
     }),
   );
-  const markReactionRolling = vi.fn();
+  const began = encounter({
+    revision: 2,
+    combatants: [pen, ogro],
+    reactionWindows: [live],
+  } as never);
+  const markReactionRolling = over.refuse
+    ? vi.fn().mockRejectedValue(new Error('not found'))
+    : vi.fn().mockResolvedValue(began);
   const close = vi.fn();
   const enc = signal(encounter({ combatants: [pen, ogro], reactionWindows: [live] } as never));
   const data: MasterAreaCastData = {
@@ -129,7 +136,7 @@ async function open() {
 
 describe('MasterAreaCast: the master releases a readied spell for the player (#857, 857-07)', () => {
   it('says "Soltar Bola de Fogo por Pensantus", the band, and that the player may still answer', async () => {
-    const { el, button, markReactionRolling } = await open();
+    const { el, button } = await open();
     expect(plain(el.querySelector('.frame__title')?.textContent)).toBe(
       'Soltar Bola de Fogo por Pensantus',
     );
@@ -144,7 +151,20 @@ describe('MasterAreaCast: the master releases a readied spell for the player (#8
     );
     expect(button('Voltar')).toBeDefined();
     expect(button('Cancelar')).toBeUndefined();
-    expect(markReactionRolling).not.toHaveBeenCalled();
+  });
+
+  it("begins the window's wait once when it opens, with no clear and none on close; a refusal leaves no error text", async () => {
+    const { markReactionRolling, button, settle, close } = await open();
+    expect(markReactionRolling).toHaveBeenCalledTimes(1);
+    expect(markReactionRolling).toHaveBeenCalledWith('c', 'enc', 'w1', false);
+    button('Voltar')!.click();
+    await settle();
+    expect(close).toHaveBeenCalledWith(false);
+    expect(markReactionRolling).toHaveBeenCalledTimes(1);
+    const refused = await open({ refuse: true });
+    expect(refused.markReactionRolling).toHaveBeenCalledTimes(1);
+    expect(refused.el.querySelector('[role=alert]')).toBeNull();
+    expect(plain(refused.el.textContent)).not.toContain('not found');
   });
 
   it('draws the subtitle with the filled marker and a bold "Reação" (857-04)', async () => {

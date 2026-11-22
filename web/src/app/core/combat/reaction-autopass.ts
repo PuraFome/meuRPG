@@ -2,6 +2,7 @@ import { ReactionKind, type ReactionWindow } from '../../../gen/meurpg/play/v1/c
 import { AUTO_PASS_SECONDS, ROLLING_WAIT_SECONDS, clockText } from './reaction-clock';
 import { readiedSecondsLeft } from './readied-wait';
 import { cameToMaster, isOpen } from './reactions';
+import { beginningWait } from './release-mark';
 
 export { AUTO_PASS_SECONDS, ROLLING_WAIT_SECONDS, clockText };
 
@@ -157,10 +158,10 @@ export class AutoPassClock {
     return this.rollingSince.has(windowId);
   }
 
-  /** The windows whose 30 s are up and were not passed yet: each is returned once. */
+  /** The windows whose 30 s are up and were not passed yet: each is returned once. One the master's release is beginning the wait of waits for that call (checked again on the next tick). */
   due(now: number, mono: number = now): string[] {
     const ids = [...this.seen.keys()].filter(
-      (id) => !this.sent.has(id) && this.secondsLeft(id, now, mono) === 0,
+      (id) => !this.sent.has(id) && !beginningWait(id) && this.secondsLeft(id, now, mono) === 0,
     );
     for (const id of ids) {
       this.sent.add(id);

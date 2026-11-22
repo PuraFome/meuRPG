@@ -26,7 +26,7 @@ import { CombatClient } from '../../../../core/combat/combat-client';
 import { SpellCatalog } from '../../../../core/combat/spell-catalog';
 import { grantLine } from '../../../../core/combat/combat-options';
 import { ON_MAP_TEXT } from '../../../../core/combat/readied-wait';
-import { ReleaseMark } from '../../../../core/combat/release-mark';
+import { ReleaseMark, beginReleaseWait } from '../../../../core/combat/release-mark';
 import {
   RELEASE_BACK,
   RELEASE_LEAD,
@@ -289,6 +289,17 @@ export class CastSheet {
 
   constructor() {
     void this.mark?.enter();
+    if (this.release && this.data.master) {
+      void beginReleaseWait(
+        this.api.attacks,
+        {
+          campaignId: this.data.campaignId,
+          encounterId: this.data.encounterId,
+          windowId: this.release.windowId,
+        },
+        (e) => this.data.state.apply(e),
+      );
+    }
     // Esc, the backdrop or a swipe close the sheet without "Voltar": the mark still comes off, unless the window is gone or the cast was made.
     this.destroyRef.onDestroy(() => {
       if (!this.s.done() && !this.watch?.gone()) {

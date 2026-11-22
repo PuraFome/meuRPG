@@ -14,6 +14,8 @@ import { MasterAutoPass, autoPassOffers, masterWaitNote } from './auto-pass';
 import { CombatState } from './combat-state';
 import { combatant, encounter, reactionWindow } from './combat-testing';
 import { AUTO_PASS_SECONDS, autoPassKey } from './reaction-autopass';
+import { beginReleaseWait } from './release-mark';
+import { masterRowWait } from './readied-wait';
 import { fakeCombatClient } from './combat-client-testing';
 
 const toren = combatant({ id: 't', label: 'Toren', kind: CombatantKind.PLAYER, mine: true });
@@ -145,6 +147,82 @@ describe('MasterAutoPass', () => {
     await vi.advanceTimersByTimeAsync(5000);
     expect(pass.windowsLeft()).toEqual({ r1: 100 });
     expect(api.answerReaction).not.toHaveBeenCalled();
+  });
+
+  describe("the master's release beginning a readied window's wait (#857)", () => {
+    const T0 = Date.parse('2026-10-16T12:00:00Z');
+    const readied = (over: object = {}) =>
+      reactionWindow({
+        id: 'r1',
+        kind: ReactionKind.READIED,
+        reactorId: 't',
+        reactorLabel: 'Toren',
+        reactorIsPlayer: true,
+        answerNow: true,
+        ...over,
+      } as never);
+    const began = (ms: number) => ({
+      waitBeganAt: timestampFromMs(T0 + 29_000 - ms),
+      waitedMs: BigInt(ms),
+    });
+    const ids = { campaignId: 'c', encounterId: 'enc', windowId: 'r1' };
+
+    it('passes nothing at 30 s while his call is on its way, then follows the wait the server began: 120 s, not 30 s', async () => {
+      const { pass, api, state } = setup({ enc: withWindows({ reactionWindows: [readied()] }) });
+      await vi.advanceTimersByTimeAsync(29_000);
+      let answer!: (e: Encounter) => void;
+      const call = beginReleaseWait(
+        {
+          markReactionRolling: () => new Promise<Encounter>((resolve) => (answer = resolve)),
+        } as never,
+        ids,
+        (e) => state.apply(e),
+      );
+      await vi.advanceTimersByTimeAsync(3000);
+      expect(api.answerReaction).not.toHaveBeenCalled();
+      answer(
+        withWindows({
+          revision: 9,
+          reactionWindows: [readied({ rolling: false, ...began(29_000) })],
+        }),
+      );
+      await call;
+      TestBed.tick();
+      await vi.advanceTimersByTimeAsync(5000);
+      expect(api.answerReaction).not.toHaveBeenCalled();
+      expect(pass.windowsLeft()['r1']).toBeGreaterThan(80);
+      await vi.advanceTimersByTimeAsync(90_000);
+      expect(api.answerReaction).toHaveBeenCalledOnce();
+    });
+
+    it('passes a window the server sent without a wait (the call failed) at once when the guard ends', async () => {
+      const { api, state } = setup({ enc: withWindows({ reactionWindows: [readied()] }) });
+      await vi.advanceTimersByTimeAsync(29_000);
+      let refuse!: (e: Error) => void;
+      const call = beginReleaseWait(
+        { markReactionRolling: () => new Promise((_, reject) => (refuse = reject)) } as never,
+        ids,
+        (e) => state.apply(e),
+      );
+      await vi.advanceTimersByTimeAsync(3000);
+      expect(api.answerReaction).not.toHaveBeenCalled();
+      refuse(new Error('gone'));
+      await call;
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(api.answerReaction).toHaveBeenCalledOnce();
+    });
+
+    it('a second master screen reading the wait the first began passes at 120 s, not 30 s, and its row is "Esperando", never "No mapa"', async () => {
+      const w = readied({ rolling: false, waitBeganAt: timestampFromMs(T0), waitedMs: 0n });
+      const { pass, api } = setup({ enc: withWindows({ reactionWindows: [w] }) });
+      await vi.advanceTimersByTimeAsync(31_000);
+      expect(api.answerReaction).not.toHaveBeenCalled();
+      expect(masterRowWait('Toren', false, pass.windowsLeft()['r1']).text).toBe(
+        'Esperando Toren · passa sozinho em 1 min 29 s',
+      );
+      await vi.advanceTimersByTimeAsync(90_000);
+      expect(api.answerReaction).toHaveBeenCalledOnce();
+    });
   });
 
   it('stops the timer with the screen', () => {

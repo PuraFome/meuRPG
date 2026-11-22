@@ -111,6 +111,14 @@ describe('a release watching its window (#857, #856; 857-09 cards 1 and 7)', () 
     expect(watch.view()).toEqual({ lead: 'Passou sozinho:', rest: 'você não respondeu em 2 min.' });
   });
 
+  it('reads "2 min" from the last read\'s wait, though this device never marked it (the master began the wait)', () => {
+    const { watch, open } = setup();
+    open([win({ rolling: false, waitBeganAt: timestampFromMs(T0), waitedMs: 12_000n })], {}, 2);
+    vi.advanceTimersByTime(109 * MS);
+    open([], { readied: undefined }, 3);
+    expect(watch.view()).toEqual({ lead: 'Passou sozinho:', rest: 'você não respondeu em 2 min.' });
+  });
+
   it('says the move was not made, for a move', () => {
     const { watch, open } = setup({ move: true });
     open([], { readied: undefined }, 2);

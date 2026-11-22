@@ -11,7 +11,7 @@ import type { CombatState } from '../../../core/combat/combat-state';
 import { currentCombatant, isPlayer } from '../../../core/combat/combat-view';
 import { type MoveRelease, moveReleaseView } from '../../../core/combat/move-release';
 import { readiedOfWindow } from '../../../core/combat/reaction-readied';
-import { ReleaseMark } from '../../../core/combat/release-mark';
+import { ReleaseMark, beginReleaseWait } from '../../../core/combat/release-mark';
 import { turnOfText } from '../../../core/combat/release-text';
 import { ReleaseWatch } from '../../../core/combat/release-watch';
 
@@ -90,7 +90,7 @@ export class MoveReleaseFlow {
           (win) => this.mark?.observe(win),
         ),
     );
-    // Only the reactor's player marks the window (the master is refused): the server dates the one wait of 120 s from the first mark.
+    // Only the reactor's player marks the window; the master only begins the wait: the server dates the one wait of 120 s from the first mark.
     const attacks = this.ctx.api.attacks;
     this.mark =
       release.master || !attacks
@@ -102,6 +102,13 @@ export class MoveReleaseFlow {
           );
     this.current.set(release);
     void this.mark?.enter();
+    if (release.master && attacks) {
+      void beginReleaseWait(
+        attacks,
+        { campaignId: this.ctx.campaignId(), encounterId: e.id, windowId },
+        (next) => this.ctx.state().apply(next),
+      );
+    }
     return release;
   }
 

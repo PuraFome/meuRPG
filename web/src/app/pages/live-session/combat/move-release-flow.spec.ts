@@ -20,7 +20,7 @@ const held = create(ReadiedActionSchema, {
   status: ReadiedStatus.WAITING,
 });
 
-function setup(master = false) {
+function setup(master = false, refuse = false) {
   const state = new CombatState();
   const tor = combatant({
     id: 'tor',
@@ -43,7 +43,9 @@ function setup(master = false) {
     ],
   } as never);
   state.apply(live);
-  const mark = vi.fn().mockResolvedValue(live);
+  const mark = refuse
+    ? vi.fn().mockRejectedValue(new Error('not found'))
+    : vi.fn().mockResolvedValue(live);
   const reopen = vi.fn();
   const flow = new MoveReleaseFlow(
     {
@@ -81,11 +83,19 @@ describe('MoveReleaseFlow, the page of a readied move (#856)', () => {
     expect(flow.current()).toBeNull();
   });
 
-  it('does not mark when the master moves for the player', () => {
+  it('begins the wait once when the master opens the release, never with clear, and swallows a refusal', async () => {
     const { flow, mark } = setup(true);
     flow.open('w1');
-    expect(mark).not.toHaveBeenCalled();
+    expect(mark).toHaveBeenCalledTimes(1);
+    expect(mark).toHaveBeenCalledWith('camp', 'enc', 'w1', false);
     expect(flow.view()?.foot).toContain('ainda pode responder no próprio aparelho');
+    await flow.back();
+    expect(mark).toHaveBeenCalledTimes(1);
+    const refused = setup(true, true);
+    expect(() => refused.flow.open('w1')).not.toThrow();
+    await Promise.resolve();
+    expect(refused.mark).toHaveBeenCalledTimes(1);
+    expect(refused.flow.view()?.gone ?? null).toBeNull();
   });
 
   it('goes back by taking the mark off and showing the window again', async () => {
