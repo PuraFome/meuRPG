@@ -6,9 +6,11 @@ import (
 	"testing"
 	"time"
 
+	"connectrpc.com/connect"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
@@ -210,6 +212,225 @@ func TestRefundReadsTheRollerAfterTheSessionLock(t *testing.T) {
 	if status := f.promptStatus(t, p.GetId()); status != "open" {
 		t.Errorf("the prompt is %q, want open", status)
 	}
+	if f.rows(t) != 0 {
+		t.Errorf("character_favor has %d rows, want 0", f.rows(t))
+	}
+}
+
+// toTheReserve is the statement that sends a character to the reserve, as the master does.
+func toTheReserve(id string) [2]any {
+	return [2]any{`UPDATE characters SET reserved = true, player_user_id = NULL WHERE id = $1`, []any{id}}
+}
+
+// handedToBia changes the owner of a character to Bia: she gives up Brisa first (a player may own one living character).
+func (f *favorParty) handedToBia(ctx context.Context, t *testing.T, side *pgxpool.Pool, id string) {
+	t.Helper()
+	execAll(ctx, t, side, toTheReserve(f.bri.GetId()), [2]any{`UPDATE characters SET player_user_id = $2 WHERE id = $1`, []any{id, f.bia.id}})
+}
+
+// closedMeanwhile is the statement of the master's answer (or the end of the session) closing a pass.
+func closedMeanwhile(id, status string) [2]any {
+	return [2]any{`UPDATE favor_passes SET status = $2, closed_at = now() WHERE id = $1`, []any{id, status}}
+}
+
+// askedByCaio is a pass of Toren, who has the Inspiration, to Pensantus, asked by Caio, and the world before the call that waits.
+func (f *favorParty) askedByCaio(t *testing.T) *playv1.FavorPass {
+	t.Helper()
+	if err := f.grant(f.toren.GetId()); err != nil {
+		t.Fatalf("GrantFavor() error = %v", err)
+	}
+	return f.mustAsk(t, f.toren.GetId(), f.pens.GetId())
+}
+
+// cancelWaiting runs Caio's cancel of the pass while the session's row is held and change runs; it returns what the cancel returned.
+func (f *favorParty) cancelWaiting(t *testing.T, id string, change func(ctx context.Context, side *pgxpool.Pool)) error {
+	t.Helper()
+	return f.heldBeforeTheCall(t, func() error {
+		_, err := f.cancelAs(f.caio, id, newKey())
+		return err
+	}, change)
+}
+
+// acceptWaiting is cancelWaiting for the master's accept.
+func (f *favorParty) acceptWaiting(t *testing.T, id string, change func(ctx context.Context, side *pgxpool.Pool)) error {
+	t.Helper()
+	return f.heldBeforeTheCall(t, func() error {
+		_, err := f.answer(id, true)
+		return err
+	}, change)
+}
+
+func TestCancelOfAGiverSentToTheReserveWhileItWaitedIsNotFoundAndTheAskStaysPending(t *testing.T) {
+	t.Parallel()
+	f := newFavorParty(t)
+	p := f.askedByCaio(t)
+	w := f.world(t)
+	err := f.cancelWaiting(t, p.GetId(), func(ctx context.Context, side *pgxpool.Pool) { execAll(ctx, t, side, toTheReserve(f.toren.GetId())) })
+	wantCode(t, "the cancel of a giver sent to the reserve", err, connect.CodeNotFound)
+	w.seq++
+	f.wantSame(t, "the cancel", w)
+	if s := f.passStatus(t, p.GetId()); s != "pending" {
+		t.Errorf("the ask is %q, want pending", s)
+	}
+}
+
+func TestCancelOfAnAskTheMasterRefusedWhileItWaitedIsPassClosed(t *testing.T) {
+	t.Parallel()
+	f := newFavorParty(t)
+	p := f.askedByCaio(t)
+	err := f.cancelWaiting(t, p.GetId(), func(ctx context.Context, side *pgxpool.Pool) {
+		execAll(ctx, t, side, closedMeanwhile(p.GetId(), "refused"))
+	})
+	wantFavorBlocked(t, "the cancel of an ask refused meanwhile", err, blockedPassClosed)
+	if s := f.passStatus(t, p.GetId()); s != "refused" || f.eventsOf(t, eventFavorPassCanceled) != 0 {
+		t.Errorf("the ask is %q with %d cancel events, want refused and none", s, f.eventsOf(t, eventFavorPassCanceled))
+	}
+}
+
+func TestCancelOfAnAskWhoseRowWentWhileItWaitedIsNotFound(t *testing.T) {
+	t.Parallel()
+	f := newFavorParty(t)
+	p := f.askedByCaio(t)
+	err := f.cancelWaiting(t, p.GetId(), func(ctx context.Context, side *pgxpool.Pool) {
+		execAll(ctx, t, side, [2]any{`DELETE FROM favor_passes WHERE id = $1`, []any{p.GetId()}})
+	})
+	wantCode(t, "the cancel of an ask that went", err, connect.CodeNotFound)
+	if f.eventsOf(t, eventFavorPassCanceled) != 0 {
+		t.Errorf("a cancel event was written")
+	}
+}
+
+// askWaiting runs Caio's ask of Toren to Pensantus while the session's row is held and change runs.
+func (f *favorParty) askWaiting(t *testing.T, change func(ctx context.Context, side *pgxpool.Pool)) error {
+	t.Helper()
+	call := favorPassCall{m: authz.Membership{CampaignID: f.campaignID, UserID: f.caio.id, Role: authz.RolePlayer}, sessionID: f.sessionID, from: f.toren.GetId(), to: f.pens.GetId(), key: newKey()}
+	return f.heldBeforeTheTransaction(t, func(starter db.TxStarter) error {
+		return f.h.svc.txOn(t.Context(), starter, f.sessionID, func(tx pgx.Tx, h *hints) error {
+			_, err := f.h.svc.askPassIn(t.Context(), tx, h, call)
+			return err
+		})
+	}, change)
+}
+
+func TestAskOfAGiverSentToTheReserveWhileItWaitedIsNotTheHolderAndWritesNothing(t *testing.T) {
+	t.Parallel()
+	f := newFavorParty(t)
+	if err := f.grant(f.toren.GetId()); err != nil {
+		t.Fatalf("GrantFavor() error = %v", err)
+	}
+	w := f.world(t)
+	err := f.askWaiting(t, func(ctx context.Context, side *pgxpool.Pool) { execAll(ctx, t, side, toTheReserve(f.toren.GetId())) })
+	wantFavorBlocked(t, "the ask of a giver sent to the reserve", err, blockedNotTheHolder)
+	w.seq++
+	f.wantSame(t, "the ask", w)
+}
+
+func TestAskToAReceiverSentToTheReserveWhileItWaitedIsNotAPlayerCharacterAndWritesNothing(t *testing.T) {
+	t.Parallel()
+	f := newFavorParty(t)
+	if err := f.grant(f.toren.GetId()); err != nil {
+		t.Fatalf("GrantFavor() error = %v", err)
+	}
+	w := f.world(t)
+	err := f.askWaiting(t, func(ctx context.Context, side *pgxpool.Pool) { execAll(ctx, t, side, toTheReserve(f.pens.GetId())) })
+	wantFavorBlocked(t, "the ask to a receiver sent to the reserve", err, blockedNotAPlayer)
+	w.seq++
+	f.wantSame(t, "the ask", w)
+}
+
+func TestGrantToAReceiverWhoChangedOwnerWhileItWaitedGoesThrough(t *testing.T) {
+	t.Parallel()
+	f := newFavorParty(t)
+	g := favorGrant{m: authz.Membership{CampaignID: f.campaignID, UserID: f.master.id, Role: authz.RoleMaster}, sessionID: f.sessionID, characterID: f.pens.GetId(), key: newKey()}
+	err := f.heldBeforeTheTransaction(t, func(starter db.TxStarter) error {
+		return f.h.svc.txOn(t.Context(), starter, f.sessionID, func(tx pgx.Tx, h *hints) error { return f.h.svc.grantFavorIn(t.Context(), tx, h, g) })
+	}, func(ctx context.Context, side *pgxpool.Pool) { f.handedToBia(ctx, t, side, f.pens.GetId()) })
+	if err != nil {
+		t.Fatalf("the grant error = %v, want none: it reads no owner", err)
+	}
+	if !f.has(t, f.pens.GetId()) {
+		t.Error("Pensantus has no Inspiration, want it granted")
+	}
+}
+
+func TestAcceptOfAGiverWhoChangedOwnerWhileItWaitedGoesThrough(t *testing.T) {
+	t.Parallel()
+	f := newFavorParty(t)
+	p := f.askedByCaio(t)
+	err := f.acceptWaiting(t, p.GetId(), func(ctx context.Context, side *pgxpool.Pool) { f.handedToBia(ctx, t, side, f.toren.GetId()) })
+	if err != nil {
+		t.Fatalf("the accept error = %v, want none", err)
+	}
+	if s := f.passStatus(t, p.GetId()); s != "accepted" || f.has(t, f.toren.GetId()) || !f.has(t, f.pens.GetId()) {
+		t.Errorf("pass %q, Toren has it %v, Pensantus %v, want accepted and moved", s, f.has(t, f.toren.GetId()), f.has(t, f.pens.GetId()))
+	}
+}
+
+func TestAcceptOfAGiverSentToTheReserveWhileItWaitedIsNotTheHolderAndNothingMoves(t *testing.T) {
+	t.Parallel()
+	f := newFavorParty(t)
+	p := f.askedByCaio(t)
+	w := f.world(t)
+	err := f.acceptWaiting(t, p.GetId(), func(ctx context.Context, side *pgxpool.Pool) { execAll(ctx, t, side, toTheReserve(f.toren.GetId())) })
+	wantFavorBlocked(t, "the accept of a giver sent to the reserve", err, blockedNotTheHolder)
+	w.seq++
+	f.wantSame(t, "the accept", w)
+	if s := f.passStatus(t, p.GetId()); s != "pending" {
+		t.Errorf("the ask is %q, want pending", s)
+	}
+}
+
+func TestAcceptOfAnAskCanceledWhileItWaitedIsPassClosedAndNothingMoves(t *testing.T) {
+	t.Parallel()
+	f := newFavorParty(t)
+	p := f.askedByCaio(t)
+	err := f.acceptWaiting(t, p.GetId(), func(ctx context.Context, side *pgxpool.Pool) {
+		execAll(ctx, t, side, closedMeanwhile(p.GetId(), "canceled"))
+	})
+	wantFavorBlocked(t, "the accept of an ask canceled meanwhile", err, blockedPassClosed)
+	if s := f.passStatus(t, p.GetId()); s != "canceled" || !f.has(t, f.toren.GetId()) || f.has(t, f.pens.GetId()) || f.eventsOf(t, eventFavorPassed) != 0 {
+		t.Errorf("pass %q, Toren has it %v, Pensantus %v, want canceled and unmoved", s, f.has(t, f.toren.GetId()), f.has(t, f.pens.GetId()))
+	}
+}
+
+func TestAcceptOfAnAskWhoseRowWentWhileItWaitedIsNotFoundAndNothingMoves(t *testing.T) {
+	t.Parallel()
+	f := newFavorParty(t)
+	p := f.askedByCaio(t)
+	err := f.acceptWaiting(t, p.GetId(), func(ctx context.Context, side *pgxpool.Pool) {
+		execAll(ctx, t, side, [2]any{`DELETE FROM favor_passes WHERE id = $1`, []any{p.GetId()}})
+	})
+	wantCode(t, "the accept of an ask that went", err, connect.CodeNotFound)
+	if !f.has(t, f.toren.GetId()) || f.has(t, f.pens.GetId()) || f.eventsOf(t, eventFavorPassed) != 0 {
+		t.Errorf("Toren has it %v, Pensantus %v, want it unmoved", f.has(t, f.toren.GetId()), f.has(t, f.pens.GetId()))
+	}
+}
+
+func TestRefundGiveBackToARollerWhoChangedOwnerWhileItWaitedGoesThrough(t *testing.T) {
+	t.Parallel()
+	f, p := refundFight(t)
+	err := f.heldBeforeTheCall(t, func() error {
+		_, err := f.answerRefund(f.master, p.GetId(), true, newKey())
+		return err
+	}, func(ctx context.Context, side *pgxpool.Pool) { f.handedToBia(ctx, t, side, f.toren.GetId()) })
+	if err != nil {
+		t.Fatalf("the give-back error = %v, want none", err)
+	}
+	if status := f.promptStatus(t, p.GetId()); status != "returned" || !f.has(t, f.toren.GetId()) {
+		t.Errorf("the prompt is %q, Toren has it %v, want returned and given back", status, f.has(t, f.toren.GetId()))
+	}
+}
+
+func TestRefundGiveBackWhoseQuestionWentWhileItWaitedIsNotFound(t *testing.T) {
+	t.Parallel()
+	f, p := refundFight(t)
+	err := f.heldBeforeTheCall(t, func() error {
+		_, err := f.answerRefund(f.master, p.GetId(), true, newKey())
+		return err
+	}, func(ctx context.Context, side *pgxpool.Pool) {
+		execAll(ctx, t, side, [2]any{`DELETE FROM favor_refund_prompts WHERE id = $1`, []any{p.GetId()}})
+	})
+	wantCode(t, "the give-back of a question that went", err, connect.CodeNotFound)
 	if f.rows(t) != 0 {
 		t.Errorf("character_favor has %d rows, want 0", f.rows(t))
 	}

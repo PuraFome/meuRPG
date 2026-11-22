@@ -163,6 +163,11 @@ func refundStatusProto(status string) playv1.FavorRefundStatus {
 	return playv1.FavorRefundStatus_FAVOR_REFUND_STATUS_UNSPECIFIED
 }
 
+// errRefundPromptNotFound is the answer to a question that is not there for the master to answer.
+func errRefundPromptNotFound() error {
+	return connect.NewError(connect.CodeNotFound, errors.New("the question was not found"))
+}
+
 // refundCall is what AnswerFavorRefund reads before the transaction.
 type refundCall struct {
 	m         authz.Membership
@@ -189,7 +194,7 @@ func (s *Service) AnswerFavorRefund(ctx context.Context, req *connect.Request[pl
 	}
 	row, err := s.queries.GetFavorRefundPrompt(ctx, playdb.GetFavorRefundPromptParams{ID: id, CampaignID: m.CampaignID})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, connect.NewError(connect.CodeNotFound, errors.New("the question was not found"))
+		return nil, errRefundPromptNotFound()
 	}
 	if err != nil {
 		return nil, s.dbError(ctx, "find the refund question", err)
@@ -241,6 +246,9 @@ func (s *Service) answerRefundIn(ctx context.Context, tx pgx.Tx, h *hints, c ref
 // closeRefundPrompt answers the question that is still open, and refuses one that is not.
 func closeRefundPrompt(ctx context.Context, q *playdb.Queries, c refundCall) (playdb.FavorRefundPrompt, error) {
 	prompt, err := q.GetFavorRefundPrompt(ctx, playdb.GetFavorRefundPromptParams{ID: c.promptID, CampaignID: c.m.CampaignID})
+	if errors.Is(err, pgx.ErrNoRows) { // the master rejected the pending character while the call waited: the question went with it
+		return playdb.FavorRefundPrompt{}, errRefundPromptNotFound()
+	}
 	if err != nil {
 		return playdb.FavorRefundPrompt{}, fmt.Errorf("read the question again: %w", err)
 	}

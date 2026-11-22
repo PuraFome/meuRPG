@@ -198,6 +198,9 @@ func (s *Service) askPassIn(ctx context.Context, tx pgx.Tx, h *hints, c favorPas
 	if again {
 		return s.tellPassAgain(ctx, tx, h, c.m.CampaignID, payload)
 	}
+	if err := s.lockPair(ctx, tx, c.m.CampaignID, c.from, c.to); err != nil {
+		return playdb.FavorPass{}, err
+	}
 	giver, err := s.favorGiver(ctx, tx, c)
 	if err != nil {
 		return playdb.FavorPass{}, err
@@ -231,6 +234,12 @@ func askRefusal(ctx context.Context, q *playdb.Queries, giver string) error {
 		return fmt.Errorf("find the giver's pending ask: %w", err)
 	}
 	return favorBlocked(playv1.FavorBlockedReason_FAVOR_BLOCKED_REASON_PASS_PENDING, "the inspiration is already in an ask the master has not answered")
+}
+
+// lockPair locks the rows of both characters at once, in id order, so that two writes on the same pair lock them in the same order.
+func (s *Service) lockPair(ctx context.Context, tx pgx.Tx, campaignID, a, b string) error {
+	_, err := s.roster.LockedSessionCharacters(ctx, tx, campaignID, []string{a, b})
+	return err
 }
 
 // favorGiver checks that the giver is a player character of the caller's (not in the reserve) that has the Inspiration. The row is locked
@@ -476,6 +485,9 @@ func (s *Service) answerPassIn(ctx context.Context, tx pgx.Tx, h *hints, c favor
 		return s.tellPassAgain(ctx, tx, h, c.m.CampaignID, payload)
 	}
 	pass, err := q.GetFavorPass(ctx, playdb.GetFavorPassParams{ID: c.passID, CampaignID: c.m.CampaignID})
+	if errors.Is(err, pgx.ErrNoRows) { // the master rejected the pending character while the call waited: the ask went with it
+		return playdb.FavorPass{}, errFavorPassNotFound()
+	}
 	if err != nil {
 		return playdb.FavorPass{}, fmt.Errorf("read the ask again: %w", err)
 	}
@@ -499,6 +511,9 @@ func (s *Service) cancelPassIn(ctx context.Context, tx pgx.Tx, h *hints, c favor
 		return s.tellPassAgain(ctx, tx, h, c.m.CampaignID, payload)
 	}
 	pass, err := q.GetFavorPass(ctx, playdb.GetFavorPassParams{ID: c.passID, CampaignID: c.m.CampaignID})
+	if errors.Is(err, pgx.ErrNoRows) { // the master rejected the pending character while the call waited: the ask went with it
+		return playdb.FavorPass{}, errFavorPassNotFound()
+	}
 	if err != nil {
 		return playdb.FavorPass{}, fmt.Errorf("read the ask again: %w", err)
 	}
@@ -579,6 +594,9 @@ func (s *Service) acceptPass(ctx context.Context, tx pgx.Tx, h *hints, c favorPa
 	}
 	if err != nil {
 		return playdb.FavorPass{}, closeKeyError(err)
+	}
+	if err := s.lockPair(ctx, tx, closed.CampaignID, closed.FromCharacterID, closed.ToCharacterID); err != nil {
+		return playdb.FavorPass{}, err
 	}
 	if err := s.mayHold(ctx, tx, closed.CampaignID, closed.ToCharacterID, errCannotReceive()); err != nil { // it may have left the table
 		return playdb.FavorPass{}, err
