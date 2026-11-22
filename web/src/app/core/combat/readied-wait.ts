@@ -5,7 +5,7 @@ import { AUTO_PASS_SECONDS, ROLLING_WAIT_SECONDS, clockText } from './reaction-c
 
 /**
  * The wait of a readied action's window while its player is on the map (#857, #856, boards 857-08 and 857-09): the 30 s of the window
- * give way, at the first entry on the map, to one wait of 2 minutes. The server records when it began (`ReactionWindow.wait_began_at`,
+ * give way to one wait of 2 minutes, at the first entry on the map or the master's opening of the release. The server records when it began (`ReactionWindow.wait_began_at`,
  * once; no later mark or clear changes it) and says how long it has run (`waited_ms`); the master's screen passes the window when the 120 s end. Pure functions.
  */
 
@@ -20,7 +20,7 @@ export const ON_MAP_TEXT = 'A mesa espera você: até 2 min.';
 /** The prefix of the line a second device reads while the player is on the map on another one. */
 export const OTHER_DEVICE_TEXT = 'Você abriu o mapa em outro aparelho.';
 
-/** When the 120 s began, in ms, or `null` before the player's first entry on the map. */
+/** When the 120 s began, in ms, or `null` before the wait began. */
 export function waitBeganMs(w: ReactionWindow): number | null {
   return w.waitBeganAt ? timestampMs(w.waitBeganAt) : null;
 }

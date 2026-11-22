@@ -12,9 +12,10 @@ export interface ReleaseMarkIds {
 
 /**
  * The reactor's mark of being on the map for a readied spell or move (#857, #856): set on entering the map (the cast sheet's map
- * step, the Mover page) and cleared with the same call (`clear`) on "Voltar". The server dates the one wait of 120 s from the first
- * mark and no later mark or clear restarts it; this only says where the player is. Telling is best effort: the map opens and
- * closes whatever the network says, and the stream shows the truth. Only the reactor's player makes it (the master is refused).
+ * step, the Mover page) and cleared with the same call (`clear`) on "Voltar". The one wait of 120 s begins at the reactor's player's
+ * first mark or the master's opening of the release, whichever comes first (`beginReleaseWait`); no later mark or clear restarts it.
+ * This only says where the player is. Telling is best effort: the map opens and closes whatever the network says, and the stream
+ * shows the truth. Only the reactor's player makes it: `rolling` stays his own mark.
  */
 export class ReleaseMark {
   /**

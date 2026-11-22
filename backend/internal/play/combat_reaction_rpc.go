@@ -190,8 +190,9 @@ func (s *Service) answerWindow(ctx context.Context, c *combatTx, m authz.Members
 	return got.ev, nil
 }
 
-// MarkReactionRolling implements playv1connect.CombatServiceHandler. It sets the
-// window's `rolling` mark for the master's clock, or takes it off with `clear`, and writes nothing else: no session
+// MarkReactionRolling implements playv1connect.CombatServiceHandler. The reactor's player sets the
+// window's `rolling` mark for the master's clock, or takes it off with `clear`. The master, without `clear`, on an open
+// READIED window of a player's character, only begins the wait (`rolling` stays the player's own mark). Neither writes anything else: no session
 // event, no log line (the closure returns no payload), so nothing is logged or bumped, and a retry or a second tab only
 // sets or clears the same mark again. A mark that changes nothing writes and tells nothing; one that does tells the master
 // and the reactor's player alone: no other player reads the wait.

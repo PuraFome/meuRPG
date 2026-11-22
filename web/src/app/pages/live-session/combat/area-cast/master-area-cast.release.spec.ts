@@ -167,18 +167,13 @@ describe('MasterAreaCast: the master releases a readied spell for the player (#8
     expect(button('Cancelar')).toBeUndefined();
   });
 
-  it("begins the window's wait once when it opens, with no clear and none on close; a refusal leaves no error text", async () => {
+  it("leaves the window's wait to the opening (ReleaseSheets calls it), on open and on close", async () => {
     const { markReactionRolling, button, settle, close } = await open();
-    expect(markReactionRolling).toHaveBeenCalledTimes(1);
-    expect(markReactionRolling).toHaveBeenCalledWith('c', 'enc', 'w1', false);
+    expect(markReactionRolling).not.toHaveBeenCalled();
     button('Voltar')!.click();
     await settle();
     expect(close).toHaveBeenCalledWith(false);
-    expect(markReactionRolling).toHaveBeenCalledTimes(1);
-    const refused = await open({ refuse: true });
-    expect(refused.markReactionRolling).toHaveBeenCalledTimes(1);
-    expect(refused.el.querySelector('[role=alert]')).toBeNull();
-    expect(plain(refused.el.textContent)).not.toContain('not found');
+    expect(markReactionRolling).not.toHaveBeenCalled();
   });
 
   it('draws the subtitle with the filled marker and a bold "Reação" (857-04)', async () => {

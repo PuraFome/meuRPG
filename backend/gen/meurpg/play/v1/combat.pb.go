@@ -25217,13 +25217,13 @@ type ReactionWindow struct {
 	// to the master ("10 s sem resposta"). The player may still answer; the first answer wins and the other reads
 	// REACTION_ALREADY_ANSWERED.
 	Unanswered bool `protobuf:"varint,14,opt,name=unanswered,proto3" json:"unanswered,omitempty"`
-	// When the reactor's player first marked the window (entered the map): the wait of
-	// 120 s began then, once, and no later mark or clear changes it. Unset before that.
+	// When the wait of 120 s began: the reactor's player's first mark or the master's opening of
+	// the release, whichever came first. Once, and no later mark or clear changes it. Unset before that.
 	// Read by the master and the reactor's player only. The master's screen passes the
 	// window when the 120 s end.
 	WaitBeganAt *timestamppb.Timestamp `protobuf:"bytes,15,opt,name=wait_began_at,json=waitBeganAt,proto3" json:"wait_began_at,omitempty"`
 	// The milliseconds the wait has run, as the read works them out with the server's clock
-	// (now minus `wait_began_at`); 0 before the first mark. The clock is the server's, so a screen
+	// (now minus `wait_began_at`); 0 before the wait began. The clock is the server's, so a screen
 	// with a wrong clock still counts the wait right. Read by the master and the reactor's player only.
 	WaitedMs int64 `protobuf:"varint,16,opt,name=waited_ms,json=waitedMs,proto3" json:"waited_ms,omitempty"`
 	// Only whoever answers: the question, by kind.

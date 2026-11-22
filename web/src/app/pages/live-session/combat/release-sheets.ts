@@ -4,6 +4,7 @@ import type {
   ReadiedAction,
 } from '../../../../gen/meurpg/play/v1/combat_pb';
 import { ReadiedKind } from '../../../../gen/meurpg/play/v1/combat_pb';
+import { beginReleaseWait } from '../../../core/combat/release-mark';
 import { readiedOfWindow } from '../../../core/combat/reaction-readied';
 import { openSheet } from '../../../shared/sheet/sheet-host';
 import { MasterAreaCast, type MasterAreaCastData } from './area-cast/master-area-cast';
@@ -57,6 +58,14 @@ export class ReleaseSheets {
       return;
     }
     this.opening.add(w.id);
+    if (this.ctx.isMaster()) {
+      // The wait (and the screen's guard) begins at the tap, before the readier's options are read.
+      void beginReleaseWait(
+        this.ctx.api.attacks,
+        { campaignId: this.ctx.campaignId(), encounterId: e.id, windowId: w.id },
+        (next) => this.ctx.state().apply(next),
+      );
+    }
     try {
       // The held spell's targets come from the readier's own options, whoever releases it.
       const turn = await this.ctx.api.moves.turnOptions(this.ctx.campaignId(), e.id, w.reactorId);

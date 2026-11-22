@@ -1511,8 +1511,9 @@ type CombatServiceClient interface {
 	// always pass it by hand). With `clear` it takes the mark off, when the player came
 	// back from the map. It changes nothing else, writes no log line, and is idempotent:
 	// marking or clearing a window twice is the same as once, and writes and publishes nothing.
-	// The first mark of a window records when the wait began (`wait_began_at`), once; no later mark
-	// or clear moves it. A READIED window is where the mark means the player is on the map to place
+	// The wait begins (`wait_began_at`) at the reactor's player's first mark or the master's opening
+	// of the release, whichever comes first; once begun, no later mark or clear moves it. The master's
+	// call only begins the wait and never sets `rolling`. A READIED window is where the mark means the player is on the map to place
 	// a spell or a move; on a window of any other kind it is the player rolling a die. In no kind
 	// does it keep the window from being answered or closed.
 	//
@@ -3796,8 +3797,9 @@ type CombatServiceHandler interface {
 	// always pass it by hand). With `clear` it takes the mark off, when the player came
 	// back from the map. It changes nothing else, writes no log line, and is idempotent:
 	// marking or clearing a window twice is the same as once, and writes and publishes nothing.
-	// The first mark of a window records when the wait began (`wait_began_at`), once; no later mark
-	// or clear moves it. A READIED window is where the mark means the player is on the map to place
+	// The wait begins (`wait_began_at`) at the reactor's player's first mark or the master's opening
+	// of the release, whichever comes first; once begun, no later mark or clear moves it. The master's
+	// call only begins the wait and never sets `rolling`. A READIED window is where the mark means the player is on the map to place
 	// a spell or a move; on a window of any other kind it is the player rolling a die. In no kind
 	// does it keep the window from being answered or closed.
 	//

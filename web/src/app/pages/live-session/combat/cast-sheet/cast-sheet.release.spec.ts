@@ -285,20 +285,12 @@ describe('CastSheet: a readied spell released on the map (#857, boards 857-02 an
     );
   });
 
-  it('begins the wait once for the master, never with clear, and reads the footer that the player may still answer; a refusal leaves no error text', async () => {
+  it('leaves the wait to the opening for the master (ReleaseSheets calls it), and reads the footer that the player may still answer', async () => {
     const { el, markReactionRolling, button, settle } = await open({ master: true });
-    expect(markReactionRolling).toHaveBeenCalledTimes(1);
-    expect(markReactionRolling).toHaveBeenCalledWith('c', 'enc', 'w1', false);
+    expect(markReactionRolling).not.toHaveBeenCalled();
     button('Voltar')!.click();
     await settle();
-    expect(markReactionRolling).toHaveBeenCalledTimes(1);
-    const refused = await open({
-      master: true,
-      markReactionRolling: vi.fn().mockRejectedValue(new Error('not found')),
-    });
-    expect(refused.markReactionRolling).toHaveBeenCalledTimes(1);
-    expect(refused.el.querySelector('[role=alert]')).toBeNull();
-    expect(plain(refused.el.textContent)).not.toContain('not found');
+    expect(markReactionRolling).not.toHaveBeenCalled();
     expect(plain(el.querySelector('[data-testid=release-wait]')?.textContent)).toBe(
       'Pensantus ainda pode responder no próprio aparelho: vale a primeira resposta.',
     );

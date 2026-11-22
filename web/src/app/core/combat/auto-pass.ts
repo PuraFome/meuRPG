@@ -154,6 +154,8 @@ export class MasterAutoPass {
     if (!e) {
       return;
     }
+    // Decide from the windows as the server sent them, not as the last effect saw them.
+    this.windowsClock.sync(this.ctx.isMaster() ? openWindows(e) : [], now, mono);
     for (const id of this.windowsClock.due(now, mono)) {
       void this.passWindow(e.id, id);
     }

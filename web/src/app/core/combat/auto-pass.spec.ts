@@ -195,6 +195,24 @@ describe('MasterAutoPass', () => {
       expect(api.answerReaction).toHaveBeenCalledOnce();
     });
 
+    it('decides from the window the server sent when the tick runs between the answer’s apply and the effect', async () => {
+      const { pass, api, state } = setup({ enc: withWindows({ reactionWindows: [readied()] }) });
+      await vi.advanceTimersByTimeAsync(29_500);
+      state.apply(
+        withWindows({
+          revision: 9,
+          reactionWindows: [readied({ rolling: false, ...began(29_500) })],
+        }),
+      );
+      // The tick runs right after the apply, before the effect that follows the combat: the clock still holds the old window.
+      vi.setSystemTime(Date.now() + 1000);
+      (pass as unknown as { tick(): void }).tick();
+      expect(api.answerReaction).not.toHaveBeenCalled();
+      TestBed.tick();
+      await vi.advanceTimersByTimeAsync(5000);
+      expect(api.answerReaction).not.toHaveBeenCalled();
+    });
+
     it('passes a window the server sent without a wait (the call failed) at once when the guard ends', async () => {
       const { api, state } = setup({ enc: withWindows({ reactionWindows: [readied()] }) });
       await vi.advanceTimersByTimeAsync(29_000);

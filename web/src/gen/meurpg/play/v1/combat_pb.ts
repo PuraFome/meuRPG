@@ -12756,8 +12756,8 @@ export type ReactionWindow = Message<"meurpg.play.v1.ReactionWindow"> & {
   unanswered: boolean;
 
   /**
-   * When the reactor's player first marked the window (entered the map): the wait of
-   * 120 s began then, once, and no later mark or clear changes it. Unset before that.
+   * When the wait of 120 s began: the reactor's player's first mark or the master's opening of
+   * the release, whichever came first. Once, and no later mark or clear changes it. Unset before that.
    * Read by the master and the reactor's player only. The master's screen passes the
    * window when the 120 s end.
    *
@@ -12767,7 +12767,7 @@ export type ReactionWindow = Message<"meurpg.play.v1.ReactionWindow"> & {
 
   /**
    * The milliseconds the wait has run, as the read works them out with the server's clock
-   * (now minus `wait_began_at`); 0 before the first mark. The clock is the server's, so a screen
+   * (now minus `wait_began_at`); 0 before the wait began. The clock is the server's, so a screen
    * with a wrong clock still counts the wait right. Read by the master and the reactor's player only.
    *
    * @generated from field: int64 waited_ms = 16;
@@ -21044,8 +21044,9 @@ export const CombatService: GenService<{
    * always pass it by hand). With `clear` it takes the mark off, when the player came
    * back from the map. It changes nothing else, writes no log line, and is idempotent:
    * marking or clearing a window twice is the same as once, and writes and publishes nothing.
-   * The first mark of a window records when the wait began (`wait_began_at`), once; no later mark
-   * or clear moves it. A READIED window is where the mark means the player is on the map to place
+   * The wait begins (`wait_began_at`) at the reactor's player's first mark or the master's opening
+   * of the release, whichever comes first; once begun, no later mark or clear moves it. The master's
+   * call only begins the wait and never sets `rolling`. A READIED window is where the mark means the player is on the map to place
    * a spell or a move; on a window of any other kind it is the player rolling a die. In no kind
    * does it keep the window from being answered or closed.
    *

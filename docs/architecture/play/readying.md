@@ -241,10 +241,11 @@ A set or a clear that changes nothing (already set, already clear) writes nothin
 One that changes the window (the mark or the beginning of the wait) tells the master and the reactor's player alone, through `Audience{Master, UserID}`: no other player counts the hints of a wait they do not read.
 It is two events, one to the master and one to the reactor's player, each an encounter hint.
 On a fog map the player's copy is blind (revision 0), as every player's hint is there; the master's carries the real revision.
-The server records when the wait began, once, in the window's trigger, and no later mark or clear changes it.
+The server records when the wait began, once, in the window's trigger: at the reactor's player's first mark or the master's opening of the release, whichever comes first.
+No later mark or clear changes it.
 An undo that reopens the window (of a spell release, a move release or a pass) starts the wait clean: `rolling` false and no `wait_began_at`, so the next mark begins a new wait.
 The master's row reads whether the player is on the map now (`rolling`), when the wait began (`wait_began_at`) and how long it has run (`waited_ms`).
-`waited_ms` is the server's clock, worked out at each read as now minus `wait_began_at`, 0 before the first mark: a screen with a wrong clock still counts the wait right.
+`waited_ms` is the server's clock, worked out at each read as now minus `wait_began_at`, 0 before the wait began: a screen with a wrong clock still counts the wait right.
 The master's screen passes the window when the 120 s end, with `AnswerReaction` PASS: the server runs no timer.
 The reactor's player reads the mark back too (a second device of the same player shows it), `rolling`, `wait_began_at` and `waited_ms`.
 No other player reads either: another player and the TV read the same wait line in every moment.
