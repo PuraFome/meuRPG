@@ -7724,7 +7724,11 @@ async function scanPickLists(browser: Browser, colorScheme: 'light' | 'dark', wi
     await open(page, edit);
     await page.getByRole('tab', { name: /^Escolhas/ }).click();
     const toolCard = page.getByRole('region', { name: 'Ferramenta', exact: true });
+    // The pick asks the server for the choices again, after a pause. The master narrows the trait only once that answer is in: an answer read
+    // after the narrowing no longer offers the smiths' tools, and the editor takes the pick back (and the refusal with it) before or after the save.
+    const choicesRead = page.waitForResponse(/PreviewChoices/);
     await toolCard.getByRole('radio', { name: /Ferramentas de ferreiro/ }).click();
+    await choicesRead;
     await updateEntryRPC(m, campaignId, raceKey, 'tableRace', skillTraitRaceBody(['skill:stealth'], ['skill:nature'], ['proficiency:tinkers-tools', 'proficiency:thieves-tools']));
     await page.getByRole('button', { name: 'Salvar ficha' }).click();
     const toolSentence = 'A ferramenta Ferramentas de ferreiro não está em nenhuma das escolhas de ferramenta do personagem.';
