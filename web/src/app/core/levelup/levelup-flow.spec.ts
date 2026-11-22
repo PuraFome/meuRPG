@@ -164,23 +164,49 @@ describe('the pickers lists', () => {
     ]);
   });
 
-  it('offers new skills, and expertise only in trained ones (today or just picked)', () => {
-    expect(skillOptions(SKILLS, WIZARD_KEYS).map((s) => s.name)).toEqual([
+  it("offers the server's skills and expertise lists, and nothing else", () => {
+    const o = wizardOptions({
+      skillChoices: 1,
+      expertiseChoices: 1,
+      skillsAllowed: ['skill:stealth', 'skill:perception'],
+      expertiseAllowed: ['skill:history'],
+    });
+    expect(skillOptions(SKILLS, WIZARD_KEYS, o).map((s) => s.name)).toEqual([
       'Furtividade',
       'Percepção',
     ]);
-    expect(expertiseOptions(SKILLS, WIZARD_KEYS, new Set()).map((s) => s.name)).toEqual([
-      'Arcanismo',
-      'História',
+    // A skill the sheet is trained in, or one the list leaves out, is not a row of its own accord.
+    expect(expertiseOptions(SKILLS, o).map((s) => s.name)).toEqual(['História']);
+  });
+
+  it('offers none where the level gains no pick', () => {
+    const o = wizardOptions();
+    expect(skillOptions(SKILLS, WIZARD_KEYS, o)).toEqual([]);
+    expect(expertiseOptions(SKILLS, o)).toEqual([]);
+  });
+
+  it("reads the picked subclass's lists once it is picked, and the level's before", () => {
+    const o = wizardOptions({
+      skillsAllowed: ['skill:stealth'],
+      expertiseAllowed: ['skill:arcana'],
+      subclassDue: true,
+      subclasses: [
+        create(LevelUpSubclassSchema, {
+          key: 'sub:scout',
+          namePt: 'Batedor',
+          skillChoices: 1,
+          expertiseChoices: 1,
+          skillsAllowed: ['skill:perception'],
+          expertiseAllowed: ['skill:history'],
+        }),
+      ],
+    });
+    expect(skillOptions(SKILLS, WIZARD_KEYS, o).map((s) => s.key)).toEqual(['skill:stealth']);
+    expect(skillOptions(SKILLS, WIZARD_KEYS, o, 'sub:scout').map((s) => s.key)).toEqual([
+      'skill:perception',
     ]);
-    expect(
-      expertiseOptions(SKILLS, WIZARD_KEYS, new Set(['skill:stealth'])).map((s) => s.name),
-    ).toContain('Furtividade');
-    expect(
-      expertiseOptions(SKILLS, { ...WIZARD_KEYS, expertise: ['skill:arcana'] }, new Set()).map(
-        (s) => s.name,
-      ),
-    ).toEqual(['História']);
+    expect(expertiseOptions(SKILLS, o).map((s) => s.key)).toEqual(['skill:arcana']);
+    expect(expertiseOptions(SKILLS, o, 'sub:scout').map((s) => s.key)).toEqual(['skill:history']);
   });
 });
 
@@ -251,6 +277,16 @@ describe('the class step and the picks of a new class', () => {
     ).toEqual([
       ['skill:arcana', 'Você já tem'],
       ['skill:stealth', ''],
+    ]);
+    // The class's own list wins over the level's skillsAllowed.
+    const withAllowed = fighterOptions({
+      isNewClass: true,
+      skillsAllowed: ['skill:perception'],
+      proficiencyChoices: o.proficiencyChoices,
+    });
+    expect(skillOptions(SKILLS, WIZARD_KEYS, withAllowed).map((i) => i.key)).toEqual([
+      'skill:arcana',
+      'skill:stealth',
     ]);
   });
 });
