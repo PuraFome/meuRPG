@@ -105,7 +105,7 @@ import {
 } from './table-sheet-support';
 import { masterLog, openCombatPanel, openMap, openOrderRow, openTurn } from './combat-layout';
 import { waitForEncounterRevision } from './revision-support';
-import { fireReadied, heldSpell, longReactor, masterQueue, mapSquares, moveWindow, pickFireballPoint, placeFireball, readyMapTable, releaseSheet, releaseTexts, scrollToLegend, spellWindow, undoFire } from './ready-map-support';
+import { fireReadied, freezeLiveUpdates, heldSpell, longReactor, masterQueue, mapSquares, moveWindow, pickFireballPoint, placeFireball, readyMapTable, releaseSheet, releaseTexts, scrollToLegend, spellWindow, undoFire } from './ready-map-support';
 import { goblinTrigger, openReadySheet, pensantusReadyKit, readyAttackRPC, readyRPC, readySpellRPC, shootReady, summonOffText } from './ready-support';
 import { WIDTHS, beginVrockFight, pagesFor, shoot, useCreatureActionRPC, viewportOf } from './recharge-support';
 import { chooseRow, openTvPanel, rollForTableRPC, tvRoute } from './table-screen-support';
@@ -17928,4 +17928,114 @@ for (const [scheme, width] of [['light', 390], ['light', 768], ['light', 1280], 
   test(`o registro do combate com a cura de Canalizar Divindade passa no axe e nas conferências de layout no tema ${scheme === 'light' ? 'claro' : 'escuro'}, em ${width}px`, { tag: ['@a11y', '@MR-014'] }, async ({ browser }) => {
     await scanChannelHeal(browser, scheme, width);
   });
+}
+
+/**
+ * The release the server refuses, and the master's states of the window that went away (#857, S1 and S3): a cast sent after the window
+ *closed, while the screen (its live updates held) still shows it open, reads the gone state. The master's REACTION_USED refusal is left
+ * out: the server closes the window the moment the reaction is spent (reason `reaction_spent`), so no call can reach it with the window open. The master's dialog after the trigger was undone and the Mover page after the window closed say it in the master's words.
+ */
+async function scanReadyMapRefusedScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const where = `(${colorScheme}, ${width}px)`;
+  const view = { ...featViewport(width), colorScheme, both: true };
+  const shoot = async (page: Page, screen: string): Promise<void> => shootReady(page, screen, width, colorScheme, '857-ready-map');
+  const castRefused = (page: Page): Promise<unknown> => page.waitForResponse((r) => r.url().endsWith('/meurpg.play.v1.CombatService/CastSpell') && !r.ok());
+
+  // The player's sheet: the window closes (the master lets it pass) while the sheet, which heard nothing, still shows it open; the cast is refused as closed.
+  const player = await readyMapTable(browser, 'Acessibilidade soltar recusado jogador', 'fireball', view);
+  try {
+    const { m, p } = player;
+    m.setDefaultTimeout(20_000);
+    p.setDefaultTimeout(20_000);
+    await fireReadied(m);
+    const sheet = await placeFireball(p);
+    await freezeLiveUpdates(p);
+    await masterQueue(m).getByRole('button', { name: 'Deixar passar' }).click();
+    await expect(spellWindow(p)).toHaveCount(0);
+    await expect(sheet.getByTestId('release-gone')).toHaveCount(0);
+    const refused = castRefused(p);
+    await sheet.getByRole('button', { name: 'Conjurar Bola de Fogo' }).click();
+    await refused;
+    await expect(sheet.getByTestId('release-gone')).toBeVisible();
+    await expectScreenPasses(p, `Soltar, a folha da magia quando o servidor recusa a soltura como janela fechada ${where}`);
+    await shoot(p, 'folha-recusada');
+  } finally {
+    await player.done();
+  }
+
+  // The master's dialog: the player lets the window pass; the master's cast is refused as closed.
+  const closed = await readyMapTable(browser, 'Acessibilidade soltar recusado mestre', 'fireball', view);
+  try {
+    const { m, p } = closed;
+    m.setDefaultTimeout(20_000);
+    p.setDefaultTimeout(20_000);
+    await fireReadied(m);
+    await expect(spellWindow(p)).toBeVisible();
+    await masterQueue(m).getByRole('button', { name: 'Soltar por Pensantus' }).click();
+    const sheet = releaseSheet(m, true);
+    await pickFireballPoint(sheet);
+    await sheet.getByRole('application', { name: 'Mapa: escolha o ponto da Bola de Fogo' }).press('Enter');
+    await expect(sheet.getByRole('heading', { name: /Quem está na área/ })).toBeFocused();
+    await freezeLiveUpdates(m);
+    await spellWindow(p).getByRole('button', { name: 'Deixar passar' }).click();
+    await expect(spellWindow(p)).toHaveCount(0);
+    await expect(sheet.getByTestId('release-gone')).toHaveCount(0);
+    const refused = castRefused(m);
+    await sheet.getByRole('button', { name: /^Conjurar Bola de Fogo/ }).click();
+    await refused;
+    await expect(sheet.getByTestId('release-gone')).toBeVisible();
+    await expectScreenPasses(m, `Soltar, a janela do mestre quando o servidor recusa a soltura como janela fechada ${where}`);
+    await shoot(m, 'mestre-recusada');
+  } finally {
+    await closed.done();
+  }
+
+  // The master's dialog after the master undid the trigger itself.
+  const undone = await readyMapTable(browser, 'Acessibilidade soltar mestre desfez', 'fireball', view);
+  try {
+    const { m, p, campaignId } = undone;
+    m.setDefaultTimeout(20_000);
+    p.setDefaultTimeout(20_000);
+    await fireReadied(m);
+    await expect(spellWindow(p)).toBeVisible();
+    await masterQueue(m).getByRole('button', { name: 'Soltar por Pensantus' }).click();
+    const sheet = releaseSheet(m, true);
+    await expect(sheet).toBeVisible();
+    await undoFire(m, campaignId);
+    await expect(sheet.getByTestId('release-gone')).toBeVisible();
+    await expectScreenPasses(m, `Soltar, a janela do mestre depois que o gatilho foi desfeito ${where}`);
+    await shoot(m, 'mestre-desfeito');
+  } finally {
+    await undone.done();
+  }
+
+  // The Mover page of the master after the window closed.
+  const move = await readyMapTable(browser, 'Acessibilidade soltar mover mestre fechou', 'move', view);
+  try {
+    const { m, p } = move;
+    m.setDefaultTimeout(20_000);
+    p.setDefaultTimeout(20_000);
+    await fireReadied(m);
+    await expect(moveWindow(p)).toBeVisible();
+    await masterQueue(m).getByRole('button', { name: 'Mover por Pensantus' }).click();
+    await expect(m.getByTestId('release-foot')).toHaveText(releaseTexts.masterFoot);
+    await moveWindow(p).getByRole('button', { name: 'Deixar passar' }).click();
+    await expect(m.getByTestId('release-gone')).toBeVisible();
+    await expectScreenPasses(m, `Soltar, a página de movimento do mestre depois que a janela fechou ${where}`);
+    await shoot(m, 'mestre-mover-fechou');
+  } finally {
+    await move.done();
+  }
+}
+
+for (const [colorScheme, theme] of [
+  ['light', 'claro'],
+  ['dark', 'escuro'],
+] as const) {
+  for (const width of [390, 768, 1280]) {
+    test(`soltar a ação preparada no mapa, a soltura recusada e os estados do mestre, passa no axe e nas conferências de layout no tema ${theme}, em ${width}`, { tag: ['@a11y', '@RN-31'] }, async ({ browser }) => {
+      test.setTimeout(900_000);
+      await scanReadyMapRefusedScreens(browser, colorScheme, width);
+    });
+  }
 }

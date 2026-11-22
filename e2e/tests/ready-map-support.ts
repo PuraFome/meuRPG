@@ -224,3 +224,17 @@ export async function scrollToLegend(page: Page): Promise<void> {
     document.querySelector('app-map-layers-legend')?.scrollIntoView({ block: 'end' });
   });
 }
+
+/**
+ * Holds the page's live updates: a screen that stays as it is while the table moves on. The live feed (`WatchGameSession`) is cut with the
+ * network and every reconnect is left waiting, and so is the page's own read of the combat (`GetEncounter`), so the page never hears of what
+ * the table does next; its other calls (the release itself) go on.
+ */
+export async function freezeLiveUpdates(page: Page): Promise<void> {
+  const context = page.context();
+  await context.setOffline(true);
+  await page.route('**/meurpg.play.v1.PlayService/WatchGameSession', () => new Promise(() => undefined));
+  // The combat the page reads again on its own (the master's page does, when the window closes) waits too.
+  await page.route('**/meurpg.play.v1.CombatService/GetEncounter', () => new Promise(() => undefined));
+  await context.setOffline(false);
+}
