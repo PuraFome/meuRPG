@@ -157,6 +157,7 @@ internal/play/combat_log.go changesHeldView flag 1
 internal/play/combat_log.go heardJoined flag 1
 internal/play/combat_log.go laterTurnReader flag 1
 internal/play/combat_log.go stampSeqs flag 1
+internal/play/combat_log_favor.go (*logEntry).fillFavor flag 1
 internal/play/combat_log_rolls.go (*logEntry).dressDamage flag 4
 internal/play/combat_log_rolls.go (*logEntry).dressParts flag 2
 internal/play/combat_log_rolls.go (*logEntry).removalView flag 1
@@ -355,7 +356,8 @@ internal/play/consumables_combat.go (*Service).ListConsumableTargets role 1
 internal/play/creature_cast.go (*Service).summonCaster flag 1
 internal/play/creature_cast.go (*Service).summonRollOK flag 1
 internal/play/encounters.go requireBuilder role 1
-internal/play/favor_read.go (*Service).GetFavor role 1
+internal/play/favor_read.go (*Service).GetFavor role 2
+internal/play/favor_read.go (*Service).readPasses role 1
 internal/play/favor_spend.go favorLine flag 1
 internal/play/favor_spend.go ownsSave role 1
 internal/play/feature_window.go (*combatTx).featureViewer mint 2
