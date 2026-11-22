@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"time"
 
 	"connectrpc.com/connect"
 
@@ -190,8 +191,9 @@ func (s *Service) answerWindow(ctx context.Context, c *combatTx, m authz.Members
 	return got.ev, nil
 }
 
-// MarkReactionRolling implements playv1connect.CombatServiceHandler. It sets the
-// window's `rolling` mark for the master's clock, or takes it off with `clear`, and writes nothing else: no session
+// MarkReactionRolling implements playv1connect.CombatServiceHandler. The reactor's player sets the
+// window's `rolling` mark for the master's clock, or takes it off with `clear`. The master, without `clear`, on an open
+// READIED window of a player's character, only begins the wait (`rolling` stays the player's own mark). Neither writes anything else: no session
 // event, no log line (the closure returns no payload), so nothing is logged or bumped, and a retry or a second tab only
 // sets or clears the same mark again. A mark that changes nothing writes and tells nothing; one that does tells the master
 // and the reactor's player alone: no other player reads the wait.
@@ -212,10 +214,11 @@ func (s *Service) MarkReactionRolling(
 		return nil, err
 	}
 	var changed bool
+	var reactorUser string
 	// The window's own id is the key: no event is written, so it is never looked up as one.
 	res, err := s.write(ctx, combatWrite{m: m, key: winID, kind: eventReactionAnswered, encounterID: encID}, func(c *combatTx) (any, error) {
 		var err error
-		changed, err = s.markRolling(ctx, c, m, winID, req.Msg.GetClear())
+		changed, reactorUser, err = s.markRolling(ctx, c, m, winID, req.Msg.GetClear())
 		return nil, err
 	})
 	if err != nil {
@@ -231,7 +234,7 @@ func (s *Service) MarkReactionRolling(
 			mine = blind
 		}
 		say(m.CampaignID, live.Event{Audience: live.Audience{Master: true}, Message: msg})
-		say(m.CampaignID, live.Event{Audience: live.Audience{UserID: m.UserID}, Message: mine})
+		say(m.CampaignID, live.Event{Audience: live.Audience{UserID: reactorUser}, Message: mine})
 	})
 	if err != nil {
 		return nil, err
@@ -240,33 +243,66 @@ func (s *Service) MarkReactionRolling(
 }
 
 // markRolling is the write of MarkReactionRolling: the mark on, or off when asked to. The mark is the reactor
-// player's own: the master reads it, never sets it or takes it off. It returns no payload: the change is kept and nothing
-// is written to the log; changed says the mark was a change, and one already as asked writes nothing (a retry or a second
-// tab only sets or clears the same mark).
-func (s *Service) markRolling(ctx context.Context, c *combatTx, m authz.Membership, winID string, off bool) (changed bool, err error) {
+// player's own: the master reads it, never sets it or takes it off. The master's call on an open READIED window of a
+// player's character only begins the wait, once, and leaves the mark as it is. It returns no payload: the change is kept
+// and nothing is written to the log; changed says the call was a change (one already as asked writes nothing: a retry
+// or a second tab only sets or clears the same mark), and reactorUser is the reactor's player, who is told with the master.
+func (s *Service) markRolling(ctx context.Context, c *combatTx, m authz.Membership, winID string, off bool) (changed bool, reactorUser string, err error) {
 	if err := notEnded(c.enc); err != nil {
-		return false, err
+		return false, "", err
 	}
-	if m.Role == authz.RoleMaster {
-		return false, errWindowDenied()
+	master := m.Role == authz.RoleMaster
+	if master && off {
+		return false, "", errWindowDenied()
 	}
-	w, _, err := s.windowToAnswer(ctx, c, m, winID)
+	w, reactor, err := s.windowToAnswer(ctx, c, m, winID)
 	if err != nil {
-		return false, err
+		return false, "", err
 	}
+	if master && !waitsForItsPlayer(w, reactor) {
+		return false, "", errWindowDenied()
+	}
+	reactorUser = conv.OrZero(reactor.UserID)
 	t := windowTriggerOf(w)
+	if master {
+		changed = beginWait(&t, c.now)
+	} else {
+		changed = setMark(&t, off, c.now)
+	}
+	if !changed {
+		return false, reactorUser, nil
+	}
+	if err := setWindowTrigger(ctx, c.q, w.ID, t); err != nil {
+		return false, "", err
+	}
+	return true, reactorUser, touch(ctx, c)
+}
+
+// waitsForItsPlayer says the window is a READIED window of a player's character: the only one the master's call begins the wait of.
+func waitsForItsPlayer(w playdb.ReactionWindow, reactor playdb.Combatant) bool {
+	return reaction.Kind(w.Kind) == reaction.Readied && reactor.UserID != nil && !isCreature(reactor)
+}
+
+// beginWait is the master's call: it begins the wait, once, and leaves the mark the player's. It says whether t changed.
+func beginWait(t *windowTrigger, now time.Time) bool {
+	if t.WaitBegan != nil {
+		return false
+	}
+	t.WaitBegan = &now
+	return true
+}
+
+// setMark is the player's call: the mark on, or off with off; the first mark begins the wait and nothing after it moves it. It says
+// whether t changed.
+func setMark(t *windowTrigger, off bool, now time.Time) bool {
 	if t.Rolling == !off && (off || t.WaitBegan != nil) {
-		return false, nil
+		return false
 	}
 	t.Rolling = !off
 	if !off && t.WaitBegan == nil {
-		now := c.now // the transaction's clock; the first mark starts the wait and nothing after it moves it
 		t.WaitBegan = &now
 	}
-	if err := setWindowTrigger(ctx, c.q, w.ID, t); err != nil {
-		return false, err
-	}
-	return true, touch(ctx, c)
+	return true
 }
 
 // setWindowTrigger writes the trigger of an open window and nothing else.

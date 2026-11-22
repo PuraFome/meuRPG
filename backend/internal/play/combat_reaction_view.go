@@ -76,10 +76,7 @@ func (s *Service) reactionView(ctx context.Context, m authz.Membership, d *encou
 	if d.enc.Status != statusActive {
 		return nil, nil, nil
 	}
-	open, err := s.queries.ListOpenReactionWindows(ctx, d.enc.ID)
-	if err != nil {
-		return nil, nil, s.dbError(ctx, "list the reaction windows", err)
-	}
+	open := d.openWindows
 	offers, err := s.queries.ListPendingOpportunityOffers(ctx, d.enc.ID)
 	if err != nil {
 		return nil, nil, s.dbError(ctx, "list the opportunity offers", err)
@@ -350,7 +347,7 @@ func (wv *windowView) holdsOf(w playdb.ReactionWindow) (reaction.Holds, error) {
 	return reaction.HoldsTurn, nil
 }
 
-// waitedMs is how long a wait has run on the server's clock: now minus its beginning, 0 before the first mark.
+// waitedMs is how long a wait has run on the server's clock: now minus its beginning, 0 before it began.
 func waitedMs(began *time.Time, now time.Time) int64 {
 	if began == nil {
 		return 0
