@@ -447,7 +447,7 @@ func TestLockPairHoldsBothCharactersRowsUntilTheTransactionEnds(t *testing.T) {
 	ids := []string{f.toren.GetId(), f.pens.GetId()}
 	done := make(chan error, len(ids))
 	ended := 0
-	err := f.h.svc.txOn(ctx, f.h.pool, f.sessionID, func(tx pgx.Tx, h *hints) error {
+	err := f.h.svc.txOn(ctx, f.h.pool, f.sessionID, func(tx pgx.Tx, _ *hints) error {
 		if err := f.h.svc.lockPair(ctx, tx, f.campaignID, ids[0], ids[1]); err != nil {
 			return err
 		}

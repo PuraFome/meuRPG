@@ -211,6 +211,16 @@ type sessionEnd struct {
 	visionMap string
 }
 
+// endFavorOfSession cancels the session's pending asks to pass the Inspiration and closes its open refund questions.
+func (s *Service) endFavorOfSession(ctx context.Context, tx pgx.Tx, m authz.Membership, sessionID string, out *sessionEnd) error {
+	passTold, err := s.cancelPassesOfSession(ctx, tx, m, sessionID)
+	if err != nil {
+		return err
+	}
+	out.told = append(out.told, passTold...)
+	return s.closeRefundPromptsOfSession(ctx, tx, m, sessionID)
+}
+
 // endSessionIn ends the session inside tx, with its combat and the image the master
 // left with the players. A session ended before is read back and nothing changes.
 func (s *Service) endSessionIn(ctx context.Context, tx pgx.Tx, m authz.Membership, sessionID string, out *sessionEnd) error {
@@ -256,12 +266,7 @@ func (s *Service) endSessionIn(ctx context.Context, tx pgx.Tx, m authz.Membershi
 			return err
 		}
 	}
-	passTold, err := s.cancelPassesOfSession(ctx, tx, m, sessionID)
-	if err != nil {
-		return err
-	}
-	out.told = append(out.told, passTold...)
-	if err := s.closeRefundPromptsOfSession(ctx, tx, m, sessionID); err != nil {
+	if err := s.endFavorOfSession(ctx, tx, m, sessionID, out); err != nil {
 		return err
 	}
 	out.session, err = q.EndGameSession(ctx, playdb.EndGameSessionParams{
