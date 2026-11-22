@@ -313,6 +313,15 @@
   ],
   "proficiencyBonusAfter": 2,
   "proficiencyBonusBefore": 2,
+  "skillsAllowed": [
+    "skill:acrobatics",
+    "skill:animal-handling",
+    "skill:athletics",
+    "skill:history",
+    "skill:intimidation",
+    "skill:perception",
+    "skill:survival"
+  ],
   "spellListClassKey": "class:wizard",
   "spellSlotsAfter": [
     3,

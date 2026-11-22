@@ -413,10 +413,11 @@ export class LevelUpDraft {
     trim(this.expertise, this.expertiseAsked());
   }
 
-  /** Expertise only in what is trained. */
+  /** Expertise stays only on the rows the list offers: a skill outside the server's list, or one this level could newly
+   * give that is not picked, goes. */
   private dropUntrainedExpertise(): void {
-    const trained = new Set([...this.have.skills, ...this.skills()]);
-    keepOnly(this.expertise, (k) => trained.has(k));
+    const offered = new Set(this.expertiseItems().map((i) => i.key));
+    keepOnly(this.expertise, (k) => offered.has(k));
   }
 
   toggleCantrip(key: string): void {

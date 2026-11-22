@@ -222,8 +222,18 @@ type CharacterServiceClient interface {
 	//     went through is answered, not refused.
 	//
 	// The base scores of a PLAYER's full sheet are checked against
-	// `ability_method` (RN-24). Nothing else is: the master's NPCs and the
-	// master's later edits are free, and so is the rest of the sheet.
+	// `ability_method` (RN-24), and a PLAYER's new skill, expertise or tool pick that no list
+	// of the sheet places is refused (see the pick refusal below). Nothing else is: the master's
+	// NPCs and the master's later edits are free, and so is the rest of the sheet.
+	//
+	// The pick refusal is `invalid_argument` with a field violation at the pick's own field
+	// (`sheet.full.skill_proficiency_keys[i]`, `sheet.full.expertise_skill_keys[i]`, or
+	// `sheet.full.feature_choice_keys[i]` for a tool) and a sentence that says
+	// whether no list has the pick or the lists that have it are full. The sources are those of
+	// the entries the sheet holds or gets. A tool pick that is no tool, or whose owner the sheet
+	// neither holds nor gets and the table closed, is answered as a key that does not exist, for
+	// the master too. The master is never refused for a pick no list places: the sheet carries
+	// the issue instead.
 	//
 	// Safe to retry when the request carries an idempotency_key: a second call with the same key and
 	// the same request returns what the first one made and makes nothing; the same key with another
@@ -354,7 +364,10 @@ type CharacterServiceClient interface {
 	//
 	// Errors:
 	//   - `invalid_argument`: revision is less than 1, the sheet's type does
-	//     not match the kind, or a field breaks its rules.
+	//     not match the kind, or a field breaks its rules, including a
+	//     player's new skill, expertise or tool pick that no list of the sheet
+	//     places (a field violation at the pick's own field, as in
+	//     CreateCharacter; a pick the stored sheet holds is not new).
 	//   - `not_found`: the character is not in this campaign, the caller may
 	//     not see it, the campaign does not exist, or the caller is not a
 	//     member of it.
@@ -749,9 +762,10 @@ type CharacterServiceClient interface {
 	// UpdateCharacter take; the fields that do not change the numbers (name,
 	// portrait, story, idempotency key) are not part of the request.
 	//
-	// It accepts exactly the callers and sheets that the save it previews
-	// accepts, so a preview never shows a sheet the save would refuse and never
-	// tells anyone more than the save would. Without a character_id, what
+	// It accepts the callers and sheets that the save it previews accepts, and
+	// tells no one more than the save would, with one difference: a skill,
+	// expertise or tool pick that no list of the sheet places is not refused here
+	// (the save refuses it), so the editor shows the draft. Without a character_id, what
 	// CreateCharacter checks: a member or a pending member; a player previews
 	// only a PLAYER sheet and the master only an NPC kind; the sheet's own rules,
 	// the sheet that fits the kind, a new choice of an archived table entry
@@ -788,6 +802,11 @@ type CharacterServiceClient interface {
 	// Who may call it, the sheet it takes and the errors are those of PreviewCharacter;
 	// with a character_id and no sheet, the character's stored sheet is the one read.
 	// A basic sheet has no choices (`invalid_argument`).
+	//
+	// A skill, expertise or tool pick that no list of the sheet places is not refused here:
+	// the answer carries the lists of the draft as it is, and the picks stay for the editor
+	// to show and remove; the save refuses them. A key that is no tool, an entry kept out
+	// of the player's view and a closed entry are refused.
 	PreviewChoices(context.Context, *connect.Request[v1.PreviewChoicesRequest]) (*connect.Response[v1.PreviewChoicesResponse], error)
 	// CompleteCharacterChoices makes the choices a sheet left open, on a sheet that is
 	// locked for the player (RN-01) as well as on a draft: it writes only the picks of
@@ -806,7 +825,9 @@ type CharacterServiceClient interface {
 	//     (the same for a player who does not own it and for a stranger).
 	//   - `aborted`: the revision is not the character's now.
 	//   - `invalid_argument`: more than 50 picks, an empty choice key, an option key
-	//     that is not a content key, or a text over 40 characters.
+	//     that is not a content key, a text over 40 characters, or a player's new tool
+	//     pick that no list of the sheet places (a field violation at the pick's field;
+	//     a tool whose owner does not exist for the caller is answered as an unknown key).
 	//   - `failed_precondition`: with a ChoiceRefusal detail: CHOICE_NOT_OPEN for a
 	//     pick that names a choice the sheet does not have, CHOICE_ALREADY_MADE for one
 	//     with nothing left to pick, CHOICE_NOT_OFFERED for an option the choice does not
@@ -874,7 +895,9 @@ type CharacterServiceClient interface {
 	//   - `permission_denied`: the caller is the master.
 	//   - `invalid_argument`: a choice is malformed (an unknown content key, a
 	//     list too long, no hit points method, a typed value that is not a
-	//     number).
+	//     number), or a new skill, expertise or tool pick that no list of the
+	//     sheet after the level places (a field violation at the pick's field);
+	//     a skill is refused first by LevelUpRefusal SKILLS.
 	//   - `aborted`: revision is not the character's current one (the master
 	//     changed the sheet, or an XP award came in); read it and try again.
 	//   - `failed_precondition`, with one of two details:
@@ -1599,8 +1622,18 @@ type CharacterServiceHandler interface {
 	//     went through is answered, not refused.
 	//
 	// The base scores of a PLAYER's full sheet are checked against
-	// `ability_method` (RN-24). Nothing else is: the master's NPCs and the
-	// master's later edits are free, and so is the rest of the sheet.
+	// `ability_method` (RN-24), and a PLAYER's new skill, expertise or tool pick that no list
+	// of the sheet places is refused (see the pick refusal below). Nothing else is: the master's
+	// NPCs and the master's later edits are free, and so is the rest of the sheet.
+	//
+	// The pick refusal is `invalid_argument` with a field violation at the pick's own field
+	// (`sheet.full.skill_proficiency_keys[i]`, `sheet.full.expertise_skill_keys[i]`, or
+	// `sheet.full.feature_choice_keys[i]` for a tool) and a sentence that says
+	// whether no list has the pick or the lists that have it are full. The sources are those of
+	// the entries the sheet holds or gets. A tool pick that is no tool, or whose owner the sheet
+	// neither holds nor gets and the table closed, is answered as a key that does not exist, for
+	// the master too. The master is never refused for a pick no list places: the sheet carries
+	// the issue instead.
 	//
 	// Safe to retry when the request carries an idempotency_key: a second call with the same key and
 	// the same request returns what the first one made and makes nothing; the same key with another
@@ -1731,7 +1764,10 @@ type CharacterServiceHandler interface {
 	//
 	// Errors:
 	//   - `invalid_argument`: revision is less than 1, the sheet's type does
-	//     not match the kind, or a field breaks its rules.
+	//     not match the kind, or a field breaks its rules, including a
+	//     player's new skill, expertise or tool pick that no list of the sheet
+	//     places (a field violation at the pick's own field, as in
+	//     CreateCharacter; a pick the stored sheet holds is not new).
 	//   - `not_found`: the character is not in this campaign, the caller may
 	//     not see it, the campaign does not exist, or the caller is not a
 	//     member of it.
@@ -2126,9 +2162,10 @@ type CharacterServiceHandler interface {
 	// UpdateCharacter take; the fields that do not change the numbers (name,
 	// portrait, story, idempotency key) are not part of the request.
 	//
-	// It accepts exactly the callers and sheets that the save it previews
-	// accepts, so a preview never shows a sheet the save would refuse and never
-	// tells anyone more than the save would. Without a character_id, what
+	// It accepts the callers and sheets that the save it previews accepts, and
+	// tells no one more than the save would, with one difference: a skill,
+	// expertise or tool pick that no list of the sheet places is not refused here
+	// (the save refuses it), so the editor shows the draft. Without a character_id, what
 	// CreateCharacter checks: a member or a pending member; a player previews
 	// only a PLAYER sheet and the master only an NPC kind; the sheet's own rules,
 	// the sheet that fits the kind, a new choice of an archived table entry
@@ -2165,6 +2202,11 @@ type CharacterServiceHandler interface {
 	// Who may call it, the sheet it takes and the errors are those of PreviewCharacter;
 	// with a character_id and no sheet, the character's stored sheet is the one read.
 	// A basic sheet has no choices (`invalid_argument`).
+	//
+	// A skill, expertise or tool pick that no list of the sheet places is not refused here:
+	// the answer carries the lists of the draft as it is, and the picks stay for the editor
+	// to show and remove; the save refuses them. A key that is no tool, an entry kept out
+	// of the player's view and a closed entry are refused.
 	PreviewChoices(context.Context, *connect.Request[v1.PreviewChoicesRequest]) (*connect.Response[v1.PreviewChoicesResponse], error)
 	// CompleteCharacterChoices makes the choices a sheet left open, on a sheet that is
 	// locked for the player (RN-01) as well as on a draft: it writes only the picks of
@@ -2183,7 +2225,9 @@ type CharacterServiceHandler interface {
 	//     (the same for a player who does not own it and for a stranger).
 	//   - `aborted`: the revision is not the character's now.
 	//   - `invalid_argument`: more than 50 picks, an empty choice key, an option key
-	//     that is not a content key, or a text over 40 characters.
+	//     that is not a content key, a text over 40 characters, or a player's new tool
+	//     pick that no list of the sheet places (a field violation at the pick's field;
+	//     a tool whose owner does not exist for the caller is answered as an unknown key).
 	//   - `failed_precondition`: with a ChoiceRefusal detail: CHOICE_NOT_OPEN for a
 	//     pick that names a choice the sheet does not have, CHOICE_ALREADY_MADE for one
 	//     with nothing left to pick, CHOICE_NOT_OFFERED for an option the choice does not
@@ -2251,7 +2295,9 @@ type CharacterServiceHandler interface {
 	//   - `permission_denied`: the caller is the master.
 	//   - `invalid_argument`: a choice is malformed (an unknown content key, a
 	//     list too long, no hit points method, a typed value that is not a
-	//     number).
+	//     number), or a new skill, expertise or tool pick that no list of the
+	//     sheet after the level places (a field violation at the pick's field);
+	//     a skill is refused first by LevelUpRefusal SKILLS.
 	//   - `aborted`: revision is not the character's current one (the master
 	//     changed the sheet, or an XP award came in); read it and try again.
 	//   - `failed_precondition`, with one of two details:

@@ -259,6 +259,32 @@ type MulticlassPick struct {
 	From   []MulticlassOption
 }
 
+// openSkills are the keys of the pick the character does not have, in the order of the list: the one list a new class's skill
+// comes from, in the offer of the level and in the write (checkMulticlassSkills).
+func (p *MulticlassPick) openSkills() []string {
+	var out []string
+	for _, o := range p.From {
+		if !o.AlreadyHave {
+			out = append(out, o.Key)
+		}
+	}
+	return out
+}
+
+// pickable are the skills a new pick of the level may take at a class added by multiclassing: the open ones of the row
+// and, when the level asks other skills too (more), the keys of the sheet's other sources (others) that the row lacks.
+func (p *MulticlassPick) pickable(others []string, more bool) []string {
+	out := p.openSkills()
+	if more {
+		for _, k := range others {
+			if !slices.Contains(out, k) {
+				out = append(out, k)
+			}
+		}
+	}
+	return out
+}
+
 // MulticlassOption is one option of a pick, marked when the character already has it.
 type MulticlassOption struct {
 	Key, NamePT string
@@ -385,7 +411,7 @@ func CasterLevel(b Build, c *Content) (level, casters int) {
 // class: Skills.Choose of them come from the class's list and are not skills the
 // character has. Anything else is a refusal of the level's skills.
 func (c *content) checkMulticlassSkills(offer *MulticlassOffer, got []string, extra int) *LevelUpError {
-	const field = "full.skill_proficiency_keys"
+	const field = skillsField
 	want := extra
 	if offer.Skills != nil {
 		want += offer.Skills.Choose
@@ -401,12 +427,12 @@ func (c *content) checkMulticlassSkills(offer *MulticlassOffer, got []string, ex
 		return nil
 	}
 	inList := 0
+	open := offer.Skills.openSkills()
 	for _, k := range got {
-		i := slices.IndexFunc(offer.Skills.From, func(o MulticlassOption) bool { return o.Key == k })
-		if i >= 0 {
-			if offer.Skills.From[i].AlreadyHave {
-				return refuse(field, LevelUpReasonProficiencyChoice, "the character already has %s", k)
-			}
+		if slices.ContainsFunc(offer.Skills.From, func(o MulticlassOption) bool { return o.Key == k && o.AlreadyHave }) {
+			return refuse(field, LevelUpReasonProficiencyChoice, "the character already has %s", k)
+		}
+		if slices.Contains(open, k) {
 			inList++
 		}
 	}
@@ -591,4 +617,35 @@ func newClassOf(before, after Build) (string, bool) {
 		return "", false
 	}
 	return after.Classes[len(after.Classes)-1].Class, true
+}
+
+// LevelSkillSource is a list the new level's skills come from: the feature, trait or class that lets the player choose
+// Count skills (an empty From allows every skill).
+type LevelSkillSource struct {
+	Owner, NamePT string
+	Count         int
+	From          []string
+}
+
+// levelSkillSources lists the sources of the skills a level gives: the sources of the sheet after the level that the sheet
+// before did not have, by the one list of sources a sheet has (deriver.skillSources). A source the sheet already had keeps
+// only the count the level adds. A new class's multiclass pick is a source of the sheet after the level.
+func (c *content) levelSkillSources(before, after Build) []LevelSkillSource {
+	had := c.deriverFor(before).skillSources()
+	var out []LevelSkillSource
+	for _, s := range c.deriverFor(after).skillSources() {
+		if i := slices.IndexFunc(had, func(h pickSource) bool { return h.Owner == s.Owner && h.Any == s.Any && slices.Equal(h.From, s.From) }); i >= 0 {
+			s.Count -= had[i].Count
+			had = slices.Delete(had, i, i+1)
+		}
+		if s.Count > 0 {
+			out = append(out, LevelSkillSource{Owner: s.Owner, NamePT: c.namePT(s.Owner), Count: s.Count, From: s.From})
+		}
+	}
+	return out
+}
+
+// pickKeys are the skills and the expertise a new pick may be on in the sheet b (Content.LevelPickKeys).
+func (c *content) pickKeys(b Build) (skills, expertise []string) {
+	return c.levelPickKeys(b, nil, 0)
 }
