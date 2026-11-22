@@ -161,6 +161,12 @@ What a player may not see stays out of the response, never blank or zero.
 - The leak tests (`internal/leaktest`) read every response and stream event as every person against a campaign with one hidden thing of each kind; a new RPC must be classified or the test fails (see [Architecture](../../testing.md#leak-tests-rn-10)).
 - A test that proves something absent looks for a unique needle and has a positive control (see [Contributing](../../testing.md)).
 
+A question about the caller's role goes through the reader.
+The reader is `combatViewer` and its questions, built by `viewerOf`, `viewerFor` or `combatTx.viewer`.
+The scene's players are read through `sceneViewersOf` or `readsScene`.
+The build runs `TestRoleQuestionsGoThroughTheReader`, which holds the rule.
+`reader_exceptions.txt` lists the places that still ask without the reader, and its queue only shrinks.
+
 ## Pages
 
 [Live session](live-session.md) · [Vitals, rests and class resources](rests-and-resources.md) · [Item charges and ammunition](item-charges.md) · [Held rolls](held-rolls.md) · [Scenes and stage](scenes-and-stage.md) · [Combat](combat.md) · [Attacks and damage](attacks-and-damage.md) · [Movement](movement.md) · [Spell zones](spell-zones.md) · [Casting](casting.md) · [Reactions](reactions.md) · [Readying](readying.md) · [Death and revival](death-and-revival.md) · [Contests](contests.md) · [Lasting effects](lasting-effects.md) · [The master's Inspiration](favor.md) · [Table rules in combat](table-rules.md) · [Theatre of the mind](theatre.md) · [Undo](undo.md) · [Combat log and events](combat-log.md) · [Highlights and summary](highlights-and-summary.md) · [Combat under fog](fog.md) · [Traps](traps.md) · [Creatures](creatures.md) · [Encounters](encounters.md) · [Puzzles](puzzles.md) · [The free dice roller](free-dice-roller.md) · [The table screen](table-screen.md) · [Feature state](feature-state.md)
