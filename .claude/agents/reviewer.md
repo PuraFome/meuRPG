@@ -3,7 +3,7 @@ name: reviewer
 description: Reviews one task's diff or a whole branch against its requirements and reports findings. It never edits. Use it for every review and every investigation of a failure.
 model: sonnet
 effort: high
-disallowedTools: Agent, Edit
+disallowedTools: Agent, Edit, mcp__*
 experimental:
   cacheTtl: 1h
 ---

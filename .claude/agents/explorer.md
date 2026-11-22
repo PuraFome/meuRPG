@@ -2,7 +2,7 @@
 name: explorer
 description: Builds the reading list for a task before an implementer or a reviewer starts, and answers look-ups that take more than one command. It never edits code.
 model: haiku
-disallowedTools: Agent, Edit
+disallowedTools: Agent, Edit, mcp__*
 maxTurns: 25
 ---
 

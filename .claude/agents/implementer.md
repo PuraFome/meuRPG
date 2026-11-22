@@ -3,7 +3,7 @@ name: implementer
 description: Writes or fixes code, tests and docs for one task of the session's brief, starting from a reading list. Use it for every task that edits files.
 model: sonnet
 effort: medium
-disallowedTools: Agent
+disallowedTools: Agent, mcp__*
 maxTurns: 60
 experimental:
   cacheTtl: 1h
