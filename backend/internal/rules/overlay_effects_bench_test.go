@@ -135,12 +135,12 @@ func TestWithMemoryByEffects(t *testing.T) {
 		t.Skip("set MEURPG_MEASURE=1 to measure")
 	}
 	srd := loadForTest(t)
-	heap := func() uint64 {
+	heap := func() float64 { // bytes as a float: the difference of two readings is signed
 		runtime.GC()
 		runtime.GC()
 		var m runtime.MemStats
 		runtime.ReadMemStats(&m)
-		return m.HeapAlloc
+		return float64(m.HeapAlloc)
 	}
 	const copies = 4
 	for _, tc := range fxBenchCases {
@@ -155,7 +155,8 @@ func TestWithMemoryByEffects(t *testing.T) {
 			keep = append(keep, c)
 		}
 		after := heap()
-		t.Logf("1000 entries, %s: a content keeps %.2f MB", tc.name, float64(after-before)/copies/1e6)
+		runtime.KeepAlive(o) // the overlay is alive in both readings, so what the content shares with it is not counted
+		t.Logf("1000 entries, %s: a content keeps %.2f MB", tc.name, (after-before)/copies/1e6)
 		runtime.KeepAlive(keep)
 	}
 }
