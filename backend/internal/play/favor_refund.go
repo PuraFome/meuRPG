@@ -176,6 +176,7 @@ type refundCall struct {
 	key       string
 	hash      *string
 	sessionID string
+	character string // the prompt's character, which never changes
 }
 
 // AnswerFavorRefund implements playv1connect.FavorServiceHandler: the master gives the Inspiration back or keeps it spent.
@@ -199,7 +200,7 @@ func (s *Service) AnswerFavorRefund(ctx context.Context, req *connect.Request[pl
 	if err != nil {
 		return nil, s.dbError(ctx, "find the refund question", err)
 	}
-	call := refundCall{m: m, promptID: id, giveBack: req.Msg.GetGiveBack(), key: key, hash: idem.Hash(req.Msg), sessionID: row.GameSessionID}
+	call := refundCall{m: m, promptID: id, giveBack: req.Msg.GetGiveBack(), key: key, hash: idem.Hash(req.Msg), sessionID: row.GameSessionID, character: row.CharacterID}
 	var out playdb.FavorRefundPrompt
 	err = s.tx(ctx, call.sessionID, func(tx pgx.Tx, h *hints) (err error) {
 		out, err = s.answerRefundIn(ctx, tx, h, call)
@@ -231,6 +232,11 @@ func (s *Service) answerRefundIn(ctx context.Context, tx pgx.Tx, h *hints, c ref
 	if again {
 		h.replay()
 		return s.replayRefund(ctx, tx, h, c, done.Payload)
+	}
+	if c.giveBack { // the character's row before the prompt that references it
+		if _, err := s.roster.LockedSessionCharacters(ctx, tx, c.m.CampaignID, []string{c.character}); err != nil {
+			return playdb.FavorRefundPrompt{}, err
+		}
 	}
 	closed, err := closeRefundPrompt(ctx, q, c)
 	if err != nil {

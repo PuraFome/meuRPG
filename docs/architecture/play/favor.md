@@ -46,8 +46,8 @@ A player passes the Inspiration only by asking, and the master answers ([RN-43](
 An ask is a row of `favor_passes` ([Data](../../data/play.md#favor_passes-and-favor_refund_prompts)), `pending` until it ends as `accepted`, `refused` or `canceled`.
 Nothing moves while it is pending.
 Each call is a `Service.tx` transaction on the session the pass was asked in, so asks and answers take turns with every other write of the session.
-A favor write reads a character's owner after it holds the session's lock and the character's row.
-When it needs two characters it locks both rows at once, in id order.
+A favor write reads a character's owner, and whether it is in the reserve, after it holds the session's lock and the character's row.
+It locks a character's row before it writes a row that references it, and two characters' rows at once, in id order.
 
 `PassFavor(campaign, from, to, key)` is the giver's owner's call, in an open session.
 It refuses in this order, so that no refusal tells the caller what they may not read:

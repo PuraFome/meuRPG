@@ -2,12 +2,14 @@ package play
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"testing"
 	"time"
 
 	"connectrpc.com/connect"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
@@ -433,5 +435,64 @@ func TestRefundGiveBackWhoseQuestionWentWhileItWaitedIsNotFound(t *testing.T) {
 	wantCode(t, "the give-back of a question that went", err, connect.CodeNotFound)
 	if f.rows(t) != 0 {
 		t.Errorf("character_favor has %d rows, want 0", f.rows(t))
+	}
+}
+
+// The check of an ask's pair holds the rows of both characters until the transaction ends: a write on either row, from another
+// connection, waits for it (FOR UPDATE in LockSessionCharacters; on PostgreSQL a plain read sees what changed meanwhile, so only the wait proves it).
+func TestLockPairHoldsBothCharactersRowsUntilTheTransactionEnds(t *testing.T) {
+	t.Parallel()
+	f := newFavorParty(t)
+	ctx := t.Context()
+	side := dbtest.SideConnection(t, f.h.pool)
+	observer := dbtest.SideConnection(t, f.h.pool)
+	ids := []string{f.toren.GetId(), f.pens.GetId()}
+	done := make(chan error, len(ids))
+	ended := 0
+	err := f.h.svc.txOn(ctx, f.h.pool, f.sessionID, func(tx pgx.Tx, h *hints) error {
+		if err := f.h.svc.lockPair(ctx, tx, f.campaignID, ids[0], ids[1]); err != nil {
+			return err
+		}
+		for _, id := range ids {
+			go func() {
+				var err error
+				for { // the isolation level may abort the write that waited: it is retried, as a client does
+					_, err = side.Exec(ctx, `UPDATE characters SET updated_at = now() WHERE id = $1`, id)
+					var pgErr *pgconn.PgError
+					if !errors.As(err, &pgErr) || pgErr.Code != "40001" {
+						break
+					}
+				}
+				done <- err
+			}()
+		}
+		for deadline := time.Now().Add(30 * time.Second); ; time.Sleep(5 * time.Millisecond) {
+			n, err := dbtest.WaitingForTable(ctx, observer, "characters")
+			if err != nil {
+				return err
+			}
+			if n >= len(ids) {
+				return nil
+			}
+			select {
+			case err := <-done:
+				ended++
+				t.Errorf("a write on a locked character ended (%v) before the transaction did", err)
+				return nil
+			default:
+			}
+			if time.Now().After(deadline) {
+				t.Error("the writes on the characters' rows did not both wait")
+				return nil
+			}
+		}
+	})
+	if err != nil {
+		t.Fatalf("the transaction error = %v", err)
+	}
+	for ; ended < len(ids); ended++ {
+		if err := <-done; err != nil {
+			t.Errorf("the write on a character's row after the transaction: %v", err)
+		}
 	}
 }

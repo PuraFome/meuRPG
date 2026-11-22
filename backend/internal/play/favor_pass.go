@@ -588,15 +588,16 @@ func (s *Service) tellPassOf(ctx context.Context, tx pgx.Tx, h *hints, pass play
 // CANNOT_RECEIVE; the pass stays pending.
 func (s *Service) acceptPass(ctx context.Context, tx pgx.Tx, h *hints, c favorPassCall, pass playdb.FavorPass) (playdb.FavorPass, error) {
 	q := s.queries.WithTx(tx)
+	// The character rows before the row that references them (a delete that cascades to the pass takes them in this order).
+	if err := s.lockPair(ctx, tx, pass.CampaignID, pass.FromCharacterID, pass.ToCharacterID); err != nil {
+		return playdb.FavorPass{}, err
+	}
 	closed, err := q.CloseFavorPass(ctx, playdb.CloseFavorPassParams{Status: passAccepted, ClosedKey: &c.key, ID: pass.ID, CampaignID: pass.CampaignID})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return playdb.FavorPass{}, errFavorPassClosed()
 	}
 	if err != nil {
 		return playdb.FavorPass{}, closeKeyError(err)
-	}
-	if err := s.lockPair(ctx, tx, closed.CampaignID, closed.FromCharacterID, closed.ToCharacterID); err != nil {
-		return playdb.FavorPass{}, err
 	}
 	if err := s.mayHold(ctx, tx, closed.CampaignID, closed.ToCharacterID, errCannotReceive()); err != nil { // it may have left the table
 		return playdb.FavorPass{}, err
