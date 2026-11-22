@@ -9,7 +9,7 @@
 internal/play/casting.go (*Service).checkCastTargets role 1
 internal/play/casting.go (*Service).checkOutsideCast role 1
 internal/play/casting.go (*Service).guardCast role 2
-internal/play/casting.go mayCastFor role 1 # permanent: authorizes a call
+internal/play/casting.go mayCastFor role 1
 internal/play/casting.go stageMapOf scene 1
 internal/play/casting.go stageViewer role 1
 internal/play/casting_end.go (*Service).castRowFor role 1
@@ -125,7 +125,7 @@ internal/play/combat_legendary_spend.go (*Service).spendLegendaryMove flag 1
 internal/play/combat_legendary_spend.go (*Service).spendTextOption flag 1
 internal/play/combat_legendary_spend.go (*attackFlow).checkLegendary role 1
 internal/play/combat_log.go (*Service).ListCombatLog flag 3
-internal/play/combat_log.go (*Service).logViewer flag 1 # permanent: builds the combat's reader for the log
+internal/play/combat_log.go (*Service).logViewer flag 1
 internal/play/combat_log.go (*damageLog).view flag 1
 internal/play/combat_log.go (*damageLog).viewAmount flag 2
 internal/play/combat_log.go (*damageLog).viewApplied flag 3
@@ -348,13 +348,13 @@ internal/play/combat_view.go stateWordFor flag 1
 internal/play/combat_view.go viewerOf mint 1 # permanent: builds the combat's reader from the membership
 internal/play/combat_view.go viewerOf role 1 # permanent: builds the combat's reader from the membership
 internal/play/combat_write.go (*Service).openChange role 1
-internal/play/combat_write.go (combatViewer).mayAct flag 1 # permanent: a combatViewer question that authorizes a call
+internal/play/combat_write.go (combatViewer).mayAct flag 1
 internal/play/consumables.go (*Service).mayUseConsumable role 1
 internal/play/consumables.go (*Service).receiverVitals role 1
 internal/play/consumables_combat.go (*Service).ListConsumableTargets role 1
 internal/play/creature_cast.go (*Service).summonCaster flag 1
 internal/play/creature_cast.go (*Service).summonRollOK flag 1
-internal/play/encounters.go requireBuilder role 1 # permanent: authorizes a call
+internal/play/encounters.go requireBuilder role 1
 internal/play/favor_read.go (*Service).GetFavor role 1
 internal/play/favor_spend.go favorLine flag 1
 internal/play/favor_spend.go ownsSave role 1
