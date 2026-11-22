@@ -7658,6 +7658,8 @@ async function scanPickLists(browser: Browser, colorScheme: 'light' | 'dark', wi
       await control.focus();
       await control.press('Enter');
       await page.getByRole('option', { name: option }).click();
+      // The select's panel closes with an animation: its backdrop would still take the next click until it is gone.
+      await expect(page.locator('.cdk-overlay-backdrop')).toHaveCount(0);
     };
     const openSkills = async () => {
       await expect(async () => {
