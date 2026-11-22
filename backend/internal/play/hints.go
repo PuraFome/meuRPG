@@ -121,6 +121,8 @@ func (h *hints) speaks() bool { return len(h.events) > 0 || len(h.afters) > 0 }
 // The first statement of every attempt takes the session's row lock (FOR UPDATE), before fn reads anything: all the writes of
 // one session take turns in that order, so they do not collide at the bump, and none can deadlock on it. fn must not lock
 // the row again in another order; a closure that locks it itself (GetOpenGameSessionForUpdate) finds it already held.
+// A write of another module on an open session runs under the same lock, taken first (InSession: choices.go in characters, award.go in
+// progression), so the session's row always comes before a character's. A deadlock the database still finds is retried (db.InTx).
 // fn calls h.tell for each hint its write sends and h.touch for a write that sends none but must still move the screens.
 // The collector is empty at the start of every attempt, whatever the last attempt collected.
 // When fn returns nil having told or touched, tx adds 1 to game_sessions.hint_seq of sessionID in the same transaction
