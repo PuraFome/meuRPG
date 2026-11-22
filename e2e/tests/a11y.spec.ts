@@ -16814,6 +16814,69 @@ async function scanReadyMapKindsScreens(browser: Browser, colorScheme: 'light' |
   } finally {
     await around.done();
   }
+
+  // The longest spell name and a long creature name: the window, the cast sheet's band and the master's dialog title at the phone's width.
+  const long = await readyMapTable(browser, 'Acessibilidade soltar nomes longos', 'long', { ...view, reactor: longReactor });
+  try {
+    const { m, p } = long;
+    m.setDefaultTimeout(20_000);
+    p.setDefaultTimeout(20_000);
+    await fireReadied(m, longReactor);
+    const win = spellWindow(p, heldSpell.long.name);
+    await expect(win.getByTestId('release-to-map')).toBeVisible();
+    await expectScreenPasses(p, `Soltar, a janela com o nome longo da magia e da criatura ${where}`);
+    await shoot(p, 'janela-nomes-longos');
+    const queue = masterQueue(m);
+    await queue.getByRole('button', { name: `Soltar por ${longReactor}` }).click();
+    const masterSheet = releaseSheet(m, true, heldSpell.long.name, longReactor);
+    await expect(masterSheet.getByTestId('release-band')).toBeVisible();
+    await expectScreenPasses(m, `Soltar, o diálogo do mestre com o nome longo da magia e da criatura ${where}`);
+    await shoot(m, 'mestre-nomes-longos');
+    await masterSheet.getByRole('button', { name: releaseTexts.back, exact: true }).click();
+    await win.getByTestId('release-to-map').click();
+    const sheet = releaseSheet(p, false, heldSpell.long.name);
+    await expect(sheet.getByTestId('release-band')).toBeVisible();
+    await expectScreenPasses(p, `Soltar, o mapa com o nome longo da magia e da criatura ${where}`);
+    await shoot(p, 'mapa-nomes-longos');
+  } finally {
+    await long.done();
+  }
+
+  // A spell that stays on its caster: the window releases it at once, with no way to the map.
+  const self = await readyMapTable(browser, 'Acessibilidade soltar so em quem conjura', 'self', view);
+  try {
+    const { m, p } = self;
+    m.setDefaultTimeout(20_000);
+    p.setDefaultTimeout(20_000);
+    await fireReadied(m);
+    const win = spellWindow(p, heldSpell.self.name);
+    await expect(win).toBeVisible();
+    await expect(win.getByTestId('release-to-map')).toHaveCount(0);
+    // The button that releases is on once the window has read what the spell asks.
+    await expect(win.locator('.pair__btn').last()).toBeEnabled();
+    await expectScreenPasses(p, `Soltar, a janela da magia que fica em quem conjura ${where}`);
+    await shoot(p, 'janela-so-em-quem-conjura');
+  } finally {
+    await self.done();
+  }
+
+  // An area with no map: the window lists the creatures to pick.
+  const sleep = await readyMapTable(browser, 'Acessibilidade soltar sem mapa', 'sleep', { ...view, theatre: true });
+  try {
+    const { m, p } = sleep;
+    m.setDefaultTimeout(20_000);
+    p.setDefaultTimeout(20_000);
+    await fireReadied(m);
+    const win = spellWindow(p, heldSpell.sleep.name);
+    await expect(win).toBeVisible();
+    await expect(win.getByTestId('release-to-map')).toHaveCount(0);
+    // The button that releases is on once the window has read what the spell asks.
+    await expect(win.locator('.pair__btn').last()).toBeEnabled();
+    await expectScreenPasses(p, `Soltar, a janela da área sem mapa com a lista das criaturas ${where}`);
+    await shoot(p, 'janela-sem-mapa');
+  } finally {
+    await sleep.done();
+  }
 }
 
 for (const [colorScheme, theme] of [

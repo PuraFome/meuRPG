@@ -47,8 +47,8 @@ export type Held = 'fireball' | 'move' | 'direction' | 'wall' | 'around' | 'long
 export const heldSpell = {
   direction: { key: 'spell:burning-hands', level: 1, name: 'Mãos Flamejantes' },
   wall: { key: 'spell:wall-of-fire', level: 4, name: 'Muralha de Fogo' },
-  /** Placed around the caster (a sphere of range Self): the map shows who is in the area (a 4th-level slot, so a level 7 caster). */
-  around: { key: 'spell:fire-shield', level: 4, name: 'Escudo de Fogo' },
+  /** Placed around the caster (a sphere of range Self): the map shows who is in the area (a 5th-level slot, so a level 9 caster; Espíritos Guardiões asks a damage type, which a readied spell cannot carry). */
+  around: { key: 'spell:antilife-shell', level: 5, name: 'Cúpula Antivida' },
   /** The longest name among the spells the window places on the map, a point (a 7th-level slot, so a level 13 caster). */
   long: { key: 'spell:delayed-blast-fireball', level: 7, name: 'Bola de Fogo Controlável' },
   /** A spell that stays on its caster: the server lists no area for it, so the window releases it at once. */
@@ -57,18 +57,18 @@ export const heldSpell = {
   sleep: { key: 'spell:sleep', level: 1, name: 'Sono' },
 } as const;
 
-/** The reactor's name of a table with long names: the label every title, band and button of the release carries. */
-export const longReactor = 'Pensantus Aurelius Quintilianus de Valmont';
+/** The reactor's name of a table with long names (a combatant's label keeps 36 characters): the label every title, band and button of the release carries. */
+export const longReactor = 'Pensantus Aurelius Quintilianus Max';
 
 /** The caster of the table: Pensantus at level 5 with the Bola de Fogo, or at level 9 with the wall. */
 function kitOf(held: Held, reactor: string): typeof fireballKit {
   const named = (kit: typeof fireballKit): typeof fireballKit => ({ ...kit, build: { ...kit.build, name: reactor } });
-  if (held === 'fireball' || held === 'move' || held === 'sleep') {
+  if (held === 'fireball' || held === 'move') {
     return named(fireballKit);
   }
   const key = heldSpell[held].key;
-  const spells = [...pensantusCasting.preparedSpellKeys, key];
-  const level = { wall: 9, around: 7, long: 13, direction: 5, self: 5 }[held];
+  const spells = [...new Set([...pensantusCasting.preparedSpellKeys, key])];
+  const level = { wall: 9, sleep: 5, around: 9, long: 13, direction: 5, self: 5 }[held];
   return named({ build: { ...pensantus, level }, sheet: { ...pensantusCasting, knownSpellKeys: spells, preparedSpellKeys: spells } });
 }
 
@@ -153,8 +153,8 @@ export async function holdOn(player: Page, campaignId: string, encounter: Encoun
 }
 
 /** "Disparar" of the fold on the master's page: the window opens for the readier. */
-export async function fireReadied(m: Page): Promise<void> {
-  const button = m.locator('app-readied-fold').getByRole('button', { name: 'Disparar a ação de Pensantus' });
+export async function fireReadied(m: Page, reactor = 'Pensantus'): Promise<void> {
+  const button = m.locator('app-readied-fold').getByRole('button', { name: `Disparar a ação de ${reactor}` });
   await expect(button).toBeEnabled();
   await button.click();
 }
@@ -184,8 +184,8 @@ export function moveWindow(p: Page): Locator {
 }
 
 /** The cast sheet of the release (the player's) or the master's area dialog: the dialog titled "Soltar Bola de Fogo" (+ " por Pensantus" for the master). */
-export function releaseSheet(page: Page, master = false, name = 'Bola de Fogo'): Locator {
-  return page.getByRole('dialog', { name: master ? `Soltar ${name} por Pensantus` : `Soltar ${name}` });
+export function releaseSheet(page: Page, master = false, name = 'Bola de Fogo', reactor = 'Pensantus'): Locator {
+  return page.getByRole('dialog', { name: master ? `Soltar ${name} por ${reactor}` : `Soltar ${name}` });
 }
 
 /** The master's row of the readied window in the queue: it stays in the "rest" part however long the window waits (it is never a late question). */
