@@ -206,4 +206,24 @@ describe('MovePage: a readied move released off the readier’s turn (#856, boar
     button('Voltar à sessão')!.click();
     expect(backed).toHaveBeenCalled();
   });
+
+  it('takes the focus to "Voltar à sessão" when the window goes away (S2)', () => {
+    const { fixture } = setup();
+    const spy = vi.spyOn(HTMLElement.prototype, 'focus');
+    try {
+      fixture.componentRef.setInput(
+        'release',
+        moveReleaseView({ ...held, master: true }, 'vez do Ogro', {
+          lead: 'A janela fechou.',
+          rest: 'Tor não se moveu, e a reação continua livre.',
+        }),
+      );
+      fixture.detectChanges();
+      expect(
+        spy.mock.contexts.some((c) => (c as HTMLElement).dataset?.['testid'] === 'release-done'),
+      ).toBe(true);
+    } finally {
+      spy.mockRestore();
+    }
+  });
 });

@@ -14,6 +14,10 @@ import {
   type ReactionWindow,
   ReadiedStatus,
 } from '../../../gen/meurpg/play/v1/combat_pb';
+import { Code, ConnectError } from '@connectrpc/connect';
+
+import { EncounterBlockedReason } from '../../../gen/meurpg/play/v1/combat_pb';
+import { encounterBlocked } from './combat-errors';
 import { readiedSecondsLeft, waitBeganMs } from './readied-wait';
 import { type GoneView, releaseGoneView } from './release-text';
 
@@ -25,6 +29,26 @@ export interface ReleaseWatchIds {
   /** The held spell's name; `''` for a move. */
   readonly spellName: string;
   readonly move: boolean;
+  /** The reactor's name when the master reads the state (his sentences name it instead of "você"); leave out for the player. */
+  readonly masterOf?: string;
+}
+
+/**
+ * A refusal of a release that says its window is not there to be used: the cast or the move came after the window closed. For the
+ * cast and the move of a readied action the server says it as NOT_YOUR_TURN (no window, so the readier's off-turn cast or walk), as
+ * NOT_YOUR_TURN_TO_ANSWER or REACTION_ALREADY_ANSWERED (the window or its row is closed), or as not found (the readier is gone).
+ * The reaction spent (REACTION_USED) is not one: the window may still be open.
+ */
+export function windowClosedRefusal(err: unknown): boolean {
+  if (ConnectError.from(err, Code.Unavailable).code === Code.NotFound) {
+    return true;
+  }
+  const reason = encounterBlocked(err)?.reason;
+  return (
+    reason === EncounterBlockedReason.NOT_YOUR_TURN ||
+    reason === EncounterBlockedReason.NOT_YOUR_TURN_TO_ANSWER ||
+    reason === EncounterBlockedReason.REACTION_ALREADY_ANSWERED
+  );
 }
 
 /** How often the clock of the wait redraws, in ms. */
@@ -52,7 +76,9 @@ export class ReleaseWatch {
   readonly window = computed(() =>
     this.encounter()?.reactionWindows.find((w) => w.id === this.ids.windowId),
   );
-  readonly gone = computed(() => !this.window());
+  /** The server refused a use of the window as closed, though the combat the screen holds still lists it. */
+  private readonly refused = signal(false);
+  readonly gone = computed(() => !this.window() || this.refused());
   /** The seconds left before the master's screen passes the window: the 120 s once the player was on the map, else the 30 s. */
   readonly secondsLeft = computed(() =>
     readiedSecondsLeft(
@@ -99,6 +125,12 @@ export class ReleaseWatch {
     this.watching.destroy();
   }
 
+  /** The server said the window is closed: the screen shows what it shows for a window that went away. */
+  closedByServer(): void {
+    this.refused.set(true);
+    this.settle(this.encounter());
+  }
+
   private see(w: ReactionWindow): void {
     if (this.last !== w) {
       this.last = w;
@@ -131,6 +163,7 @@ export class ReleaseWatch {
         timedOut:
           !!this.last && readiedSecondsLeft(this.last, this.seenAt, at, this.readAt, mono) === 0,
         afterMap: this.waitedOnMap(),
+        reactor: this.ids.masterOf,
       }),
     );
   }

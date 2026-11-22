@@ -1,9 +1,12 @@
 import { Injector } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { create } from '@bufbuild/protobuf';
+import { Code, ConnectError } from '@connectrpc/connect';
 
 import {
   CombatantKind,
+  EncounterBlockedReason,
+  EncounterBlockedSchema,
   ReactionKind,
   ReadiedActionSchema,
   ReadiedKind,
@@ -12,6 +15,11 @@ import {
 import { CombatState } from '../../../core/combat/combat-state';
 import { combatant, encounter, reactionWindow } from '../../../core/combat/combat-testing';
 import { MoveReleaseFlow } from './move-release-flow';
+
+const blocked = (reason: EncounterBlockedReason) =>
+  new ConnectError('x', Code.FailedPrecondition, undefined, [
+    { desc: EncounterBlockedSchema, value: create(EncounterBlockedSchema, { reason }) },
+  ]);
 
 const held = create(ReadiedActionSchema, {
   id: 'r1',
@@ -167,5 +175,58 @@ describe('MoveReleaseFlow, the page of a readied move (#856)', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it('reads the master form of a window that went away (S1)', () => {
+    const { flow, state, tor, ogro } = setup(true);
+    flow.open('w1');
+    TestBed.tick();
+    state.apply(
+      encounter({
+        revision: 9,
+        combatants: [{ ...tor, readied: undefined, reactionUsed: true } as never, ogro],
+        reactionWindows: [],
+      } as never),
+    );
+    TestBed.tick();
+    expect(flow.view()?.gone).toEqual({
+      lead: 'A janela fechou e a reação de Tor foi usada.',
+      rest: '',
+    });
+  });
+
+  it.each([
+    EncounterBlockedReason.NOT_YOUR_TURN,
+    EncounterBlockedReason.NOT_YOUR_TURN_TO_ANSWER,
+    EncounterBlockedReason.REACTION_ALREADY_ANSWERED,
+  ])(
+    'shows the gone state when the server refuses the move as a closed window (reason %s) (S3)',
+    (reason) => {
+      for (const master of [false, true]) {
+        const { flow } = setup(master);
+        flow.open('w1');
+        TestBed.tick();
+        expect(flow.gone()).toBe(false);
+        expect(flow.refusedAsClosed(blocked(reason))).toBe(true);
+        expect(flow.gone()).toBe(true);
+        expect(flow.view()?.gone?.lead).toBe(
+          master ? 'O gatilho foi desfeito:' : 'O mestre desfez o gatilho:',
+        );
+      }
+    },
+  );
+
+  it('leaves every other refusal to the words the page already has (S3)', () => {
+    const { flow } = setup();
+    flow.open('w1');
+    for (const reason of [
+      EncounterBlockedReason.REACTION_USED,
+      EncounterBlockedReason.TOO_FAR,
+      EncounterBlockedReason.MOVE_BLOCKED,
+    ]) {
+      expect(flow.refusedAsClosed(blocked(reason))).toBe(false);
+    }
+    expect(flow.refusedAsClosed(new ConnectError('x', Code.Unavailable))).toBe(false);
+    expect(flow.gone()).toBe(false);
   });
 });

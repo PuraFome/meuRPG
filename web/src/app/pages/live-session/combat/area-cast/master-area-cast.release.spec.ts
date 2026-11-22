@@ -3,11 +3,14 @@ import { TestBed } from '@angular/core/testing';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { By } from '@angular/platform-browser';
 import { create } from '@bufbuild/protobuf';
+import { Code, ConnectError } from '@connectrpc/connect';
 
 import { HiddenAreaHitRule } from '../../../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import {
   AreaPlacement,
   CombatantKind,
+  EncounterBlockedReason,
+  EncounterBlockedSchema,
   PreviewSpellAreaResponseSchema,
   ReactionKind,
   SpellTargetsSchema,
@@ -28,6 +31,15 @@ const plain = (t: string | null | undefined) =>
     .replace(/\s+/g, ' ')
     .trim();
 
+const blocked = (reason: EncounterBlockedReason) =>
+  new ConnectError('x', Code.FailedPrecondition, undefined, [
+    { desc: EncounterBlockedSchema, value: create(EncounterBlockedSchema, { reason }) },
+  ]);
+
+const focused = () => vi.spyOn(HTMLElement.prototype, 'focus');
+const focusedOn = (spy: ReturnType<typeof focused>, testid: string) =>
+  spy.mock.contexts.some((c) => (c as HTMLElement).dataset?.['testid'] === testid);
+
 const pen = combatant({
   id: 'pen',
   label: 'Pensantus',
@@ -38,9 +50,11 @@ const pen = combatant({
 const ogro = combatant({ id: 'og', label: 'Ogro', col: 6, row: 4 });
 const live = reactionWindow({ id: 'w1', kind: ReactionKind.READIED, reactorId: 'pen' } as never);
 
-async function open(over: { refuse?: boolean } = {}) {
+async function open(over: { refuse?: boolean; castRefusal?: unknown } = {}) {
   TestBed.resetTestingModule();
-  const castSpell = vi.fn().mockResolvedValue({ encounter: encounter(), cast: { targets: [] } });
+  const castSpell = over.castRefusal
+    ? vi.fn().mockRejectedValue(over.castRefusal)
+    : vi.fn().mockResolvedValue({ encounter: encounter(), cast: { targets: [] } });
   const previewSpellArea = vi.fn().mockResolvedValue(
     create(PreviewSpellAreaResponseSchema, {
       origin: { col: 6, row: 4 },
@@ -241,5 +255,52 @@ describe('MasterAreaCast: the master releases a readied spell for the player (#8
     );
     expect(button('Voltar à sessão')).toBeDefined();
     expect(button('Conjurar')).toBeUndefined();
+  });
+
+  it('reads the master form of a window that went away: the reactor named, no "você" or "sua" (S1)', async () => {
+    const { el, settle, enc } = await open();
+    enc.set(
+      encounter({
+        revision: 9,
+        combatants: [{ ...pen, reactionUsed: true } as never, ogro],
+        reactionWindows: [],
+      } as never),
+    );
+    await settle();
+    const said = plain(el.querySelector('[data-testid=release-gone] p')?.textContent);
+    expect(said).toBe('A janela fechou e a reação de Pensantus foi usada.');
+    expect(said).not.toMatch(/\b(você|sua)\b/i);
+  });
+
+  it('takes the focus to "Voltar à sessão" when the window goes away (S2)', async () => {
+    const { settle, enc } = await open();
+    const spy = focused();
+    try {
+      enc.set(encounter({ revision: 9, combatants: [pen, ogro], reactionWindows: [] } as never));
+      await settle();
+      expect(focusedOn(spy, 'release-done')).toBe(true);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it('shows the gone state, not "Não é a sua vez.", when the server refuses the cast as a closed window (S3)', async () => {
+    const { el, fixture, button, settle, castSpell } = await open({
+      castRefusal: blocked(EncounterBlockedReason.NOT_YOUR_TURN),
+    });
+    const map = fixture.debugElement.query(By.directive(AreaMap)).componentInstance as AreaMap;
+    map.place.emit({ kind: 'point', square: { col: 6, row: 4 } });
+    await settle();
+    button('Confirmar local')!.click();
+    await settle();
+    button('Conjurar Bola de Fogo')!.click();
+    await settle();
+    expect(castSpell).toHaveBeenCalledTimes(1);
+    expect(plain(el.querySelector('[data-testid=release-gone] p')?.textContent)).toBe(
+      'A janela fechou. A Bola de Fogo não saiu; a magia preparada e o espaço dela se perderam.',
+    );
+    expect(el.querySelector('[role=alert]')).toBeNull();
+    expect(plain(el.textContent)).not.toContain('Não é a sua vez');
+    expect(button('Voltar à sessão')).toBeDefined();
   });
 });

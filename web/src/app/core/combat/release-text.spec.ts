@@ -8,6 +8,7 @@ import {
   moveNote,
   moveOffText,
   releaseBand,
+  MASTER_GONE,
   releaseGoneView,
   releaseSubtitle,
   releaseTitle,
@@ -155,6 +156,68 @@ describe('a release whose window went away (857-09 card 1)', () => {
     expect(releaseGoneView({ ...base, timedOut: true })).toEqual({
       lead: 'Passou sozinho:',
       rest: 'você não respondeu em 2 min.',
+    });
+  });
+
+  describe('the master form (names the reactor)', () => {
+    const m = { ...base, reactor: 'Tor' };
+    const text = (g: { lead: string; rest: string }) => `${g.lead} ${g.rest}`.trim();
+
+    it('says each state with the reactor named', () => {
+      expect(text(releaseGoneView({ ...m, timedOut: true, afterMap: false }))).toBe(
+        'Passou sozinho: Tor não respondeu em 30 s.',
+      );
+      expect(text(releaseGoneView({ ...m, timedOut: true }))).toBe(
+        'Passou sozinho: Tor não respondeu em 2 min.',
+      );
+      expect(text(releaseGoneView({ ...m, reactionUsed: true }))).toBe(
+        'A janela fechou e a reação de Tor foi usada.',
+      );
+      expect(text(releaseGoneView({ ...m, move: true }))).toBe(
+        'A janela fechou. Tor não se moveu, e a reação continua livre.',
+      );
+      expect(text(releaseGoneView({ ...m, stillWaiting: true }))).toBe(
+        'O gatilho foi desfeito: a Bola de Fogo continua preparada.',
+      );
+      expect(text(releaseGoneView({ ...m, stillWaiting: true, move: true }))).toBe(
+        'O gatilho foi desfeito: o movimento continua preparado.',
+      );
+    });
+
+    it('keeps the sentences that never said "você"', () => {
+      expect(releaseGoneView({ ...m, down: true })).toEqual(
+        releaseGoneView({ ...base, down: true }),
+      );
+      expect(releaseGoneView({ ...m, down: true, move: true })).toEqual(
+        releaseGoneView({ ...base, down: true, move: true }),
+      );
+      expect(releaseGoneView(m)).toEqual(releaseGoneView(base));
+    });
+
+    it('has no "você" or "sua" in any state, for a spell or a move', () => {
+      const flags = [
+        {},
+        { stillWaiting: true },
+        { down: true },
+        { reactionUsed: true },
+        { timedOut: true },
+        { timedOut: true, afterMap: false },
+      ];
+      for (const move of [false, true]) {
+        for (const f of flags) {
+          const g = releaseGoneView({ ...m, move, ...f });
+          expect(text(g), JSON.stringify({ move, ...f })).not.toMatch(/\b(você|sua)\b/i);
+        }
+      }
+      for (const g of [
+        MASTER_GONE.timedOut('Tor', '30 s'),
+        MASTER_GONE.reactionUsed('Tor'),
+        MASTER_GONE.moveNotMade('Tor'),
+        MASTER_GONE.undoneSpell('a Bola de Fogo'),
+        MASTER_GONE.undoneMove(),
+      ]) {
+        expect(text(g)).not.toMatch(/\b(você|sua)\b/i);
+      }
     });
   });
 });

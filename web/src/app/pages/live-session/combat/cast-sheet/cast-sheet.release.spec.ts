@@ -3,11 +3,14 @@ import { TestBed } from '@angular/core/testing';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { By } from '@angular/platform-browser';
 import { create } from '@bufbuild/protobuf';
+import { Code, ConnectError } from '@connectrpc/connect';
 
 import { DiceMode, DicePreference } from '../../../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import {
   AreaPlacement,
   CombatantKind,
+  EncounterBlockedReason,
+  EncounterBlockedSchema,
   PreviewSpellAreaResponseSchema,
   ReactionKind,
   SpellTargetsSchema,
@@ -26,6 +29,15 @@ import { fakeCombatClient } from '../../../../core/combat/combat-client-testing'
 
 const plain = (t: string | null | undefined) =>
   (t ?? '').replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
+
+const blocked = (reason: EncounterBlockedReason) =>
+  new ConnectError('x', Code.FailedPrecondition, undefined, [
+    { desc: EncounterBlockedSchema, value: create(EncounterBlockedSchema, { reason }) },
+  ]);
+
+const focused = () => vi.spyOn(HTMLElement.prototype, 'focus');
+const focusedOn = (spy: ReturnType<typeof focused>, testid: string) =>
+  spy.mock.contexts.some((c) => (c as HTMLElement).dataset?.['testid'] === testid);
 
 const pensantus = combatant({
   id: 'p',
@@ -308,5 +320,84 @@ describe('CastSheet: a readied spell released on the map (#857, boards 857-02 an
     );
     expect(button('Confirmar local')).toBeUndefined();
     expect(button('Voltar à sessão')).toBeDefined();
+  });
+
+  it('takes the focus to "Voltar à sessão" when the window goes away (S2)', async () => {
+    const { settle, state } = await open();
+    const spy = focused();
+    try {
+      state.apply(
+        encounter({
+          revision: 9,
+          combatants: [pensantus, toren, goblin],
+          reactionWindows: [],
+        } as never),
+      );
+      await settle();
+      expect(focusedOn(spy, 'release-done')).toBe(true);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it('reads the master form when the master is the one on the screen (S1)', async () => {
+    const { el, settle, state } = await open({ master: true });
+    state.apply(
+      encounter({
+        revision: 9,
+        combatants: [{ ...pensantus, reactionUsed: true } as never, toren, goblin],
+        reactionWindows: [],
+      } as never),
+    );
+    await settle();
+    expect(plain(el.querySelector('[data-testid=release-gone] p')?.textContent)).toBe(
+      'A janela fechou e a reação de Pensantus foi usada.',
+    );
+  });
+
+  it.each([
+    EncounterBlockedReason.NOT_YOUR_TURN,
+    EncounterBlockedReason.NOT_YOUR_TURN_TO_ANSWER,
+    EncounterBlockedReason.REACTION_ALREADY_ANSWERED,
+  ])(
+    'shows the gone state, not the refusal text, when the server refuses the cast as a closed window (reason %s) (S3)',
+    async (reason) => {
+      const { el, button, placeAt, settle } = await open({
+        answer: preview([{ id: 'g1', label: 'Goblin 1' }]),
+        castSpell: vi.fn().mockRejectedValue(blocked(reason)),
+      });
+      await placeAt(6, 4);
+      button('Confirmar local')!.click();
+      await settle();
+      button('Conjurar Bola de Fogo')!.click();
+      await settle();
+      expect(plain(el.querySelector('[data-testid=release-gone]')?.textContent)).toContain(
+        'A janela fechou. A Bola de Fogo não saiu',
+      );
+      expect(el.querySelector('[role=alert]')).toBeNull();
+      expect(plain(el.textContent)).not.toMatch(
+        /Não é a sua vez|não espera a sua resposta|Já respondido/,
+      );
+      expect(button('Voltar à sessão')).toBeDefined();
+    },
+  );
+
+  it('keeps the server’s own words for a refusal that is no closed window: the reaction spent, out of range (S3)', async () => {
+    for (const [reason, said] of [
+      [EncounterBlockedReason.REACTION_USED, 'A reação já foi usada'],
+      [EncounterBlockedReason.TARGET_OUT_OF_REACH, 'Longe demais'],
+    ] as const) {
+      const { el, button, placeAt, settle } = await open({
+        answer: preview([{ id: 'g1', label: 'Goblin 1' }]),
+        castSpell: vi.fn().mockRejectedValue(blocked(reason)),
+      });
+      await placeAt(6, 4);
+      button('Confirmar local')!.click();
+      await settle();
+      button('Conjurar Bola de Fogo')!.click();
+      await settle();
+      expect(el.querySelector('[data-testid=release-gone]')).toBeNull();
+      expect(plain(el.textContent)).toContain(said);
+    }
   });
 });

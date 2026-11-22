@@ -1,6 +1,7 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  ElementRef,
   Injector,
   afterNextRender,
   computed,
@@ -72,7 +73,8 @@ import {
   releaseTitle,
 } from '../../../../core/combat/release-text';
 import { beginReleaseWait } from '../../../../core/combat/release-mark';
-import { ReleaseWatch } from '../../../../core/combat/release-watch';
+import { ReleaseWatch, windowClosedRefusal } from '../../../../core/combat/release-watch';
+import { focusSafeWhenGone } from '../release-focus';
 import type { CastMapData, CastRelease } from '../cast-sheet/cast-sheet';
 import { ReleaseBandView } from '../release-band/release-band';
 
@@ -151,6 +153,7 @@ export class MasterAreaCast {
         reactorId: this.data.caster.id,
         spellName: this.data.name,
         move: false,
+        masterOf: this.release.reactorLabel,
       })
     : null;
   /** The window went away under the map (the player answered first): the map goes and the one button is "Voltar à sessão". */
@@ -204,6 +207,9 @@ export class MasterAreaCast {
   private readonly key = new ActionKey();
   private readonly listTitle = viewChild<AreaStep>('listTitle');
   private readonly frame = viewChild(SheetFrame);
+  private readonly doneButton = viewChild('doneButton', { read: ElementRef<HTMLButtonElement> });
+  /** The window going away takes the focus to "Voltar à sessão", so it does not fall to the page behind. */
+  protected readonly focusDone = focusSafeWhenGone(this.doneButton);
 
   protected readonly combatants = computed(() => this.data.state.encounter()?.combatants ?? []);
   /** Everyone placed on the map, hidden ones too: "Centrar em…" for the master. */
@@ -379,7 +385,11 @@ export class MasterAreaCast {
       this.data.state.apply(res.encounter);
       this.sheet.close(true);
     } catch (err) {
-      this.error.set(combatErrorMessage(err, 'conjurar a magia'));
+      if (this.watch && windowClosedRefusal(err)) {
+        this.watch.closedByServer();
+      } else {
+        this.error.set(combatErrorMessage(err, 'conjurar a magia'));
+      }
     } finally {
       this.busy.set(false);
     }

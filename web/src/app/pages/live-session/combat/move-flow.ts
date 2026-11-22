@@ -431,7 +431,7 @@ export class MoveFlow {
       }
       return true;
     } catch (err) {
-      calls.error.set(combatErrorMessage(err, 'mover'));
+      calls.error.set(this.release.refusedAsClosed(err) ? '' : combatErrorMessage(err, 'mover'));
       await calls.refreshAfter(err);
       return false;
     } finally {

@@ -112,10 +112,48 @@ function upFirst(text: string): string {
 }
 
 /**
- * The words of a release whose window went away (857-09 card 1): the master undid the trigger (the readied row still waits), or the row
- * no longer waits and the reason is the reaction used, the fall, the time, or nothing the wire says.
+ * What the master reads when the window of a release he opened went away: the five sentences that name the reactor instead of
+ * saying "você". The master's wording lives here and nowhere else, so changing one is one line.
  */
-export function releaseGoneView(o: {
+export const MASTER_GONE = {
+  /** "Passou sozinho: Tor não respondeu em 30 s." */
+  timedOut: (reactor: string, time: string): GoneView => ({
+    lead: 'Passou sozinho:',
+    rest: `${reactor} não respondeu em ${time}.`,
+  }),
+  /** "A janela fechou e a reação de Tor foi usada." */
+  reactionUsed: (reactor: string): GoneView => ({
+    lead: `A janela fechou e a reação de ${reactor} foi usada.`,
+    rest: '',
+  }),
+  /** "A janela fechou. Tor não se moveu, e a reação continua livre." */
+  moveNotMade: (reactor: string): GoneView => ({
+    lead: 'A janela fechou.',
+    rest: `${reactor} não se moveu, e a reação continua livre.`,
+  }),
+  /** "O gatilho foi desfeito: a Bola de Fogo continua preparada." */
+  undoneSpell: (spell: string): GoneView => ({
+    lead: 'O gatilho foi desfeito:',
+    rest: `${spell} continua preparada.`,
+  }),
+  /** "O gatilho foi desfeito: o movimento continua preparado." */
+  undoneMove: (): GoneView => ({
+    lead: 'O gatilho foi desfeito:',
+    rest: 'o movimento continua preparado.',
+  }),
+} as const;
+
+/**
+ * The words of a release whose window went away (857-09 card 1): the master undid the trigger (the readied row still waits), or the row
+ * no longer waits and the reason is the reaction used, the fall, the time, or nothing the wire says. `reactor` set gives the master's
+ * form, which names the reactor where the player's says "você" (`MASTER_GONE`).
+ */
+export function releaseGoneView(o: GoneInput): GoneView {
+  const state = goneState(o);
+  return o.reactor === undefined ? playerGone(state, o) : masterGone(state, o, o.reactor);
+}
+
+type GoneInput = {
   readonly spell: string;
   readonly move: boolean;
   readonly stillWaiting: boolean;
@@ -123,29 +161,65 @@ export function releaseGoneView(o: {
   readonly down: boolean;
   readonly timedOut: boolean;
   readonly afterMap: boolean;
-}): GoneView {
+  /** The reactor's name when the master reads the state; leave out for the player. */
+  readonly reactor?: string;
+};
+
+/** Which of the states a window that went away is in, the first that holds. */
+function goneState(o: GoneInput): 'undone' | 'down' | 'used' | 'timeout' | 'closed' {
   if (o.stillWaiting) {
-    return {
-      lead: 'O mestre desfez o gatilho:',
-      rest: o.move ? 'o movimento continua preparado.' : `${theSpell(o.spell)} continua preparada.`,
-    };
+    return 'undone';
   }
   if (o.down) {
-    return { lead: 'Condição Caído.', rest: o.move ? '' : 'A magia preparada se perde.' };
+    return 'down';
   }
   if (o.reactionUsed) {
-    return { lead: 'A janela fechou e a sua reação foi usada.', rest: '' };
+    return 'used';
   }
-  if (o.timedOut) {
-    return {
-      lead: 'Passou sozinho:',
-      rest: `você não respondeu em ${o.afterMap ? '2 min' : '30 s'}.`,
-    };
+  return o.timedOut ? 'timeout' : 'closed';
+}
+
+/** What the window being gone says about the spell or the move: the words both forms share. */
+function closedRest(o: GoneInput): string {
+  return o.move
+    ? 'Você não se moveu, e a reação continua livre.'
+    : `${upFirst(theSpell(o.spell))} não saiu; a magia preparada e o espaço dela se perderam.`;
+}
+
+function playerGone(state: ReturnType<typeof goneState>, o: GoneInput): GoneView {
+  switch (state) {
+    case 'undone':
+      return {
+        lead: 'O mestre desfez o gatilho:',
+        rest: o.move
+          ? 'o movimento continua preparado.'
+          : `${theSpell(o.spell)} continua preparada.`,
+      };
+    case 'down':
+      return { lead: 'Condição Caído.', rest: o.move ? '' : 'A magia preparada se perde.' };
+    case 'used':
+      return { lead: 'A janela fechou e a sua reação foi usada.', rest: '' };
+    case 'timeout':
+      return {
+        lead: 'Passou sozinho:',
+        rest: `você não respondeu em ${o.afterMap ? '2 min' : '30 s'}.`,
+      };
+    default:
+      return { lead: 'A janela fechou.', rest: closedRest(o) };
   }
-  return {
-    lead: 'A janela fechou.',
-    rest: o.move
-      ? 'Você não se moveu, e a reação continua livre.'
-      : `${upFirst(theSpell(o.spell))} não saiu; a magia preparada e o espaço dela se perderam.`,
-  };
+}
+
+function masterGone(state: ReturnType<typeof goneState>, o: GoneInput, who: string): GoneView {
+  switch (state) {
+    case 'undone':
+      return o.move ? MASTER_GONE.undoneMove() : MASTER_GONE.undoneSpell(theSpell(o.spell));
+    case 'used':
+      return MASTER_GONE.reactionUsed(who);
+    case 'timeout':
+      return MASTER_GONE.timedOut(who, o.afterMap ? '2 min' : '30 s');
+    case 'closed':
+      return o.move ? MASTER_GONE.moveNotMade(who) : playerGone(state, o);
+    default:
+      return playerGone(state, o);
+  }
 }

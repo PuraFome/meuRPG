@@ -13,7 +13,7 @@ import { type MoveRelease, moveReleaseView } from '../../../core/combat/move-rel
 import { readiedOfWindow } from '../../../core/combat/reaction-readied';
 import { ReleaseMark, beginReleaseWait } from '../../../core/combat/release-mark';
 import { turnOfText } from '../../../core/combat/release-text';
-import { ReleaseWatch } from '../../../core/combat/release-watch';
+import { ReleaseWatch, windowClosedRefusal } from '../../../core/combat/release-watch';
 
 /** What the Mover page of a release says when the walk stopped before its first square (588-10 card 4's words, for a release). */
 export const RELEASE_BLOCKED_TEXT =
@@ -86,6 +86,7 @@ export class MoveReleaseFlow {
             reactorId: w.reactorId,
             spellName: '',
             move: true,
+            masterOf: release.master ? w.reactorLabel : undefined,
           },
           (win) => this.mark?.observe(win),
         ),
@@ -122,6 +123,15 @@ export class MoveReleaseFlow {
       before.col === after?.col &&
       before.row === after.row
     );
+  }
+
+  /** The server refused a call of the release as a closed window: the page shows the gone state, and `true` tells the caller not to word the refusal. */
+  refusedAsClosed(err: unknown): boolean {
+    if (!this.current() || !this.watch || !windowClosedRefusal(err)) {
+      return false;
+    }
+    this.watch.closedByServer();
+    return true;
   }
 
   /** The window went away under the page. */

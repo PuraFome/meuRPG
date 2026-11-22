@@ -34,6 +34,7 @@ import {
   masterFoot,
   releaseBand,
 } from '../../../../core/combat/release-text';
+import { focusSafeWhenGone } from '../release-focus';
 import { ReleaseWatch } from '../../../../core/combat/release-watch';
 import { castLabel } from '../../../../core/resources/metamagic';
 import { ResourceClient } from '../../../../core/resources/resources-client';
@@ -179,6 +180,7 @@ export class CastSheet {
           reactorId: this.data.casterId,
           spellName: this.data.name,
           move: false,
+          masterOf: this.data.master ? this.release.reactorLabel : undefined,
         },
         (w) => this.mark?.observe(w),
       )
@@ -263,7 +265,12 @@ export class CastSheet {
     this.ar,
     this.questions,
     this.damage,
-    { api: this.api, animator: this.animator, fav: this.fav },
+    {
+      api: this.api,
+      animator: this.animator,
+      fav: this.fav,
+      windowClosed: () => this.watch?.closedByServer(),
+    },
   );
   /** Tells the caster that the master answered the question for them: the question goes and a line takes its place. */
   protected readonly follow = new HeldFollow(this.questions.held);
@@ -328,7 +335,7 @@ export class CastSheet {
       }
     });
     // After a result the focus goes to the one next action, as soon as it is drawn.
-    effect(() => this.back()?.nativeElement.focus());
+    focusSafeWhenGone(this.back);
     // The answer of a request in the air has to be shown: the sheet can't be dismissed meanwhile.
     effect(() => this.sheet.lock(this.s.busy()));
     // A sphere around the caster has nothing to place: its list is asked for at once.

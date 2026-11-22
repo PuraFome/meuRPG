@@ -43,6 +43,7 @@ import { LivePill } from '../../../../shared/live-pill/live-pill';
 import { MapLayersLegend } from '../../../../shared/map-layers/map-layers-legend';
 import { mediaQuery } from '../../../../shared/map-view/media-query';
 import type { MoveReleaseView } from '../../../../core/combat/move-release';
+import { focusSafeWhenGone } from '../release-focus';
 import { ReleaseBandView } from '../release-band/release-band';
 import { JumpPanel } from './jump-panel';
 import { MoveAdjust } from './move-adjust';
@@ -165,6 +166,9 @@ export class MovePage {
   private readonly errorFor = signal<Square | null>(null);
   private readonly scroller = viewChild<ElementRef<HTMLElement>>('scroller');
   private readonly safe = viewChild('safe', { read: ElementRef<HTMLButtonElement> });
+  // The window going away takes the focus to "Voltar à sessão".
+  private readonly doneButton = viewChild('doneButton', { read: ElementRef<HTMLButtonElement> });
+  protected readonly focusDone = focusSafeWhenGone(this.doneButton);
   private readonly goButton = viewChild('goButton', { read: ElementRef<HTMLButtonElement> });
 
   /** From 1024px the map fits the left column and the controls sit beside it. */
@@ -372,11 +376,7 @@ export class MovePage {
       this.chosen();
       untracked(() => this.trapAsk.set(false));
     });
-    effect(() => {
-      if (this.trapAsk()) {
-        queueMicrotask(() => this.safe()?.nativeElement.focus());
-      }
-    });
+    effect(() => this.trapAsk() && queueMicrotask(() => this.safe()?.nativeElement.focus()));
   }
 
   /** Scrolls the map to where `target` says, given the part of it the scroller shows (nothing in the wide layout). */

@@ -181,7 +181,7 @@
   @if (goneView()) {
     <div class="move__foot">
       <div class="move__buttons">
-        <button matButton="filled" type="button" class="move__go" data-testid="release-done" (click)="back.emit()">Voltar à sessão</button>
+        <button #doneButton matButton="filled" type="button" class="move__go" data-testid="release-done" (click)="back.emit()">Voltar à sessão</button>
       </div>
     </div>
   } @else if (!readOnly()) {

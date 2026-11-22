@@ -86,7 +86,7 @@
 
   @if (gone()) {
     <div foot class="foot">
-      <button matButton="filled" type="button" class="btn" data-testid="release-done" (click)="close()">{{ doneLabel }}</button>
+      <button #doneButton matButton="filled" type="button" class="btn" data-testid="release-done" (click)="close()">{{ doneLabel }}</button>
     </div>
   } @else {
   <div foot class="foot">
