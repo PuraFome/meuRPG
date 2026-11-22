@@ -17289,3 +17289,65 @@ for (const [scheme, width] of [['light', 390], ['dark', 768], ['light', 1280], [
     await scanSpellTargetScreens(browser, scheme, width);
   });
 }
+
+/**
+ * The combat log's Channel Divinity line for Preserve Life, as the cleric's player reads it: a heal whose hit points the reader
+ * reads names the hit points after ("agora com N PV"), and one whose they do not names only the points given and asked.
+ * Brisa (Cleric 3, Life Domain) and Goblin 1 (marked as an ally) are hurt below half their maximum and healed in one action.
+ * E2E_SHOTS_DIR, when set, also saves the player's viewport as `channel-heal-<width>-<claro|escuro>.png`.
+ */
+async function scanChannelHeal(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  test.setTimeout(300_000);
+  const shots = process.env.E2E_SHOTS_DIR;
+  const viewport = { width, height: 900 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await Promise.all([m.goto('/'), p.goto('/')]);
+    const table = await tableForCombat(m, p, `Acessibilidade canalizar ${Date.now()}`, true, false, { build: brisa, sheet: brisaSheet });
+    campaignId = table.campaignId;
+    let enc = await beginAttackCombatRPC(m, table, { Brisa: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 }, { Brisa: [5, 5], 'Goblin 1': [6, 5], 'Capitão Goblin': [12, 5], 'Goblin 2': [14, 10] });
+    const idOf = (label: string) => enc.combatants.find((c) => c.label === label)!.id;
+    enc = await combatRPC(m, 'SetCombatantSide', { campaignId, encounterId: enc.id, combatantId: idOf('Goblin 1'), side: 'COMBATANT_SIDE_PARTY' });
+    enc = await combatRPC(m, 'AdjustCombatantHitPoints', { campaignId, encounterId: enc.id, combatantId: idOf('Goblin 1'), damage: 6 });
+    await adjustVitalsRPC(m, campaignId, table.characterId, { hitPointsCurrent: 3 });
+    enc = await getEncounterRPC(m, campaignId);
+    const taken = await combatRPC(p, 'TakeAction', {
+      campaignId,
+      encounterId: enc.id,
+      combatantId: idOf('Brisa'),
+      actionKey: 'feature:channel-divinity-preserve-life',
+      preserveLife: [
+        { combatantId: idOf('Brisa'), hitPoints: 4 },
+        { combatantId: idOf('Goblin 1'), hitPoints: 2 },
+      ],
+    });
+    await Promise.all([openSessionPage(p, campaignId), openSessionPage(m, campaignId)]);
+    await waitForEncounterRevision([m, p], taken);
+    const log = await openCombatLog(p);
+    await expect(log.getByText('Brisa: recuperou 4 PV (pedido 4), agora com 7 PV', { exact: true })).toBeVisible();
+    await expect(log.getByText('Goblin 1: recuperou 2 PV (pedido 2)', { exact: true })).toBeVisible();
+    await expectScreenPasses(p, `Registro do combate, a cura de Canalizar Divindade ${where}`);
+    if (shots) {
+      mkdirSync(shots, { recursive: true });
+      await log.getByText('Goblin 1: recuperou 2 PV (pedido 2)', { exact: false }).scrollIntoViewIfNeeded();
+      await p.screenshot({ path: join(shots, `channel-heal-${width}-${colorScheme === 'light' ? 'claro' : 'escuro'}.png`) });
+    }
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+for (const [scheme, width] of [['light', 390], ['light', 768], ['light', 1280], ['dark', 390], ['dark', 768], ['dark', 1280]] as const) {
+  test(`o registro do combate com a cura de Canalizar Divindade passa no axe e nas conferências de layout no tema ${scheme === 'light' ? 'claro' : 'escuro'}, em ${width}px`, { tag: ['@a11y', '@MR-014'] }, async ({ browser }) => {
+    await scanChannelHeal(browser, scheme, width);
+  });
+}

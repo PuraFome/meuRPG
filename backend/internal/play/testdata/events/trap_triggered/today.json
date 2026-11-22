@@ -50,6 +50,8 @@
     "hidden": true
   },
   "target_ac": 1,
+  "counted_as": 1,
+  "counted_by": "x",
   "floor": 1,
   "floor_by": "x",
   "reliable_talent": true,
@@ -94,7 +96,10 @@
           "failures": 1,
           "rolled": true,
           "dead": true
-        }
+        },
+        "hidden_at_action": true,
+        "fogged": true,
+        "seen_mask": 1
       }
     ],
     "turns": [
@@ -105,7 +110,11 @@
         "modifier": 1,
         "total": 1,
         "turned": true,
-        "hidden_at_action": true
+        "hidden_at_action": true,
+        "fogged": true,
+        "seen_mask": 1,
+        "counted_as": 1,
+        "counted_by": "x"
       }
     ],
     "dc": 1,
@@ -190,6 +199,8 @@
         "total": 1,
         "dc": 1,
         "saved": true,
+        "counted_as": 1,
+        "counted_by": "x",
         "d20_b": 1,
         "counted": 1,
         "roll_mode": "x",
@@ -216,6 +227,8 @@
         "resisted": true,
         "resisted_left": 1
       },
+      "counted_as": 1,
+      "counted_by": "x",
       "pushed": {
         "target_id": "x",
         "from": {
@@ -466,148 +479,8 @@
     "seen": [
       {
         "target_id": "x",
-        "darts": 1,
-        "outcome": "x",
-        "d20": 1,
-        "modifier": 1,
-        "total": 1,
-        "extra": [
-          {
-            "key": "x",
-            "faces": 1,
-            "sign": 1,
-            "face": 1,
-            "hidden": true
-          }
-        ],
-        "physical": true,
-        "save": {
-          "d20": 1,
-          "bonus": 1,
-          "total": 1,
-          "dc": 1,
-          "saved": true,
-          "d20_b": 1,
-          "counted": 1,
-          "roll_mode": "x",
-          "auto": true,
-          "sculpted": true,
-          "extra": [
-            {
-              "key": "x",
-              "faces": 1,
-              "sign": 1,
-              "face": 1,
-              "hidden": true
-            }
-          ],
-          "lucky": {
-            "index": 1,
-            "from": 1,
-            "to": 1,
-            "source": "x",
-            "resource": "x",
-            "cost": 1
-          },
-          "bonus_unknown": true,
-          "resisted": true,
-          "resisted_left": 1
-        },
-        "pushed": {
-          "target_id": "x",
-          "from": {
-            "placed": true,
-            "col": 1,
-            "row": 1,
-            "used_dft": 1,
-            "last_dft": 1,
-            "cover": "x",
-            "rider_id": "x",
-            "rider_cover": "x"
-          },
-          "col": 1,
-          "row": 1,
-          "distance_ft": 1,
-          "short": true,
-          "no_map": true
-        },
-        "bonus_sides": 1,
-        "bonus_face": 1,
-        "lucky": {
-          "index": 1,
-          "from": 1,
-          "to": 1,
-          "source": "x",
-          "resource": "x",
-          "cost": 1
-        },
-        "stroke": {
-          "index": 1,
-          "from": 1,
-          "to": 1
-        },
-        "d20_b": 1,
-        "counted": 1,
-        "roll_mode": "x",
-        "suggested_mode": "x",
-        "reason_id": "x",
-        "pending_id": "x",
-        "more_pending_ids": [
-          "x"
-        ],
-        "cover": "x",
-        "cover_source": "x",
-        "cover_bonus": 1,
-        "target_ac": 1,
-        "cover_restricted": true,
-        "cover_seen_by": [
-          "x"
-        ],
-        "cover_seen_mask": 1,
-        "hidden_at_cast": true,
         "fogged": true,
-        "seen_mask": 1,
-        "lasting": "x",
-        "no_effect_why": "x",
-        "fx": "x",
-        "fx_reason": "x",
-        "hp_before": 1,
-        "order": 1,
-        "left": 1,
-        "healed": 1,
-        "gain": "x",
-        "hp_after": 1,
-        "max_after": 1,
-        "bonus_before": 1,
-        "restore": {
-          "hp": 1,
-          "temp": 1,
-          "defeated": true,
-          "shape": {
-            "beast": "x",
-            "hp": 1
-          }
-        },
-        "claims": [
-          {
-            "id": "x",
-            "mods": {}
-          }
-        ],
-        "max_before": 1,
-        "death_before": {
-          "successes": 1,
-          "failures": 1,
-          "rolled": true,
-          "dead": true
-        },
-        "cond_set": true,
-        "cond_before": [
-          "x"
-        ],
-        "revived_character_id": "x",
-        "revived_hp": 1,
-        "death_round": 1
+        "seen_mask": 1
       }
     ],
     "owner_only": true,
@@ -914,6 +787,8 @@
             "total": 1,
             "dc": 1,
             "saved": true,
+            "counted_as": 1,
+            "counted_by": "x",
             "d20_b": 1,
             "counted": 1,
             "roll_mode": "x",
@@ -950,9 +825,37 @@
         ],
         "damages": [
           {
-            "pending_id": "",
-            "target_id": "",
-            "amount": 0,
+            "pending_id": "x",
+            "target_id": "x",
+            "amount": 1,
+            "shown": 1,
+            "half": true,
+            "applied": true,
+            "before": {
+              "hp": 1,
+              "temp": 1,
+              "defeated": true,
+              "shape": {
+                "beast": "x",
+                "hp": 1
+              }
+            },
+            "after": {
+              "hp": 1,
+              "temp": 1,
+              "defeated": true,
+              "shape": {
+                "beast": "x",
+                "hp": 1
+              }
+            },
+            "death_before": {
+              "successes": 1,
+              "failures": 1,
+              "rolled": true,
+              "dead": true
+            },
+            "concentration_dc": 1,
             "damage_type": "x",
             "dice_count": 1,
             "dice_sides": 1,
@@ -1144,6 +1047,8 @@
     "d20": 1,
     "total": 1,
     "dc": 1,
+    "counted_as": 1,
+    "counted_by": "x",
     "pushed": {
       "target_id": "x",
       "from": {

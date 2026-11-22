@@ -160,18 +160,18 @@ export function actionText(e: CombatLogEntry): string {
   }
 }
 
-/** What Canalizar Divindade did, one note for each creature: the hit points Preservar a Vida gave (for the master and
- * the cleric's player only; the server sends nothing to the others), or the save of each undead against Expulsar
- * Mortos-Vivos. */
+/** What Canalizar Divindade did, one note for each creature: the hit points Preservar a Vida gave (the hit points
+ * after only when the server sends them), or the save of each undead against Expulsar Mortos-Vivos. */
 export function channelNotes(e: CombatLogEntry): string[] {
   const c = e.channelDivinity;
   if (!c) {
     return [];
   }
-  const heals = c.heals.map(
-    (h) =>
-      `${h.label}: recuperou ${h.healed} PV (pedido ${h.asked}), agora com ${h.hitPointsAfter} PV`,
-  );
+  const heals = c.heals.map((h) => {
+    const after =
+      h.hitPointsAfterKnown === undefined ? '' : `, agora com ${h.hitPointsAfterKnown} PV`;
+    return `${h.label}: recuperou ${h.healed} PV (pedido ${h.asked})${after}`;
+  });
   const turns = c.turns.map((t) => {
     const raised = treatedOf(t);
     const note = raised ? ` (${d20TotalText(t.d20, t.total, raised)})` : '';

@@ -80,13 +80,19 @@ type lastingEvent struct {
 	Effects []string `json:"effects,omitempty"`
 	// Seen is, for each NPC among Targets, who saw it when the line was written on a map with fog:
 	// Fogged, and SeenMask over the event's CoverUsers. A line written without it has none.
-	Seen []castHit `json:"seen,omitempty"`
+	Seen []effectSeen `json:"seen,omitempty"`
 	// OwnerOnly says only the targets' players read the line (an effect for its owner alone,
 	// the owner-class conditions, exhaustion): the master reads it always.
 	OwnerOnly bool `json:"owner_only,omitempty"`
 	// Unused says an on-hit effect ended with its use still waiting (no hit spent it): the line is read from
 	// the event, so it keeps saying so after the rows are gone, and the undo takes it away with the line.
 	Unused bool `json:"unused,omitempty"`
+}
+
+// effectSeen is the record of who saw one NPC target of an effect's line.
+type effectSeen struct {
+	Target string `json:"target_id"`
+	fogSeen
 }
 
 // isEffect says a state is an effect that lasts.

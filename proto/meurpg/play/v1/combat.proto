@@ -5059,10 +5059,13 @@ message TakeActionRequest {
   // "feature:channel-divinity-preserve-life" (Canalizar Divindade: Preservar a Vida, SRD 5.1, Life Domain): the
   // hit points to restore to each creature within 30 ft of the cleric. Their total is at most five times the
   // cleric's level; each creature is restored to no more than half of its hit point maximum (what would pass it is
-  // not spent), and an undead or a construct cannot be restored. A creature more than 30 ft away or an undead or
-  // construct is refused with `failed_precondition` (EncounterBlocked CHANNEL_DIVINITY_TARGET), and so is a total
-  // above the limit (CHANNEL_DIVINITY_TOO_MUCH). With no entry the points go to the cleric's side, the creature
-  // hurt the most in proportion first, each as far as half its maximum. Ignored by any other action.
+  // not spent), and an undead or a construct cannot be restored. The caller names only the creatures their view of
+  // the combat lists (the master's lists all): any other id gets the answer for a creature that is not in the
+  // combat. An id the caller's view does not list, a creature more than 30 ft away and an undead or a construct are
+  // refused with `failed_precondition` (EncounterBlocked CHANNEL_DIVINITY_TARGET), and so is a total above the limit
+  // (CHANNEL_DIVINITY_TOO_MUCH); a refusal spends nothing. With no entry the points go to the creatures of the
+  // cleric's side that the caller's view lists, the one hurt the most in proportion first, each as far as half its
+  // maximum. Ignored by any other action.
   repeated PreserveLifeHeal preserve_life = 102;
   // A feature action of the table's content that spends several points of its resource and lets the player choose
   // (Action.cost_max above Action.cost): how many to spend, from `cost` to `cost_max` or what is left. 0 takes the
@@ -5135,7 +5138,11 @@ message HookResult {
 
 // ChannelDivinityResult is what a Channel Divinity action did, creature by creature.
 message ChannelDivinityResult {
-  // Preserve Life: the hit points each creature regained (after the half-maximum limit), in the order asked.
+  // Preserve Life: the hit points each creature regained (after the half-maximum limit), for the creatures the reader may
+  // read, in the order asked or, when the request named no creature, the lowest in proportion first. Read later (the log
+  // line, a retried answer) a player is listed a character or a creature of the party that the master has not hidden; an
+  // NPC only if that player saw it when the action was made, or, for a line stored with no record of who saw it, when the
+  // line says it was made without fog (with no such mark: on a combat with no map).
   repeated ChannelDivinityHeal heals = 1;
   // Turn Undead: the save of each undead that had to save and that the reader may read, in the order of the combat.
   repeated ChannelDivinityTurn turns = 2;
@@ -5147,10 +5154,16 @@ message ChannelDivinityResult {
 message ChannelDivinityHeal {
   string combatant_id = 1;
   string label = 2;
-  // Asked is what the cleric asked for; Healed what the creature regained after the limit of half its maximum.
+  // Asked is what the cleric asked for the creature, or what the server shared to it when the request named no one; Healed
+  // what the creature regained after the limit of half its maximum.
   int32 asked = 3;
   int32 healed = 4;
-  int32 hit_points_after = 5;
+  // Deprecated: never filled. hit_points_after_known says the hit points after the action.
+  int32 hit_points_after = 5 [deprecated = true];
+  // The creature's hit points after the action, set only for a reader to whom the combat view gives that creature's
+  // hit points as numbers (the master and the player who plays it, while the creature is still in the combat's list).
+  // Unset for any other reader.
+  optional int32 hit_points_after_known = 6;
 }
 
 // ChannelDivinityTurn is the Wisdom saving throw of one undead against Turn Undead.

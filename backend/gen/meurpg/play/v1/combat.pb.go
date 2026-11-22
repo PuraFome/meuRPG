@@ -16227,10 +16227,13 @@ type TakeActionRequest struct {
 	// "feature:channel-divinity-preserve-life" (Canalizar Divindade: Preservar a Vida, SRD 5.1, Life Domain): the
 	// hit points to restore to each creature within 30 ft of the cleric. Their total is at most five times the
 	// cleric's level; each creature is restored to no more than half of its hit point maximum (what would pass it is
-	// not spent), and an undead or a construct cannot be restored. A creature more than 30 ft away or an undead or
-	// construct is refused with `failed_precondition` (EncounterBlocked CHANNEL_DIVINITY_TARGET), and so is a total
-	// above the limit (CHANNEL_DIVINITY_TOO_MUCH). With no entry the points go to the cleric's side, the creature
-	// hurt the most in proportion first, each as far as half its maximum. Ignored by any other action.
+	// not spent), and an undead or a construct cannot be restored. The caller names only the creatures their view of
+	// the combat lists (the master's lists all): any other id gets the answer for a creature that is not in the
+	// combat. An id the caller's view does not list, a creature more than 30 ft away and an undead or a construct are
+	// refused with `failed_precondition` (EncounterBlocked CHANNEL_DIVINITY_TARGET), and so is a total above the limit
+	// (CHANNEL_DIVINITY_TOO_MUCH); a refusal spends nothing. With no entry the points go to the creatures of the
+	// cleric's side that the caller's view lists, the one hurt the most in proportion first, each as far as half its
+	// maximum. Ignored by any other action.
 	PreserveLife []*PreserveLifeHeal `protobuf:"bytes,102,rep,name=preserve_life,json=preserveLife,proto3" json:"preserve_life,omitempty"`
 	// A feature action of the table's content that spends several points of its resource and lets the player choose
 	// (Action.cost_max above Action.cost): how many to spend, from `cost` to `cost_max` or what is left. 0 takes the
@@ -16668,7 +16671,11 @@ func (x *HookResult) GetSource() string {
 // ChannelDivinityResult is what a Channel Divinity action did, creature by creature.
 type ChannelDivinityResult struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Preserve Life: the hit points each creature regained (after the half-maximum limit), in the order asked.
+	// Preserve Life: the hit points each creature regained (after the half-maximum limit), for the creatures the reader may
+	// read, in the order asked or, when the request named no creature, the lowest in proportion first. Read later (the log
+	// line, a retried answer) a player is listed a character or a creature of the party that the master has not hidden; an
+	// NPC only if that player saw it when the action was made, or, for a line stored with no record of who saw it, when the
+	// line says it was made without fog (with no such mark: on a combat with no map).
 	Heals []*ChannelDivinityHeal `protobuf:"bytes,1,rep,name=heals,proto3" json:"heals,omitempty"`
 	// Turn Undead: the save of each undead that had to save and that the reader may read, in the order of the combat.
 	Turns []*ChannelDivinityTurn `protobuf:"bytes,2,rep,name=turns,proto3" json:"turns,omitempty"`
@@ -16734,12 +16741,20 @@ type ChannelDivinityHeal struct {
 	state       protoimpl.MessageState `protogen:"open.v1"`
 	CombatantId string                 `protobuf:"bytes,1,opt,name=combatant_id,json=combatantId,proto3" json:"combatant_id,omitempty"`
 	Label       string                 `protobuf:"bytes,2,opt,name=label,proto3" json:"label,omitempty"`
-	// Asked is what the cleric asked for; Healed what the creature regained after the limit of half its maximum.
-	Asked          int32 `protobuf:"varint,3,opt,name=asked,proto3" json:"asked,omitempty"`
-	Healed         int32 `protobuf:"varint,4,opt,name=healed,proto3" json:"healed,omitempty"`
+	// Asked is what the cleric asked for the creature, or what the server shared to it when the request named no one; Healed
+	// what the creature regained after the limit of half its maximum.
+	Asked  int32 `protobuf:"varint,3,opt,name=asked,proto3" json:"asked,omitempty"`
+	Healed int32 `protobuf:"varint,4,opt,name=healed,proto3" json:"healed,omitempty"`
+	// Deprecated: never filled. hit_points_after_known says the hit points after the action.
+	//
+	// Deprecated: Marked as deprecated in meurpg/play/v1/combat.proto.
 	HitPointsAfter int32 `protobuf:"varint,5,opt,name=hit_points_after,json=hitPointsAfter,proto3" json:"hit_points_after,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// The creature's hit points after the action, set only for a reader to whom the combat view gives that creature's
+	// hit points as numbers (the master and the player who plays it, while the creature is still in the combat's list).
+	// Unset for any other reader.
+	HitPointsAfterKnown *int32 `protobuf:"varint,6,opt,name=hit_points_after_known,json=hitPointsAfterKnown,proto3,oneof" json:"hit_points_after_known,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *ChannelDivinityHeal) Reset() {
@@ -16800,9 +16815,17 @@ func (x *ChannelDivinityHeal) GetHealed() int32 {
 	return 0
 }
 
+// Deprecated: Marked as deprecated in meurpg/play/v1/combat.proto.
 func (x *ChannelDivinityHeal) GetHitPointsAfter() int32 {
 	if x != nil {
 		return x.HitPointsAfter
+	}
+	return 0
+}
+
+func (x *ChannelDivinityHeal) GetHitPointsAfterKnown() int32 {
+	if x != nil && x.HitPointsAfterKnown != nil {
+		return *x.HitPointsAfterKnown
 	}
 	return 0
 }
@@ -31413,13 +31436,15 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x15ChannelDivinityResult\x129\n" +
 	"\x05heals\x18\x01 \x03(\v2#.meurpg.play.v1.ChannelDivinityHealR\x05heals\x129\n" +
 	"\x05turns\x18\x02 \x03(\v2#.meurpg.play.v1.ChannelDivinityTurnR\x05turns\x12\x17\n" +
-	"\asave_dc\x18\x03 \x01(\x05R\x06saveDc\"\xa6\x01\n" +
+	"\asave_dc\x18\x03 \x01(\x05R\x06saveDc\"\xff\x01\n" +
 	"\x13ChannelDivinityHeal\x12!\n" +
 	"\fcombatant_id\x18\x01 \x01(\tR\vcombatantId\x12\x14\n" +
 	"\x05label\x18\x02 \x01(\tR\x05label\x12\x14\n" +
 	"\x05asked\x18\x03 \x01(\x05R\x05asked\x12\x16\n" +
-	"\x06healed\x18\x04 \x01(\x05R\x06healed\x12(\n" +
-	"\x10hit_points_after\x18\x05 \x01(\x05R\x0ehitPointsAfter\"\xbe\x02\n" +
+	"\x06healed\x18\x04 \x01(\x05R\x06healed\x12,\n" +
+	"\x10hit_points_after\x18\x05 \x01(\x05B\x02\x18\x01R\x0ehitPointsAfter\x128\n" +
+	"\x16hit_points_after_known\x18\x06 \x01(\x05H\x00R\x13hitPointsAfterKnown\x88\x01\x01B\x19\n" +
+	"\x17_hit_points_after_known\"\xbe\x02\n" +
 	"\x13ChannelDivinityTurn\x12!\n" +
 	"\fcombatant_id\x18\x01 \x01(\tR\vcombatantId\x12\x14\n" +
 	"\x05label\x18\x02 \x01(\tR\x05label\x12\x10\n" +
@@ -34194,6 +34219,7 @@ func file_meurpg_play_v1_combat_proto_init() {
 		(*TakeActionRequest_TypedSum)(nil),
 	}
 	file_meurpg_play_v1_combat_proto_msgTypes[122].OneofWrappers = []any{}
+	file_meurpg_play_v1_combat_proto_msgTypes[125].OneofWrappers = []any{}
 	file_meurpg_play_v1_combat_proto_msgTypes[126].OneofWrappers = []any{}
 	file_meurpg_play_v1_combat_proto_msgTypes[127].OneofWrappers = []any{
 		(*AdjustCombatantHitPointsRequest_Damage)(nil),
