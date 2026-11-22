@@ -273,6 +273,80 @@ test(
   },
 );
 
+// A pick bound by the server's `skills_allowed` at a level of the character's own class (no multiclass): the Bardo 2 to 3
+// takes the Colégio do Conhecimento, which gives 3 skills among the ones the sheet lacks. The ones it has are not rows, and
+// an expertise row exists only for a skill the sheet trains, a skill just picked included.
+test(
+  'Orla, Bardo 2, sobe para o 3: as perícias do colégio só vêm das que ela não tem, e a especialização só aparece nas treinadas @MR-040 @RN-12',
+  { tag: ['@MR-040', '@RN-12'] },
+  async ({ browser }) => {
+    test.setTimeout(150_000);
+    const master = await newSignedInContext(browser, 'Mestre Teste', { viewport: { width: 1280, height: 800 } });
+    const player = await newSignedInContext(browser, 'Jogador Teste', { viewport: { width: 1280, height: 800 } });
+    const m = await master.newPage();
+    const p = await player.newPage();
+    let campaignId = '';
+    try {
+      await m.goto('/');
+      await p.goto('/');
+      const orla = {
+        name: 'Orla',
+        raceKey: 'race:human',
+        race: 'Humano',
+        classKey: 'class:bard',
+        class: 'Bardo',
+        level: 2,
+        background: 'Artista',
+        backgroundSkillKeys: ['skill:acrobatics', 'skill:performance'],
+        backgroundSkills: ['Acrobacia', 'Atuação'],
+        extraSkillKeys: ['skill:deception', 'skill:persuasion', 'skill:insight'],
+        extraSkills: ['Enganação', 'Persuasão', 'Intuição'],
+        scores: { for: 10, des: 14, con: 13, int: 12, sab: 10, car: 16 },
+      };
+      const spells = ['spell:charm-person', 'spell:cure-wounds', 'spell:faerie-fire', 'spell:healing-word', 'spell:sleep'];
+      const table = await tableForLevelUp(m, p, `Subida do Bardo ${Date.now()}`, {
+        build: orla,
+        sheet: { cantripKeys: ['spell:vicious-mockery', 'spell:minor-illusion'], knownSpellKeys: spells, preparedSpellKeys: spells },
+      });
+      campaignId = table.campaignId;
+      await p.goto(`${sheetOf(campaignId, table.characterId)}/level-up`);
+
+      await passClassStep(p);
+      await expect(p.getByText(/Passo 2 de \d · Vida/)).toBeVisible();
+      await p.getByRole('button', { name: 'Próximo' }).click();
+      await expect(p.getByText(/Passo 3 de \d · Escolhas/)).toBeVisible();
+
+      // The college comes first and brings its 3 skills: none of the skills the sheet trains is a row.
+      await p.locator('#pick-subclass label.row__main').first().click();
+      const skills = p.locator('#pick-skills');
+      await expect(skills).toContainText('0 de 3');
+      await p.getByRole('button', { name: /Ver as outras \d+ perícias/ }).first().click();
+      await expect(skills.locator('label.row__main').filter({ hasText: 'Furtividade' })).toBeVisible();
+      await expect(skills.locator('label.row__main').filter({ hasText: 'Acrobacia' })).toHaveCount(0);
+      await expect(skills.locator('label.row__main').filter({ hasText: 'Enganação' })).toHaveCount(0);
+
+      // Expertise: no row for a skill the sheet lacks, one once it is picked, none again when it is unpicked.
+      const expertise = p.locator('#pick-expertise');
+      const stealth = expertise.locator('label.row__main').filter({ hasText: 'Furtividade' });
+      await expect(expertise.locator('label.row__main').filter({ hasText: 'Enganação' })).toBeVisible();
+      // The skills the background gives are on the list from the start, though the stored picks do not hold them.
+      await expect(expertise.locator('label.row__main').filter({ hasText: 'Atuação' })).toBeVisible();
+      await expect(expertise.locator('label.row__main').filter({ hasText: 'Acrobacia' })).toBeVisible();
+      await expect(stealth).toHaveCount(0);
+      await skills.locator('label.row__main').filter({ hasText: 'Furtividade' }).click();
+      await expect(stealth).toHaveCount(1);
+      await stealth.click();
+      await expect(stealth.locator('input')).toBeChecked();
+      await skills.locator('label.row__main').filter({ hasText: 'Furtividade' }).click();
+      await expect(stealth).toHaveCount(0);
+    } finally {
+      await endOpenSessionRPC(m, campaignId);
+      await master.close();
+      await player.close();
+    }
+  },
+);
+
 // SRD 5.1 "Multiclassing": Doran, Guerreiro 5 (Força 16, Destreza 14, Inteligência 13, Carisma 9), takes the
 // Mago at level 1. The class step opens "Uma classe nova" with each class's prerequisite (the Bardo is closed
 // with the reason), the Vida step says the die of the new class, the summary says why each number moved, and the
@@ -385,3 +459,54 @@ for (const { width, height } of [
     },
   );
 }
+
+// The picks step offers exactly the skills the server lists for the new class (the multiclass table's own list), never a
+// list of the page's own: Doran, Guerreiro 5, takes the Ladino at level 1 and picks the one skill of its table.
+test(
+  'Doran, Guerreiro 5, toma o Ladino 1: a perícia nova sai só da lista da classe, e o que Doran já tem fica desligado @MR-040 @RN-12 @RN-33',
+  { tag: ['@MR-040', '@RN-12', '@RN-33'] },
+  async ({ browser }) => {
+    test.setTimeout(150_000);
+    const master = await newSignedInContext(browser, 'Mestre Teste', { viewport: { width: 1280, height: 800 } });
+    const player = await newSignedInContext(browser, 'Jogador Teste', { viewport: { width: 1280, height: 800 } });
+    const m = await master.newPage();
+    const p = await player.newPage();
+    let campaignId = '';
+    try {
+      await m.goto('/');
+      await p.goto('/');
+      const doran = { ...toren, name: 'Doran', level: 5, scores: { for: 15, des: 13, con: 13, int: 12, sab: 10, car: 8 } };
+      const table = await tableForLevelUp(m, p, `Subida com perícia da lista ${Date.now()}`, { build: doran });
+      campaignId = table.campaignId;
+      await p.goto(`/campaigns/${campaignId}/characters/${table.characterId}/level-up`);
+
+      await expect(p.getByRole('heading', { name: 'Subir em qual classe?' })).toBeVisible();
+      await classCard(p, /^Uma classe nova/).click();
+      await classCard(p, /^Ladino/).click();
+      await expect(p.getByText('Doran · Guerreiro 5 → Guerreiro 5 · Ladino 1')).toBeVisible();
+      await p.getByRole('button', { name: 'Próximo' }).click();
+      // Vida, then Escolhas.
+      await p.getByRole('button', { name: 'Próximo' }).click();
+      await expect(p.getByText(/Passo \d de \d · Escolhas/)).toBeVisible();
+
+      const skills = p.locator('#pick-skills');
+      await expect(skills.getByRole('heading', { name: 'Perícia nova' })).toBeVisible();
+      await showAllPicks(skills);
+      await expect(p.locator('#pick-expertise').locator('label.row__main').filter({ hasText: 'Atletismo' })).toBeVisible();
+      // On the Ladino's list, and not on any other: the rows are the server's list and nothing else.
+      // One skill asked: the rows are radios (a list of several picks has checkboxes).
+      await expect(skills.getByRole('radio', { name: /^Furtividade/ })).toBeVisible();
+      await expect(skills.getByRole('radio', { name: /^Atletismo/ })).toBeDisabled();
+      await expect(skills.getByRole('radio', { name: /^Arcanismo/ })).toHaveCount(0);
+      await expect(skills.getByRole('radio', { name: /^Medicina/ })).toHaveCount(0);
+      await expect(skills.getByRole('radio', { name: /^Religião/ })).toHaveCount(0);
+      await expect(p.getByText('Falta escolher 1 perícia.')).toBeVisible();
+      await skills.getByRole('radio', { name: /^Furtividade/ }).check();
+      await expect(p.getByText('Falta escolher 1 perícia.')).toHaveCount(0);
+    } finally {
+      await endOpenSessionRPC(m, campaignId);
+      await master.close();
+      await player.close();
+    }
+  },
+);

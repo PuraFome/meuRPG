@@ -43,10 +43,10 @@ func (s *Service) PreviewCharacter(
 		if err := checkCreatorKindFor(m, kind, req.Msg.GetForPlayer()); err != nil {
 			return nil, err
 		}
-		if sheet, err = checkNewSheet(content, m, kind, req.Msg.GetSheet()); err != nil {
+		if sheet, err = checkNewSheetOf(content, m, pickKeysOnly, kind, req.Msg.GetSheet(), false); err != nil {
 			return nil, err
 		}
-	} else if sheet, r.name, err = s.checkEditedSheet(ctx, m, content, req.Msg.GetCharacterId(), req.Msg.GetSheet()); err != nil {
+	} else if sheet, r.name, err = s.checkEditedSheetFor(ctx, m, content, pickKeysOnly, req.Msg.GetCharacterId(), req.Msg.GetSheet()); err != nil {
 		return nil, err
 	}
 	var derived rules.Derived
@@ -76,9 +76,13 @@ func (s *Service) previewDerived(ctx context.Context, content *rules.Content, ch
 // checkEditedSheet is what UpdateCharacter checks before it writes, for the
 // character id: the caller sees it (otherwise not_found), may edit its sheet
 // now (RN-01), the sheet fits the row's kind, and no choice is new that is
-// archived or switched off, judged against the stored sheet. It returns the
-// checked sheet.
-func (s *Service) checkEditedSheet(ctx context.Context, m authz.Membership, content *rules.Content, characterID string, raw *charactersv1.CharacterSheet) (*charactersv1.CharacterSheet, string, error) {
+// kept out, closed, unfit or archived or switched off, judged against the stored
+// sheet. The permission answers come first and the stored sheet is read once; the
+// picks are checked once, by refuseNewChoices.
+// mode says whether a new pick no list places is refused (pickFit, the save) or not (pickKeysOnly: the previews answer the
+// lists of the draft and the save refuses the pick).
+// It returns the checked sheet.
+func (s *Service) checkEditedSheetFor(ctx context.Context, m authz.Membership, content *rules.Content, mode pickMode, characterID string, raw *charactersv1.CharacterSheet) (*charactersv1.CharacterSheet, string, error) {
 	id, ok := uid.Canonical(characterID)
 	if !ok {
 		return nil, "", errCharacterNotFound()
@@ -86,9 +90,6 @@ func (s *Service) checkEditedSheet(ctx context.Context, m authz.Membership, cont
 	sheet, err := checkSheet(content, raw)
 	if err != nil {
 		return nil, "", invalidArgument(err)
-	}
-	if err := refuseKeptOutPick(content, m, s.storedSheetOf(ctx, m, id), sheet.GetFull()); err != nil {
-		return nil, "", err
 	}
 	row, err := s.queries.GetCharacter(ctx, charactersdb.GetCharacterParams{CampaignID: m.CampaignID, ID: id})
 	if err != nil {
@@ -107,7 +108,7 @@ func (s *Service) checkEditedSheet(ctx context.Context, m authz.Membership, cont
 	if err != nil {
 		return nil, "", s.dbError(ctx, "read a character to preview its sheet", err)
 	}
-	if err := refuseNewChoices(content, m, row.ID, stored.GetFull(), sheet.GetFull()); err != nil {
+	if err := refuseNewChoices(content, m, mode, row.ID, stored.GetFull(), sheet.GetFull()); err != nil {
 		return nil, "", err
 	}
 	return sheet, row.Name, nil

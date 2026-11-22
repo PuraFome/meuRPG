@@ -179,7 +179,8 @@ Who rolls is the player or the pending member; the master gets `permission_denie
 - An archived or switched-off table key that is new to the sheet is refused (see [Table content](characters-table-content.md#archived-and-switched-off-entries-as-new-choices)).
 
 **`PreviewCharacter`** derives the sheet the editor is making or editing and writes nothing (no transaction; it reads through the pool).
-It accepts exactly the callers and sheets the save it previews accepts, through the same helpers (`checkCreatorKind`, `checkNewSheet`, `refuseNewChoices`): without a `character_id` it checks what `CreateCharacter` checks, with one what `UpdateCharacter` checks.
+It accepts the callers and sheets the save it previews accepts, through the same helpers (`checkCreatorKind`, `checkNewSheet`, `refuseNewChoices`): without a `character_id` it checks what `CreateCharacter` checks, with one what `UpdateCharacter` checks.
+It does not refuse a skill, expertise or tool pick that no list places (`pickKeysOnly`): only the save does.
 The ability method and the portrait are not checked (the save does them; neither changes the numbers).
 The editor reads from the answer `hit_points_from_effects` (what `hp.max` effects add, such as Dwarven Toughness) and `spellcasting` (`cantrips_known`, `spells_known`, `prepared_max` of each casting class), so the browser copies no rule arithmetic.
 
@@ -422,7 +423,7 @@ The questions and their rules are `rules`' (see [Class and race choices](rules.m
 
 | RPC | What it does |
 | --- | --- |
-| `PreviewChoices` | The groups, counts, spell sources (patron and Magical Secrets lists) and refusals for a draft or a locked sheet. Read-only; the draft's overlay is made by `sheetForChoices`. In the pending-member allowlist, because a pending member edits their own draft. |
+| `PreviewChoices` | The groups, counts, spell sources (patron and Magical Secrets lists), the skills the sheet's sources allow and the skills expertise may go on, and refusals for a draft or a locked sheet. Read-only; the draft's overlay is made by `sheetForChoices`. In the pending-member allowlist, because a pending member edits their own draft. |
 | `CompleteCharacterChoices` | A locked sheet's missing picks (`ChoicePick`), judged by the same engine; changes nothing else (RN-01). Guarded by the sheet's revision, not by a key: the call names the `expected_revision` it read, and a call whose revision is no longer the sheet's is refused as stale, a repeat of a call that succeeded included (the revision moved). One transaction, writes the session event `character_choices_completed`. Runs under play's funnel (`InSession`): the session's row first, one number for the write. |
 | `GetCampaignOpenChoices` | For the master: the characters with open choices (`OpenChoicesCharacter`). |
 
@@ -522,6 +523,13 @@ The module does the part that needs the database; what a level gives and what th
 
 - **`GetLevelUpOptions`** (read): the class's `LevelUpOptions` (the first class if `class_key` is empty) with Portuguese names, the campaign's `dice_rule` and the die the server already rolled (`kept_hit_point_roll`).
   For the master and the owner.
+  `skill_choices` and `expertise_choices` are what the sheet after the level may pick beyond what the sheet before holds or allows.
+  `skill_sources` lists the sources the level adds picks to, with the count it adds; a skill the sheet has from any source shows as `already_have`.
+  `skills_allowed` and `expertise_allowed` are the keys a new pick may take in the sheet after the level (with the new class for a multiclass; each `LevelUpSubclass` carries its own).
+  For skills, offered and accepted are the same set.
+  A class added by multiclassing gives one skill from its own row, without the skills the sheet has (`MulticlassPick.openSkills`, read by the list and by `checkMulticlassSkills`); the picks made at earlier levels stay where they are.
+  At the other levels the lists start from the ones `PreviewChoices` answers and drop the skills the sheet has from race or background, the keys it holds and the lists its held picks use up (`LevelPickKeys`).
+  For expertise, being on the list is necessary and the proficiency decides: it is listed only on skills the sheet is proficient in or the level gives.
 - **`PreviewLevelUp`** (read): the derived sheet of afterwards with the choices applied, and the first refusal if any (`LevelUpRefusal`, as data, not as an error).
   The web has no rules engine, so the server does the arithmetic, including the new maximum of prepared spells.
   A choice refused as archived or switched off returns no `after`, so a player guessing a key does not read its features.

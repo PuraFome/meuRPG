@@ -3,7 +3,9 @@ package characters
 import (
 	"context"
 	"errors"
+	"fmt"
 	"slices"
+	"strings"
 	"time"
 	"unicode"
 	"unicode/utf8"
@@ -60,7 +62,7 @@ func newOffChoice(content *rules.Content, before, after *charactersv1.FullSheet)
 // newKeptOutPicks are the picks that the sheet adds and the pool of a choice of the options of another feature keeps out
 // of its offer for the reader (content is the reader's view): the table retired them or, for a player, switched them off
 // with their entry. before reads the stored sheet (nil for a sheet that does not exist yet), only when a pick is kept
-// out; a pick the stored sheet holds stays.
+// out; the picks the stored sheet holds are kept.
 func newKeptOutPicks(content *rules.Content, before func() *charactersv1.FullSheet, after *charactersv1.FullSheet) []string {
 	kept := content.Choices(buildOf(after)).KeptOut
 	if len(kept) == 0 {
@@ -93,11 +95,77 @@ func refuseKeptOutPick(content *rules.Content, m authz.Membership, before func()
 	return nil
 }
 
+// pickMode is how far the check of a new skill, expertise or tool pick goes.
+type pickMode int
+
+const (
+	// pickFit refuses a pick no list places, with its sentence: the save.
+	pickFit pickMode = iota
+	// pickKeysOnly keeps only the answer of a key the content does not have (a tool pick that is no tool, or of an owner the
+	// reader may not read): the preview of a draft, so a pick the class changed under shows in the pickers and the save
+	// is the refusal of the fit.
+	pickKeysOnly
+)
+
+// refusePick refuses a new skill, expertise or tool pick that the character's lists do not take, as mode says, on the
+// content as the caller reads it. A pick the stored sheet holds is kept, whether it fits or not; before is nil for a sheet that
+// does not exist yet.
+func refusePick(content *rules.Content, m authz.Membership, mode pickMode, before func() *charactersv1.FullSheet, after *charactersv1.FullSheet) error {
+	return refusePickIn(viewContent(content, m), isMaster(m), mode, before, after)
+}
+
+// refusePickIn is refusePick on the content view the caller has chosen. The sources of the picks are the sheet's own, whatever
+// the view: only the keys the view does not have change an answer. The master is never refused for a pick no list places (the
+// fit issue tells it on the sheet); a tool pick that is no tool is a key the content does not have, and wins over the fit
+// of any other pick.
+func refusePickIn(view *rules.Content, master bool, mode pickMode, before func() *charactersv1.FullSheet, after *charactersv1.FullSheet) error {
+	if after == nil {
+		return nil
+	}
+	var stored *rules.Build
+	if was := before(); was != nil {
+		b := buildOf(was)
+		stored = &b
+	}
+	refusal, found := view.NewPickRefusal(stored, buildOf(after))
+	switch {
+	case !found:
+		return nil
+	case refusal.Unknown:
+		return errUnknownKey("sheet." + refusal.Field)
+	case master || mode != pickFit:
+		return nil
+	}
+	return invalidArgument(&fieldError{field: "sheet." + refusal.Field, err: errors.New(unfitSentence(view, buildOf(after), refusal.Field, refusal.Key))})
+}
+
+// unfitSentence is the sentence of a pick that cannot be placed, by the kind of pick the field holds: a skill or an
+// expertise or a tool that some list allows has no room left in the lists that offer it; any other pick is on no list.
+func unfitSentence(view *rules.Content, b rules.Build, field, key string) string {
+	listed := view.OnAList(b, field, key)
+	switch {
+	case strings.HasPrefix(field, rules.SkillsField) && listed:
+		name := view.NamePT(key)
+		return fmt.Sprintf("Não há vaga para a perícia %s: as listas que a oferecem já estão preenchidas pelas outras perícias marcadas. Desmarque uma delas para marcar %s.", name, name)
+	case strings.HasPrefix(field, rules.ExpertiseField) && listed:
+		name := view.NamePT(key)
+		return fmt.Sprintf("Não há vaga para a especialização em %s: as listas que a oferecem já estão preenchidas pelas outras especializações marcadas. Desmarque uma delas para marcar a especialização em %s.", name, name)
+	case strings.HasPrefix(field, rules.ChoiceKeysField) && listed:
+		name := view.ProficiencyNamePT(key)
+		return fmt.Sprintf("Não há vaga para a ferramenta %s: as listas que a oferecem já estão preenchidas pelas outras ferramentas marcadas. Desmarque uma delas para marcar %s.", name, name)
+	case strings.HasPrefix(field, rules.SkillsField):
+		return fmt.Sprintf("A perícia %s não está em nenhuma das listas de onde o personagem escolhe perícias.", view.NamePT(key))
+	case strings.HasPrefix(field, rules.ExpertiseField):
+		return fmt.Sprintf("A especialização em %s não está em nenhuma das listas de onde o personagem escolhe especializações.", view.NamePT(key))
+	}
+	return fmt.Sprintf("A ferramenta %s não está em nenhuma das escolhas de ferramenta do personagem.", view.ProficiencyNamePT(key))
+}
+
 // noSheet is the stored sheet of a character that does not exist yet.
 func noSheet() *charactersv1.FullSheet { return nil }
 
 // storedSheetOf reads the stored sheet of a character the caller sees, nil for any other: a pick is new to a sheet the
-// caller cannot read.
+// caller cannot read. The function reads the sheet on each call, and the one check that takes it calls it once.
 func (s *Service) storedSheetOf(ctx context.Context, m authz.Membership, characterID string) func() *charactersv1.FullSheet {
 	return func() *charactersv1.FullSheet {
 		row, err := s.queries.GetCharacter(ctx, charactersdb.GetCharacterParams{CampaignID: m.CampaignID, ID: characterID})
@@ -288,6 +356,9 @@ func addChangedContent(d *rulesv1.DerivedSheet, issues []rules.Issue, content *r
 		name := content.NamePT(f.entry.Key)
 		var messages, codes []string
 		for _, is := range f.issues {
+			if is.Code == rules.IssuePickFit && !r.master {
+				continue // the fit issue is the master's advisory alone
+			}
 			codes = append(codes, is.Code)
 			// The sentence as a change reads it ("agora dá 2 perícias"), when the
 			// engine has one for this issue; otherwise the issue's own.
@@ -296,6 +367,9 @@ func addChangedContent(d *rulesv1.DerivedSheet, issues []rules.Issue, content *r
 				continue
 			}
 			messages = append(messages, changeSentence(is, f.entry.Key, name))
+		}
+		if len(codes) == 0 {
+			continue
 		}
 		d.ChangedContent = append(d.ChangedContent, &rulesv1.ChangedContent{
 			Key: f.entry.Key, NamePt: name, Field: f.entry.Field, Revision: i32(f.entry.Revision), SavedRevision: i32(f.entry.Since),
@@ -338,6 +412,10 @@ func (r reader) tell(d *rulesv1.DerivedSheet, issues []rules.Issue) {
 		if (is.Lost != nil || is.Named != "") && i < len(d.GetIssues()) {
 			d.Issues[i].Message = r.say(is)
 		}
+	}
+	if !r.master {
+		// The fit of the picks to their lists is the master's advisory alone.
+		d.Issues = slices.DeleteFunc(d.Issues, func(is *rulesv1.Issue) bool { return is.GetCode() == rules.IssuePickFit })
 	}
 }
 

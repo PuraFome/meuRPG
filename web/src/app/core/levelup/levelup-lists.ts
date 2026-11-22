@@ -12,6 +12,7 @@ import {
   type StepKey,
   cantripOptions,
   expertiseOptions,
+  newSkillKeys,
   preparedMore,
   preparedOptions,
   proficiencyPick,
@@ -26,6 +27,7 @@ import {
 export interface ListPicks {
   readonly subclassKey: Signal<string>;
   readonly spells: Signal<ReadonlySet<string>>;
+  /** The new skills picked so far. */
   readonly skills: Signal<ReadonlySet<string>>;
   /** The new maximum of prepared spells. */
   readonly preparedMax: Signal<number>;
@@ -74,7 +76,7 @@ export class LevelUpLists {
     preparedOptions(this.effective(), this.catalog.spells, this.have, this.picks.spells()),
   );
   readonly skillItems = computed<PickItem[]>(() =>
-    skillOptions(this.catalog.skills, this.have, this.options),
+    skillOptions(this.catalog.skills, this.have, this.options, this.picks.subclassKey()),
   );
   /** The instruments of a new Bard, with the ones the character has turned off. */
   readonly instrumentItems = computed<PickItem[]>(() =>
@@ -91,9 +93,15 @@ export class LevelUpLists {
   readonly instrumentAsked = computed(() =>
     proficiencyPick(this.options, LevelUpProficiencyKind.INSTRUMENT),
   );
-  readonly expertiseItems = computed<PickItem[]>(() =>
-    expertiseOptions(this.catalog.skills, this.have, this.picks.skills()),
-  );
+  /** The server's expertise list (every skill the sheet is proficient in), except a skill this level could newly
+   * give that the draft has not picked: that row appears once the skill is picked. */
+  readonly expertiseItems = computed<PickItem[]>(() => {
+    const unpicked = newSkillKeys(this.options, this.picks.subclassKey());
+    const picked = this.picks.skills();
+    return expertiseOptions(this.catalog.skills, this.options, this.picks.subclassKey()).filter(
+      (i) => !unpicked.has(i.key) || picked.has(i.key),
+    );
+  });
 
   /** The Portuguese name of every key the screen may show. */
   readonly names = computed(() => {
