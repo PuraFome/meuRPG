@@ -89,6 +89,10 @@ func TestTxMethodsKeepRetryableErrors(t *testing.T) {
 			_, err := s.SessionCharacters(ctx, tx, campaign, []string{char})
 			return err
 		}},
+		{"LockedSessionCharacters/query", true, func(s *Service, ctx context.Context, tx pgx.Tx) error {
+			_, err := s.LockedSessionCharacters(ctx, tx, campaign, []string{char})
+			return err
+		}},
 		{"CombatCharacters/query", true, func(s *Service, ctx context.Context, tx pgx.Tx) error {
 			_, err := s.CombatCharacters(ctx, tx, campaign, []string{char})
 			return err

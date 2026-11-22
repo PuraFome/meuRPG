@@ -17,8 +17,8 @@ import (
 )
 
 // maxLiveContents is how many campaign contents (the SRD plus one table's layer)
-// the live source keeps: about 4 MB each for a table of 1000 entries, 7 MB with
-// 6000 effects among them (docs/performance.md).
+// the live source keeps: about 4.7 MB each for a table of 1000 entries, 13.5 MB
+// with 6000 effects among them (docs/performance.md).
 const maxLiveContents = 8
 
 // maxLiveBytes bounds the stored data (the entries' JSON, which the content keeps
