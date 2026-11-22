@@ -27876,7 +27876,8 @@ type MarkReactionRollingRequest struct {
 	EncounterId string                 `protobuf:"bytes,2,opt,name=encounter_id,json=encounterId,proto3" json:"encounter_id,omitempty"`
 	WindowId    string                 `protobuf:"bytes,3,opt,name=window_id,json=windowId,proto3" json:"window_id,omitempty"`
 	// The player came back from the map: it takes the mark off. It does not restart the
-	// wait: the wait began at the first mark and no later mark or clear changes that.
+	// wait: the wait began at the first mark (or at the master's call, if it came first) and no later mark or clear
+	// changes that.
 	Clear         bool `protobuf:"varint,4,opt,name=clear,proto3" json:"clear,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

@@ -249,7 +249,7 @@ The master's row reads whether the player is on the map now (`rolling`), when th
 The master's screen passes the window when the 120 s end, with `AnswerReaction` PASS: the server runs no timer.
 The reactor's player reads the mark back too (a second device of the same player shows it), `rolling`, `wait_began_at` and `waited_ms`.
 No other player reads either: another player and the TV read the same wait line in every moment.
-Both ways are idempotent and the reactor's player's alone, and the master's `clear` is refused as another player's is, and his call on a window of another kind or a creature's READIED window, nothing is written to the log, and the window stays open and answerable.
+Both ways are idempotent and are the reactor's player's to call. The master's `clear` is refused as another player's is, and so is his call on a window of another kind or on a creature's READIED window (a creature has no player to wait for): `permission_denied`, nothing is written to the log, and the window stays open and answerable.
 "Usar" on a window that was answered or closed is `NOT_YOUR_TURN_TO_ANSWER`, even on the readier's own turn: only an open window releases the spell, and the cast an answer makes names its window.
 A held release whose spell breaks before the Counterspell windows are answered is lost: the row is `broken` and its window closes, the replay is refused as any cast off the readier's turn, and the master reads `held_dropped` in the log (`settleReplay`).
 Nothing is cast, and no write fails.

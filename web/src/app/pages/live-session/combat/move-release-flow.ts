@@ -91,7 +91,7 @@ export class MoveReleaseFlow {
           (win) => this.mark?.observe(win),
         ),
     );
-    // Only the reactor's player marks the window; the master only begins the wait: the server dates the one wait of 120 s from the first mark.
+    // Only the reactor's player marks the window; the master only begins the wait: the server dates the one wait of 120 s from the first mark, or from the master's call if it came first.
     const attacks = this.ctx.api.attacks;
     this.mark =
       release.master || !attacks

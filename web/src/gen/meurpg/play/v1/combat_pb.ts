@@ -14128,7 +14128,8 @@ export type MarkReactionRollingRequest = Message<"meurpg.play.v1.MarkReactionRol
 
   /**
    * The player came back from the map: it takes the mark off. It does not restart the
-   * wait: the wait began at the first mark and no later mark or clear changes that.
+   * wait: the wait began at the first mark (or at the master's call, if it came first) and no later mark or clear
+   * changes that.
    *
    * @generated from field: bool clear = 4;
    */
@@ -21108,18 +21109,21 @@ export const CombatService: GenService<{
    * The master may call it, without `clear`, on an open READIED window of a player's character:
    * it begins the wait if it has not begun, and changes nothing else (`rolling` stays the player's own).
    * A wait that has begun is not touched: nothing is written and nobody is told.
-   * The master's `clear`, and his call on a window of any other kind or on a creature's READIED window,
-   * is refused (`permission_denied`).
+   * The master's `clear`, and his call on a window of any other kind or on a creature's READIED window
+   * (a creature has no player to wait for), is refused (`permission_denied`). That holds only for a window that
+   * is open and first in its group: the master's call on any other is refused for the reason under Errors.
    * A player is refused for a window that is not theirs, the same answer for a real
    * and an invented window_id (RN-10).
    *
    * A call that changes something tells the master and the reactor's player with `encounter_changed`, and nobody else.
    *
    * Errors:
-   *   - `not_found`: the combat is not in the open session.
-   *   - `permission_denied`: as above.
-   *   - `failed_precondition` (EncounterBlocked): ENCOUNTER_ENDED, NOT_YOUR_TURN_TO_ANSWER
-   *     (out of order, or already answered or closed).
+   *   - `not_found`: the combat is not in the open session, or, for the master, the window is not in it.
+   *   - `permission_denied`: as above (a player's call on a window that is not theirs, a real or an invented
+   *     id alike; the master's `clear`; the master's call on another kind or on a creature's READIED window,
+   *     once the window is open and first in its group).
+   *   - `failed_precondition` (EncounterBlocked): ENCOUNTER_ENDED; NOT_YOUR_TURN_TO_ANSWER (the window is
+   *     closed, or it is open but queued behind another of its group); REACTION_ALREADY_ANSWERED (answered).
    *
    * @generated from rpc meurpg.play.v1.CombatService.MarkReactionRolling
    */

@@ -1521,18 +1521,21 @@ type CombatServiceClient interface {
 	// The master may call it, without `clear`, on an open READIED window of a player's character:
 	// it begins the wait if it has not begun, and changes nothing else (`rolling` stays the player's own).
 	// A wait that has begun is not touched: nothing is written and nobody is told.
-	// The master's `clear`, and his call on a window of any other kind or on a creature's READIED window,
-	// is refused (`permission_denied`).
+	// The master's `clear`, and his call on a window of any other kind or on a creature's READIED window
+	// (a creature has no player to wait for), is refused (`permission_denied`). That holds only for a window that
+	// is open and first in its group: the master's call on any other is refused for the reason under Errors.
 	// A player is refused for a window that is not theirs, the same answer for a real
 	// and an invented window_id (RN-10).
 	//
 	// A call that changes something tells the master and the reactor's player with `encounter_changed`, and nobody else.
 	//
 	// Errors:
-	//   - `not_found`: the combat is not in the open session.
-	//   - `permission_denied`: as above.
-	//   - `failed_precondition` (EncounterBlocked): ENCOUNTER_ENDED, NOT_YOUR_TURN_TO_ANSWER
-	//     (out of order, or already answered or closed).
+	//   - `not_found`: the combat is not in the open session, or, for the master, the window is not in it.
+	//   - `permission_denied`: as above (a player's call on a window that is not theirs, a real or an invented
+	//     id alike; the master's `clear`; the master's call on another kind or on a creature's READIED window,
+	//     once the window is open and first in its group).
+	//   - `failed_precondition` (EncounterBlocked): ENCOUNTER_ENDED; NOT_YOUR_TURN_TO_ANSWER (the window is
+	//     closed, or it is open but queued behind another of its group); REACTION_ALREADY_ANSWERED (answered).
 	MarkReactionRolling(context.Context, *connect.Request[v1.MarkReactionRollingRequest]) (*connect.Response[v1.MarkReactionRollingResponse], error)
 	// ResolveConcentrationSave settles a concentration window (SRD, Duration): the
 	// owner's Constitution saving throw against the DC the window carries, rolled in
@@ -3807,18 +3810,21 @@ type CombatServiceHandler interface {
 	// The master may call it, without `clear`, on an open READIED window of a player's character:
 	// it begins the wait if it has not begun, and changes nothing else (`rolling` stays the player's own).
 	// A wait that has begun is not touched: nothing is written and nobody is told.
-	// The master's `clear`, and his call on a window of any other kind or on a creature's READIED window,
-	// is refused (`permission_denied`).
+	// The master's `clear`, and his call on a window of any other kind or on a creature's READIED window
+	// (a creature has no player to wait for), is refused (`permission_denied`). That holds only for a window that
+	// is open and first in its group: the master's call on any other is refused for the reason under Errors.
 	// A player is refused for a window that is not theirs, the same answer for a real
 	// and an invented window_id (RN-10).
 	//
 	// A call that changes something tells the master and the reactor's player with `encounter_changed`, and nobody else.
 	//
 	// Errors:
-	//   - `not_found`: the combat is not in the open session.
-	//   - `permission_denied`: as above.
-	//   - `failed_precondition` (EncounterBlocked): ENCOUNTER_ENDED, NOT_YOUR_TURN_TO_ANSWER
-	//     (out of order, or already answered or closed).
+	//   - `not_found`: the combat is not in the open session, or, for the master, the window is not in it.
+	//   - `permission_denied`: as above (a player's call on a window that is not theirs, a real or an invented
+	//     id alike; the master's `clear`; the master's call on another kind or on a creature's READIED window,
+	//     once the window is open and first in its group).
+	//   - `failed_precondition` (EncounterBlocked): ENCOUNTER_ENDED; NOT_YOUR_TURN_TO_ANSWER (the window is
+	//     closed, or it is open but queued behind another of its group); REACTION_ALREADY_ANSWERED (answered).
 	MarkReactionRolling(context.Context, *connect.Request[v1.MarkReactionRollingRequest]) (*connect.Response[v1.MarkReactionRollingResponse], error)
 	// ResolveConcentrationSave settles a concentration window (SRD, Duration): the
 	// owner's Constitution saving throw against the DC the window carries, rolled in
