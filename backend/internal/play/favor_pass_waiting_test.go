@@ -2,14 +2,12 @@ package play
 
 import (
 	"context"
-	"errors"
 	"sync"
 	"testing"
 	"time"
 
 	"connectrpc.com/connect"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
@@ -455,13 +453,9 @@ func TestLockPairHoldsBothCharactersRowsUntilTheTransactionEnds(t *testing.T) {
 		}
 		for _, id := range ids {
 			go func() {
-				var err error
-				for { // the isolation level may abort the write that waited: it is retried, as a client does
-					_, err = side.Exec(ctx, `UPDATE characters SET updated_at = now() WHERE id = $1`, id)
-					var pgErr *pgconn.PgError
-					if !errors.As(err, &pgErr) || pgErr.Code != "40001" {
-						break
-					}
+				_, err := side.Exec(ctx, `UPDATE characters SET updated_at = now() WHERE id = $1`, id)
+				if db.IsSerializationFailure(err) {
+					err = nil // the isolation level may abort the write once the row is free: it waited all the same
 				}
 				done <- err
 			}()
