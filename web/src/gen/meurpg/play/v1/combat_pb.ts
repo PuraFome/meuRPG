@@ -12785,8 +12785,8 @@ export type ReactionWindow = Message<"meurpg.play.v1.ReactionWindow"> & {
   unanswered: boolean;
 
   /**
-   * When the reactor's player first marked the window (entered the map): the wait of
-   * 120 s began then, once, and no later mark or clear changes it. Unset before that.
+   * When the wait of 120 s began: the reactor's player's first mark or the master's opening of
+   * the release, whichever came first. Once, and no later mark or clear changes it. Unset before that.
    * Read by the master and the reactor's player only. The master's screen passes the
    * window when the 120 s end.
    *
@@ -12796,7 +12796,7 @@ export type ReactionWindow = Message<"meurpg.play.v1.ReactionWindow"> & {
 
   /**
    * The milliseconds the wait has run, as the read works them out with the server's clock
-   * (now minus `wait_began_at`); 0 before the first mark. The clock is the server's, so a screen
+   * (now minus `wait_began_at`); 0 before the wait began. The clock is the server's, so a screen
    * with a wrong clock still counts the wait right. Read by the master and the reactor's player only.
    *
    * @generated from field: int64 waited_ms = 16;
@@ -14106,7 +14106,7 @@ export const AnswerReactionRequestSchema: GenMessage<AnswerReactionRequest> = /*
   messageDesc(file_meurpg_play_v1_combat, 236);
 
 /**
- * MarkReactionRollingRequest marks a window as being rolled.
+ * MarkReactionRollingRequest marks a window as being rolled, or, from the master on a READIED window, begins its wait.
  *
  * @generated from message meurpg.play.v1.MarkReactionRollingRequest
  */
@@ -14128,7 +14128,8 @@ export type MarkReactionRollingRequest = Message<"meurpg.play.v1.MarkReactionRol
 
   /**
    * The player came back from the map: it takes the mark off. It does not restart the
-   * wait: the wait began at the first mark and no later mark or clear changes that.
+   * wait: the wait began at the first mark (or at the master's call, if it came first) and no later mark or clear
+   * changes that.
    *
    * @generated from field: bool clear = 4;
    */
@@ -21098,22 +21099,32 @@ export const CombatService: GenService<{
    * always pass it by hand). With `clear` it takes the mark off, when the player came
    * back from the map. It changes nothing else, writes no log line, and is idempotent:
    * marking or clearing a window twice is the same as once, and writes and publishes nothing.
-   * The first mark of a window records when the wait began (`wait_began_at`), once; no later mark
-   * or clear moves it. A READIED window is where the mark means the player is on the map to place
+   * The wait begins (`wait_began_at`) at the reactor's player's first mark or the master's opening
+   * of the release, whichever comes first; once begun, no later mark or clear moves it. The master's
+   * call only begins the wait and never sets `rolling`. A READIED window is where the mark means the player is on the map to place
    * a spell or a move; on a window of any other kind it is the player rolling a die. In no kind
    * does it keep the window from being answered or closed.
    *
-   * Only the reactor's player may call it: the master is refused (`permission_denied`),
-   * and so is a player for a window that is not theirs, the same answer for a real
+   * The reactor's player may call it, with or without `clear`.
+   * The master may call it, without `clear`, on an open READIED window of a player's character:
+   * it begins the wait if it has not begun, and changes nothing else (`rolling` stays the player's own).
+   * A wait that has begun is not touched: nothing is written and nobody is told.
+   * The master's `clear` is refused (`permission_denied`) whatever the window.
+   * His call on an open window, first in its group, of any other kind or of a creature's READIED window
+   * (a creature has no player to wait for) is refused (`permission_denied`).
+   * His call on any other window is refused for the reason under Errors.
+   * A player is refused for a window that is not theirs, the same answer for a real
    * and an invented window_id (RN-10).
    *
-   * The reactor and the master get `encounter_changed`.
+   * A call that changes something tells the master and the reactor's player with `encounter_changed`, and nobody else.
    *
    * Errors:
-   *   - `not_found`: the combat is not in the open session.
-   *   - `permission_denied`: as above.
-   *   - `failed_precondition` (EncounterBlocked): ENCOUNTER_ENDED, NOT_YOUR_TURN_TO_ANSWER
-   *     (out of order, or already answered or closed).
+   *   - `not_found`: the combat is not in the open session, or, for the master, the window is not in it.
+   *   - `permission_denied`: as above (a player's call on a window that is not theirs, a real or an invented
+   *     id alike; the master's `clear`; the master's call on another kind or on a creature's READIED window,
+   *     once the window is open and first in its group).
+   *   - `failed_precondition` (EncounterBlocked): ENCOUNTER_ENDED; NOT_YOUR_TURN_TO_ANSWER (the window is
+   *     closed, or it is open but queued behind another of its group); REACTION_ALREADY_ANSWERED (answered).
    *
    * @generated from rpc meurpg.play.v1.CombatService.MarkReactionRolling
    */

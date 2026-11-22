@@ -600,7 +600,7 @@ func TestMarkingAReactionAsRolledIsTheReactorsAloneAndShowsToTheMaster(t *testin
 		t.Error("the window is marked before anybody rolled")
 	}
 	fake := "00000000-0000-4000-8000-000000000001"
-	wantCode(t, "the master marking", r.markRolling(t, r.master, re, w.GetId()), connect.CodePermissionDenied)
+	wantCode(t, "the master marking a window that is not READIED", r.markRolling(t, r.master, re, w.GetId()), connect.CodePermissionDenied)
 	wantCode(t, "another player marking", r.markRolling(t, r.caio, re, w.GetId()), connect.CodePermissionDenied)
 	wantCode(t, "another player marking an invented window", r.markRolling(t, r.caio, re, fake), connect.CodePermissionDenied)
 	if got := r.windowOf(t, r.master, playv1.ReactionKind_REACTION_KIND_UNCANNY_DODGE); got.GetRolling() {

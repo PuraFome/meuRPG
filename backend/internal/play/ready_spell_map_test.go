@@ -235,7 +235,7 @@ func TestAReadiedWallOfFireIsReleasedWithCastSpell(t *testing.T) {
 }
 
 // The readier's player marks its READIED window (it is on the map) and the master reads it; marking twice is the same as
-// once, only the reactor's player may mark (the master and another player are refused), nothing is written to the log, and
+// once, only the reactor's player may mark (another player is refused; the master's call only begins the wait), nothing is written to the log, and
 // the window stays open and answerable under the mark.
 func TestTheReadiersPlayerMarksItsReadiedWindowOnTheMap(t *testing.T) {
 	t.Parallel()
@@ -243,7 +243,9 @@ func TestTheReadiersPlayerMarksItsReadiedWindowOnTheMap(t *testing.T) {
 	e := a.readyForRelease(t, magicMissileSpell, 1, "Capitão Goblin")
 	w := a.mustFire(t, e, "Pensantus")
 	rolling := func() bool { return a.windowOf(t, a.master, kindReadied).GetRolling() }
-	wantCode(t, "the master marking", a.markRolling(t, a.master, e, w.GetId()), connect.CodePermissionDenied)
+	if err := a.markRolling(t, a.master, e, w.GetId()); err != nil || rolling() { // the master only begins the wait
+		t.Fatalf("the master's call: error = %v, rolling %v; want no error and no mark", err, rolling())
+	}
 	wantCode(t, "another player marking", a.markRolling(t, a.caio, e, w.GetId()), connect.CodePermissionDenied)
 	if rolling() {
 		t.Error("a refused mark marked the window")
@@ -341,7 +343,6 @@ func TestTheWaitOfAReadiedWindowBeginsAtTheFirstMarkAndNeverMoves(t *testing.T) 
 	if began := both("a clear before any mark", false); began != nil {
 		t.Fatalf("a clear before any mark started the wait at %v", began)
 	}
-	wantCode(t, "the master marking", a.markRolling(t, a.master, e, w.GetId()), connect.CodePermissionDenied)
 	wantCode(t, "another player marking", a.markRolling(t, a.caio, e, w.GetId()), connect.CodePermissionDenied)
 	if began := both("a refused mark", false); began != nil {
 		t.Fatalf("a refused mark started the wait at %v", began)
@@ -464,6 +465,12 @@ func TestAnUndoThatReopensAReadiedWindowStartsItsWaitClean(t *testing.T) {
 				if w.GetRolling() || w.GetWaitBeganAt() != nil {
 					t.Errorf("after the undo %s reads rolling %v and the wait began at %v, want a clean wait", who, w.GetRolling(), w.GetWaitBeganAt())
 				}
+			}
+			if err := a.markRolling(t, a.master, s.e, s.w.GetId()); err != nil {
+				t.Fatalf("the master's call after the undo: %v", err)
+			}
+			if again := a.windowOf(t, a.master, kindReadied); again.GetRolling() || again.GetWaitBeganAt() == nil || !again.GetWaitBeganAt().AsTime().After(first.AsTime()) {
+				t.Errorf("after the master's call rolling %v and the new wait began at %v, want no mark and a time after the first wait's %v", again.GetRolling(), again.GetWaitBeganAt(), first)
 			}
 			if err := a.markRolling(t, s.player, s.e, s.w.GetId()); err != nil {
 				t.Fatalf("the mark after the undo: %v", err)
