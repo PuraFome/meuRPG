@@ -208,6 +208,7 @@ The typed faces are checked only at the replay.
 A replay that the roll's checks refuse after the Inspiração was spent (the player asked an advantage with a reason over a disadvantage that came while the window waited, and `chooseMode` refuses it) is rolled back whole: the replay runs in a savepoint (`guardReplay`, `settleReplay`).
 The Inspiração is back, no `favor` event or `inspiration_holds` row stands, the hold is `dropped` and the master reads the `held_dropped` line.
 What stays spent is only what the windows' own answers wrote before the savepoint: the reactor's slot and reaction, as a reaction used against an action that then did not happen.
+An NPC's check outside a combat that a Lore bard cuts is the kind `npc_check`: the bard's Cutting Words answer spends the Bardic Inspiration use there and nothing else, and has no Inspiração of the roller to spend.
 A contest start, a contest answer and Hide are held the same way by Cutting Words and the master's check window: the hold only checks the Inspiration is there, and the replay spends it.
 
 ## The log and the undo

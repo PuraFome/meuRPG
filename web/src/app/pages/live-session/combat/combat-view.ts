@@ -28,7 +28,7 @@ import { sheetWindow } from '../../../core/combat/reactions';
 import { questions } from '../../../core/combat/hidden-reveal';
 import { heldOfferOf } from '../../../core/held-rolls/held-roll-offer';
 import { COMBAT_VIEW_IMPORTS } from './combat-view-imports';
-import { CombatViewPartsDirective } from './combat-view-parts';
+import { CombatViewItemsDirective } from './combat-view-items';
 import { MapTab } from './map-tabs/map-tab';
 import { MasterLayout } from './master-layout';
 import { keepFocusClear } from './sticky-room';
@@ -61,7 +61,7 @@ import { type RiderPick } from './hit-rider/hit-rider-card';
     '[attr.data-encounter-revision]': 'encounter()?.revision ?? null',
   },
 })
-export class CombatView extends CombatViewPartsDirective {
+export class CombatView extends CombatViewItemsDirective {
   /** Set the first time the combat is read: "Combate atualizado agora." only follows a reload. */
   private refreshChecked = false;
 

@@ -64,11 +64,9 @@ func TestCastEndConfirmRefusals(t *testing.T) {
 	err = castEndConfirm(t, a, a.master, newKey(), noEdit)
 	wantRefusal(t, "a cast that does not exist", err, connect.CodeNotFound, "cast not found")
 	err = castEndConfirm(t, a, a.ana, prayer, noEdit)
-	wantRefusal(t, "another player's cast", err, connect.CodePermissionDenied, "only the character's player or the master may do this")
+	wantRefusal(t, "another player's cast", err, connect.CodePermissionDenied, "only the campaign's master can do this")
 	err = castEndConfirm(t, a, a.bia, prayer, noEdit)
-	wantRefusal(t, "the caster's player", err, connect.CodePermissionDenied, "only the master completes a cast")
-
-	// A cast aimed at a creature the players do not see is not found for a player (RN-10).
+	wantRefusal(t, "the caster's player", err, connect.CodePermissionDenied, "only the campaign's master can do this")
 
 	// A cast that is not being cast.
 	done := a.mustCastOut(t, a.ana, a.pens, mageArmorKey, slotOfLevel(1), false, []*charactersv1.Character{a.toren}).GetCast().GetId()
@@ -76,10 +74,10 @@ func TestCastEndConfirmRefusals(t *testing.T) {
 	wantCastingBlocked(t, "a cast that is not going", err, playv1.CastingBlockedReason_CASTING_BLOCKED_REASON_CAST_NOT_GOING)
 	wantRefusal(t, "a cast that is not going", err, connect.CodeFailedPrecondition, "the spell is not being cast")
 
-	// A cast that has a creature the players do not see in it is not found for a player (RN-10).
+	// A cast that has a creature the players do not see in it: a player is refused as the master's alone, before the cast is read.
 	a.execSQL(t, `UPDATE spell_casts SET secret = true WHERE id = $1`, prayer)
 	err = castEndConfirm(t, a, a.bia, prayer, noEdit)
-	wantRefusal(t, "a secret cast as its player", err, connect.CodeNotFound, "cast not found")
+	wantRefusal(t, "a secret cast as its player", err, connect.CodePermissionDenied, "only the campaign's master can do this")
 }
 
 // TestCastEndConfirmPlanChangedSinceTheStart: the plan is rebuilt when the master confirms, and the sheet has to

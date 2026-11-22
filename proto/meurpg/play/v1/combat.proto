@@ -4779,6 +4779,13 @@ enum HeldRollKind {
   // The Dexterity saving throw of a mounted rider (RollMountSave), DC 10: Lucky's reroll of a 1 and a Bardic Inspiration die are
   // asked about before the rider stays on or falls, as for any saving throw.
   HELD_ROLL_KIND_MOUNT_SAVE = 14;
+  // The ability check a creature of the master's side makes outside a combat (RollNpcCheck), held for the Cutting Words
+  // ("Palavras de Interrupção") of the bards of the table. The offer is the master's, who reads the roll and every bard asked, and the
+  // bard whose turn it is, when its player is in the open scene's audience (one at a time, in order), with only the die and
+  // the uses left and the creature's name only when that bard's player sees it; no other player is offered it, and no
+  // player reads the creature's d20, bonus or total. A creature has no
+  // player: there is no roller to leave out.
+  HELD_ROLL_KIND_NPC_CHECK = 15;
 }
 
 // LuckyQuestion is the halfling's "Tirou 1: rolar de novo?" (SRD 5.1, Halfling, Lucky).
@@ -4786,6 +4793,43 @@ message LuckyQuestion {
   // The die that shows the 1, as an index into `HeldRollOffer.d20.faces`: the one the answer rolls
   // again (0 for a single d20; with both dice on 1, the first).
   int32 lucky_index = 1;
+}
+
+// CuttingWordsQuestion is the question of a check a creature of the master's side makes outside a combat (SRD 5.1, College of
+// Lore, Cutting Words): "Palavras de Interrupção: tirar o dado do teste?". In the bard's offer it carries the die and the uses
+// left, and the offer's `roller_label` names the creature only when the bard's player sees it ("uma criatura" otherwise); it
+// never carries the d20, the bonus, the total or a DC. In the master's offer it lists every bard asked, in order.
+message CuttingWordsQuestion {
+  // The size of the bard's die (6, 8, 10 or 12), from the bard level. 0 in the master's offer.
+  int32 sides = 1;
+  // The uses of Bardic Inspiration the bard has left. 0 in the master's offer.
+  int32 uses_left = 2;
+  // The bards asked, in the order they are asked. The master's offer only: empty in a bard's.
+  repeated NpcCheckAsk asks = 3;
+}
+
+// NpcCheckAsk is one bard asked about a check of the master's side, as the master reads it.
+message NpcCheckAsk {
+  // The bard's character (a UUID) and its name.
+  string character_id = 1;
+  string character_name = 2;
+  NpcCheckAskState state = 3;
+  // The size of the bard's die; the face when it was cut (CUT), 0 otherwise.
+  int32 sides = 4;
+  int32 face = 5;
+}
+
+// NpcCheckAskState is where a bard's question of a check stands.
+enum NpcCheckAskState {
+  NPC_CHECK_ASK_STATE_UNSPECIFIED = 0;
+  // The question is open or waits for the bards asked before this one.
+  NPC_CHECK_ASK_STATE_WAITING = 1;
+  // The bard cut the roll: the die was taken off and the use spent.
+  NPC_CHECK_ASK_STATE_CUT = 2;
+  // The bard let it pass.
+  NPC_CHECK_ASK_STATE_PASSED = 3;
+  // The question closed with no answer: the master went on without the bard, or the bard could not answer any more.
+  NPC_CHECK_ASK_STATE_CLOSED = 4;
 }
 
 // DieQuestion is the Bardic Inspiration die the roller may add (SRD 5.1).
@@ -4869,6 +4913,8 @@ message HeldRollOffer {
     IndomitableQuestion indomitable = 12;
     StrokeOfLuckQuestion stroke_of_luck = 13;
     RerollQuestion reroll = 14;
+    // The bard's question of an NPC_CHECK (a bard's offer), or the master's read of who is asked (the master's offer).
+    CuttingWordsQuestion cutting_words = 15;
   }
   // The attack and its target; empty for a roll that is not a weapon attack.
   string attack_key = 9;
@@ -5013,10 +5059,13 @@ message TakeActionRequest {
   // "feature:channel-divinity-preserve-life" (Canalizar Divindade: Preservar a Vida, SRD 5.1, Life Domain): the
   // hit points to restore to each creature within 30 ft of the cleric. Their total is at most five times the
   // cleric's level; each creature is restored to no more than half of its hit point maximum (what would pass it is
-  // not spent), and an undead or a construct cannot be restored. A creature more than 30 ft away or an undead or
-  // construct is refused with `failed_precondition` (EncounterBlocked CHANNEL_DIVINITY_TARGET), and so is a total
-  // above the limit (CHANNEL_DIVINITY_TOO_MUCH). With no entry the points go to the cleric's side, the creature
-  // hurt the most in proportion first, each as far as half its maximum. Ignored by any other action.
+  // not spent), and an undead or a construct cannot be restored. The caller names only the creatures their view of
+  // the combat lists (the master's lists all): any other id gets the answer for a creature that is not in the
+  // combat. An id the caller's view does not list, a creature more than 30 ft away and an undead or a construct are
+  // refused with `failed_precondition` (EncounterBlocked CHANNEL_DIVINITY_TARGET), and so is a total above the limit
+  // (CHANNEL_DIVINITY_TOO_MUCH); a refusal spends nothing. With no entry the points go to the creatures of the
+  // cleric's side that the caller's view lists, the one hurt the most in proportion first, each as far as half its
+  // maximum. Ignored by any other action.
   repeated PreserveLifeHeal preserve_life = 102;
   // A feature action of the table's content that spends several points of its resource and lets the player choose
   // (Action.cost_max above Action.cost): how many to spend, from `cost` to `cost_max` or what is left. 0 takes the
@@ -5089,9 +5138,13 @@ message HookResult {
 
 // ChannelDivinityResult is what a Channel Divinity action did, creature by creature.
 message ChannelDivinityResult {
-  // Preserve Life: the hit points each creature regained (after the half-maximum limit), in the order asked.
+  // Preserve Life: the hit points each creature regained (after the half-maximum limit), for the creatures the reader may
+  // read, in the order asked or, when the request named no creature, the lowest in proportion first. Read later (the log
+  // line, a retried answer) a player is listed a character or a creature of the party that the master has not hidden; an
+  // NPC only if that player saw it when the action was made, or, for a line stored with no record of who saw it, when the
+  // line says it was made without fog (with no such mark: on a combat with no map).
   repeated ChannelDivinityHeal heals = 1;
-  // Turn Undead: each undead that had to save, in the order of the combat.
+  // Turn Undead: the save of each undead that had to save and that the reader may read, in the order of the combat.
   repeated ChannelDivinityTurn turns = 2;
   // Turn Undead: the cleric's save DC.
   int32 save_dc = 3;
@@ -5101,10 +5154,16 @@ message ChannelDivinityResult {
 message ChannelDivinityHeal {
   string combatant_id = 1;
   string label = 2;
-  // Asked is what the cleric asked for; Healed what the creature regained after the limit of half its maximum.
+  // Asked is what the cleric asked for the creature, or what the server shared to it when the request named no one; Healed
+  // what the creature regained after the limit of half its maximum.
   int32 asked = 3;
   int32 healed = 4;
-  int32 hit_points_after = 5;
+  // Deprecated: never filled. hit_points_after_known says the hit points after the action.
+  int32 hit_points_after = 5 [deprecated = true];
+  // The creature's hit points after the action, set only for a reader to whom the combat view gives that creature's
+  // hit points as numbers (the master and the player who plays it, while the creature is still in the combat's list).
+  // Unset for any other reader.
+  optional int32 hit_points_after_known = 6;
 }
 
 // ChannelDivinityTurn is the Wisdom saving throw of one undead against Turn Undead.
@@ -6695,6 +6754,11 @@ message ConsumableUseLogLine {
   string damage_type_name_pt = 8;
   // The name of the receiver when it is not the user (a potion given to another creature); empty for the user.
   string target_label = 9;
+  // The item's kind, which the line's verb follows (a potion is drunk or given, an oil applied, a scroll read).
+  // UNSPECIFIED when the item is no longer in the catalog or the campaign's rules cannot be read.
+  meurpg.characters.v1.ConsumableKind kind = 10;
+  // RESISTANCE: the whole length of the effect as a sentence part ("por 1 hora"); empty on the other outcomes.
+  string effect_duration_text_pt = 12;
 }
 
 // CombatLogReadied is a readied action in a line of the log, for the master and the readier's owner.

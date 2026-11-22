@@ -2079,9 +2079,11 @@ SELECT * FROM inspiration_holds WHERE campaign_id = $1 AND id = $2;
 -- (combatant_id), and, when a character backs it, the holds made before the column was written
 -- (combatant_id NULL, found by the character); a roller out of a combat owns the holds that name
 -- no combatant. The creatures and the copies of an NPC share a character_id with the one they
--- came from, so they pass no character: only the combatant owns. A NULL parameter matches nothing.
+-- came from, so they pass no character: only the combatant owns. A NULL parameter matches nothing. The master's check of an NPC
+-- (npc_check) is the NPC's character_id and nobody's roll to answer: it is never one of a roller's holds.
 SELECT * FROM inspiration_holds
 WHERE answer_key IS NULL
+  AND kind <> 'npc_check'
   AND ((encounter_id = sqlc.narg(encounter_id) AND combatant_id = sqlc.narg(combatant_id))
     OR (combatant_id IS NULL AND character_id = sqlc.narg(character_id)))
 ORDER BY created_at;
@@ -2113,11 +2115,13 @@ SELECT campaign_id, character_id, (favor_spent AND answer_key IS NULL)::boolean 
 -- Every hold a roller owns, answered or not (ListOpenInspirationHolds says who owns what). Says which of them spent the
 -- character's Inspiration and never got the roll (no answer yet): that spend goes back. Only hold_forget.go calls it.
 -- It also drops the character's holds outside a combat (combatant_id IS NULL) when its combatant leaves or the combat ends, and those are
--- refunded too.
+-- refunded too. Not the master's check of an NPC (npc_check): it names the NPC's character, not a roll of its combatant, and the bards
+-- still answer it.
 WITH changed AS (
 DELETE FROM inspiration_holds
-WHERE (encounter_id = sqlc.narg(encounter_id) AND combatant_id = sqlc.narg(combatant_id))
-   OR (combatant_id IS NULL AND character_id = sqlc.narg(character_id))
+WHERE kind <> 'npc_check'
+  AND ((encounter_id = sqlc.narg(encounter_id) AND combatant_id = sqlc.narg(combatant_id))
+    OR (combatant_id IS NULL AND character_id = sqlc.narg(character_id)))
 RETURNING id, campaign_id, character_id, favor_spent, favor_prompt_id, answer_key
 )
 SELECT campaign_id, character_id, (favor_spent AND answer_key IS NULL)::boolean AS unsettled_favor, favor_prompt_id FROM changed ORDER BY id;
@@ -2163,7 +2167,8 @@ UPDATE inspiration_holds SET faces = $2, counted = $3, total = $4, stroke_answer
 -- The held rolls of a character whose die is gone (it ran out): there is nothing left to ask.
 -- A roll held in a combat (round set) has its die on the combatant and is forgotten by the
 -- round it was held in (outsideRoll) or when the combat ends (dieToCharacters). A roll whose
--- Lucky question, whose reroll question or whose Stroke of Luck question still waits stays: those questions need no die.
+-- Lucky question, whose reroll question or whose Stroke of Luck question still waits stays: those questions need no die. A check of
+-- the master's side (npc_check) waits for the bards' dice, never for the NPC's: it stays.
 -- Only hold_forget.go calls it.
 WITH changed AS (
 DELETE FROM inspiration_holds h
@@ -2171,6 +2176,7 @@ WHERE h.campaign_id = $1 AND h.answer_key IS NULL AND h.round IS NULL
   AND (h.lucky_index IS NULL OR h.lucky_answer_key IS NOT NULL)
   AND NOT h.stroke_ask
   AND NOT h.reroll_ask
+  AND h.kind <> 'npc_check'
   AND NOT EXISTS (SELECT 1 FROM character_inspiration d WHERE d.character_id = h.character_id)
 RETURNING h.id, h.campaign_id, h.character_id, h.favor_spent, h.favor_prompt_id, h.answer_key
 )

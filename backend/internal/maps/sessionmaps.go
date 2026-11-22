@@ -365,7 +365,7 @@ func (sm *SessionMaps) MapTokens(ctx context.Context, tx pgx.Tx, mapID string) (
 	}
 	out := make([]link.TokenPosition, 0, len(rows))
 	for _, t := range rows {
-		out = append(out, link.TokenPosition{CharacterID: t.CharacterID, XBP: t.XBp, YBP: t.YBp})
+		out = append(out, link.TokenPosition{CharacterID: t.CharacterID, XBP: t.XBp, YBP: t.YBp, Hidden: t.Hidden})
 	}
 	// The creatures' tokens too (MR-037): the familiar's eyes need to know where it
 	// stands. They have no character of their own: CreatureID says whose they are.

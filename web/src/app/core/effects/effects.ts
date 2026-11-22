@@ -11,7 +11,7 @@ import {
 import { dcLabel } from '../format/save-dc';
 import { upFirst } from '../format/text';
 import { abilityName } from './ability-choice';
-import { hitCardLine, hitOf } from './hit-effect-text';
+import { hitCardLine, hitOf, timeLeftText } from './hit-effect-text';
 import { zoneSheetWords } from './zone-save';
 
 /**
@@ -77,17 +77,42 @@ export function combatCards(
   }));
 }
 
+/** The card's title: the effect's own name (`title_pt`), or the source's when an older server sends none. */
+function titleOf(effect: CharacterEffect): string {
+  return effect.titlePt || effect.sourceNamePt;
+}
+
+/**
+ * The line of where an effect comes from and for how long, outside a combat: "Poção de resistência · por 1 hora · 58 min
+ * restantes". The origin is the server's source name, left out when it is the card's own title (a spell's effect is titled by the
+ * spell). The whole length is the server's `total_duration_text_pt`, put beside the time left; with no fixed length (until it is
+ * dismissed, a concentration) the line keeps only the origin, and the time left is the card's clock row as the server words it.
+ */
+export function characterOrigin(effect: CharacterEffect): string {
+  const source = effect.sourceNamePt === titleOf(effect) ? '' : effect.sourceNamePt;
+  const timed = effect.totalDurationTextPt !== '' && effect.secondsLeft !== undefined;
+  return [
+    source,
+    ...(timed ? [effect.totalDurationTextPt, timeLeftText(effect.secondsLeft ?? 0)] : []),
+  ]
+    .filter((part) => part !== '')
+    .join(' · ');
+}
+
 /** The cards of the effects on a character outside a combat: what the master left visible, with the time left. */
 export function characterCards(effects: readonly CharacterEffect[]): EffectCardView[] {
-  return effects.map((e) => ({
-    key: e.id,
-    name: e.sourceNamePt,
-    origin: '',
-    tags: [...e.tagsPt],
-    clock: upFirst(e.durationTextPt),
-    save: '',
-    changes: [],
-  }));
+  return effects.map((e) => {
+    const timed = e.totalDurationTextPt !== '' && e.secondsLeft !== undefined;
+    return {
+      key: e.id,
+      name: titleOf(e),
+      origin: characterOrigin(e),
+      tags: [...e.tagsPt],
+      clock: timed ? '' : upFirst(e.durationTextPt),
+      save: '',
+      changes: [],
+    };
+  });
 }
 
 /** The names of the conditions the effects hold, once each, for the label under the cards. */

@@ -55,10 +55,13 @@ describe('a Bard at level 3: the college, and Expertise', () => {
     key: 'subclass:lore',
     namePt: 'Colégio do Conhecimento',
     skillChoices: 3,
+    skillsAllowed: ['skill:stealth', 'skill:perception', 'skill:acrobatics', 'skill:deception'],
+    expertiseAllowed: ['skill:arcana', 'skill:history', 'skill:stealth', 'skill:perception'],
   });
   const valor = create(LevelUpSubclassSchema, {
     key: 'subclass:valor',
     namePt: 'Colégio da Bravura',
+    expertiseAllowed: ['skill:arcana', 'skill:history', 'skill:stealth', 'skill:perception'],
     featureChoices: [
       create(LevelUpFeatureChoiceSchema, {
         feature: { key: 'feature:style', namePt: 'Estilo' },
@@ -83,6 +86,7 @@ describe('a Bard at level 3: the college, and Expertise', () => {
       subclassDue: true,
       subclasses: [lore, valor],
       expertiseChoices: 2,
+      expertiseAllowed: ['skill:arcana', 'skill:history'],
       spells: 1,
       spellsKind: LevelUpSpellsKind.KNOWN,
       spellListClassKey: 'class:bard',

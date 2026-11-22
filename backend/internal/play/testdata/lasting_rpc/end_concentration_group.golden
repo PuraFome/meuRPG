@@ -28,10 +28,10 @@ Brisa spell:heroism kind=spell conc=true dur=rounds ends=r11/Goblin/start_of_tur
 lasting_effect_ended by <user:master> {"combatant_id":"<Pensantus>","lasting":{"change":"ended","effects":["<uuid>","<uuid>"],"key":"spell:bless","owner_only":true,"reason":"concentration","targets":["<Brisa>","<Toren>"]},"round":1,"target_id":"<one of the targets>"}
 conditions_set by <user:master> {"combatant_id":"<Pensantus>","conc_before":"spell:bless","conc_ended":"spell:bless","round":1}
 lasting_effect_ended by <user:master> {"combatant_id":"<Goblin>","lasting":{"change":"ended","effects":["<fx:spell:bane@Toren>"],"key":"spell:bane","owner_only":true,"reason":"ended_by_master","targets":["<Toren>"]},"round":1,"target_id":"<Toren>"}
-lasting_effect_ended by <user:master> {"combatant_id":"<Goblin>","lasting":{"change":"ended","effects":["<fx:spell:bane@Toren>"],"key":"spell:bane","reason":"ended_by_master"},"round":1,"target_id":"<Toren>"}
+lasting_effect_ended by <user:master> {"combatant_id":"<Goblin>","lasting":{"change":"ended","effects":["<fx:spell:bane@Toren>"],"key":"spell:bane","reason":"ended_by_master","targets":["<Toren>"]},"round":1,"target_id":"<Toren>"}
 conditions_set by <user:master> {"combatant_id":"<Pensantus>","conc_before":"spell:hold-person","conc_ended":"spell:hold-person","round":1}
 lasting_effect_ended by <user:master> {"combatant_id":"<Pensantus>","lasting":{"change":"ended","effects":["<fx:spell:hold-person@Goblin>"],"key":"spell:hold-person","reason":"concentration","targets":["<Goblin>"]},"round":1,"target_id":"<Goblin>"}
-lasting_effect_ended by <user:master> {"combatant_id":"<Pensantus>","lasting":{"change":"ended","effects":["<fx:spell:hold-person@Goblin>"],"key":"spell:hold-person","reason":"concentration"},"round":1,"target_id":"<Goblin>"}
+lasting_effect_ended by <user:master> {"combatant_id":"<Pensantus>","lasting":{"change":"ended","effects":["<fx:spell:hold-person@Goblin>"],"key":"spell:hold-person","reason":"concentration","targets":["<Goblin>"]},"round":1,"target_id":"<Goblin>"}
 ## concentrating
 Brisa concentrates on -
 Goblin concentrates on spell:heroism
@@ -47,9 +47,9 @@ Toren concentrates on -
 lasting_effect_ended by <user:master> {"combatant_id":"<Pensantus>","lasting":{"change":"ended","effects":["<uuid>","<uuid>"],"key":"spell:bless","owner_only":true,"reason":"concentration","targets":["<Brisa>","<Toren>"]},"round":1,"target_id":"<one of the targets>"}
 conditions_set by <user:master> {"combatant_id":"<Pensantus>","conc_before":"spell:bless","conc_ended":"spell:bless","round":1}
 lasting_effect_ended by <user:master> {"combatant_id":"<Goblin>","lasting":{"change":"ended","effects":["<fx:spell:bane@Toren>"],"key":"spell:bane","owner_only":true,"reason":"ended_by_master","targets":["<Toren>"]},"round":1,"target_id":"<Toren>"}
-lasting_effect_ended by <user:master> {"combatant_id":"<Goblin>","lasting":{"change":"ended","effects":["<fx:spell:bane@Toren>"],"key":"spell:bane","reason":"ended_by_master"},"round":1,"target_id":"<Toren>"}
+lasting_effect_ended by <user:master> {"combatant_id":"<Goblin>","lasting":{"change":"ended","effects":["<fx:spell:bane@Toren>"],"key":"spell:bane","reason":"ended_by_master","targets":["<Toren>"]},"round":1,"target_id":"<Toren>"}
 conditions_set by <user:master> {"combatant_id":"<Pensantus>","conc_before":"spell:hold-person","conc_ended":"spell:hold-person","round":1}
 lasting_effect_ended by <user:master> {"combatant_id":"<Pensantus>","lasting":{"change":"ended","effects":["<fx:spell:hold-person@Goblin>"],"key":"spell:hold-person","reason":"concentration","targets":["<Goblin>"]},"round":1,"target_id":"<Goblin>"}
-lasting_effect_ended by <user:master> {"combatant_id":"<Pensantus>","lasting":{"change":"ended","effects":["<fx:spell:hold-person@Goblin>"],"key":"spell:hold-person","reason":"concentration"},"round":1,"target_id":"<Goblin>"}
+lasting_effect_ended by <user:master> {"combatant_id":"<Pensantus>","lasting":{"change":"ended","effects":["<fx:spell:hold-person@Goblin>"],"key":"spell:hold-person","reason":"concentration","targets":["<Goblin>"]},"round":1,"target_id":"<Goblin>"}
 lasting_effect_ended by <user:master> {"combatant_id":"<Goblin>","lasting":{"change":"ended","effects":["<fx:spell:heroism@Brisa>"],"key":"spell:heroism","owner_only":true,"reason":"concentration","targets":["<Brisa>"]},"round":1,"target_id":"<Brisa>"}
-lasting_effect_ended by <user:master> {"combatant_id":"<Goblin>","lasting":{"change":"ended","effects":["<fx:spell:heroism@Brisa>"],"key":"spell:heroism","reason":"concentration"},"round":1,"target_id":"<Brisa>"}
+lasting_effect_ended by <user:master> {"combatant_id":"<Goblin>","lasting":{"change":"ended","effects":["<fx:spell:heroism@Brisa>"],"key":"spell:heroism","reason":"concentration","targets":["<Brisa>"]},"round":1,"target_id":"<Brisa>"}

@@ -299,6 +299,26 @@ func TestAuthorizationMatrix(t *testing.T) {
 			_, err := c.ApplyTrapDamage(ctx, connect.NewRequest(&playv1.ApplyTrapDamageRequest{CampaignId: campaign, TrapDamageId: campaign, IdempotencyKey: newKey()}))
 			return err
 		}, [5]connect.Code{connect.CodeNotFound, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},
+		// An NPC's check that a bard may cut: the master's alone; the master's unknown creature or hold is not found.
+		{"RollNpcCheck", func(ctx context.Context, c client) error {
+			_, err := c.RollNpcCheck(ctx, connect.NewRequest(&playv1.RollNpcCheckRequest{
+				CampaignId: campaign, Npc: &playv1.RollNpcCheckRequest_NpcCharacterId{NpcCharacterId: campaign}, CheckKey: "skill:deception",
+				Roll: &playv1.RollNpcCheckRequest_RollInApp{RollInApp: true}, IdempotencyKey: newKey(),
+			}))
+			return err
+		}, [5]connect.Code{connect.CodeNotFound, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},
+		{"SkipNpcCheckAsks", func(ctx context.Context, c client) error {
+			_, err := c.SkipNpcCheckAsks(ctx, connect.NewRequest(&playv1.SkipNpcCheckAsksRequest{CampaignId: campaign, HoldId: campaign, IdempotencyKey: newKey()}))
+			return err
+		}, [5]connect.Code{connect.CodeNotFound, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},
+		{"ListNpcCheckPicker", func(ctx context.Context, c client) error {
+			_, err := c.ListNpcCheckPicker(ctx, connect.NewRequest(&playv1.ListNpcCheckPickerRequest{CampaignId: campaign}))
+			return err
+		}, [5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},
+		{"GetNpcCheck", func(ctx context.Context, c client) error {
+			_, err := c.GetNpcCheck(ctx, connect.NewRequest(&playv1.GetNpcCheckRequest{CampaignId: campaign}))
+			return err
+		}, [5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},
 		{"DiscardTrapDamage", func(ctx context.Context, c client) error {
 			_, err := c.DiscardTrapDamage(ctx, connect.NewRequest(&playv1.DiscardTrapDamageRequest{CampaignId: campaign, TrapDamageId: campaign, IdempotencyKey: newKey()}))
 			return err
@@ -804,6 +824,10 @@ func (noRoster) CreatureCheck(context.Context, pgx.Tx, string, string, string, s
 	return link.SceneOption{}, nil
 }
 
+func (noRoster) CreatureChecks(_ context.Context, _ pgx.Tx, _, _, _ string, keys []string) ([]link.SceneOption, error) {
+	return make([]link.SceneOption, len(keys)), nil
+}
+
 func (noRoster) DamageModifiers(context.Context, pgx.Tx, string, string, string) (combat.TypeModifiers, error) {
 	return combat.TypeModifiers{}, nil
 }
@@ -944,6 +968,10 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	_, calls["FireTrap"] = c.FireTrap(ctx, connect.NewRequest(&playv1.FireTrapRequest{CampaignId: id, MapId: id, PointId: id, IdempotencyKey: id}))
 	_, calls["ListTrapDamages"] = c.ListTrapDamages(ctx, connect.NewRequest(&playv1.ListTrapDamagesRequest{CampaignId: id}))
 	_, calls["ApplyTrapDamage"] = c.ApplyTrapDamage(ctx, connect.NewRequest(&playv1.ApplyTrapDamageRequest{CampaignId: id, TrapDamageId: id, IdempotencyKey: id}))
+	_, calls["RollNpcCheck"] = c.RollNpcCheck(ctx, connect.NewRequest(&playv1.RollNpcCheckRequest{CampaignId: id, Npc: &playv1.RollNpcCheckRequest_NpcCharacterId{NpcCharacterId: id}, CheckKey: "skill:deception", Roll: &playv1.RollNpcCheckRequest_RollInApp{RollInApp: true}, IdempotencyKey: id}))
+	_, calls["SkipNpcCheckAsks"] = c.SkipNpcCheckAsks(ctx, connect.NewRequest(&playv1.SkipNpcCheckAsksRequest{CampaignId: id, HoldId: id, IdempotencyKey: id}))
+	_, calls["ListNpcCheckPicker"] = c.ListNpcCheckPicker(ctx, connect.NewRequest(&playv1.ListNpcCheckPickerRequest{CampaignId: id}))
+	_, calls["GetNpcCheck"] = c.GetNpcCheck(ctx, connect.NewRequest(&playv1.GetNpcCheckRequest{CampaignId: id}))
 	_, calls["DiscardTrapDamage"] = c.DiscardTrapDamage(ctx, connect.NewRequest(&playv1.DiscardTrapDamageRequest{CampaignId: id, TrapDamageId: id, IdempotencyKey: id}))
 	_, calls["CastSummon"] = c.CastSummon(ctx, connect.NewRequest(&playv1.CastSummonRequest{CampaignId: id, CharacterId: id, IdempotencyKey: id}))
 	_, calls["AssumeWildShape"] = c.AssumeWildShape(ctx, connect.NewRequest(&playv1.AssumeWildShapeRequest{CampaignId: id, CharacterId: id, BeastKey: "monster:wolf", IdempotencyKey: id}))

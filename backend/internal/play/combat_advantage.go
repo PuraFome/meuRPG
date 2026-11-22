@@ -147,9 +147,9 @@ func shapeOfAttack(a link.Attack) attackShape {
 }
 
 // shapeOfSpell reads a spell's attack roll: melee when it is a touch, else ranged
-// with the spell's range.
+// with the spell's range (a Self spell, its reach).
 func shapeOfSpell(sp link.Spell) attackShape {
-	return attackShape{Melee: sp.AttackType == "melee", RangeFt: sp.RangeFt}
+	return attackShape{Melee: sp.AttackType == "melee", RangeFt: max(sp.RangeFt, sp.ReachFt)}
 }
 
 // modeFacts is the combat as the advantage rules read it.

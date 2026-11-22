@@ -5,14 +5,16 @@ import (
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
 // Charges (SRD 5.1): the maximum of an item comes from the catalog (rules.ItemCharges) and what a character
 // spent from character_item_charges, one row for each entry of the sheet's magic items. A read fills
-// charges_max, charges_left and destroyed on the entries; a save never changes them.
+// charges_max, charges_left and destroyed on the entries, and also effect_pt and consumable (from the content, not the charges); a save never changes them.
 
-// fillItemCharges fills the charges of the character's magic items from the stored state. The caller is the player
+// fillItemCharges fills the charges of the character's magic items from the stored state, and the effect line and the consumable
+// (what a use is and costs) of each entry from the content. The caller is the player
 // the character belongs to or the master (canSee), so the counts reach nobody else (RN-10).
 func (s *Service) fillItemCharges(ctx context.Context, content *rules.Content, c *charactersv1.Character) error {
 	full := c.GetSheet().GetFull()
@@ -29,6 +31,7 @@ func (s *Service) fillItemCharges(ctx context.Context, content *rules.Content, c
 	}
 	for _, it := range full.GetMagicItems() {
 		it.EffectPt = content.PotionEffectLinePT(it.GetKey())
+		it.Consumable = sheetConsumableOf(content, it.GetKey())
 		ic, ok := content.ItemCharges(it.GetKey())
 		if !ok {
 			continue
@@ -38,6 +41,31 @@ func (s *Service) fillItemCharges(ctx context.Context, content *rules.Content, c
 		it.Recharge = itemRechargeOf(ic)
 	}
 	return nil
+}
+
+// sheetConsumableOf is what a use of the catalog item is and costs, from the rules the use of a consumable follows, and nil for
+// an item the use refuses.
+func sheetConsumableOf(content *rules.Content, key string) *charactersv1.SheetConsumable {
+	c, ok := content.ConsumableOf(key)
+	if !ok {
+		return nil
+	}
+	out := &charactersv1.SheetConsumable{
+		CostsAction:   c.CostsAction,
+		EffectTitlePt: content.PotionTitlePT(key), EffectDurationTextPt: content.PotionLengthPT(key),
+		HealDiceCount: conv.Int32(c.Heal.Count), HealDiceSides: conv.Int32(c.Heal.Sides), HealBonus: conv.Int32(c.Heal.Bonus),
+	}
+	switch c.Kind {
+	case rules.ConsumablePotion:
+		out.Kind = charactersv1.ConsumableKind_CONSUMABLE_KIND_POTION
+	case rules.ConsumableOil:
+		out.Kind = charactersv1.ConsumableKind_CONSUMABLE_KIND_OIL
+	case rules.ConsumableScroll:
+		out.Kind = charactersv1.ConsumableKind_CONSUMABLE_KIND_SCROLL
+	default:
+		out.Kind = charactersv1.ConsumableKind_CONSUMABLE_KIND_OTHER
+	}
+	return out
 }
 
 // applyItemCharges fills the charge fields of an entry from the catalog's numbers and the stored row (set says the

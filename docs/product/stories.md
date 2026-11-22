@@ -70,6 +70,7 @@ Where a behaviour came from a product answer, the [archive](../archive/decisions
 | [MR-055](#mr-055-answer-a-creatures-rider) | Combat | MVP |
 | [MR-056](#mr-056-show-the-table-on-a-screen) | Session | MVP |
 | [MR-057](#mr-057-turn-the-sun-on-in-a-combat) | Combat | MVP |
+| [MR-058](#mr-058-cutting-words-on-an-npcs-check) | Session | MVP |
 | [MR-059](#mr-059-infuse-an-item) | Character | MVP |
 | [MR-002](#mr-002-generate-an-invite) | Campaign | MVP (prerequisite) |
 | [MR-005](#mr-005-create-npcs) | Character | MVP (prerequisite) |
@@ -2022,6 +2023,29 @@ The MVP has the three ready-made styles of the "Regras da mesa" page (RN-24); th
 - The state words of enemies ("Ferido"): show or hide.
 - The master accepts a spell outside the class list ([MR-045](#mr-045-look-up-spells)).
 - One switch per feature, with the ready-made styles as a starting point.
+
+### MR-058: Cutting Words on an NPC's check
+
+**As a** person who plays a Lore bard, **I want** to be asked whether the bard cuts a check the master's creature makes outside a combat, **so that** the Cutting Words chosen for the bard keep working when an NPC lies to or presses the party in a scene with no map. **As a** master, **I want** to roll the check and see who may cut it, **so that** the table's bards answer before the result is told.
+
+- Priority: MVP
+- Rules: RN-10, RN-20, RN-18
+- Modules: play, characters
+
+#### Acceptance criteria
+- **Given** a scene with no combat and a bard set to "todos" with a Bardic Inspiration use left, **when** the master rolls "Teste de um NPC" (Enganação, Persuasão, Intimidação or any check) and ticks "Os bardos veem a criatura e ela os ouve", **then** the roll waits and whoever plays the bard reads one question, "uma criatura" (or the creature's name, when the bard knows it), with the bard's die, and no number of the creature's.
+- **Given** two such bards, **when** the first answers, **then** the second is asked next; **and** only the bard asked reads the question, and nobody else at the table reads anything.
+- **Given** a bard, **when** the bard cuts, **then** only the use of Bardic Inspiration is spent (no reaction) and the die comes off the total; **when** the bard lets it pass, **then** nothing is spent. A bard at 0 hit points, or whose setting is not "todos", can only let it pass.
+- **Given** the bards have not answered, **when** the master taps "Continuar sem esperar", **then** the check settles at the roll, every ask still open closes and a late answer is refused. A combat that starts, the master rolling another NPC's check, or the session that ends, settles it the same way, and the bard asked is told the question is gone. If the bard asked cannot answer, "Continuar sem esperar" is the way out.
+- **Given** nobody may cut it (the setting, no use left, a creature the bards do not see or that does not hear them, a creature whose token the master hid on the map, whether or not the bard has a token and whether or not the box is ticked, a creature immune to charm), **when** the master rolls, **then** the check settles at once.
+- **Given** a combat is open, **when** the master rolls an NPC's check this way, **then** it is refused with the reason.
+- **Given** the master's picker, **then** it lists the NPCs on the stage (with the mark of the ones hidden from the players), the NPC tokens on the current map and the creature asked from the bestiary, not every living NPC; and it says, for each creature, whether the map can measure it against a bard (both tokens on the grid of the current map), so the app asks for the checkbox only when it cannot.
+- **Given** a check that settled, **when** the master opens the table again, **then** the master reads it again (the creature, the check, the roll, who cut with which die, who let it pass, who was skipped, the total) until the next check is rolled or the session ends; nobody but the master reads it.
+- **Given** a check that waits for the bards, **when** the master hides the creature's token on the map the check was rolled on, **then** the next time the question is read or answered it closes as "Continuar sem esperar" does and nobody is asked; **when** the master hides the creature on the stage, **then** the question calls it "uma criatura".
+- **Given** the bard whose turn it is was put in the reserve, died, was deleted or lost its player, **when** the question is next read or answered, **then** it closes as a pass and the next bard is asked (the master and that bard are told), and the check settles when no bard is left.
+- **Given** nobody may cut a check, **when** the master rolls it or reads it again, **then** the master reads why: no bard can cut a check, the creature is immune to charm, its token is hidden, or nobody sees it.
+- **Given** the open scene is open to only some players, **then** only the bards whose player it is open to are asked, whether the map measures the creature or the box is ticked.
+- **Given** a bard whose player leaves the scene while the question waits, **then** the question closes as a pass and the answer is refused as for a question that is gone.
 
 ### MR-047: More puzzles
 

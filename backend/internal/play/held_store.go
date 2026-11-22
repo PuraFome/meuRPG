@@ -38,6 +38,9 @@ const (
 	heldContest           heldKind = "contest_check"
 	heldInitiative        heldKind = "initiative"
 	heldMountSave         heldKind = "mount_save"
+	// heldNpcCheck is the check of a creature of the master's side outside a combat, held for the bards (npc_check.go): the one kind
+	// whose question is not the roller's, so the paths that answer a roller's question never find it.
+	heldNpcCheck heldKind = "npc_check"
 )
 
 // checksTheAnswer says the answer to a roll of the kind is refused when its question went stale (its combat round
@@ -126,6 +129,9 @@ const (
 // admits says the RPC of the class answers a roll of the kind, in the combat the reference names (none
 // when it names none).
 func (c holdClass) admits(h heldRoll, encounter string) bool {
+	if h.Kind == heldNpcCheck {
+		return false // the bards' question is answered by AnswerHeldRoll's cutting_words arm alone (npc_check_answer.go)
+	}
 	switch c {
 	case attackHold:
 		return h.Kind == heldWeaponAttack && (encounter == "" || h.EncounterID == encounter)

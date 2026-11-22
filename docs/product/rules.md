@@ -203,7 +203,19 @@ The master can also correct hit points, temporary hit points, spell slots (and p
   A monk at 0 hit points is down and cannot use it.
   Only the owner and the master read the number in the log.
   The master's undo gives back the hit points, the use and the action.
-- **Channel Divinity of the cleric.** Preserve Life (Life Domain) restores hit points to the creatures within 30 ft that the cleric names (when the cleric names no one, the app shares the points among the party, the most hurt first), up to five times the cleric's level in all, each to no more than half of its maximum; it cannot restore an undead or a construct. Turn Undead makes each undead within 30 ft that can see or hear the cleric make a Wisdom saving throw against the cleric's DC, and the ones that fail are turned for a minute (the master sees each save and who was turned, in the log and on the response; the turned creature carries the effect "Expulso"). Both spend the action and a use.
+- **Channel Divinity of the cleric.**
+  Preserve Life (Life Domain) restores hit points to the creatures within 30 ft that the cleric names, up to five times the cleric's level in all, each to no more than half of its maximum.
+  It cannot restore an undead or a construct.
+  The cleric's player may name only the creatures they read; any other is refused as not in the combat.
+  When the cleric names no one, the app shares the points among the cleric's side that the caller reads, the most hurt first.
+  Turn Undead makes each undead within 30 ft that can see or hear the cleric make a Wisdom saving throw against the cleric's DC, and the ones that fail are turned for a minute.
+  The turned creature carries the effect "Expulso".
+  The master reads each save and who was turned, in the log and on the response.
+  The cleric's player reads the saves of the undead they may read.
+  On a map with fog, later, the player reads only the undead they saw at the action that the master had not hidden then or since.
+  The result of Preserve Life lists each creature restored that the reader may read, with the amount asked and restored.
+  The hit points after go only to who reads that creature's numbers, the master and the player who plays it.
+  Both spend the action and a use.
 - **Spells and resources.** A spell spends its slot (or pact slot) when it is cast, and a resend does not spend twice. A healing spell heals at once, up to the maximum, and raises whoever was at 0. Class and race uses (Second Wind, Action Surge, Rage...) are counted too. A resource without a limit shows "ilimitado".
 - **The master's "Desfazer última ação"** undoes the last action; each undo is itself recorded.
 
@@ -558,6 +570,9 @@ A hidden member is never named: the turn waits for the master's part as "Falta o
 - The key and the uses a day of an innate use go to the master and the caster's owner, and every other player reads only that the cast was innate ("conjuração inata").
 - A cast that touches a hidden combatant leaves no line for the player. The reaction prompt carries neither the attacker nor the hit's total. The player cannot aim at a hidden target.
 - **Spells that read HP** (Sleep, Color Spray, Power Word Stun, Power Word Kill, Spare the Dying, Heal; "Sono", "Leque Cromático", "Palavra de Poder Atordoar", "Palavra de Poder Matar", "Estabilizar", "Cura Completa") are resolved with the real hit points, and the player still sees only words. The caster sees their own total (`5d8 (2, 4, 1, 5, 3) = 15`) and who was affected ("adormeceu", "não foi afetado"), never a target's hit points or the reason. The master sees the total, each creature's hit points, what remained and the reason. Other players see only who was affected and the condition. Targets are listed in the caster's order, not the order of the total, which would reveal who has the least hit points. Power Word Kill on a player character takes them to 0 with three failures, and the master confirms the death (RN-03).
+- **A heal that depends on the damage dealt** (Vampiric Touch) is half the damage the hit dealt, after the target's resistances, wherever the damage lands: temporary hit points, hit points, and what goes past 0 all count.
+  The heal is a line of the log, written on every hit that lands, with 0 when nothing heals.
+  Its numbers go only to the master and the caster's owner; another player reads the line with no numbers, and when the target is hidden no player reads the line, the caster's owner included.
 
 **RP scenes** (MR-015).
 An action's DC belongs to the master. A player never receives another player's roll.
@@ -697,6 +712,10 @@ A readied spell holds the concentration until it is released or lost (RN-31): re
 A spell or the master that ends concentration on a summoning spell (Conjure Animals) dismisses the creatures of that casting.
 The master's undo gives the concentration and the same creatures back.
 A spell that forces a saving throw later (Flaming Sphere, Sleet Storm, Earthquake) rolls its saves and damage when it is cast; the master calls for the later ones. Spirit Guardians, Moonbeam, Cloudkill, Web, Grease, Entangle, Stinking Cloud, Spike Growth and Wall of Fire are the exception: the app keeps their area and calls for the later saves by itself (RN-37).
+Vampiric Touch attacks a creature in reach when it is cast, and heals the caster half the damage dealt.
+The log shows the heal, and the master's undo takes it back.
+The cast result says what the master applies on later turns, such as the attacks of Flame Blade and Vampiric Touch, made as an action, the bite of Faithful Hound and Eyebite's new target.
+The app does not repeat them.
 
 Conditions are public or owner-class.
 Public conditions are readable by everyone.
@@ -913,6 +932,14 @@ On a map with a grid the caster does not list who an area spell touches: they pl
 - **Walls.** A location is outside the area when no unblocked straight line runs from the point of origin to it. Only total cover blocks (a wall, a closed door; crates, a column or other creatures do not). A spell that "spreads around corners" (Fireball and the other spheres) reaches the part of its shape connected to the origin, but never between two walls that touch at a corner. If a player places the point behind a wall, it lands on the near side. The master's point stays, and the master is not held to the range.
 - **Who is hit.** Everyone inside: allies, the caster when inside, hidden creatures. The damage is one roll for all. Cover is measured from the point of origin, and adds +2 (half) or +5 (three-quarters) only to a Dexterity saving throw. A creature reached only around a corner gets no automatic cover; the master marks it by hand.
 - **An empty area** is still cast and spends the slot and the action. The app asks first: "Ninguém que você vê está na área".
+- **Several creatures with a closeness limit.** Some spells take several creatures that must stay near each other.
+  The app never refuses a legal cast; where it cannot check the exact shape, it checks only what any legal cast must meet.
+  Acid Splash takes two creatures within its range and within 1.5 m of each other.
+  Chain Lightning takes a first creature within its range and others within 9 m of the first; the caster's range does not hold the others.
+  Mass Cure Wounds takes up to six creatures, each within 27 m of the caster (its 18 m range plus the 9 m radius of the sphere) and within 18 m of every other.
+  On a map a player's picks that break these limits are refused.
+  Without a map the app does not check.
+  The master is not held to the number of creatures or to the closeness.
 - **Without a grid** (combat without a map, RN-25) none of this exists: the caster lists who is hit, and the master judges who is inside and the cover.
 
 ### Teleport spells on the grid
@@ -993,6 +1020,12 @@ The master judges reach, distance and spell range, and the lists of targets hold
 The player spends movement by number ("Gastar movimento"), never more than the turn has, and reads what remains ("Restam 6 m"); the master spends for anyone.
 The opportunity attack is an offer from the master, who sees who left whose reach and may withdraw it or go on without waiting.
 Cover is what the master marks; total cover puts the target out of reach.
+**Spell targets** keep the SRD's number of creatures in this mode too.
+Seeming and Wall of Ice take up to 10 creatures, and the master applies the rest.
+Slow takes up to 6 and Water Breathing up to 10.
+A spell with no creature to pick (a point, an object, a place) takes no target.
+Fire Shield and Dimension Door take the caster only.
+The master is not held to the number.
 Moving, jumping, putting on the map, the reach preview, traps, fog, doors, summoned creatures' places and the familiar's eyes do not exist in this mode, and ask for a map.
 Everything else (initiative, turns, actions, attacks, spells, damage, reactions, conditions, death saves, highlights, log, undo, XP) is the same.
 See ADR-0017, [Architecture](../architecture/play/theatre.md) and [Design](../design/README.md).
@@ -1169,7 +1202,7 @@ There is no "Pular": every window is answered with "Usar" or "Deixar passar", or
 | Deflect Missiles (monk 3) | Reduces a ranged weapon hit by 1d10 + Dexterity + monk level; at 0 the monk catches the missile and, for 1 ki, throws it back. |
 | Hellish Rebuke | 2d10 fire (+1d10 per slot level above 1st), Dexterity save for half; the tiefling's Infernal Legacy casts it once per long rest. The aggressor's save is the master's and cannot be passed. |
 | Counterspell | A spell of the slot's level or lower fails; a higher one asks a spellcasting ability check against 10 + the spell's level. The slot is spent. The prompt to a player never names the spell or its level. |
-| Cutting Words (Lore bard 3) | Spends a Bardic Inspiration and takes the die off an attack roll (weapon or spell), ability check or damage roll of a creature of the other side that the bard sees within 60 feet. In a combat the checks it asks are the roll of a contest (grapple, shove, escape), the answer to a contest and a Hide; the roll waits for the bard before it is made. A check outside a combat has no window. A creature that cannot hear the bard or is immune to being charmed opens no window, nor does one the bard's player cannot see. The sheet setting "Perguntar: todos / só em ataques (padrão) / nunca" chooses what it asks: the checks only in "todos". |
+| Cutting Words (Lore bard 3) | Spends a Bardic Inspiration and takes the die off an attack roll (weapon or spell), ability check or damage roll of a creature of the other side that the bard sees within 60 feet. In a combat the checks it asks are the roll of a contest (grapple, shove, escape), the answer to a contest and a Hide; the roll waits for the bard before it is made. A check a creature of the master's side makes outside a combat is asked too: the master rolls it ("Teste de um NPC") and each bard that may cut it is asked in turn, one at a time, on the screen only (no reaction is spent, only the Bardic Inspiration use); the master may "Continuar sem esperar". Cutting Words needs the bard to see the creature and the creature to hear the bard: outside a combat, with no token of both on the map, the master says so with the box "Os bardos veem a criatura e ela os ouve". A creature that cannot hear the bard or is immune to being charmed opens no window, nor does one the master hid on the map (its token) or one the bard's player cannot see on the map within 60 feet; a bard whose player the open scene is not open to is asked nothing, on the map or by the box. A creature the master hid only on the stage opens a window when the box is ticked, and the question calls it "uma criatura". What is judged when: range and sight when the check is rolled; the feature, the setting, the hit points and the uses again when the bard answers; whether the creature is hidden every time the question is read (a token the master hides after the roll closes the question as "Continuar sem esperar" does, and a creature hidden on the stage reads "uma criatura"), and a bard whose character left the party (reserve, dead, deleted) or whose player is outside the open scene lets the question pass and the next bard is asked. When nobody is asked the master reads why. The sheet setting "Perguntar: todos / só em ataques (padrão) / nunca" chooses what it asks: the checks only in "todos". |
 | Protection (Fighting Style) | A creature the reactor sees attacks someone on the reactor's side within 5 ft of it (not the reactor): the attack roll has disadvantage. Only while the reactor wields a shield, has its reaction and sees the attacker. A combat without a map does not offer it. |
 | Feather Fall | Up to five falling creatures within 60 ft take no falling damage. |
 | Slow Fall (monk 4) | The falling monk takes 5 times its level off its own falling damage. |
@@ -1286,6 +1319,29 @@ The choices cover the SRD 5.1 sections Fighting Style, Draconic Ancestry and Bre
 - **A background's "this or that".** A table background may offer up to 4 groups, each a pick of some of a few skills, tools or pieces of equipment (SRD 5.1, "Backgrounds": a background gives two skills, tools, languages and equipment; a group leaves some of it to the player). A group takes at least one pick and always fewer than its options, which are at least 2 and at most 12, none twice. A skill group offers SRD skills the background does not already give, and the background still gives 2 skills in all: the ones it names and the picks of its skill groups together. A tool group offers SRD tools, among them the SRD's dice set and playing card set, and named gaming sets the master types (1 to 40 characters, none twice in the group); a named set is listed on the sheet as "Conjunto de jogo: Trilha". An equipment group offers pieces of equipment of 1 to 80 characters each, and the picks join the sheet's background equipment. The picks are made in "Escolhas" and warn while open, like the tool picks. A pick belongs to its group by what the group is (its kind, its picks and its options, in any order): if the master reorders the groups, the picks stay; if the master edits a group, its old picks count for nothing, the sheet is still saved, and on a locked sheet the group becomes a pending choice ("Completar escolhas pendentes").
 - **A trait with options.** A race or subrace trait the master registers may offer a one-time choice of one option. It is asked in the step "Escolhas" like the others, stored on the sheet and refused when it is not one of the options. A trait a subrace replaces asks nothing.
 - **Tools by kind, and the options of another feature.** A table choice of tools may offer every proficiency of the kinds the master ticks (weapon, tool, other) instead of a list; the pool is the catalog's proficiencies of those kinds, read when the sheet is, and it never holds an entry the table switched off, hid or archived. A tool choice that lists its own options may name proficiencies of the weapon and other kinds too. The SRD names no gaming set, so a set is picked by its proficiency like any other. A table choice of features may instead offer the options of another feature that has options (the SRD's or another table entry's): the choices that offer the same options share one pool. A player's pool never holds an option of an entry the master switched off, hid or archived, unless the sheet holds that entry; a player's pick of an option outside the pool is refused as a key that does not exist. The master may pick an option that is only switched off, not an archived one. A pick a sheet already holds is kept. A choice is complete with as many picks as a player may make today, the picks the sheet holds counted, so it never asks for more than the pool lists. A feature that offers another's options, one without options and a choice that also names a list, a set or a filter are refused when the master saves. A feature that offers another feature's options cannot also allow swaps (the swap levels of the swapping bullet above): the master's save is refused, and the master drops the swaps or gives the feature options of its own.
+- **A pick under an entry the master closed.** A player's new pick stored under the key of an entry the master switched off, hid or archived, which the sheet neither holds nor gets, is refused as a key that does not exist. A pick the sheet already holds is kept.
+- **Where skills, expertise and tools come from.** The sources of the picks are those of the entries the sheet holds or gets after the change, for every reader and on every path: creation, save, both previews, completing choices and level up.
+  Each choice of skill, expertise or tool picks from its own list, and the picks of the sheet are matched to the lists they can come from.
+  A pick that fits only when another moves to a different list is accepted.
+  A list that names a skill the character already has from its background asks its full count when its other skills are enough.
+  When they are too few, it takes any other skill for each one it lacks (SRD 5.1).
+  What the master closed changes what a player may take, never what an entry the sheet holds or gets gives.
+  A class feature of the table that the master archived gives its list to a character of the class, and the list is shown.
+  A switched-off one is no source.
+  A new pick that no list places is refused for a player, however the picks are ordered on the sheet, and the sentence names only that pick.
+  For skills, what the preview and the level up offer is what the save accepts: the same set; at a level that adds a class by multiclassing it is the class's row, without the skills the sheet has, and the picks of earlier levels stay where they are.
+  For expertise, being on the offered list is necessary and the proficiency decides.
+  A skill the stored sheet had from its background is a new pick when the background changes.
+  The master is never refused for a pick no list places: the sheet saves, and the master alone reads the issue about it.
+  A stored sheet whose picks do not fit saves, levels up and plays, and its picks count and give what they give.
+  The master is refused a tool pick that is no tool when the sheet has its owner or the table closed the owner; a pick under an owner the sheet lacks and the table keeps open is saved.
+  A tool pick under an archived owner the sheet neither holds nor gets is answered, for a player and for the master, as an owner that does not exist.
+  Under a switched-off owner it is saved for the master.
+  The choices preview answers the lists of the draft as it is: after a class change, the picks the new class's lists no longer place are ticked, can be taken off, and are refused only by the save, at their own field.
+  The preview of a draft or of a locked sheet refuses a key that is no tool, a pick of an entry the master closed or the player's view keeps out, and a pick under an owner a player may not read; it refuses no pick that no list places.
+  The sentence of a refused pick stays on its field until a pick, the class, the race, the subrace or the background changes.
+  A level up asks for as many new skills as the sheet after the level may pick, held picks counted, and refuses a player's new skill that no list of the sheet after the level has room for.
+  Its skill sources list the sources the level adds for the sheet after the level.
 - **Creation.** A player's sheet with an open choice is refused ("Criar personagem" explains what is missing), and the editor has a step "Escolhas". The master's NPCs and the table sheets are not held to it.
 - **Options that cannot be taken yet** (an invocation that asks level 5, or a spell the sheet lacks) are listed, dotted, with the reason. Two options that give the same thing (the same resistance twice) are refused.
 - **A locked sheet** whose class gained a choice stays playable. The owner and the master read "N escolhas pendentes", and the player completes only the missing picks, changing nothing else on the sheet (RN-01). The master also reads "N escolhas em aberto" on the campaign page; a player never sees another's.

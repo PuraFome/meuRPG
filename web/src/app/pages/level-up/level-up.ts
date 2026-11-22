@@ -177,7 +177,6 @@ export class LevelUpPage {
       this.session()?.stop();
       this.focus.disconnect();
     });
-
     // Every change of the choices asks the server what the sheet would be.
     let first = true;
     effect(() => {
@@ -197,6 +196,7 @@ export class LevelUpPage {
         first = false;
       });
     });
+    this.reader.watchListRefusals();
     // An ability increase can move the maximum of prepared spells: the preview says the new one.
     effect(() => {
       const s = this.session();
@@ -376,7 +376,7 @@ export class LevelUpPage {
       if (failure.kind === 'stale' && (await this.levelAlreadyApplied(s))) {
         return;
       }
-      this.show(failure);
+      await this.reader.showRefusal(failure);
     } finally {
       this.busy.set(false);
     }

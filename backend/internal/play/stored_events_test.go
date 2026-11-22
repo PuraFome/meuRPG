@@ -73,6 +73,8 @@ var otherWriters = map[string][]storedShape{
 	"spell_cast_finished":       {storedShapeOf[castEvent]("today.json")},
 	"spell_cast_interrupted":    {storedShapeOf[castEvent]("today.json")},
 	"spell_cast_ended":          {storedShapeOf[castEvent]("today.json")},
+	"npc_check_held":            {storedShapeOf[npcCheckEvent]("today.json")},
+	"npc_check_resolved":        {storedShapeOf[npcCheckEvent]("today.json")},
 	"group_check_requested":     {storedShapeOf[groupCheckEvent]("today.json")},
 	"group_check_rolled":        {storedShapeOf[groupCheckEvent]("today.json")},
 	"group_check_closed":        {storedShapeOf[groupCheckEvent]("today.json")},
@@ -614,9 +616,7 @@ func fillPayload(v reflect.Value, seen map[reflect.Type]int) {
 		seen[t]++
 		defer func() { seen[t]-- }()
 		for i := range t.NumField() {
-			// The payloads of the favor events written in a combat embed their ids and the combat's fields as unexported types, whose exported
-			// fields json writes: they are filled too (the other embedded types keep the shapes their fixtures have).
-			if f := t.Field(i); (f.IsExported() || (f.Anonymous && strings.HasPrefix(f.Type.Name(), "favor"))) && f.Tag.Get("json") != "-" {
+			if f := t.Field(i); (f.IsExported() || f.Anonymous) && f.Tag.Get("json") != "-" {
 				fillPayload(v.Field(i), seen)
 			}
 		}

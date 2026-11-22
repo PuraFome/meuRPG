@@ -1,0 +1,222 @@
+<app-sheet-frame
+  [title]="title"
+  titleId="use-consumable-t"
+  [subtitle]="subtitle()"
+  [phone]="inSheet"
+  (closed)="close()"
+>
+  <p class="effect">
+    <mat-icon aria-hidden="true">{{ effectIconName }}</mat-icon><b>{{ effectText }}</b>
+  </p>
+  @if (explain) {
+    <p class="explain">{{ explain }}</p>
+  }
+  <div class="mr-live" role="alert">
+    @if (error(); as e) {
+      <p class="mr-notice mr-notice--danger refusal" [id]="refusalId">
+        <span class="mr-notice__said">
+          <mat-icon aria-hidden="true">error</mat-icon>
+          <span><strong>{{ e.lead }}</strong> {{ e.text }}</span>
+        </span>
+        @if (e.retry) {
+          <button matButton="outlined" type="button" class="refusal__retry" [disabled]="busy()" (click)="retry()">Tentar de novo</button>
+        }
+      </p>
+    }
+  </div>
+  <div class="mr-live" role="alert">
+    @if (targetsError(); as e) {
+      <p class="mr-notice mr-notice--danger refusal" [id]="targetsErrorId">
+        <span class="mr-notice__said">
+          <mat-icon aria-hidden="true">error</mat-icon>
+          <span><strong>{{ e.lead }}</strong> {{ e.text }}</span>
+        </span>
+        @if (e.retry) {
+          <button matButton="outlined" type="button" class="refusal__retry" (click)="retryTargets()">Tentar de novo</button>
+        }
+      </p>
+    }
+  </div>
+  @if (phase() === 'give') {
+    <fieldset class="who">
+      <legend class="who__legend">{{ legend() }}</legend>
+      @for (t of targets(); track t.id) {
+        <label class="who__row" [class.who__row--on]="chosen() === t.id">
+          <input
+            #radio
+            type="radio"
+            name="use-consumable-target"
+            class="who__radio"
+            [value]="t.id"
+            [checked]="chosen() === t.id"
+            [disabled]="busy()"
+            (change)="chosen.set(t.id)"
+          />
+          <span class="who__avatar" aria-hidden="true">{{ t.name.charAt(0) }}</span>{{ ' ' }}
+          <span class="who__text">
+            <b>{{ t.name }}</b>{{ ' ' }}
+            @if (t.line) {
+              <span class="mr-muted">{{ t.line }}</span>
+            }
+          </span>
+        </label>
+      }
+    </fieldset>
+  }
+  @if (dice; as d) {
+    <div class="dice">
+      <!-- The toggle has one place, at the right of the first line, whichever way the dice come. -->
+      <p class="dice__line">
+        <span class="dice__text">
+          @if (!typing()) {
+            O app rola {{ d.text }}{{ receiverName() ? ' para ' + receiverName() : '' }}.
+          } @else {
+            Digite o que saiu em cada dado.
+            @if (d.modifier !== 0) {
+              O app soma {{ signedModifier }}.
+            }
+          }
+        </span>
+        @if (typing() ? data.canApp : data.canType) {
+          <button #typeSwitch type="button" class="dice__switch" (click)="typing() ? stopTyping() : startTyping()">
+            {{ typing() ? 'Rolar no app' : 'Digitar os dados' }}
+          </button>
+        }
+      </p>
+      @if (typing()) {
+        <div class="dice__fields">
+          @for (n of numbers; track n) {
+            <div class="dice__one">
+              <label class="dice__label" [for]="'use-consumable-face-' + n">Dado {{ n + 1 }} (d{{ d.sides }})</label>
+              <input
+                #face
+                [id]="'use-consumable-face-' + n"
+                class="dice__field"
+                type="text"
+                inputmode="numeric"
+                maxlength="3"
+                autocomplete="off"
+                [value]="faces()[n]"
+                [attr.aria-invalid]="invalid()[n] ? 'true' : null"
+                [attr.aria-describedby]="invalid()[n] ? faceErrorId : null"
+                (input)="onFace(n, $event)"
+              />
+            </div>
+          }
+        </div>
+        <!-- One message for the whole row, under it: the live region is there before the words come. -->
+        <div class="mr-live" role="alert">
+          @if (anyInvalid()) {
+            <p class="dice__err" [id]="faceErrorId">
+              <mat-icon aria-hidden="true">error</mat-icon>Digite um número de 1 a {{ d.sides }}
+            </p>
+          }
+        </div>
+      }
+    </div>
+  }
+  <div class="why" aria-live="polite">
+    @if (blockedLine(); as b) {
+      <p class="none" [id]="whyId">
+        <mat-icon aria-hidden="true">block</mat-icon><span><strong>{{ b.lead }}</strong> {{ b.text }}</span>
+      </p>
+    } @else if (phase() === 'choose' && reasonText()) {
+      <p class="none" [id]="whyId">
+        <mat-icon aria-hidden="true">block</mat-icon>{{ reasonText() }}
+      </p>
+    }
+  </div>
+  @if (cost(); as c) {
+    <p class="cost mr-muted">
+      @if (c.mark) {
+        <app-economy-mark kind="action" />
+      } @else {
+        <mat-icon aria-hidden="true">info</mat-icon>
+      }
+      <span>
+        @if (c.mark) {
+          <strong>{{ c.lead }}</strong>
+        } @else {
+          {{ c.lead }}
+        }{{ c.rest }}
+      </span>
+    </p>
+  }
+  <!-- Two equal halves on the phone, in every case (board 565-07-3a); a receiver in a combat has two ways to use it: the self-use button first and the receiver's button last, at the right edge, in the order they are shown and read. -->
+  <div foot class="foot" [class.foot--phone]="inSheet">
+    @if (phase() === 'choose') {
+      @if (gives) {
+        <button
+          #give
+          matButton="outlined"
+          type="button"
+          class="give go--half mr-button--ink"
+          [class.give--off]="giveOff()"
+          [class.mr-button--off]="giveOff()"
+          [disabled]="busy() || !canGive() || unread()"
+          disabledInteractive
+          [attr.aria-describedby]="giveWhyId()"
+          (click)="canGive() && !unread() && openGive()"
+        >
+          <mat-icon aria-hidden="true">{{ giveIcon() }}</mat-icon>Dar a…
+        </button>
+      }
+      <button
+        matButton="filled"
+        type="button"
+        class="go"
+        [class.go--half]="gives"
+        [class.go--wide]="!gives"
+        [class.go--off]="!canSend() && !busy()"
+        [class.go--busy]="busy()"
+        [class.mr-button--off]="!!blocked()"
+        [disabled]="!canSend()"
+        disabledInteractive
+        [attr.aria-describedby]="blocked() ? whyId : null"
+        (click)="send(null)"
+      >
+        @if (busy()) {
+          <span class="go__spin" aria-hidden="true"></span>
+        } @else {
+          <mat-icon aria-hidden="true">{{ itemIcon }}</mat-icon>
+        }{{ busy() ? 'Usando…' : drinkWord }}
+      </button>
+    } @else {
+      @if (inCombat() !== true) {
+        <button matButton="outlined" type="button" class="go--half mr-button--ink" [disabled]="busy()" disabledInteractive (click)="back()">Voltar</button>
+      }
+      @if (inCombat() === true) {
+        <button
+          matButton="outlined"
+          type="button"
+          class="go--half mr-button--ink"
+          [class.mr-button--off]="!!blocked()"
+          [disabled]="!canSend()"
+          disabledInteractive
+          [attr.aria-describedby]="blocked() ? whyId : null"
+          (click)="send(null)"
+        >
+          <mat-icon aria-hidden="true">{{ itemIcon }}</mat-icon>{{ selfWord() }}
+        </button>
+      }
+      <button
+        matButton="filled"
+        type="button"
+        class="go go--half"
+        [class.go--off]="(!canSend() || !receiver()) && !busy()"
+        [class.go--busy]="busy()"
+        [class.mr-button--off]="!!blocked()"
+        [disabled]="!canSend() || !receiver()"
+        disabledInteractive
+        [attr.aria-describedby]="blocked() ? whyId : null"
+        (click)="give()"
+      >
+        @if (busy()) {
+          <span class="go__spin" aria-hidden="true"></span>
+        } @else {
+          <mat-icon aria-hidden="true">volunteer_activism</mat-icon>
+        }{{ busy() ? 'Usando…' : 'Dar a ' + receiverName() }}
+      </button>
+    }
+  </div>
+</app-sheet-frame>

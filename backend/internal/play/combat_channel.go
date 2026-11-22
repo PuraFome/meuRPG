@@ -48,6 +48,10 @@ type channelEvent struct {
 	// Effects are the rows of the effect "turned" the action made, on Targets, which the undo takes away.
 	Effects []string `json:"effects,omitempty"`
 	Targets []string `json:"targets,omitempty"`
+	// UnderFog is written by combatTx.stamp, only as false, for an action made without fog (no map, or a map with no
+	// fog): it tells a new event, whose entries carry their own record (fogSeen) when the fog was on, from an older one
+	// with no record. An older event may carry it as true, and then lists no entry to a player that has no record.
+	UnderFog *bool `json:"under_fog,omitempty"`
 }
 
 // channelHeal is what Preserve Life gave one creature: what was asked, what the limit left, and the hit points
@@ -60,6 +64,9 @@ type channelHeal struct {
 	After       int32       `json:"after"`
 	Before      *hpState    `json:"before,omitempty"`
 	DeathBefore *deathState `json:"death_before,omitempty"`
+	// HiddenAtAction says the master had the creature hidden at the action.
+	HiddenAtAction bool `json:"hidden_at_action,omitempty"`
+	fogSeen
 }
 
 // channelTurn is the saving throw of one undead against Turn Undead.
@@ -70,6 +77,9 @@ type channelTurn struct {
 	Modifier int32  `json:"modifier"`
 	Total    int32  `json:"total"`
 	Turned   bool   `json:"turned,omitempty"`
+	// HiddenAtAction says the master had the undead hidden at the action.
+	HiddenAtAction bool `json:"hidden_at_action,omitempty"`
+	fogSeen
 	// countedRoll is the number the d20 counted as when a minimum raised it: D20 is what came up and Total uses this one.
 	countedRoll
 }
@@ -117,14 +127,15 @@ func (f *takeActionFlow) preserveLife(ctx context.Context, sheet link.Sheet) err
 	if err != nil {
 		return fmt.Errorf("list the combatants: %w", err)
 	}
+	may := f.namable(cs)
 	if len(asked) == 0 { // a request that names no one: the points go to whoever is hurt the most
-		if asked, err = f.neediest(ctx, cs, limit); err != nil {
+		if asked, err = f.neediest(ctx, may, limit); err != nil {
 			return err
 		}
 	}
 	ev := &channelEvent{}
 	for _, h := range asked {
-		target, err := f.preserveTarget(ctx, cs, h.target)
+		target, err := f.preserveTarget(ctx, may, h.target)
 		if err != nil {
 			return err
 		}
@@ -132,26 +143,34 @@ func (f *takeActionFlow) preserveLife(ctx context.Context, sheet link.Sheet) err
 		if err != nil {
 			return err
 		}
+		heal.HiddenAtAction = target.Hidden
 		ev.Heals = append(ev.Heals, heal)
 	}
 	f.made.Channel = ev
 	return nil
 }
 
-// neediest shares the points among the cleric's side: the creatures within 30 ft that are not undead or constructs
+// namable are the creatures the caller may name for Preserve Life, and the ones it shares the points among: the ones in the
+// combat that the answer's viewer sees. A request names no other, and one that does is refused as it is for a creature that
+// is not in the combat.
+func (f *takeActionFlow) namable(cs []playdb.Combatant) []playdb.Combatant {
+	return slices.DeleteFunc(slices.Clone(cs), func(c playdb.Combatant) bool { return c.Dismissed || !f.out.v.sees(c) })
+}
+
+// neediest shares the points among the cleric's side: the creatures of `may` within 30 ft that are not undead or constructs
 // and are below half of their maximum, the lowest in proportion first, each as far as that half.
-func (f *takeActionFlow) neediest(ctx context.Context, cs []playdb.Combatant, points int32) ([]preserveHeal, error) {
+func (f *takeActionFlow) neediest(ctx context.Context, may []playdb.Combatant, points int32) ([]preserveHeal, error) {
 	type need struct {
 		id   string
 		room int32
 		hurt float64
 	}
 	var needs []need
-	for _, c := range cs {
-		if c.Side != f.who.Side || c.Dismissed {
+	for _, c := range may {
+		if c.Side != f.who.Side {
 			continue
 		}
-		if _, err := f.preserveTarget(ctx, cs, c.ID); err != nil {
+		if _, err := f.preserveTarget(ctx, may, c.ID); err != nil {
 			continue // too far, an undead or a construct: not a target
 		}
 		now, most, err := f.s.hitPointsNow(ctx, f.c, f.m.CampaignID, c)
@@ -175,14 +194,14 @@ func (f *takeActionFlow) neediest(ctx context.Context, cs []playdb.Combatant, po
 	return out, nil
 }
 
-// preserveTarget finds a creature Preserve Life may restore: one in the combat, within 30 ft of the cleric, that
+// preserveTarget finds a creature Preserve Life may restore: one of `may` (namable), within 30 ft of the cleric, that
 // is not an undead or a construct.
-func (f *takeActionFlow) preserveTarget(ctx context.Context, cs []playdb.Combatant, id string) (playdb.Combatant, error) {
-	i := slices.IndexFunc(cs, func(c playdb.Combatant) bool { return c.ID == id && !c.Dismissed })
+func (f *takeActionFlow) preserveTarget(ctx context.Context, may []playdb.Combatant, id string) (playdb.Combatant, error) {
+	i := slices.IndexFunc(may, func(c playdb.Combatant) bool { return c.ID == id })
 	if i < 0 {
 		return playdb.Combatant{}, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_CHANNEL_DIVINITY_TARGET, "that creature is not in the combat")
 	}
-	target := cs[i]
+	target := may[i]
 	if d, known := distanceFt(f.who, target); known && d > channelRangeFt {
 		return target, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_CHANNEL_DIVINITY_TARGET, target.Label+" is more than 30 ft away")
 	}
@@ -264,6 +283,7 @@ func (f *takeActionFlow) turnUndead(ctx context.Context, sheet link.Sheet) error
 			}
 			continue
 		}
+		undead.HiddenAtAction = target.Hidden
 		ev.Turns = append(ev.Turns, *undead)
 		if undead.Turned {
 			turned = append(turned, target)
@@ -344,16 +364,50 @@ func (f *takeActionFlow) turn(ctx context.Context, cs []playdb.Combatant, turned
 	return nil
 }
 
-// channelProto is what a Channel Divinity action did, for the answer and the log.
-func channelProto(ev *channelEvent) *playv1.ChannelDivinityResult {
+// channelReader is what a reader of a Channel Divinity result reads: reads says whether the entry for a creature is theirs
+// (the creature, whether the master had it hidden at the action, and the record of who saw it), and numbers whether the
+// combat view gives them that creature's hit points as numbers.
+type channelReader struct {
+	reads   func(target string, hiddenAtAction bool, seen fogSeen) bool
+	numbers func(target string) bool
+}
+
+// atTheCall is the reader of the answer to the action: the entries of the creatures the viewer sees, that the master
+// had not hidden at the action.
+func (v combatViewer) atTheCall(byID map[string]playdb.Combatant) channelReader {
+	return channelReader{
+		reads:   func(id string, hidden bool, _ fogSeen) bool { return v.seesAtAction(byID[id], hidden) },
+		numbers: v.numbersOf(byID),
+	}
+}
+
+// numbersOf says, for a creature, whether the viewer reads its hit points as numbers (readsHitPointsOf). A creature
+// missing from byID is read as an empty combatant, which has no owner.
+func (v combatViewer) numbersOf(byID map[string]playdb.Combatant) func(string) bool {
+	return func(id string) bool { return v.readsHitPointsOf(byID[id]) }
+}
+
+// channelProto is what a Channel Divinity action did, for the answer and the log: the heals and the saves that the reader
+// reads, each heal with the hit points after only where the reader reads that creature's as numbers.
+func channelProto(ev *channelEvent, r channelReader) *playv1.ChannelDivinityResult {
 	if ev == nil {
 		return nil
 	}
 	out := &playv1.ChannelDivinityResult{SaveDc: ev.DC}
 	for _, h := range ev.Heals {
-		out.Heals = append(out.Heals, &playv1.ChannelDivinityHeal{CombatantId: h.Target, Label: h.Label, Asked: h.Asked, Healed: h.Healed, HitPointsAfter: h.After})
+		if !r.reads(h.Target, h.HiddenAtAction, h.fogSeen) {
+			continue
+		}
+		heal := &playv1.ChannelDivinityHeal{CombatantId: h.Target, Label: h.Label, Asked: h.Asked, Healed: h.Healed}
+		if r.numbers(h.Target) {
+			heal.HitPointsAfterKnown = new(h.After)
+		}
+		out.Heals = append(out.Heals, heal)
 	}
 	for _, t := range ev.Turns {
+		if !r.reads(t.Target, t.HiddenAtAction, t.fogSeen) {
+			continue
+		}
 		turn := &playv1.ChannelDivinityTurn{CombatantId: t.Target, Label: t.Label, D20: t.D20, Modifier: t.Modifier, Total: t.Total, Turned: t.Turned}
 		if t.CountedAs != 0 {
 			turn.TreatedAs, turn.TreatedAsSource = new(t.CountedAs), legacySource(t.CountedBy)

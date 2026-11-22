@@ -396,7 +396,7 @@ The events are `favor_pass_asked`, `favor_passed`, `favor_pass_refused`, `favor_
 In a combat the die is the combatant's (`combatants.inspiration_*`) and this row is gone.
 
 `inspiration_holds` keeps a roll that waits for the player's answer about the die, or about the halfling's Lucky.
-`kind` is `scene_check`, `group_check`, `trap_search`, `hint_try`, `spell_attack`, `effect_save`, `concentration_save` or `mount_save` today; the check also accepts `weapon_attack` and the kinds of the rolls that will wait next (`death_save`, `initiative`, `contest_check`, `hide_check`, `counterspell_check`), and the code refuses a kind it does not know.
+`kind` is `npc_check` (see `npc_check_asks`), `scene_check`, `group_check`, `trap_search`, `hint_try`, `spell_attack`, `effect_save`, `concentration_save` or `mount_save` today; the check also accepts `weapon_attack` and the kinds of the rolls that will wait next (`death_save`, `initiative`, `contest_check`, `hide_check`, `counterspell_check`), and the code refuses a kind it does not know.
 `request` is the request that made it (protobuf), `faces`, `modifier`, `total`, `counted` and `physical` the d20 it rolled, `answer_key` is set once answered, unique on `(campaign_id, idempotency_key)`.
 `counted_by` (`TEXT NOT NULL DEFAULT ''`) is the content key of the feature whose floor the total counts, a table's `roll_minimum` or Reliable Talent; it is empty when the die counts as it came up.
 `round` is the combat's round for a roll held in a combat and `NULL` out of one.
@@ -416,6 +416,31 @@ Reroll rule (migration 00306): `reroll_ask` marks the question asked as soon as 
 The check `inspiration_holds_reroll_face_valid` keeps the faces between 1 and 20, the index at 0 or 1 and the cost at 0 or more.
 `die_answer_key` and `die_used` keep the Bardic Inspiration die answered while this question follows, since the row stays open.
 A hold out of a combat is not forgotten when the dice run out; one of a combat only when the round or the combat is over.
+A hold of kind `npc_check` is neither.
+It waits for the bards' dice, so the sweep of orphans, the forget of an actor's holds and the list of open holds leave it alone.
+It is settled as a skip when a combat starts or when the next check is rolled.
+It is settled as a skip when the next read or answer finds a token of the creature hidden on the map of the roll.
+It is settled as the last answer settles it when the next read or answer finds no bard in play left.
+It is kept (settled) while its session is open, and deleted with every other hold of the kind when its session ends.
+
+## `npc_check_asks`
+
+One row per Lore bard asked about an NPC's check outside a combat.
+The check itself is an `inspiration_holds` row of kind `npc_check` (`character_id` the NPC, `user_id` the master, `faces` the d20), and the asks cascade with it.
+A settled check keeps its asks while its session is open.
+The end of the session deletes the asks of its checks.
+`bard_character_id` and `map_id` have no index: deleting a character or a map scans a table that holds only the checks of open sessions, and the end of the session deletes them.
+`map_id` (`SET NULL`) is the session's map when the check was rolled, `NULL` with no map or once the map is deleted: the creature's token hidden on it closes the check.
+`hold_id` (`CASCADE`) and `bard_character_id` (`SET NULL`) are unique together.
+A bard whose character is deleted keeps its question, which the next read lets pass.
+`hold_id` and `position` (the order the bards are asked in) are unique together too.
+`state` is `asked`, `cut`, `passed` or `closed`; the one whose turn it is is the first with `asked`.
+`sides` is the die of the bard's Bardic Inspiration.
+`creature_seen` says whether the bard's player may read the creature's name.
+`die_face` is the face that came off (`NULL` until the bard cuts), and `physical` says whether it was typed.
+`answer_key`, `answer_hash` and `answered_at` are the answer, which a retry finds by key and whose body must be the same.
+Another body under the key is a reused key.
+`answer_hash` is `NULL` until the bard answers.
 
 ## `trap_damages`
 
