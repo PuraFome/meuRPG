@@ -1,4 +1,4 @@
-import { expect, type Browser, type BrowserContext, type Locator, type Page } from '@playwright/test';
+import { expect, type Browser, type BrowserContext, type Locator, type Page, type Route } from '@playwright/test';
 import { beginAttackCombatRPC, combatRPC, getEncounterRPC, passTurnsToAndWait, pensantusCasting, tableForCombat, type Encounter } from './combat-support';
 import { beginTheatreRPC, startTheatreRPC } from './theatre-support';
 import { featShotScale } from './feat-options-support';
@@ -37,6 +37,7 @@ export const releaseTexts = {
   onMap: 'A mesa espera você: até 2 min.',
   masterFoot: 'Pensantus ainda pode responder no próprio aparelho: vale a primeira resposta.',
   undone: 'O mestre desfez o gatilho: a Bola de Fogo continua preparada.',
+  passed: 'A janela fechou. A Bola de Fogo não saiu; a magia preparada e o espaço dela se perderam.',
   otherDevice: /Você abriu o mapa em outro aparelho\. Passa sozinho em/,
 } as const;
 
@@ -230,11 +231,27 @@ export async function scrollToLegend(page: Page): Promise<void> {
  * network and every reconnect is left waiting, and so is the page's own read of the combat (`GetEncounter`), so the page never hears of what
  * the table does next; its other calls (the release itself) go on.
  */
-export async function freezeLiveUpdates(page: Page): Promise<void> {
+export async function freezeLiveUpdates(page: Page): Promise<() => Promise<void>> {
   const context = page.context();
-  await context.setOffline(true);
-  await page.route('**/meurpg.play.v1.PlayService/WatchGameSession', () => new Promise(() => undefined));
+  let thaw: () => void = () => undefined;
+  const thawed = new Promise<void>((resolve) => {
+    thaw = resolve;
+  });
+  const watch = '**/meurpg.play.v1.PlayService/WatchGameSession';
   // The combat the page reads again on its own (the master's page does, when the window closes) waits too.
-  await page.route('**/meurpg.play.v1.CombatService/GetEncounter', () => new Promise(() => undefined));
+  const read = '**/meurpg.play.v1.CombatService/GetEncounter';
+  await context.setOffline(true);
+  const hold = async (route: Route): Promise<void> => {
+    await thawed;
+    await route.continue();
+  };
+  await page.route(watch, hold);
+  await page.route(read, hold);
   await context.setOffline(false);
+  // The returned function lets the held requests and the later ones through: the page hears what the table did meanwhile.
+  return async () => {
+    thaw();
+    await page.unroute(watch, hold);
+    await page.unroute(read, hold);
+  };
 }

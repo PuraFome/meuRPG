@@ -12,7 +12,8 @@ import {
 } from '../../../gen/meurpg/play/v1/combat_pb';
 import { CombatState } from './combat-state';
 import { combatant, encounter, reactionWindow } from './combat-testing';
-import { ReleaseWatch } from './release-watch';
+import { GONE_PENDING, ReleaseWatch } from './release-watch';
+import { releaseGoneView } from './release-text';
 
 const T0 = Date.parse('2026-10-10T12:00:00Z');
 const MS = 1000;
@@ -170,6 +171,78 @@ describe('a release watching its window (#857, #856; 857-09 cards 1 and 7)', () 
     expect(watch.secondsLeft()).toBe(90);
     vi.advanceTimersByTime(10 * MS);
     expect(watch.secondsLeft()).toBe(80);
+  });
+
+  it('does not say the trigger was undone for a refusal read against the stale combat: it waits for the next read', () => {
+    const { watch, open } = setup();
+    watch.closedByServer();
+    TestBed.tick();
+    expect(watch.gone()).toBe(true);
+    expect(watch.view()).toBe(GONE_PENDING);
+    // The window passed (the master let it go): the row is IGNORED and the window is out of the combat.
+    open([], { readied: row(ReadiedStatus.IGNORED) }, 2);
+    const passed = {
+      spell: 'Bola de Fogo',
+      move: false,
+      stillWaiting: false,
+      reactionUsed: false,
+      down: false,
+      timedOut: false,
+      afterMap: true,
+    };
+    expect(watch.view()).toEqual(releaseGoneView(passed));
+    expect(watch.view()?.lead).not.toBe('O mestre desfez o gatilho:');
+  });
+
+  it('says the master form of the pass after a refusal, from the next read', () => {
+    const state = new CombatState();
+    const open = (windows: ReturnType<typeof win>[], pen: object, revision: number) => {
+      state.apply(
+        encounter({
+          revision,
+          combatants: [combatant({ id: 'pen', label: 'Pensantus', readied: row(), ...pen })],
+          reactionWindows: windows,
+        }),
+      );
+      TestBed.tick();
+    };
+    open([win({ rolling: true, waitBeganAt: timestampFromMs(T0), waitedMs: 12_000n })], {}, 1);
+    const watch = TestBed.runInInjectionContext(
+      () =>
+        new ReleaseWatch(() => state.encounter(), {
+          windowId: 'w1',
+          readiedId: 'r1',
+          reactorId: 'pen',
+          spellName: 'Bola de Fogo',
+          move: false,
+          masterOf: 'Pensantus',
+        }),
+    );
+    watch.closedByServer();
+    TestBed.tick();
+    expect(watch.view()).toBe(GONE_PENDING);
+    open([], { readied: row(ReadiedStatus.IGNORED) }, 2);
+    expect(watch.view()).toEqual(
+      releaseGoneView({
+        spell: 'Bola de Fogo',
+        move: false,
+        stillWaiting: false,
+        reactionUsed: false,
+        down: false,
+        timedOut: false,
+        afterMap: true,
+        reactor: 'Pensantus',
+      }),
+    );
+  });
+
+  it('keeps the gone state as it was when the next read lists the window open again', () => {
+    const { watch, open } = setup();
+    watch.closedByServer();
+    TestBed.tick();
+    open([win({ rolling: true })], {}, 2);
+    expect(watch.gone()).toBe(true);
+    expect(watch.view()?.lead).toBe('O mestre desfez o gatilho:');
   });
 
   it('keeps the 120 s on a monotonic clock: a wall-clock jump of +1 h mid-wait does not pass the window', () => {

@@ -354,7 +354,7 @@ describe('CastSheet: a readied spell released on the map (#857, boards 857-02 an
   ])(
     'shows the gone state, not the refusal text, when the server refuses the cast as a closed window (reason %s) (S3)',
     async (reason) => {
-      const { el, button, placeAt, settle } = await open({
+      const { el, button, placeAt, settle, state } = await open({
         answer: preview([{ id: 'g1', label: 'Goblin 1' }]),
         castSpell: vi.fn().mockRejectedValue(blocked(reason)),
       });
@@ -362,6 +362,17 @@ describe('CastSheet: a readied spell released on the map (#857, boards 857-02 an
       button('Confirmar local')!.click();
       await settle();
       button('Conjurar Bola de Fogo')!.click();
+      await settle();
+      // The map is gone at once, and says nothing until a read of the combat tells what became of the window.
+      expect(el.querySelector('[data-testid=release-gone]')).toBeNull();
+      expect(button('Voltar à sessão')).toBeDefined();
+      state.apply(
+        encounter({
+          revision: 9,
+          combatants: [pensantus, toren, goblin],
+          reactionWindows: [],
+        } as never),
+      );
       await settle();
       expect(plain(el.querySelector('[data-testid=release-gone]')?.textContent)).toContain(
         'A janela fechou. A Bola de Fogo não saiu',

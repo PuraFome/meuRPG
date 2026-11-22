@@ -18,10 +18,12 @@
 
     @if (gone(); as g) {
       <!-- The window went away while the map was open (857-09 card 1): nothing left to place. -->
+      @if (g.lead) {
       <div class="mr-notice mr-notice--neutral" role="status" data-testid="release-gone">
         <mat-icon aria-hidden="true">info</mat-icon>
         <p><b>{{ g.lead }}</b> {{ g.rest }}</p>
       </div>
+      }
     } @else if (questions.held.offer(); as o) {
       <!-- The d20 of the spell attack is rolled and kept; nothing is spent until the player answers: the halfling's 1 first, then the Bardic Inspiration die (SRD 5.1). -->
       <app-held-roll-prompt

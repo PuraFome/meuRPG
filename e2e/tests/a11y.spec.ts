@@ -17949,14 +17949,18 @@ async function scanReadyMapRefusedScreens(browser: Browser, colorScheme: 'light'
     p.setDefaultTimeout(20_000);
     await fireReadied(m);
     const sheet = await placeFireball(p);
-    await freezeLiveUpdates(p);
+    const thaw = await freezeLiveUpdates(p);
     await masterQueue(m).getByRole('button', { name: 'Deixar passar' }).click();
     await expect(spellWindow(p)).toHaveCount(0);
     await expect(sheet.getByTestId('release-gone')).toHaveCount(0);
     const refused = castRefused(p);
     await sheet.getByRole('button', { name: 'Conjurar Bola de Fogo' }).click();
     await refused;
-    await expect(sheet.getByTestId('release-gone')).toBeVisible();
+    // The map goes at once; it says what became of the window only once the page hears the table again (the pass, not the undone trigger).
+    await expect(sheet.getByRole('button', { name: releaseTexts.done })).toBeVisible();
+    await expect(sheet.getByTestId('release-gone')).toHaveCount(0);
+    await thaw();
+    await expect(sheet.getByTestId('release-gone')).toContainText(releaseTexts.passed);
     await expectScreenPasses(p, `Soltar, a folha da magia quando o servidor recusa a soltura como janela fechada ${where}`);
     await shoot(p, 'folha-recusada');
   } finally {
@@ -17976,14 +17980,17 @@ async function scanReadyMapRefusedScreens(browser: Browser, colorScheme: 'light'
     await pickFireballPoint(sheet);
     await sheet.getByRole('application', { name: 'Mapa: escolha o ponto da Bola de Fogo' }).press('Enter');
     await expect(sheet.getByRole('heading', { name: /Quem está na área/ })).toBeFocused();
-    await freezeLiveUpdates(m);
+    const thaw = await freezeLiveUpdates(m);
     await spellWindow(p).getByRole('button', { name: 'Deixar passar' }).click();
     await expect(spellWindow(p)).toHaveCount(0);
     await expect(sheet.getByTestId('release-gone')).toHaveCount(0);
     const refused = castRefused(m);
     await sheet.getByRole('button', { name: /^Conjurar Bola de Fogo/ }).click();
     await refused;
-    await expect(sheet.getByTestId('release-gone')).toBeVisible();
+    await expect(sheet.getByRole('button', { name: releaseTexts.done })).toBeVisible();
+    await expect(sheet.getByTestId('release-gone')).toHaveCount(0);
+    await thaw();
+    await expect(sheet.getByTestId('release-gone')).toContainText(releaseTexts.passed);
     await expectScreenPasses(m, `Soltar, a janela do mestre quando o servidor recusa a soltura como janela fechada ${where}`);
     await shoot(m, 'mestre-recusada');
   } finally {

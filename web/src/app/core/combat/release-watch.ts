@@ -51,6 +51,9 @@ export function windowClosedRefusal(err: unknown): boolean {
   );
 }
 
+/** The gone view of a window the server refused as closed, before a read of the combat says what became of it: nothing to print yet. */
+export const GONE_PENDING: GoneView = { lead: '', rest: '' };
+
 /** How often the clock of the wait redraws, in ms. */
 const TICK_MS = 1000;
 
@@ -78,6 +81,8 @@ export class ReleaseWatch {
   );
   /** The server refused a use of the window as closed, though the combat the screen holds still lists it. */
   private readonly refused = signal(false);
+  /** The combat the screen held when the server refused: the view is decided from the first read after it, never from this one. */
+  private heldAtRefusal: Encounter | null = null;
   readonly gone = computed(() => !this.window() || this.refused());
   /** The seconds left before the master's screen passes the window: the 120 s once the player was on the map, else the 30 s. */
   readonly secondsLeft = computed(() =>
@@ -92,7 +97,7 @@ export class ReleaseWatch {
   /** The player opened the map while the window was open: its wait is the 120 s, not the 30 s. */
   readonly waitedOnMap = signal(false);
   /** What happened to the window; `null` while it is open. It is said once, when the window is first seen gone. */
-  readonly view = computed(() => this.frozen());
+  readonly view = computed(() => this.frozen() ?? (this.refused() ? GONE_PENDING : null));
 
   constructor(
     private readonly encounter: () => Encounter | null,
@@ -112,7 +117,17 @@ export class ReleaseWatch {
     this.watching = effect(() => {
       const w = this.window();
       const e = this.encounter();
-      untracked(() => (w ? this.see(w) : this.settle(e)));
+      untracked(() => {
+        if (this.refused()) {
+          if (e !== this.heldAtRefusal) {
+            this.settle(e);
+          }
+        } else if (w) {
+          this.see(w);
+        } else {
+          this.settle(e);
+        }
+      });
     });
   }
 
@@ -125,10 +140,13 @@ export class ReleaseWatch {
     this.watching.destroy();
   }
 
-  /** The server said the window is closed: the screen shows what it shows for a window that went away. */
+  /**
+   * The server said the window is closed: the screen shows its gone state at once, and says what became of the window from the first
+   * read of the combat after this (the one it holds still lists the window open and its row waiting, which is not what happened).
+   */
   closedByServer(): void {
+    this.heldAtRefusal = this.encounter();
     this.refused.set(true);
-    this.settle(this.encounter());
   }
 
   private see(w: ReactionWindow): void {

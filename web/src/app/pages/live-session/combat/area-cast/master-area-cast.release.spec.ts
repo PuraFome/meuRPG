@@ -280,7 +280,7 @@ describe('MasterAreaCast: the master releases a readied spell for the player (#8
   });
 
   it('shows the gone state, not "Não é a sua vez.", when the server refuses the cast as a closed window (S3)', async () => {
-    const { el, fixture, button, settle, castSpell } = await open({
+    const { el, fixture, button, settle, castSpell, enc } = await open({
       castRefusal: blocked(EncounterBlockedReason.NOT_YOUR_TURN),
     });
     const map = fixture.debugElement.query(By.directive(AreaMap)).componentInstance as AreaMap;
@@ -291,6 +291,10 @@ describe('MasterAreaCast: the master releases a readied spell for the player (#8
     button('Conjurar Bola de Fogo')!.click();
     await settle();
     expect(castSpell).toHaveBeenCalledTimes(1);
+    expect(el.querySelector('[data-testid=release-gone]')).toBeNull();
+    expect(button('Voltar à sessão')).toBeDefined();
+    enc.set(encounter({ revision: 9, combatants: [pen, ogro], reactionWindows: [] } as never));
+    await settle();
     expect(plain(el.querySelector('[data-testid=release-gone] p')?.textContent)).toBe(
       'A janela fechou. A Bola de Fogo não saiu; a magia preparada e o espaço dela se perderam.',
     );

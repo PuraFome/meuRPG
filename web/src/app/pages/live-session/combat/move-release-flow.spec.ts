@@ -203,12 +203,24 @@ describe('MoveReleaseFlow, the page of a readied move (#856)', () => {
     'shows the gone state when the server refuses the move as a closed window (reason %s) (S3)',
     (reason) => {
       for (const master of [false, true]) {
-        const { flow } = setup(master);
+        const { flow, state, tor, ogro } = setup(master);
         flow.open('w1');
         TestBed.tick();
         expect(flow.gone()).toBe(false);
         expect(flow.refusedAsClosed(blocked(reason))).toBe(true);
+        TestBed.tick();
         expect(flow.gone()).toBe(true);
+        // The combat the page holds still lists the window: it says nothing until the next read.
+        expect(flow.view()?.gone?.lead).toBe('');
+        state.apply(
+          encounter({
+            revision: 2,
+            combatants: [tor, ogro],
+            currentCombatantId: 'og',
+            reactionWindows: [],
+          } as never),
+        );
+        TestBed.tick();
         expect(flow.view()?.gone?.lead).toBe(
           master ? 'O gatilho foi desfeito:' : 'O mestre desfez o gatilho:',
         );

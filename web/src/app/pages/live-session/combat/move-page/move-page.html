@@ -119,10 +119,12 @@
     } @else {
       <div class="move__body">
         @if (goneView(); as g) {
+          @if (g.lead) {
           <div class="mr-notice mr-notice--neutral" role="status" data-testid="release-gone">
             <mat-icon aria-hidden="true">info</mat-icon>
             <p><b>{{ g.lead }}</b> {{ g.rest }}</p>
           </div>
+          }
         }
         @if (!goneView()) {
         @if (jumping() && jumps(); as limits) {
