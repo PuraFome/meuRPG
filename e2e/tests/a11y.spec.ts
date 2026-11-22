@@ -105,7 +105,7 @@ import {
 } from './table-sheet-support';
 import { masterLog, openCombatPanel, openMap, openOrderRow, openTurn } from './combat-layout';
 import { waitForEncounterRevision } from './revision-support';
-import { fireReadied, heldSpell, masterQueue, mapSquares, moveWindow, pickFireballPoint, placeFireball, readyMapTable, releaseSheet, releaseTexts, scrollToLegend, spellWindow, undoFire } from './ready-map-support';
+import { fireReadied, heldSpell, longReactor, masterQueue, mapSquares, moveWindow, pickFireballPoint, placeFireball, readyMapTable, releaseSheet, releaseTexts, scrollToLegend, spellWindow, undoFire } from './ready-map-support';
 import { goblinTrigger, openReadySheet, pensantusReadyKit, readyAttackRPC, readyRPC, readySpellRPC, shootReady, summonOffText } from './ready-support';
 import { WIDTHS, beginVrockFight, pagesFor, shoot, useCreatureActionRPC, viewportOf } from './recharge-support';
 import { chooseRow, openTvPanel, rollForTableRPC, tvRoute } from './table-screen-support';
@@ -16781,6 +16781,49 @@ for (const [colorScheme, theme] of [
     test(`soltar a ação preparada no mapa, os outros estados, passa no axe e nas conferências de layout no tema ${theme}, em ${width}`, { tag: ['@a11y', '@RN-31'] }, async ({ browser }) => {
       test.setTimeout(600_000);
       await scanReadyMapEndScreens(browser, colorScheme, width);
+    });
+  }
+}
+
+/**
+ * The kinds of release the other scans do not reach (#857): a spell placed around the caster, the same with the longest spell name and a
+ * long creature name (the window, the cast sheet's band and the master's dialog title at the phone's width), a spell that stays on its
+ * caster, and an area spell in a combat with no map, which the window releases from a list of creatures.
+ */
+async function scanReadyMapKindsScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const where = `(${colorScheme}, ${width}px)`;
+  const view = { ...featViewport(width), colorScheme, both: true };
+  const shoot = async (page: Page, screen: string): Promise<void> => shootReady(page, screen, width, colorScheme, '857-ready-map');
+
+  // Around the caster: the map shows who is in the area and asks no point.
+  const around = await readyMapTable(browser, 'Acessibilidade soltar ao redor', 'around', view);
+  try {
+    const { m, p } = around;
+    m.setDefaultTimeout(20_000);
+    p.setDefaultTimeout(20_000);
+    await fireReadied(m);
+    const win = spellWindow(p, heldSpell.around.name);
+    await expect(win.getByTestId('release-map-notice')).toContainText('Ela age ao redor de você: o mapa mostra quem está na área.');
+    await expectScreenPasses(p, `Soltar, a janela da magia ao redor de quem conjura ${where}`);
+    await shoot(p, 'janela-ao-redor');
+    await win.getByTestId('release-to-map').click();
+    const sheet = releaseSheet(p, false, heldSpell.around.name);
+    await expect(sheet.getByTestId('release-band')).toBeVisible();
+    await expectScreenPasses(p, `Soltar, o mapa da magia ao redor de quem conjura ${where}`);
+    await shoot(p, 'mapa-ao-redor');
+  } finally {
+    await around.done();
+  }
+}
+
+for (const [colorScheme, theme] of [
+  ['light', 'claro'],
+  ['dark', 'escuro'],
+] as const) {
+  for (const width of [390, 768, 1280]) {
+    test(`soltar a ação preparada, os outros tipos de magia, passa no axe e nas conferências de layout no tema ${theme}, em ${width}`, { tag: ['@a11y', '@RN-31'] }, async ({ browser }) => {
+      test.setTimeout(600_000);
+      await scanReadyMapKindsScreens(browser, colorScheme, width);
     });
   }
 }

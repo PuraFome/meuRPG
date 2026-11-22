@@ -1,5 +1,6 @@
 import { expect, type Browser, type BrowserContext, type Locator, type Page } from '@playwright/test';
 import { beginAttackCombatRPC, combatRPC, getEncounterRPC, passTurnsToAndWait, pensantusCasting, tableForCombat, type Encounter } from './combat-support';
+import { beginTheatreRPC, startTheatreRPC } from './theatre-support';
 import { featShotScale } from './feat-options-support';
 import { endOpenSessionRPC, openSessionPage } from './live-session-support';
 import { goblinTrigger, readyRPC, readySpellRPC } from './ready-support';
@@ -40,21 +41,35 @@ export const releaseTexts = {
 } as const;
 
 /** What the player holds: the Bola de Fogo (3rd-level slot), or a move of the speed it has. */
-export type Held = 'fireball' | 'move' | 'direction' | 'wall';
+export type Held = 'fireball' | 'move' | 'direction' | 'wall' | 'around' | 'long' | 'self' | 'sleep';
 
 /** The held spells of the other pickers: the cone of Mãos Flamejantes (a direction) and the Muralha de Fogo (a wall, 4th-level slot, so a level 9 caster). */
 export const heldSpell = {
   direction: { key: 'spell:burning-hands', level: 1, name: 'Mãos Flamejantes' },
   wall: { key: 'spell:wall-of-fire', level: 4, name: 'Muralha de Fogo' },
+  /** Placed around the caster (a sphere of range Self): the map shows who is in the area (a 4th-level slot, so a level 7 caster). */
+  around: { key: 'spell:fire-shield', level: 4, name: 'Escudo de Fogo' },
+  /** The longest name among the spells the window places on the map, a point (a 7th-level slot, so a level 13 caster). */
+  long: { key: 'spell:delayed-blast-fireball', level: 7, name: 'Bola de Fogo Controlável' },
+  /** A spell that stays on its caster: the server lists no area for it, so the window releases it at once. */
+  self: { key: 'spell:detect-magic', level: 1, name: 'Detectar Magia' },
+  /** An area of creatures, which a combat with no map releases from a list. */
+  sleep: { key: 'spell:sleep', level: 1, name: 'Sono' },
 } as const;
 
+/** The reactor's name of a table with long names: the label every title, band and button of the release carries. */
+export const longReactor = 'Pensantus Aurelius Quintilianus de Valmont';
+
 /** The caster of the table: Pensantus at level 5 with the Bola de Fogo, or at level 9 with the wall. */
-function kitOf(held: Held): typeof fireballKit {
-  if (held !== 'wall') {
-    return fireballKit;
+function kitOf(held: Held, reactor: string): typeof fireballKit {
+  const named = (kit: typeof fireballKit): typeof fireballKit => ({ ...kit, build: { ...kit.build, name: reactor } });
+  if (held === 'fireball' || held === 'move' || held === 'sleep') {
+    return named(fireballKit);
   }
-  const spells = [...pensantusCasting.preparedSpellKeys, heldSpell.wall.key];
-  return { build: { ...pensantus, level: 9 }, sheet: { ...pensantusCasting, knownSpellKeys: spells, preparedSpellKeys: spells } };
+  const key = heldSpell[held].key;
+  const spells = [...pensantusCasting.preparedSpellKeys, key];
+  const level = { wall: 9, around: 7, long: 13, direction: 5, self: 5 }[held];
+  return named({ build: { ...pensantus, level }, sheet: { ...pensantusCasting, knownSpellKeys: spells, preparedSpellKeys: spells } });
 }
 
 export interface ReadyMapTable {
@@ -73,22 +88,35 @@ export async function readyMapTable(
   browser: Browser,
   name: string,
   held: Held,
-  view: { width?: number; height?: number; colorScheme?: 'light' | 'dark'; both?: boolean; blocker?: boolean } = {},
+  view: { width?: number; height?: number; colorScheme?: 'light' | 'dark'; both?: boolean; blocker?: boolean; theatre?: boolean; reactor?: string } = {},
 ): Promise<ReadyMapTable> {
   const viewport = { width: view.width ?? 1280, height: view.height ?? 900 };
+  const reactor = view.reactor ?? 'Pensantus';
   const master = await newSignedInContext(browser, 'Mestre Teste', { viewport: view.both ? viewport : { width: 1280, height: 900 }, colorScheme: view.colorScheme, ...featShotScale });
   const player = await newSignedInContext(browser, 'Jogador Teste', { viewport, colorScheme: view.colorScheme, ...featShotScale });
   const m = await master.newPage();
   const p = await player.newPage();
   await m.goto('/');
   await p.goto('/');
-  const table = await tableForCombat(m, p, `${name} ${Date.now()}`, true, true, kitOf(held));
+  const table = await tableForCombat(m, p, `${name} ${Date.now()}`, true, true, kitOf(held, reactor));
   // `blocker`: a goblin the player cannot see stands on the square next to Pensantus, on the way east.
-  const at = view.blocker ? { ...mapSquares, 'Goblin 2': [mapSquares['Pensantus'][0] + 1, mapSquares['Pensantus'][1]] as [number, number] } : mapSquares;
-  const begun = await beginAttackCombatRPC(m, table, mapFaces, at, view.blocker ? ['Goblin 2'] : []);
+  const named = (by: Record<string, [number, number]>): Record<string, [number, number]> => Object.fromEntries(Object.entries(by).map(([k, v]) => [k === 'Pensantus' ? reactor : k, v]));
+  const at = named(view.blocker ? { ...mapSquares, 'Goblin 2': [mapSquares['Pensantus'][0] + 1, mapSquares['Pensantus'][1]] as [number, number] } : mapSquares);
+  const faces = Object.fromEntries(Object.entries(mapFaces).map(([k, v]) => [k === 'Pensantus' ? reactor : k, v]));
+  let begun: Encounter;
+  if (view.theatre) {
+    // A combat with no map: the master starts it in THEATRE mode, so there are no squares and nothing to place.
+    const started = await startTheatreRPC(m, table, [
+      { characterId: table.captainId, count: 1, hidden: false },
+      { characterId: table.goblinId, count: 2, hidden: false },
+    ]);
+    begun = await beginTheatreRPC(m, table, started, faces);
+  } else {
+    begun = await beginAttackCombatRPC(m, table, faces, at, view.blocker ? ['Goblin 2'] : []);
+  }
   await openSessionPage(p, table.campaignId);
-  await expect(p.getByRole('heading', { name: 'Sua vez, Pensantus' })).toBeVisible();
-  const readied = await holdOn(p, table.campaignId, begun, held);
+  await expect(p.getByRole('heading', { name: view.theatre ? 'Combate sem mapa' : `Sua vez, ${reactor}` })).toBeVisible();
+  const readied = await holdOn(p, table.campaignId, begun, held, reactor);
   await waitForEncounterRevision(p, readied);
   await openSessionPage(m, table.campaignId);
   const encounter = await passTurnsToAndWait(m, table.campaignId, 'Capitão Goblin', [m, p]);
@@ -108,17 +136,17 @@ export async function readyMapTable(
 }
 
 /** The player's own call that holds `held`, with the trigger of the boards. */
-export async function holdOn(player: Page, campaignId: string, encounter: Encounter, held: Held): Promise<Encounter> {
+export async function holdOn(player: Page, campaignId: string, encounter: Encounter, held: Held, reactor = 'Pensantus'): Promise<Encounter> {
   if (held === 'fireball') {
-    return readySpellRPC(player, campaignId, encounter, 'Pensantus', 'spell:fireball', 3);
+    return readySpellRPC(player, campaignId, encounter, reactor, 'spell:fireball', 3);
   }
-  if (held === 'direction' || held === 'wall') {
-    return readySpellRPC(player, campaignId, encounter, 'Pensantus', heldSpell[held].key, heldSpell[held].level);
+  if (held !== 'move') {
+    return readySpellRPC(player, campaignId, encounter, reactor, heldSpell[held].key, heldSpell[held].level);
   }
   return readyRPC(player, 'ReadyAction', {
     campaignId,
     encounterId: encounter.id,
-    combatantId: encounter.combatants.find((c) => c.label === 'Pensantus')!.id,
+    combatantId: encounter.combatants.find((c) => c.label === reactor)!.id,
     triggerText: goblinTrigger,
     kind: 'READIED_KIND_MOVE',
   });
