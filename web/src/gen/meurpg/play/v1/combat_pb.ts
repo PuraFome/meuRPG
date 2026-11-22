@@ -21109,9 +21109,10 @@ export const CombatService: GenService<{
    * The master may call it, without `clear`, on an open READIED window of a player's character:
    * it begins the wait if it has not begun, and changes nothing else (`rolling` stays the player's own).
    * A wait that has begun is not touched: nothing is written and nobody is told.
-   * The master's `clear`, and his call on a window of any other kind or on a creature's READIED window
-   * (a creature has no player to wait for), is refused (`permission_denied`). That holds only for a window that
-   * is open and first in its group: the master's call on any other is refused for the reason under Errors.
+   * The master's `clear` is refused (`permission_denied`) whatever the window.
+   * His call on an open window, first in its group, of any other kind or of a creature's READIED window
+   * (a creature has no player to wait for) is refused (`permission_denied`).
+   * His call on any other window is refused for the reason under Errors.
    * A player is refused for a window that is not theirs, the same answer for a real
    * and an invented window_id (RN-10).
    *
