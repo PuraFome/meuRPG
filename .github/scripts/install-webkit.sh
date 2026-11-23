@@ -5,7 +5,7 @@
 #   install-webkit.sh <deb-dir>     run from e2e/
 #
 # <deb-dir> holds the .deb files the cache restores. The packages in it that are not installed yet are installed
-# from there, with no `apt-get update`. A cached file never replaces a package that is already installed.
+# from there with dpkg, with no `apt-get update`. A cached file never replaces a package that is already installed.
 # The mirror is used only when Playwright still reports a missing package; the archives it downloads are kept in
 # <deb-dir>, so the job saves them to the cache. The script prints which path it took.
 set -euo pipefail
@@ -29,7 +29,10 @@ for deb in "$deb_dir"/*.deb; do
 done
 
 if [ "${#todo[@]}" -gt 0 ]; then
-  $SUDO apt-get install -y --no-download --no-install-recommends "${todo[@]}"
+  # dpkg reaches no mirror: apt would fetch a package from the mirror even when the same version is cached.
+  # The cached files are a closed set. When one is not, the mirror path below takes over.
+  $SUDO dpkg --install "${todo[@]}" ||
+    echo "The cached packages did not install; the mirror path follows."
 fi
 
 # Playwright lists what is missing and exits non-zero when something is.
