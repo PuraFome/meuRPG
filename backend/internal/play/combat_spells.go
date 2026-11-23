@@ -202,13 +202,16 @@ func slotOf(in *playv1.SpellSlot, c castable) (*slotRef, error) {
 
 // reachOf is how far a player's spell reaches from the caster in feet, and
 // whether it has a limit at all: Self (that is not an area that comes out of
-// the caster) reaches the caster alone, Touch 5 ft, a ranged spell its range
+// the caster) reaches the caster alone, or ReachFt when the spell picks a creature, Touch 5 ft, a ranged spell its range
 // (link.Spell.RangeFt, already multiplied for a spell attack when the caster's
 // table feat has a ranged_attack that says so); sight, unlimited and special
 // ranges leave it to the table.
 func reachOf(sp link.Spell) (ft int32, limited bool) {
 	switch sp.RangeKind {
 	case rules.RangeSelf:
+		if sp.ReachFt > 0 {
+			return clamp32(sp.ReachFt, 0, math.MaxInt32), true
+		}
 		return 0, !sp.Area
 	case rules.RangeTouch:
 		return meleeReachFt, true
@@ -219,9 +222,9 @@ func reachOf(sp link.Spell) (ft int32, limited bool) {
 }
 
 // selfOnly says the spell reaches the caster alone: Self, and not an area that
-// comes out of the caster (Mãos Flamejantes).
+// comes out of the caster (Mãos Flamejantes) or picks a creature at a ReachFt.
 func selfOnly(sp link.Spell) bool {
-	return sp.CasterOnly || (sp.RangeKind == rules.RangeSelf && !sp.Area)
+	return sp.CasterOnly || (sp.RangeKind == rules.RangeSelf && !sp.Area && sp.ReachFt == 0)
 }
 
 // maxTargetsOf is how many targets a spell takes at a slot level for a player:
@@ -281,10 +284,10 @@ func (s *Service) CastSpell(
 	return s.castSpell(ctx, m, req, false)
 }
 
-// checkTargets checks, for a player, who a spell may touch: how many targets
-// (the master is not held to the number), that Magic Missile's darts add up,
-// and that each target is on the map and in range (the master is never held to
-// the range, and nobody is without a grid: RN-25), and that no target of a single-target spell has total cover (D4).
+// checkTargets checks, for a player, who a spell may touch.
+// The number of targets is checked for everyone but the master, and Magic Missile's darts must add up.
+// Each target must be on the map and in range (link.Spell.HoldsToRange), and as close as the spell says (checkTargetsClose); the master is never held to the range, and nobody is without a grid (RN-25).
+// A player's spell attack is never aimed at its caster, and no target of a single-target spell may have total cover (D4).
 // It does not read the database.
 func (s *Service) checkTargets(v combatViewer, terrain grid.Terrain, cs []playdb.Combatant, sp link.Spell, caster playdb.Combatant, targs []playdb.Combatant, darts []int, dartsTotal, slotLevel int, theatre bool) error {
 	if err := checkTargetCount(v, sp, caster, targs, darts, dartsTotal, slotLevel); err != nil {
@@ -293,19 +296,43 @@ func (s *Service) checkTargets(v combatViewer, terrain grid.Terrain, cs []playdb
 	if v.master {
 		return nil
 	}
+	if sp.AttackType != "" && slices.ContainsFunc(targs, func(t playdb.Combatant) bool { return t.ID == caster.ID }) {
+		return badTargets("a spell attack is not aimed at its caster")
+	}
+	if err := checkTargetsClose(sp, targs, theatre); err != nil {
+		return err
+	}
 	reach, limited := reachOf(sp)
-	for _, t := range targs {
+	for i, t := range targs {
 		// A target behind total cover (a wall on the line, or the master's mark)
 		// cannot be targeted directly; an area spell may still include it and the
 		// master judges.
 		if t.ID != caster.ID && !sp.Area && coverAgainst(terrain, caster, t, coverPool(cs, v)).total() {
 			return errCoverTotal()
 		}
-		if t.ID == caster.ID || !limited || theatre { // without a grid the master judges the range (RN-25)
+		if t.ID == caster.ID || !limited || theatre || !sp.HoldsToRange(i) { // without a grid the master judges the range (RN-25)
 			continue
 		}
-		if err := checkTargetReach(caster, t, reach); err != nil {
+		if err := checkTargetReach(caster, t, reach+clamp32(sp.RangeExtraFt, 0, math.MaxInt32)); err != nil {
 			return err
+		}
+	}
+	return nil
+}
+
+// checkTargetsClose checks, on a map, how close the targets are (link.Spell.ClosePairs).
+func checkTargetsClose(sp link.Spell, targs []playdb.Combatant, theatre bool) error {
+	if theatre {
+		return nil
+	}
+	within := clamp32(sp.WithinFt, 0, math.MaxInt32)
+	for _, pair := range sp.ClosePairs(len(targs)) {
+		a, b := targs[pair[0]], targs[pair[1]]
+		if !placed(a) || !placed(b) {
+			return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_PLACED, "the targets must be on the map")
+		}
+		if dist, _ := distanceFt(a, b); dist > within {
+			return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_TARGET_OUT_OF_REACH, "the targets are too far from each other", func(blocked *playv1.EncounterBlocked) { blocked.MissingFt = dist - within })
 		}
 	}
 	return nil
@@ -470,6 +497,7 @@ func (s *Service) spellAttackTruth(ctx context.Context, c *combatTx, modes *spel
 	fv, err := s.useFavor(ctx, s.inspirationGate(c), favorAsk{
 		Want: modes.spend, CampaignID: c.session.CampaignID, CharacterID: caster.CharacterID, Own: ownsCharacter(modes.v, caster),
 		Key: modes.key, Kind: heldSpellAttack, Sources: truth.Sources, Hide: truth.Hide, Rolls: true, Check: check,
+		Asked: modes.ask.want, AskedRequest: modes.ask.requestID,
 	})
 	if err != nil {
 		return truth, err
@@ -515,7 +543,7 @@ func (s *Service) spellAttack(ctx context.Context, c *combatTx, m authz.Membersh
 	}
 	d20 := step.Roll
 	modes.attack[target.ID] = rolled.truth.Shown
-	made.Favor, made.FavorLost = modes.favor.Used, modes.favor.Lost
+	made.Favor, made.FavorPrompt, made.FavorLost = modes.favor.Used, modes.favor.Prompt, modes.favor.Lost
 	if err := s.spendSpellAttackRoll(ctx, c, caster, target, modes, made); err != nil {
 		return err
 	}

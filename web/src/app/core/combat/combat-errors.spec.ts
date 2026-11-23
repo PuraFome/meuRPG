@@ -12,6 +12,7 @@ import {
   combatErrorMessage,
   pendingQuestionReasonText,
 } from './combat-errors';
+import { metersText } from '../units';
 import { undoChangedText } from './combat-errors-limits';
 
 describe('combat errors', () => {
@@ -184,6 +185,18 @@ describe('combat errors', () => {
     expect(combatErrorMessage(new ConnectError('x', Code.Aborted))).toMatch(/mudou/);
     expect(combatErrorMessage(new ConnectError('x', Code.NotFound))).toMatch(/não existe mais/);
     expect(combatErrorMessage(new Error('network'))).toMatch(/servidor/);
+  });
+});
+
+describe('the refusal of a target too far', () => {
+  it('says the distance past the limit without saying from whom, for a reach and for a closeness', () => {
+    const blocked = {
+      reason: EncounterBlockedReason.TARGET_OUT_OF_REACH,
+      missingFt: 15,
+    } as never;
+    expect(blockedMessage(blocked)).toBe(
+      `Longe demais: a distância ultrapassa o limite em ${metersText(15)}.`,
+    );
   });
 });
 

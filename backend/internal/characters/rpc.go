@@ -464,10 +464,21 @@ func checkCreatorKind(m authz.Membership, kind string) error {
 // table's content, and returns the sheet to store: the sheet's own rules, the
 // sheet that fits the kind, the ability origin cleared (the server's record,
 // set later for a player), and no new choice of an archived or switched-off
-// entry. The errors are the ones CreateCharacter answers. CreateCharacter and
-// PreviewCharacter share it, so a preview never shows a sheet the save
-// refuses.
+// entry. The errors are the ones CreateCharacter answers. The save takes it with
+// pickFit; PreviewCharacter checks the same except for a pick no list places
+// (pickKeysOnly), which only the save refuses.
 func checkNewSheet(content *rules.Content, m authz.Membership, kind string, raw *charactersv1.CharacterSheet) (*charactersv1.CharacterSheet, error) {
+	return checkNewSheetOf(content, m, pickFit, kind, raw, false)
+}
+
+// checkImportedSheet is checkNewSheet for a sheet a package brings: its picks are not made now, so they count as held
+// when the fit of the picks to their lists is checked.
+func checkImportedSheet(content *rules.Content, m authz.Membership, kind string, raw *charactersv1.CharacterSheet) (*charactersv1.CharacterSheet, error) {
+	return checkNewSheetOf(content, m, pickFit, kind, raw, true)
+}
+
+// checkNewSheetOf is checkNewSheet where mode says how far the check of the new picks goes and imported says the picks are held.
+func checkNewSheetOf(content *rules.Content, m authz.Membership, mode pickMode, kind string, raw *charactersv1.CharacterSheet, imported bool) (*charactersv1.CharacterSheet, error) {
 	sheet, err := checkSheet(content, raw)
 	if err != nil {
 		return nil, invalidArgument(err)
@@ -483,20 +494,43 @@ func checkNewSheet(content *rules.Content, m authz.Membership, kind string, raw 
 		sheet.GetFull().AbilityOrigin = nil // the server's record, set later for a player
 		sheet.GetFull().Infusions = nil     // the server's records: a new character, or one a package brings, has none
 	}
-	if err := refuseNewChoices(content, m, "", nil, sheet.GetFull()); err != nil {
+	// The kind comes before the closed entries, and those before the fit, as everywhere a new pick is taken.
+	if err := refuseClosedChoices(content, m, "", nil, sheet.GetFull()); err != nil {
+		return nil, err
+	}
+	held := noSheet
+	if imported {
+		held = func() *charactersv1.FullSheet { return sheet.GetFull() }
+	}
+	if err := refusePick(content, m, mode, held, sheet.GetFull()); err != nil {
 		return nil, err
 	}
 	return sheet, nil
 }
 
 // refuseNewChoices refuses a choice the sheet adds to the stored one (nil when
-// creating; characterID is empty then): a table entry the master archived is
-// not a new choice (RN-23), and neither is one the master switched off, except
-// for the master. The ones the stored sheet already has stay.
-func refuseNewChoices(content *rules.Content, m authz.Membership, characterID string, stored, sheet *charactersv1.FullSheet) error {
+// creating; characterID is empty then). The ones the stored sheet already has
+// stay. It runs three steps, in this order, and the first to refuse answers:
+//  1. refuseKeptOutPick: a pick of a kind the player's view keeps out;
+//  2. refuseClosedChoices: a table entry the master archived is not a new
+//     choice (RN-23), and neither is one the master switched off, except for
+//     the master;
+//  3. refusePick: a new pick that no source of the sheet places, or whose owner
+//     the player's view does not show, answered as a key that does not exist.
+//     mode says whether the pick no list places is refused (pickFit, the save) or
+//     only the unknown key is (pickKeysOnly, the preview of a draft).
+func refuseNewChoices(content *rules.Content, m authz.Membership, mode pickMode, characterID string, stored, sheet *charactersv1.FullSheet) error {
 	if err := refuseKeptOutPick(content, m, func() *charactersv1.FullSheet { return stored }, sheet); err != nil {
 		return err
 	}
+	if err := refuseClosedChoices(content, m, characterID, stored, sheet); err != nil {
+		return err
+	}
+	return refusePick(content, m, mode, func() *charactersv1.FullSheet { return stored }, sheet)
+}
+
+// refuseClosedChoices refuses a new choice of an archived entry, and of one switched off for a player.
+func refuseClosedChoices(content *rules.Content, m authz.Membership, characterID string, stored, sheet *charactersv1.FullSheet) error {
 	if key, _, found := newArchivedChoice(content, stored, sheet); found {
 		return errArchivedChoice(characterID, key)
 	}

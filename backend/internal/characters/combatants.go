@@ -91,12 +91,35 @@ func (s *Service) RulesContent(ctx context.Context, tx pgx.Tx, campaignID string
 // whatever their status (a dead one included), with their name and player
 // only. It implements play.CombatRoster.
 func (s *Service) SessionCharacters(ctx context.Context, tx pgx.Tx, campaignID string, ids []string) ([]link.Character, error) {
+	return s.listSessionCharacters(ctx, tx, campaignID, canonicalIDs(ids))
+}
+
+// LockedSessionCharacters is SessionCharacters read after the rows are locked, until the transaction ends. The lock makes the read the
+// latest one, whatever changed in the characters while the transaction waited for another lock: the caller takes that lock (the
+// session's) first. It implements play.CombatRoster.
+func (s *Service) LockedSessionCharacters(ctx context.Context, tx pgx.Tx, campaignID string, ids []string) ([]link.Character, error) {
+	valid := canonicalIDs(ids)
+	if len(valid) == 0 {
+		return nil, nil
+	}
+	if _, err := s.queriesIn(tx).LockSessionCharacters(ctx, charactersdb.LockSessionCharactersParams{CampaignID: campaignID, Ids: valid}); err != nil {
+		return nil, s.dbError(ctx, "lock the characters of a session", err)
+	}
+	return s.listSessionCharacters(ctx, tx, campaignID, valid)
+}
+
+// canonicalIDs is those of ids that are UUIDs, in their canonical form.
+func canonicalIDs(ids []string) []string {
 	valid := make([]string, 0, len(ids))
 	for _, id := range ids {
 		if id, ok := uid.Canonical(id); ok {
 			valid = append(valid, id)
 		}
 	}
+	return valid
+}
+
+func (s *Service) listSessionCharacters(ctx context.Context, tx pgx.Tx, campaignID string, valid []string) ([]link.Character, error) {
 	if len(valid) == 0 {
 		return nil, nil
 	}

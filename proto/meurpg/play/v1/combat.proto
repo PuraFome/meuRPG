@@ -1444,22 +1444,32 @@ service CombatService {
   // always pass it by hand). With `clear` it takes the mark off, when the player came
   // back from the map. It changes nothing else, writes no log line, and is idempotent:
   // marking or clearing a window twice is the same as once, and writes and publishes nothing.
-  // The first mark of a window records when the wait began (`wait_began_at`), once; no later mark
-  // or clear moves it. A READIED window is where the mark means the player is on the map to place
+  // The wait begins (`wait_began_at`) at the reactor's player's first mark or the master's opening
+  // of the release, whichever comes first; once begun, no later mark or clear moves it. The master's
+  // call only begins the wait and never sets `rolling`. A READIED window is where the mark means the player is on the map to place
   // a spell or a move; on a window of any other kind it is the player rolling a die. In no kind
   // does it keep the window from being answered or closed.
   //
-  // Only the reactor's player may call it: the master is refused (`permission_denied`),
-  // and so is a player for a window that is not theirs, the same answer for a real
+  // The reactor's player may call it, with or without `clear`.
+  // The master may call it, without `clear`, on an open READIED window of a player's character:
+  // it begins the wait if it has not begun, and changes nothing else (`rolling` stays the player's own).
+  // A wait that has begun is not touched: nothing is written and nobody is told.
+  // The master's `clear` is refused (`permission_denied`) whatever the window.
+  // His call on an open window, first in its group, of any other kind or of a creature's READIED window
+  // (a creature has no player to wait for) is refused (`permission_denied`).
+  // His call on any other window is refused for the reason under Errors.
+  // A player is refused for a window that is not theirs, the same answer for a real
   // and an invented window_id (RN-10).
   //
-  // The reactor and the master get `encounter_changed`.
+  // A call that changes something tells the master and the reactor's player with `encounter_changed`, and nobody else.
   //
   // Errors:
-  //   - `not_found`: the combat is not in the open session.
-  //   - `permission_denied`: as above.
-  //   - `failed_precondition` (EncounterBlocked): ENCOUNTER_ENDED, NOT_YOUR_TURN_TO_ANSWER
-  //     (out of order, or already answered or closed).
+  //   - `not_found`: the combat is not in the open session, or, for the master, the window is not in it.
+  //   - `permission_denied`: as above (a player's call on a window that is not theirs, a real or an invented
+  //     id alike; the master's `clear`; the master's call on another kind or on a creature's READIED window,
+  //     once the window is open and first in its group).
+  //   - `failed_precondition` (EncounterBlocked): ENCOUNTER_ENDED; NOT_YOUR_TURN_TO_ANSWER (the window is
+  //     closed, or it is open but queued behind another of its group); REACTION_ALREADY_ANSWERED (answered).
   rpc MarkReactionRolling(MarkReactionRollingRequest) returns (MarkReactionRollingResponse);
 
   // ResolveConcentrationSave settles a concentration window (SRD, Duration): the
@@ -4779,6 +4789,13 @@ enum HeldRollKind {
   // The Dexterity saving throw of a mounted rider (RollMountSave), DC 10: Lucky's reroll of a 1 and a Bardic Inspiration die are
   // asked about before the rider stays on or falls, as for any saving throw.
   HELD_ROLL_KIND_MOUNT_SAVE = 14;
+  // The ability check a creature of the master's side makes outside a combat (RollNpcCheck), held for the Cutting Words
+  // ("Palavras de Interrupção") of the bards of the table. The offer is the master's, who reads the roll and every bard asked, and the
+  // bard whose turn it is, when its player is in the open scene's audience (one at a time, in order), with only the die and
+  // the uses left and the creature's name only when that bard's player sees it; no other player is offered it, and no
+  // player reads the creature's d20, bonus or total. A creature has no
+  // player: there is no roller to leave out.
+  HELD_ROLL_KIND_NPC_CHECK = 15;
 }
 
 // LuckyQuestion is the halfling's "Tirou 1: rolar de novo?" (SRD 5.1, Halfling, Lucky).
@@ -4786,6 +4803,43 @@ message LuckyQuestion {
   // The die that shows the 1, as an index into `HeldRollOffer.d20.faces`: the one the answer rolls
   // again (0 for a single d20; with both dice on 1, the first).
   int32 lucky_index = 1;
+}
+
+// CuttingWordsQuestion is the question of a check a creature of the master's side makes outside a combat (SRD 5.1, College of
+// Lore, Cutting Words): "Palavras de Interrupção: tirar o dado do teste?". In the bard's offer it carries the die and the uses
+// left, and the offer's `roller_label` names the creature only when the bard's player sees it ("uma criatura" otherwise); it
+// never carries the d20, the bonus, the total or a DC. In the master's offer it lists every bard asked, in order.
+message CuttingWordsQuestion {
+  // The size of the bard's die (6, 8, 10 or 12), from the bard level. 0 in the master's offer.
+  int32 sides = 1;
+  // The uses of Bardic Inspiration the bard has left. 0 in the master's offer.
+  int32 uses_left = 2;
+  // The bards asked, in the order they are asked. The master's offer only: empty in a bard's.
+  repeated NpcCheckAsk asks = 3;
+}
+
+// NpcCheckAsk is one bard asked about a check of the master's side, as the master reads it.
+message NpcCheckAsk {
+  // The bard's character (a UUID) and its name.
+  string character_id = 1;
+  string character_name = 2;
+  NpcCheckAskState state = 3;
+  // The size of the bard's die; the face when it was cut (CUT), 0 otherwise.
+  int32 sides = 4;
+  int32 face = 5;
+}
+
+// NpcCheckAskState is where a bard's question of a check stands.
+enum NpcCheckAskState {
+  NPC_CHECK_ASK_STATE_UNSPECIFIED = 0;
+  // The question is open or waits for the bards asked before this one.
+  NPC_CHECK_ASK_STATE_WAITING = 1;
+  // The bard cut the roll: the die was taken off and the use spent.
+  NPC_CHECK_ASK_STATE_CUT = 2;
+  // The bard let it pass.
+  NPC_CHECK_ASK_STATE_PASSED = 3;
+  // The question closed with no answer: the master went on without the bard, or the bard could not answer any more.
+  NPC_CHECK_ASK_STATE_CLOSED = 4;
 }
 
 // DieQuestion is the Bardic Inspiration die the roller may add (SRD 5.1).
@@ -4869,6 +4923,8 @@ message HeldRollOffer {
     IndomitableQuestion indomitable = 12;
     StrokeOfLuckQuestion stroke_of_luck = 13;
     RerollQuestion reroll = 14;
+    // The bard's question of an NPC_CHECK (a bard's offer), or the master's read of who is asked (the master's offer).
+    CuttingWordsQuestion cutting_words = 15;
   }
   // The attack and its target; empty for a roll that is not a weapon attack.
   string attack_key = 9;
@@ -5013,10 +5069,13 @@ message TakeActionRequest {
   // "feature:channel-divinity-preserve-life" (Canalizar Divindade: Preservar a Vida, SRD 5.1, Life Domain): the
   // hit points to restore to each creature within 30 ft of the cleric. Their total is at most five times the
   // cleric's level; each creature is restored to no more than half of its hit point maximum (what would pass it is
-  // not spent), and an undead or a construct cannot be restored. A creature more than 30 ft away or an undead or
-  // construct is refused with `failed_precondition` (EncounterBlocked CHANNEL_DIVINITY_TARGET), and so is a total
-  // above the limit (CHANNEL_DIVINITY_TOO_MUCH). With no entry the points go to the cleric's side, the creature
-  // hurt the most in proportion first, each as far as half its maximum. Ignored by any other action.
+  // not spent), and an undead or a construct cannot be restored. The caller names only the creatures their view of
+  // the combat lists (the master's lists all): any other id gets the answer for a creature that is not in the
+  // combat. An id the caller's view does not list, a creature more than 30 ft away and an undead or a construct are
+  // refused with `failed_precondition` (EncounterBlocked CHANNEL_DIVINITY_TARGET), and so is a total above the limit
+  // (CHANNEL_DIVINITY_TOO_MUCH); a refusal spends nothing. With no entry the points go to the creatures of the
+  // cleric's side that the caller's view lists, the one hurt the most in proportion first, each as far as half its
+  // maximum. Ignored by any other action.
   repeated PreserveLifeHeal preserve_life = 102;
   // A feature action of the table's content that spends several points of its resource and lets the player choose
   // (Action.cost_max above Action.cost): how many to spend, from `cost` to `cost_max` or what is left. 0 takes the
@@ -5089,9 +5148,13 @@ message HookResult {
 
 // ChannelDivinityResult is what a Channel Divinity action did, creature by creature.
 message ChannelDivinityResult {
-  // Preserve Life: the hit points each creature regained (after the half-maximum limit), in the order asked.
+  // Preserve Life: the hit points each creature regained (after the half-maximum limit), for the creatures the reader may
+  // read, in the order asked or, when the request named no creature, the lowest in proportion first. Read later (the log
+  // line, a retried answer) a player is listed a character or a creature of the party that the master has not hidden; an
+  // NPC only if that player saw it when the action was made, or, for a line stored with no record of who saw it, when the
+  // line says it was made without fog (with no such mark: on a combat with no map).
   repeated ChannelDivinityHeal heals = 1;
-  // Turn Undead: each undead that had to save, in the order of the combat.
+  // Turn Undead: the save of each undead that had to save and that the reader may read, in the order of the combat.
   repeated ChannelDivinityTurn turns = 2;
   // Turn Undead: the cleric's save DC.
   int32 save_dc = 3;
@@ -5101,10 +5164,16 @@ message ChannelDivinityResult {
 message ChannelDivinityHeal {
   string combatant_id = 1;
   string label = 2;
-  // Asked is what the cleric asked for; Healed what the creature regained after the limit of half its maximum.
+  // Asked is what the cleric asked for the creature, or what the server shared to it when the request named no one; Healed
+  // what the creature regained after the limit of half its maximum.
   int32 asked = 3;
   int32 healed = 4;
-  int32 hit_points_after = 5;
+  // Deprecated: never filled. hit_points_after_known says the hit points after the action.
+  int32 hit_points_after = 5 [deprecated = true];
+  // The creature's hit points after the action, set only for a reader to whom the combat view gives that creature's
+  // hit points as numbers (the master and the player who plays it, while the creature is still in the combat's list).
+  // Unset for any other reader.
+  optional int32 hit_points_after_known = 6;
 }
 
 // ChannelDivinityTurn is the Wisdom saving throw of one undead against Turn Undead.
@@ -6217,6 +6286,23 @@ enum CombatLogKind {
   COMBAT_LOG_KIND_MOUNT_SAVE = 109;
   // A rider fell off its mount ("Toren caiu da montaria"): the same audience as MOUNT_SAVE, with no number for anyone.
   COMBAT_LOG_KIND_RIDER_THROWN = 110;
+  // The Inspiration moved: the master accepted a pass ("Brisa passou a Inspiração para Tor."). The master reads the giver and the
+  // receiver; the giver's owner the same; the receiver's owner reads who gave it ("Brisa passou a Inspiração para você."). No other
+  // player has the line (RN-10, RN-43). `favor` has the text.
+  COMBAT_LOG_KIND_FAVOR_PASSED = 116;
+  // The master gave back the Inspiration a roll spent for nothing ("O mestre devolveu a Inspiração de Tor."). The master and the
+  // roller's owner read it; no other player has the line. `favor` has the text.
+  COMBAT_LOG_KIND_FAVOR_REFUNDED = 117;
+  // A pass was refused by the master or given up by the giver. The master and the giver's owner read it, and nobody else. `favor`
+  // has the text.
+  COMBAT_LOG_KIND_FAVOR_PASS_ANSWERED = 118;
+}
+
+// CombatLogFavor is a line about the Inspiration (FAVOR_PASSED, FAVOR_REFUNDED and FAVOR_PASS_ANSWERED): the sentence is built for the
+// reader, so each one gets only what RN-10 lets them read.
+message CombatLogFavor {
+  // The line in Portuguese, as this reader may read it.
+  string text_pt = 1;
 }
 
 // CombatLogStateChange is a state that began or ended.
@@ -6450,6 +6536,8 @@ message CombatLogEntry {
   // the roll was made with the roller's Inspiration. Only the master and the roller's own player get it, like the roll's dice; empty for
   // anyone else and when the roll used none.
   string favor_text_pt = 129;
+  // FAVOR_PASSED, FAVOR_REFUNDED and FAVOR_PASS_ANSWERED: the line about the Inspiration, in the words this reader may read.
+  CombatLogFavor favor = 131;
   // ATTACK: the power attack the roll made, when it made one. The feature and the numbers are the master's and the
   // attacker's player's; another player reads that a trade was made (`CombatLogPowerAttack`).
   CombatLogPowerAttack power_attack = 122;
@@ -6676,6 +6764,11 @@ message ConsumableUseLogLine {
   string damage_type_name_pt = 8;
   // The name of the receiver when it is not the user (a potion given to another creature); empty for the user.
   string target_label = 9;
+  // The item's kind, which the line's verb follows (a potion is drunk or given, an oil applied, a scroll read).
+  // UNSPECIFIED when the item is no longer in the catalog or the campaign's rules cannot be read.
+  meurpg.characters.v1.ConsumableKind kind = 10;
+  // RESISTANCE: the whole length of the effect as a sentence part ("por 1 hora"); empty on the other outcomes.
+  string effect_duration_text_pt = 12;
 }
 
 // CombatLogReadied is a readied action in a line of the log, for the master and the readier's owner.
@@ -7226,13 +7319,13 @@ message ReactionWindow {
   // to the master ("10 s sem resposta"). The player may still answer; the first answer wins and the other reads
   // REACTION_ALREADY_ANSWERED.
   bool unanswered = 14;
-  // When the reactor's player first marked the window (entered the map): the wait of
-  // 120 s began then, once, and no later mark or clear changes it. Unset before that.
+  // When the wait of 120 s began: the reactor's player's first mark or the master's opening of
+  // the release, whichever came first. Once, and no later mark or clear changes it. Unset before that.
   // Read by the master and the reactor's player only. The master's screen passes the
   // window when the 120 s end.
   google.protobuf.Timestamp wait_began_at = 15;
   // The milliseconds the wait has run, as the read works them out with the server's clock
-  // (now minus `wait_began_at`); 0 before the first mark. The clock is the server's, so a screen
+  // (now minus `wait_began_at`); 0 before the wait began. The clock is the server's, so a screen
   // with a wrong clock still counts the wait right. Read by the master and the reactor's player only.
   int64 waited_ms = 16;
   // Only whoever answers: the question, by kind.
@@ -7598,13 +7691,14 @@ message AnswerReactionRequest {
   repeated RayRoll ray_rolls = 21;
 }
 
-// MarkReactionRollingRequest marks a window as being rolled.
+// MarkReactionRollingRequest marks a window as being rolled, or, from the master on a READIED window, begins its wait.
 message MarkReactionRollingRequest {
   string campaign_id = 1;
   string encounter_id = 2;
   string window_id = 3;
   // The player came back from the map: it takes the mark off. It does not restart the
-  // wait: the wait began at the first mark and no later mark or clear changes that.
+  // wait: the wait began at the first mark (or at the master's call, if it came first) and no later mark or clear
+  // changes that.
   bool clear = 4;
 }
 

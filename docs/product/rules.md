@@ -203,7 +203,19 @@ The master can also correct hit points, temporary hit points, spell slots (and p
   A monk at 0 hit points is down and cannot use it.
   Only the owner and the master read the number in the log.
   The master's undo gives back the hit points, the use and the action.
-- **Channel Divinity of the cleric.** Preserve Life (Life Domain) restores hit points to the creatures within 30 ft that the cleric names (when the cleric names no one, the app shares the points among the party, the most hurt first), up to five times the cleric's level in all, each to no more than half of its maximum; it cannot restore an undead or a construct. Turn Undead makes each undead within 30 ft that can see or hear the cleric make a Wisdom saving throw against the cleric's DC, and the ones that fail are turned for a minute (the master sees each save and who was turned, in the log and on the response; the turned creature carries the effect "Expulso"). Both spend the action and a use.
+- **Channel Divinity of the cleric.**
+  Preserve Life (Life Domain) restores hit points to the creatures within 30 ft that the cleric names, up to five times the cleric's level in all, each to no more than half of its maximum.
+  It cannot restore an undead or a construct.
+  The cleric's player may name only the creatures they read; any other is refused as not in the combat.
+  When the cleric names no one, the app shares the points among the cleric's side that the caller reads, the most hurt first.
+  Turn Undead makes each undead within 30 ft that can see or hear the cleric make a Wisdom saving throw against the cleric's DC, and the ones that fail are turned for a minute.
+  The turned creature carries the effect "Expulso".
+  The master reads each save and who was turned, in the log and on the response.
+  The cleric's player reads the saves of the undead they may read.
+  On a map with fog, later, the player reads only the undead they saw at the action that the master had not hidden then or since.
+  The result of Preserve Life lists each creature restored that the reader may read, with the amount asked and restored.
+  The hit points after go only to who reads that creature's numbers, the master and the player who plays it.
+  Both spend the action and a use.
 - **Spells and resources.** A spell spends its slot (or pact slot) when it is cast, and a resend does not spend twice. A healing spell heals at once, up to the maximum, and raises whoever was at 0. Class and race uses (Second Wind, Action Surge, Rage...) are counted too. A resource without a limit shows "ilimitado".
 - **The master's "Desfazer última ação"** undoes the last action; each undo is itself recorded.
 
@@ -558,6 +570,9 @@ A hidden member is never named: the turn waits for the master's part as "Falta o
 - The key and the uses a day of an innate use go to the master and the caster's owner, and every other player reads only that the cast was innate ("conjuração inata").
 - A cast that touches a hidden combatant leaves no line for the player. The reaction prompt carries neither the attacker nor the hit's total. The player cannot aim at a hidden target.
 - **Spells that read HP** (Sleep, Color Spray, Power Word Stun, Power Word Kill, Spare the Dying, Heal; "Sono", "Leque Cromático", "Palavra de Poder Atordoar", "Palavra de Poder Matar", "Estabilizar", "Cura Completa") are resolved with the real hit points, and the player still sees only words. The caster sees their own total (`5d8 (2, 4, 1, 5, 3) = 15`) and who was affected ("adormeceu", "não foi afetado"), never a target's hit points or the reason. The master sees the total, each creature's hit points, what remained and the reason. Other players see only who was affected and the condition. Targets are listed in the caster's order, not the order of the total, which would reveal who has the least hit points. Power Word Kill on a player character takes them to 0 with three failures, and the master confirms the death (RN-03).
+- **A heal that depends on the damage dealt** (Vampiric Touch) is half the damage the hit dealt, after the target's resistances, wherever the damage lands: temporary hit points, hit points, and what goes past 0 all count.
+  The heal is a line of the log, written on every hit that lands, with 0 when nothing heals.
+  Its numbers go only to the master and the caster's owner; another player reads the line with no numbers, and when the target is hidden no player reads the line, the caster's owner included.
 
 **RP scenes** (MR-015).
 An action's DC belongs to the master. A player never receives another player's roll.
@@ -697,6 +712,10 @@ A readied spell holds the concentration until it is released or lost (RN-31): re
 A spell or the master that ends concentration on a summoning spell (Conjure Animals) dismisses the creatures of that casting.
 The master's undo gives the concentration and the same creatures back.
 A spell that forces a saving throw later (Flaming Sphere, Sleet Storm, Earthquake) rolls its saves and damage when it is cast; the master calls for the later ones. Spirit Guardians, Moonbeam, Cloudkill, Web, Grease, Entangle, Stinking Cloud, Spike Growth and Wall of Fire are the exception: the app keeps their area and calls for the later saves by itself (RN-37).
+Vampiric Touch attacks a creature in reach when it is cast, and heals the caster half the damage dealt.
+The log shows the heal, and the master's undo takes it back.
+The cast result says what the master applies on later turns, such as the attacks of Flame Blade and Vampiric Touch, made as an action, the bite of Faithful Hound and Eyebite's new target.
+The app does not repeat them.
 
 Conditions are public or owner-class.
 Public conditions are readable by everyone.
@@ -913,6 +932,14 @@ On a map with a grid the caster does not list who an area spell touches: they pl
 - **Walls.** A location is outside the area when no unblocked straight line runs from the point of origin to it. Only total cover blocks (a wall, a closed door; crates, a column or other creatures do not). A spell that "spreads around corners" (Fireball and the other spheres) reaches the part of its shape connected to the origin, but never between two walls that touch at a corner. If a player places the point behind a wall, it lands on the near side. The master's point stays, and the master is not held to the range.
 - **Who is hit.** Everyone inside: allies, the caster when inside, hidden creatures. The damage is one roll for all. Cover is measured from the point of origin, and adds +2 (half) or +5 (three-quarters) only to a Dexterity saving throw. A creature reached only around a corner gets no automatic cover; the master marks it by hand.
 - **An empty area** is still cast and spends the slot and the action. The app asks first: "Ninguém que você vê está na área".
+- **Several creatures with a closeness limit.** Some spells take several creatures that must stay near each other.
+  The app never refuses a legal cast; where it cannot check the exact shape, it checks only what any legal cast must meet.
+  Acid Splash takes two creatures within its range and within 1.5 m of each other.
+  Chain Lightning takes a first creature within its range and others within 9 m of the first; the caster's range does not hold the others.
+  Mass Cure Wounds takes up to six creatures, each within 27 m of the caster (its 18 m range plus the 9 m radius of the sphere) and within 18 m of every other.
+  On a map a player's picks that break these limits are refused.
+  Without a map the app does not check.
+  The master is not held to the number of creatures or to the closeness.
 - **Without a grid** (combat without a map, RN-25) none of this exists: the caster lists who is hit, and the master judges who is inside and the cover.
 
 ### Teleport spells on the grid
@@ -993,6 +1020,12 @@ The master judges reach, distance and spell range, and the lists of targets hold
 The player spends movement by number ("Gastar movimento"), never more than the turn has, and reads what remains ("Restam 6 m"); the master spends for anyone.
 The opportunity attack is an offer from the master, who sees who left whose reach and may withdraw it or go on without waiting.
 Cover is what the master marks; total cover puts the target out of reach.
+**Spell targets** keep the SRD's number of creatures in this mode too.
+Seeming and Wall of Ice take up to 10 creatures, and the master applies the rest.
+Slow takes up to 6 and Water Breathing up to 10.
+A spell with no creature to pick (a point, an object, a place) takes no target.
+Fire Shield and Dimension Door take the caster only.
+The master is not held to the number.
 Moving, jumping, putting on the map, the reach preview, traps, fog, doors, summoned creatures' places and the familiar's eyes do not exist in this mode, and ask for a map.
 Everything else (initiative, turns, actions, attacks, spells, damage, reactions, conditions, death saves, highlights, log, undo, XP) is the same.
 See ADR-0017, [Architecture](../architecture/play/theatre.md) and [Design](../design/README.md).
@@ -1169,7 +1202,7 @@ There is no "Pular": every window is answered with "Usar" or "Deixar passar", or
 | Deflect Missiles (monk 3) | Reduces a ranged weapon hit by 1d10 + Dexterity + monk level; at 0 the monk catches the missile and, for 1 ki, throws it back. |
 | Hellish Rebuke | 2d10 fire (+1d10 per slot level above 1st), Dexterity save for half; the tiefling's Infernal Legacy casts it once per long rest. The aggressor's save is the master's and cannot be passed. |
 | Counterspell | A spell of the slot's level or lower fails; a higher one asks a spellcasting ability check against 10 + the spell's level. The slot is spent. The prompt to a player never names the spell or its level. |
-| Cutting Words (Lore bard 3) | Spends a Bardic Inspiration and takes the die off an attack roll (weapon or spell), ability check or damage roll of a creature of the other side that the bard sees within 60 feet. In a combat the checks it asks are the roll of a contest (grapple, shove, escape), the answer to a contest and a Hide; the roll waits for the bard before it is made. A check outside a combat has no window. A creature that cannot hear the bard or is immune to being charmed opens no window, nor does one the bard's player cannot see. The sheet setting "Perguntar: todos / só em ataques (padrão) / nunca" chooses what it asks: the checks only in "todos". |
+| Cutting Words (Lore bard 3) | Spends a Bardic Inspiration and takes the die off an attack roll (weapon or spell), ability check or damage roll of a creature of the other side that the bard sees within 60 feet. In a combat the checks it asks are the roll of a contest (grapple, shove, escape), the answer to a contest and a Hide; the roll waits for the bard before it is made. A check a creature of the master's side makes outside a combat is asked too: the master rolls it ("Teste de um NPC") and each bard that may cut it is asked in turn, one at a time, on the screen only (no reaction is spent, only the Bardic Inspiration use); the master may "Continuar sem esperar". Cutting Words needs the bard to see the creature and the creature to hear the bard: outside a combat, with no token of both on the map, the master says so with the box "Os bardos veem a criatura e ela os ouve". A creature that cannot hear the bard or is immune to being charmed opens no window, nor does one the master hid on the map (its token) or one the bard's player cannot see on the map within 60 feet; a bard whose player the open scene is not open to is asked nothing, on the map or by the box. A creature the master hid only on the stage opens a window when the box is ticked, and the question calls it "uma criatura". What is judged when: range and sight when the check is rolled; the feature, the setting, the hit points and the uses again when the bard answers; whether the creature is hidden every time the question is read (a token the master hides after the roll closes the question as "Continuar sem esperar" does, and a creature hidden on the stage reads "uma criatura"), and a bard whose character left the party (reserve, dead, deleted) or whose player is outside the open scene lets the question pass and the next bard is asked. When nobody is asked the master reads why. The sheet setting "Perguntar: todos / só em ataques (padrão) / nunca" chooses what it asks: the checks only in "todos". |
 | Protection (Fighting Style) | A creature the reactor sees attacks someone on the reactor's side within 5 ft of it (not the reactor): the attack roll has disadvantage. Only while the reactor wields a shield, has its reaction and sees the attacker. A combat without a map does not offer it. |
 | Feather Fall | Up to five falling creatures within 60 ft take no falling damage. |
 | Slow Fall (monk 4) | The falling monk takes 5 times its level off its own falling damage. |
@@ -1192,6 +1225,10 @@ A player reads only their own windows, and the numbers of the trigger (an attack
 - **An optional reaction a player does not answer passes after 30 seconds** (Shield, Uncanny Dodge, Hellish Rebuke's cast, Counterspell, Cutting Words, Deflect Missiles, Protection, Feather Fall, Slow Fall, a readied action the master fired, a reaction feature whose trigger happened and an opportunity attack offered to a player). The master's screen counts it ("Passa sozinho em N s"), the player's prompt reads "Se você não responder, passa sozinho em N s.". Never a saving throw, a contest or the master's check.
 - **A player who is rolling gets longer.** While the player rolls a physical die, the window waits up to 2 minutes: "Você está rolando: a mesa espera 2 min", and the master reads "Rolando… passa sozinho em N s". The master can pass it sooner.
   The same wait is for a player choosing the targets or the darts of a held spell.
+  The same wait is for a player who takes a held move or a held spell to the map ("Mover agora", "Soltar no mapa").
+  The 2 minutes run once per window, from the first time the player is on the map: going back to the window and onto the map again does not start them over.
+  While the player is on the map the master's screen says so ("No mapa"), and the window passes by itself only when the 2 minutes end.
+  A player who is only choosing the targets or the darts is not on the map, and the master's screen says that and not "No mapa".
 - **Ready** (SRD 5.1, "Ready").
   On its turn a creature spends its action to hold another until a trigger its player writes.
   The held action is an attack, a move, a spell or another standard action.
@@ -1204,13 +1241,13 @@ A player reads only their own windows, and the numbers of the trigger (an attack
   At a table with physical dice, a readied action released from the window takes the faces typed, as on the player's turn: the d20 (the pair for advantage or disadvantage) of an attack, and the sum of the dice of a spell that rolls a pool (Sleep, Color Spray); a spell with several rays (Scorching Ray) takes one typed d20, or pair, for each ray.
   The creature named at Ready is only a suggestion for the release.
   A spell that asks an ability, a damage type, the creatures of a summon or a revival cannot be released, and Ready refuses it.
-  A spell placed on the map (a point, a direction, a wall) or that lays a zone there is released on the map while the window is open, by casting the spell there, not by answering the window.
+  A spell placed on the map (a point, a direction, a wall) or that lays a zone there is released on the map while the window is open ("Soltar no mapa"), not by the window's "Use".
   The spell is lost, with its slot, if the concentration ends first, if the creature lets it pass, or when the readied action is lost.
   Hide and Help cannot be held: they have their own calls, which a reaction does not run.
   Dash and Disengage cannot be held either: they last only for the creature's own turn.
   A move cannot be held in a combat without a map.
   A readied move is up to the combatant's speed, not the movement its turn had left (SRD 5.1, Ready: "move up to your speed").
-  A readied move that goes nowhere, stopped before its first square (a creature the player cannot see is in the way), is not used: the reaction stays free, the action keeps waiting and its window stays open. The reply says the walk stopped early.
+  A readied move that goes nowhere, stopped before its first square (a creature the player cannot see is in the way), is not used: the reaction stays free, the action keeps waiting and its window stays open, and the Mover page stays open on the player's screen (and the master's) with "Algo bloqueia o caminho: nada foi gasto. Escolha outro quadrado.", so the player can choose another square or let it pass.
   One that is stopped after at least one square is still the use.
   The master's own walk of the token is not the release: it is free as ever and leaves the window as it was, unless the master chooses to release the move for the player.
   A Ready cannot fire during the readier's own turn.
@@ -1286,6 +1323,29 @@ The choices cover the SRD 5.1 sections Fighting Style, Draconic Ancestry and Bre
 - **A background's "this or that".** A table background may offer up to 4 groups, each a pick of some of a few skills, tools or pieces of equipment (SRD 5.1, "Backgrounds": a background gives two skills, tools, languages and equipment; a group leaves some of it to the player). A group takes at least one pick and always fewer than its options, which are at least 2 and at most 12, none twice. A skill group offers SRD skills the background does not already give, and the background still gives 2 skills in all: the ones it names and the picks of its skill groups together. A tool group offers SRD tools, among them the SRD's dice set and playing card set, and named gaming sets the master types (1 to 40 characters, none twice in the group); a named set is listed on the sheet as "Conjunto de jogo: Trilha". An equipment group offers pieces of equipment of 1 to 80 characters each, and the picks join the sheet's background equipment. The picks are made in "Escolhas" and warn while open, like the tool picks. A pick belongs to its group by what the group is (its kind, its picks and its options, in any order): if the master reorders the groups, the picks stay; if the master edits a group, its old picks count for nothing, the sheet is still saved, and on a locked sheet the group becomes a pending choice ("Completar escolhas pendentes").
 - **A trait with options.** A race or subrace trait the master registers may offer a one-time choice of one option. It is asked in the step "Escolhas" like the others, stored on the sheet and refused when it is not one of the options. A trait a subrace replaces asks nothing.
 - **Tools by kind, and the options of another feature.** A table choice of tools may offer every proficiency of the kinds the master ticks (weapon, tool, other) instead of a list; the pool is the catalog's proficiencies of those kinds, read when the sheet is, and it never holds an entry the table switched off, hid or archived. A tool choice that lists its own options may name proficiencies of the weapon and other kinds too. The SRD names no gaming set, so a set is picked by its proficiency like any other. A table choice of features may instead offer the options of another feature that has options (the SRD's or another table entry's): the choices that offer the same options share one pool. A player's pool never holds an option of an entry the master switched off, hid or archived, unless the sheet holds that entry; a player's pick of an option outside the pool is refused as a key that does not exist. The master may pick an option that is only switched off, not an archived one. A pick a sheet already holds is kept. A choice is complete with as many picks as a player may make today, the picks the sheet holds counted, so it never asks for more than the pool lists. A feature that offers another's options, one without options and a choice that also names a list, a set or a filter are refused when the master saves. A feature that offers another feature's options cannot also allow swaps (the swap levels of the swapping bullet above): the master's save is refused, and the master drops the swaps or gives the feature options of its own.
+- **A pick under an entry the master closed.** A player's new pick stored under the key of an entry the master switched off, hid or archived, which the sheet neither holds nor gets, is refused as a key that does not exist. A pick the sheet already holds is kept.
+- **Where skills, expertise and tools come from.** The sources of the picks are those of the entries the sheet holds or gets after the change, for every reader and on every path: creation, save, both previews, completing choices and level up.
+  Each choice of skill, expertise or tool picks from its own list, and the picks of the sheet are matched to the lists they can come from.
+  A pick that fits only when another moves to a different list is accepted.
+  A list that names a skill the character already has from its background asks its full count when its other skills are enough.
+  When they are too few, it takes any other skill for each one it lacks (SRD 5.1).
+  What the master closed changes what a player may take, never what an entry the sheet holds or gets gives.
+  A class feature of the table that the master archived gives its list to a character of the class, and the list is shown.
+  A switched-off one is no source.
+  A new pick that no list places is refused for a player, however the picks are ordered on the sheet, and the sentence names only that pick.
+  For skills, what the preview and the level up offer is what the save accepts: the same set; at a level that adds a class by multiclassing it is the class's row, without the skills the sheet has, and the picks of earlier levels stay where they are.
+  For expertise, being on the offered list is necessary and the proficiency decides.
+  A skill the stored sheet had from its background is a new pick when the background changes.
+  The master is never refused for a pick no list places: the sheet saves, and the master alone reads the issue about it.
+  A stored sheet whose picks do not fit saves, levels up and plays, and its picks count and give what they give.
+  The master is refused a tool pick that is no tool when the sheet has its owner or the table closed the owner; a pick under an owner the sheet lacks and the table keeps open is saved.
+  A tool pick under an archived owner the sheet neither holds nor gets is answered, for a player and for the master, as an owner that does not exist.
+  Under a switched-off owner it is saved for the master.
+  The choices preview answers the lists of the draft as it is: after a class change, the picks the new class's lists no longer place are ticked, can be taken off, and are refused only by the save, at their own field.
+  The preview of a draft or of a locked sheet refuses a key that is no tool, a pick of an entry the master closed or the player's view keeps out, and a pick under an owner a player may not read; it refuses no pick that no list places.
+  The sentence of a refused pick stays on its field until a pick, the class, the race, the subrace or the background changes.
+  A level up asks for as many new skills as the sheet after the level may pick, held picks counted, and refuses a player's new skill that no list of the sheet after the level has room for.
+  Its skill sources list the sources the level adds for the sheet after the level.
 - **Creation.** A player's sheet with an open choice is refused ("Criar personagem" explains what is missing), and the editor has a step "Escolhas". The master's NPCs and the table sheets are not held to it.
 - **Options that cannot be taken yet** (an invocation that asks level 5, or a spell the sheet lacks) are listed, dotted, with the reason. Two options that give the same thing (the same resistance twice) are refused.
 - **A locked sheet** whose class gained a choice stays playable. The owner and the master read "N escolhas pendentes", and the player completes only the missing picks, changing nothing else on the sheet (RN-01). The master also reads "N escolhas em aberto" on the campaign page; a player never sees another's.
@@ -1510,7 +1570,9 @@ A player reads the damage as rolled, with the type of each part, and never what 
 
 **Partly built.**
 Built: the master's grant, the list of who has it, and spending it on an attack roll, a cast with one spell attack, a concentration save, an effect save, a scene check, a group check, a contest (the start and the answer), Hide, a trap search and a puzzle hint try.
-Not built: spending it on a death save, a Counterspell check and initiative; passing it to another player; the master's undo of a grant.
+Also built: asking to pass it to another player character and the master's answer to the ask, with its lines in the combat's log and the master's undo of an accepted pass; the master's undo of a grant; and the master's refund prompt for an Inspiration a roll spent for nothing.
+Limits of what is built: outside a combat the pass and the grant write no line in a log and cannot be undone (the answers show in the list of who has it and in the live hint). The master can take a grant back only with the undo, in a combat; he cannot pass an Inspiration (only its holder asks to), and a grant to a character that has one is refused, so outside a combat nothing takes an Inspiration from a character but spending it.
+Not built: spending it on a death save, a Counterspell check and initiative.
 This is the intended behaviour:
 
 The master grants Inspiration to a player character as a reward for good play (PHB 2014, ch. 4, outside SRD 5.1).
@@ -1519,8 +1581,19 @@ A character has it or not: it never stacks, and a grant to a character that alre
 Creatures, NPCs and characters in the reserve never hold it.
 The holder's player spends it to roll one attack roll, saving throw or ability check of that character's own with advantage.
 The player chooses before the d20 is rolled, and the advantage cancels against disadvantage like any other.
-A player may pass it to another player character of the same campaign only by asking: the master reads "<player> quer passar a Inspiração para <character>" and accepts ("Aceitar") or refuses ("Recusar"). Until the master answers, nothing moves.
-The master's undo takes back a grant made by mistake.
+A player may pass it to another player character of the same campaign only by asking, and only while a session is open (the master answers at the table): the master reads "<player> quer passar a Inspiração para <character>" and accepts ("Aceitar") or refuses ("Recusar"). Until the master answers, nothing moves.
+- **The ask.** A character has one ask at a time. While it waits the giver reads "Esperando o mestre", may cancel it, and cannot spend the Inspiration (the spend is refused until the ask is answered or canceled); a roll a reaction window held and replays meanwhile is made without it, and says so.
+- **Accepting.** It moves the Inspiration: the giver loses it and the receiver has it. A receiver that already has one cannot take it: the master alone is told, nothing changes and the ask stays, so he refuses it. The giver is never told the receiver's state.
+- **Refusing.** It stays with the giver, who reads one sentence for every refusal: "O mestre recusou: a Inspiração continua com você."
+- **The end of the session** cancels the asks still open: the Inspiration stays with the giver.
+- **The ask follows the character.** An ask belongs to the character that is to give it: if that character changes hands while the ask waits, its new owner reads it and cancels it, and the former owner reads and cancels nothing of it.
+- **A character that cannot hold it.** The master's "Devolver" and his undo of an accepted pass refuse a character that is in the reserve or is no longer a player character: nothing changes, and the refund question stays open, so he can still choose "Manter gasta". The accept of a pass refuses a giver in the reserve and a receiver that cannot hold it the same way.
+- **A give-back the app makes by itself** (a held roll dropped before it was answered, the undo of a roll) always restores the Inspiration to the character that spent it, also when that character is in the reserve: it undoes a spend, and nobody is there to be told no.
+- **A giver in the reserve** has no owner, so nobody cancels its ask: it closes by the master's "Recusar" or by the end of the session.
+- **Who reads it.** The master reads every ask; a giver only their own; the receiver reads nothing until it moves, and then only that they have it. Another player reads nothing at all (RN-10).
+- **In a combat.** The answer is a line of the combat's log in each reader's words: the master reads the names, the giver reads what happened to theirs, the receiver reads who passed it to them, and no other player reads anything. A player character's combatant cannot be hidden from the table, so no hidden combatant is ever in a grant, a pass or a refund; the code still keeps the line of such an entry the master's alone, should one exist. The master's undo of an accepted pass is one step: it goes back to the giver and leaves the receiver, who reads "O mestre desfez a passagem: a Inspiração não está mais com você."; it is refused if the receiver already spent it or the giver has another by then. A refusal or a cancel is told to the giver's player (and the master) alone; only an accepted pass is told to the receiver's player. The master's own grant is a line only he reads ("O mestre deu a Inspiração a …"), so that his undo of it is offered like any other action; undoing a grant or an accepted pass also closes the ask the holder had made to pass it on. The giver's own cancel and a refusal written in a combat are lines too, and each becomes the master's last action: his undo of it takes only the line away, since the Inspiration never moved.
+- **The refund.** When a roll spent it and it added nothing over every source of advantage (a source the player may not read already gave it), the roll resolves at once and the master chooses "Devolver" or "Manter gasta". The player reads only "O mestre devolveu a sua Inspiração.", never why; an unanswered question keeps it spent when the session ends. The question belongs to its roll: undoing the roll, or forgetting it before it was answered, gives the Inspiration back and closes the question as kept (so does undoing the cast whose zone's save spent it), and an answer "Devolver" to a roller that has an Inspiration again is refused, so a spend is never refunded twice.
+The master's undo takes back a grant made by mistake, in a combat; one already spent is refused.
 A player reads only whether their own characters have it.
 Another player reads neither who has it nor that it moved (RN-10).
 

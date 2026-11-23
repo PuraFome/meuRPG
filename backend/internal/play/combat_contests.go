@@ -609,7 +609,7 @@ func (s *Service) StartContest(
 	ctx context.Context,
 	req *connect.Request[playv1.StartContestRequest],
 ) (*connect.Response[playv1.StartContestResponse], error) {
-	// The member first, so a stranger gets permission_denied before any id is parsed.
+	// The member first, so a stranger or a pending member gets not_found (from authz) before any id is parsed.
 	m, err := heldMember(ctx, req.Msg.GetCampaignId()) // a held roll's answer runs this again as the roller
 	if err != nil {
 		return nil, err
@@ -1068,7 +1068,7 @@ type shoveChoiceReq struct {
 }
 
 // parseShoveChoice is the first phase of ResolveShove: read and validate the request, the
-// member first, so a stranger gets permission_denied before any id is parsed.
+// member first, so a stranger or a pending member gets not_found (from authz) before any id is parsed.
 func parseShoveChoice(ctx context.Context, msg *playv1.ResolveShoveRequest) (shoveChoiceReq, error) {
 	m, key, encID, err := memberCall(ctx, msg.GetCampaignId(), msg.GetIdempotencyKey(), msg.GetEncounterId())
 	if err != nil {

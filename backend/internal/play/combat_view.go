@@ -115,6 +115,19 @@ func (v combatViewer) sees(c playdb.Combatant) bool {
 	return v.master || (!c.Hidden && !v.unseen[c.ID])
 }
 
+// readsHitPointsOf says the viewer reads the hit points of the combatant as numbers: the master, and the player who plays it
+// (a character or one of its creatures). Every other viewer reads its state word. The combat view applies it to creatures; the
+// numbers of a character's own come from its vitals.
+func (v combatViewer) readsHitPointsOf(c playdb.Combatant) bool {
+	return v.master || v.owns(c)
+}
+
+// seesAtAction says the viewer reads a creature of an action as it was when the action was made: the master all of
+// them, a player one they see that the master had not hidden then. A combatant with no ID is one that is gone.
+func (v combatViewer) seesAtAction(c playdb.Combatant, hiddenAtAction bool) bool {
+	return v.master || (c.ID != "" && !hiddenAtAction && v.sees(c))
+}
+
 // owns says whether the viewer's player plays the combatant: their own
 // character, or one of its creatures (which carry the owner's user_id). Only a
 // player's character is "mine" (Combatant.mine); controlled_by_me is this.
@@ -145,10 +158,19 @@ type encounterData struct {
 	zones []*zone
 	// readied are the readied actions that wait (ready_turn.go).
 	readied []playdb.ReadiedAction
+	// openWindows are the open reaction windows, read before the rows that say what became of them (readied above).
+	openWindows []playdb.ReactionWindow
 }
 
 // loadEncounter reads a combat's combatants, in turn order.
 func loadEncounter(ctx context.Context, q *playdb.Queries, enc playdb.Encounter, rerolls bool) (*encounterData, error) {
+	// The open windows come first: a read through the pool is no snapshot, and a pass that commits between the two reads must
+	// show as "window still open, readied action already ignored" (the window is gone at the next read), never as "window gone,
+	// readied action still waiting", which the readier's sheet reads as the master undoing the trigger. A read closes no window.
+	open, err := q.ListOpenReactionWindows(ctx, enc.ID)
+	if err != nil {
+		return nil, fmt.Errorf("list the reaction windows: %w", err)
+	}
 	cs, err := q.ListCombatants(ctx, enc.ID)
 	if err != nil {
 		return nil, fmt.Errorf("list the combatants: %w", err)
@@ -186,7 +208,7 @@ func loadEncounter(ctx context.Context, q *playdb.Queries, enc playdb.Encounter,
 		return nil, fmt.Errorf("list the readied actions: %w", err)
 	}
 	cs = withSilenceDeaf(cs, zones)
-	return &encounterData{enc: enc, cs: cs, states: states, requests: requests, holds: holds, allHolds: allHolds, setupOffers: setupOffers, riders: riders, zones: zones, readied: readied}, nil
+	return &encounterData{enc: enc, cs: cs, states: states, requests: requests, holds: holds, allHolds: allHolds, setupOffers: setupOffers, riders: riders, zones: zones, readied: readied, openWindows: open}, nil
 }
 
 // openInitiatives are the questions of the initiatives of a combat in SETUP that wait for an answer, by character: the
@@ -533,9 +555,9 @@ func combatantToProto(c playdb.Combatant, v combatViewer, tieUnresolved bool, vi
 		out.DeathSaveDue = onTurn && deathSaveDue(c, vitals)
 	}
 	characterFormsFor(out, c, vitals, detail)
-	if controls && isCreature(c) {
-		// A creature's hit points are numbers to its owner's player and the master
-		// (below); everyone else gets the state word.
+	if v.readsHitPointsOf(c) && isCreature(c) {
+		// A creature's hit points are numbers to its owner's player and the master;
+		// everyone else gets the state word.
 		out.HitPointsCurrent, out.HitPointsMax, out.HitPointsTemporary = c.HpCurrent, c.HpMax, c.HpTemp
 		out.HitPointsMaxBonus = c.HpMaxBonus
 	}

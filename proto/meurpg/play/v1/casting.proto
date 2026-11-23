@@ -158,16 +158,17 @@ service CastingService {
   rpc CastSpellOutsideCombat(CastSpellOutsideCombatRequest) returns (CastSpellOutsideCombatResponse);
 
   // ConfirmCastTimePassed ends a cast that is in the CASTING state: the master confirms the game
-  // time has passed ("Concluir conjuração"). Only the master may call it. The slot
+  // time has passed ("Concluir conjuração"). Only the master may call it: a player gets
+  // `permission_denied` before anything else of the request is read. The slot
   // is spent now (NO_SLOT, with nothing changed, when it is no longer free) and the
   // spell takes effect as CastSpellOutsideCombat describes, with the roll and the summoning
   // choice this request carries. While the caster is a combatant of a combat that is not
   // ended the cast goes on there and this method refuses (IN_COMBAT).
   //
   // Errors:
-  //   - `not_found`: the cast is not one of the open session's, or the caller may
-  //     not see it.
   //   - `permission_denied`: the caller is a player.
+  //   - `not_found`: the campaign has no such cast (it is read by the campaign and the
+  //     cast id).
   //   - `invalid_argument`: as CastSpellOutsideCombat for the roll and the summoning choice.
   //   - `failed_precondition`: no open session; the cast is not going (CastingBlocked,
   //     CAST_NOT_GOING); no free slot (NO_SLOT); the caster is in a combat

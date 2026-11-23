@@ -83,10 +83,11 @@ func sweepBase(t *testing.T, c *Content, classKey, subKey string) Build {
 		gains = gains.plus(c.c.subclassGains(sub, 1))
 	}
 	b.FeatureChoices = append(b.FeatureChoices, pickPending(c.c, b)...)
-	for range gains.skills {
+	wantSkills, wantExpertise := c.c.deriverFor(b).skillAllowance()
+	for len(b.SkillProficiencies) < wantSkills {
 		b.SkillProficiencies = append(b.SkillProficiencies, nextSkill(c, b))
 	}
-	b.Expertise = pickExpertise(c, b, gains.expertise)
+	b.Expertise = pickExpertise(c, b, wantExpertise)
 
 	return fillSpells(c, b, classKey, gains.cantrips)
 }

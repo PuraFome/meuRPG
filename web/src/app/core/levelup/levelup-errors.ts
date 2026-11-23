@@ -147,12 +147,22 @@ export function blockedMessage(reason: CharacterBlockedReason | undefined): stri
   );
 }
 
+/** The refusals that name a pick list: the screen's lists may be out of date, so the options are read again. */
+export function refusesPickList(reason: LevelUpRefusalReason): boolean {
+  return reason === LevelUpRefusalReason.SKILLS || reason === LevelUpRefusalReason.EXPERTISE;
+}
+
 /** What a failed call of the flow means for the screen. */
 export type LevelUpFailure =
   /** The sheet changed under the player: read it again. */
   | { readonly kind: 'stale'; readonly message: string }
   /** The rules refused the choices, with the step to go to. */
-  | { readonly kind: 'refusal'; readonly message: string; readonly step: StepKey | null }
+  | {
+      readonly kind: 'refusal';
+      readonly message: string;
+      readonly step: StepKey | null;
+      readonly reason: LevelUpRefusalReason;
+    }
   /** The character cannot level up (any more): no choice fixes it. */
   | {
       readonly kind: 'blocked';
@@ -183,6 +193,7 @@ export function describeLevelUpFailure(err: unknown, abilityStep = true): LevelU
         kind: 'refusal',
         message: refusalMessage(refusal),
         step: refusalStep(refusal.reason, refusal.field, abilityStep),
+        reason: refusal.reason,
       };
     }
     const [blocked] = e.findDetails(CharacterBlockedSchema);

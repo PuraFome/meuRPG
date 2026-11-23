@@ -5,7 +5,15 @@ The questions are the halfling's Lucky (RN-35), the reroll a table feature gives
 Lucky and the die are asked in that order, so the player decides after seeing the d20 and before the result (SRD 5.1).
 The code is `held_gate.go`, `held_store.go`, `held_questions.go`, `held_answer.go`, `held_registry.go`, `held_roller.go`, `held_reroll.go`, `combat_lucky.go`, `inspiration_held.go`, `inspiration_lucky.go` and `inspiration_outside.go`.
 
-## The fourteen kinds
+## The fifteen kinds
+
+The table below has the fourteen kinds that go through the gate.
+The fifteenth, `npc_check`, is not one of the gate's: it is the master's roll of an NPC's check that a Lore bard may cut.
+It has no roller's gate and no replay (`rerunNpcCheck` refuses).
+`admits` refuses it to every other path: every other arm of `AnswerHeldRoll` and the outside and attack answers read "not found".
+The lists of open holds and the forget of an actor's holds skip it.
+A combat that starts, the next NPC check the master rolls or a session that ends settles it as a skip.
+Its question is the `CuttingWordsQuestion` of the bard whose turn it is, answered by the `cutting_words` arm of `AnswerHeldRoll` ([Reactions](reactions.md#cutting-words-on-a-check)).
 
 Whichever path rolls the d20 asks the same gate.
 

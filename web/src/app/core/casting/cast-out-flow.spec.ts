@@ -268,6 +268,13 @@ describe('what a cast did', () => {
     expect(resultTitle(narrated)).toBe('Detectar Magia conjurada');
   });
 
+  it('ends the sentences of a cast with the notes of its spell', () => {
+    const cast = create(OutsideCastSchema, { spellKey: 'spell:eyebite' });
+    const out = resultSentences(cast);
+    expect(out.length).toBe(2);
+    expect(out[1]).toContain('O mestre aplica o efeito');
+  });
+
   it('does not repeat what a player may not read: a target with no amount has no number in its sentence', () => {
     const hidden = create(OutsideCastSchema, {
       targets: [create(OutsideCastTargetSchema, { name: 'Toren', effect: CastEffect.HEAL })],

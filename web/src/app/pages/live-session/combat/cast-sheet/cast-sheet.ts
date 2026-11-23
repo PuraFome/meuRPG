@@ -1,6 +1,7 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  DestroyRef,
   ElementRef,
   Injector,
   afterNextRender,
@@ -24,6 +25,17 @@ import type { SlotRow } from '../../../../core/combat/cast-flow';
 import { CombatClient } from '../../../../core/combat/combat-client';
 import { SpellCatalog } from '../../../../core/combat/spell-catalog';
 import { grantLine } from '../../../../core/combat/combat-options';
+import { ON_MAP_TEXT } from '../../../../core/combat/readied-wait';
+import { ReleaseMark } from '../../../../core/combat/release-mark';
+import {
+  RELEASE_BACK,
+  RELEASE_LEAD,
+  RELEASE_DONE,
+  masterFoot,
+  releaseBand,
+} from '../../../../core/combat/release-text';
+import { focusSafeWhenGone } from '../release-focus';
+import { ReleaseWatch } from '../../../../core/combat/release-watch';
 import { castLabel } from '../../../../core/resources/metamagic';
 import { ResourceClient } from '../../../../core/resources/resources-client';
 import { AreaList } from '../../../../shared/area-picker/area-list';
@@ -47,6 +59,7 @@ import {
 } from '../../../../shared/spell-details/spell-details-map';
 import { SpellHelp } from '../../../../shared/spell-details/spell-help';
 import { AbilityPicker } from '../../effects/ability-picker/ability-picker';
+import { ReleaseBandView } from '../release-band/release-band';
 import { CheckRow } from '../../../../shared/form-fields/check-row';
 import { MultiRoll } from '../../../../shared/multi-roll/multi-roll';
 import { RollModePicker } from '../roll-mode/roll-mode-picker';
@@ -74,7 +87,7 @@ import { MetamagicPicker } from './metamagic-picker';
 import { SculptPicker } from './sculpt-picker';
 import { TableOptionPicker } from './table-option-picker';
 
-export type { CastMapData, CastSheetData } from './cast-sheet-types';
+export type { CastMapData, CastRelease, CastSheetData } from './cast-sheet-types';
 
 /**
  * "Conjurar Mísseis Mágicos" (MR-014, E6-09): the player's cast in a bottom
@@ -113,6 +126,7 @@ export type { CastMapData, CastSheetData } from './cast-sheet-types';
     MatIconModule,
     MultiRoll,
     RollModePicker,
+    ReleaseBandView,
     RollPicker,
     SculptPicker,
     SheetFrame,
@@ -126,6 +140,7 @@ export type { CastMapData, CastSheetData } from './cast-sheet-types';
 })
 export class CastSheet {
   private readonly api = inject(CombatClient);
+  private readonly destroyRef = inject(DestroyRef);
   /** Read when the player answers about the die: a sheet that never asks does not build the client. */
   private readonly lazyInjector = inject(Injector);
   private readonly animator = inject(RollAnimator);
@@ -144,6 +159,45 @@ export class CastSheet {
   protected readonly Placement = AreaPlacement;
   protected readonly grantLine = (g: SpellGrantOption) => grantLine(g, this.data.level);
   protected readonly d20Fields = D20_FIELDS;
+  /** A readied spell released on the map (#857): its band, its words and what became of its window. */
+  protected readonly release = this.data.release;
+  protected readonly releaseBand = this.release
+    ? releaseBand(this.release.trigger, this.release.slotLevel)
+    : null;
+  protected readonly backLabel = RELEASE_BACK;
+  protected readonly releaseLead = RELEASE_LEAD;
+  protected readonly doneLabel = this.release ? RELEASE_DONE : 'Voltar à sua vez';
+  /** The quiet line above the buttons: the table waits (the master reads that the player may still answer). */
+  protected readonly waitLine = this.data.master
+    ? masterFoot(this.release?.reactorLabel ?? '')
+    : ON_MAP_TEXT;
+  private readonly watch = this.release
+    ? new ReleaseWatch(
+        () => this.data.state.encounter(),
+        {
+          windowId: this.release.windowId,
+          readiedId: this.release.readiedId,
+          reactorId: this.data.casterId,
+          spellName: this.data.name,
+          move: false,
+          masterOf: this.data.master ? this.release.reactorLabel : undefined,
+        },
+        (w) => this.mark?.observe(w),
+      )
+    : null;
+  /** The player marks the window while on the map (the master never does): the server dates the one wait of 120 s from it. */
+  private readonly mark =
+    this.release && !this.data.master
+      ? new ReleaseMark(
+          this.api.attacks,
+          {
+            campaignId: this.data.campaignId,
+            encounterId: this.data.encounterId,
+            windowId: this.release.windowId,
+          },
+          (e) => this.data.state.apply(e),
+        )
+      : null;
 
   protected readonly s = new CastState(this.data);
   protected readonly ar = new CastArea(this.s, this.api);
@@ -211,7 +265,14 @@ export class CastSheet {
     this.ar,
     this.questions,
     this.damage,
-    { api: this.api, animator: this.animator, fav: this.fav },
+    {
+      api: this.api,
+      animator: this.animator,
+      fav: this.fav,
+      // Only a release has a window to lose: an ordinary cast shows every refusal's sentence.
+      windowClosed: this.release ? () => this.watch?.closedByServer() : undefined,
+      reactor: this.data.master ? this.release?.reactorLabel : undefined,
+    },
   );
   /** Tells the caster that the master answered the question for them: the question goes and a line takes its place. */
   protected readonly follow = new HeldFollow(this.questions.held);
@@ -230,7 +291,24 @@ export class CastSheet {
   private readonly changePlace = viewChild('changePlace', { read: ElementRef<HTMLButtonElement> });
   private readonly backToList = viewChild('backToList', { read: ElementRef<HTMLButtonElement> });
 
+  /** The window went away while the map was open: the map goes, and the one button left is "Voltar à sessão". */
+  protected readonly gone = computed(() =>
+    this.watch && this.watch.gone() && !this.s.done() && !this.s.busy() ? this.watch.view() : null,
+  );
+
   constructor() {
+    void this.mark?.enter();
+    // Esc, the backdrop or a swipe close the sheet without "Voltar": the mark still comes off, unless the window is gone or the cast was made.
+    this.destroyRef.onDestroy(() => {
+      if (!this.s.done() && !this.watch?.gone()) {
+        void this.mark?.leave();
+      }
+    });
+    effect(() => {
+      if (this.s.cast()) {
+        this.mark?.finish();
+      }
+    });
     void this.catalog.details(this.data.campaignId, this.data.spellKey).then((d) => {
       if (d) {
         this.s.details.set(d);
@@ -248,7 +326,7 @@ export class CastSheet {
       }
     });
     // After a result the focus goes to the one next action, as soon as it is drawn.
-    effect(() => this.back()?.nativeElement.focus());
+    focusSafeWhenGone(this.back);
     // The answer of a request in the air has to be shown: the sheet can't be dismissed meanwhile.
     effect(() => this.sheet.lock(this.s.busy()));
     // A sphere around the caster has nothing to place: its list is asked for at once.
@@ -336,9 +414,13 @@ export class CastSheet {
     );
   }
 
-  protected close(): void {
+  protected async close(): Promise<void> {
     if (this.s.busy()) {
       return;
+    }
+    if (this.release && !this.s.done() && !this.gone()) {
+      // "Voltar": the mark comes off first, so the window shows what is true when it opens again.
+      await this.mark?.leave();
     }
     this.sheet.close(this.s.done() && !this.damage.owed());
   }

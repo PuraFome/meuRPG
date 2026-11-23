@@ -228,7 +228,8 @@ export class SheetCharges {
     });
   }
 
-  private tableDice(): Promise<TableDice> {
+  /** The table's dice and the player's choice (RN-18), read once from the campaign. */
+  tableDice(): Promise<TableDice> {
     const known =
       this.dice ??
       this.host

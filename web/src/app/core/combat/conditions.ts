@@ -45,6 +45,12 @@ export function cannotAct(c: { readonly conditions?: readonly string[] }): boole
   return (c.conditions ?? []).some((k) => INCAPACITATING.includes(k));
 }
 
+/** Why a combatant that cannot act cannot: "Atordoado: não pode agir."; empty for one that can. */
+export function cannotActWhy(c: { readonly conditions?: readonly string[] }): string {
+  const key = (c.conditions ?? []).find((k) => INCAPACITATING.includes(k));
+  return key ? `${conditionName(key)}: não pode agir.` : '';
+}
+
 /** A condition's Portuguese name by key; empty for a key this app doesn't know. */
 export function conditionName(key: string): string {
   return CONDITIONS.find((c) => c.key === key)?.name ?? '';
