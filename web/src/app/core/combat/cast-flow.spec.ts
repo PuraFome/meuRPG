@@ -543,6 +543,24 @@ describe('what a spell that reads hit points did (E8-03)', () => {
     expect(effectSentence(stun, labels, isNpc)).toBe('O Capitão Goblin ficou atordoado.');
   });
 
+  it('never reads the master reason for a threshold spell that affected the target', () => {
+    const stun = create(SpellCastSchema, {
+      spellKey: 'spell:power-word-stun',
+      effectKind: SpellEffectKind.THRESHOLD,
+      effectConditionKey: 'condition:stunned',
+      targets: [
+        {
+          combatantId: 'cap',
+          effect: { outcome: SpellEffectOutcome.AFFECTED },
+          noEffectReasonMaster: 'o alvo é imune à condição',
+        },
+      ],
+    });
+    const [row] = castRows(stun, new Map(), labels);
+    expect(row.word).toBe('Ficou atordoado');
+    expect(row.lines).toEqual([]);
+  });
+
   it('is empty for a spell that does not read hit points', () => {
     const missile = create(SpellCastSchema, { targets: [{ combatantId: 'g1', darts: 2 }] });
     expect(effectSentence(missile, labels, isNpc)).toBe('');

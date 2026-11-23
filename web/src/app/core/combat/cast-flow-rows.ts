@@ -136,6 +136,14 @@ const NO_PART: RowPart = { lines: [] };
 /** What a cast that did nothing to a target reads, for every reader (Lay on Hands says the same). */
 const NO_EFFECT = 'Sem efeito';
 
+/** Whether the spell did nothing to the target: refused for good, or a hit point effect that did not take. */
+function noEffect(t: SpellTargetResult): boolean {
+  return (
+    t.lastingEffect === LastingEffectOutcome.NO_EFFECT ||
+    (!!t.effect && t.effect.outcome !== SpellEffectOutcome.AFFECTED)
+  );
+}
+
 function castRow(
   t: SpellTargetResult,
   p: PendingDamage | undefined,
@@ -159,7 +167,8 @@ function castRow(
       ...parts.flatMap((part) => part.lines),
       ...damage.lines,
       // Only the master's reply carries it: the app's own words, shown as sent.
-      ...(t.noEffectReasonMaster ? [t.noEffectReasonMaster] : []),
+      // Never on a row that reads affected: the reason would contradict the pill.
+      ...(t.noEffectReasonMaster && noEffect(t) ? [t.noEffectReasonMaster] : []),
     ],
     summary: damage.summary,
     owed: damage.owed,
