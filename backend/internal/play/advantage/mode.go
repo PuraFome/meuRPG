@@ -106,4 +106,5 @@ var sourceKindToProto = map[string]playv1.AdvantageSourceKind{
 	combat.SourceSunlightAttack:     playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_SUNLIGHT_ATTACK,
 	combat.SourceSunlightPerception: playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_SUNLIGHT_PERCEPTION,
 	combat.SourceSunlightSave:       playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_SUNLIGHT_SAVE,
+	combat.SourceTargetCreatureType: playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_TARGET_CREATURE_TYPE,
 }

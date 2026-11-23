@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/PuraFome/meuRPG/backend/internal/rules"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 )
 
@@ -92,12 +93,18 @@ func IsSunlight(src combat.Source) bool {
 // player reads "Outra fonte" for them, on their own roll too.
 func HidesSunlight(src combat.Source) bool { return IsSunlight(src) }
 
-// HideUnlessMaster is HidesSunlight for a viewer: nil for the master, who reads everything.
+// HidesFromPlayers is the hide of whoever is not the master: the sun's sources and the one that rests on the target's
+// creature type (RN-10: a player learns nothing of an enemy's type), which a player reads as "Outra fonte".
+func HidesFromPlayers(src combat.Source) bool {
+	return IsSunlight(src) || src.Kind == combat.SourceTargetCreatureType
+}
+
+// HideUnlessMaster is HidesFromPlayers for a viewer: nil for the master, who reads everything.
 func HideUnlessMaster(master bool) func(combat.Source) bool {
 	if master {
 		return nil
 	}
-	return HidesSunlight
+	return HidesFromPlayers
 }
 
 // attackerSentence writes a source that comes from the one who attacks.
@@ -199,6 +206,8 @@ func (c TextContext) otherSentence(src combat.Source) string {
 		return fmt.Sprintf("%s: desvantagem em testes de resistência de Destreza", c.cond(src.Condition))
 	case combat.SourcePoisonedCheck, combat.SourceFrightenedCheck:
 		return fmt.Sprintf("%s: desvantagem em testes de habilidade", c.cond(src.Condition))
+	case combat.SourceTargetCreatureType:
+		return fmt.Sprintf("Criatura do tipo %s: %s no teste de resistência", rules.CreatureTypeNamePT(src.Condition), modeWord(src.Effect))
 	case combat.SourceTaggedSave:
 		mode := "vantagem"
 		if src.Effect == combat.ModeDisadvantage {

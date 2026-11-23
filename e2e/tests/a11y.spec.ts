@@ -28,7 +28,7 @@ import { movingTable, paintRPC, pickRadio, tapSquare } from './move-support';
 import { beginPowerCombatRPC, powerAttackTable, spendBreathRPC } from './power-attack-support';
 import { beginManeuverCombatRPC, maneuverTable, spendPoolRPC } from './maneuver-support';
 import { beginFogCombat, moveTo, sessionRoute, setCarriedLightRPC, tableForFog } from './fog-support';
-import { beginCreatureCombat, hitAndApply, tableForCreatureCombat } from './creatures-combat-support';
+import { beginCreatureCombat, hitAndApply, salvia, tableForCreatureCombat } from './creatures-combat-support';
 import { claimRoute, linkRPC, reservedRPC, revokeLinkRPC, rowOf } from './claim-support';
 import { authStatePath, boxOf, callRPC, layoutSize, characterRpcBody, createCharacterRPC, newSignedInContext, pensantus, showAllPicks, signIn, type TestUser, openActionTab, openCombatLog, openFoldedPanel, openSpentGroup, openXpHistory, viaTargetList } from './support';
 import { FAVOR_WIDTHS, favorBox, favorCheck, favorShotScale, favorViewport, holdersRPC, setConditionsRPC, shootFavor, tickFavor, grantFavorRPC } from './favor-support';
@@ -18045,4 +18045,127 @@ for (const [colorScheme, theme] of [
       await scanReadyMapRefusedScreens(browser, colorScheme, width);
     });
   }
+}
+
+/**
+ * The result of a cast on creatures the spell does not touch or treats by their type (#955): Sálvia, a Druid 11 with Curar Ferimentos,
+ * Malogro and Cura Completa, casts in five rounds. Curar Ferimentos on the Zumbi, from her player's page ("Sem efeito" and no reason) and
+ * from the master's ("Sem efeito" and "Sem efeito em construtos e mortos-vivos"); Malogro on the Árvore desperta from her player's page (the
+ * save's outcome only) and on the Arbusto desperto from the master's (the d20 with the disadvantage of a plant and its source), each with
+ * the note of the spell; Cura Completa on Goblin 1, with its note. Each result is scanned and photographed at 390, 768 and 1280 with
+ * `E2E_SHOTS_DIR` as `955-<state>-<width>-<claro|escuro>.png`.
+ */
+async function scanCastResult(browser: Browser, colorScheme: 'light' | 'dark'): Promise<void> {
+  const viewport = favorViewport(1280);
+  const master = await newSignedInContext(browser, 'Mestre Teste', { viewport, colorScheme, ...favorShotScale });
+  const player = await newSignedInContext(browser, 'Jogador Teste', { viewport, colorScheme, ...favorShotScale });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  let campaignId = '';
+  const everyWidth = async (page: Page, name: string, what: string, at: () => Locator) => {
+    for (const width of FAVOR_WIDTHS) {
+      await page.setViewportSize(favorViewport(width));
+      await expectScreenPasses(page, `${what} (${colorScheme}, ${width}px)`);
+      await shootFavor(page, `955-${name}`, width, colorScheme, at());
+    }
+    await page.setViewportSize(favorViewport(1280));
+  };
+  // The sheet of the spell for `target` is open on its result when this returns: `by` casts it, the player's page or the master's.
+  const cast = async (by: Page, spell: string, target: string): Promise<Locator> => {
+    await openActionTab(by, 'Magias');
+    await by.getByRole('button', { name: `Conjurar ${spell}` }).click();
+    const sheet = by.getByRole('dialog', { name: `Conjurar ${spell}` });
+    await viaTargetList(by, sheet);
+    await sheet.locator('label', { hasText: target }).click();
+    await expect(sheet.getByRole('radio', { name: new RegExp(`^${target}`) })).toBeChecked();
+    await sheet.getByRole('button', { name: `Conjurar ${spell}` }).click();
+    // A spell that reads hit points names its sheet "<spell> conjurada", the others "Você conjurou <spell>".
+    const done = by.getByRole('dialog', { name: new RegExp(`^(Você conjurou ${spell}|${spell} conjurada)$`) });
+    await expect(done.locator('app-cast-result')).toBeVisible();
+    return done;
+  };
+  const rollDamage = async (done: Locator, dice: string, sum: string) => {
+    await done.getByRole('button', { name: 'Digitar o resultado' }).click();
+    await done.getByLabel(new RegExp(`Role ${dice}`)).fill(sum);
+    await done.getByRole('button', { name: `Confirmar ${sum}` }).click();
+    await expect(done.getByText('Falta rolar o dano.')).toHaveCount(0);
+  };
+  const nextRound = async () => {
+    await endTurnOf(p, m, campaignId, 'Sálvia');
+    await passTurnsToAndWait(m, campaignId, 'Sálvia', [m, p]);
+  };
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const druid = { ...salvia, level: 11 };
+    const sheet = { weaponKeys: ['equipment:quarterstaff'], preparedSpellKeys: ['spell:cure-wounds', 'spell:blight', 'spell:heal'] };
+    const table = await tableForCombat(m, p, `Acessibilidade resultado da conjuração ${Date.now()}`, true, true, { build: druid, sheet });
+    campaignId = table.campaignId;
+    const faces = { Sálvia: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4, Zumbi: 12, 'Arbusto desperto': 13, 'Árvore desperta': 17 };
+    const squares = { ...attackCombatSquares, Sálvia: [8, 8] as [number, number], Zumbi: [9, 8] as [number, number], 'Arbusto desperto': [7, 8] as [number, number], 'Árvore desperta': [7, 9] as [number, number] };
+    await beginAttackCombatRPC(m, table, faces, squares, [], ['monster:zombie', 'monster:awakened-shrub', 'monster:awakened-tree']);
+    await adjustVitalsRPC(m, campaignId, table.characterId, { hitPointsCurrent: 20 });
+    await openSessionPage(m, campaignId);
+    await openSessionPage(p, campaignId);
+
+    // Round 1: Curar Ferimentos on the Zumbi, cast by the player: the pill and no reason.
+    let done = await cast(p, 'Curar Ferimentos', 'Zumbi');
+    await expect(done.locator('app-cast-result')).toContainText('Sem efeito');
+    await expect(done.locator('app-cast-result')).not.toContainText('Sem efeito em construtos e mortos-vivos');
+    await everyWidth(p, 'sem-efeito-jogador', 'Curar Ferimentos num morto-vivo, o jogador', () => done);
+    await done.getByRole('button', { name: 'Voltar à sua vez' }).click();
+    await nextRound();
+
+    // Round 2: the same cast by the master for Sálvia: the pill and the reason.
+    await m.getByRole('button', { name: 'Agir por Sálvia' }).click();
+    done = await cast(m, 'Curar Ferimentos', 'Zumbi');
+    await expect(done.locator('app-cast-result')).toContainText('Sem efeito em construtos e mortos-vivos');
+    await everyWidth(m, 'sem-efeito-mestre', 'Curar Ferimentos num morto-vivo, o mestre', () => done);
+    await done.getByRole('button', { name: 'Fechar' }).first().click();
+    await m.getByRole('button', { name: 'Voltar ao mestre' }).click();
+    await nextRound();
+
+    // Round 3: Malogro on the Árvore desperta, the player's page: the save's outcome only, then the damage and the note.
+    done = await cast(p, 'Malogro', 'Árvore desperta');
+    await expect(done.locator('app-cast-result')).not.toContainText('Desvantagem');
+    await everyWidth(p, 'malogro-planta-jogador', 'Malogro numa planta, o jogador', () => done);
+    await rollDamage(done, '8d8', '36');
+    const plantNote = done.getByText('Uma planta que não é criatura, como uma árvore ou um arbusto, murcha e morre, sem teste de resistência: o mestre aplica isso.');
+    await expect(plantNote).toBeVisible();
+    await everyWidth(p, 'notas-malogro-jogador', 'As notas de Malogro, o jogador', () => plantNote);
+    await done.getByRole('button', { name: 'Voltar à sua vez' }).click();
+    await nextRound();
+
+    // Round 4: Malogro on the Arbusto desperto, the master's page: the d20 with the disadvantage of a plant and its source.
+    await m.getByRole('button', { name: 'Agir por Sálvia' }).click();
+    done = await cast(m, 'Malogro', 'Arbusto desperto');
+    await expect(done.getByText('Desvantagem: Criatura do tipo planta: desvantagem no teste de resistência')).toBeVisible();
+    await everyWidth(m, 'malogro-planta-mestre', 'Malogro numa planta, o mestre', () => done);
+    await rollDamage(done, '8d8', '36');
+    await done.getByRole('button', { name: 'Fechar' }).first().click();
+    await m.getByRole('button', { name: 'Voltar ao mestre' }).click();
+    await nextRound();
+
+    // Round 5: Cura Completa on Goblin 1 (the list of a heal has no Sálvia), the player's page: its note.
+    done = await cast(p, 'Cura Completa', 'Goblin 1');
+    const healNote = done.getByText('Também encerra doenças: o mestre aplica isso.');
+    await expect(healNote).toBeVisible();
+    await everyWidth(p, 'notas-cura-completa-jogador', 'As notas de Cura Completa, o jogador', () => healNote);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+for (const [colorScheme, theme] of [
+  ['light', 'claro'],
+  ['dark', 'escuro'],
+] as const) {
+  test(`o resultado de Curar Ferimentos num morto-vivo, de Malogro numa planta e as notas de Cura Completa passam no axe e nas conferências de layout no tema ${theme}, em 390, 768 e 1280`, { tag: ['@a11y', '@MR-014', '@RN-02', '@RN-10'] }, async ({ browser }) => {
+    test.setTimeout(600_000);
+    await scanCastResult(browser, colorScheme);
+  });
 }

@@ -89,6 +89,9 @@ const (
 	// A racial advantage on saving throws against one kind of source (Brave, Fey Ancestry, Gnome Cunning,
 	// Dwarven Resilience); Source.Condition is the key of the trait.
 	SourceTaggedSave = "tagged_save"
+	// SourceTargetCreatureType is the advantage or disadvantage a spell gives a save because of the target's creature type
+	// (Blight: disadvantage for a plant); Source.Condition is the type's key.
+	SourceTargetCreatureType = "target_creature_type"
 	// SourceFavor is the roller's own Inspiration, spent for advantage before the d20 (RN-43).
 	SourceFavor = "favor"
 )
@@ -578,6 +581,10 @@ type SaveScene struct {
 	// Against lists what the saving throw is against (an Against* constant for each kind its source is), when the
 	// app knows it: the racial advantages on saves against a kind of source apply only then.
 	Against []string
+	// TypeMode is the mode a spell gives the save for the creature's type (BlightSaveMode), ModeNormal when none; CreatureType
+	// is the type it reads.
+	TypeMode     RollMode
+	CreatureType string
 }
 
 // SaveMode lists the circumstances of a saving throw or an ability check (SRD
@@ -589,6 +596,7 @@ func SaveMode(s SaveScene) []Source {
 	rs = append(rs, saveRules(s)...)
 	rs = append(rs, checkRules(s)...)
 	rs = append(rs, sourceRule{!s.Check && s.Creature.MagicResistance && slices.Contains(s.Against, AgainstMagic), SourceMagicResistance, ModeAdvantage, ""})
+	rs = append(rs, sourceRule{!s.Check && s.TypeMode != ModeNormal, SourceTargetCreatureType, s.TypeMode, s.CreatureType})
 	return append(appendRules(nil, rs), taggedSaveSources(s)...)
 }
 

@@ -437,6 +437,10 @@ func (s *Service) resolveOnTarget(ctx context.Context, c *combatTx, m authz.Memb
 	case dartsOf(sp, slotLevel) > 0:
 		return s.openDarts(ctx, c, sp, caster, target, hit)
 	case sp.Heal != nil:
+		if why, err := s.noLifeMagic(ctx, c, sp.Key, target); err != nil || why != "" { // no effect on undead or constructs (SRD 5.1)
+			hit.Lasting, hit.NoEffectWhy = lastingNoEffect, why
+			return err
+		}
 		return s.openSpellPending(ctx, c, sp, *sp.Heal, caster, target, true, false, hit)
 	}
 	return nil
@@ -639,7 +643,14 @@ func (s *Service) spellSave(ctx context.Context, c *combatTx, m authz.Membership
 	if err != nil {
 		return err
 	}
-	sources := combat.SaveMode(combat.SaveScene{Creature: creature, Ability: sp.SaveAbility, EffectVisible: true, Against: against})
+	rule := combat.SpellTypeRule(sp.Key, creatureTypeOf(targetSheet))
+	if rule.NoEffect { // no save and no damage: the master reads why (SRD 5.1)
+		hit.Lasting, hit.NoEffectWhy = lastingNoEffect, whyNoLifeMagic
+		return nil
+	}
+	sources := combat.SaveMode(combat.SaveScene{
+		Creature: creature, Ability: sp.SaveAbility, EffectVisible: true, Against: against, TypeMode: rule.Mode, CreatureType: rule.CreatureType,
+	})
 	bonuses := rollBonusesOf(modes.in.states, target.ID, rules.RollAppliesSave)
 	save.Bonus += bonusTotal(bonuses)
 	modes.save[target.ID] = append(advantage.ShownSourcesHiding(sources, modes.names, advantage.HideUnlessMaster(modes.v.master)), bonusSources(bonuses, modes.names, modes.v.master, modes.v.owns(target))...)
@@ -665,7 +676,7 @@ func (s *Service) spellSave(ctx context.Context, c *combatTx, m authz.Membership
 	}
 	// One pending damage for each damage type, all of the cast: each is its own
 	// roll, and the resistance of the target is read for its type when it lands.
-	return s.openSavePendings(ctx, c, sp, caster, target, share == combat.ShareHalf, hit)
+	return s.openSavePendings(ctx, c, sp.Damages, sp, caster, target, share == combat.ShareHalf, hit)
 }
 
 // settleSpellSave is the outcome of the target's save against the spell, written into the hit: the roll (or
@@ -693,12 +704,12 @@ func (s *Service) sculptedSave(ctx context.Context, c *combatTx, sp link.Spell, 
 	if len(sp.Damages) == 0 || sp.SaveOnSuccess != "other" {
 		return nil
 	}
-	return s.openSavePendings(ctx, c, sp, caster, target, false, hit)
+	return s.openSavePendings(ctx, c, sp.Damages, sp, caster, target, false, hit)
 }
 
 // openSavePendings opens a pending damage for each damage type of the spell.
-func (s *Service) openSavePendings(ctx context.Context, c *combatTx, sp link.Spell, caster, target playdb.Combatant, half bool, hit *castHit) error {
-	for _, part := range sp.Damages {
+func (s *Service) openSavePendings(ctx context.Context, c *combatTx, parts []link.Dice, sp link.Spell, caster, target playdb.Combatant, half bool, hit *castHit) error {
+	for _, part := range parts {
 		if err := s.openSpellPending(ctx, c, sp, part, caster, target, false, half, hit); err != nil {
 			return err
 		}
