@@ -171,21 +171,21 @@ describe('who an attack of the window can be aimed at', () => {
 });
 
 describe('a window that closed without the player', () => {
-  it('says it passed by itself only when the clock ran out, and otherwise only that it closed', () => {
+  it('says it passed by itself only when the server recorded it, and otherwise only that it closed', () => {
     const base = { reactionUsed: false, down: false };
-    expect(readiedGoneText({ ...base, timedOut: true })).toBe(
+    expect(readiedGoneText({ ...base, passedAlone: true })).toBe(
       'Passou sozinho: você não respondeu em 30 s.',
     );
-    // The master may have passed or answered it by hand: nothing on the wire says which.
-    expect(readiedGoneText({ ...base, timedOut: false })).toBe('A janela fechou.');
-    expect(readiedGoneText({ ...base, reactionUsed: true, timedOut: false })).toBe(
+    // The clock may have run out, or the master passed or answered it by hand: without the record it only closed.
+    expect(readiedGoneText({ ...base, passedAlone: false })).toBe('A janela fechou.');
+    expect(readiedGoneText({ ...base, reactionUsed: true, passedAlone: false })).toBe(
       'A janela fechou e a sua reação foi usada.',
     );
-    expect(readiedGoneText({ ...base, down: true, timedOut: true })).toBe('Condição Caído.');
+    expect(readiedGoneText({ ...base, down: true, passedAlone: true })).toBe('Condição Caído.');
   });
 
   it('says 2 minutes when the player had been on the map, 30 s when not', () => {
-    const base = { reactionUsed: false, down: false, timedOut: true };
+    const base = { reactionUsed: false, down: false, passedAlone: true };
     expect(readiedGoneText({ ...base, afterMap: true })).toBe(
       'Passou sozinho: você não respondeu em 2 min.',
     );

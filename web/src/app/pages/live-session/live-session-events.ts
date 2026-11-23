@@ -197,6 +197,9 @@ export class LiveSessionEvents {
         void loader.loadCombat(generation);
       },
       onReactionWindowClosed: (closed) => {
+        if (closed.passedAlone) {
+          parts.combat.notePassedAlone(closed.windowId);
+        }
         // Closed by itself: the reason, in a status line, written for this person; the combat is read again.
         if (closed.closedByItself) {
           parts.combat.noteReactionClosed(closed.windowId, closed.text);

@@ -230,6 +230,18 @@ export class CombatState {
     this.reactionNotice.set(text ? { windowId, text } : null);
   }
 
+  /** The windows the server said passed by themselves (`reaction_window_closed` with `passedAlone`). */
+  private readonly passedAloneIds = signal<ReadonlySet<string>>(new Set());
+
+  notePassedAlone(windowId: string): void {
+    this.passedAloneIds.update((ids) => new Set(ids).add(windowId));
+  }
+
+  /** Whether the server said this window passed by itself. */
+  passedAlone(windowId: string): boolean {
+    return this.passedAloneIds().has(windowId);
+  }
+
   dismissReactionNotice(): void {
     this.reactionNotice.set(null);
   }
@@ -237,6 +249,7 @@ export class CombatState {
   clear(): void {
     this.applied++;
     this.reactionNotice.set(null);
+    this.passedAloneIds.set(new Set());
     this.encounter.set(null);
     this.dismissedId.set(null);
     this.moving.set(false);

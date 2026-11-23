@@ -178,6 +178,8 @@ export type LiveEventVm =
       readonly encounterId: string;
       readonly windowId: string;
       readonly closedByItself: boolean;
+      /** The master's screen passed the window by itself (the server recorded it). */
+      readonly passedAlone: boolean;
       readonly text: string;
     }
   /** `turn_changed`, as this member may see it. */

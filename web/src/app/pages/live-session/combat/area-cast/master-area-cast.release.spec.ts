@@ -95,7 +95,7 @@ async function open(over: { refuse?: boolean; castRefusal?: unknown } = {}) {
       layers: null,
       fog: null,
     },
-    state: { encounter: enc, apply: vi.fn((e) => enc.set(e)) } as never,
+    state: { encounter: enc, apply: vi.fn((e) => enc.set(e)), passedAlone: () => false } as never,
     release: {
       windowId: 'w1',
       readiedId: 'r1',

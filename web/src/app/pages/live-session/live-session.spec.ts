@@ -2639,6 +2639,7 @@ describe('LiveSession', () => {
         encounterId: 'e1',
         windowId: 'w1',
         closedByItself: true,
+        passedAlone: false,
         text: 'Queda Suave fechou. Você já usou a sua reação.',
       });
       await settle(fixture);
@@ -2657,11 +2658,31 @@ describe('LiveSession', () => {
         encounterId: 'e1',
         windowId: 'w1',
         closedByItself: false,
+        passedAlone: false,
         text: '',
       });
       await settle(fixture);
       expect(state.reactionNotice()).toBeNull();
+      expect(state.passedAlone('w1')).toBe(false);
       expect(get).toHaveBeenCalledTimes(1);
+    });
+
+    it('records a window the server passed by itself, whatever the clock says', async () => {
+      vi.spyOn(TestBed.inject(CombatClient).turn, 'get').mockResolvedValue(null);
+      const fixture = TestBed.createComponent(LiveSession);
+      await settle(fixture);
+      const state = (flat(fixture) as unknown as { combat: CombatState }).combat;
+      source.push({
+        kind: 'reactionWindowClosed',
+        encounterId: 'e1',
+        windowId: 'w1',
+        closedByItself: false,
+        passedAlone: true,
+        text: '',
+      });
+      await settle(fixture);
+      expect(state.passedAlone('w1')).toBe(true);
+      expect(state.passedAlone('w2')).toBe(false);
     });
   });
 

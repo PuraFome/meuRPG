@@ -80,6 +80,7 @@ export class MoveReleaseFlow {
       () =>
         new ReleaseWatch(
           () => this.ctx.encounter(),
+          (id) => this.ctx.state().passedAlone(id),
           {
             windowId,
             readiedId: held.id,

@@ -184,6 +184,7 @@ describe('LiveStream (ADR-0005 client rules)', () => {
       encounterId: 'e1',
       windowId: 'w1',
       closedByItself: true,
+      passedAlone: false,
       text: 'Queda Suave fechou. Você já usou a sua reação.',
     });
     await flush();
