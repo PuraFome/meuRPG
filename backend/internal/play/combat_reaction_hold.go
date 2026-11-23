@@ -315,6 +315,7 @@ func (s *Service) settleReplay(ctx context.Context, c *combatTx, h playdb.Reacti
 	var done *ambientDoneError
 	switch {
 	case errors.As(err, &done) && done.asking:
+		markAsked(c, h, windows, st)
 		return g.keep(ctx)
 	case errors.As(err, &done):
 		if err := g.keep(ctx); err != nil {
@@ -373,23 +374,21 @@ func (c *combatTx) tellActorVitals(ev actionEvent) {
 // attack roll's outcome, total and armor class (the master's log reads "17 → 13 contra CA
 // 15"), and a damage's final amount.
 func (s *Service) completeAnswers(c *combatTx, windows []playdb.ReactionWindow, st *replayState, done actionEvent) {
-	for _, ref := range c.answered {
-		if !slices.ContainsFunc(windows, func(w playdb.ReactionWindow) bool { return w.ID == ref.window }) {
-			continue
-		}
+	for _, ref := range answersOf(c, windows) {
 		switch st.hold.Kind {
 		case "attack":
-			ref.ev.Outcome, ref.ev.AC = done.Outcome, done.TargetAC
-			ref.ev.After = done.Total
-			ref.ev.Before = done.Total + st.reduction
+			if n, ok := cutNumbersOf("attack", done, st.reduction); ok {
+				ref.ev.fill(n)
+			}
 		case "damage":
 			ref.ev.Before = st.rolledTotal()
 			ref.ev.After = done.Amount
 		case "cast":
 			// A spell attack: the one roll the die came off (a Counterspell's answer keeps its own numbers).
-			if len(done.Hits) == 1 && ref.ev.Kind == string(reaction.CuttingWords) {
-				ref.ev.Outcome, ref.ev.AC, ref.ev.After = done.Hits[0].Outcome, done.Hits[0].TargetAC, done.Hits[0].Total
-				ref.ev.Before = done.Hits[0].Total + st.reduction
+			if ref.ev.Kind == string(reaction.CuttingWords) {
+				if n, ok := cutNumbersOf("cast", done, st.reduction); ok {
+					ref.ev.fill(n)
+				}
 			}
 		default: // a check: the total it became (a hit rider's answer has nothing to learn from the rider)
 			ref.ev.After = st.after

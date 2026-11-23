@@ -15,6 +15,15 @@
     >
       <mat-icon aria-hidden="true">groups</mat-icon>Teste em grupo
     </button>
+    <button
+      matButton
+      type="button"
+      class="sa__group"
+      [class.mr-button--off]="npc.combatOpen()"
+      (click)="npc.ask()"
+    >
+      <mat-icon aria-hidden="true">{{ npc.combatOpen() ? 'block' : 'record_voice_over' }}</mat-icon>Teste de um NPC
+    </button>
   </div>
 
   <ng-content />

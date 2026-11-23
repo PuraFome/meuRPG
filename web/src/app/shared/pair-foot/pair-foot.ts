@@ -22,14 +22,15 @@ import { MatIconModule } from '@angular/material/icon';
  * happens. Right-aligned and 176 px wide from a tablet up; on a phone they share the width, 48 px high,
  * and when either label needs more than half of it (the component measures) they stack, each as wide as
  * the room, the filled one on top. With `ready` false the filled button is the app's dashed, disabled one
- * (`aria-disabled`, "⊘"): the reason belongs to a sentence above it, never to colour alone.
+ * (`aria-disabled`, "⊘"): the reason belongs to a sentence above it, never to colour alone. A label that overflows its
+ * button on one line wraps in it.
  */
 @Component({
   selector: 'app-pair-foot',
   imports: [MatButtonModule, MatIconModule, NgTemplateOutlet],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div #foot class="pf" [class.pf--stacked]="stacked()">
+    <div #foot class="pf" [class.pf--stacked]="stacked()" [class.pf--wrap]="wrap()">
       @if (stacked() ? !cancelFirstWhenStacked() : confirmFirst()) {
         <ng-container *ngTemplateOutlet="confirmBtn" />
         <ng-container *ngTemplateOutlet="cancelBtn" />
@@ -84,6 +85,8 @@ export class PairFoot {
   readonly confirm = output<void>();
 
   protected readonly stacked = signal(false);
+  /** A label overflows its button on one line: it wraps. */
+  protected readonly wrap = signal(false);
   private readonly foot = viewChild<ElementRef<HTMLElement>>('foot');
   private readonly injector = inject(Injector);
 
@@ -94,7 +97,23 @@ export class PairFoot {
       if (!foot) {
         return;
       }
-      const check = () => this.stacked.set(needsStack(foot));
+      const check = () => {
+        // Always measured on one line (the default look), so the answer does not depend on the wrapping it causes.
+        const wasWrapping = foot.classList.contains('pf--wrap');
+        foot.classList.remove('pf--wrap');
+        const stacked = needsStack(foot);
+        const overflows = Array.from(foot.querySelectorAll('button')).some(
+          (b) => b.scrollWidth - b.clientWidth > 1,
+        );
+        if (wasWrapping) {
+          foot.classList.add('pf--wrap');
+        }
+        // Stacking changes the layout (the observer measures again): the overflow is judged on the settled one.
+        if (stacked === this.stacked()) {
+          this.wrap.set(overflows);
+        }
+        this.stacked.set(stacked);
+      };
       check();
       const observer = typeof ResizeObserver === 'function' ? new ResizeObserver(check) : null;
       observer?.observe(foot);

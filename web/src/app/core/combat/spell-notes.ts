@@ -16,6 +16,10 @@ export const SPELL_NOTES: Readonly<Record<string, readonly string[]>> = {
   'spell:faithful-hound': [
     'No início de cada turno de quem conjura, enquanto a magia durar, o cão tenta morder uma criatura hostil a até 1,5 m dele (4d8 perfurante, se acertar). O mestre aplica a mordida.',
   ],
+  'spell:heal': ['Também encerra doenças: o mestre aplica isso.'],
+  'spell:blight': [
+    'Uma planta que não é criatura, como uma árvore ou um arbusto, murcha e morre, sem teste de resistência: o mestre aplica isso.',
+  ],
   'spell:vampiric-touch': [
     'Enquanto a magia durar, dá para repetir o ataque como uma ação, em cada turno seguinte.',
   ],

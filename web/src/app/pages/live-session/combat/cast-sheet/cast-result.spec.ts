@@ -43,7 +43,7 @@ describe('CastResult for a spell that reads hit points (E8-03, state 3)', () => 
     const el = render('5d8 (2, 4, 1, 5, 3) = 15');
     expect(el.querySelector('[aria-live]')).not.toBeNull();
     expect(el.querySelector('.sentence')!.textContent).toBe(
-      'O Goblin 1 adormeceu. O Capitão Goblin não foi afetado.',
+      'O Goblin 1 adormeceu. Sem efeito no Capitão Goblin.',
     );
     expect(el.querySelector('.pool__cap')!.textContent).toBe('Sua rolagem');
     expect(el.querySelector('.pool__roll')!.textContent).toBe('5d8 (2, 4, 1, 5, 3) = 15');
@@ -54,7 +54,7 @@ describe('CastResult for a spell that reads hit points (E8-03, state 3)', () => 
     ]);
     expect(pills).toEqual([
       ['bedtime', 'Adormeceu'],
-      ['block', 'Não foi afetado'],
+      ['block', 'Sem efeito'],
     ]);
   });
 

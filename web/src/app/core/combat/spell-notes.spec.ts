@@ -3,10 +3,12 @@ import { SPELL_NOTES, spellNotes } from './spell-notes';
 describe('the notes of a spell', () => {
   it('has the notes the master applies, for each spell that needs them', () => {
     expect(Object.keys(SPELL_NOTES).sort()).toEqual([
+      'spell:blight',
       'spell:disintegrate',
       'spell:eyebite',
       'spell:faithful-hound',
       'spell:flame-blade',
+      'spell:heal',
       'spell:vampiric-touch',
     ]);
   });
@@ -31,6 +33,16 @@ describe('the notes of a spell', () => {
   it('says when the Faithful Hound bites, what it reaches and how hard', () => {
     expect(spellNotes('spell:faithful-hound')).toEqual([
       'No início de cada turno de quem conjura, enquanto a magia durar, o cão tenta morder uma criatura hostil a até 1,5 m dele (4d8 perfurante, se acertar). O mestre aplica a mordida.',
+    ]);
+  });
+
+  it('says Heal also ends diseases and leaves it to the master', () => {
+    expect(spellNotes('spell:heal')).toEqual(['Também encerra doenças: o mestre aplica isso.']);
+  });
+
+  it('says Blight kills a plant that is not a creature with no save and leaves it to the master', () => {
+    expect(spellNotes('spell:blight')).toEqual([
+      'Uma planta que não é criatura, como uma árvore ou um arbusto, murcha e morre, sem teste de resistência: o mestre aplica isso.',
     ]);
   });
 

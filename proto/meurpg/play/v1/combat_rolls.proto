@@ -108,6 +108,9 @@ enum AdvantageSourceKind {
   ADVANTAGE_SOURCE_KIND_SUNLIGHT_SAVE = 115;
   // The roller's own Inspiration, spent for advantage before the d20 (RN-43): the master and the roller read it, nobody else reads the roll.
   ADVANTAGE_SOURCE_KIND_FAVOR = 116;
+  // The advantage or disadvantage a spell gives a save because of the target's creature type (Blight: disadvantage for a plant). Only
+  // the master reads it: a player reads "Outra fonte" and never the type (RN-10).
+  ADVANTAGE_SOURCE_KIND_TARGET_CREATURE_TYPE = 118;
 }
 
 // AdvantageSource is one circumstance of a roll, as the caller may read it. A

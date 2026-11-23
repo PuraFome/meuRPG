@@ -74,7 +74,7 @@ export class CastResult {
   readonly rows = input.required<readonly CastRow[]>();
   /** A spell with no effect the app works out. */
   readonly plain = input(false);
-  /** A spell that reads hit points, in one sentence: "O Goblin 1 adormeceu. O Capitão Goblin não foi afetado." */
+  /** A spell that reads hit points, in one sentence: "O Goblin 1 adormeceu. Sem efeito no Capitão Goblin." */
   readonly sentence = input('');
   /** The caster's own roll of the pool, `5d8 (2, 4, 1, 5, 3) = 15`: never an enemy's hit points. */
   readonly pool = input('');

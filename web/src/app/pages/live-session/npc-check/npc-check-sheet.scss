@@ -1,0 +1,89 @@
+:host {
+  display: block;
+}
+
+.cols {
+  display: grid;
+  gap: 16px;
+
+  @media (min-width: 768px) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 28px;
+  }
+}
+
+.col {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+// The select's label sits half above its box: with no heading over it, the column leaves room so the scrolling body does not clip it.
+.col--test {
+  padding-top: 8px;
+}
+
+.col__head {
+  margin: 0;
+  font-size: var(--mr-font-16);
+  font-weight: 700;
+}
+
+.state {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  font-size: var(--mr-font-14);
+}
+
+.line {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  font-size: var(--mr-font-14);
+  line-height: 20px;
+  color: var(--mr-ink-muted);
+
+  .mat-icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    font-size: var(--mr-font-18);
+    margin-top: 1px;
+  }
+
+  &--warn {
+    color: var(--mr-warning-ink);
+    font-weight: 700;
+  }
+}
+
+.read-error {
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.foot {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.foot__why {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: var(--mr-font-14);
+  color: var(--mr-ink-muted);
+
+  .mat-icon {
+    width: 18px;
+    height: 18px;
+    font-size: var(--mr-font-18);
+  }
+}

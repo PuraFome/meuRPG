@@ -174,6 +174,9 @@ const (
 	AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_SUNLIGHT_SAVE       AdvantageSourceKind = 115
 	// The roller's own Inspiration, spent for advantage before the d20 (RN-43): the master and the roller read it, nobody else reads the roll.
 	AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_FAVOR AdvantageSourceKind = 116
+	// The advantage or disadvantage a spell gives a save because of the target's creature type (Blight: disadvantage for a plant). Only
+	// the master reads it: a player reads "Outra fonte" and never the type (RN-10).
+	AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_TARGET_CREATURE_TYPE AdvantageSourceKind = 118
 )
 
 // Enum value maps for AdvantageSourceKind.
@@ -227,6 +230,7 @@ var (
 		114: "ADVANTAGE_SOURCE_KIND_SUNLIGHT_PERCEPTION",
 		115: "ADVANTAGE_SOURCE_KIND_SUNLIGHT_SAVE",
 		116: "ADVANTAGE_SOURCE_KIND_FAVOR",
+		118: "ADVANTAGE_SOURCE_KIND_TARGET_CREATURE_TYPE",
 	}
 	AdvantageSourceKind_value = map[string]int32{
 		"ADVANTAGE_SOURCE_KIND_UNSPECIFIED":          0,
@@ -277,6 +281,7 @@ var (
 		"ADVANTAGE_SOURCE_KIND_SUNLIGHT_PERCEPTION":  114,
 		"ADVANTAGE_SOURCE_KIND_SUNLIGHT_SAVE":        115,
 		"ADVANTAGE_SOURCE_KIND_FAVOR":                116,
+		"ADVANTAGE_SOURCE_KIND_TARGET_CREATURE_TYPE": 118,
 	}
 )
 
@@ -1949,7 +1954,7 @@ const file_meurpg_play_v1_combat_rolls_proto_rawDesc = "" +
 	"\x15ROLL_MODE_UNSPECIFIED\x10\x00\x12\x14\n" +
 	"\x10ROLL_MODE_NORMAL\x10\x01\x12\x17\n" +
 	"\x13ROLL_MODE_ADVANTAGE\x10\x02\x12\x1a\n" +
-	"\x16ROLL_MODE_DISADVANTAGE\x10\x03*\xfa\x0f\n" +
+	"\x16ROLL_MODE_DISADVANTAGE\x10\x03*\xaa\x10\n" +
 	"\x13AdvantageSourceKind\x12%\n" +
 	"!ADVANTAGE_SOURCE_KIND_UNSPECIFIED\x10\x00\x12&\n" +
 	"\"ADVANTAGE_SOURCE_KIND_PRONE_TARGET\x10\x01\x12(\n" +
@@ -1999,7 +2004,8 @@ const file_meurpg_play_v1_combat_rolls_proto_rawDesc = "" +
 	"%ADVANTAGE_SOURCE_KIND_SUNLIGHT_ATTACK\x10q\x12-\n" +
 	")ADVANTAGE_SOURCE_KIND_SUNLIGHT_PERCEPTION\x10r\x12'\n" +
 	"#ADVANTAGE_SOURCE_KIND_SUNLIGHT_SAVE\x10s\x12\x1f\n" +
-	"\x1bADVANTAGE_SOURCE_KIND_FAVOR\x10t*\xb3\x01\n" +
+	"\x1bADVANTAGE_SOURCE_KIND_FAVOR\x10t\x12.\n" +
+	"*ADVANTAGE_SOURCE_KIND_TARGET_CREATURE_TYPE\x10v*\xb3\x01\n" +
 	"\x15RollModeRequestStatus\x12(\n" +
 	"$ROLL_MODE_REQUEST_STATUS_UNSPECIFIED\x10\x00\x12$\n" +
 	" ROLL_MODE_REQUEST_STATUS_PENDING\x10\x01\x12%\n" +

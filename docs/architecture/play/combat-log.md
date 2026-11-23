@@ -66,6 +66,7 @@ Initiative, turn order and reinforcements are not log lines.
 | An NPC's Parry used by the server | The line "<name> aparou (+N CA): T contra CA A, o ataque errou." (`COMBAT_LOG_KIND_REACTION_WINDOW`), and the attack's own line, a plain miss | The line "<name> aparou o ataque." when the master has hidden neither the creature nor the attacker from them, with no number, and the attack's own line, a plain miss |
 | An NPC's Parry answered in a window ("Perguntar") | The line "<name> aparou (+N CA)" with the total and the armor class, and the attack's line stopped by a reaction (`stopped_by_reaction`) | No line of the reaction; the attack's line is a plain miss (`stopped_by_reaction` unset, no armor class), or a hit when Parry did not turn it |
 | A Parry that changed nothing | No line | No line |
+| A Cutting Words line while the replayed roll waits for its roller | The die and "(aguardando a rolagem)", with no total, armor class or outcome | "diminuiu", the same text whatever the question; completed only when that player hears the final event |
 | Conditions | All | Those of the combatants they see |
 | "Morrendo" | Yes | Never: "Caído", with the counts (public unless the table hides them); "Estável" and "Morto" are for all |
 | HP after the damage (`hit_points_after`) | Yes | Never (RN-20) |
@@ -90,10 +91,29 @@ A player's entries carry `seq` 0: the numbers of the entries a player reads woul
 The number of a player's answer is built from the same rule as the entries: the highest number among the entries they read (each one counting only the events the player hears of, see above) and the events that would have asked for the whole log; no event they do not hear of reaches it, whether it sits on a line of its own or joins one they read.
 They are unrelated to the live stream's `session_seq`, the hint number ([Live session](live-session.md#the-hint-number)): two counters, never compared.
 
+### A reaction line that waits for a roll
+
+A Cutting Words line is pending while the replay of the held attack or spell attack waits for its roller (a Bardic die or Lucky).
+The master reads the die and "(aguardando a rolagem)"; no one reads a total, an armor class or an outcome.
+Every player reads the same neutral "diminuiu", whatever the question.
+The final `attack_rolled` or `spell_cast` of the held roll completes the line, linked to it by the reaction's group.
+A player's line is completed only when that player hears the final event; for a hidden roller it stays neutral.
+Undoing the final event puts the line back to pending.
+A refused answer, an answer never given and a stale hold the gate forgets keep the line waiting.
+A stale hold writes no event, so the log cannot tell that it is gone.
+The master's removal of the roller (`combatant_removed`) or the end of the combat (`encounter_ended`) stops the waiting.
+Then the master's line drops "(aguardando a rolagem)" and says nothing of an outcome.
+The players keep "diminuiu".
+The end of the combat is not a delta-safe kind, so a delta read after it is a full read.
+A spell attack's line is completed only by a final event with exactly one hit.
+The reaction's own event cannot be undone.
+A fresh read and a `since_seq` delta give the same line, because the builder decides it, not the stream.
+Only Cutting Words writes a line that depends on the replay; a held check (a contest, Hide) is not completed this way: its line keeps what the answer wrote when the replay asked, which has no total yet.
+
 ### When the answer is the whole log
 
 An event after `since_seq` that may change how an entry the app holds is seen, without a new event on that entry, makes the answer `full`.
-Only the kinds in `deltaSafeKinds` are safe: they add a line or join the entry they name (attacks and damage, actions, saves, spells, reactions, conditions, movement, turns, the start and end of the combat, the legendary spend and the Recharge roll).
+Only the kinds in `deltaSafeKinds` are safe: they add a line or join the entry they name (attacks and damage, actions, saves, spells, reactions, conditions, movement, turns, the start of the combat, the legendary spend and the Recharge roll).
 Every other kind counts: a combatant shown or hidden, summoned, dismissed or removed, an answer to a roll request, an undo, and a kind the list does not know.
 When in doubt a kind stays off the list.
 

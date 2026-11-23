@@ -99,6 +99,10 @@ type logEntry struct {
 	// partHidden says the part is one the other players read as "Outra fonte".
 	partHidden bool
 	rolls      *logRolls
+	// cut is the roll that settled the question a Cutting Words line waited for, with the line as it reads then (combat_cut_pending.go).
+	cut *cutJoin
+	// neverRolled says the roll a Cutting Words line waits for is never written: its hold is gone with its roller or the combat.
+	neverRolled bool
 	// favor is the variant of a line about the Inspiration (combat_log_favor.go).
 	favor string
 }
@@ -292,7 +296,7 @@ func (c logCut) rounds(ctx context.Context, entries []*logEntry, v combatViewer,
 // event on that entry, so the answer is the whole log. When in doubt a kind stays off the list.
 var deltaSafeKinds = map[string]bool{
 	eventEncounterStarted: true, eventInitiativeSubmitted: true, eventInitiativeOrderSet: true, eventCombatBegun: true,
-	eventTurnEnded: true, eventTurnPartEnded: true, eventCombatantMoved: true, eventEncounterEnded: true, eventCombatantMounted: true, eventCombatantDismounted: true,
+	eventTurnEnded: true, eventTurnPartEnded: true, eventCombatantMoved: true, eventCombatantMounted: true, eventCombatantDismounted: true,
 	eventAttackRolled: true, eventDamageRolled: true, eventDamageApplied: true, eventDamageDiscarded: true,
 	eventActionTaken: true, eventHitPointsAdjusted: true, eventDeathSaveRolled: true, eventDeathConfirmed: true,
 	eventConditionsSet: true, eventSpellCast: true, eventReactionUsed: true, eventReactionDeclined: true,
@@ -533,6 +537,7 @@ func buildLog(events []playdb.ListEncounterEventsRow) []*logEntry {
 		byFiring:  map[string]*logEntry{},
 		byMove:    map[string]*logEntry{},
 		moveOf:    map[string]string{},
+		byCut:     map[string][]*logEntry{},
 	}
 	var out []*logEntry
 	for _, e := range events {
@@ -576,6 +581,8 @@ type logBuilder struct {
 	// the move that made the offer, so that entry is the one to undo.
 	byMove map[string]*logEntry
 	moveOf map[string]string // offer id -> move id
+	// byCut are the lines of the Cutting Words that wait for the roll of their hold's group (combat_cut_pending.go).
+	byCut map[string][]*logEntry
 }
 
 // logHandler fills the entry of an event of one kind and says whether the event is a line
@@ -663,6 +670,7 @@ func (b *logBuilder) entry(e playdb.ListEncounterEventsRow) *logEntry {
 	if err != nil {
 		return nil // never: this package wrote it
 	}
+	b.dropWaiting(e.Kind, ev) // the removal event carries no round
 	// The log starts when the combat begins: the setup is not in it. The master's line of
 	// the monsters he put in (their rolled hit points) is the exception: it is his from the setup.
 	if ev.Round == 0 && (e.Kind != eventCombatantsAdded || ev.Monsters == nil) {
@@ -672,6 +680,9 @@ func (b *logBuilder) entry(e playdb.ListEncounterEventsRow) *logEntry {
 		return nil // the event of a held action stands for nothing yet: its replay is the line
 	}
 	entry := &logEntry{id: e.ID, at: e.CreatedAt, ev: ev, hosts: []string{e.ID}, actorUser: e.ActorUserID}
+	if ev.CutGroup != "" {
+		b.joinCut(e.ID, e.Kind, ev)
+	}
 	handle, ok := logHandlers[e.Kind]
 	if !ok || !handle(b, e, entry) {
 		return nil
@@ -983,6 +994,7 @@ func (b *logBuilder) reactionAnswered(e playdb.ListEncounterEventsRow, entry *lo
 		return false
 	}
 	entry.kind = playv1.CombatLogKind_COMBAT_LOG_KIND_REACTION_WINDOW
+	b.registerCut(entry)
 	return true
 }
 
