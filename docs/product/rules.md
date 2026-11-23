@@ -233,10 +233,7 @@ The master takes a short or a long rest for the table, after a confirmation that
 - Hit dice are kept by die size (SRD, "Multiclassing").
 - **Arcane Recovery** (Wizard): once per long rest, after a short rest, the player chooses expended slots whose combined level is at most half the wizard level, rounded up, none of the 6th level or higher. Only the wizard level counts, and never pact slots. The short rest sheet has a "Recuperação Arcana" section, and afterwards it reads "Recuperação Arcana: usada; volta no descanso longo." A refusal changes nothing.
 - **Natural Recovery** (Druid, Circle of the Land): the same recovery with half the druid level, rounded up. Only the druid level counts, and never pact slots. A druid of another circle does not have it. The short rest sheet has a "Recuperação Natural" section, and afterwards it reads "Recuperação Natural: usada; volta no descanso longo." A refusal changes nothing.
-- **Lay on Hands, Flexible Casting and Metamagic.** Lay on Hands spends points on a touch, or 5 points to cure a poison or a disease; on an undead or a construct the points are spent.
-  The answer says only that nothing happened.
-  A player learns nothing about its type (RN-10).
-  Flexible Casting turns points into a slot of level 1 to 5 that a long rest takes away, and a slot back into points. The cast sheet offers only the Metamagic options the character knows, with the cost, and a disabled one says why.
+- **Lay on Hands, Flexible Casting and Metamagic.** Lay on Hands spends points on a touch, or 5 points to cure a poison or a disease; on an undead or a construct the points are spent and the answer says only that nothing happened, so a player learns nothing about its type (RN-10). Flexible Casting turns points into a slot of level 1 to 5 that a long rest takes away, and a slot back into points. The cast sheet offers only the Metamagic options the character knows, with the cost, and a disabled one says why.
 - **Spells of life and creature type.** Cure Wounds, Healing Word, Mass Cure Wounds, Mass Healing Word, Prayer of Healing, Heal and Mass Heal heal no undead and no construct, and Spare the Dying stabilises none.
   Blight does no damage to them.
   The slot is spent.
