@@ -205,6 +205,11 @@
   // A long name in "Esperando {nome}" wraps inside the tag instead of pushing the page sideways.
   flex: none;
   max-width: 55%;
+
+  mat-icon {
+    flex: none;
+  }
+
   overflow-wrap: anywhere;
   border-radius: var(--mr-radius-md);
   white-space: normal;
