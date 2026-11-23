@@ -29,6 +29,10 @@ export interface ServerDraftHost {
   readonly abilityTable: Signal<AbilityTableVm | null>;
   /** The full sheet the draft stands for now. */
   readonly build: () => CharacterFormValue;
+  /** What the person entered, as text: the form and the raw picks. */
+  readonly personInput: () => string;
+  /** A read took a pick back: the page says the table's content changed. */
+  readonly noteContentChanged: () => void;
 }
 
 /**
@@ -87,6 +91,9 @@ export class EditorServerDraft {
   /** "Falta uma escolha: Estilo de Luta.", the description of the blocked button. */
   readonly missingText = computed(() => missingSentence(this.choiceGroups()));
 
+  /** What the person had entered when the previous answer was applied; `null` before the first answer. */
+  private answeredInput: string | null = null;
+
   constructor(private readonly host: ServerDraftHost) {
     // While the "Pontos de vida" box or the "Magias" step is on screen, the server derives the draft (a race and a
     // class at least): the box adds up what the effects give, and the spell pickers count against the class's numbers.
@@ -126,6 +133,7 @@ export class EditorServerDraft {
       }
       const { featureChoiceKeys, featureChoiceText } = this.host.picks;
       untracked(() => {
+        const before = this.host.personInput();
         const next = choicesAfterAnswer(answer, featureChoiceKeys(), featureChoiceText());
         if (next.keys) {
           featureChoiceKeys.set(next.keys);
@@ -133,8 +141,22 @@ export class EditorServerDraft {
         if (next.texts) {
           featureChoiceText.set(next.texts);
         }
+        // A pick taken back while the person entered nothing since the last answer: the table changed under it.
+        if (
+          (next.keys || next.texts) &&
+          (this.answeredInput === null || this.answeredInput === before)
+        ) {
+          this.host.noteContentChanged();
+        }
+        this.answeredInput = this.host.personInput();
       });
     });
+  }
+
+  /** The page starts over: the server reads stop, and the next answer is the first. */
+  restart(): void {
+    this.choices.stop();
+    this.answeredInput = null;
   }
 
   /** The page is gone: nothing more is asked, and no late answer lands. */

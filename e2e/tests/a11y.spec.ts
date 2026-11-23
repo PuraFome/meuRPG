@@ -7778,9 +7778,15 @@ async function scanPickLists(browser: Browser, colorScheme: 'light' | 'dark', wi
     await expect(page.getByRole('alert')).toHaveCount(0);
     await expect(page.getByRole('tab', { name: /^Escolhas/ })).not.toContainText('(com erro)');
     await expect(page.getByRole('tab', { name: /^Escolhas/ })).toContainText('Escolha pendente');
+    // The pick went because the table's lists changed, so the page says so, and the notice passes the scan.
+    const tableNote = page.locator('.mr-notice[role="status"]').filter({ hasText: 'O mestre mudou as opções da mesa. As listas foram atualizadas: confira o que você escolheu antes de salvar.' });
+    await expect(tableNote).toBeVisible();
+    await expectScreenPasses(page, `Editor, a escolha de ferramenta tirada com o aviso do mestre ${where}`);
     await page.unroute(/PreviewCharacter|PreviewChoices/);
     await toolCard.getByRole('radio', { name: /Ferramentas de funileiro/ }).click();
     await expect(page.locator('mat-error', { hasText: toolSentence })).toHaveCount(0);
+    // The note stays until the page is left.
+    await expect(tableNote).toBeVisible();
 
     // The master narrows the lists: stealth is in none, and the stored sheet still holds it.
     await changeGuardianSkillListRPC(m, campaignId, guardian, ['skill:athletics', 'skill:nature']);

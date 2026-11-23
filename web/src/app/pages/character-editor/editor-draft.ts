@@ -101,6 +101,29 @@ export class EditorDraft {
     return keepAvailable(selected, available, this.host.catalog.catalog()?.spells ?? []);
   }
 
+  /** What the person entered, as text, whatever the lists offer: the form and the raw picks (no list is read). */
+  personInput(): string {
+    this.host.catalog.formChanges();
+    const { picks, spellPicks } = this.host;
+    const sorted = (set: ReadonlySet<string>) => [...set].sort();
+    return JSON.stringify([
+      this.host.fullForm.getRawValue(),
+      sorted(picks.selectedSkills()),
+      sorted(picks.customBackgroundSkills()),
+      picks.customBackgroundProficiencies(),
+      picks.extraClasses(),
+      sorted(picks.expertiseSkills()),
+      picks.hitPointsRolls(),
+      picks.featureChoiceKeys(),
+      picks.featureChoiceText(),
+      picks.featKeys(),
+      picks.featSlots(),
+      sorted(spellPicks.cantrips()),
+      sorted(spellPicks.known()),
+      sorted(spellPicks.prepared()),
+    ]);
+  }
+
   build(): CharacterFormValue {
     const { catalog, picks, spellPicks } = this.host;
     return buildFullValue({
