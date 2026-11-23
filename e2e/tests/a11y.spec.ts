@@ -83,6 +83,25 @@ import { createFeatOptionsRPC, expectInViewport, featShotScale, featViewport, op
 import { archiveEntryRPC, checkMinimumFeatBody, costsRaceBody, createEntryRPC, creatureBody, criticalFeatureBody, damageCreatureBody, entryRoute, expectCardsHoldTheirText, giveFeatRPC, heavyBlowFeatBody, hitModifier, hitSpellBody, minimumFeatBody, raceBody, rerollFeatBody, spellBody, steadyShotFeatBody, updateEntryRPC } from './content-support';
 import { rerollTable } from './reroll-support';
 import { aloneFlow, damageCard, expectDashed, expectFits, otherPlayerLogFlow, rolledFlow, shootTakeOut, sneakHit, takeOutRPC, takeOutShotScale, takeOutTable, twoPartsFlow, type TakeOutOptions } from './take-out-support';
+import {
+  appDiceFlow,
+  cutFailureFlow,
+  hiddenFlow,
+  hideAfterRollFlow,
+  lateAnswerFlow,
+  loadingFlow,
+  longNameFlow,
+  nobodySeesFlow,
+  noBonusFlow,
+  noSceneFlow,
+  passFlow,
+  physicalDiceFlow,
+  refusalsFlow,
+  sheetFlow,
+  stageMenuFlow,
+  twoBardsFlow,
+} from './npc-check-flows';
+import { npcShotScale, npcTable, shootNpc, type NpcOptions, type NpcTable, type NpcView } from './npc-check-support';
 import { generateSceneRPC, mapRoute, tableForImages } from './images-support';
 import { treasureRoute } from './treasure-support';
 import { classBody, createClassRPC, createSubclassRPC, halfCasterBody, listEntries } from './classes-support';
@@ -17052,6 +17071,72 @@ for (const [colorScheme, theme] of [
       async ({ browser }) => {
         test.setTimeout(420_000);
         await scanTakeOutStates(browser, colorScheme, width);
+      },
+    );
+  }
+}
+
+// #591: Cutting Words outside a combat. The sheet "Teste de um NPC", the master's card, the bard's question and the nine states of the
+// board 591-08, each at every width and theme. One table per flow; the flows assert what the boards say and call back at each screen.
+type NpcFlow = (t: NpcTable, v: NpcView) => Promise<void>;
+
+async function scanNpcCheck(browser: Browser, colorScheme: 'light' | 'dark', width: number, flows: [NpcOptions, NpcFlow][]): Promise<void> {
+  const where = `(${colorScheme}, ${width}px)`;
+  const view: NpcView = {
+    scan: async (page: Page, screen: string) => {
+      await expectScreenPasses(page, `Palavras de Interrupção, ${screen} ${where}`);
+      const wide = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+      expect(wide, `Palavras de Interrupção, ${screen} ${where}: a página rola de lado em ${wide}px`).toBeLessThanOrEqual(0);
+    },
+    shoot: (page: Page, screen: string, at?: Locator) => shootNpc(page, screen, width, colorScheme, at),
+  };
+  for (const [options, flow] of flows) {
+    const t = await npcTable(browser, { colorScheme, masterWidth: width, playerWidth: width, ...npcShotScale }, options);
+    try {
+      await flow(t, view);
+    } finally {
+      await t.done().catch(() => undefined);
+    }
+  }
+}
+
+for (const [colorScheme, theme] of [
+  ['light', 'claro'],
+  ['dark', 'escuro'],
+] as const) {
+  for (const width of [390, 768, 1280]) {
+    test(
+      `Palavras de Interrupção fora de combate, a folha, o cartão e a pergunta, passam no axe e nas conferências de layout no tema ${theme}, em ${width}`,
+      { tag: ['@a11y', '@MR-015', '@RN-10'] },
+      async ({ browser }) => {
+        test.setTimeout(480_000);
+        await scanNpcCheck(browser, colorScheme, width, [
+          [{}, sheetFlow],
+          [{}, appDiceFlow],
+          [{ physical: true }, physicalDiceFlow],
+          [{}, passFlow],
+        ]);
+      },
+    );
+    test(
+      `Palavras de Interrupção fora de combate, os outros estados, passam no axe e nas conferências de layout no tema ${theme}, em ${width}`,
+      { tag: ['@a11y', '@MR-015', '@RN-10'] },
+      async ({ browser }) => {
+        test.setTimeout(900_000);
+        await scanNpcCheck(browser, colorScheme, width, [
+          [{ other: 'bard' }, twoBardsFlow],
+          [{ other: 'bard' }, lateAnswerFlow],
+          [{}, hiddenFlow],
+          [{}, hideAfterRollFlow],
+          [{ other: 'bard', longName: true }, longNameFlow],
+          [{}, stageMenuFlow],
+          [{}, noBonusFlow],
+          [{}, refusalsFlow],
+          [{}, loadingFlow],
+          [{}, cutFailureFlow],
+          [{ other: 'fighter' }, nobodySeesFlow],
+          [{ noScene: true }, noSceneFlow],
+        ]);
       },
     );
   }

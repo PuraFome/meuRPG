@@ -24,6 +24,8 @@ import { GroupCheckMaster } from './group-check/group-check-master';
 import { HeldRollsPanel } from './held-questions/held-rolls-panel';
 import { HighlightsCard } from './combat/combat-highlights/highlights-card';
 import { LiveToast } from '../../shared/live-toast/live-toast';
+import { NpcCutHost } from './npc-check/npc-cut-host';
+import { NpcCheckMaster } from './npc-check/npc-check-master';
 import { MasterLive } from './puzzles/master-live/master-live';
 import { RouterLink } from '@angular/router';
 import { MasterPuzzles } from './puzzles/master-puzzles/master-puzzles';
@@ -83,6 +85,8 @@ export const LIVE_SESSION_IMPORTS = [
   HighlightsCard,
   LiveToast,
   MasterLive,
+  NpcCheckMaster,
+  NpcCutHost,
   RouterLink,
   MasterPuzzles,
   PartyPanel,

@@ -50,6 +50,11 @@
 
 .sa__group {
   min-height: 44px;
+
+  &:focus-visible {
+    outline: 3px solid var(--mr-focus);
+    outline-offset: 2px;
+  }
 }
 
 // The amber "N rolagens novas", on the header and on the action it belongs to.

@@ -127,6 +127,8 @@ export class LiveSessionEvents {
       onCurrentMap: (mapId) => this.showMap(mapId),
       onMapChanged: (mapId) => this.mapChanged(mapId),
       onVisionChanged: (mapId) => {
+        // On a fog map a token hidden reaches the players only as a vision hint.
+        this.heldRollsMayHaveChanged();
         // The fog map's tokens, points and squares come from reads: read them again.
         if (mapId === state.currentMapId()) {
           void parts.mapState.refresh();
@@ -236,14 +238,20 @@ export class LiveSessionEvents {
           void parts.mapState.refresh();
         }
       },
-      onSceneChanged: () => void parts.scene.refresh(),
+      onSceneChanged: () => {
+        void parts.scene.refresh();
+        this.heldRollsMayHaveChanged();
+      },
       onNotesChanged: () => {
         void parts.notes.refresh(true);
         // A cipher's key is a clue in the notes: the open puzzle reads its run again to learn the player found it.
         void parts.puzzles.refresh();
       },
       // The stage is part of the open scene: read it again (it names nobody).
-      onStageChanged: () => void parts.scene.refresh(),
+      onStageChanged: () => {
+        void parts.scene.refresh();
+        this.heldRollsMayHaveChanged();
+      },
     } satisfies Partial<LiveStreamHandlers>;
   }
 
@@ -270,8 +278,18 @@ export class LiveSessionEvents {
     }
   }
 
+  /**
+   * The server judges a check that waits again when its held rolls are read (the token the creature was rolled on, the stage, who
+   * is in the scene) and sends no hint of its own for it. A map, a vision, a stage or a scene that changed moves `heldRollsRecheck`:
+   * the master's card (while the check waits) and the bard's question (while it is asked) read again, and nothing else does.
+   */
+  private heldRollsMayHaveChanged(): void {
+    this.state.heldRollsRecheck.update((n) => n + 1);
+  }
+
   private mapChanged(mapId: string): void {
     const { state, parts } = this;
+    this.heldRollsMayHaveChanged();
     // The damage that waits covers the whole campaign (ListTrapDamages): a trap on another map may have fired.
     void parts.trapBoard.refreshDamages();
     if (mapId === state.currentMapId()) {
