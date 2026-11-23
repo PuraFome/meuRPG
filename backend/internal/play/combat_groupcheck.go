@@ -112,8 +112,11 @@ func groupReplay(ctx context.Context, q *playdb.Queries, sessionID string, call 
 	if err != nil {
 		return groupCheckEvent{}, false, fmt.Errorf("find the event of this idempotency key: %w", err)
 	}
-	if done.Kind != call.kind || done.ActorUserID == nil || *done.ActorUserID != call.m.UserID || hashDiffers(done.IdempotencyHash, call.hash) {
+	if done.Kind != call.kind || hashDiffers(done.IdempotencyHash, call.hash) {
 		return groupCheckEvent{}, false, errKeyReused()
+	}
+	if err := keyAuthorOnly(done, call.m.UserID); err != nil {
+		return groupCheckEvent{}, false, err
 	}
 	// A retry answers what the first call made: the check it names is in the event.
 	if err := json.Unmarshal(done.Payload, &ev); err != nil {
@@ -567,7 +570,7 @@ func (s *Service) gatedMemberRoll(ctx context.Context, q *playdb.Queries, tx pgx
 	step, err := s.heldGate(ctx, s.outsideGate(tx, q, gh.h), rollSpec{
 		Kind: heldGroupCheck, Key: gh.key, Request: gh.raw, Roller: heldRoller{CampaignID: gh.m.CampaignID, CharacterID: spec.characterID, UserID: gh.m.UserID},
 		In: rollInput{inApp: spec.in.inApp, typedFaces: spec.in.faces}, Modifier: spec.bonus, Mode: spec.mode.Mode, Floor: spec.floor, Lucky: spec.lucky, MayAsk: true,
-		Stroke: groupStrokeRule(spec.check), FavorSpent: spec.favor.Used,
+		Stroke: groupStrokeRule(spec.check), FavorSpent: spec.favor.Used, FavorPrompt: spec.favor.Prompt,
 	})
 	if err != nil {
 		return contestRoll{}, false, false, err
@@ -583,7 +586,7 @@ func (s *Service) gatedMemberRoll(ctx context.Context, q *playdb.Queries, tx pgx
 		Skill: spec.check.SkillKey, Faces: faces32(step.Roll.Faces), Modifier: conv.Int32(spec.bonus),
 		Total: conv.Int32(step.Roll.Total), Physical: step.Roll.Physical,
 		Mode: checkModeKey(checkModeOfRoll(spec.mode.Mode)), Unknown: !spec.known, Lucky: step.Lucky, Stroke: step.Stroke,
-		countedRoll: countedOf(step.Roll), Favor: spec.favor.Used,
+		countedRoll: countedOf(step.Roll), Favor: spec.favor.Used, FavorPrompt: spec.favor.Prompt,
 	}
 	if step.Bonus != nil {
 		roll.BonusSides, roll.BonusFace = step.Bonus.Sides, step.Bonus.Face
@@ -593,7 +596,7 @@ func (s *Service) gatedMemberRoll(ctx context.Context, q *playdb.Queries, tx pgx
 
 // keepMemberRoll spends the Helps the roll used and keeps the roll on the member.
 func (s *Service) keepMemberRoll(ctx context.Context, q *playdb.Queries, tx pgx.Tx, session playdb.GameSession, spec memberRoll, roll contestRoll) error {
-	roll.Notes, roll.Favor = notesOfSources(spec.mode.Sources, spec.mode.hide), spec.favor.Used
+	roll.Notes, roll.Favor, roll.FavorPrompt = notesOfSources(spec.mode.Sources, spec.mode.hide), spec.favor.Used, spec.favor.Prompt
 	c, err := s.openTx(ctx, combatTx{tx: tx, q: q, session: session, now: s.now(), characterID: &spec.characterID})
 	if err != nil {
 		return err

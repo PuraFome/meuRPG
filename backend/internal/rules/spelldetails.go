@@ -130,6 +130,12 @@ const (
 	TargetNone = "none"
 )
 
+// How close the creatures of a spell must be, as in SpellTarget.WithinOf.
+const (
+	WithinEach  = "each"
+	WithinFirst = "first"
+)
+
 // Area shapes, as in SpellTarget.Shape.
 const (
 	ShapeCone     = "cone"
@@ -151,6 +157,18 @@ type SpellTarget struct {
 	// level, and PerSlotLevel how many more for each slot level above it.
 	Count        int
 	PerSlotLevel int
+	// WithinFt, when set, is how close the creatures of a cast on a map must be:
+	// WithinOf says to whom (WithinEach: every pair; WithinFirst: every creature
+	// after the first is that far from the first, and only the first is held to
+	// the spell's range). RangeExtraFt is how far past the spell's range a
+	// WithinEach creature may be (a sphere that starts at the range's edge).
+	WithinFt     int
+	WithinOf     string
+	RangeExtraFt int
+	// ReachFt, when set, is how far the creature of a Self-range spell is picked
+	// (Vampiric Touch, Produce Flame, Eyebite): only the target check reads it,
+	// the range of the spell stays the SRD's.
+	ReachFt int
 	// Shape (a Shape* constant) and SizeFt, in 5-foot steps, are the area of a
 	// TargetArea spell: the cone's length, the cube's side, the cylinder's and
 	// the sphere's radius, the line's length.

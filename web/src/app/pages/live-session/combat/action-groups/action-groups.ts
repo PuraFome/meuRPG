@@ -21,6 +21,8 @@ import {
   type SpellOption,
   type TurnOptions,
 } from '../../../../../gen/meurpg/rules/v1/rules_pb';
+import type { AttunementEntryVm } from '../../../../core/characters/attunement';
+import type { CombatItemRowVm, ConsumableNotice } from '../../../../core/characters/consumables';
 import { AMMUNITION } from '../../../../core/combat/ammunition-line';
 import {
   throwNote,
@@ -49,6 +51,7 @@ import {
   featureGroup,
   featureVerb,
   partByEconomy,
+  partItems,
 } from '../../../../core/combat/action-tabs';
 import { castLevelOf } from '../../../../core/combat/cast-flow';
 import { cannotAct } from '../../../../core/combat/conditions';
@@ -68,8 +71,9 @@ import { GearFold } from './gear-fold';
 import { HitEffectCards } from './hit-effect-cards';
 import { hitCards } from '../../../../core/effects/hit-effect-text';
 import { AttackLegend } from './attack-legend';
+import { ConsumableNoticeCard } from '../../../../shared/consumable-use/consumable-notice';
 import { Fold } from '../../../../shared/fold/fold';
-import { EconomyShapes } from '../../../../shared/economy-shapes/economy-shapes';
+import { EconomyMark, EconomyShapes } from '../../../../shared/economy-shapes/economy-shapes';
 import { movementOf, turnLineOf } from './turn-line';
 import { leaveDetailOf, SURPRISE_ROWS } from './surprise-and-form-text';
 import { holdsReadied, isReadyOption, withoutReady } from '../../../../core/combat/ready';
@@ -78,6 +82,7 @@ import { TabList, tabId, tabPanelId } from '../../../../shared/tab-list/tab-list
 import type { PactSlotsVm, SlotUsageVm } from '../../../../core/play/resource-usage.types';
 import { SlotDots } from '../../../../shared/slot-dots/slot-dots';
 import { ActionRow, type RowEconomy } from './action-row';
+import { ItemRow, itemWhyOf } from './item-row';
 import { featureIsOff, featureLine, featureWhy } from '../../../../core/combat/action-spend';
 import { resourceOf, useLine } from '../../../../core/combat/feature-use';
 import type { ResourceUsageVm } from '../../../../core/play/resource-usage.types';
@@ -85,7 +90,7 @@ import { GroupState } from './group-state';
 import {
   EXTRA_NAMES,
   FRENZY_QUESTION,
-  TAB_ICONS,
+  tabStrip,
   slotRowsOf,
   specialAttack,
   attackLines,
@@ -113,9 +118,12 @@ import { offersWeaponAttack } from './weapon-offer';
 @Component({
   selector: 'app-action-groups',
   imports: [
+    EconomyMark,
     EconomyShapes,
     ActionRow,
+    ItemRow,
     AttackLegend,
+    ConsumableNoticeCard,
     Fold,
     GearFold,
     GroupState,
@@ -204,6 +212,11 @@ export class ActionGroups {
   /** The extra action an effect gives (Velocidade): its line, what it may be and why it is not there; `null` without one. */
   readonly extraAction = input<ExtraActionOption | null>(null);
 
+  /** The potions and scrolls the character carries, one row for each kind (the "Itens" tab); none: no tab. */
+  readonly items = input<readonly CombatItemRowVm[]>([]);
+  /** What the last use of an item said: the card at the top of "Itens". */
+  readonly itemsNotice = input<ConsumableNotice | null>(null);
+
   /** "Atacar": the key of the attack, as in `Attack.key`. */
   readonly attack = output<string>();
   /** "Agarrar" or "Empurrar": the sheet that picks the target. */
@@ -222,6 +235,8 @@ export class ActionGroups {
   readonly giveUp = output<string>();
   /** Whether the combatant holds an action for its trigger: its card sits under the economy row, in every tab. */
   protected readonly holdsReadied = holdsReadied;
+  /** "Usar" on an item: the unit of the row (one entry of the sheet) that is used. */
+  readonly useItem = output<AttunementEntryVm>();
   /** "Conjurar": the key of the spell, or of a cantrip that asks for a save. */
   readonly cast = output<string>();
   /** "Usar": the key of a feature action ("feature:second-wind"). */
@@ -291,6 +306,14 @@ export class ActionGroups {
       this.canUse,
     ),
   );
+  /** The items still in play and the ones folded behind "Ação · Usada" (the Action follows `actionUsed`: see `partItems`). */
+  protected readonly itemParts = computed(() =>
+    partItems(this.items(), this.own(), this.spent(), this.spentWord()),
+  );
+  protected itemWhy(row: CombatItemRowVm): string {
+    return itemWhyOf(row, this.own(), this.locked());
+  }
+
   /** The effects waiting for the caster's next weapon hit (#577), the card at the top of "Ataques". */
   protected readonly hitEffects = computed(() => hitCards(this.own(), this.combatants()));
   /** The one line above the weapon rows: only with dice and at least one weapon attack still on offer. */
@@ -336,17 +359,13 @@ export class ActionGroups {
       escape: this.grappled(),
       standard: this.standard().length,
     });
-    return actionTabs(
-      { ...counts, features: this.classFeatures().length + this.formRows() },
-      this.beast() ? WILD_SHAPE_TAB : classTabName(this.classFeatures()),
-      { beast: !!this.beast() },
-    ).map((t) => ({
-      id: t.id,
-      label: t.label,
-      icon: TAB_ICONS[t.id],
-      badge: t.badge,
-      words: t.words,
-    }));
+    return tabStrip(
+      actionTabs(
+        { ...counts, features: this.classFeatures().length + this.formRows() },
+        this.beast() ? WILD_SHAPE_TAB : classTabName(this.classFeatures()),
+        { beast: !!this.beast(), items: this.items().length, itemsKept: !!this.itemsNotice() },
+      ),
+    );
   });
   /** The tab shown: the person's choice while it is still there, else the first. */
   protected readonly current = computed<ActionTabId>(() => {
@@ -399,24 +418,6 @@ export class ActionGroups {
     }),
   );
   protected readonly movement = computed(() => movementOf(this.own(), this.grappled()));
-
-  /** The word on the Ação header: with Extra Attack, once the first attack
-   * spent the action, "1 ataque restante" (an open circle: it is not over). */
-  protected readonly cannot = computed(() => cannotAct(this.own()));
-  protected readonly actionWord = computed(() => {
-    if (cannotAct(this.own())) {
-      return { word: 'Indisponível', used: true };
-    }
-    const used = this.own().actionUsed;
-    const left = this.attacksLeft();
-    if (used && left > 0 && this.attacksPerAction() > 1) {
-      return {
-        word: `${left} ${left === 1 ? 'ataque restante' : 'ataques restantes'}`,
-        used: false,
-      };
-    }
-    return { word: groupState(used), used };
-  });
 
   protected readonly attackName = attackName;
 

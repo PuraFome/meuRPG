@@ -295,6 +295,33 @@ type Encounter struct {
 	SunlightSquares    []byte
 }
 
+type FavorPass struct {
+	ID              string
+	CampaignID      string
+	GameSessionID   string
+	FromCharacterID string
+	ToCharacterID   string
+	AskedByUserID   string
+	Status          string
+	AskKey          string
+	ClosedKey       *string
+	CreatedAt       time.Time
+	ClosedAt        *time.Time
+}
+
+type FavorRefundPrompt struct {
+	ID            string
+	CampaignID    string
+	GameSessionID string
+	CharacterID   string
+	RollLabelPt   string
+	HiddenSources []byte
+	Status        string
+	AnswerKey     *string
+	CreatedAt     time.Time
+	AnsweredAt    *time.Time
+}
+
 type GameSession struct {
 	ID                  string
 	CampaignID          string
@@ -410,6 +437,24 @@ type InspirationHold struct {
 	RerollTo             *int32
 	CountedBy            string
 	FavorSpent           bool
+	FavorPromptID        *string
+}
+
+type NpcCheckAsk struct {
+	ID              string
+	HoldID          string
+	MapID           *string
+	BardCharacterID *string
+	Position        int32
+	State           string
+	Sides           int32
+	CreatureSeen    bool
+	DieFace         *int32
+	Physical        bool
+	AnswerKey       *string
+	AnswerHash      *string
+	CreatedAt       time.Time
+	AnsweredAt      *time.Time
 }
 
 type OpportunityOffer struct {
@@ -636,6 +681,20 @@ type RollModeRequest struct {
 	Reason        string
 	CreatedAt     time.Time
 	AnsweredAt    *time.Time
+}
+
+type SessionEvent struct {
+	ID              string
+	GameSessionID   string
+	Seq             int32
+	Kind            string
+	ActorUserID     *string
+	CharacterID     *string
+	Payload         []byte
+	IdempotencyKey  *string
+	CreatedAt       time.Time
+	EncounterID     *string
+	IdempotencyHash *string
 }
 
 type SessionMessage struct {

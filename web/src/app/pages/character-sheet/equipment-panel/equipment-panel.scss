@@ -186,13 +186,42 @@
   margin-bottom: var(--mr-space-3);
 }
 
-.magic-row--charges {
+.magic-row--charges,
+.magic-row--consumable {
   grid-template-columns: var(--mr-font-18) minmax(0, 1fr) auto auto;
   align-items: start;
 }
 
-.magic-row--charges .magic-row__icon {
+.magic-row--charges .magic-row__icon,
+.magic-row--consumable .magic-row__icon {
   margin-top: var(--mr-space-1);
+}
+
+// A potion's line sits under its name, inside the body, not across the row.
+.magic-row--consumable .magic-row__line {
+  grid-column: auto;
+}
+
+.magic-row--consumable .magic-row__use,
+.magic-row--consumable .magic-row__more {
+  align-self: center;
+}
+
+// The kebab keeps one place (the column before the button, as the gear rows have it), so the buttons of every row share a right edge
+// whether or not the sheet can manage its magic items.
+.magic-row--charges .magic-row__more,
+.magic-row--consumable .magic-row__more {
+  grid-column: 3;
+}
+
+.magic-row--charges .magic-row__use,
+.magic-row--consumable .magic-row__use {
+  grid-column: 4;
+}
+
+.magic-row__times {
+  font-size: var(--mr-font-14);
+  font-weight: 400;
 }
 
 .magic-row__body {

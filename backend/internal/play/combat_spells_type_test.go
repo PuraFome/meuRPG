@@ -14,8 +14,7 @@ import (
 // A creature with no type (a character) is as it always was. These tests need the database (MEURPG_TEST_DATABASE_URL).
 
 const (
-	massCureWounds = "spell:mass-cure-wounds"
-	blightSpell    = "spell:blight"
+	blightSpell = "spell:blight"
 )
 
 // typeTable is a cleric of level 11 (Brisa: Wisdom 16, the 1st to the 6th circle) and a wizard of level 17 (Pensantus: Intelligence

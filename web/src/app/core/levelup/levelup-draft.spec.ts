@@ -166,6 +166,8 @@ describe('LevelUpDraft: subclass, feature options, skills and expertise', () => 
           key: 'sub:lore',
           namePt: 'Colégio do Conhecimento',
           skillChoices: 1,
+          skillsAllowed: ['skill:stealth', 'skill:perception'],
+          expertiseAllowed: ['skill:arcana', 'skill:history', 'skill:stealth', 'skill:perception'],
           featureChoices: [
             create(LevelUpFeatureChoiceSchema, {
               feature: { key: 'feature:x', namePt: 'Estilo' },
@@ -181,6 +183,7 @@ describe('LevelUpDraft: subclass, feature options, skills and expertise', () => 
         create(LevelUpSubclassSchema, { key: 'sub:champion', namePt: 'Campeão' }),
       ],
       expertiseChoices: 1,
+      expertiseAllowed: ['skill:arcana', 'skill:history', 'skill:stealth', 'skill:perception'],
     });
 
   it('needs the subclass first, then what it adds', () => {
@@ -241,6 +244,72 @@ describe('LevelUpDraft: subclass, feature options, skills and expertise', () => 
     d.toggleSkill('skill:stealth');
     expect([...d.expertise()]).toEqual([]);
   });
+
+  const keysOf = (d: LevelUpDraft) => d.expertiseItems().map((i) => i.key);
+
+  it('lists every skill of the expertise list when the level gives no skill, held ones the stored picks lack too', () => {
+    const o = fighterOptions({
+      expertiseChoices: 1,
+      expertiseAllowed: ['skill:arcana', 'skill:history', 'skill:stealth', 'skill:perception'],
+    });
+    const d = new LevelUpDraft(o, { ...WIZARD_KEYS, skills: ['skill:arcana'] }, catalog);
+    expect(keysOf(d)).toEqual([
+      'skill:arcana',
+      'skill:stealth',
+      'skill:history',
+      'skill:perception',
+    ]);
+    d.toggleExpertise('skill:perception');
+    expect([...d.expertise()]).toEqual(['skill:perception']);
+  });
+
+  it('lists a skill the subclass could give only while it is picked, and drops its expertise when unpicked', () => {
+    const d = new LevelUpDraft(options(), { ...WIZARD_KEYS, skills: [] }, catalog);
+    d.setSubclass('sub:lore');
+    expect(keysOf(d)).toEqual(['skill:arcana', 'skill:history']);
+    d.toggleSkill('skill:stealth');
+    expect(keysOf(d)).toContain('skill:stealth');
+    expect(keysOf(d)).not.toContain('skill:perception');
+    d.toggleExpertise('skill:stealth');
+    d.toggleSkill('skill:stealth');
+    expect(keysOf(d)).not.toContain('skill:stealth');
+    expect([...d.expertise()]).toEqual([]);
+  });
+
+  it('keeps expertise on a held skill of the list while a new skill is picked and unpicked', () => {
+    const d = new LevelUpDraft(options(), { ...WIZARD_KEYS, skills: [] }, catalog);
+    d.setSubclass('sub:lore');
+    d.toggleExpertise('skill:history');
+    d.toggleSkill('skill:stealth');
+    d.toggleSkill('skill:stealth');
+    expect([...d.expertise()]).toEqual(['skill:history']);
+  });
+
+  it('on a later class lists the rows the character has, and a row it could take only while picked', () => {
+    const o = fighterOptions({
+      isNewClass: true,
+      expertiseChoices: 1,
+      expertiseAllowed: ['skill:arcana', 'skill:stealth'],
+      proficiencyChoices: [
+        {
+          kind: LevelUpProficiencyKind.SKILL,
+          count: 1,
+          from: [
+            { key: 'skill:arcana', namePt: 'Arcanismo', alreadyHave: true },
+            { key: 'skill:stealth', namePt: 'Furtividade', alreadyHave: false },
+          ],
+        },
+      ],
+    });
+    const d = new LevelUpDraft(o, { ...WIZARD_KEYS, skills: [] }, catalog);
+    expect(keysOf(d)).toEqual(['skill:arcana']);
+    d.toggleSkill('skill:stealth');
+    expect(keysOf(d)).toEqual(['skill:arcana', 'skill:stealth']);
+    d.toggleExpertise('skill:stealth');
+    d.toggleSkill('skill:stealth');
+    expect(keysOf(d)).toEqual(['skill:arcana']);
+    expect([...d.expertise()]).toEqual([]);
+  });
 });
 
 describe('LevelUpDraft: picks that follow the counts', () => {
@@ -260,8 +329,18 @@ describe('LevelUpDraft: picks that follow the counts', () => {
       subclassDue: true,
       expertiseChoices: 1,
       subclasses: [
-        create(LevelUpSubclassSchema, { key: 'sub:lore', namePt: 'Conhecimento', skillChoices }),
-        create(LevelUpSubclassSchema, { key: 'sub:champion', namePt: 'Campeão' }),
+        create(LevelUpSubclassSchema, {
+          key: 'sub:lore',
+          namePt: 'Conhecimento',
+          skillChoices,
+          skillsAllowed: ['skill:stealth', 'skill:perception'],
+          expertiseAllowed: ['skill:arcana', 'skill:history', 'skill:stealth', 'skill:perception'],
+        }),
+        create(LevelUpSubclassSchema, {
+          key: 'sub:champion',
+          namePt: 'Campeão',
+          expertiseAllowed: ['skill:arcana', 'skill:history'],
+        }),
       ],
     });
 
@@ -319,7 +398,13 @@ describe('LevelUpDraft: adopt after the sheet is read again', () => {
       subclassDue: true,
       expertiseChoices: 1,
       subclasses: [
-        create(LevelUpSubclassSchema, { key: 'sub:lore', namePt: 'Conhecimento', skillChoices }),
+        create(LevelUpSubclassSchema, {
+          key: 'sub:lore',
+          namePt: 'Conhecimento',
+          skillChoices,
+          skillsAllowed: ['skill:stealth', 'skill:perception'],
+          expertiseAllowed: ['skill:arcana', 'skill:history', 'skill:stealth', 'skill:perception'],
+        }),
       ],
     });
 

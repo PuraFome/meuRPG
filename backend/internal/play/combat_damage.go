@@ -465,6 +465,9 @@ func (f *damageFlow) land(ctx context.Context, g playdb.PendingDamage) error {
 	if err := f.keepRoll(ctx, g, tgt, amount, steps, &hit); err != nil {
 		return err
 	}
+	if err := f.drink(ctx, g, tgt, hit); err != nil {
+		return err
+	}
 	if err := f.s.afterDamage(ctx, f.c, tgt, damageLanded{attacker: f.attacker.ID, key: g.AttackKey, pending: g, hit: hit}); err != nil {
 		return err
 	}
@@ -498,6 +501,21 @@ func (f *damageFlow) plantMaximum(ctx context.Context, g playdb.PendingDamage, t
 		return f.total, false, err
 	}
 	return combat.MaxRoll(int(g.DiceCount), int(g.DiceSides), int(g.DiceBonus)), true, nil
+}
+
+// drink is the heal a drain spell's damage gives its caster, when the damage landed on its target at once.
+func (f *damageFlow) drink(ctx context.Context, g playdb.PendingDamage, tgt playdb.Combatant, hit damageHit) error {
+	if !hit.Applied {
+		return nil
+	}
+	if hit.Before == nil || hit.Before.HP <= 0 {
+		hit.Amount = 0
+	}
+	vit, err := f.s.drainHeal(ctx, f.c, g, f.attacker, tgt, hit.Amount)
+	if vit != nil {
+		f.out.vitals = append(f.out.vitals, vit)
+	}
+	return err
 }
 
 // settleSteps takes the target's resistance, vulnerability and immunity off the damage of a type, after every

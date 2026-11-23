@@ -70,6 +70,10 @@ The master reads everything; a player reads the effects the master leaves visibl
 The label of an effect that gives conditions (`labelFor`, `labelForOthers`) and the log's `CONDITIONS_CHANGED` line (`withoutOwnerOnly`) leave out the ones the viewer may not read, and a log line whose readable conditions did not change is not sent.
 An effect the master hides turns, in the sources of a roll, into `OTHER_SOURCE` ("Outra fonte", `hiddenFrom`, `hideFor`).
 The DC of an effect is the master's and the caster's player's, and the player's whose creature rolls the save when the table rule `show_save_dc` is on (`combatViewer.saveDCFor`).
+On a fog map, a player's copy of the line of an effect is the line as if its targets were only the ones the player may read.
+Those are the characters, and the NPCs the player saw when the line was written that the master has not hidden since.
+A line whose actor is an NPC the player did not see is not theirs.
+A player who may read no target has no line, no hint and no move of their revision.
 The audience of an effect is `all` or `owner` in the table; a value the server does not know (`chosenAudience`, `storedAudience`) is stored as `owner` with the effect hidden from the players, so it is the master's alone, and the card and the log line read any audience but `all` as owner-only.
 Tests: `TestRN10_AnOwnerOnlyConditionIsInNoReadOfAnotherPlayer`, `TestRN10_TheLabelOfAnEffectNamesOnlyTheConditionsTheViewerMayRead`, and the leak tests `TestAnOwnerOnlyConditionReachesNoOtherPlayer` and `TestAnEffectTheMasterHidesReachesNoPlayer` (which plants a canary label on a hidden effect and reads the combat, the log, the turn options and both lists of effects as every player).
 
@@ -135,6 +139,11 @@ Who reads what:
 - The other players read the label alone: the names of the conditions they may read, or `player_label_pt`.
   They read no number behind it, in a combat or out of one.
   Out of a combat, `ListCharacterEffects` leaves out the owner-only conditions (`ownerOnlyConditions`) and the row of an owner-only condition, as the combat does.
+  `CharacterEffect.title_pt` is the effect's own name, else its source's, and `total_duration_text_pt` is the whole fixed length ("por 1 hora"), empty when there is none.
+  The row keeps only the seconds left, so the total is told only where the catalog gave the length: a potion drunk (`source_kind` `item`) and a spell cast by a character (`source_kind` `spell` with a caster).
+  An effect the master put on is empty, as the master may have chosen another length.
+  `effecttext` (`play/effecttext`) holds the words.
+  A resistance potion's effect carries the chip "Resistência: fogo" in `tags_pt`.
 - An effect the master hides, or whose audience is `owner`, names itself to no one else in the sources of a roll ("Outra fonte"; `hasUnreadEffect`).
 - An effect from a caster the viewer does not see names no caster.
 

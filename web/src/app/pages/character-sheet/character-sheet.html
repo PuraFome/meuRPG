@@ -338,6 +338,8 @@
             [chargesError]="magic.charges.error()"
             (chargesUsed)="magic.charges.openUse($event)"
             (lastChargeRolled)="magic.charges.openRoll($event)"
+            [consumableResult]="magic.consumables.result()"
+            (consumableUsed)="magic.consumables.openUse($event)"
             [canAddAmmunition]="vm.canEdit && vm.state !== 'dead'"
             [combatRunning]="magic.charges.combatRunning()"
             [ammunitionNotice]="magic.charges.ammunitionNotice()"

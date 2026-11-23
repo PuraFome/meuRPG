@@ -275,9 +275,9 @@
       "source": "SRD 5.1, Scorching Ray: make a ranged spell attack for each ray (the snapshot has no attack type)"
     },
     {
-      "spell": "spell:flame-blade",
-      "attack_type": "melee",
-      "source": "SRD 5.1, Flame Blade: a melee spell attack with the fiery blade (the snapshot has no attack type)"
+      "spell": "spell:faithful-hound",
+      "attack_type": "none",
+      "source": "SRD 5.1, Faithful Hound: the hound bites at the start of each of your turns, not when the spell is cast (the snapshot reads its bite as a spell attack at the cast)"
     },
     {
       "spell": "spell:arcane-hand",

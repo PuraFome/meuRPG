@@ -178,12 +178,12 @@ func measureScale(t *testing.T, n, extraEffects int) {
 	// The live source: a miss (revision read, rows read and decoded, With), a hit,
 	// and what a cached content keeps.
 	src := NewTableSource(tb.h.pool, loadRules(t), nil)
-	heap := func() uint64 {
+	heap := func() float64 { // bytes as a float: the difference of two readings is signed
 		runtime.GC()
 		runtime.GC()
 		var m runtime.MemStats
 		runtime.ReadMemStats(&m)
-		return m.HeapAlloc
+		return float64(m.HeapAlloc)
 	}
 	h0 := heap()
 	start := time.Now()
@@ -199,7 +199,7 @@ func measureScale(t *testing.T, n, extraEffects int) {
 		}
 	})
 	runtime.KeepAlive(c)
-	t.Logf("%4d entries, %d KiB stored: live source miss %v, hit %v, a cached content keeps %.2f MB", n, stored/1024, miss.Round(time.Millisecond), hit.Round(time.Microsecond), float64(h1-h0)/1e6)
+	t.Logf("%4d entries, %d KiB stored: live source miss %v, hit %v, a cached content keeps %.2f MB", n, stored/1024, miss.Round(time.Millisecond), hit.Round(time.Microsecond), (h1-h0)/1e6)
 
 	// A sheet read, hot (the service's own source misses once first).
 	tb.owner.get(t, tb.campaign, tb.pc.GetId())

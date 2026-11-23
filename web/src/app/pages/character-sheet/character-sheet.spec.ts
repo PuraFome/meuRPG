@@ -1449,6 +1449,37 @@ describe('CharacterSheetPage', () => {
       openSessions.set([]);
     });
 
+    it('answers a read that a newer one took over with the newer one’s result, once it has landed', async () => {
+      configure();
+      let reads = 0;
+      const pending: Array<(v: CharacterSheetVm) => void> = [];
+      fake.getCharacterSheetFn = () => {
+        reads++;
+        if (reads === 1) {
+          return Promise.resolve(withGear(true, 12));
+        }
+        return new Promise((res) => pending.push(res));
+      };
+      const fixture = TestBed.createComponent(CharacterSheetPage);
+      fixture.detectChanges();
+      await nextTurn();
+      await fixture.whenStable();
+      const page = fixture.componentInstance as unknown as { reloadQuietly(): Promise<boolean> };
+
+      const own = page.reloadQuietly();
+      const streams = page.reloadQuietly(); // the stream's hint starts a newer read
+      let ownAnswered = false;
+      void own.then(() => (ownAnswered = true));
+      pending[0](withGear(false, 10)); // the older read lands first
+      await nextTurn();
+      expect(ownAnswered).toBe(false); // it has nothing to say until the newest sheet is on screen
+      pending[1](withGear(false, 10));
+      expect(await own).toBe(true);
+      expect(await streams).toBe(true);
+      fixture.detectChanges();
+      expect((fixture.nativeElement as HTMLElement).textContent).toContain('Classe de armadura 10');
+    });
+
     it('clears the previous notice when the next change starts', async () => {
       configure();
       let stowed = false;

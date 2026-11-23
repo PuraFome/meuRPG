@@ -1,7 +1,7 @@
 # Play tables: sessions, history and effects
 
 The `play` module owns the game session and everything that happens in it.
-This page holds the session, its history, the stage, casting outside combat, group checks, lasting effects on characters, the Bardic Inspiration die and the Inspiration the master grants.
+This page holds the session, its history, the stage, casting outside combat, group checks, lasting effects on characters, the Bardic Inspiration die and the Inspiration the master grants, with its passes and refund prompts.
 Combat is in [combat.md](combat.md) and puzzles in [puzzles.md](puzzles.md).
 
 ```mermaid
@@ -100,12 +100,34 @@ erDiagram
         uuid campaign_id FK
         uuid granted_by_user_id
     }
+    favor_passes {
+        uuid id PK
+        uuid campaign_id FK
+        uuid game_session_id FK
+        uuid from_character_id FK
+        uuid to_character_id FK
+        uuid asked_by_user_id
+        text status
+        text ask_key
+        text closed_key
+    }
+    favor_refund_prompts {
+        uuid id PK
+        uuid campaign_id FK
+        uuid game_session_id FK
+        uuid character_id FK
+        text roll_label_pt
+        jsonb hidden_sources
+        text status
+        text answer_key
+    }
     inspiration_holds {
         uuid id PK
         uuid campaign_id FK
         uuid character_id FK
         uuid combatant_id FK
         uuid encounter_id FK
+        uuid favor_prompt_id FK
     }
     trap_damages {
         uuid id PK
@@ -147,6 +169,13 @@ erDiagram
     characters |o--o{ character_inspiration : "source_character_id"
     campaigns ||--o{ character_favor : "campaign_id"
     characters ||--o| character_favor : "character_id"
+    campaigns ||--o{ favor_passes : "campaign_id"
+    game_sessions ||--o{ favor_passes : "game_session_id"
+    characters ||--o{ favor_passes : "from_character_id"
+    characters ||--o{ favor_passes : "to_character_id"
+    campaigns ||--o{ favor_refund_prompts : "campaign_id"
+    game_sessions ||--o{ favor_refund_prompts : "game_session_id"
+    characters ||--o{ favor_refund_prompts : "character_id"
     campaigns ||--o{ game_sessions : "campaign_id"
     maps |o--o{ game_sessions : "current_map_id"
     map_points |o--o{ game_sessions : "open_scene_point_id"
@@ -158,6 +187,7 @@ erDiagram
     characters ||--o{ inspiration_holds : "character_id"
     combatants |o--o{ inspiration_holds : "combatant_id"
     encounters |o--o{ inspiration_holds : "encounter_id"
+    favor_refund_prompts |o--o{ inspiration_holds : "favor_prompt_id"
     campaigns ||--o{ revivify_requests : "campaign_id"
     characters ||--o{ revivify_requests : "caster_character_id"
     game_sessions ||--o{ revivify_requests : "game_session_id"
@@ -339,7 +369,26 @@ The index `character_favor_campaign_idx` serves the list of a campaign's holders
 Both foreign keys cascade.
 Only a player character gets a row: the server refuses an NPC, a reserved character and any id that is not a player character of the campaign.
 The grant is the session event `favor_granted`, keyed by the request's idempotency key.
-`inspiration_holds.favor_spent` is a column on held rolls.
+`inspiration_holds.favor_spent` is a column on held rolls, and `inspiration_holds.favor_prompt_id` the refund prompt that spend opened (null when it opened none; the foreign key sets it null when the prompt is deleted, and the partial index `inspiration_holds_favor_prompt_idx`, in its own migration, serves that).
+
+## `favor_passes` and `favor_refund_prompts`
+
+`favor_passes` is a player's ask to pass the Inspiration of their character to another player character (RN-43): the master accepts or refuses, and nothing moves before.
+`from_character_id` is the giver and `to_character_id` the receiver, `asked_by_user_id` the giver's owner (no foreign key) and `game_session_id` the open session the ask was made in.
+`status` is `pending`, `accepted`, `refused` or `canceled`; `closed_at` is set when it is not pending.
+A giver has at most one pending ask (the partial unique index `favor_passes_one_pending_idx`), and the session's end closes every pending ask of it as `canceled`.
+`ask_key` is the idempotency key of the ask and `closed_key` the one of the call that closed it; each is unique in the campaign, so a retry finds the same row.
+All four foreign keys cascade.
+
+`favor_refund_prompts` is the question the master gets when a roll spent the Inspiration and it added nothing over every source of advantage.
+`character_id` is the roller, `roll_label_pt` the roll's name as the log reads it, and `hidden_sources` a JSON list of the sources of advantage the roller could not read.
+`status` is `open`, `returned` (the Inspiration was given back) or `kept`; `answered_at` is set when it is not open.
+`answer_key` is the idempotency key of the answer, unique in the campaign.
+A prompt is found by its id and never by a key, because two prompts of one character can share the key of the request that spent (a held roll is forgotten and the client sends its key again, which spends afresh). The roll's event is stamped with the id (`favor_prompt` in the payload) and its held roll keeps it (`inspiration_holds.favor_prompt_id`). The roll's undo and the forgetting of its held roll close that prompt, and only if it is open, as `kept`; a roll whose spend opened no prompt carries none.
+The session's end closes every open prompt of it as `kept`.
+The foreign keys cascade.
+A favor event written in a running combat also has `session_events.encounter_id` set and the round, the combatants and the audience in its payload, which is how the combat's log and undo read it.
+The events are `favor_pass_asked`, `favor_passed`, `favor_pass_refused`, `favor_pass_canceled`, `favor_refund_prompted`, `favor_refunded` and `favor_refund_kept`.
 
 ## `character_inspiration` and `inspiration_holds`
 
@@ -347,7 +396,7 @@ The grant is the session event `favor_granted`, keyed by the request's idempoten
 In a combat the die is the combatant's (`combatants.inspiration_*`) and this row is gone.
 
 `inspiration_holds` keeps a roll that waits for the player's answer about the die, or about the halfling's Lucky.
-`kind` is `scene_check`, `group_check`, `trap_search`, `hint_try`, `spell_attack`, `effect_save`, `concentration_save` or `mount_save` today; the check also accepts `weapon_attack` and the kinds of the rolls that will wait next (`death_save`, `initiative`, `contest_check`, `hide_check`, `counterspell_check`), and the code refuses a kind it does not know.
+`kind` is `npc_check` (see `npc_check_asks`), `scene_check`, `group_check`, `trap_search`, `hint_try`, `spell_attack`, `effect_save`, `concentration_save` or `mount_save` today; the check also accepts `weapon_attack` and the kinds of the rolls that will wait next (`death_save`, `initiative`, `contest_check`, `hide_check`, `counterspell_check`), and the code refuses a kind it does not know.
 `request` is the request that made it (protobuf), `faces`, `modifier`, `total`, `counted` and `physical` the d20 it rolled, `answer_key` is set once answered, unique on `(campaign_id, idempotency_key)`.
 `counted_by` (`TEXT NOT NULL DEFAULT ''`) is the content key of the feature whose floor the total counts, a table's `roll_minimum` or Reliable Talent; it is empty when the die counts as it came up.
 `round` is the combat's round for a roll held in a combat and `NULL` out of one.
@@ -367,6 +416,31 @@ Reroll rule (migration 00306): `reroll_ask` marks the question asked as soon as 
 The check `inspiration_holds_reroll_face_valid` keeps the faces between 1 and 20, the index at 0 or 1 and the cost at 0 or more.
 `die_answer_key` and `die_used` keep the Bardic Inspiration die answered while this question follows, since the row stays open.
 A hold out of a combat is not forgotten when the dice run out; one of a combat only when the round or the combat is over.
+A hold of kind `npc_check` is neither.
+It waits for the bards' dice, so the sweep of orphans, the forget of an actor's holds and the list of open holds leave it alone.
+It is settled as a skip when a combat starts or when the next check is rolled.
+It is settled as a skip when the next read or answer finds a token of the creature hidden on the map of the roll.
+It is settled as the last answer settles it when the next read or answer finds no bard in play left.
+It is kept (settled) while its session is open, and deleted with every other hold of the kind when its session ends.
+
+## `npc_check_asks`
+
+One row per Lore bard asked about an NPC's check outside a combat.
+The check itself is an `inspiration_holds` row of kind `npc_check` (`character_id` the NPC, `user_id` the master, `faces` the d20), and the asks cascade with it.
+A settled check keeps its asks while its session is open.
+The end of the session deletes the asks of its checks.
+`bard_character_id` and `map_id` have no index: deleting a character or a map scans a table that holds only the checks of open sessions, and the end of the session deletes them.
+`map_id` (`SET NULL`) is the session's map when the check was rolled, `NULL` with no map or once the map is deleted: the creature's token hidden on it closes the check.
+`hold_id` (`CASCADE`) and `bard_character_id` (`SET NULL`) are unique together.
+A bard whose character is deleted keeps its question, which the next read lets pass.
+`hold_id` and `position` (the order the bards are asked in) are unique together too.
+`state` is `asked`, `cut`, `passed` or `closed`; the one whose turn it is is the first with `asked`.
+`sides` is the die of the bard's Bardic Inspiration.
+`creature_seen` says whether the bard's player may read the creature's name.
+`die_face` is the face that came off (`NULL` until the bard cuts), and `physical` says whether it was typed.
+`answer_key`, `answer_hash` and `answered_at` are the answer, which a retry finds by key and whose body must be the same.
+Another body under the key is a reused key.
+`answer_hash` is `NULL` until the bard answers.
 
 ## `trap_damages`
 
@@ -403,3 +477,5 @@ Cascades with the session or the character; the index is by session.
 - `character_effects`: the owner and the master, filtered by `player_visible` and `audience`.
 - `inspiration_holds` and `character_inspiration`: the holder and the master.
 - `character_favor`: the master reads every row of the campaign; a player reads only their own characters' rows.
+- `favor_passes`: the master reads every pending row; a player reads only the asks of their own characters. The receiver reads nothing before the pass moves, and no other player reads anything (RN-10).
+- `favor_refund_prompts`: the master's alone.

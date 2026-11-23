@@ -220,3 +220,23 @@ func TestRangedAttackHonoursItsCondition(t *testing.T) {
 		t.Errorf("at level 5 the multiplier is %d, want 2", d.SpellAttackRangeMultiplier)
 	}
 }
+
+// TestProduceFlameHurlTakesNoRangeMultiplier: Produce Flame's range is Self and its hurl reaches 30 ft
+// (the target's reach_ft); a feat that multiplies the range of spell attacks leaves it at 30 ft, as it
+// leaves a Self spell with no range in feet (SRD 5.1, "Produce Flame").
+func TestProduceFlameHurlTakesNoRangeMultiplier(t *testing.T) {
+	t.Parallel()
+	c := sniperTable(t)
+	for name, feats := range map[string][]string{"no feat": nil, "the spell sniper": {spellSniperFeat}, "the triple range": {spellSniperFeat, tripleRangeFeat}} {
+		b := pensantus()
+		b.Cantrips = []string{"spell:produce-flame"}
+		b.Feats = feats
+		d := Derive(b, c)
+		if got := d.SpellAttackRangeMultiplier > 0; got != (feats != nil) {
+			t.Fatalf("%s: multiplier %d", name, d.SpellAttackRangeMultiplier)
+		}
+		if pf, ok := attackOf(d, "spell:produce-flame"); !ok || pf.RangeFt != 30 {
+			t.Errorf("%s: Produce Flame = %+v (found %v), want a 30 ft hurl", name, pf, ok)
+		}
+	}
+}

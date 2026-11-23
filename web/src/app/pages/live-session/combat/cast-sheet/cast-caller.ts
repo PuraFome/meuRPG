@@ -7,7 +7,8 @@ import {
   type PoolDie,
 } from '../../../../core/combat/combat-client-types';
 import { newKey } from '../../../../core/connect/idempotency';
-import { combatErrorMessage } from '../../../../core/combat/combat-errors';
+import { releaseRefusal } from '../../../../core/combat/release-text';
+import { windowClosedRefusal } from '../../../../core/combat/release-watch';
 import { metamagicChoices } from '../../../../core/resources/metamagic';
 import type { RollAnimator } from '../../../../shared/roll-overlay/roll-animator';
 import type { FavorSpend } from '../../../../core/play/favor-spend';
@@ -37,6 +38,10 @@ export class CastCaller {
       readonly animator: Pick<RollAnimator, 'play'>;
       /** The box of the master's Inspiração: ticked, the cast spends it and sends no mode of its own. */
       readonly fav?: FavorSpend;
+      /** A release the server refused as a closed window: the sheet shows the gone state instead of the refusal. */
+      readonly windowClosed?: () => void;
+      /** The reactor's name when the master releases the spell: the refusals he reads name the reactor. */
+      readonly reactor?: string;
     },
   ) {}
 
@@ -129,9 +134,12 @@ export class CastCaller {
         if (this.questions.asks(err)) {
           // The d20 is rolled and kept for a question: the Inspiração is spent already.
           this.host.fav?.spent();
+        } else if (this.host.windowClosed && windowClosedRefusal(err)) {
+          this.host.windowClosed();
         } else {
           this.s.error.set(
-            this.host.fav?.refused(err) ?? combatErrorMessage(err, 'conjurar a magia'),
+            this.host.fav?.refused(err) ??
+              releaseRefusal(err, 'conjurar a magia', this.host.reactor),
           );
         }
       },

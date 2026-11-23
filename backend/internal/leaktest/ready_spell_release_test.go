@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
@@ -188,4 +189,51 @@ func TestAHeldSpellsTargetsAndItsAnswerKeepTheHiddenNPCApart(t *testing.T) {
 	}
 	w.inspectPlayers(t, w.ana, w.pending)
 	w.readScreen(t, "after the answers to Toren's held spell were refused", w.tvReader(), nil)
+}
+
+// The master's call of MarkReactionRolling on a READIED window only begins the wait: a player who is not the reactor's reads
+// the combat with whole answers equal before and after it, and the master and the reactor's player read the wait began (the
+// positive controls).
+func TestTheMastersCallOnAReadiedWindowIsReadByTheMasterAndTheReactorsPlayerAlone(t *testing.T) {
+	w := newWorld(t)
+	w.onTorenTurnAsWizard()
+	toren := w.combatant(w.toren)
+	rowID := w.combatantOf(must(w.caio.ready.ReadyAction(t.Context(), rq(&playv1.ReadyActionRequest{
+		CampaignId: w.campaign, EncounterId: w.encounter.GetId(), CombatantId: toren.GetId(), IdempotencyKey: newKey(),
+		TriggerText: w.secrets.marker("readied-spell-master-wait-trigger", w.caio), Kind: playv1.ReadiedKind_READIED_KIND_SPELL, SpellKey: "spell:hold-person", SlotLevel: 2,
+	}))).GetEncounter(), w.toren.GetId()).GetReadied().GetId()
+	w.endTurnOf(toren)
+	must(w.master.ready.FireReadied(t.Context(), rq(&playv1.FireReadiedRequest{CampaignId: w.campaign, EncounterId: w.encounter.GetId(), ReadiedId: rowID, IdempotencyKey: newKey()})))
+	windows := w.master.currentEncounter(w).GetReactionWindows()
+	if len(windows) != 1 || windows[0].GetKind() != playv1.ReactionKind_REACTION_KIND_READIED {
+		t.Fatalf("the master's windows = %v, want the READIED one", windows)
+	}
+	id := windows[0].GetId()
+	anaBefore := w.waitReadOf(w.ana)
+	encounterBefore := normalizeRead(protojson.Format(w.ana.currentEncounter(w)))
+	for _, p := range []*person{w.master, w.caio} {
+		if got := w.waitBeganOf(p); got != nil {
+			t.Fatalf("%s reads the wait began at %v before any call", p.name, got)
+		}
+	}
+	if r := w.markRolling(w.master, id, false); !r.ok() {
+		t.Fatalf("the master's call = %d %s", r.status, r.body)
+	}
+	// The wait has run: waitedMs is not 0, and is in their reads.
+	w.clock.advance(5 * time.Second)
+	for _, p := range []*person{w.master, w.caio} { // the positive controls
+		if got := w.waitBeganOf(p); got == nil {
+			t.Errorf("%s reads no beginning of the wait after the master's call", p.name)
+		}
+		if windowOfKind(p, w, playv1.ReactionKind_REACTION_KIND_READIED).GetRolling() {
+			t.Errorf("%s reads the window as marked after the master's call", p.name)
+		}
+		w.readsHoldAll(t, p, "after the master's call", `"waitBeganAt"`, `"waitedMs"`)
+	}
+	w.inspectPlayers(t, w.ana, w.pending)
+	tv := w.readScreen(t, "after the master's call", w.tvReader(), nil)
+	w.sameWaitAs(t, "after the master's call", w.ana, anaBefore, "Esperando a reação de Toren", tv)
+	if got := normalizeRead(protojson.Format(w.ana.currentEncounter(w))); got != encounterBefore {
+		t.Errorf("Ana reads the combat %s after the master's call, want the one before, %s", got, encounterBefore)
+	}
 }

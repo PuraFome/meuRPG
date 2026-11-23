@@ -263,6 +263,10 @@ type CombatRoster interface {
 	// campaign whatever their status (a dead one too), with only their name and
 	// player filled: the session summary names who fought, even if they died.
 	SessionCharacters(ctx context.Context, tx pgx.Tx, campaignID string, ids []string) ([]link.Character, error)
+	// LockedSessionCharacters is SessionCharacters read after the rows of the characters are locked, until the transaction ends. A
+	// write of a session that decides on who owns a character, or on whether it is in the reserve, reads it here: the lock makes the
+	// read the latest one, whatever changed while the write waited for the session. The session's lock comes first.
+	LockedSessionCharacters(ctx context.Context, tx pgx.Tx, campaignID string, ids []string) ([]link.Character, error)
 	// Every read of this interface takes the caller's transaction (nil: the pool). A
 	// change that holds one must pass it: the read then sees what the change wrote
 	// (the character's vitals or Wild Shape form), and it takes no second connection,
@@ -378,6 +382,8 @@ type CombatRoster interface {
 	// listed bonus, or the ability modifier. Known is false for a key the stat block does
 	// not give.
 	CreatureCheck(ctx context.Context, tx pgx.Tx, campaignID, creatureID, monsterKey, key string) (link.SceneOption, error)
+	// CreatureChecks is CreatureCheck for each of the keys, in order, with the stat block read once for all of them.
+	CreatureChecks(ctx context.Context, tx pgx.Tx, campaignID, creatureID, monsterKey string, keys []string) ([]link.SceneOption, error)
 	// DamageModifiers are the damage types the target takes double, half or none
 	// of (SRD 5.1), from the stat block of the creature it is: the monsterKey when
 	// it is a character's creature, otherwise the one on the basic sheet of an NPC

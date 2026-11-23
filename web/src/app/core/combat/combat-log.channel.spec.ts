@@ -16,16 +16,28 @@ const entry = (over: MessageInitShape<typeof CombatLogEntrySchema>): CombatLogEn
   });
 
 describe('the Canalizar Divindade lines of the log', () => {
-  it('lists the hit points Preservar a Vida gave each creature', () => {
-    const line = logLine(
+  const preserve = (heal: { healed: number; hitPointsAfterKnown?: number }) =>
+    logLine(
       entry({
         key: 'feature:channel-divinity-preserve-life',
-        channelDivinity: {
-          heals: [{ label: 'Toren', asked: 20, healed: 19, hitPointsAfter: 24 }],
-        },
+        channelDivinity: { heals: [{ label: 'Toren', asked: 20, ...heal }] },
       }),
     );
-    expect(line?.notes).toEqual(['Toren: recuperou 19 PV (pedido 20), agora com 24 PV']);
+
+  it('lists the hit points Preservar a Vida gave each creature and the hit points after the server sends', () => {
+    expect(preserve({ healed: 19, hitPointsAfterKnown: 24 })?.notes).toEqual([
+      'Toren: recuperou 19 PV (pedido 20), agora com 24 PV',
+    ]);
+  });
+
+  it('names no hit points after when the result carries none', () => {
+    expect(preserve({ healed: 19 })?.notes).toEqual(['Toren: recuperou 19 PV (pedido 20)']);
+  });
+
+  it('names the hit points after at a heal of 0 when the server sends them', () => {
+    expect(preserve({ healed: 0, hitPointsAfterKnown: 5 })?.notes).toEqual([
+      'Toren: recuperou 0 PV (pedido 20), agora com 5 PV',
+    ]);
   });
 
   it('lists the save of each undead and who was expulso', () => {

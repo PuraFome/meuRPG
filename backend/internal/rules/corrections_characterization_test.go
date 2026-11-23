@@ -72,6 +72,7 @@ func correctionsState(c *content) string {
 		Classes                       []string
 		Attack, Save, Success, Choice string
 		Damage                        []srd51.SpellDamage
+		Range                         string `json:",omitempty"`
 	}
 	type sub struct {
 		Spells   []srd51.SubclassSpell
@@ -90,7 +91,7 @@ func correctionsState(c *content) string {
 		Instrument: map[string]*srd51.Choice{}, Attacks: c.attacksPerAction, Columns: map[string][]string{},
 	}
 	for k, s := range c.spells {
-		state.Spells[k] = spell{s.Classes, s.AttackType, s.SaveAbility, s.SaveSuccess, s.DamageChoice, s.Damage}
+		state.Spells[k] = spell{s.Classes, s.AttackType, s.SaveAbility, s.SaveSuccess, s.DamageChoice, s.Damage, s.Range}
 	}
 	for k, s := range c.subclasses {
 		state.Subclasses[k] = sub{s.Spells, s.ExpandedList}
@@ -183,6 +184,7 @@ func correctionsCases() map[string]string {
 	sec("bad: spell corrected twice", sc, sp(`"attack_type":"ranged"`)+","+sp(`"attack_type":"melee"`))
 	sec("bad: spell that corrects nothing", sc, sp(`"attack_type":""`))
 	sec("bad: spell attack that is not a type", sc, sp(`"attack_type":"thrown"`))
+	sec("bad: spell range, which a correction does not change", sc, sp(`"range":"Touch","attack_type":"melee"`))
 	sec("bad: spell save that is not an ability", sc, sp(`"save_ability":"luck","save_success":"half"`))
 	sec("bad: spell save without an outcome", sc, sp(`"save_ability":"dex"`))
 	sec("bad: spell save with an unknown outcome", sc, sp(`"save_ability":"dex","save_success":"luck"`))
@@ -201,6 +203,7 @@ func correctionsCases() map[string]string {
 	sec("bad: damage choice of one damage type", sc, sp(`"damage_choice":"scale"`))
 	sec("bad: damage choice with one corrected type", sc, `{"spell":"spell:strike","damage":[{"damage_type":"damage-type:fire","at_slot_level":{"5":"2d6"}}],"damage_choice":"scale","source":"SRD"}`)
 	sec("ok: spell attack", sc, sp(`"attack_type":"melee"`))
+	sec("ok: spell attack none", sc, sp(`"attack_type":"none"`))
 	sec("ok: spell save", sc, sp(`"save_ability":"wis","save_success":"other"`))
 	sec("ok: spell empty damage list", sc, sp(`"damage":[]`))
 	sec("ok: spell everything", sc, sp(`"attack_type":"ranged","save_ability":"dex","save_success":"half","damage":[{"damage_type":"damage-type:fire","at_slot_level":{"2":"2d6","3":"3d6"}}]`))
