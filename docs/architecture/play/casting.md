@@ -120,8 +120,10 @@ In `play`, `combat_spells_hp.go` reads the real HP and applies the result: the c
 The pool's total is rolled on the server (`roll_in_app`) or typed (`pool_sum`) and follows the campaign's dice mode (RN-18).
 The cast event stores, per target, the HP before, what was affected and what the undo needs.
 A druid in a beast form has the beast's hit points for these spells: Sleep and the Power Words judge the beast's pool, and Power Word Kill takes the beast to 0 (the form ends, nothing carries over).
-A spell reads its target's creature type through `typeOfTarget` (`backend/internal/play/combat_spells_type.go`), which takes the sheet's `Traits.CreatureType`.
-The rule of each spell is the one table `spellTypeRules` in `backend/internal/rules/combat/creaturetype.go`, read by `combat.SpellTypeRule` and `combat.LifeMagicNoEffect(spellKey, creatureType)`; `noLifeMagic` takes the spell key. A spell outside the table (Regenerate, which a fight refuses for its casting time) has no type rule.
+A spell reads its target's creature type only through `typeOfTarget` and `creatureTypeOf` (`combat_spells_type.go`).
+The spells that change with the type are the one table `spellTypeRules` in `rules/combat`.
+A spell outside the table has no type rule.
+Regenerate is outside it, and a fight refuses it for its casting time.
 
 **Who receives what (RN-20).** `SpellCast` and `CombatLogSpell` carry typed fields; the app never reads text.
 `effect_kind`, `effect_condition_key` and, per target, `SpellEffectResult.outcome` go to everyone who sees the line; `pool_roll` only to the master and the caster's player; `effect_threshold` and per target `reason`, `hit_points_before`, `pool_order` and `pool_left` only to the master; `healed` to the master and the target's player (on an NPC the amount would tell how many HP were missing).
