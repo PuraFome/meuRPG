@@ -266,8 +266,13 @@ The `e2e` workflow runs the Playwright suite against the local stack.
 The shards run the same spec on Chromium, so the three browsers are covered.
 The WebKit project also runs `e2e/tests/chunk-reload.spec.ts`.
 The stale-tab recovery depends on the engine's own error message, so the shards cover only Chromium's.
-The job starts its own stack (restoring the backup of the `database` job), installs WebKit for the Playwright version `e2e/package-lock.json` pins, makes a certificate with `openssl`, starts `e2e/tls-front.mjs` and runs the config over `https://localhost:8443`, with `E2E_TLS_CA` set to that certificate for the readiness probe.
+The job starts its own stack (restoring the backup of the `database` job), makes a certificate with `openssl`, starts `e2e/tls-front.mjs` and runs the config over `https://localhost:8443`, with `E2E_TLS_CA` set to that certificate for the readiness probe.
 It is https because Playwright's WebKit on Linux drops every `Secure` cookie over http, and the app's cookies are all `Secure` (see [Testing](testing.md#end-to-end-tests-playwright)).
+The job installs WebKit for the Playwright version `e2e/package-lock.json` pins, and no Chromium.
+The WebKit browser and its system packages come from a cache, keyed by the Playwright version and the runner image.
+Every ref restores the cache, and only `main` writes it.
+The job installs from the cache, with no mirror, when the cache holds every package Playwright lists.
+Otherwise the mirror supplies what is missing, and the next run on `main` caches it.
 The stack takes its public origin from `E2E_PUBLIC_ORIGIN` (the OIDC redirect address of the API and devidp), `http://localhost:8080` when unset.
 The job runs beside the shards, so it lengthens the e2e run only if it ends after the slowest shard.
 The job is in the `report` job's `needs`.
