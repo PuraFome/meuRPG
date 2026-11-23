@@ -39,7 +39,8 @@ export interface ServerDraftHost {
  * What the server says about the draft on screen: the hit points and the spell numbers (`PreviewCharacter`) while the
  * "Pontos de vida" box or the "Magias" step is on screen, and the choices (`PreviewChoices`) the "Escolhas" step shows
  * with what is still open. A plain class the editor builds in its injection context: it keeps the effects that ask
- * again when the draft changes and the pick the draft stores that no choice offers any more.
+ * again when the draft changes and the pick the draft stores that no choice offers any more, with a note when the
+ * read that takes it was asked for the input of the answer before it.
  */
 export class EditorServerDraft {
   /** The hit points the server derives for the draft while the "Pontos de vida" box is on screen. */
@@ -50,12 +51,15 @@ export class EditorServerDraft {
       : pageNotReady();
   });
   /** The choices the server reads in the draft while the "Escolhas" step may be on screen. */
-  readonly choices = new ServerChoices(() => {
-    const s = this.host.state();
-    return s.status === 'ready'
-      ? this.host.source.previewChoices(previewInputOf(s, this.host.build(), false))
-      : pageNotReady();
-  });
+  readonly choices = new ServerChoices(
+    () => {
+      const s = this.host.state();
+      return s.status === 'ready'
+        ? this.host.source.previewChoices(previewInputOf(s, this.host.build(), false))
+        : pageNotReady();
+    },
+    () => this.host.personInput(),
+  );
   /** What the server said about the draft's feats (a prerequisite not met), by feat key. */
   readonly featIssues = computed(() => this.hitPoints.answer()?.featIssues ?? {});
   /** What the server says the effects add to the hit points of the draft; `null` while it has no answer (the box adds up by itself). */
@@ -91,9 +95,6 @@ export class EditorServerDraft {
   /** "Falta uma escolha: Estilo de Luta.", the description of the blocked button. */
   readonly missingText = computed(() => missingSentence(this.choiceGroups()));
 
-  /** What the person had entered when the previous answer was applied; `null` before the first answer. */
-  private answeredInput: string | null = null;
-
   constructor(private readonly host: ServerDraftHost) {
     // While the "Pontos de vida" box or the "Magias" step is on screen, the server derives the draft (a race and a
     // class at least): the box adds up what the effects give, and the spell pickers count against the class's numbers.
@@ -125,7 +126,8 @@ export class EditorServerDraft {
       const ready = this.draftReady();
       untracked(() => this.choices.draftChanged(ready));
     });
-    // A pick the draft stores that no choice offers any more (the class or the race changed) goes, with its texts.
+    // A pick the draft stores that no choice offers any more goes, with its texts; the page says so when the person
+    // had changed nothing since the previous answer.
     effect(() => {
       const answer = this.choicesAnswer();
       if (!answer) {
@@ -133,7 +135,6 @@ export class EditorServerDraft {
       }
       const { featureChoiceKeys, featureChoiceText } = this.host.picks;
       untracked(() => {
-        const before = this.host.personInput();
         const next = choicesAfterAnswer(answer, featureChoiceKeys(), featureChoiceText());
         if (next.keys) {
           featureChoiceKeys.set(next.keys);
@@ -141,22 +142,12 @@ export class EditorServerDraft {
         if (next.texts) {
           featureChoiceText.set(next.texts);
         }
-        // A pick taken back while the person entered nothing since the last answer: the table changed under it.
-        if (
-          (next.keys || next.texts) &&
-          (this.answeredInput === null || this.answeredInput === before)
-        ) {
+        // A pick taken back by a read asked for the input of the answer before it: the table changed under it.
+        if ((next.keys || next.texts) && this.choices.sameInput) {
           this.host.noteContentChanged();
         }
-        this.answeredInput = this.host.personInput();
       });
     });
-  }
-
-  /** The page starts over: the server reads stop, and the next answer is the first. */
-  restart(): void {
-    this.choices.stop();
-    this.answeredInput = null;
   }
 
   /** The page is gone: nothing more is asked, and no late answer lands. */

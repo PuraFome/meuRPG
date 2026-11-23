@@ -103,7 +103,6 @@ export class EditorDraft {
 
   /** What the person entered, as text, whatever the lists offer: the form and the raw picks (no list is read). */
   personInput(): string {
-    this.host.catalog.formChanges();
     const { picks, spellPicks } = this.host;
     const sorted = (set: ReadonlySet<string>) => [...set].sort();
     return JSON.stringify([

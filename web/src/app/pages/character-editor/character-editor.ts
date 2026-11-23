@@ -277,7 +277,7 @@ export class CharacterEditor {
     campaignId: this.campaignIdSignal,
     reservedRoute: () => this.isReservedRoute(),
     forget: () => {
-      this.server.restart();
+      this.server.choices.stop();
       this.saving.reset();
     },
   });

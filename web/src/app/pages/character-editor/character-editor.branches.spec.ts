@@ -985,6 +985,26 @@ describe('CharacterEditor, what the server says about the draft', () => {
       expect(notes(el)).toHaveLength(1);
     });
 
+    it('shows when another field changed with an equal answer and a later read of that input takes a pick back', async () => {
+      const { cmp, fixture, fake, el } = await ready();
+      cmp.picks.featureChoiceKeys.set(['feature:gone', 'feature:style-defense']);
+      vi.useFakeTimers();
+      fill(cmp);
+      fixture.detectChanges();
+      await vi.advanceTimersByTimeAsync(PAUSE);
+      cmp.fullForm.patchValue({ name: 'Other' });
+      fixture.detectChanges();
+      await vi.advanceTimersByTimeAsync(PAUSE);
+      expect(notes(el)).toHaveLength(0);
+      fake.choicesFn = askStyle;
+      cmp.fullForm.patchValue({ name: 'Other' });
+      fixture.detectChanges();
+      await vi.advanceTimersByTimeAsync(PAUSE);
+      fixture.detectChanges();
+      expect(cmp.picks.featureChoiceKeys()).toEqual(['feature:style-defense']);
+      expect(notes(el)).toHaveLength(1);
+    });
+
     it('says nothing when a read takes nothing back', async () => {
       const { cmp, el } = await readTwice(null);
       expect(cmp.picks.featureChoiceKeys()).toEqual(['feature:gone', 'feature:style-defense']);
