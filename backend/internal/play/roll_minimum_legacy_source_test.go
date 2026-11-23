@@ -35,7 +35,7 @@ func TestStoredCountedRollsWithoutASourceNameReliableTalent(t *testing.T) {
 		"contest side":     contest.proto(true).GetTreatedAsSource(),
 		"attack or save":   ev.mark(&playv1.DiceRoll{}).GetTreatedAsSource(),
 		"hit rider":        save.GetTreatedAsSource(),
-		"channel divinity": channelProto(&channel).GetTurns()[0].GetTreatedAsSource(),
+		"channel divinity": channelProto(&channel, readsAllEntries).GetTurns()[0].GetTreatedAsSource(),
 	}
 	for what, got := range checks {
 		if got != reliableTalentSource {

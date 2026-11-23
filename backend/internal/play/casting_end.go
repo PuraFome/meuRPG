@@ -158,7 +158,7 @@ func (s *Service) ConfirmCastTimePassed(
 	ctx context.Context,
 	req *connect.Request[playv1.ConfirmCastTimePassedRequest],
 ) (*connect.Response[playv1.ConfirmCastTimePassedResponse], error) {
-	m, err := authz.RequireCampaignMember(ctx, req.Msg.GetCampaignId())
+	m, err := authz.RequireCampaignRole(ctx, req.Msg.GetCampaignId(), authz.RoleMaster)
 	if err != nil {
 		return nil, err
 	}
@@ -212,16 +212,12 @@ func finishInputOf(msg *playv1.ConfirmCastTimePassedRequest) (castFinishInput, e
 	return castFinishInput{in: in, rolled: rolled, pick: msg.GetSummon()}, nil
 }
 
-// finishCastTx is ConfirmCastTimePassed inside the transaction: the cast and who may finish it, the characters it
+// finishCastTx is ConfirmCastTimePassed inside the transaction: the cast, the characters it
 // is about, the plan rebuilt from the sheet, the dice, the time that passed and the effect.
 func (s *Service) finishCastTx(ctx context.Context, c *combatTx, m authz.Membership, castID string, input castFinishInput) (castOutcome, error) {
 	row, caster, err := s.castRowFor(ctx, c, m, castID)
 	if err != nil {
 		return castOutcome{}, err
-	}
-	if m.Role != authz.RoleMaster {
-		// Outside a combat there is no clock: the master says the time has passed.
-		return castOutcome{}, connect.NewError(connect.CodePermissionDenied, errors.New("only the master completes a cast"))
 	}
 	if row.Status != castCasting {
 		return castOutcome{}, errCasting(playv1.CastingBlockedReason_CASTING_BLOCKED_REASON_CAST_NOT_GOING, "the spell is not being cast")

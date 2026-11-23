@@ -60,7 +60,7 @@ flowchart LR
   A miss builds the content only for whoever asked, reading the rows in the same `tx`, with no shared `singleflight`: a request holding a connection while waiting for another that needs one is how the pool hangs.
   Two that miss at once both build and the second to store wins.
   A write never fills the cache, since what it builds can still roll back.
-  Memory and time are in [Operations](../operations/reference.md#memory-budgets); a content of 1,000 entries keeps 4 MB (7 MB with 6,000 effects) and a miss takes 80 to 90 ms, so the eight contents come to 59 MB at most ([Performance](../performance.md#table-content-at-its-limits)).
+  Memory and time are in [Operations](../operations/reference.md#memory-budgets); a content of 1,000 entries keeps 4.7 MB (13.5 MB with 6,000 effects) and a miss takes 37 ms (88 ms with 6,000 effects), so the eight contents come to 108 MB, and to 130 MB when each also has 480 distinct formulas ([Performance](../performance.md#table-content-at-its-limits)).
 - **The order against a sheet write.** `CreateCharacter` and `UpdateCharacter` read the content before the transaction and again inside it; if the revision changed, the sheet is checked again with the new content.
   `LevelUpCharacter` reads inside the transaction.
   Serialization conflicts (40001) are retried by `db.InTx`.
@@ -385,9 +385,19 @@ The importer reads 5e-database's `area_of_effect` (shape and size in feet) into 
 The app writes the rest of the spell (time, range, duration, components) in `spell-details-format.ts`.
 
 **`effects/spell_targets.json`** is handwritten and corrects, in our words, the spells the database or the text gets wrong.
-The types are closed: `creature`, `creatures` (with `count` and `per_slot_level`), `area` (shape and size), `self` and `none` ("no creature": a point, an object, a place, nobody to pick); every key is an SRD spell, `label_pt` replaces only the page's text, and the file follows the content revision rule.
+The types are closed: `creature` (with `per_slot_level` and, optionally, `reach_ft`), `creatures` (with `count`, `per_slot_level` and, optionally, `within_ft`, `within_of` and `range_extra_ft`), `area` (shape and size), `self` and `none` ("no creature": a point, an object, a place, nobody to pick); every key is an SRD spell, `label_pt` replaces only the page's text, and the file follows the content revision rule.
+`reach_ft` is the distance at which a spell of range Self picks its creature (Vampiric Touch 5 ft, Produce Flame 30 ft, Eyebite 60 ft).
+The spell keeps the SRD's range (Self, "Pessoal" on the sheet, no Twinned Spell and no Distant Spell).
+`play` reads `reach_ft` (`link.Spell.ReachFt`) in the target check, in the casting options' reach hint and in the advantage shape of a spell attack, and so does the cantrip's attack line.
+The reach is what the spell is checked against, in a combat and outside one.
+`within_ft` is how close the targets of a cast must be, and `within_of` says to whom: `each` (every pair) or `first` (each target after the first is that close to the first, and only the first is held to the spell's range).
+`range_extra_ft` (only with `each`) is how far past the spell's range a target may be, for a spell whose area starts at the range's edge.
+`play` checks them for a player on a map and never for the master or on a map-less combat.
+It lists as in reach every creature a legal cast may hold, in a combat and in the casting options, so the picker never shuts one out.
+The exact shape is checked at the cast.
+The shapes: Acid Splash is `5`/`each`; Chain Lightning is `30`/`first`; Mass Cure Wounds is `60`/`each` with `range_extra_ft` 30 (the 60 ft range plus the sphere's 30 ft radius).
 For `self` and `none`, `play` lists only the caster, refuses another target (`link.Spell.CasterOnly`) and rolls nobody's save.
-The file covers, by kind: one creature (Telekinesis), only the caster (the detect spells, Speak with Plants, Branding Smite, Divine Favor, Flame Blade, Contact Other Plane, Magic Jar, Scrying, Wish), no creature (Arcane Eye, Magnificent Mansion, Dancing Lights, Druidcraft, Fabricate, Light, Major Image, Minor Illusion), several creatures with the SRD's number (Bless and Bane, Mass Healing Word, Prayer of Healing, Mass Suggestion, Telepathic Bond, Water Walk, Wind Walk, Astral Projection, Heroes' Feast), an area the database lacks (Hypnotic Pattern, Plant Growth, Purify Food and Drink, Glyph of Warding), and spells where only the text changes (Flame Strike, Forbiddance, Mirage Arcane, Teleportation Circle, Guards and Wards, Fire Storm).
+The file covers, by kind: one creature (Telekinesis, Disintegrate, and Vampiric Touch, Produce Flame and Eyebite with their `reach_ft`), only the caster (the detect spells, Speak with Plants, Branding Smite, Divine Favor, Flame Blade, Fire Shield, Dimension Door, Contact Other Plane, Magic Jar, Scrying, Wish), no creature (Arcane Eye, Magnificent Mansion, Dancing Lights, Druidcraft, Fabricate, Light, Major Image, Minor Illusion, Animate Objects, Passwall, Wall of Force, Wall of Stone, Stone Shape, Secret Chest, Giant Insect, Mage Hand, Mending, Prestidigitation, Shillelagh, Thaumaturgy, Faithful Hound), several creatures with the SRD's number (Bless and Bane, Mass Healing Word, Prayer of Healing, Mass Suggestion, Telepathic Bond, Water Walk, Wind Walk, Astral Projection, Heroes' Feast, Water Breathing, Slow, Seeming, Wall of Ice), several creatures close to the first (Acid Splash, Chain Lightning, Mass Cure Wounds), an area the database lacks (Hypnotic Pattern, Plant Growth, Purify Food and Drink, Glyph of Warding), and spells where only the text changes (Flame Strike, Forbiddance, Mirage Arcane, Teleportation Circle, Guards and Wards, Fire Storm).
 `TestStructuredAreasAgainstTheText` pins the list of spells where the structured area and the text still disagree; spells that only the text calls area and the file does not correct stay "several creatures" without a number, which blocks nobody since the master is never limited by the number of targets.
 
 **`ContentService.ListSpells`.**

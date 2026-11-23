@@ -233,7 +233,7 @@ func (q *Queries) ListNpcCheckAsks(ctx context.Context, holdID string) ([]NpcChe
 }
 
 const listNpcCheckHolds = `-- name: ListNpcCheckHolds :many
-SELECT id, campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, answer_key, created_at, round, lucky_index, lucky_answer_key, lucky_to, combatant_id, encounter_id, window_hold, indomitable_ask, indomitable_failed, indomitable_answer_key, indomitable_from, indomitable_to, die_answer_key, die_used, stroke_ask, stroke_failed, stroke_answer_key, stroke_from, reroll_ask, reroll_index, reroll_at_most, reroll_resource, reroll_cost, reroll_source, reroll_answer_key, reroll_from, reroll_to, counted_by, favor_spent FROM inspiration_holds WHERE campaign_id = $1 AND kind = 'npc_check' ORDER BY created_at, id
+SELECT id, campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, answer_key, created_at, round, lucky_index, lucky_answer_key, lucky_to, combatant_id, encounter_id, window_hold, indomitable_ask, indomitable_failed, indomitable_answer_key, indomitable_from, indomitable_to, die_answer_key, die_used, stroke_ask, stroke_failed, stroke_answer_key, stroke_from, reroll_ask, reroll_index, reroll_at_most, reroll_resource, reroll_cost, reroll_source, reroll_answer_key, reroll_from, reroll_to, counted_by, favor_spent, favor_prompt_id FROM inspiration_holds WHERE campaign_id = $1 AND kind = 'npc_check' ORDER BY created_at, id
 `
 
 // Every NPC check hold of the campaign, settled or not: the session that ends deletes them all.
@@ -290,6 +290,7 @@ func (q *Queries) ListNpcCheckHolds(ctx context.Context, campaignID string) ([]I
 			&i.RerollTo,
 			&i.CountedBy,
 			&i.FavorSpent,
+			&i.FavorPromptID,
 		); err != nil {
 			return nil, err
 		}
@@ -302,7 +303,7 @@ func (q *Queries) ListNpcCheckHolds(ctx context.Context, campaignID string) ([]I
 }
 
 const listOpenNpcCheckHolds = `-- name: ListOpenNpcCheckHolds :many
-SELECT id, campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, answer_key, created_at, round, lucky_index, lucky_answer_key, lucky_to, combatant_id, encounter_id, window_hold, indomitable_ask, indomitable_failed, indomitable_answer_key, indomitable_from, indomitable_to, die_answer_key, die_used, stroke_ask, stroke_failed, stroke_answer_key, stroke_from, reroll_ask, reroll_index, reroll_at_most, reroll_resource, reroll_cost, reroll_source, reroll_answer_key, reroll_from, reroll_to, counted_by, favor_spent FROM inspiration_holds WHERE campaign_id = $1 AND kind = 'npc_check' AND answer_key IS NULL ORDER BY created_at, id
+SELECT id, campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, answer_key, created_at, round, lucky_index, lucky_answer_key, lucky_to, combatant_id, encounter_id, window_hold, indomitable_ask, indomitable_failed, indomitable_answer_key, indomitable_from, indomitable_to, die_answer_key, die_used, stroke_ask, stroke_failed, stroke_answer_key, stroke_from, reroll_ask, reroll_index, reroll_at_most, reroll_resource, reroll_cost, reroll_source, reroll_answer_key, reroll_from, reroll_to, counted_by, favor_spent, favor_prompt_id FROM inspiration_holds WHERE campaign_id = $1 AND kind = 'npc_check' AND answer_key IS NULL ORDER BY created_at, id
 `
 
 // The master's checks of the campaign that still wait for the bards: a combat that opens and a session that ends settle them.
@@ -359,6 +360,7 @@ func (q *Queries) ListOpenNpcCheckHolds(ctx context.Context, campaignID string) 
 			&i.RerollTo,
 			&i.CountedBy,
 			&i.FavorSpent,
+			&i.FavorPromptID,
 		); err != nil {
 			return nil, err
 		}

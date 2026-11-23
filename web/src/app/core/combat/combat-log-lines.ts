@@ -39,6 +39,7 @@ import {
   readiedLostLine,
   readiedText,
 } from './combat-log-readied';
+import { CONSUMABLE_LINES } from './combat-log-consumable';
 import { ITEM_USE_LINES } from './combat-log-item-use';
 
 /** What a line builder is given: the entry, the fields every line shares, the combat's name and who is reading. */
@@ -232,6 +233,7 @@ const LINE_BUILDERS: ReadonlyMap<CombatLogKind, (args: LineArgs) => LogLine | nu
   ],
   ...MOUNT_LINES,
   ...ITEM_USE_LINES,
+  ...CONSUMABLE_LINES,
   [
     CombatLogKind.EFFECT_ENDED,
     ({ e, base, ctx }) => {

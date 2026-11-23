@@ -97,7 +97,7 @@ func (s *Service) loadConsumable(ctx context.Context, tx pgx.Tx, campaignID, cha
 	if err != nil {
 		return consumableEntry{}, wrap("read rules content", err)
 	}
-	if def, ok := content.MagicItem(item.GetKey()); !ok || !def.Consumable {
+	if _, ok := content.ConsumableOf(item.GetKey()); !ok {
 		return consumableEntry{}, invalidArgument(fieldErr("entry_id", "is not a consumable"))
 	}
 	item.NamePt = content.MagicItemNamePT(item.GetKey())

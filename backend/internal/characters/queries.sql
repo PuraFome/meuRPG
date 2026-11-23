@@ -493,6 +493,15 @@ WHERE campaign_id = sqlc.arg(campaign_id)::UUID
   AND id = ANY(sqlc.arg(ids)::UUID[])
 ORDER BY id;
 
+-- name: LockSessionCharacters :many
+-- Locks the rows of the given characters of the campaign until the transaction ends (LockedSessionCharacters, which reads them
+-- next). The ids are those of ListSessionCharacters: whatever the status.
+SELECT id FROM characters
+WHERE campaign_id = sqlc.arg(campaign_id)::UUID
+  AND id = ANY(sqlc.arg(ids)::UUID[])
+ORDER BY id
+FOR UPDATE;
+
 -- name: ListCharacterNames :many
 -- The names of the given characters of the campaign, whatever their kind or
 -- status (package progression names the characters of an award, even one that

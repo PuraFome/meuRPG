@@ -14,10 +14,12 @@ import {
 } from '../../../gen/meurpg/characters/v1/characters_pb';
 import {
   ChargesService,
+  type ConsumableTarget,
   type DawnResponse,
   type RollLastChargeResponse,
   type SetChargesResponse,
   type SpendChargesResponse,
+  type UseConsumableResponse,
 } from '../../../gen/meurpg/play/v1/charges_pb';
 import { CONNECT_TRANSPORT } from '../connect/transport';
 
@@ -25,6 +27,16 @@ import { CONNECT_TRANSPORT } from '../connect/transport';
  * (and, for a 20 on an item that regains charges, the face of the die that counts them). */
 export type LastChargeRoll =
   { readonly inApp: true } | { readonly face: number; readonly regainFace?: number };
+
+/** The answer of `listConsumableTargets`. */
+export interface ConsumableTargets {
+  readonly targets: ConsumableTarget[];
+  /** The character is a combatant of a running combat. */
+  readonly inCombat: boolean;
+}
+
+/** How the healing dice of a potion come (RN-18): the app rolls them, or the player typed one face for each die. */
+export type ConsumableRoll = { readonly inApp: true } | { readonly faces: readonly number[] };
 
 /** The table's dice setting and the player's own choice, which decide whether a die is typed or rolled in the app. */
 export interface TableDice {
@@ -92,6 +104,43 @@ export class ChargesClient {
       lost,
       idempotencyKey,
     });
+  }
+
+  /**
+   * Uses up one unit of a consumable of the character's sheet (a potion): the entry is the one the caller names, the
+   * receiver is the user when `targetCharacterId` is empty. The dice come the way the table says (`roll`); only a healing
+   * potion rolls them. One key for the request: the same use again after a failure is a retry.
+   */
+  useConsumable(
+    campaignId: string,
+    characterId: string,
+    entryId: string,
+    targetCharacterId: string,
+    roll: ConsumableRoll,
+    idempotencyKey: string,
+  ): Promise<UseConsumableResponse> {
+    return this.client.useConsumable({
+      campaignId,
+      characterId,
+      entryId,
+      targetCharacterId,
+      idempotencyKey,
+      rollInApp: 'inApp' in roll,
+      typedFaces: 'inApp' in roll ? [] : [...roll.faces],
+    });
+  }
+
+  /**
+   * Who the character may give the consumable to (the adjacent player characters in a combat, the party out of one) and
+   * whether the character is in a running combat, which the server tests the same way as the list.
+   */
+  async listConsumableTargets(
+    campaignId: string,
+    characterId: string,
+    entryId: string,
+  ): Promise<ConsumableTargets> {
+    const res = await this.client.listConsumableTargets({ campaignId, characterId, entryId });
+    return { targets: res.targets, inCombat: res.inCombat };
   }
 
   /** The pieces of one kind of ammunition (0 to 9999): the owner while the sheet is open to editing, the master always. */

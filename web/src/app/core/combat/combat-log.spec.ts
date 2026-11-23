@@ -1702,3 +1702,23 @@ describe('the combat log and an on_event hook or temporary hit points', () => {
     expect(text).toContain('Reserva de Teste entrou em ação: recupera 6 PV');
   });
 });
+
+describe('the heal a spell gives its caster', () => {
+  it('reads the amount and the spell for who may read the numbers, and the plain line for the others', () => {
+    const heal = {
+      kind: CombatLogKind.ACTION,
+      actorLabel: 'Brisa',
+      key: 'spell:vampiric-touch',
+      keyNamePt: 'Toque Vampírico',
+    };
+    expect(
+      logLine(
+        entry({
+          ...heal,
+          damage: { status: PendingDamageStatus.APPLIED, amount: 4, healing: true },
+        }),
+      )?.text,
+    ).toBe(' recupera 4 PV (Toque Vampírico)');
+    expect(logLine(entry(heal))?.text).toBe(' usa Toque Vampírico');
+  });
+});

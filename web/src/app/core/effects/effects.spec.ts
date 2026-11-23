@@ -121,6 +121,75 @@ describe('the cards of "Seus efeitos"', () => {
     });
     expect(characterConditions([outside, outside])).toEqual(['Paralisado']);
   });
+
+  describe('the card of a potion effect', () => {
+    const potion = create(CharacterEffectSchema, {
+      id: 'e3',
+      sourceNamePt: 'Poção de resistência',
+      titlePt: 'Resistência a fogo',
+      tagsPt: ['Resistência: fogo'],
+      secondsLeft: 3480,
+      totalDurationTextPt: 'por 1 hora',
+      durationTextPt: 'Dura 58 minutos',
+    });
+
+    it('titles the card with the effect and names the potion, the whole length and the time left on one line', () => {
+      expect(characterCards([potion])[0]).toMatchObject({
+        name: 'Resistência a fogo',
+        origin: 'Poção de resistência · por 1 hora · 58 min restantes',
+        tags: ['Resistência: fogo'],
+        clock: '',
+      });
+    });
+
+    it('says the rounds left under a minute, in the words of the Wild Shape clock', () => {
+      const late = create(CharacterEffectSchema, { ...potion, secondsLeft: 24 });
+      expect(characterCards([late])[0].origin).toBe(
+        'Poção de resistência · por 1 hora · Restam 4 rodadas',
+      );
+    });
+
+    it('leaves the origin out when the source is the title, as a spell is', () => {
+      const spell = create(CharacterEffectSchema, {
+        id: 'e4',
+        sourceNamePt: 'Escudo da Fé',
+        titlePt: 'Escudo da Fé',
+        secondsLeft: 600,
+        totalDurationTextPt: 'por 10 minutos',
+      });
+      expect(characterCards([spell])[0].origin).toBe('por 10 minutos · 10 min restantes');
+    });
+
+    it('keeps the clock row of the server when the content gives no whole length', () => {
+      const open = create(CharacterEffectSchema, {
+        id: 'e5',
+        sourceNamePt: 'Imobilizar Pessoa',
+        titlePt: 'Imobilizar Pessoa',
+        durationTextPt: 'Dura enquanto quem a conjurou se concentrar',
+      });
+      expect(characterCards([open])[0]).toMatchObject({
+        name: 'Imobilizar Pessoa',
+        origin: '',
+        clock: 'Dura enquanto quem a conjurou se concentrar',
+      });
+      const timedNoTotal = create(CharacterEffectSchema, {
+        id: 'e6',
+        sourceNamePt: 'Poção de velocidade',
+        titlePt: 'Velocidade',
+        secondsLeft: 60,
+        durationTextPt: 'Dura 1 minuto',
+      });
+      expect(characterCards([timedNoTotal])[0]).toMatchObject({
+        origin: 'Poção de velocidade',
+        clock: 'Dura 1 minuto',
+      });
+    });
+
+    it('titles by the source for a server that sends no title', () => {
+      const old = create(CharacterEffectSchema, { id: 'e7', sourceNamePt: 'Bênção' });
+      expect(characterCards([old])[0]).toMatchObject({ name: 'Bênção', origin: '' });
+    });
+  });
 });
 
 describe('exhaustion', () => {

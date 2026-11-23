@@ -82,6 +82,19 @@
   color: var(--mr-ink-muted);
 }
 
+// "■ Reação · …": a filled square and the first word in bold before the rest (the boards' release sheets).
+.frame__sub b {
+  color: var(--mr-ink);
+}
+
+.frame__mark {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  margin-right: 6px;
+  background: var(--mr-ink-muted);
+}
+
 // An icon button projected before the close one: the title's row keeps both at
 // the top right, 44 px each, like the artboard's "?" and X.
 .frame__head ::ng-deep [head-action] {
@@ -107,8 +120,12 @@
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
-  gap: 14px;
+  // A sheet that keeps its own rhythm between the parts of the body names it (`--mr-sheet-gap`).
+  gap: var(--mr-sheet-gap, 14px);
   min-height: 0;
+  // A sheet whose last part has a target that reaches past it names the room it needs (`--mr-sheet-body-end`): it is taken from the gap
+  // above the footer, so the body does not count the target as more to scroll to and the footer keeps its place.
+  padding-bottom: var(--mr-sheet-body-end, 0);
   overflow-y: auto;
 
   // Shadows at the top and the bottom edge, only where there is more to scroll to
@@ -143,6 +160,7 @@
   flex-direction: column;
   gap: 10px;
   padding-top: 10px;
+  margin-top: calc(var(--mr-sheet-body-end, 0px) * -1);
   border-top: 1px solid var(--mr-rule);
   background: var(--mr-surface);
 

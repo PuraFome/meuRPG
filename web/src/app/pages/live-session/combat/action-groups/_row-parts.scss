@@ -1,0 +1,27 @@
+// What ActionRow and ItemRow share, so the action column and the reason line cannot drift apart from tab to tab.
+$button-width: 112px;
+$button-height: 48px;
+$why-gap: 6px;
+$why-line-height: 19px;
+
+// The outlined button of the action column (the third column of the row's grid).
+@mixin action-button {
+  grid-column: 3;
+  --mat-button-outlined-container-height: #{$button-height};
+  // The words of an outlined action are in the ink, not the accent (the accent is for the filled button).
+  --mat-button-outlined-label-text-color: var(--mr-ink);
+  --mat-button-outlined-outline-color: var(--mr-control-line);
+  min-width: 0;
+  padding: 0;
+}
+
+// The reason a row cannot be used, under its text.
+@mixin why-line {
+  display: flex;
+  align-items: center;
+  gap: $why-gap;
+  font-size: var(--mr-font-14);
+  font-weight: 500;
+  line-height: $why-line-height;
+  color: var(--mr-ink);
+}

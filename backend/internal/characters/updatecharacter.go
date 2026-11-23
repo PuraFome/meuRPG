@@ -65,6 +65,8 @@ func (s *Service) readSheetSave(ctx context.Context, m authz.Membership, msg *ch
 	if err != nil {
 		return nil, invalidArgument(err)
 	}
+	// Only the kept-out pick is answered here; the closed and the unfit picks are refused inside the transaction
+	// (refuseNewChoices), after the portrait and the revision, in the order of the refusals of a save.
 	if err := refuseKeptOutPick(content, m, s.storedSheetOf(ctx, m, id), sheet.GetFull()); err != nil {
 		return nil, err
 	}
@@ -225,7 +227,7 @@ func (s *Service) checkSheetSave(ctx context.Context, tx pgx.Tx, u *sheetSave, c
 // refuseSheetChanges refuses what a save may not change from the stored sheet, in the
 // order the client is answered, and carries over what the server keeps.
 func refuseSheetChanges(content *rules.Content, m authz.Membership, current charactersdb.Character, stored, sheet *charactersv1.CharacterSheet, infusions []rules.InfusionRecord) error {
-	if err := refuseNewChoices(content, m, current.ID, stored.GetFull(), sheet.GetFull()); err != nil {
+	if err := refuseNewChoices(content, m, pickFit, current.ID, stored.GetFull(), sheet.GetFull()); err != nil {
 		return err
 	}
 	// A player's own save leaves no choice open (the master may).

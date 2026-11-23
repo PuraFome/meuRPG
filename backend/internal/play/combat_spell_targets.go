@@ -135,7 +135,7 @@ func spellTargetList(terrain grid.Terrain, cs []playdb.Combatant, caster playdb.
 		}
 		if dist, ok := distanceFt(caster, t); ok {
 			target.DistanceFt = &dist
-			target.TooFar = limited && t.ID != caster.ID && dist > reach
+			target.TooFar = limited && t.ID != caster.ID && dist > reach+clamp32(sp.ListedSlackFt(), 0, math.MaxInt32)
 		} else if t.ID == caster.ID {
 			dist := int32(0)
 			target.DistanceFt = &dist

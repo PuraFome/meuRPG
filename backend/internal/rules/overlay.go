@@ -651,6 +651,17 @@ func (c *content) asPlayer() *content {
 	return &x
 }
 
+// ForMasterPicks is the same content for the table's master, whom a new skill or expertise that no list places never
+// refuses at a level-up: the fit issue tells it on the sheet, as on a save. It shares the data with c.
+func (c *Content) ForMasterPicks() *Content {
+	if c.c.unlisted {
+		return c
+	}
+	x := *c.c
+	x.unlisted = true
+	return &Content{c: &x}
+}
+
 // StoredIssues are the things a stored entry holds that the content leaves out while the entry loads: a key a choice of
 // tools lists that no tool choice offers. The master reads them on the entry; a write that holds one is refused.
 func (c *Content) StoredIssues() []*OverlayError { return slices.Clone(c.c.kept) }
@@ -683,7 +694,10 @@ func (c *content) sheetHolds(b Build, key string) bool {
 	}
 	return key == b.Race || key == b.Subrace || key == b.Background || slices.Contains(b.Feats, key) || slices.Contains(b.FeatureChoices, key) ||
 		slices.ContainsFunc(b.Classes, func(cl ClassLevel) bool { return cl.Class == key || cl.Subclass == key }) ||
-		slices.ContainsFunc(b.FeatureChoices, func(k string) bool { _, v, ok := SplitScopedChoice(k); return ok && v == key })
+		slices.ContainsFunc(b.FeatureChoices, func(k string) bool {
+			choice, v, ok := SplitScopedChoice(k)
+			return ok && v == key && !strings.HasSuffix(choice, toolPickSuffix) && !strings.HasSuffix(choice, languagePickSuffix)
+		})
 }
 
 // Owners are the entries (races, subraces, classes, subclasses, backgrounds and feats) a
@@ -895,6 +909,16 @@ func isPickedKey(v string) bool {
 	return strings.HasPrefix(v, "feat:") || strings.HasPrefix(v, "spell:")
 }
 
+// pickedKeyOf is the feat or spell key a scoped choice picks. The value of a tool or a language pick is no entry of the
+// sheet, whatever it is spelled like: a pick of an entry key there names a key that is not a tool, not that entry.
+func pickedKeyOf(stored string) (string, bool) {
+	choice, v, ok := SplitScopedChoice(stored)
+	if !ok || !isPickedKey(v) || strings.HasSuffix(choice, toolPickSuffix) || strings.HasSuffix(choice, languagePickSuffix) {
+		return "", false
+	}
+	return v, true
+}
+
 func buildKeys(b Build, want func(string) bool) []string {
 	seen := map[string]bool{}
 	add := func(keys ...string) {
@@ -913,7 +937,7 @@ func buildKeys(b Build, want func(string) bool) []string {
 	add(b.SpellsPrepared...)
 	add(b.FeatureChoices...)
 	for _, k := range b.FeatureChoices {
-		if _, v, ok := SplitScopedChoice(k); ok && isPickedKey(v) {
+		if v, ok := pickedKeyOf(k); ok {
 			add(v) // a feat or a spell picked through a choice is a key of the sheet
 		}
 	}
@@ -974,7 +998,7 @@ func BuildKeys(b Build) []KeyField {
 	}
 	for i, k := range b.FeatureChoices {
 		add(k, fmt.Sprintf("full.feature_choice_keys[%d]", i))
-		if _, v, ok := SplitScopedChoice(k); ok && isPickedKey(v) {
+		if v, ok := pickedKeyOf(k); ok {
 			add(v, fmt.Sprintf("full.feature_choice_keys[%d]", i))
 		}
 	}

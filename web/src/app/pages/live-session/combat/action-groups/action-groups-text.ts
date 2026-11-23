@@ -1,5 +1,5 @@
 import type { Attack } from '../../../../../gen/meurpg/rules/v1/rules_pb';
-import type { ActionTabId } from '../../../../core/combat/action-tabs';
+import type { ActionTabId, ActionTabItem } from '../../../../core/combat/action-tabs';
 import { GRAPPLE_DETAIL, SHOVE_DETAIL } from '../../../../core/combat/contest-view';
 import {
   ContestAttackOptionKind,
@@ -29,8 +29,13 @@ export const TAB_ICONS: Readonly<Record<ActionTabId, string>> = {
   attacks: 'swords',
   spells: 'auto_fix_high',
   class: 'shield',
+  items: 'science',
   other: 'more_horiz',
 };
+
+/** The tabs to draw, each with its icon. */
+export const tabStrip = (tabs: readonly ActionTabItem[]) =>
+  tabs.map((t) => ({ ...t, icon: TAB_ICONS[t.id] }));
 
 /** "1º": the circle as the slots line writes it. */
 export const shortCircle = (level: number): string => `${level}º`;

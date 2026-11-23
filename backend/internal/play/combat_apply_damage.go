@@ -66,6 +66,8 @@ type applyDamageOut struct {
 	made actionEvent
 	// vitals are the target's, after.
 	vitals *playv1.CharacterVitals
+	// drained are the caster's, after the heal a drain spell's damage gave it; nil when it gave none or the caster is no character.
+	drained *playv1.CharacterVitals
 	// hit is what the target's player is told of the blow, nil while nothing landed.
 	hit *attackHit
 }
@@ -112,6 +114,7 @@ func (s *Service) applyDamageResponse(ctx context.Context, m authz.Membership, r
 		s.publishReturned(ctx, m.CampaignID, d, ev)
 		s.publishLogChanged(ctx, m.CampaignID, d.enc.ID, !ev.Secret)
 		s.publishVitals(ctx, m.CampaignID, out.vitals)
+		s.publishVitals(ctx, m.CampaignID, out.drained)
 		s.publishAttackHit(m.CampaignID, out.hit)
 	})
 	if err != nil {
@@ -150,7 +153,7 @@ func newApplyDamageFlow(s *Service, c *combatTx, call applyDamageCall, out *appl
 // run is the transaction: the checks, the amount, the landing and what follows it. It answers the event the
 // write stores.
 func (f *applyDamageFlow) run(ctx context.Context) (any, error) {
-	f.out.vitals = nil
+	f.out.vitals, f.out.drained = nil, nil
 	if err := f.locate(ctx); err != nil {
 		return nil, err
 	}
@@ -159,6 +162,9 @@ func (f *applyDamageFlow) run(ctx context.Context) (any, error) {
 		return nil, err
 	}
 	if err := f.land(ctx); err != nil {
+		return nil, err
+	}
+	if err := f.drain(ctx); err != nil {
 		return nil, err
 	}
 	if err := f.s.afterDamageTaken(ctx, f.c, f.target, f.amount, f.made.Before, f.made.After); err != nil {
@@ -261,6 +267,18 @@ func (f *applyDamageFlow) land(ctx context.Context) error {
 		return f.landBeast(ctx)
 	}
 	return f.landNormal(ctx)
+}
+
+// drain is the heal a drain spell's damage gives its caster: what landed on the character, none of it while the character
+// was down (the damage was a death save failure).
+func (f *applyDamageFlow) drain(ctx context.Context) error {
+	dealt := f.amount
+	if f.down {
+		dealt = 0
+	}
+	var err error
+	f.out.drained, err = f.s.drainHeal(ctx, f.c, f.p, f.attacker, f.target, dealt)
+	return err
 }
 
 // landDown is RN-03: a damage at 0 hit points is a death save failure (two for a critical hit), and the hit

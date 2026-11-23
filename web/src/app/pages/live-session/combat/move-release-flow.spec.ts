@@ -1,0 +1,257 @@
+import { Injector } from '@angular/core';
+import { TestBed } from '@angular/core/testing';
+import { create } from '@bufbuild/protobuf';
+import { Code, ConnectError } from '@connectrpc/connect';
+
+import {
+  CombatantKind,
+  EncounterBlockedReason,
+  EncounterBlockedSchema,
+  ReactionKind,
+  ReadiedActionSchema,
+  ReadiedKind,
+  ReadiedStatus,
+} from '../../../../gen/meurpg/play/v1/combat_pb';
+import { CombatState } from '../../../core/combat/combat-state';
+import { combatant, encounter, reactionWindow } from '../../../core/combat/combat-testing';
+import { MoveReleaseFlow } from './move-release-flow';
+
+const blocked = (reason: EncounterBlockedReason) =>
+  new ConnectError('x', Code.FailedPrecondition, undefined, [
+    { desc: EncounterBlockedSchema, value: create(EncounterBlockedSchema, { reason }) },
+  ]);
+
+const held = create(ReadiedActionSchema, {
+  id: 'r1',
+  kind: ReadiedKind.MOVE,
+  triggerText: 'Quando o ogro passar pela porta',
+  status: ReadiedStatus.WAITING,
+});
+
+function setup(master = false, refuse = false) {
+  const state = new CombatState();
+  const tor = combatant({
+    id: 'tor',
+    label: 'Tor',
+    kind: CombatantKind.PLAYER,
+    mine: true,
+    readied: held,
+  });
+  const ogro = combatant({ id: 'og', label: 'Ogro' });
+  const live = encounter({
+    combatants: [tor, ogro],
+    currentCombatantId: 'og',
+    reactionWindows: [
+      reactionWindow({
+        id: 'w1',
+        kind: ReactionKind.READIED,
+        reactorId: 'tor',
+        reactorLabel: 'Tor',
+      } as never),
+    ],
+  } as never);
+  state.apply(live);
+  const mark = refuse
+    ? vi.fn().mockRejectedValue(new Error('not found'))
+    : vi.fn().mockResolvedValue(live);
+  const reopen = vi.fn();
+  const flow = new MoveReleaseFlow(
+    {
+      api: { attacks: { markReactionRolling: mark } as never },
+      campaignId: () => 'camp',
+      encounter: () => state.encounter(),
+      state: () => state,
+      isMaster: () => master,
+      own: () => tor,
+      reopenWindow: reopen,
+    },
+    TestBed.inject(Injector),
+  );
+  return { flow, mark, reopen, state, tor, ogro };
+}
+
+describe('MoveReleaseFlow, the page of a readied move (#856)', () => {
+  it('opens for the window’s held move, marking the window for the player and naming whose turn it is', () => {
+    const { flow, mark } = setup();
+    const release = flow.open('w1');
+    expect(release).toMatchObject({
+      windowId: 'w1',
+      reactorId: 'tor',
+      reactor: 'Tor',
+      master: false,
+    });
+    expect(mark).toHaveBeenCalledWith('camp', 'enc', 'w1', false);
+    expect(flow.view()?.band.detail.replace(/ /g, ' ')).toContain('vez do Ogro');
+  });
+
+  it('does not open for a window that holds no move', () => {
+    const { flow, mark } = setup();
+    expect(flow.open('nope')).toBeNull();
+    expect(mark).not.toHaveBeenCalled();
+    expect(flow.current()).toBeNull();
+  });
+
+  it('begins the wait once when the master opens the release, never with clear, and swallows a refusal', async () => {
+    const { flow, mark } = setup(true);
+    flow.open('w1');
+    expect(mark).toHaveBeenCalledTimes(1);
+    expect(mark).toHaveBeenCalledWith('camp', 'enc', 'w1', false);
+    expect(flow.view()?.foot).toContain('ainda pode responder no próprio aparelho');
+    await flow.back();
+    expect(mark).toHaveBeenCalledTimes(1);
+    const refused = setup(true, true);
+    expect(() => refused.flow.open('w1')).not.toThrow();
+    await Promise.resolve();
+    expect(refused.mark).toHaveBeenCalledTimes(1);
+    expect(refused.flow.view()?.gone ?? null).toBeNull();
+  });
+
+  it('goes back by taking the mark off and showing the window again', async () => {
+    const { flow, mark, reopen } = setup();
+    flow.open('w1');
+    await Promise.resolve();
+    await flow.back();
+    expect(mark).toHaveBeenLastCalledWith('camp', 'enc', 'w1', true);
+    expect(reopen).toHaveBeenCalledWith('w1');
+    expect(flow.current()).toBeNull();
+  });
+
+  it('shows no window again for the master going back', async () => {
+    const { flow, reopen } = setup(true);
+    flow.open('w1');
+    await flow.back();
+    expect(reopen).not.toHaveBeenCalled();
+  });
+
+  it('ends without clearing anything once the move was made', async () => {
+    const { flow, mark } = setup();
+    flow.open('w1');
+    await Promise.resolve();
+    flow.finish();
+    expect(flow.current()).toBeNull();
+    expect(mark).toHaveBeenCalledTimes(1);
+  });
+
+  it('says what became of the window once it went away, and does not show it again', async () => {
+    const { flow, reopen, state, tor, ogro } = setup();
+    flow.open('w1');
+    TestBed.tick();
+    state.apply(encounter({ revision: 9, combatants: [tor, ogro], reactionWindows: [] } as never));
+    TestBed.tick();
+    expect(flow.gone()).toBe(true);
+    expect(flow.view()?.gone?.lead).toBe('O mestre desfez o gatilho:');
+    await flow.back();
+    expect(reopen).not.toHaveBeenCalled();
+  });
+
+  it('takes the mark off and stops the watch when the page leaves the release another way (the turn ends)', async () => {
+    const { flow, mark } = setup();
+    flow.open('w1');
+    await Promise.resolve();
+    flow.end();
+    await vi.waitFor(() => expect(mark).toHaveBeenLastCalledWith('camp', 'enc', 'w1', true));
+    expect(flow.current()).toBeNull();
+    expect(flow.view()).toBeNull();
+  });
+
+  it('clears nothing on leaving when the window is already gone', async () => {
+    const { flow, mark, state, tor, ogro } = setup();
+    flow.open('w1');
+    TestBed.tick();
+    state.apply(encounter({ revision: 9, combatants: [tor, ogro], reactionWindows: [] } as never));
+    TestBed.tick();
+    flow.end();
+    expect(mark).toHaveBeenCalledTimes(1);
+  });
+
+  it('stops the one-second clock of the watch when the release ends, not only with the view', () => {
+    vi.useFakeTimers();
+    try {
+      const { flow } = setup();
+      flow.open('w1');
+      const stop = vi.spyOn(globalThis, 'clearInterval');
+      flow.end();
+      expect(stop).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('reads the master form of a window that went away (S1)', () => {
+    const { flow, state, tor, ogro } = setup(true);
+    flow.open('w1');
+    TestBed.tick();
+    state.apply(
+      encounter({
+        revision: 9,
+        combatants: [{ ...tor, readied: undefined, reactionUsed: true } as never, ogro],
+        reactionWindows: [],
+      } as never),
+    );
+    TestBed.tick();
+    expect(flow.view()?.gone).toEqual({
+      lead: 'A janela fechou e a reação de Tor foi usada.',
+      rest: '',
+    });
+  });
+
+  it.each([
+    EncounterBlockedReason.NOT_YOUR_TURN,
+    EncounterBlockedReason.NOT_YOUR_TURN_TO_ANSWER,
+    EncounterBlockedReason.REACTION_ALREADY_ANSWERED,
+  ])(
+    'shows the gone state when the server refuses the move as a closed window (reason %s) (S3)',
+    (reason) => {
+      for (const master of [false, true]) {
+        const { flow, state, tor, ogro } = setup(master);
+        flow.open('w1');
+        TestBed.tick();
+        expect(flow.gone()).toBe(false);
+        expect(flow.refusedAsClosed(blocked(reason))).toBe(true);
+        TestBed.tick();
+        expect(flow.gone()).toBe(true);
+        // The combat the page holds still lists the window: it says nothing until the next read.
+        expect(flow.view()?.gone?.lead).toBe('');
+        state.apply(
+          encounter({
+            revision: 2,
+            combatants: [tor, ogro],
+            currentCombatantId: 'og',
+            reactionWindows: [],
+          } as never),
+        );
+        TestBed.tick();
+        expect(flow.view()?.gone?.lead).toBe(
+          master ? 'O gatilho foi desfeito:' : 'O mestre desfez o gatilho:',
+        );
+      }
+    },
+  );
+
+  it('leaves every other refusal to the words the page already has (S3)', () => {
+    const { flow } = setup();
+    flow.open('w1');
+    for (const reason of [
+      EncounterBlockedReason.REACTION_USED,
+      EncounterBlockedReason.TOO_FAR,
+      EncounterBlockedReason.MOVE_BLOCKED,
+    ]) {
+      expect(flow.refusedAsClosed(blocked(reason))).toBe(false);
+    }
+    expect(flow.refusedAsClosed(new ConnectError('x', Code.Unavailable))).toBe(false);
+    expect(flow.gone()).toBe(false);
+  });
+
+  it('words the reaction used with the reactor for the master, and keeps the player sentence (S1b)', () => {
+    const player = setup(false);
+    player.flow.open('w1');
+    expect(player.flow.refusal(blocked(EncounterBlockedReason.REACTION_USED))).toBe(
+      'A reação já foi usada: ela volta no começo da sua vez.',
+    );
+    const master = setup(true);
+    master.flow.open('w1');
+    expect(master.flow.refusal(blocked(EncounterBlockedReason.REACTION_USED))).toBe(
+      'A reação de Tor já foi usada: ela volta no começo da vez de Tor.',
+    );
+  });
+});

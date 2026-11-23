@@ -646,6 +646,10 @@ type Spell struct {
 	// come from the same fields of rules.SpellTarget.
 	TargetCount    int
 	TargetPerLevel int
+	// WithinFt, WithinFirst and RangeExtraFt are how close the targets must be (rules.SpellTarget;
+	// spell_closeness.go), and ReachFt how far a Self-range spell picks its creature.
+	WithinFt, RangeExtraFt, ReachFt int
+	WithinFirst                     bool
 	// CasterOnly says there is nobody to pick: the spell reaches the caster alone,
 	// or no creature at all (a point, an object, a place), whatever its range.
 	CasterOnly bool

@@ -104,7 +104,7 @@ func (s *Service) useConsumableTx(ctx context.Context, tx pgx.Tx, h *hints, sess
 	if err != nil {
 		return err
 	}
-	fight, err := s.openFight(ctx, tx, q, h, session, use, content.IsPotion(item.GetKey()))
+	fight, err := s.openFight(ctx, tx, q, h, session, use, content.CostsAction(item.GetKey()))
 	if err != nil {
 		return err
 	}
@@ -219,7 +219,7 @@ func (s *Service) applyConsumable(ctx context.Context, tx pgx.Tx, q *playdb.Quer
 	ok = ok && !use.bare // a character with no vitals has nothing to heal or to resist for: the master tells what the potion did
 	switch {
 	case ok && potion.Kind == rules.PotionHeal:
-		return s.healWithPotion(ctx, tx, q, session, use, fight, potion, &run.ev)
+		return s.healWithPotion(ctx, tx, q, session, use, fight, content.HealOf(run.ev.Item), &run.ev)
 	case ok && potion.Kind == rules.PotionResistance:
 		run.ev.Outcome, run.ev.DamageType = consumable.OutcomeResistance, potion.DamageType
 		if fight.receives() {
@@ -236,11 +236,11 @@ func (s *Service) applyConsumable(ctx context.Context, tx pgx.Tx, q *playdb.Quer
 // healWithPotion rolls the potion's dice (the app's, or the faces typed from real dice by the table's rule, RN-18) and heals the
 // receiver up to the maximum: in a combat with the combat's heal (a creature at 0 hit points gets up and its death saves
 // reset), else through the vitals. The session's lock holds every other write of the vitals back while it reads and writes.
-func (s *Service) healWithPotion(ctx context.Context, tx pgx.Tx, q *playdb.Queries, session playdb.GameSession, use consumableCall, fight *consumableFight, potion rules.PotionEffect, ev *consumableUsedEvent) error {
+func (s *Service) healWithPotion(ctx context.Context, tx pgx.Tx, q *playdb.Queries, session playdb.GameSession, use consumableCall, fight *consumableFight, heal rules.DiceFormula, ev *consumableUsedEvent) error {
 	if err := s.mustRollThisWay(ctx, tx, use.m, rollInput{inApp: use.req.GetRollInApp()}); err != nil {
 		return err
 	}
-	faces, total, err := consumable.Roll(s.roller, potion.Heal, use.req.GetRollInApp(), use.req.GetTypedFaces())
+	faces, total, err := consumable.Roll(s.roller, heal, use.req.GetRollInApp(), use.req.GetTypedFaces())
 	if errors.Is(err, consumable.ErrFaces) {
 		return connect.NewError(connect.CodeInvalidArgument, err)
 	}
@@ -256,7 +256,7 @@ func (s *Service) healWithPotion(ctx context.Context, tx pgx.Tx, q *playdb.Queri
 	if err != nil {
 		return err
 	}
-	ev.Outcome, ev.Dice, ev.Faces, ev.Total, ev.Healed, ev.Physical = consumable.OutcomeHealed, potion.Heal.Text(), faces, total, healed, !use.req.GetRollInApp()
+	ev.Outcome, ev.Dice, ev.Faces, ev.Total, ev.Healed, ev.Physical = consumable.OutcomeHealed, heal.Text(), faces, total, healed, !use.req.GetRollInApp()
 	return nil
 }
 

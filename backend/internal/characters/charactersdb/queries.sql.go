@@ -3682,6 +3682,41 @@ func (q *Queries) ListVitals(ctx context.Context, campaignID string) ([]ListVita
 	return items, nil
 }
 
+const lockSessionCharacters = `-- name: LockSessionCharacters :many
+SELECT id FROM characters
+WHERE campaign_id = $1::UUID
+  AND id = ANY($2::UUID[])
+ORDER BY id
+FOR UPDATE
+`
+
+type LockSessionCharactersParams struct {
+	CampaignID string
+	Ids        []string
+}
+
+// Locks the rows of the given characters of the campaign until the transaction ends (LockedSessionCharacters, which reads them
+// next). The ids are those of ListSessionCharacters: whatever the status.
+func (q *Queries) LockSessionCharacters(ctx context.Context, arg LockSessionCharactersParams) ([]string, error) {
+	rows, err := q.db.Query(ctx, lockSessionCharacters, arg.CampaignID, arg.Ids)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const lockSheets = `-- name: LockSheets :execrows
 UPDATE characters
 SET sheet_locked_at = $1::TIMESTAMPTZ
