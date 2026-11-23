@@ -129,37 +129,36 @@ func cutNumbersOf(kind string, final actionEvent, reduction int32) (cutNumbers, 
 	return cutNumbers{}, false
 }
 
-// fill writes the numbers of a roll on the answer, and nothing when the rule says none.
-func (r *reactionEvent) fill(n cutNumbers, ok bool) {
-	if ok {
-		r.Outcome, r.AC, r.Before, r.After = n.outcome, n.ac, n.before, n.after
-	}
+// fill writes the numbers of a roll on the answer.
+func (r *reactionEvent) fill(n cutNumbers) {
+	r.Outcome, r.AC, r.Before, r.After = n.outcome, n.ac, n.before, n.after
 }
 
 // dropWaiting reads an event that forgets held rolls: the removal of a combatant (forgetHoldsOf drops its holds) and the end of the
-// combat. The lines that still wait for a roll of that roller (every roller at the end) never get one, and say so.
+// combat. The lines of that roller (every roller at the end) never get a roll, and a completed one is not read as waiting (reactionFor).
 func (b *logBuilder) dropWaiting(kind string, ev actionEvent) {
 	if kind != eventCombatantRemoved && kind != eventEncounterEnded {
 		return
 	}
 	for _, hosts := range b.byCut {
 		for _, host := range hosts {
-			if host.cut == nil && (kind == eventEncounterEnded || host.ev.Target == ev.Actor) {
+			if kind == eventEncounterEnded || host.ev.Target == ev.Actor {
 				host.neverRolled = true
 			}
 		}
 	}
 }
 
-// completedBy is the answer as it reads once the roll that settled its question is known, by the rule of cutNumbersOf, with the hold kind the roll's own event says (a spell_cast is a cast). Only a replay
-// with one ray asks, because holdSpellAttack puts rayCombatants (one per ray) through spellMayAsk, which wants exactly one, so an
-// Asked answer of a cast never has more.
+// completedBy is the answer as it reads once the roll that settled its question is known.
+// The numbers are cutNumbersOf's, for the kind the roll's own event says (a spell_cast is a cast).
+// Only a replay with one ray asks, because holdSpellAttack puts rayCombatants (one per ray) through spellMayAsk, which wants exactly one.
+// So an Asked answer of a cast never has more than one hit.
 func (r reactionEvent) completedBy(kind string, final actionEvent) (reactionEvent, bool) {
 	n, ok := cutNumbersOf(kind, final, r.Reduction)
 	if !ok {
 		return r, false
 	}
-	r.fill(n, ok)
+	r.fill(n)
 	r.Asked = false
 	return r, true
 }

@@ -99,8 +99,12 @@ Every player reads the same neutral "diminuiu", whatever the question.
 The final `attack_rolled` or `spell_cast` of the held roll completes the line, linked to it by the reaction's group.
 A player's line is completed only when that player hears the final event; for a hidden roller it stays neutral.
 Undoing the final event puts the line back to pending.
-A held roll whose answer is refused or never given keeps its line waiting.
-When the roller is removed or the combat ends first (`combatant_removed`, `encounter_ended`), the hold is forgotten and the master's line drops "(aguardando a rolagem)" and says nothing of an outcome; the players keep "diminuiu".
+A refused answer, an answer never given and a stale hold the gate forgets keep the line waiting.
+A stale hold writes no event, so the log cannot tell that it is gone.
+The removal of the roller (`combatant_removed`) or the end of the combat (`encounter_ended`) stops the waiting.
+Then the master's line drops "(aguardando a rolagem)" and says nothing of an outcome.
+The players keep "diminuiu".
+The end of the combat is not a delta-safe kind, so a delta read after it is a full read.
 A spell attack's line is completed only by a final event with exactly one hit.
 The reaction's own event cannot be undone.
 A fresh read and a `since_seq` delta give the same line, because the builder decides it, not the stream.
@@ -109,7 +113,7 @@ Only Cutting Words writes a line that depends on the replay; a held check (a con
 ### When the answer is the whole log
 
 An event after `since_seq` that may change how an entry the app holds is seen, without a new event on that entry, makes the answer `full`.
-Only the kinds in `deltaSafeKinds` are safe: they add a line or join the entry they name (attacks and damage, actions, saves, spells, reactions, conditions, movement, turns, the start and end of the combat, the legendary spend and the Recharge roll).
+Only the kinds in `deltaSafeKinds` are safe: they add a line or join the entry they name (attacks and damage, actions, saves, spells, reactions, conditions, movement, turns, the start of the combat, the legendary spend and the Recharge roll).
 Every other kind counts: a combatant shown or hidden, summoned, dismissed or removed, an answer to a roll request, an undo, and a kind the list does not know.
 When in doubt a kind stays off the list.
 

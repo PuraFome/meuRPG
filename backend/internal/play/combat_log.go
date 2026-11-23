@@ -296,7 +296,7 @@ func (c logCut) rounds(ctx context.Context, entries []*logEntry, v combatViewer,
 // event on that entry, so the answer is the whole log. When in doubt a kind stays off the list.
 var deltaSafeKinds = map[string]bool{
 	eventEncounterStarted: true, eventInitiativeSubmitted: true, eventInitiativeOrderSet: true, eventCombatBegun: true,
-	eventTurnEnded: true, eventTurnPartEnded: true, eventCombatantMoved: true, eventEncounterEnded: true, eventCombatantMounted: true, eventCombatantDismounted: true,
+	eventTurnEnded: true, eventTurnPartEnded: true, eventCombatantMoved: true, eventCombatantMounted: true, eventCombatantDismounted: true,
 	eventAttackRolled: true, eventDamageRolled: true, eventDamageApplied: true, eventDamageDiscarded: true,
 	eventActionTaken: true, eventHitPointsAdjusted: true, eventDeathSaveRolled: true, eventDeathConfirmed: true,
 	eventConditionsSet: true, eventSpellCast: true, eventReactionUsed: true, eventReactionDeclined: true,
