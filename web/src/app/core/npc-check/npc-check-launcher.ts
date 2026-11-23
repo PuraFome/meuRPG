@@ -8,7 +8,10 @@ import { Injectable, signal } from '@angular/core';
 @Injectable({ providedIn: 'root' })
 export class NpcCheckLauncher {
   private readonly pending = signal<{ readonly characterId: string } | null>(null);
-  /** The result of the last roll request: set by a refusal for an open combat, cleared when a roll goes through. The entry shows it, dashed, and stays usable: the server decides. */
+  /**
+   * The result of the last roll request: set by a refusal for an open combat, cleared when a roll goes through.
+   * The entry shows it, dashed, and stays usable: the server decides.
+   */
   readonly combatOpen = signal(false);
   readonly request = this.pending.asReadonly();
 

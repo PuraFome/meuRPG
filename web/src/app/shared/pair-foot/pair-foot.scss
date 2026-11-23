@@ -1,5 +1,6 @@
 // The pair: two equal buttons, right-aligned on a computer. On a phone they share the width; when a
 // label does not fit half of it (the component measures) they stack, each full width, filled on top.
+// A label that overflows its button on one line wraps in it.
 .pf {
   display: grid;
   grid-auto-flow: column;
@@ -15,7 +16,7 @@
     white-space: normal;
     overflow-wrap: anywhere;
     height: auto;
-    min-height: var(--mat-button-filled-container-height, 44px);
+    min-height: max(44px, var(--mat-button-filled-container-height, 44px));
     padding-block: 6px;
   }
 

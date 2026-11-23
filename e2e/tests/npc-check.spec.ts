@@ -130,7 +130,7 @@ test('nomes longos quebram dentro da tela: a folha, o cartão do mestre e a perg
   await withTable(browser, { other: 'bard', longName: true }, (t) => longNameFlow(t, {}));
 });
 
-test('um combate que terminou libera a entrada: o teste recusado pode ser rolado de novo', { tag: ['@MR-015'] }, async ({ browser }) => {
+test('depois de um teste recusado por um combate, a entrada continua usável e o próximo clique pergunta ao servidor de novo', { tag: ['@MR-015'] }, async ({ browser }) => {
   test.setTimeout(240_000);
   await withTable(browser, {}, (t) => combatEndedFlow(t));
 });

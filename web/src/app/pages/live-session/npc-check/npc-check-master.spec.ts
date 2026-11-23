@@ -9,7 +9,7 @@ import { NpcCheckLauncher } from '../../../core/npc-check/npc-check-launcher';
 import { npcCheckRead } from '../../../core/npc-check/npc-check-testing';
 import { NpcCheckMaster } from './npc-check-master';
 
-function setup(settled: boolean) {
+function setup(settled: boolean, entry = false) {
   const open = vi.fn(() => ({ afterClosed: () => EMPTY, afterDismissed: () => EMPTY }));
   const latest = vi.fn(() =>
     Promise.resolve(npcCheckRead({ settled, total: 13, asks: settled ? [] : undefined })),
@@ -23,6 +23,7 @@ function setup(settled: boolean) {
   });
   const fixture = TestBed.createComponent(NpcCheckMaster);
   fixture.componentRef.setInput('campaignId', 'c1');
+  fixture.componentRef.setInput('entry', entry);
   fixture.detectChanges();
   const flush = async () => {
     for (let i = 0; i < 4; i++) {
@@ -53,13 +54,17 @@ describe('NpcCheckMaster', () => {
     expect(settled.latest).toHaveBeenCalledTimes(1);
   });
 
-  it('opens the sheet on a click even while the last roll was refused for a combat', async () => {
-    const { fixture, flush, open } = setup(false);
-    const launcher = TestBed.inject(NpcCheckLauncher);
-    launcher.combatOpen.set(true);
-    launcher.ask();
+  it('draws the entry dashed after a refusal for a combat, without aria-disabled, and a click opens the sheet', async () => {
+    const { fixture, flush, open } = setup(false, true);
+    TestBed.inject(NpcCheckLauncher).combatOpen.set(true);
+    await flush();
+    const entry = Array.from(
+      (fixture.nativeElement as HTMLElement).querySelectorAll('button'),
+    ).find((b) => (b.textContent ?? '').trim().endsWith('Teste de um NPC'));
+    expect(entry?.classList.contains('mr-button--off')).toBe(true);
+    expect(entry?.getAttribute('aria-disabled')).not.toBe('true');
+    entry?.click();
     await flush();
     expect(open).toHaveBeenCalledTimes(1);
-    expect(fixture.componentInstance).toBeTruthy();
   });
 });

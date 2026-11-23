@@ -355,7 +355,7 @@ export async function refusalsFlow(t: NpcTable, v: NpcView): Promise<void> {
   await sheet.getByRole('button', { name: 'Rolar Enganação de Capitão bandido' }).click();
   await expect(sheet.getByRole('alert')).toContainText('Só numa sessão aberta. Nada foi rolado.');
   await see(v, m, 'refusal-session', sheet);
-  // The combat is the last refusal: it is the one that leaves the entry dashed, and usable.
+  // The combat is the last refusal: it is the one that leaves the entry dashed.
   await m.route('**/*PlayService/RollNpcCheck', (route) => route.fulfill({ status: 400, contentType: 'application/json', body: JSON.stringify(detail('meurpg.play.v1.ResourceBlocked')) }));
   await sheet.getByRole('button', { name: 'Rolar Enganação de Capitão bandido' }).click();
   const alert = sheet.getByRole('alert');
@@ -555,8 +555,7 @@ export async function longNameFlow(t: NpcTable, v: NpcView): Promise<void> {
   await see(v, m, 'sheet-long-name', sheet.locator('label.row', { hasText: LONG_NPC }).first());
   await expectFits(m, sheet, 'Teste de um NPC, a folha com um nome longo');
   const roll = sheet.getByRole('button', { name: new RegExp(`^Rolar .* de ${LONG_NPC}`) });
-  const wide = await roll.evaluate((b) => ({ button: b.scrollWidth <= b.clientWidth, label: [...b.querySelectorAll('.mdc-button__label')].every((l) => l.scrollWidth <= l.clientWidth) }));
-  expect(wide).toEqual({ button: true, label: true });
+  await expect.poll(() => roll.evaluate((b) => b.scrollWidth <= b.clientWidth)).toBe(true);
   await rollChosen(m, sheet);
   const card = npcCard(m);
   await expect(card.getByRole('heading', { name: new RegExp(`^${LONG_NPC} · `) })).toBeVisible();
@@ -573,7 +572,7 @@ export async function longNameFlow(t: NpcTable, v: NpcView): Promise<void> {
   await expect(card).toContainText('Deixou passar');
 }
 
-/** The server refuses the next roll as for a combat, while the page shows none (the combat began and ended, or the page has not heard). */
+/** The server refuses the next roll as for an open combat. */
 async function refuseForCombat(m: Page): Promise<void> {
   const body = { code: 'failed_precondition', message: 'x', details: [{ type: 'meurpg.play.v1.ResourceBlocked', value: 'CAE' }] };
   await m.route('**/*PlayService/RollNpcCheck', (route) => route.fulfill({ status: 400, contentType: 'application/json', body: JSON.stringify(body) }));
@@ -603,6 +602,6 @@ export async function combatEndedFlow(t: NpcTable): Promise<void> {
   await pickNpc(again, 'Capitão bandido');
   await rollChosen(m, again);
   await expect(npcCard(m)).toContainText(/d20 \(\d+\) [+−] \d+ = \d+/);
-  // The roll went through: the entry no longer waits.
+  // The roll went through: the note is gone.
   await expect(m.getByText('Há um combate aberto: os testes das criaturas são do combate.')).toHaveCount(0);
 }

@@ -22,7 +22,8 @@ import { MatIconModule } from '@angular/material/icon';
  * happens. Right-aligned and 176 px wide from a tablet up; on a phone they share the width, 48 px high,
  * and when either label needs more than half of it (the component measures) they stack, each as wide as
  * the room, the filled one on top. With `ready` false the filled button is the app's dashed, disabled one
- * (`aria-disabled`, "⊘"): the reason belongs to a sentence above it, never to colour alone.
+ * (`aria-disabled`, "⊘"): the reason belongs to a sentence above it, never to colour alone. A label that overflows its
+ * button on one line wraps in it.
  */
 @Component({
   selector: 'app-pair-foot',

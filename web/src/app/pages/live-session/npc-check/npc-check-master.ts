@@ -27,7 +27,7 @@ import { openNpcCheckSheet } from './npc-check-sheet';
  * The master's side of "Teste de um NPC" outside a combat: the sheet it opens when the header button, the stage menu or its own
  * button asks (`NpcCheckLauncher`), and the card of the check the server holds or settled last (read again on every hint that the
  * held rolls changed, and after a reload). With `entry` it draws the button too (the page with no scene open, beside "Pedir teste em
- * grupo"). A combat that is open makes the entry dashed, with the reason beside it.
+ * grupo"). The last roll refused for a combat makes the entry dashed, with the reason beside it; the entry stays usable.
  */
 @Component({
   selector: 'app-npc-check-master',
