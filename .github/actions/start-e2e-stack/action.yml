@@ -1,7 +1,7 @@
 # Gets a runner ready to run Playwright against the local stack: the images of build-e2e-images, the stack itself
 # (CockroachDB, migrations, devidp, API), Node, the e2e dependencies and Chromium, as the `e2e` job of e2e.yml does.
 # The stack starts in the background while Node, the dependencies and Chromium install, and the last step waits for it:
-# the stack needs none of them. With `database-artifact` it restores the migrated database instead of migrating.
+# the stack needs none of them. With `chromium: "false"` the action installs no Chromium (the mobile job runs only WebKit). With `database-artifact` it restores the migrated database instead of migrating.
 # The action names the compose files once (the outputs `compose-file` and `database-dir`): a later step that runs
 # `docker compose` takes them as COMPOSE_FILE and E2E_DB_DIR, so it uses the files the stack started with, and none of
 # them can recreate CockroachDB without the restored folder.
@@ -21,6 +21,9 @@ inputs:
   npm-cache:
     description: Set to "npm" to restore and save the npm cache. Empty (the default) caches nothing, for the workflows that run refs that are not main's.
     default: ""
+  chromium:
+    description: Set to "false" to skip the Chromium install, for a job that runs no Chromium. "true" (the default) installs it.
+    default: "true"
 outputs:
   compose-file:
     description: The compose files of the stack, as a COMPOSE_FILE value (absolute paths).
@@ -98,6 +101,7 @@ runs:
       run: npm ci --ignore-scripts
 
     - name: Install Chromium for Playwright
+      if: ${{ inputs.chromium == 'true' }}
       working-directory: ${{ inputs.code-dir }}/e2e
       shell: bash
       run: npx playwright install --with-deps chromium
