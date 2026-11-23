@@ -9,8 +9,10 @@ import {
   SaveOutcome,
   SpellEffectGain,
   SpellEffectKind,
+  SpellEffectOutcome,
 } from '../../../gen/meurpg/play/v1/combat_pb';
 import type { AdvantageSource, RollMode } from '../../../gen/meurpg/play/v1/combat_rolls_pb';
+import { LastingEffectOutcome } from '../../../gen/meurpg/play/v1/lasting_effects_pb';
 import { ActionEconomy } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { rollFormula } from './combat-dice';
 import { d20Formula } from './roll-mode';
@@ -85,7 +87,7 @@ export function castRows(
 }
 
 /** What a spell that reads hit points did, as one live sentence for the whole
- * cast, in the past: "O Goblin 1 adormeceu. O Capitão Goblin não foi afetado."
+ * cast, in the past: "O Goblin 1 adormeceu. Sem efeito no Capitão Goblin."
  * A player's character has no article ("Brisa ficou estável"). Empty for any
  * other spell. */
 export function effectSentence(
@@ -99,6 +101,12 @@ export function effectSentence(
       continue;
     }
     const label = labels.get(t.combatantId)?.label ?? 'Alvo';
+    if (t.effect.outcome !== SpellEffectOutcome.AFFECTED) {
+      // The one wording of "nothing happened" in a cast result, as Lay on Hands says it.
+      const where = isNpc(t.combatantId) ? `n${article(label)} ${label}` : `em ${label}`;
+      parts.push(`${NO_EFFECT} ${where}.`);
+      continue;
+    }
     const w = effectWords(
       cast.effectKind,
       cast.effectConditionKey,
@@ -125,6 +133,9 @@ interface RowPart {
 
 const NO_PART: RowPart = { lines: [] };
 
+/** What a cast that did nothing to a target reads, for every reader (Lay on Hands says the same). */
+const NO_EFFECT = 'Sem efeito';
+
 function castRow(
   t: SpellTargetResult,
   p: PendingDamage | undefined,
@@ -132,7 +143,7 @@ function castRow(
   cast: SpellCast,
 ): CastRow {
   const label = who?.label ?? 'Alvo';
-  const parts = [effectPart(t, cast, label), attackPart(t), savePart(t, p)];
+  const parts = [effectPart(t, cast, label), lastingPart(t), attackPart(t), savePart(t, p)];
   const damage = damagePart(t, p);
   const d20s = parts.flatMap((part) => part.d20s ?? []);
   const natural = parts.find((part) => part.natural)?.natural ?? '';
@@ -143,8 +154,13 @@ function castRow(
     word: parts.reduce((word, part) => part.word ?? word, ''),
     tone: parts.reduce<CastRow['tone']>((tone, part) => part.tone ?? tone, 'plain'),
     ...(natural ? { natural } : {}),
-    icon: parts[0].icon,
-    lines: [...parts.flatMap((part) => part.lines), ...damage.lines],
+    icon: parts.find((part) => part.icon)?.icon,
+    lines: [
+      ...parts.flatMap((part) => part.lines),
+      ...damage.lines,
+      // Only the master's reply carries it: the app's own words, shown as sent.
+      ...(t.noEffectReasonMaster ? [t.noEffectReasonMaster] : []),
+    ],
     summary: damage.summary,
     owed: damage.owed,
     ...(d20s.length ? { d20s } : {}),
@@ -172,7 +188,18 @@ function effectPart(t: SpellTargetResult, cast: SpellCast, label: string): RowPa
   if (change) {
     lines.push(change);
   }
-  return { word: w.past, icon: w.icon, tone: w.affected ? 'good' : 'plain', lines };
+  if (!w.affected) {
+    return { word: NO_EFFECT, icon: w.icon, tone: 'plain', lines };
+  }
+  return { word: w.past, icon: w.icon, tone: 'good', lines };
+}
+
+/** A spell that refused the target for good (a heal on an undead): the same word as any other no effect. */
+function lastingPart(t: SpellTargetResult): RowPart {
+  if (t.lastingEffect !== LastingEffectOutcome.NO_EFFECT) {
+    return NO_PART;
+  }
+  return { word: NO_EFFECT, icon: 'block', tone: 'plain', lines: [] };
 }
 
 /** The attack roll of a spell attack and what it came to: critical, hit or miss, and a natural 1. */

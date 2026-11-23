@@ -1,4 +1,5 @@
 import { create } from '@bufbuild/protobuf';
+import { LastingEffectOutcome } from '../../../gen/meurpg/play/v1/lasting_effects_pb';
 
 import {
   AttackOutcome,
@@ -380,10 +381,10 @@ describe('what a spell that reads hit points did (E8-03)', () => {
     const rows = castRows(sleep, new Map(), labels);
     expect(rows.map((r) => [r.label, r.word, r.icon])).toEqual([
       ['Goblin 1', 'Adormeceu', 'bedtime'],
-      ['Capitão Goblin', 'Não foi afetado', 'block'],
+      ['Capitão Goblin', 'Sem efeito', 'block'],
     ]);
     expect(effectSentence(sleep, labels, isNpc)).toBe(
-      'O Goblin 1 adormeceu. O Capitão Goblin não foi afetado.',
+      'O Goblin 1 adormeceu. Sem efeito no Capitão Goblin.',
     );
   });
 
@@ -468,7 +469,52 @@ describe('what a spell that reads hit points did (E8-03)', () => {
         },
       ],
     });
-    expect(effectSentence(missed, labels, isNpc)).toBe('Brisa não foi afetada.');
+    expect(effectSentence(missed, labels, isNpc)).toBe('Sem efeito em Brisa.');
+  });
+
+  it('reads "Sem efeito" for a target the spell refused for good, and only the master reads why', () => {
+    const cure = (reason: string) =>
+      create(SpellCastSchema, {
+        spellKey: 'spell:cure-wounds',
+        targets: [
+          {
+            combatantId: 'g1',
+            lastingEffect: LastingEffectOutcome.NO_EFFECT,
+            noEffectReasonMaster: reason,
+          },
+          { combatantId: 'cap', pendingDamageId: 'p1' },
+        ],
+      });
+    const player = castRows(cure(''), new Map(), labels);
+    expect([player[0].word, player[0].tone, player[0].lines]).toEqual(['Sem efeito', 'plain', []]);
+    const master = castRows(cure('Não funciona em mortos-vivos.'), new Map(), labels);
+    expect([master[0].word, master[0].lines]).toEqual([
+      'Sem efeito',
+      ['Não funciona em mortos-vivos.'],
+    ]);
+    expect(master[1].word).toBe('');
+    expect(master[1].lines).toEqual([]);
+  });
+
+  it('reads "Sem efeito" and the master reason for a hit point spell that did not affect the target', () => {
+    const heal = create(SpellCastSchema, {
+      spellKey: 'spell:heal',
+      effectKind: SpellEffectKind.FLAT_HEAL,
+      targets: [
+        {
+          combatantId: 'g1',
+          effect: { outcome: SpellEffectOutcome.NOT_AFFECTED },
+          noEffectReasonMaster: 'Não funciona em mortos-vivos.',
+        },
+      ],
+    });
+    const [row] = castRows(heal, new Map(), labels);
+    expect([row.word, row.tone, row.lines]).toEqual([
+      'Sem efeito',
+      'plain',
+      ['Não funciona em mortos-vivos.'],
+    ]);
+    expect(effectSentence(heal, labels, isNpc)).toBe('Sem efeito no Goblin 1.');
   });
 
   it('writes the heal as an amount only when the server sent it, never on an NPC for the caster', () => {
