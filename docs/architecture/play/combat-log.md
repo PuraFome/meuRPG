@@ -101,7 +101,7 @@ A player's line is completed only when that player hears the final event; for a 
 Undoing the final event puts the line back to pending.
 A refused answer, an answer never given and a stale hold the gate forgets keep the line waiting.
 A stale hold writes no event, so the log cannot tell that it is gone.
-The removal of the roller (`combatant_removed`) or the end of the combat (`encounter_ended`) stops the waiting.
+The master's removal of the roller (`combatant_removed`) or the end of the combat (`encounter_ended`) stops the waiting.
 Then the master's line drops "(aguardando a rolagem)" and says nothing of an outcome.
 The players keep "diminuiu".
 The end of the combat is not a delta-safe kind, so a delta read after it is a full read.
