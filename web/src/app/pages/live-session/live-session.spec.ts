@@ -2684,6 +2684,37 @@ describe('LiveSession', () => {
       expect(state.passedAlone('w1')).toBe(true);
       expect(state.passedAlone('w2')).toBe(false);
     });
+
+    it('forgets a pass that came alone when the same window closes again by hand, or opens again', async () => {
+      vi.spyOn(TestBed.inject(CombatClient).turn, 'get').mockResolvedValue(null);
+      const fixture = TestBed.createComponent(LiveSession);
+      await settle(fixture);
+      const state = (flat(fixture) as unknown as { combat: CombatState }).combat;
+      const closed = (passedAlone: boolean) =>
+        source.push({
+          kind: 'reactionWindowClosed',
+          encounterId: 'e1',
+          windowId: 'w1',
+          closedByItself: false,
+          passedAlone,
+          text: '',
+        });
+      closed(true);
+      await settle(fixture);
+      expect(state.passedAlone('w1')).toBe(true);
+      closed(false);
+      await settle(fixture);
+      expect(state.passedAlone('w1')).toBe(false);
+
+      closed(true);
+      await settle(fixture);
+      source.push({ kind: 'reactionWindowOpened', encounterId: 'e1', windowId: 'w1' });
+      await settle(fixture);
+      expect(state.passedAlone('w1')).toBe(false);
+      closed(false);
+      await settle(fixture);
+      expect(state.passedAlone('w1')).toBe(false);
+    });
   });
 
   describe('the combat news on the stream (MR-013)', () => {

@@ -668,7 +668,7 @@ describe('ReadiedWindowSheet (#582, boards 582-06 to 582-08)', () => {
   it('says it passed by itself when the server recorded it, though the clock did not run out', async () => {
     const { el, settle, state } = setup();
     await settle();
-    state.notePassedAlone('w1');
+    state.notePassedAlone('w1', true);
     state.apply(
       encounter({
         revision: 9,

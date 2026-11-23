@@ -54,3 +54,33 @@ func TestAReadiedPassWithTheAutoPassKeyIsRecordedAsAlone(t *testing.T) {
 		})
 	}
 }
+
+// The reactor's own player sending the window's auto-pass key is not the master's screen passing it by itself: the pass is
+// recorded and told as not alone.
+func TestAReadiedPassWithTheAutoPassKeyFromThePlayerIsNotAlone(t *testing.T) {
+	t.Parallel()
+	a := newArmed(t)
+	e := a.readyThenPass(t, nil)
+	w := a.mustFire(t, e, "Toren")
+	caio := listen(t, a.h, a.campaignID, a.caio.id, false)
+	a.mustAnswer(t, a.caio, e, w.GetId(), func(r *playv1.AnswerReactionRequest) {
+		passAnswer(r)
+		r.IdempotencyKey = autoPassKeyOf(w.GetId())
+	})
+	var alone int
+	if err := a.h.pool.QueryRow(t.Context(), `SELECT count(*) FROM reaction_windows WHERE id = $1 AND (outcome->>'alone') IS NOT NULL`, w.GetId()).Scan(&alone); err != nil || alone != 0 {
+		t.Errorf("the window's outcome has alone set: rows %d, err %v", alone, err)
+	}
+	var closed int
+	for _, ev := range caio.heard(t, a.h) {
+		if c := ev.GetReactionWindowClosed(); c != nil {
+			closed++
+			if c.GetPassedAlone() {
+				t.Errorf("the player's pass was told as passed alone: %v", c)
+			}
+		}
+	}
+	if closed != 1 {
+		t.Errorf("the player heard %d closed events, want 1", closed)
+	}
+}

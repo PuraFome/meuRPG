@@ -112,7 +112,7 @@ describe('a release watching its window (#857, #856; 857-09 cards 1 and 7)', () 
   it('says it passed by itself in 2 minutes when the server recorded it, though the clock did not run out', () => {
     const { state, watch, open } = setup();
     vi.advanceTimersByTime(10 * MS);
-    state.notePassedAlone('w1');
+    state.notePassedAlone('w1', true);
     open([], { readied: undefined }, 2);
     expect(watch.view()).toEqual({ lead: 'Passou sozinho:', rest: 'você não respondeu em 2 min.' });
   });
@@ -128,7 +128,7 @@ describe('a release watching its window (#857, #856; 857-09 cards 1 and 7)', () 
   it('reads "2 min" from the last read\'s wait, though this device never marked it (the master began the wait)', () => {
     const { state, watch, open } = setup();
     open([win({ rolling: false, waitBeganAt: timestampFromMs(T0), waitedMs: 12_000n })], {}, 2);
-    state.notePassedAlone('w1');
+    state.notePassedAlone('w1', true);
     vi.advanceTimersByTime(109 * MS);
     open([], { readied: undefined }, 3);
     expect(watch.view()).toEqual({ lead: 'Passou sozinho:', rest: 'você não respondeu em 2 min.' });
@@ -138,7 +138,7 @@ describe('a release watching its window (#857, #856; 857-09 cards 1 and 7)', () 
     const { state, watch, open } = setup();
     open([], { readied: undefined }, 2);
     expect(watch.view()?.lead).toBe('A janela fechou.');
-    state.notePassedAlone('w1');
+    state.notePassedAlone('w1', true);
     TestBed.tick();
     expect(watch.view()).toEqual({ lead: 'Passou sozinho:', rest: 'você não respondeu em 2 min.' });
   });
