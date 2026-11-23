@@ -14,7 +14,9 @@ import (
 // A creature with no type (a character) is as it always was. These tests need the database (MEURPG_TEST_DATABASE_URL).
 
 const (
-	blightSpell = "spell:blight"
+	blightSpell     = "spell:blight"
+	regenerateSpell = "spell:regenerate"
+	massHealSpell   = "spell:mass-heal"
 )
 
 // typeTable is a cleric of level 11 (Brisa: Wisdom 16, the 1st to the 6th circle) and a wizard of level 17 (Pensantus: Intelligence
@@ -22,14 +24,27 @@ const (
 // character with no type. Brisa has the turn.
 func typeTable(t *testing.T) (*armed, *playv1.Encounter) {
 	t.Helper()
+	return typeTableFor(t, false)
+}
+
+// typeTableFor is typeTable; with high, Brisa is a cleric of level 17 who prepares Regenerate and Mass Heal (the 7th and 9th
+// circles) instead of the level 11 cleric.
+func typeTableFor(t *testing.T, high bool) (*armed, *playv1.Encounter) {
+	t.Helper()
 	a := newArmedWith(t, func(a *armed) {
 		a.toren = a.caio.hero(t, a.campaignID, "Toren", "class:fighter", "race:human", 5,
 			&rulesv1.AbilityScores{Strength: 16, Dexterity: 13, Constitution: 14, Intelligence: 10, Wisdom: 10, Charisma: 8}, []string{battleaxe}, nil)
 		a.pens = a.ana.caster(t, a.campaignID, "Pensantus", "class:wizard", "race:gnome", 17,
 			&rulesv1.AbilityScores{Strength: 10, Dexterity: 14, Constitution: 12, Intelligence: 20, Wisdom: 10, Charisma: 8}, nil, nil, []string{blightSpell}, []string{blightSpell})
-		a.bri = a.bia.caster(t, a.campaignID, "Brisa", "class:cleric", "race:human", 11,
-			&rulesv1.AbilityScores{Strength: 10, Dexterity: 16, Constitution: 14, Intelligence: 10, Wisdom: 16, Charisma: 8}, []string{maceKey}, []string{spareDying}, nil,
-			[]string{cureWounds, healingWord, massCureWounds, healSpell})
+		if high {
+			a.bri = a.bia.castingHero(t, a.campaignID, "Brisa", classLevel("class:cleric", 17, "subclass:life"),
+				&rulesv1.AbilityScores{Strength: 10, Dexterity: 16, Constitution: 14, Intelligence: 10, Wisdom: 20, Charisma: 8}, nil, nil,
+				[]string{cureWounds, regenerateSpell, massHealSpell}, "")
+		} else {
+			a.bri = a.bia.caster(t, a.campaignID, "Brisa", "class:cleric", "race:human", 11,
+				&rulesv1.AbilityScores{Strength: 10, Dexterity: 16, Constitution: 14, Intelligence: 10, Wisdom: 16, Charisma: 8}, []string{maceKey}, []string{spareDying}, nil,
+				[]string{cureWounds, healingWord, massCureWounds, healSpell})
+		}
 	})
 	e := a.start(t, plan{
 		npcs: []*playv1.Participant{{CharacterId: a.goblin.GetId()}}, npcRolls: []int{3},
@@ -437,5 +452,32 @@ func TestHealingSpellsHealAPlantCreature(t *testing.T) {
 				t.Errorf("%s on the Arbusto = %v, want its heal opened", tc.name, got)
 			}
 		})
+	}
+}
+
+// Mass Heal is cast in a fight like Cure Wounds (its "up to 700" is a heal the cast opens): it has no effect on an undead or a
+// construct and heals a creature with no type. Regenerate takes a minute to cast, so a fight refuses it before the type is read.
+func TestMassHealHasNoEffectOnUndeadAndConstructs(t *testing.T) {
+	t.Parallel()
+	a, e := typeTableFor(t, true)
+	a.hurt(t, a.toren, 5)
+	a.put(t, "Toren", 2, 3)
+	res := a.mustCast(t, a.bia, e, "Brisa", massHealSpell, slotOfLevel(9), a.at(t, "Zumbi", "Armadura", "Toren"), noCastRoll)
+	for _, target := range []string{"Zumbi", "Armadura"} {
+		got := a.targetOf(t, e, res, target)
+		if got.GetLastingEffect() != playv1.LastingEffectOutcome_LASTING_EFFECT_OUTCOME_NO_EFFECT || got.GetPendingDamageId() != "" {
+			t.Errorf("Mass Heal on %s = %v, want no effect and no heal opened", target, got)
+		}
+	}
+	if got := a.targetOf(t, e, res, "Toren"); got.GetPendingDamageId() == "" {
+		t.Errorf("Mass Heal on a character = %v, want its heal opened", got)
+	}
+}
+
+func TestRegenerateIsRefusedInAFightBeforeTheTypeIsRead(t *testing.T) {
+	t.Parallel()
+	a, e := typeTableFor(t, true)
+	if _, err := a.cast(t, a.bia, e, "Brisa", regenerateSpell, slotOfLevel(7), a.at(t, "Zumbi"), noCastRoll); err == nil || !strings.Contains(err.Error(), "takes too long to cast in a fight") {
+		t.Errorf("CastSpell(Regenerate) error = %v, want it too long to cast in a fight", err)
 	}
 }

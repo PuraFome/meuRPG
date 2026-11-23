@@ -4,9 +4,18 @@ import "testing"
 
 func TestLifeMagicNoEffect(t *testing.T) {
 	t.Parallel()
-	for typ, want := range map[string]bool{"undead": true, "construct": true, "plant": false, "humanoid": false, "beast": false, "": false} {
-		if got := LifeMagicNoEffect(typ); got != want {
-			t.Errorf("LifeMagicNoEffect(%q) = %v, want %v", typ, got, want)
+	for _, spell := range []string{"spell:cure-wounds", "spell:healing-word", "spell:mass-cure-wounds", "spell:mass-healing-word", "spell:prayer-of-healing", "spell:heal", "spell:mass-heal", "spell:spare-the-dying", SpellBlight} {
+		for typ, want := range map[string]bool{"undead": true, "construct": true, "plant": false, "humanoid": false, "beast": false, "": false} {
+			if got := LifeMagicNoEffect(spell, typ); got != want {
+				t.Errorf("LifeMagicNoEffect(%q, %q) = %v, want %v", spell, typ, got, want)
+			}
+		}
+	}
+	for _, spell := range []string{"spell:regenerate", "spell:fireball", ""} {
+		for _, typ := range []string{"undead", "construct"} {
+			if LifeMagicNoEffect(spell, typ) {
+				t.Errorf("LifeMagicNoEffect(%q, %q) = true, want false: the spell is not in the table", spell, typ)
+			}
 		}
 	}
 }
@@ -43,7 +52,7 @@ func TestSaveModeListsTheTypeSourceOfASpellThatKeysOnIt(t *testing.T) {
 	}
 }
 
-func TestSpellTypeRuleIsBlightsAlone(t *testing.T) {
+func TestSpellTypeRuleReadsTheTable(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
 		spell, typ string
@@ -56,6 +65,9 @@ func TestSpellTypeRuleIsBlightsAlone(t *testing.T) {
 		{SpellBlight, "", TypeRule{}},
 		{"spell:fireball", "plant", TypeRule{}},
 		{"spell:fireball", "undead", TypeRule{}},
+		{"spell:regenerate", "undead", TypeRule{}},
+		{"spell:cure-wounds", "undead", TypeRule{NoEffect: true, CreatureType: "undead"}},
+		{"spell:cure-wounds", "plant", TypeRule{CreatureType: "plant"}},
 	} {
 		if got := SpellTypeRule(tc.spell, tc.typ); got != tc.want {
 			t.Errorf("SpellTypeRule(%q, %q) = %+v, want %+v", tc.spell, tc.typ, got, tc.want)

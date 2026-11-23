@@ -437,7 +437,7 @@ func (s *Service) resolveOnTarget(ctx context.Context, c *combatTx, m authz.Memb
 	case dartsOf(sp, slotLevel) > 0:
 		return s.openDarts(ctx, c, sp, caster, target, hit)
 	case sp.Heal != nil:
-		if why, err := s.noLifeMagic(ctx, c, target); err != nil || why != "" { // no effect on undead or constructs (SRD 5.1)
+		if why, err := s.noLifeMagic(ctx, c, sp.Key, target); err != nil || why != "" { // no effect on undead or constructs (SRD 5.1)
 			hit.Lasting, hit.NoEffectWhy = lastingNoEffect, why
 			return err
 		}

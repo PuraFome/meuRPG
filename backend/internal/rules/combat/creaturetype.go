@@ -8,14 +8,36 @@ import "github.com/PuraFome/meuRPG/backend/internal/rules"
 // SpellBlight is Blight, the spell whose save and damage read the target's type.
 const SpellBlight = "spell:blight"
 
-// LifeMagicNoEffect says a spell that heals (Cure Wounds, Healing Word, Heal, Mass Cure Wounds), stabilizes (Spare the Dying)
-// or withers (Blight) does nothing to a creature of the type: "This spell has no effect on undead or constructs".
-func LifeMagicNoEffect(creatureType string) bool {
-	return rules.LayOnHandsNoEffect(creatureType)
+// spellTypeEntry is what the creature type of the target changes in one spell.
+type spellTypeEntry struct {
+	// noUndeadConstruct says the spell has no effect on an undead or a construct (SRD 5.1: "This spell has no effect on
+	// undead or constructs").
+	noUndeadConstruct bool
+	// plant says a plant saves with disadvantage and takes the most the damage dice can give (Blight).
+	plant bool
 }
 
-// SpellReadsType says the spell has a rule for the target's creature type (SpellTypeRule).
-func SpellReadsType(spellKey string) bool { return spellKey == SpellBlight }
+// spellTypeRules is the one table of the spells that read the creature type of the target, by spell key.
+var spellTypeRules = map[string]spellTypeEntry{
+	"spell:cure-wounds":       {noUndeadConstruct: true},
+	"spell:healing-word":      {noUndeadConstruct: true},
+	"spell:mass-cure-wounds":  {noUndeadConstruct: true},
+	"spell:mass-healing-word": {noUndeadConstruct: true},
+	"spell:prayer-of-healing": {noUndeadConstruct: true},
+	"spell:heal":              {noUndeadConstruct: true},
+	"spell:mass-heal":         {noUndeadConstruct: true},
+	"spell:spare-the-dying":   {noUndeadConstruct: true},
+	SpellBlight:               {noUndeadConstruct: true, plant: true},
+}
+
+// LifeMagicNoEffect says the spell does nothing to a creature of the type: it is a spell of the table that has no effect on
+// undead or constructs, and the type is one of them.
+func LifeMagicNoEffect(spellKey, creatureType string) bool {
+	return spellTypeRules[spellKey].noUndeadConstruct && rules.LayOnHandsNoEffect(creatureType)
+}
+
+// SpellReadsType says the spell has a plant rule for the target's creature type (SpellTypeRule): Blight.
+func SpellReadsType(spellKey string) bool { return spellTypeRules[spellKey].plant }
 
 // IsPlant says the creature type is plant.
 func IsPlant(creatureType string) bool { return creatureType == "plant" }
@@ -45,10 +67,15 @@ type TypeRule struct {
 	Plant bool
 }
 
-// SpellTypeRule is the rule of the spell for a target of the type; a spell that does not read the type has none.
+// SpellTypeRule is the rule of the spell for a target of the type; a spell outside the table has none.
 func SpellTypeRule(spellKey, creatureType string) TypeRule {
-	if !SpellReadsType(spellKey) {
+	entry, ok := spellTypeRules[spellKey]
+	if !ok {
 		return TypeRule{}
 	}
-	return TypeRule{NoEffect: LifeMagicNoEffect(creatureType), Mode: BlightSaveMode(creatureType), CreatureType: creatureType, Plant: IsPlant(creatureType)}
+	rule := TypeRule{NoEffect: LifeMagicNoEffect(spellKey, creatureType), CreatureType: creatureType}
+	if entry.plant {
+		rule.Mode, rule.Plant = BlightSaveMode(creatureType), IsPlant(creatureType)
+	}
+	return rule
 }
