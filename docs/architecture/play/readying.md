@@ -27,7 +27,7 @@ A combatant has at most one waiting row.
 | --- | --- |
 | `waiting` | `ReadyAction` on the readier's turn spends the action and writes the row |
 | `fired` | The readier used its READIED window ("Usar") |
-| `ignored` | The readier let its READIED window pass ("Deixar passar"), or it passed by itself after 30 s |
+| `ignored` | The readier let its READIED window pass ("Deixar passar"), or it passed by itself after 30 s (the server records it in the window's outcome) |
 | `lost` | The readier's next turn started, or it was defeated or dismissed (`loseReadiedOfDefeated`, in the settle step of every change) |
 | `broken` | The concentration that held a readied spell ended (`settleReadiedSpells`) |
 | `canceled` | The readier's player, or the master, gave it up on the readier's turn (`CancelReadied`) |
@@ -138,6 +138,9 @@ That happens when the readier is defeated or incapacitated, spends its reaction 
 A change that ends the row (a held spell broken, a readier defeated) closes its window in the same call, a correction to 0 hit points too: the table does not wait for it.
 
 The automatic pass of 30 s counts on the master's screen from when the window opened.
+The server records a pass that came alone: the master's call with the window's auto-pass key, in the window's outcome.
+The closed event tells it (`passed_alone`) to the master and the reactor.
+The screens say "Passou sozinho" from it, not from their clock.
 It can pass a window whose player is still choosing a square for a move, or a target: the row is then ignored.
 The readier's player sets the mark (`MarkReactionRolling`) on the first touch of the list of creatures or the darts in the window, or on entering the map.
 The player can clear it, and the master's wait is 120 s from `wait_began_at`, not the 30 s of the window.

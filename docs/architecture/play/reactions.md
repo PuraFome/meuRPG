@@ -312,6 +312,10 @@ A refusal because it was answered meanwhile is ignored.
 Saving throws (`CONCENTRATION_SAVE`, `EFFECT_SAVE`, the Hellish Rebuke second step), contests and the master's check never auto-pass.
 An NPC's window never auto-passes, a READIED one included.
 A reload starts the 30 s again (in memory only).
+The server records a pass that came alone.
+It is the master's "Deixar passar" whose key is the window's auto-pass key (`isAutoPassKey`, the same derivation), and it sets `alone` in the window's outcome.
+The closed event tells it (`passed_alone`) to the master and the window's reactor, nobody else.
+The screens say "Passou sozinho" from that record, never from their own clock.
 The player's prompt only shows the countdown; their client never answers by itself.
 
 **The player is rolling.** A physical die takes longer than 30 s to find, roll and type, so when a player taps "Usar" on an optional reaction and moves to the die step, their screen calls `MarkReactionRolling` (the reactor's player alone; others get `permission_denied`).
