@@ -29,7 +29,7 @@ import { MatIconModule } from '@angular/material/icon';
   imports: [MatButtonModule, MatIconModule, NgTemplateOutlet],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div #foot class="pf" [class.pf--stacked]="stacked()">
+    <div #foot class="pf" [class.pf--stacked]="stacked()" [class.pf--wrap]="wrap()">
       @if (stacked() ? !cancelFirstWhenStacked() : confirmFirst()) {
         <ng-container *ngTemplateOutlet="confirmBtn" />
         <ng-container *ngTemplateOutlet="cancelBtn" />
@@ -84,6 +84,8 @@ export class PairFoot {
   readonly confirm = output<void>();
 
   protected readonly stacked = signal(false);
+  /** A label overflows its button on one line: it wraps. */
+  protected readonly wrap = signal(false);
   private readonly foot = viewChild<ElementRef<HTMLElement>>('foot');
   private readonly injector = inject(Injector);
 
@@ -94,7 +96,23 @@ export class PairFoot {
       if (!foot) {
         return;
       }
-      const check = () => this.stacked.set(needsStack(foot));
+      const check = () => {
+        // Always measured on one line (the default look), so the answer does not depend on the wrapping it causes.
+        const wasWrapping = foot.classList.contains('pf--wrap');
+        foot.classList.remove('pf--wrap');
+        const stacked = needsStack(foot);
+        const overflows = Array.from(foot.querySelectorAll('button')).some(
+          (b) => b.scrollWidth - b.clientWidth > 1,
+        );
+        if (wasWrapping) {
+          foot.classList.add('pf--wrap');
+        }
+        // Stacking changes the layout (the observer measures again): the overflow is judged on the settled one.
+        if (stacked === this.stacked()) {
+          this.wrap.set(overflows);
+        }
+        this.stacked.set(stacked);
+      };
       check();
       const observer = typeof ResizeObserver === 'function' ? new ResizeObserver(check) : null;
       observer?.observe(foot);
@@ -127,18 +145,13 @@ export function needsStack(foot: HTMLElement): boolean {
   }
   const gap = parseFloat(getComputedStyle(foot).columnGap) || 12;
   const need = (button: HTMLElement) => {
-    // The label may wrap in the button; the room it needs is its width on one line.
-    button.style.whiteSpace = 'nowrap';
     const style = getComputedStyle(button);
     const padding = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
     // Only the words and the icon: the ripple, the focus indicator and the touch target of a Material button are as wide as the button.
     const content = Array.from(
       button.querySelectorAll<HTMLElement>('.mdc-button__label, .mat-icon'),
     ).filter((el) => !el.parentElement?.closest('.mdc-button__label'));
-    const width =
-      content.reduce((sum, child) => sum + child.getBoundingClientRect().width, 0) + padding;
-    button.style.whiteSpace = '';
-    return width;
+    return content.reduce((sum, child) => sum + child.getBoundingClientRect().width, 0) + padding;
   };
   if (foot.ownerDocument.defaultView?.matchMedia?.('(min-width: 768px)').matches) {
     // From a tablet up the pair is right-aligned and equal (176 px at least each); it stacks only when the room it has
