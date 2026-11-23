@@ -108,9 +108,6 @@ enum AdvantageSourceKind {
   ADVANTAGE_SOURCE_KIND_SUNLIGHT_SAVE = 115;
   // The roller's own Inspiration, spent for advantage before the d20 (RN-43): the master and the roller read it, nobody else reads the roll.
   ADVANTAGE_SOURCE_KIND_FAVOR = 116;
-  // The advantage on the save of Charm Person, Dominate Beast, Dominate Person and Modify Memory while the target is fighting the
-  // caster or the caster's companions (SRD 5.1).
-  ADVANTAGE_SOURCE_KIND_FIGHTING_CASTER = 117;
   // The advantage or disadvantage a spell gives a save because of the target's creature type (Blight: disadvantage for a plant). Only
   // the master reads it: a player reads "Outra fonte" and never the type (RN-10).
   ADVANTAGE_SOURCE_KIND_TARGET_CREATURE_TYPE = 118;
