@@ -6,8 +6,13 @@
   grid-auto-columns: 1fr;
   gap: var(--mr-space-3);
 
+  // A long label (an NPC's long name) wraps inside the button instead of running past it; the height is a minimum.
   button {
-    white-space: nowrap;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    height: auto;
+    min-height: var(--mat-button-filled-container-height, 44px);
+    padding-block: 6px;
   }
 
   @media (min-width: 768px) {
@@ -22,6 +27,7 @@
     button {
       --mat-button-filled-container-height: 48px;
       --mat-button-outlined-container-height: 48px;
+      min-height: 48px;
     }
   }
 

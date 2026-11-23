@@ -127,13 +127,18 @@ export function needsStack(foot: HTMLElement): boolean {
   }
   const gap = parseFloat(getComputedStyle(foot).columnGap) || 12;
   const need = (button: HTMLElement) => {
+    // The label may wrap in the button; the room it needs is its width on one line.
+    button.style.whiteSpace = 'nowrap';
     const style = getComputedStyle(button);
     const padding = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
     // Only the words and the icon: the ripple, the focus indicator and the touch target of a Material button are as wide as the button.
     const content = Array.from(
       button.querySelectorAll<HTMLElement>('.mdc-button__label, .mat-icon'),
     ).filter((el) => !el.parentElement?.closest('.mdc-button__label'));
-    return content.reduce((sum, child) => sum + child.getBoundingClientRect().width, 0) + padding;
+    const width =
+      content.reduce((sum, child) => sum + child.getBoundingClientRect().width, 0) + padding;
+    button.style.whiteSpace = '';
+    return width;
   };
   if (foot.ownerDocument.defaultView?.matchMedia?.('(min-width: 768px)').matches) {
     // From a tablet up the pair is right-aligned and equal (176 px at least each); it stacks only when the room it has
