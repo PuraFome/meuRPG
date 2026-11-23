@@ -17,7 +17,10 @@ queue_rules:
       - check-success = test and build
       - check-success = lint and typecheck
       - check-success = coverage
-      - check-success = CodeQL
+      # The code-scanning check named CodeQL posts a provisional neutral before every language uploads; the jobs finish with their analysis.
+      - check-success = codeql (go)
+      - check-success = codeql (javascript-typescript)
+      - check-success = codeql (actions)
       - check-success = osv-scanner (lockfiles)
       - check-success = actionlint and zizmor
       - check-success = tests of the CI scripts
