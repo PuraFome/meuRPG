@@ -157,6 +157,8 @@ type windowOutcome struct {
 	// Saved lists the creatures a Feather Fall saved, or whose failed saving throw the master turned into a
 	// success with Legendary Resistance.
 	Saved []string `json:"saved,omitempty"`
+	// Alone says the window passed by itself: the master's screen sent "Deixar passar" with the window's auto-pass key (isAutoPassKey).
+	Alone bool `json:"alone,omitempty"`
 }
 
 func windowTriggerOf(w playdb.ReactionWindow) windowTrigger {
@@ -189,6 +191,8 @@ type reactionNote struct {
 	reason   reaction.Reason
 	// spentOn is the reaction the same reactor used that closed it (REACTION_SPENT).
 	spentOn reaction.Kind
+	// alone says the window passed by itself (windowOutcome.Alone).
+	alone bool
 }
 
 // openWindows opens the windows of one trigger, in the order given (the reactors'
@@ -222,6 +226,7 @@ func (s *Service) openWindows(ctx context.Context, c *combatTx, group string, ho
 
 // closeWindow answers a window, or closes it by itself with a reason.
 func (s *Service) closeWindow(ctx context.Context, c *combatTx, w playdb.ReactionWindow, status string, reason reaction.Reason, out windowOutcome, spentOn reaction.Kind) (playdb.ReactionWindow, error) {
+	out.Alone = status == windowAnswered && !out.Used && c.master && isAutoPassKey(w.ID, c.key)
 	body, err := json.Marshal(out)
 	if err != nil {
 		return w, fmt.Errorf("encode the window's outcome: %w", err)
@@ -249,7 +254,7 @@ func (s *Service) closeWindow(ctx context.Context, c *combatTx, w playdb.Reactio
 			return w, fmt.Errorf("forget the question kept for a closed window: %w", err)
 		}
 	}
-	c.reactionNotes = append(c.reactionNotes, reactionNote{window: closed, byItself: status == windowClosed, reason: reason, spentOn: spentOn})
+	c.reactionNotes = append(c.reactionNotes, reactionNote{window: closed, byItself: status == windowClosed, reason: reason, spentOn: spentOn, alone: out.Alone})
 	return closed, nil
 }
 

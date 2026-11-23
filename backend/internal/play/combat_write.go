@@ -257,6 +257,9 @@ type combatTx struct {
 	zoneOut []zoneLine
 	// hash is the request hash kept with the event that carries the change's key.
 	hash *string
+	// key is the idempotency key of the call that makes the change (empty where there is none): closeWindow tells from it a window
+	// the master's screen passed by itself.
+	key string
 	// rules are the table's rules (RN-24), read in this transaction when it
 	// opened: a critical hit and who sees the death saves follow them from the
 	// next roll on, and are never kept longer than the change.
@@ -628,7 +631,7 @@ func (s *Service) replayOfKey(ctx context.Context, q *playdb.Queries, session pl
 // openChange builds the change's transaction state: the table's rules and the combat
 // the change is about, found in the session and checked against the sight.
 func (s *Service) openChange(ctx context.Context, tx pgx.Tx, h *hints, q *playdb.Queries, session playdb.GameSession, w combatWrite, sight *fogSight) (*combatTx, error) {
-	c := &combatTx{tx: tx, q: q, session: session, now: s.now(), kind: w.kind, actorUserID: w.m.UserID, svc: s, master: w.m.Role == authz.RoleMaster, sight: sight, hash: w.hash, hints: h}
+	c := &combatTx{tx: tx, q: q, session: session, now: s.now(), kind: w.kind, actorUserID: w.m.UserID, svc: s, master: w.m.Role == authz.RoleMaster, sight: sight, hash: w.hash, key: w.key, hints: h}
 	var err error
 	if c.rules, err = s.tableRules(ctx, tx, w.m.CampaignID); err != nil {
 		return nil, err
