@@ -249,6 +249,9 @@ func (f *reactionFacts) cuttingWords() (string, bool) {
 // cuttingWordsMaster is the master's line: the numbers the roll became, or, while its roller's answer is awaited, none of them.
 func (f *reactionFacts) cuttingWordsMaster(kindText, actorText string) string {
 	re := f.re
+	if re.NeverRolled { // the roll will never be written: the line says no more than it knows
+		return fmt.Sprintf("%s usou Palavras de Interrupção: d%d (%d) subtraído %s%s.%s", f.who, re.DieSides, re.Die, kindText, actorText, f.by)
+	}
 	if re.Asked { // the roll waits for its roller's answer: nothing of it is known yet
 		return fmt.Sprintf("%s usou Palavras de Interrupção: d%d (%d) subtraído %s%s (aguardando a rolagem).%s", f.who, re.DieSides, re.Die, kindText, actorText, f.by)
 	}

@@ -26,6 +26,9 @@ type reactionEvent struct {
 	// event of the roll the answer settles names in CutGroup, and Reduction is what the whole group took off the roll. The log
 	// completes the line from that event when it reads (combat_cut_pending.go); the event itself is never changed.
 	Asked bool `json:"asked,omitempty"`
+	// NeverRolled is set by the log on its copy of an Asked answer whose roll is never written (the roller left, or the combat ended): it is
+	// not part of the payload.
+	NeverRolled bool `json:"-"`
 	// Kind is the reaction answered (reaction.Kind), Window the window and Used
 	// false for "Deixar passar".
 	Kind   string `json:"kind,omitempty"`

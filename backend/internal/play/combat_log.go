@@ -101,6 +101,8 @@ type logEntry struct {
 	rolls      *logRolls
 	// cut is the roll that settled the question a Cutting Words line waited for, with the line as it reads then (combat_cut_pending.go).
 	cut *cutJoin
+	// neverRolled says the roll a Cutting Words line waits for is never written: its hold is gone with its roller or the combat.
+	neverRolled bool
 	// favor is the variant of a line about the Inspiration (combat_log_favor.go).
 	favor string
 }
@@ -668,6 +670,7 @@ func (b *logBuilder) entry(e playdb.ListEncounterEventsRow) *logEntry {
 	if err != nil {
 		return nil // never: this package wrote it
 	}
+	b.dropWaiting(e.Kind, ev) // the removal event carries no round
 	// The log starts when the combat begins: the setup is not in it. The master's line of
 	// the monsters he put in (their rolled hit points) is the exception: it is his from the setup.
 	if ev.Round == 0 && (e.Kind != eventCombatantsAdded || ev.Monsters == nil) {

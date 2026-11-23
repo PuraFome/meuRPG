@@ -136,6 +136,21 @@ func (r *reactionEvent) fill(n cutNumbers, ok bool) {
 	}
 }
 
+// dropWaiting reads an event that forgets held rolls: the removal of a combatant (forgetHoldsOf drops its holds) and the end of the
+// combat. The lines that still wait for a roll of that roller (every roller at the end) never get one, and say so.
+func (b *logBuilder) dropWaiting(kind string, ev actionEvent) {
+	if kind != eventCombatantRemoved && kind != eventEncounterEnded {
+		return
+	}
+	for _, hosts := range b.byCut {
+		for _, host := range hosts {
+			if host.cut == nil && (kind == eventEncounterEnded || host.ev.Target == ev.Actor) {
+				host.neverRolled = true
+			}
+		}
+	}
+}
+
 // completedBy is the answer as it reads once the roll that settled its question is known, by the rule of cutNumbersOf, with the hold kind the roll's own event says (a spell_cast is a cast). Only a replay
 // with one ray asks, because holdSpellAttack puts rayCombatants (one per ray) through spellMayAsk, which wants exactly one, so an
 // Asked answer of a cast never has more.
@@ -155,6 +170,11 @@ func (r reactionEvent) completedBy(kind string, final actionEvent) (reactionEven
 func (e *logEntry) reactionFor(v combatViewer) *reactionEvent {
 	if e.cut != nil && e.cut.by.heardBy(v) {
 		return e.cut.done
+	}
+	if e.cut == nil && e.neverRolled {
+		gone := *e.ev.Reaction
+		gone.NeverRolled = true
+		return &gone
 	}
 	return e.ev.Reaction
 }
