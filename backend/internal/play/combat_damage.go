@@ -440,19 +440,9 @@ func (f *damageFlow) land(ctx context.Context, g playdb.PendingDamage) error {
 	// unless the cast lists its targets for each viewer: an area's line leaves out the hidden ones itself
 	// (spellView).
 	f.out.made.Secret = f.out.made.Secret || (tgt.Hidden && f.p.CastID == nil)
-	rolled := halfIf(g.Half, f.total)
-	total, maxed, err := f.plantMaximum(ctx, g, tgt)
+	amount, shown, own, err := f.amounts(ctx, g, tgt)
 	if err != nil {
 		return err
-	}
-	amount := halfIf(g.Half, total)
-	own := f.pr != nil && g.ID == f.p.ID && !maxed
-	// What a player who is not the target's reads is the damage as rolled, before the target's modifiers and
-	// counting every die the roll made (a conditional extra included): nothing in it says what the target
-	// resists or is (RN-10, RN-20). A plant takes the most the dice can give: the master reads it applied.
-	shown := rolled
-	if own {
-		shown = clamp32(f.pr.shownTotal(), 0, math.MaxInt32)
 	}
 	steps, amount, err := f.settleSteps(ctx, g, tgt, amount, own)
 	if err != nil {
@@ -480,6 +470,26 @@ func (f *damageFlow) land(ctx context.Context, g playdb.PendingDamage) error {
 		f.out.made.Settled = append(f.out.made.Settled, hit)
 	}
 	return nil
+}
+
+// amounts says what the target takes before its modifiers and what a player reads. It answers the amount, the
+// damage shown to a player who is not the target's, and whether the target's own pending roll is the one landing.
+func (f *damageFlow) amounts(ctx context.Context, g playdb.PendingDamage, tgt playdb.Combatant) (int32, int32, bool, error) {
+	rolled := halfIf(g.Half, f.total)
+	total, maxed, err := f.plantMaximum(ctx, g, tgt)
+	if err != nil {
+		return 0, 0, false, err
+	}
+	amount := halfIf(g.Half, total)
+	own := f.pr != nil && g.ID == f.p.ID && !maxed
+	// What a player who is not the target's reads is the damage as rolled, before the target's modifiers and
+	// counting every die the roll made (a conditional extra included): nothing in it says what the target
+	// resists or is (RN-10, RN-20). A plant takes the most the dice can give: the master reads it applied.
+	shown := rolled
+	if own {
+		shown = clamp32(f.pr.shownTotal(), 0, math.MaxInt32)
+	}
+	return amount, shown, own, nil
 }
 
 // halfIf is the damage clamped, halved (rounded down) when the target saved.

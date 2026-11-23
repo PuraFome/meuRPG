@@ -434,7 +434,7 @@ func TestHealingSpellsHealAPlantCreature(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			a, e := typeTable(t)
-			max := byLabel(t, e, "Arbusto").GetHitPointsCurrent()
+			full := byLabel(t, e, "Arbusto").GetHitPointsCurrent()
 			a.wound(t, e, "Arbusto", 5)
 			a.put(t, "Arbusto", 4, 4) // beside Brisa: Cure Wounds is a touch
 			got := a.targetOf(t, e, a.mustCast(t, a.bia, e, "Brisa", tc.spell, slotOfLevel(tc.slot), a.at(t, "Arbusto"), noCastRoll), "Arbusto")
@@ -445,8 +445,8 @@ func TestHealingSpellsHealAPlantCreature(t *testing.T) {
 				if got.GetEffect().GetOutcome() != playv1.SpellEffectOutcome_SPELL_EFFECT_OUTCOME_AFFECTED {
 					t.Errorf("Heal on the Arbusto = %v, want affected", got.GetEffect())
 				}
-				if now := byLabel(t, a.get(t, a.master), "Arbusto").GetHitPointsCurrent(); now != max {
-					t.Errorf("the Arbusto has %d PV after Heal, want its %d", now, max)
+				if now := byLabel(t, a.get(t, a.master), "Arbusto").GetHitPointsCurrent(); now != full {
+					t.Errorf("the Arbusto has %d PV after Heal, want its %d", now, full)
 				}
 			} else if got.GetPendingDamageId() == "" {
 				t.Errorf("%s on the Arbusto = %v, want its heal opened", tc.name, got)
