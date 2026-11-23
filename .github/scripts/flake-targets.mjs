@@ -149,7 +149,7 @@ export function parseSpec(text) {
   visit(source, []);
   const functions = [];
   for (const st of source.statements) {
-    if (ts.isFunctionDeclaration(st) && st.name) functions.push({ name: st.name.text, ...range(st) });
+    if (ts.isFunctionDeclaration(st) && st.name && st.body) functions.push({ name: st.name.text, ...range(st) });
     else if (ts.isVariableStatement(st) && st.declarationList.flags & ts.NodeFlags.Const) {
       for (const d of st.declarationList.declarations) {
         if (ts.isIdentifier(d.name) && d.initializer && (ts.isArrowFunction(d.initializer) || ts.isFunctionExpression(d.initializer))) functions.push({ name: d.name.text, ...range(st) });
@@ -312,7 +312,9 @@ export function mapDiff({ diff, read: readFile, files }) {
       const callers = tests.filter((t) => callsAny(`${t.body}\n${t.hooks}`, names));
       const picked = sample(callers);
       for (const t of picked) addPlaywright(file, t, `calls ${f.name}`);
-      if (callers.length === 0) notes.push(`${file}: the function ${f.name} changed and no test calls it`);
+      if (callers.length === 0) {
+        if (!tests.some((t) => t.from >= f.from && t.to <= f.to)) notes.push(`${file}: the function ${f.name} changed and no test calls it`);
+      }
       else if (callers.length > picked.length) notes.push(`${file}: the function ${f.name} has ${callers.length} callers; ${picked.length} run`);
     }
   }

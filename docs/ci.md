@@ -399,7 +399,7 @@ The `repeat-changed` job runs next to the gate on every pull request that touche
 
 `.github/scripts/flake-targets.mjs` maps the diff against the base to the tests to repeat:
 
-- the Playwright `test(...)` blocks and the Go `func TestX` whose body changed (a change outside any test maps to nothing, except one in a `test.beforeEach`, `test.beforeAll`, `test.afterEach` or `test.afterAll`, which maps to a sample of up to 5 of the tests the hook reaches);
+- the Playwright `test(...)` blocks and the Go `func TestX` whose body changed (a change outside any test maps to nothing, except one in a `test.beforeEach`, `test.beforeAll`, `test.afterEach` or `test.afterAll`, which maps to a sample of up to 5 of the tests the hook reaches, or in a top-level function of the spec, next item);
 - for a changed top-level function of an `e2e/tests/*.spec.ts` (a `function`, or a `const` arrow function or function expression), a sample of up to 5 of the tests of that file that call it, directly or through other top-level functions of that file, at any depth;
 - for a changed helper, a sample of up to 5 of the tests that call it, directly or through other helpers: an exported function of an `e2e/tests/*-support.ts`, or a function or method of `backend/internal/leaktest`.
 

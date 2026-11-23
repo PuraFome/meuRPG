@@ -501,3 +501,15 @@ test('a change in a spec outside any test, hook or function still maps to nothin
   const text = ['const limit = 3;', 'function f() {', '  return limit;', '}', "test('t', async () => {", '  f();', '});', ''].join('\n');
   assert.deepEqual(ofSpec(text, 1, 1), { playwright: [], go: [], notes: [] });
 });
+
+test('a chain of top-level functions of any depth reaches the test that calls the first (callers defined before callees)', () => {
+  const text = ['function f1() {', '  return f2();', '}', 'function f2() {', '  return f3();', '}', 'function f3() {', '  return f4();', '}', 'function f4() {', '  return f5();', '}', 'function f5() {', '  return 1;', '}', "test('deep', async () => {", '  f1();', '});', ''].join('\n');
+  assert.deepEqual(ofSpec(text, 14, 14).playwright.map((t) => [t.title, t.why]), [['deep', 'calls f5']]);
+});
+
+test('an overload signature is not a function of its own, and a test inside a function does not make it uncalled', () => {
+  const over = ['function g(a: string): void;', 'function g(a: number): void;', 'function g(a: any) {', '  return a;', '}', "test('t', async () => { g(1); });", ''].join('\n');
+  assert.deepEqual(parseSpec(over).functions.map((f) => f.name), ['g']);
+  const inner = ['function wrap() {', "  test('inside', async () => {});", '}', 'wrap();', ''].join('\n');
+  assert.deepEqual(ofSpec(inner, 2, 2).notes, []);
+});
