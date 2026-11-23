@@ -643,7 +643,7 @@ func (s *Service) spellSave(ctx context.Context, c *combatTx, m authz.Membership
 	if err != nil {
 		return err
 	}
-	rule := combat.SpellTypeRule(sp.Key, targetSheet.Traits.CreatureType)
+	rule := combat.SpellTypeRule(sp.Key, creatureTypeOf(targetSheet))
 	if rule.NoEffect { // no save and no damage: the master reads why (SRD 5.1)
 		hit.Lasting, hit.NoEffectWhy = lastingNoEffect, whyNoLifeMagic
 		return nil

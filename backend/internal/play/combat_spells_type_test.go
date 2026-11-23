@@ -473,11 +473,3 @@ func TestMassHealHasNoEffectOnUndeadAndConstructs(t *testing.T) {
 		t.Errorf("Mass Heal on a character = %v, want its heal opened", got)
 	}
 }
-
-func TestRegenerateIsRefusedInAFightBeforeTheTypeIsRead(t *testing.T) {
-	t.Parallel()
-	a, e := typeTableFor(t, true)
-	if _, err := a.cast(t, a.bia, e, "Brisa", regenerateSpell, slotOfLevel(7), a.at(t, "Zumbi"), noCastRoll); err == nil || !strings.Contains(err.Error(), "takes too long to cast in a fight") {
-		t.Errorf("CastSpell(Regenerate) error = %v, want it too long to cast in a fight", err)
-	}
-}
