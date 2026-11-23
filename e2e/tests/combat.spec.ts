@@ -1234,7 +1234,7 @@ test('Sono em dois goblins e no Capitão: o mestre vê o total e os PV, o jogado
 
     // The player: who fell asleep, who was not affected, the caster's own roll, and no number of an enemy's.
     await expect(sheet.getByRole('heading', { name: 'Sono conjurado' })).toBeVisible();
-    await expect(sheet.getByText('O Capitão Goblin não foi afetado. O Goblin 1 adormeceu. O Goblin 2 adormeceu.')).toBeVisible();
+    await expect(sheet.getByText('Sem efeito no Capitão Goblin. O Goblin 1 adormeceu. O Goblin 2 adormeceu.')).toBeVisible();
     await expect(sheet.getByText('Sua rolagem')).toBeVisible();
     await expect(sheet.getByText('5d8 = 20 · dado físico')).toBeVisible();
     await expect(sheet.getByText(/\bPV\b|restam|restantes/)).toHaveCount(0);
