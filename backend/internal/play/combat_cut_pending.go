@@ -91,29 +91,60 @@ func (b *logBuilder) registerCut(entry *logEntry) {
 
 // joinCut lands the event of a roll an answer settled on the lines of the Cutting Words of its group: they host it, so that the line's
 // number moves with it, and read what the roll became. An undone roll never gets here, and its lines wait again.
-func (b *logBuilder) joinCut(id string, final actionEvent) {
+func (b *logBuilder) joinCut(id, eventKind string, final actionEvent) {
+	kind := "attack"
+	if eventKind == eventSpellCast {
+		kind = "cast"
+	}
 	for _, host := range b.byCut[final.CutGroup] {
-		if done, ok := host.ev.Reaction.completedBy(final); ok {
+		if done, ok := host.ev.Reaction.completedBy(kind, final); ok {
 			host.hosts = append(host.hosts, id)
 			host.cut = &cutJoin{by: final, done: &done}
 		}
 	}
 }
 
-// completedBy is the answer as it reads once the roll that settled its question is known, by the rule of completeAnswers: a weapon
-// attack's outcome, armor class and total, or the one roll of a spell attack's; Before is the total with the die back on it.
-func (r reactionEvent) completedBy(final actionEvent) (reactionEvent, bool) {
-	outcome, ac, total := final.Outcome, final.TargetAC, final.Total
-	if len(final.Hits) > 0 {
-		// More than one hit (the rays of a Scorching Ray) cannot reach here: a replay asks only when its attack has one ray, because
-		// holdSpellAttack puts rayCombatants (one per ray) through spellMayAsk, which wants exactly one, so no such answer is Asked.
+// cutNumbers are the numbers a Cutting Words answer reads once the roll it cut is written.
+type cutNumbers struct {
+	outcome       string
+	ac            int32
+	before, after int32
+}
+
+// cutNumbersOf is the one rule of those numbers, for the hold kind of the roll ("attack" or "cast"): a weapon attack's outcome, armor
+// class and total, or the one roll of a spell attack's; after is the total, before the total with the die back on it (reduction is what
+// the group took off). ok is false when the rule says nothing: a cast with no single hit (a spell that rolled no attack, or several
+// rays) completes nothing, and any other kind is no attack roll.
+func cutNumbersOf(kind string, final actionEvent, reduction int32) (cutNumbers, bool) {
+	switch kind {
+	case "attack":
+		return cutNumbers{final.Outcome, final.TargetAC, final.Total + reduction, final.Total}, true
+	case "cast":
 		if len(final.Hits) != 1 {
-			return r, false
+			return cutNumbers{}, false
 		}
-		outcome, ac, total = final.Hits[0].Outcome, final.Hits[0].TargetAC, final.Hits[0].Total
+		h := final.Hits[0]
+		return cutNumbers{h.Outcome, h.TargetAC, h.Total + reduction, h.Total}, true
 	}
-	r.Outcome, r.AC, r.After = outcome, ac, total
-	r.Before = total + r.Reduction
+	return cutNumbers{}, false
+}
+
+// fill writes the numbers of a roll on the answer, and nothing when the rule says none.
+func (r *reactionEvent) fill(n cutNumbers, ok bool) {
+	if ok {
+		r.Outcome, r.AC, r.Before, r.After = n.outcome, n.ac, n.before, n.after
+	}
+}
+
+// completedBy is the answer as it reads once the roll that settled its question is known, by the rule of cutNumbersOf, with the hold kind the roll's own event says (a spell_cast is a cast). Only a replay
+// with one ray asks, because holdSpellAttack puts rayCombatants (one per ray) through spellMayAsk, which wants exactly one, so an
+// Asked answer of a cast never has more.
+func (r reactionEvent) completedBy(kind string, final actionEvent) (reactionEvent, bool) {
+	n, ok := cutNumbersOf(kind, final, r.Reduction)
+	if !ok {
+		return r, false
+	}
+	r.fill(n, ok)
 	r.Asked = false
 	return r, true
 }

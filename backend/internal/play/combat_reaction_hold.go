@@ -377,17 +377,14 @@ func (s *Service) completeAnswers(c *combatTx, windows []playdb.ReactionWindow, 
 	for _, ref := range answersOf(c, windows) {
 		switch st.hold.Kind {
 		case "attack":
-			ref.ev.Outcome, ref.ev.AC = done.Outcome, done.TargetAC
-			ref.ev.After = done.Total
-			ref.ev.Before = done.Total + st.reduction
+			ref.ev.fill(cutNumbersOf("attack", done, st.reduction))
 		case "damage":
 			ref.ev.Before = st.rolledTotal()
 			ref.ev.After = done.Amount
 		case "cast":
 			// A spell attack: the one roll the die came off (a Counterspell's answer keeps its own numbers).
-			if len(done.Hits) == 1 && ref.ev.Kind == string(reaction.CuttingWords) {
-				ref.ev.Outcome, ref.ev.AC, ref.ev.After = done.Hits[0].Outcome, done.Hits[0].TargetAC, done.Hits[0].Total
-				ref.ev.Before = done.Hits[0].Total + st.reduction
+			if ref.ev.Kind == string(reaction.CuttingWords) {
+				ref.ev.fill(cutNumbersOf("cast", done, st.reduction))
 			}
 		default: // a check: the total it became (a hit rider's answer has nothing to learn from the rider)
 			ref.ev.After = st.after

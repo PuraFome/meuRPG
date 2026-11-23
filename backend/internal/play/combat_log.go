@@ -678,7 +678,7 @@ func (b *logBuilder) entry(e playdb.ListEncounterEventsRow) *logEntry {
 	}
 	entry := &logEntry{id: e.ID, at: e.CreatedAt, ev: ev, hosts: []string{e.ID}, actorUser: e.ActorUserID}
 	if ev.CutGroup != "" {
-		b.joinCut(e.ID, ev)
+		b.joinCut(e.ID, e.Kind, ev)
 	}
 	handle, ok := logHandlers[e.Kind]
 	if !ok || !handle(b, e, entry) {
