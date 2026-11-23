@@ -1,13 +1,16 @@
-# Gets a runner ready to run Playwright against the local stack: the images of build-e2e-images, the stack itself
-# (CockroachDB, migrations, devidp, API), Node, the e2e dependencies and Chromium, as the `e2e` job of e2e.yml does.
+# Gets a runner ready to run Playwright against the local stack.
+# It loads the images of build-e2e-images and starts the stack (CockroachDB, migrations, devidp, API).
+# It also installs Node, the e2e dependencies and Chromium.
 # The stack starts in the background while Node, the dependencies and Chromium install, and the last step waits for it:
-# the stack needs none of them. With `chromium: "false"` the action installs no Chromium (the mobile job runs only WebKit). With `database-artifact` it restores the migrated database instead of migrating.
+# the stack needs none of them.
+# With `chromium: "false"` the action installs no Chromium.
+# With `database-artifact` it restores the migrated database instead of migrating.
 # The action names the compose files once (the outputs `compose-file` and `database-dir`): a later step that runs
 # `docker compose` takes them as COMPOSE_FILE and E2E_DB_DIR, so it uses the files the stack started with, and none of
 # them can recreate CockroachDB without the restored folder.
 # The action ends only when the stack is up, or fails with the stack's log.
 name: Start the e2e stack
-description: Load the images and start the local stack while the e2e dependencies and Chromium install.
+description: Load the images and start the local stack while the e2e dependencies install, and Chromium too unless the input `chromium` turns it off.
 inputs:
   code-dir:
     description: The checkout whose stack and tests run.
