@@ -100,6 +100,8 @@ The final `attack_rolled` or `spell_cast` of the held roll completes the line, l
 A player's line is completed only when that player hears the final event; for a hidden roller it stays neutral.
 Undoing the final event puts the line back to pending.
 A held roll whose answer is refused or never given keeps its line waiting.
+When the roller is removed or the combat ends first (`combatant_removed`, `encounter_ended`), the hold is forgotten and the master's line drops "(aguardando a rolagem)" and says nothing of an outcome; the players keep "diminuiu".
+A spell attack's line is completed only by a final event with exactly one hit.
 The reaction's own event cannot be undone.
 A fresh read and a `since_seq` delta give the same line, because the builder decides it, not the stream.
 Only Cutting Words writes a line that depends on the replay; a held check (a contest, Hide) is not completed this way: its line keeps what the answer wrote when the replay asked, which has no total yet.
