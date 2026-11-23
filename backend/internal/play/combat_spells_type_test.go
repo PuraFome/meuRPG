@@ -345,3 +345,97 @@ func TestSpareTheDyingStillStabilizesACreatureWithNoType(t *testing.T) {
 		t.Errorf("Toren = %v, want stable", c.GetState())
 	}
 }
+
+// wound is the master's damage to a combatant of the encounter (an NPC, which a.hurt cannot reach).
+func (a *armed) wound(t *testing.T, e *playv1.Encounter, label string, damage int32) {
+	t.Helper()
+	if _, err := a.adjustHP(t, e, label, func(r *playv1.AdjustCombatantHitPointsRequest) {
+		r.Change = &playv1.AdjustCombatantHitPointsRequest_Damage{Damage: damage}
+	}); err != nil {
+		t.Fatalf("AdjustCombatantHitPoints(%s) error = %v", label, err)
+	}
+}
+
+// Heal ends Blinded and Deafened on a creature it heals, but on an undead or a construct it does nothing at all: the
+// conditions stay, the hit points stay, the slot is spent.
+func TestHealLeavesABlindedUndeadOrConstructBlind(t *testing.T) {
+	t.Parallel()
+	for _, target := range []string{"Zumbi", "Armadura"} {
+		t.Run(target, func(t *testing.T) {
+			t.Parallel()
+			a, e := typeTable(t)
+			a.setConditions(t, e, target, blindedC)
+			before := byLabel(t, a.get(t, a.master), target).GetHitPointsCurrent()
+			a.mustCast(t, a.bia, e, "Brisa", healSpell, slotOfLevel(6), a.at(t, target), noCastRoll)
+			now := byLabel(t, a.get(t, a.master), target)
+			if now.GetHitPointsCurrent() != before {
+				t.Errorf("%s has %d PV, want the %d it had", target, now.GetHitPointsCurrent(), before)
+			}
+			if !hasCondition(a.get(t, a.master), t, target, blindedC) {
+				t.Errorf("%s conditions = %v, want still blinded", target, now.GetConditions())
+			}
+			if used := usedSlots(a.vitals(t, a.bri), 6); used != 1 {
+				t.Errorf("6th-level slots used = %d, want 1: the slot is spent", used)
+			}
+		})
+	}
+}
+
+// Mass Cure Wounds picks its targets one by one: the Zumbi gets nothing and the plant and the character get their heal.
+func TestMassCureWoundsSkipsTheUndeadAndHealsTheOthers(t *testing.T) {
+	t.Parallel()
+	a, e := typeTable(t)
+	a.wound(t, e, "Arbusto", 5)
+	a.hurt(t, a.toren, 5)
+	a.put(t, "Toren", 2, 3)
+	zombieBefore := byLabel(t, a.get(t, a.master), "Zumbi").GetHitPointsCurrent()
+	res := a.mustCast(t, a.bia, e, "Brisa", massCureWounds, slotOfLevel(5), a.at(t, "Zumbi", "Arbusto", "Toren"), noCastRoll)
+	zombie := a.targetOf(t, e, res, "Zumbi")
+	if zombie.GetLastingEffect() != playv1.LastingEffectOutcome_LASTING_EFFECT_OUTCOME_NO_EFFECT || zombie.GetPendingDamageId() != "" {
+		t.Errorf("the Zumbi reads %v, want no effect and no heal", zombie)
+	}
+	if now := byLabel(t, a.get(t, a.master), "Zumbi").GetHitPointsCurrent(); now != zombieBefore {
+		t.Errorf("the Zumbi has %d PV, want the %d it had", now, zombieBefore)
+	}
+	for _, name := range []string{"Arbusto", "Toren"} {
+		got := a.targetOf(t, e, res, name)
+		if got.GetPendingDamageId() == "" || got.GetLastingEffect() != playv1.LastingEffectOutcome_LASTING_EFFECT_OUTCOME_UNSPECIFIED {
+			t.Errorf("Mass Cure Wounds on %s = %v, want its heal opened", name, got)
+		}
+	}
+}
+
+// A plant is a creature that life magic heals: Cure Wounds and Healing Word open its heal, and Heal heals it.
+func TestHealingSpellsHealAPlantCreature(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name, spell string
+		slot        int32
+	}{
+		{"Cure Wounds", cureWounds, 1},
+		{"Healing Word", healingWord, 1},
+		{"Heal", healSpell, 6},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			a, e := typeTable(t)
+			max := byLabel(t, e, "Arbusto").GetHitPointsCurrent()
+			a.wound(t, e, "Arbusto", 5)
+			a.put(t, "Arbusto", 4, 4) // beside Brisa: Cure Wounds is a touch
+			got := a.targetOf(t, e, a.mustCast(t, a.bia, e, "Brisa", tc.spell, slotOfLevel(tc.slot), a.at(t, "Arbusto"), noCastRoll), "Arbusto")
+			if got.GetLastingEffect() != playv1.LastingEffectOutcome_LASTING_EFFECT_OUTCOME_UNSPECIFIED {
+				t.Errorf("%s on the Arbusto reads %v, want no refusal", tc.name, got)
+			}
+			if tc.spell == healSpell {
+				if got.GetEffect().GetOutcome() != playv1.SpellEffectOutcome_SPELL_EFFECT_OUTCOME_AFFECTED {
+					t.Errorf("Heal on the Arbusto = %v, want affected", got.GetEffect())
+				}
+				if now := byLabel(t, a.get(t, a.master), "Arbusto").GetHitPointsCurrent(); now != max {
+					t.Errorf("the Arbusto has %d PV after Heal, want its %d", now, max)
+				}
+			} else if got.GetPendingDamageId() == "" {
+				t.Errorf("%s on the Arbusto = %v, want its heal opened", tc.name, got)
+			}
+		})
+	}
+}
