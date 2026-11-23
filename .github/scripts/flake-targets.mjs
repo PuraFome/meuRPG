@@ -3,15 +3,17 @@
 //
 //   flake-targets.mjs --base <ref>      prints the targets as JSON, from `git diff <ref>...HEAD`
 //
-// Three kinds of target:
+// Four kinds of target:
 //   - the tests whose body changed: a Playwright `test(...)` of e2e/tests/*.spec.ts (each spec is parsed once), a Go `func TestX` of a _test.go;
 //   - for a changed helper (an exported function of an e2e/tests/*-support.ts, any function of
 //     backend/internal/leaktest), a sample of up to SAMPLE tests that call it.
-//   - for a changed `test.beforeEach`, `test.beforeAll`, `test.afterEach` or `test.afterAll`, a sample of up to SAMPLE of the tests it reaches.
-// A change outside any test body and any such hook (a comment above a test, an import, a helper that is not one of the above) maps to nothing.
+//   - for a changed `test.beforeEach`, `test.beforeAll`, `test.afterEach` or `test.afterAll`, a sample of up to SAMPLE of the tests it reaches;
+//   - for a changed top-level function of an e2e/tests/*.spec.ts (a `function` or a `const` arrow or function expression), a sample of up to
+//     SAMPLE tests of the same file that call it, directly or through the other top-level functions of that file, at any depth.
+// A change outside any test body, any such hook and any such function (a comment above a test, an import, a constant, a helper that is not one of the above) maps to nothing.
 //
 // Output: {playwright: [{file, title, grep, signins, serial?, why}], go: [{pkg, test, why}], notes: [string]}. `grep` is a regular expression
-// for Playwright's --grep (the title with its metacharacters escaped); `serial` is present (true) for a test of a serial describe, which must not run in parallel with its own copies; `why` is "changed", "calls <helper>" or "reached by a changed hook".
+// for Playwright's --grep (the title with its metacharacters escaped); `serial` is present (true) for a test of a serial describe, which must not run in parallel with its own copies; `why` is "changed", "calls <helper or function>" or "reached by a changed hook".
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import { createRequire } from 'node:module';
@@ -110,11 +112,17 @@ const isSerialConfigure = (ts, node) =>
  * `test.describe.configure({ mode: 'serial' })` of a group the test is in (nested ones too), or of the file, makes its tests share one worker. A `test.beforeEach/beforeAll/afterEach/afterAll` hook runs
  * for the tests inside its own `test.describe` (nested ones too), or for every test of the file when it is outside any:
  * `hooks` is the text of the hooks that reach a test and `hookLines` their [from, to] lines.
+ * The same parse gives the file's top-level functions as `functions`, {name, from, to, body}: a `function` declaration, or a `const` initialized
+ * with an arrow function or a function expression (exported or not; a const's range is the whole statement).
  */
 export function parseSpec(text) {
   const ts = typescript();
   const source = ts.createSourceFile('spec.ts', text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
   const lines = (node) => [source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1, source.getLineAndCharacterOfPosition(node.getEnd()).line + 1];
+  const range = (node) => {
+    const [from, to] = lines(node);
+    return { from, to, body: text.slice(node.getStart(source), node.getEnd()) };
+  };
   const tests = [];
   const hooks = [];
   const serialGroups = new Set(); // the start positions of the serial groups; -1 is the whole file
@@ -139,7 +147,17 @@ export function parseSpec(text) {
     ts.forEachChild(node, (child) => visit(child, inner));
   };
   visit(source, []);
+  const functions = [];
+  for (const st of source.statements) {
+    if (ts.isFunctionDeclaration(st) && st.name) functions.push({ name: st.name.text, ...range(st) });
+    else if (ts.isVariableStatement(st) && st.declarationList.flags & ts.NodeFlags.Const) {
+      for (const d of st.declarationList.declarations) {
+        if (ts.isIdentifier(d.name) && d.initializer && (ts.isArrowFunction(d.initializer) || ts.isFunctionExpression(d.initializer))) functions.push({ name: d.name.text, ...range(st) });
+      }
+    }
+  }
   return {
+    functions,
     tests: tests.map(({ groups, ...t }) => {
       const reaching = hooks.filter((h) => h.groups.every((g) => groups.includes(g)));
       return { ...t, hooks: reaching.map((h) => h.body).join('\n'), hookLines: reaching.map((h) => [h.from, h.to]), serial: serialGroups.has(-1) || groups.some((g) => serialGroups.has(g)) };
@@ -198,10 +216,10 @@ export const goFuncOf = (line) => /^func\s+(?:\([^)]*\)\s*)?(\w+)(?:\[[^\]]*\])?
 
 const callsAny = (body, names) => [...names].some((n) => new RegExp(`\\b${escapeRe(n)}\\b`).test(body));
 
-/** The helper and the functions that call it, up to three levels: a test that calls a helper that calls it calls it too. */
-function withCallers(name, functionsOf) {
+/** The helper and the functions that call it, up to `levels` levels (three by default): a test that calls a helper that calls it calls it too. */
+function withCallers(name, functionsOf, levels = 3) {
   const names = new Set([name]);
-  for (let level = 0; level < 3; level++) {
+  for (let level = 0; level < levels; level++) {
     const before = names.size;
     for (const f of functionsOf()) if (!names.has(f.name) && callsAny(f.body, names)) names.add(f.name);
     if (names.size === before) break;
@@ -247,7 +265,8 @@ export function mapDiff({ diff, read: readFile, files }) {
     if (!cache.has(key)) cache.set(key, parse());
     return cache.get(key);
   };
-  const testsOf = (file) => once('spec', file, () => parseSpec(read(file))).tests;
+  const specOf = (file) => once('spec', file, () => parseSpec(read(file)));
+  const testsOf = (file) => specOf(file).tests;
   const functionsOf = (kind, file, nameOf) => once(kind, file, () => topLevel(read(file), nameOf));
   // The functions that sign in: signIn and, up to three levels, the helpers of e2e/tests that call it.
   let signers;
@@ -280,6 +299,21 @@ export function mapDiff({ diff, read: readFile, files }) {
         if (/^Test[A-Z_0-9]/.test(f.name) || f.name === 'Test') addGo(goPkg(file), f.name, 'changed');
         else if (leak) helpers.push({ kind: 'go', name: f.name, file });
       }
+    }
+  }
+
+  // A changed top-level function of a spec maps to the tests of that file that call it, at any depth through the file's other functions.
+  for (const [file, ranges] of Object.entries(changed)) {
+    if (!SPEC.test(file) || read(file) === undefined) continue;
+    const { functions, tests } = specOf(file);
+    for (const f of functions) {
+      if (!touches(ranges, f.from, f.to)) continue;
+      const names = withCallers(f.name, () => functions, Infinity);
+      const callers = tests.filter((t) => callsAny(`${t.body}\n${t.hooks}`, names));
+      const picked = sample(callers);
+      for (const t of picked) addPlaywright(file, t, `calls ${f.name}`);
+      if (callers.length === 0) notes.push(`${file}: the function ${f.name} changed and no test calls it`);
+      else if (callers.length > picked.length) notes.push(`${file}: the function ${f.name} has ${callers.length} callers; ${picked.length} run`);
     }
   }
 
