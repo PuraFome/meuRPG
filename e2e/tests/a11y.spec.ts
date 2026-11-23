@@ -7746,11 +7746,21 @@ async function scanPickLists(browser: Browser, colorScheme: 'light' | 'dark', wi
     await open(page, edit);
     await page.getByRole('tab', { name: /^Escolhas/ }).click();
     const toolCard = page.getByRole('region', { name: 'Ferramenta', exact: true });
-    // The pick asks the server for the choices again, after a pause. The master narrows the trait only once that answer is in: an answer read
-    // after the narrowing no longer offers the smiths' tools, and the editor takes the pick back (and the refusal with it) before or after the save.
+    // After the master narrowed the trait, the editor asks the server again (PreviewCharacter and PreviewChoices, seen after the save).
+    // That answer no longer offers the smiths' tools, so the editor takes the pick back, and the refusal with it.
+    // The test holds every such request from the pick's own answer on.
+    // It checks the refusal and scans the screen, then lets the requests through and checks what follows.
     const choicesRead = page.waitForResponse(/PreviewChoices/);
     await toolCard.getByRole('radio', { name: /Ferramentas de ferreiro/ }).click();
     await choicesRead;
+    let releaseReRead: () => void = () => undefined;
+    const reReadReleased = new Promise<void>((resolve) => (releaseReRead = resolve));
+    let reReadHeld = false;
+    await page.route(/PreviewCharacter|PreviewChoices/, async (route) => {
+      reReadHeld = true;
+      await reReadReleased;
+      await route.continue();
+    });
     await updateEntryRPC(m, campaignId, raceKey, 'tableRace', skillTraitRaceBody(['skill:stealth'], ['skill:nature'], ['proficiency:tinkers-tools', 'proficiency:thieves-tools']));
     await page.getByRole('button', { name: 'Salvar ficha' }).click();
     const toolSentence = 'A ferramenta Ferramentas de ferreiro não está em nenhuma das escolhas de ferramenta do personagem.';
@@ -7758,6 +7768,17 @@ async function scanPickLists(browser: Browser, colorScheme: 'light' | 'dark', wi
     await expect(page.getByRole('alert').filter({ hasText: 'Veja o passo Escolhas.' })).toHaveCount(1);
     await expect(page.getByRole('tab', { name: /^Escolhas/ })).toContainText('(com erro)');
     await expectScreenPasses(page, `Editor, a recusa de uma ferramenta que nenhuma escolha permite ${where}`);
+    // The editor asked again and the request is held. Now it goes through.
+    // The smiths' tools leave the pick, and the refusal with them. The step is pending, not in error. The page shows no alert.
+    await expect.poll(() => reReadHeld, { message: 'the editor asks the server again after the refused save' }).toBe(true);
+    releaseReRead();
+    await expect(toolCard.getByRole('radio', { name: /Ferramentas de ferreiro/ })).toHaveCount(0);
+    await expect(toolCard.getByText('Falta escolher')).toBeVisible();
+    await expect(page.locator('mat-error', { hasText: toolSentence })).toHaveCount(0);
+    await expect(page.getByRole('alert')).toHaveCount(0);
+    await expect(page.getByRole('tab', { name: /^Escolhas/ })).not.toContainText('(com erro)');
+    await expect(page.getByRole('tab', { name: /^Escolhas/ })).toContainText('Escolha pendente');
+    await page.unroute(/PreviewCharacter|PreviewChoices/);
     await toolCard.getByRole('radio', { name: /Ferramentas de funileiro/ }).click();
     await expect(page.locator('mat-error', { hasText: toolSentence })).toHaveCount(0);
 
