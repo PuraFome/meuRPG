@@ -226,7 +226,7 @@ func (s *Service) openWindows(ctx context.Context, c *combatTx, group string, ho
 
 // closeWindow answers a window, or closes it by itself with a reason.
 func (s *Service) closeWindow(ctx context.Context, c *combatTx, w playdb.ReactionWindow, status string, reason reaction.Reason, out windowOutcome, spentOn reaction.Kind) (playdb.ReactionWindow, error) {
-	out.Alone = status == windowAnswered && !out.Used && c.master && isAutoPassKey(w.ID, c.key)
+	out.Alone = status == windowAnswered && !out.Used && out.ByMaster && isAutoPassKey(w.ID, c.key)
 	body, err := json.Marshal(out)
 	if err != nil {
 		return w, fmt.Errorf("encode the window's outcome: %w", err)
