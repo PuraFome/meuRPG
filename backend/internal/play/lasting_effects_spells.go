@@ -38,6 +38,9 @@ const (
 	whyImmune      = "o alvo é imune à condição"
 	whyTooSimple   = "a Inteligência do alvo é 4 ou menos"
 	whyWearsArmor  = "o alvo veste armadura"
+	// whyNoLifeMagic is the master's reason for a healing, Spare the Dying or Blight that does nothing to an undead or a construct
+	// (SRD 5.1): a player reads only that nothing happened (RN-10).
+	whyNoLifeMagic = "Sem efeito em construtos e mortos-vivos"
 )
 
 // applyLastingSpell puts the effect of a spell on the targets it took hold of. targs and

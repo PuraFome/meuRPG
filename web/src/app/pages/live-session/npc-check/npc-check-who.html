@@ -1,0 +1,31 @@
+<div class="who">
+  @for (g of groups(); track g.source) {
+    <h4 class="who__group" [id]="'npc-check-who-' + g.source"><mat-icon aria-hidden="true">{{ g.icon }}</mat-icon>{{ g.label }}</h4>
+    @if (g.source === bestiary) {
+      <app-creature-pick
+        class="who__search"
+        [campaignId]="campaignId()"
+        [srdOnly]="true"
+        label="Buscar no bestiário"
+        (picked)="searched.emit($event)"
+      />
+    }
+    @if (g.rows.length > 0) {
+      <div class="who__set" role="radiogroup" [attr.aria-labelledby]="'npc-check-who-' + g.source">
+        @for (r of g.rows; track r.id) {
+          <label class="row" [class.row--on]="r.id === selected()">
+            <input type="radio" class="mr-visually-hidden" [name]="'npc-check-who-' + g.source" [value]="r.id" [checked]="r.id === selected()" (change)="choose.emit(r)" />
+            <span class="row__mark" aria-hidden="true"></span>
+            <span class="row__text">
+              <span class="row__name">{{ r.name }}</span>
+              <span class="row__sees"><mat-icon aria-hidden="true">{{ r.hiddenFromPlayers ? 'visibility_off' : 'visibility' }}</mat-icon>{{ r.sees }}</span>
+              @if (r.noStatBlock) {
+                <span class="row__warn"><mat-icon aria-hidden="true">warning</mat-icon>Sem bloco de estatísticas: rola com +0</span>
+              }
+            </span>
+          </label>
+        }
+      </div>
+    }
+  }
+</div>

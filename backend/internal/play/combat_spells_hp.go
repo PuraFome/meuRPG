@@ -134,6 +134,7 @@ func (s *Service) mustRollPool(ctx context.Context, tx pgx.Tx, m authz.Membershi
 // hpCast is what one hit point spell works on: its effect, the targets with the hit
 // points they have now, the hit each one gets in the cast event, and the caster's roll.
 type hpCast struct {
+	key     string // the spell
 	fx      *link.HPEffect
 	targets []fxTarget
 	hits    []castHit
@@ -167,7 +168,7 @@ func (s *Service) castHPSpell(ctx context.Context, c *combatTx, sp link.Spell, t
 	if !ok {
 		return nil, nil, fmt.Errorf("spell %s: unknown hit point effect %q", sp.Key, fx.Kind)
 	}
-	vitals, err := apply(s, ctx, c, &hpCast{fx: fx, targets: targets, hits: hits, in: in, made: made})
+	vitals, err := apply(s, ctx, c, &hpCast{key: sp.Key, fx: fx, targets: targets, hits: hits, in: in, made: made})
 	if err != nil {
 		return nil, nil, err
 	}
@@ -251,6 +252,14 @@ func (s *Service) hpThreshold(ctx context.Context, c *combatTx, k *hpCast) ([]*p
 func (s *Service) hpZero(ctx context.Context, c *combatTx, k *hpCast) ([]*playv1.CharacterVitals, error) {
 	for i, t := range k.targets {
 		h := &k.hits[i]
+		why, err := s.noLifeMagic(ctx, c, k.key, t.c) // no effect on undead or constructs (SRD 5.1)
+		if err != nil {
+			return nil, err
+		}
+		if why != "" {
+			h.NoEffectWhy = why
+			continue
+		}
 		if !combat.ResolveZeroHP(t.hp) {
 			h.FxReason = fxNotAtZero
 			continue
@@ -316,6 +325,14 @@ func (s *Service) hpFlatHeal(ctx context.Context, c *combatTx, k *hpCast) ([]*pl
 	var vitals []*playv1.CharacterVitals
 	for i, t := range k.targets {
 		h := &k.hits[i]
+		why, err := s.noLifeMagic(ctx, c, k.key, t.c) // no effect on undead or constructs (SRD 5.1)
+		if err != nil {
+			return nil, err
+		}
+		if why != "" {
+			h.NoEffectWhy = why
+			continue
+		}
 		h.Fx = fxAffected
 		r := combat.ResolveFlatHeal(fx.Heal, t.hp, t.max, t.c.Conditions, fx.Ends)
 		hit, v, err := s.healCombatant(ctx, c, t.c, clamp32(fx.Heal, 0, math.MaxInt32))

@@ -1,0 +1,66 @@
+<section class="card" [class.card--waiting]="!card().settled" [attr.aria-label]="'Teste de um NPC: ' + card().title" data-testid="npc-check-card">
+  <header class="card__head">
+    <mat-icon class="card__icon" aria-hidden="true">record_voice_over</mat-icon>
+    <h3 class="card__title">{{ card().creature }} <span class="card__check">· {{ card().check }}</span></h3>
+    @if (card().settled) {
+      <button type="button" class="card__close" aria-label="Esconder o teste" title="Esconder o teste" (click)="dismiss.emit()">
+        <mat-icon aria-hidden="true">close</mat-icon>
+      </button>
+    } @else {
+      <span class="card__only"><mat-icon aria-hidden="true">visibility_off</mat-icon>Só você vê</span>
+    }
+  </header>
+
+  <div class="total">
+    <span class="total__box"><span aria-hidden="true">{{ card().box }}</span><span class="mr-visually-hidden">Total {{ card().box }}</span></span>
+    <div class="total__text" aria-live="polite">
+      <p class="total__formula">{{ card().formula }}</p>
+      @if (card().detail) {
+        <p class="total__detail">{{ card().detail }}</p>
+      }
+    </div>
+    @if (!card().settled) {
+      <button matButton="outlined" type="button" class="total__skip" disabledInteractive [disabled]="busy()" (click)="skip.emit()">
+        <mat-icon aria-hidden="true">skip_next</mat-icon>Continuar sem esperar
+      </button>
+    }
+  </div>
+
+  @if (card().noBonus) {
+    <p class="note note--warn" data-testid="no-bonus"><mat-icon aria-hidden="true">warning</mat-icon>{{ card().noBonus }}</p>
+  }
+
+  @if (error()) {
+    <div class="mr-notice mr-notice--danger" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <p>{{ error() }}</p>
+    </div>
+  }
+
+  @if (card().rows.length > 0) {
+    <ul class="rows">
+      @for (r of card().rows; track r.id) {
+        <li class="row">
+          <span class="row__who" aria-hidden="true">{{ r.initial }}</span>
+          <span class="row__text">
+            <span class="row__name">{{ r.name }}</span>
+            <span class="row__sub">{{ r.sub }}</span>
+          </span>
+          <span class="mr-tag row__tag" [class.mr-tag--pending]="r.tone === 'waiting'" [class.mr-tag--success]="r.tone === 'cut'" [class.row__tag--closed]="r.tone === 'closed'">
+            @if (icons[r.tone]) {
+              <mat-icon aria-hidden="true">{{ icons[r.tone] }}</mat-icon>
+            }{{ r.tag }}
+          </span>
+        </li>
+      }
+    </ul>
+  }
+
+  @if (card().nobody) {
+    <p class="note" data-testid="nobody"><mat-icon aria-hidden="true">info</mat-icon>{{ card().nobodyText }}</p>
+  }
+
+  @if (card().settled) {
+    <p class="note"><mat-icon aria-hidden="true">visibility_off</mat-icon>Só você vê. Fica aqui até o próximo teste ou a sessão acabar.</p>
+  }
+</section>

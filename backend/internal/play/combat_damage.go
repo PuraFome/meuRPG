@@ -440,17 +440,9 @@ func (f *damageFlow) land(ctx context.Context, g playdb.PendingDamage) error {
 	// unless the cast lists its targets for each viewer: an area's line leaves out the hidden ones itself
 	// (spellView).
 	f.out.made.Secret = f.out.made.Secret || (tgt.Hidden && f.p.CastID == nil)
-	amount := clamp32(f.total, 0, math.MaxInt32)
-	if g.Half {
-		amount = clamp32(combat.HalfDamage(f.total), 0, math.MaxInt32)
-	}
-	own := f.pr != nil && g.ID == f.p.ID
-	// What a player who is not the target's reads is the damage as rolled, before the target's modifiers and
-	// counting every die the roll made (a conditional extra included): nothing in it says what the target
-	// resists or is (RN-10, RN-20).
-	shown := amount
-	if own {
-		shown = clamp32(f.pr.shownTotal(), 0, math.MaxInt32)
+	amount, shown, own, err := f.amounts(ctx, g, tgt)
+	if err != nil {
+		return err
 	}
 	steps, amount, err := f.settleSteps(ctx, g, tgt, amount, own)
 	if err != nil {
@@ -478,6 +470,47 @@ func (f *damageFlow) land(ctx context.Context, g playdb.PendingDamage) error {
 		f.out.made.Settled = append(f.out.made.Settled, hit)
 	}
 	return nil
+}
+
+// amounts says what the target takes before its modifiers and what a player reads. It answers the amount, the
+// damage shown to a player who is not the target's, and whether the target's own pending roll is the one landing.
+func (f *damageFlow) amounts(ctx context.Context, g playdb.PendingDamage, tgt playdb.Combatant) (int32, int32, bool, error) {
+	rolled := halfIf(g.Half, f.total)
+	total, maxed, err := f.plantMaximum(ctx, g, tgt)
+	if err != nil {
+		return 0, 0, false, err
+	}
+	amount := halfIf(g.Half, total)
+	own := f.pr != nil && g.ID == f.p.ID && !maxed
+	// What a player who is not the target's reads is the damage as rolled, before the target's modifiers and
+	// counting every die the roll made (a conditional extra included): nothing in it says what the target
+	// resists or is (RN-10, RN-20). A plant takes the most the dice can give: the master reads it applied.
+	shown := rolled
+	if own {
+		shown = clamp32(f.pr.shownTotal(), 0, math.MaxInt32)
+	}
+	return amount, shown, own, nil
+}
+
+// halfIf is the damage clamped, halved (rounded down) when the target saved.
+func halfIf(half bool, total int) int32 {
+	if half {
+		total = combat.HalfDamage(total)
+	}
+	return clamp32(total, 0, math.MaxInt32)
+}
+
+// plantMaximum is the damage the target takes before its modifiers: the roll, or the most the dice can give when the spell
+// does that to a plant (Blight). It says whether it took the maximum.
+func (f *damageFlow) plantMaximum(ctx context.Context, g playdb.PendingDamage, tgt playdb.Combatant) (int, bool, error) {
+	if g.Healing || !combat.SpellReadsType(g.AttackKey) {
+		return f.total, false, nil
+	}
+	typ, err := f.s.typeOfTarget(ctx, f.c, tgt)
+	if err != nil || !combat.SpellTypeRule(g.AttackKey, typ).Plant {
+		return f.total, false, err
+	}
+	return combat.MaxRoll(int(g.DiceCount), int(g.DiceSides), int(g.DiceBonus)), true, nil
 }
 
 // drink is the heal a drain spell's damage gives its caster, when the damage landed on its target at once.

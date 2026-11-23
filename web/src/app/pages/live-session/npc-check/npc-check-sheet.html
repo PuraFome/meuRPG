@@ -1,0 +1,91 @@
+<app-sheet-frame
+  title="Teste de um NPC"
+  titleId="npc-check-t"
+  icon="record_voice_over"
+  [subtitle]="subtitle"
+  [phone]="inSheet"
+  (closed)="cancel()"
+>
+  @if (loading()) {
+    <p class="state" role="status"><mat-spinner diameter="22" aria-hidden="true" />Lendo quem está em cena e no mapa…</p>
+  } @else if (loadFailed()) {
+    <div class="mr-notice mr-notice--danger read-error" role="alert">
+      <div class="mr-notice__said">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <p><strong>{{ pickerError }}</strong></p>
+      </div>
+      <button matButton="outlined" type="button" (click)="read()">Tentar de novo</button>
+    </div>
+  } @else {
+    <div class="cols">
+      <section class="col" aria-labelledby="npc-check-who-h">
+        <h3 class="col__head" id="npc-check-who-h">Quem rola</h3>
+        <app-npc-check-who
+          [campaignId]="data.campaignId"
+          [groups]="form.groups()"
+          [selected]="form.selectedId()"
+          (choose)="form.select($event.id)"
+          (searched)="found($event)"
+        />
+      </section>
+      <section class="col col--test" aria-label="O teste">
+        @if (form.selected()) {
+          <app-select-field
+            label="Teste"
+            [options]="checkOptions()"
+            [value]="form.checkKey()"
+            [hint]="form.checkHint()"
+            (valueChange)="form.setCheck($event)"
+          />
+          @if (form.noBonus()) {
+            <p class="line line--warn" data-testid="no-bonus"><mat-icon aria-hidden="true">warning</mat-icon>{{ form.noBonus() }}</p>
+          }
+        } @else {
+          <p class="line"><mat-icon aria-hidden="true">info</mat-icon>Escolha quem rola para ver os testes.</p>
+        }
+        <h3 class="col__head" id="npc-check-die-h" aria-hidden="true">Como rolar o d20</h3>
+        <app-segmented label="Como rolar o d20" [segments]="modes" [value]="form.mode()" (choose)="form.setMode($event)" />
+        @if (form.mode() === 'type') {
+          <app-text-field
+            label="Número que saiu no d20 (1 a 20)"
+            inputmode="numeric"
+            [maxlength]="maxLength"
+            [value]="form.text()"
+            [issues]="form.invalid() ? ['Digite um número de 1 a 20.'] : []"
+            (valueChange)="form.setText($event)"
+          />
+        }
+        @if (form.selected() && form.showsBox()) {
+          <app-check-row
+            label="Os bardos veem a criatura e ela os ouve"
+            [checked]="form.box()"
+            [sub]="form.boxHint()"
+            (toggled)="form.setBox($event)"
+          />
+        } @else if (form.selected()) {
+          <p class="line" data-testid="measured"><mat-icon aria-hidden="true">straighten</mat-icon>{{ form.boxHint() }}</p>
+        }
+        @if (error(); as e) {
+          <div class="mr-notice mr-notice--danger" role="alert">
+            <mat-icon aria-hidden="true">error</mat-icon>
+            <p><strong>{{ e.lead }}</strong> {{ e.text }}</p>
+          </div>
+        }
+      </section>
+    </div>
+  }
+  <div foot class="foot">
+    @if (!busy() && !loading() && !loadFailed() && !form.ready()) {
+      <p class="foot__why"><mat-icon aria-hidden="true">block</mat-icon>{{ form.reason() }}</p>
+    }
+    <app-pair-foot
+      [confirmLabel]="busy() ? 'Rolando…' : form.rollLabel()"
+      confirmIcon="casino"
+      [ready]="form.ready() && !busy() && !loading() && !loadFailed()"
+      [busy]="busy()"
+      [cancelOff]="busy()"
+      (cancel)="cancel()"
+      (confirm)="roll()"
+    />
+  </div>
+</app-sheet-frame>

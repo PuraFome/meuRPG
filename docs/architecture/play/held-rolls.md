@@ -251,6 +251,8 @@ The undo of the attack gives the die back.
 **With a reaction window** (Cutting Words holds the roll before anything is rolled): the window first; when it is answered the held attack is replayed, the d20 is rolled with the bard's die already off the bonus, and only then is it kept for the question.
 The replay ends without an event (`ambientDoneError.asking`), and the hold is kept under the request's own key with `window_hold` set (no suffix: the key is the request's, and `byKeyOf` leaves a window's rows out so that a retry of the request never finds it), because the request's own key belongs to the event that stood for the held attack.
 The answer never opens the windows again.
+A Cutting Words line of the group waits for the roll; the `attack_rolled` or `spell_cast` the answer writes (it carries the group, `CutGroup`) completes it ([Combat log](combat-log.md#a-reaction-line-that-waits-for-a-roll)).
+Only the last cutter's line of a group is completed.
 
 The request of a roll that a window held has its key on the event that stood for it (a retry of the request answers with that event). When the window's replay holds the d20 for a question, the answer therefore runs the request again under the answer's own key (`rerunAttack`, `rerunContest`, and `registerRerun` for Hide, all through `h.Window`). Under the request's own key the path would find the held event, take the run for a retry of it and write nothing: the contest, its answer or the Hide attempt silently never happened.
 That is why `window_hold` is kept for every kind of window replay and not for the weapon attack alone.
@@ -440,3 +442,19 @@ The damage dice are not a held roll: the app rolls them again by itself ([Attack
   Each line appears only where the server sent the faces and the `*_source_name`.
   The live stream (`WatchGameSession`) carries none of the messages that get `*_source_name`.
   Its events are hints, so the web reads the names from the unary responses only.
+
+### The NPC check outside a combat
+
+`HeldRollKind.NPC_CHECK` is not a question the master answers for the roller.
+`app-held-rolls-panel` filters it out of "Perguntas pendentes".
+The master reads it as the card of `app-npc-check-master` (`GetNpcCheck`; `RollNpcCheck` and `SkipNpcCheckAsks` answer with the check).
+The bard's question is a cutting-words offer: `NpcCutHost` reads `ListHeldRolls`, and `CuttingFlow` (`core/npc-check/cutting-flow.ts`) keeps where the bard is (asking, result, passed, closed, answered too late).
+The answer goes through `AnswerHeldRoll` with the `cutting_words` arm.
+Two signals of the live session move the reads.
+`heldRollsTick` moves only on `held_rolls_changed` and after a reload, and every panel of the held rolls reads on it.
+`heldRollsRecheck` moves on `map_changed`, `vision_changed`, `scene_changed` and `stage_changed`, because the server judges a check that waits again only when the held rolls or the check are read, and a token hidden, a stage mark or a player leaving the scene send no hint of their own.
+The master's card reads on it only while the check waits, and `NpcCutHost` only while a question is asked.
+On a fog map a hidden token reaches the players as `vision_changed` alone, so that hint moves it too.
+A not found answer means the question is gone (closed, passed on, or its player is outside the scene), and a failed precondition means the bard answered already.
+The sheet says "A pergunta já foi encerrada." for the first and "Essa pergunta já foi respondida." for the second.
+See [Live session](../../design/session.md#cutting-words-outside-a-combat).

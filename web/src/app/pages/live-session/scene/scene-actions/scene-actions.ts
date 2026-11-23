@@ -22,6 +22,7 @@ import { actionSubtitle, actionTitle } from '../../../../core/maps/scene-actions
 import { sceneErrorMessage } from '../../../../core/play/scene-errors';
 import type { SceneState } from '../../../../core/play/scene-state';
 import { initialOf, passText } from '../../../../core/play/scene-view';
+import { NpcCheckLauncher } from '../../../../core/npc-check/npc-check-launcher';
 import { SceneRollLine } from '../scene-roll-line/scene-roll-line';
 
 /** One roll as a chip beside its action: who, the total, and the verdict when the action has a DC. */
@@ -67,6 +68,8 @@ function freshWords(n: number): string {
 })
 export class SceneActions {
   private readonly maps = inject(MapsClient);
+  /** "Teste de um NPC" asks the master's host for its sheet. */
+  protected readonly npc = inject(NpcCheckLauncher);
 
   readonly campaignId = input.required<string>();
   readonly state = input.required<SceneState>();

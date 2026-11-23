@@ -10,12 +10,16 @@ function setup(readSnapshot: () => Promise<boolean>, openCombat: boolean) {
     favor: { follow: () => calls.push('favor'), refresh: () => calls.push('favor-refresh') },
   };
   const parts = {
+    scene: { refresh: () => undefined },
     trapBoard: { refresh: () => calls.push('traps'), refreshDamages: () => undefined },
     conversation: { sync: () => calls.push('conversation') },
     combat: { touchLog, encounter: () => (openCombat ? { id: 'e1', revision: 3 } : null) },
     mapState: { refresh: () => undefined },
   };
+  const ticks = { held: 0, recheck: 0 };
   const state = {
+    heldRollsTick: { update: () => (ticks.held += 100) },
+    heldRollsRecheck: { update: (f: (n: number) => number) => (ticks.recheck = f(ticks.recheck)) },
     currentMapId: () => 'm1',
     isMaster: () => false,
     vitals: Object.assign(() => [], { update: () => undefined }),
@@ -37,13 +41,22 @@ function setup(readSnapshot: () => Promise<boolean>, openCombat: boolean) {
     sessionHandlers(
       c: string,
       g: number,
-    ): { onBehind(): Promise<boolean>; onReady(): void; onVitals(v: unknown): void };
-    mapHandlers(g: number): { onVisionChanged(mapId: string): void };
+    ): {
+      onBehind(): Promise<boolean>;
+      onReady(): void;
+      onVitals(v: unknown): void;
+      onHeldRollsChanged(): void;
+    };
+    mapHandlers(g: number): {
+      onVisionChanged(mapId: string): void;
+      onMapChanged(mapId: string): void;
+    };
+    tableHandlers(): { onSceneChanged(): void; onStageChanged(): void };
     combatHandlers(g: number): {
       onEncounterChanged(c: { encounterId: string; revision: number }): void;
     };
   };
-  return { priv, loader, touchLog, calls };
+  return { priv, loader, touchLog, calls, ticks };
 }
 
 describe('LiveSessionEvents: a heartbeat ahead of the stream', () => {
@@ -71,6 +84,25 @@ describe('LiveSessionEvents: reading the whole combat log', () => {
     priv.mapHandlers(1).onVisionChanged('m1');
     priv.combatHandlers(1).onEncounterChanged({ encounterId: 'e1', revision: 0 });
     expect(touchLog).not.toHaveBeenCalled();
+  });
+});
+
+describe('LiveSessionEvents: the questions of the held rolls', () => {
+  it('moves the recheck, never the held-rolls tick, when a map, a vision, a scene or a stage changed', () => {
+    const { priv, ticks } = setup(() => Promise.resolve(true), false);
+    priv.mapHandlers(1).onMapChanged('m2');
+    priv.mapHandlers(1).onVisionChanged('m2');
+    priv.tableHandlers().onSceneChanged();
+    priv.tableHandlers().onStageChanged();
+    expect(ticks.recheck).toBe(4);
+    expect(ticks.held).toBe(0);
+  });
+
+  it('moves the held-rolls tick for the hint that says the questions changed', () => {
+    const { priv, ticks } = setup(() => Promise.resolve(true), false);
+    priv.sessionHandlers('c1', 1).onHeldRollsChanged();
+    expect(ticks.held).toBe(100);
+    expect(ticks.recheck).toBe(0);
   });
 });
 

@@ -67,6 +67,8 @@ export class LiveSessionState {
   readonly groupWaiting = signal(false);
   /** Counts the `held_rolls_changed` hints (and each `ready`): the master's pending questions read again when it moves. */
   readonly heldRollsTick = signal(0);
+  /** Moves when the map, the vision, the scene or the stage changed: a check that waits may be judged again, and nothing else says so. */
+  readonly heldRollsRecheck = signal(0);
   /** Goes up when a rest was taken: the effects on the characters are read again with the spell casts. */
   readonly restsTick = signal(0);
   readonly familiarNameNow = signal<string | null>(null);
