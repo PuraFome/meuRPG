@@ -78,7 +78,7 @@
             <mat-icon aria-hidden="true">more_vert</mat-icon>
           </button>
           <mat-menu #menu="matMenu">
-            <button mat-menu-item type="button" [disabled]="npc.blocked()" disabledInteractive (click)="npc.ask(card.npc.characterId)">
+            <button mat-menu-item type="button" (click)="npc.ask(card.npc.characterId)">
               <mat-icon aria-hidden="true">record_voice_over</mat-icon>Teste {{ ofName(card.npc.name) }}
             </button>
             <button mat-menu-item type="button" [attr.aria-label]="'Tirar de cena: ' + card.npc.name" (click)="take(card, i)">

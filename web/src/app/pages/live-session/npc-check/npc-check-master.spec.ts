@@ -53,15 +53,10 @@ describe('NpcCheckMaster', () => {
     expect(settled.latest).toHaveBeenCalledTimes(1);
   });
 
-  it('opens the sheet again after the combat that refused a roll is gone from the page, and waits while it shows', async () => {
+  it('opens the sheet on a click even while the last roll was refused for a combat', async () => {
     const { fixture, flush, open } = setup(false);
     const launcher = TestBed.inject(NpcCheckLauncher);
     launcher.combatOpen.set(true);
-    launcher.pageCombat.set(true);
-    launcher.ask();
-    await flush();
-    expect(open).not.toHaveBeenCalled();
-    launcher.pageCombat.set(false);
     launcher.ask();
     await flush();
     expect(open).toHaveBeenCalledTimes(1);

@@ -120,7 +120,7 @@ test('sem cena aberta a entrada fica ao lado de "Pedir teste em grupo" e o cartÃ
   await withTable(browser, { noScene: true }, (t) => noSceneFlow(t, {}));
 });
 
-test('o menu de um NPC em cena abre a folha com ele escolhido e espera enquanto um combate recusa o teste', { tag: ['@MR-015'] }, async ({ browser }) => {
+test('o menu de um NPC em cena abre a folha com ele escolhido e continua aberto depois de um combate recusar o teste', { tag: ['@MR-015'] }, async ({ browser }) => {
   test.setTimeout(180_000);
   await withTable(browser, {}, (t) => stageMenuFlow(t, {}));
 });

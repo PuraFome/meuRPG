@@ -97,7 +97,7 @@ export class NpcCheckMaster {
   }
 
   protected open(firstId = ''): void {
-    if (this.opening() || this.launcher.blocked()) {
+    if (this.opening()) {
       return;
     }
     this.opening.set(true);

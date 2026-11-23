@@ -355,7 +355,7 @@ export async function refusalsFlow(t: NpcTable, v: NpcView): Promise<void> {
   await sheet.getByRole('button', { name: 'Rolar Enganação de Capitão bandido' }).click();
   await expect(sheet.getByRole('alert')).toContainText('Só numa sessão aberta. Nada foi rolado.');
   await see(v, m, 'refusal-session', sheet);
-  // The combat is the last refusal: it is the one that leaves the entry dashed.
+  // The combat is the last refusal: it is the one that leaves the entry dashed, and usable.
   await m.route('**/*PlayService/RollNpcCheck', (route) => route.fulfill({ status: 400, contentType: 'application/json', body: JSON.stringify(detail('meurpg.play.v1.ResourceBlocked')) }));
   await sheet.getByRole('button', { name: 'Rolar Enganação de Capitão bandido' }).click();
   const alert = sheet.getByRole('alert');
@@ -511,7 +511,7 @@ export async function noSceneFlow(t: NpcTable, v: NpcView): Promise<void> {
 
 /**
  * The "⋮" of an NPC on the stage opens the same sheet with that NPC chosen (board 591-08 state 5). After a roll refused for a
- * combat the page does not show, the entry says so and the item still opens the sheet.
+ * combat, the entry says so and the item still opens the sheet.
  */
 export async function stageMenuFlow(t: NpcTable, v: NpcView): Promise<void> {
   const { m, campaignId } = t;
@@ -535,7 +535,7 @@ export async function stageMenuFlow(t: NpcTable, v: NpcView): Promise<void> {
   await expect(m.getByText('Há um combate aberto: os testes das criaturas são do combate.').first()).toBeVisible();
   await m.getByRole('button', { name: 'Mais ações de Bartolo' }).click();
   const waiting = m.getByRole('menu').getByRole('menuitem', { name: 'Teste de Bartolo' });
-  // The page shows no combat, so the item is not disabled: it waits only while a combat is on the page, and there is no board then.
+  // The item stays usable after a refusal: the next roll asks the server again.
   await expect(waiting).not.toHaveAttribute('aria-disabled', 'true');
   await see(v, m, 'stage-menu-after-refusal', m.getByRole('menu'));
   await m.unroute('**/*PlayService/RollNpcCheck');
@@ -554,6 +554,9 @@ export async function longNameFlow(t: NpcTable, v: NpcView): Promise<void> {
   await pickNpc(sheet, LONG_NPC);
   await see(v, m, 'sheet-long-name', sheet.locator('label.row', { hasText: LONG_NPC }).first());
   await expectFits(m, sheet, 'Teste de um NPC, a folha com um nome longo');
+  const roll = sheet.getByRole('button', { name: new RegExp(`^Rolar .* de ${LONG_NPC}`) });
+  const wide = await roll.evaluate((b) => ({ button: b.scrollWidth <= b.clientWidth, label: [...b.querySelectorAll('.mdc-button__label')].every((l) => l.scrollWidth <= l.clientWidth) }));
+  expect(wide).toEqual({ button: true, label: true });
   await rollChosen(m, sheet);
   const card = npcCard(m);
   await expect(card.getByRole('heading', { name: new RegExp(`^${LONG_NPC} · `) })).toBeVisible();
@@ -577,8 +580,8 @@ async function refuseForCombat(m: Page): Promise<void> {
 }
 
 /**
- * A roll was refused for a combat that the page does not show (it ended, or the page had not heard of it): the entry says so, and
- * the next click opens the sheet again and rolls the same check, with no reload.
+ * A roll was refused for a combat: the entry says so, stays usable, and the next click opens the sheet and rolls the same check,
+ * with no reload.
  */
 export async function combatEndedFlow(t: NpcTable): Promise<void> {
   const { m, campaignId } = t;
@@ -589,9 +592,11 @@ export async function combatEndedFlow(t: NpcTable): Promise<void> {
   await expect(sheet.getByRole('alert')).toContainText('Um combate começou.');
   await sheet.getByRole('button', { name: 'Cancelar' }).click();
   await expect(npcSheet(m)).toHaveCount(0);
-  await expect(m.getByText('Há um combate aberto: os testes das criaturas são do combate.').first()).toBeVisible();
-  await m.unroute('**/*PlayService/RollNpcCheck');
   const entry = m.getByRole('button', { name: 'Teste de um NPC' }).first();
+  await expectDashed(entry);
+  await expect(m.getByText('Há um combate aberto: os testes das criaturas são do combate.').first()).toBeVisible();
+  await expect(entry).not.toHaveAttribute('aria-disabled', 'true');
+  await m.unroute('**/*PlayService/RollNpcCheck');
   await entry.click();
   const again = npcSheet(m);
   await expect(again.getByRole('heading', { name: 'Teste de um NPC' })).toBeVisible();
