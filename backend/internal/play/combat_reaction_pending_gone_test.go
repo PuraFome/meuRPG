@@ -11,7 +11,7 @@ import (
 const (
 	goblinGoneMaster  = "Reator usou Palavras de Interrupção: d6 (5) subtraído do ataque de Goblin."
 	goblinGonePlayers = goblinPendingPlayers
-	// a removed combatant leaves its lines anonymous
+	// A removed combatant leaves its lines anonymous.
 	removedMaster  = "Reator usou Palavras de Interrupção: d6 (5) subtraído do ataque."
 	removedPlayers = "Reator usou Palavras de Interrupção: o ataque diminuiu."
 )
