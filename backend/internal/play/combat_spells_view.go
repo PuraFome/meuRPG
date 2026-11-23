@@ -275,7 +275,7 @@ func (s *Service) attachPendingDamages(ctx context.Context, res combatResult, h 
 				r.MorePendingDamageIds = append(r.MorePendingDamageIds, id)
 			}
 			shown := pendingProto(p, cs)
-			if i := slices.IndexFunc(cs, func(c playdb.Combatant) bool { return c.ID == p.TargetID }); i >= 0 && !v.master && holdsHP(cs[i]) && !v.owns(cs[i]) {
+			if i := slices.IndexFunc(cs, func(c playdb.Combatant) bool { return c.ID == p.TargetID }); i >= 0 && holdsHP(cs[i]) && !v.readsHitPointsOf(cs[i]) {
 				showAsRolled(shown, p) // a retry of the cast after the roll reads the damage as rolled too
 			}
 			out.PendingDamages = append(out.PendingDamages, shown)
