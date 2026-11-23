@@ -398,7 +398,7 @@ The traces, the HTML report and the stack logs (`stack-logs/stack.log`, saved on
 The `repeat-changed` job runs next to the gate on every pull request that touches `e2e/` or `backend/`.
 The job catches a new or edited test that fails often.
 A test that fails rarely usually passes it, so a green repeat is not proof that a test is stable.
-That takes [`flake-check`](#flake-check) over about 3/p runs: see [When it is fixed](testing.md#reproducing-a-flaky-test).
+That takes [`flake-check`](#flake-check) over about 3/p runs, where p is its failure rate: see [When it is fixed](testing.md#reproducing-a-flaky-test).
 A rare flaky test shows up later as a red run of a train, of `main` or of the nightly hunt, and the [Flaky tests](#flaky-tests) rule applies to it there.
 
 `.github/scripts/flake-targets.mjs` maps the diff against the base to the tests to repeat:
