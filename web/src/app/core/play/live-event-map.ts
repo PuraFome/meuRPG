@@ -50,6 +50,7 @@ const TRANSLATORS: Translators = {
     encounterId: v.encounterId,
     windowId: v.windowId,
     closedByItself: v.closedByItself,
+    passedAlone: v.passedAlone,
     text: v.textPt,
   }),
   turnChanged: (v) => ({

@@ -32,6 +32,7 @@ export interface LiveStreamHandlers {
     encounterId: string;
     windowId: string;
     closedByItself: boolean;
+    passedAlone: boolean;
     text: string;
   }): void;
   /** `turn_changed`: applied in place, per audience. */

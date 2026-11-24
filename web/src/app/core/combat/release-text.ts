@@ -155,13 +155,14 @@ export function releaseGoneView(o: GoneInput): GoneView {
   return o.reactor === undefined ? playerGone(state, o) : masterGone(state, o, o.reactor);
 }
 
-type GoneInput = {
+export type GoneInput = {
   readonly spell: string;
   readonly move: boolean;
   readonly stillWaiting: boolean;
   readonly reactionUsed: boolean;
   readonly down: boolean;
-  readonly timedOut: boolean;
+  /** The server recorded the window as passed by itself (the master's screen sent it with its auto-pass key). */
+  readonly passedAlone: boolean;
   readonly afterMap: boolean;
   /** The reactor's name when the master reads the state; leave out for the player. */
   readonly reactor?: string;
@@ -178,7 +179,7 @@ function goneState(o: GoneInput): 'undone' | 'down' | 'used' | 'timeout' | 'clos
   if (o.reactionUsed) {
     return 'used';
   }
-  return o.timedOut ? 'timeout' : 'closed';
+  return o.passedAlone ? 'timeout' : 'closed';
 }
 
 /** What the window being gone says about the spell or the move: the words both forms share. */

@@ -19,7 +19,7 @@ import { Code, ConnectError } from '@connectrpc/connect';
 import { EncounterBlockedReason } from '../../../gen/meurpg/play/v1/combat_pb';
 import { encounterBlocked } from './combat-errors';
 import { readiedSecondsLeft, waitBeganMs } from './readied-wait';
-import { type GoneView, releaseGoneView } from './release-text';
+import { type GoneInput, type GoneView, releaseGoneView } from './release-text';
 
 /** Which readied spell or move the release is for. */
 export interface ReleaseWatchIds {
@@ -73,7 +73,8 @@ export class ReleaseWatch {
   private readAt = this.mono();
   private readonly goneAt = signal<number | null>(null);
   private readonly goneMono = signal(0);
-  private readonly frozen = signal<GoneView | null>(null);
+  /** What the combat said when the window went away; the sentence is worked out from it and from the record of the pass. */
+  private readonly frozen = signal<Omit<GoneInput, 'passedAlone'> | null>(null);
 
   /** The window as the combat has it now. */
   readonly window = computed(() =>
@@ -97,10 +98,19 @@ export class ReleaseWatch {
   /** The player opened the map while the window was open: its wait is the 120 s, not the 30 s. */
   readonly waitedOnMap = signal(false);
   /** What happened to the window; `null` while it is open. It is said once, when the window is first seen gone. */
-  readonly view = computed(() => this.frozen() ?? (this.refused() ? GONE_PENDING : null));
+  readonly view = computed((): GoneView | null => {
+    const gone = this.frozen();
+    if (gone) {
+      // The record of a pass that came alone may arrive after the window left the combat, in either order: the sentence follows it.
+      return releaseGoneView({ ...gone, passedAlone: this.passedAlone(this.ids.windowId) });
+    }
+    return this.refused() ? GONE_PENDING : null;
+  });
 
   constructor(
     private readonly encounter: () => Encounter | null,
+    /** Whether the server said the window passed by itself (read on a signal, so the view follows a record that comes late). */
+    private readonly passedAlone: (windowId: string) => boolean,
     private readonly ids: ReleaseWatchIds,
     /** Told the window on every change while it is open (the player's mark reads a reopen from it). */
     private readonly onWindow?: (w: ReactionWindow) => void,
@@ -171,18 +181,14 @@ export class ReleaseWatch {
     this.goneAt.set(at);
     const who = e.combatants.find((c) => c.id === this.ids.reactorId);
     const held = who?.readied;
-    this.frozen.set(
-      releaseGoneView({
-        spell: this.ids.spellName,
-        move: this.ids.move,
-        stillWaiting: held?.id === this.ids.readiedId && held.status === ReadiedStatus.WAITING,
-        reactionUsed: who?.reactionUsed ?? false,
-        down: who?.state === CombatantState.DOWN,
-        timedOut:
-          !!this.last && readiedSecondsLeft(this.last, this.seenAt, at, this.readAt, mono) === 0,
-        afterMap: this.waitedOnMap(),
-        reactor: this.ids.masterOf,
-      }),
-    );
+    this.frozen.set({
+      spell: this.ids.spellName,
+      move: this.ids.move,
+      stillWaiting: held?.id === this.ids.readiedId && held.status === ReadiedStatus.WAITING,
+      reactionUsed: who?.reactionUsed ?? false,
+      down: who?.state === CombatantState.DOWN,
+      afterMap: this.waitedOnMap(),
+      reactor: this.ids.masterOf,
+    });
   }
 }

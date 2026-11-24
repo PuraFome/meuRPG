@@ -230,6 +230,25 @@ export class CombatState {
     this.reactionNotice.set(text ? { windowId, text } : null);
   }
 
+  /** The windows the server said passed by themselves (`reaction_window_closed` with `passedAlone`). */
+  private readonly passedAloneIds = signal<ReadonlySet<string>>(new Set());
+
+  /** The server's word on a window that closed (or opened again after an undo): add it when true, drop it when false. */
+  notePassedAlone(windowId: string, alone: boolean): void {
+    this.passedAloneIds.update((ids) => {
+      if (ids.has(windowId) === alone) return ids;
+      const next = new Set(ids);
+      if (alone) next.add(windowId);
+      else next.delete(windowId);
+      return next;
+    });
+  }
+
+  /** Whether the server said this window passed by itself. */
+  passedAlone(windowId: string): boolean {
+    return this.passedAloneIds().has(windowId);
+  }
+
   dismissReactionNotice(): void {
     this.reactionNotice.set(null);
   }
@@ -237,6 +256,7 @@ export class CombatState {
   clear(): void {
     this.applied++;
     this.reactionNotice.set(null);
+    this.passedAloneIds.set(new Set());
     this.encounter.set(null);
     this.dismissedId.set(null);
     this.moving.set(false);

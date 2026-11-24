@@ -14,6 +14,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
+	"github.com/PuraFome/meuRPG/backend/internal/play/autopass"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/reaction"
 )
@@ -157,6 +158,7 @@ type windowOutcome struct {
 	// Saved lists the creatures a Feather Fall saved, or whose failed saving throw the master turned into a
 	// success with Legendary Resistance.
 	Saved []string `json:"saved,omitempty"`
+	Alone bool     `json:"alone,omitempty"` // passed by itself: the master's "Deixar passar" with the window's auto-pass key
 }
 
 func windowTriggerOf(w playdb.ReactionWindow) windowTrigger {
@@ -222,6 +224,7 @@ func (s *Service) openWindows(ctx context.Context, c *combatTx, group string, ho
 
 // closeWindow answers a window, or closes it by itself with a reason.
 func (s *Service) closeWindow(ctx context.Context, c *combatTx, w playdb.ReactionWindow, status string, reason reaction.Reason, out windowOutcome, spentOn reaction.Kind) (playdb.ReactionWindow, error) {
+	out.Alone = status == windowAnswered && !out.Used && out.ByMaster && autopass.Is(w.ID, c.key)
 	body, err := json.Marshal(out)
 	if err != nil {
 		return w, fmt.Errorf("encode the window's outcome: %w", err)

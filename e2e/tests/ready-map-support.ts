@@ -89,11 +89,15 @@ export async function readyMapTable(
   browser: Browser,
   name: string,
   held: Held,
-  view: { width?: number; height?: number; colorScheme?: 'light' | 'dark'; both?: boolean; blocker?: boolean; theatre?: boolean; reactor?: string } = {},
+  view: { width?: number; height?: number; colorScheme?: 'light' | 'dark'; both?: boolean; blocker?: boolean; theatre?: boolean; reactor?: string; masterClock?: boolean } = {},
 ): Promise<ReadyMapTable> {
   const viewport = { width: view.width ?? 1280, height: view.height ?? 900 };
   const reactor = view.reactor ?? 'Pensantus';
   const master = await newSignedInContext(browser, 'Mestre Teste', { viewport: view.both ? viewport : { width: 1280, height: 900 }, colorScheme: view.colorScheme, ...featShotScale });
+  if (view.masterClock) {
+    // The master's clock runs as usual but can be jumped: the 30 s pass counts on the master's screen (`m.clock.fastForward`), so a test need not wait for it.
+    await master.clock.install();
+  }
   const player = await newSignedInContext(browser, 'Jogador Teste', { viewport, colorScheme: view.colorScheme, ...featShotScale });
   const m = await master.newPage();
   const p = await player.newPage();

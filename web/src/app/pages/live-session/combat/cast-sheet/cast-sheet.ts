@@ -174,6 +174,7 @@ export class CastSheet {
   private readonly watch = this.release
     ? new ReleaseWatch(
         () => this.data.state.encounter(),
+        (id) => this.data.state.passedAlone(id),
         {
           windowId: this.release.windowId,
           readiedId: this.release.readiedId,

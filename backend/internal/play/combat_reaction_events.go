@@ -141,10 +141,10 @@ func windowOpenedMessage(encounterID, windowID string) *playv1.WatchGameSessionR
 	}}
 }
 
-func windowClosedMessage(encounterID, windowID string, byItself bool, text string) *playv1.WatchGameSessionResponse {
+func windowClosedMessage(encounterID, windowID string, byItself bool, text string, alone bool) *playv1.WatchGameSessionResponse {
 	return &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_ReactionWindowClosed_{
 		ReactionWindowClosed: &playv1.WatchGameSessionResponse_ReactionWindowClosed{
-			EncounterId: encounterID, WindowId: windowID, ClosedByItself: byItself, TextPt: text,
+			EncounterId: encounterID, WindowId: windowID, ClosedByItself: byItself, TextPt: text, PassedAlone: alone,
 		},
 	}}
 }
@@ -193,7 +193,7 @@ func tellNote(say func(string, live.Event), campaignID, encounterID string, n re
 		if n.byItself {
 			text = closedText(n, reactor, hasReactor, i == 0)
 		}
-		say(campaignID, live.Event{Audience: a, Message: windowClosedMessage(encounterID, w.ID, n.byItself, text)})
+		say(campaignID, live.Event{Audience: a, Message: windowClosedMessage(encounterID, w.ID, n.byItself, text, windowOutcomeOf(w).Alone)})
 	}
 }
 

@@ -16804,14 +16804,17 @@ async function scanReadyMapEndScreens(browser: Browser, colorScheme: 'light' | '
   }
 
   // The window the player left alone: it passes by itself after the 30 s, and says so.
-  const alone = await readyMapTable(browser, 'Acessibilidade soltar sozinho', 'fireball', view);
+  const alone = await readyMapTable(browser, 'Acessibilidade soltar sozinho', 'fireball', { ...view, masterClock: true });
   try {
     const { m, p } = alone;
     p.setDefaultTimeout(20_000);
     await fireReadied(m);
     const win = spellWindow(p);
     await expect(win).toBeVisible();
-    await expect(win).toContainText(/Passou sozinho: você não respondeu em 30 s\./, { timeout: 60_000 });
+    // The master's screen counts the 30 s: jump its clock past them (strictly more than 30 s) instead of waiting.
+    await expect(masterQueue(m).getByTestId('readied-wait')).toContainText(/passa sozinho em/);
+    await m.clock.fastForward(31_000);
+    await expect(win).toContainText(/Passou sozinho: você não respondeu em 30 s\./);
     await expectScreenPasses(p, `Soltar, a janela que passou sozinha ${where}`);
     await shoot(p, 'janela-passou-sozinha');
   } finally {

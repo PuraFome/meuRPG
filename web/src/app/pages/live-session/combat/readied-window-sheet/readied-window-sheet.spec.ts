@@ -665,7 +665,22 @@ describe('ReadiedWindowSheet (#582, boards 582-06 to 582-08)', () => {
     expect(close).toHaveBeenCalled();
   });
 
-  it('says it passed by itself when the clock ran out before the window closed', async () => {
+  it('says it passed by itself when the server recorded it, though the clock did not run out', async () => {
+    const { el, settle, state } = setup();
+    await settle();
+    state.notePassedAlone('w1', true);
+    state.apply(
+      encounter({
+        revision: 9,
+        combatants: [combatant({ id: 'tor', label: 'Tor', mine: true })],
+        reactionWindows: [],
+      } as never),
+    );
+    await settle();
+    expect(flat(el.querySelector('.what'))).toBe('Passou sozinho: você não respondeu em 30 s.');
+  });
+
+  it('says only that the window closed when the clock ran out and the server recorded nothing', async () => {
     vi.useFakeTimers({ toFake: ['Date', 'setInterval', 'clearInterval'] });
     try {
       const { el, settle, state } = setup();
@@ -679,7 +694,7 @@ describe('ReadiedWindowSheet (#582, boards 582-06 to 582-08)', () => {
         } as never),
       );
       await settle();
-      expect(flat(el.querySelector('.what'))).toBe('Passou sozinho: você não respondeu em 30 s.');
+      expect(flat(el.querySelector('.what'))).toBe('A janela fechou.');
     } finally {
       vi.useRealTimers();
     }
