@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/play/autopass"
 )
 
 // A READIED window the master passes with the window's auto-pass key is a pass that came alone (#1091): the server records it
@@ -25,7 +26,7 @@ func TestAReadiedPassWithTheAutoPassKeyIsRecordedAsAlone(t *testing.T) {
 			ana := listen(t, a.h, a.campaignID, a.ana.id, false)
 			key := newKey()
 			if tc.alone {
-				key = autoPassKeyOf(w.GetId())
+				key = autopass.Key(w.GetId())
 			}
 			a.mustAnswer(t, a.master, e, w.GetId(), func(r *playv1.AnswerReactionRequest) {
 				passAnswer(r)
@@ -65,7 +66,7 @@ func TestAReadiedPassWithTheAutoPassKeyFromThePlayerIsNotAlone(t *testing.T) {
 	caio := listen(t, a.h, a.campaignID, a.caio.id, false)
 	a.mustAnswer(t, a.caio, e, w.GetId(), func(r *playv1.AnswerReactionRequest) {
 		passAnswer(r)
-		r.IdempotencyKey = autoPassKeyOf(w.GetId())
+		r.IdempotencyKey = autopass.Key(w.GetId())
 	})
 	var alone int
 	if err := a.h.pool.QueryRow(t.Context(), `SELECT count(*) FROM reaction_windows WHERE id = $1 AND (outcome->>'alone') IS NOT NULL`, w.GetId()).Scan(&alone); err != nil || alone != 0 {

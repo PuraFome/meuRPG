@@ -97,6 +97,7 @@ The package `play` itself is capped in size (`.github/play-cap`, [CI](../../ci.m
 | `play/effecttext` | The words of the card of an effect on a character: its own title, the whole length it was given (told only when the catalog gave it) and the time it has left |
 | `play/infusion` | The session event kinds of an Artificer's infusions, their payload and the characters a set of changes names |
 | `play/steed` | The rules of Find Steed over plain values: the spells that reach the steed with the caster, the notes of such a cast, and the Intelligence floor read by Hideous Laughter |
+| `play/autopass` | The idempotency key of a reaction window's automatic pass, derived from the window's id as the master's screen derives it, and whether a key is that one |
 
 A function of `play` that takes no `context.Context`, reads no query and is no `Service` method (a rule, a text builder, a calculation over plain values) moves with its tests when a change edits it, or the PR says why it cannot. The candidates are advantage, the log's text, the contests' calculations and the pure part of the undo kinds. A move lowers the cap by the lines that left `play`.
 

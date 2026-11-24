@@ -193,7 +193,7 @@ func tellNote(say func(string, live.Event), campaignID, encounterID string, n re
 		if n.byItself {
 			text = closedText(n, reactor, hasReactor, i == 0)
 		}
-		say(campaignID, live.Event{Audience: a, Message: windowClosedMessage(encounterID, w.ID, n.byItself, text, n.alone)})
+		say(campaignID, live.Event{Audience: a, Message: windowClosedMessage(encounterID, w.ID, n.byItself, text, windowOutcomeOf(w).Alone)})
 	}
 }
 

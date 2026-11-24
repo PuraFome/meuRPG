@@ -257,9 +257,7 @@ type combatTx struct {
 	zoneOut []zoneLine
 	// hash is the request hash kept with the event that carries the change's key.
 	hash *string
-	// key is the idempotency key of the call that makes the change (empty where there is none): closeWindow tells from it a window
-	// the master's screen passed by itself.
-	key string
+	key  string // the call's idempotency key, empty where there is none: closeWindow tells an automatic pass by it
 	// rules are the table's rules (RN-24), read in this transaction when it
 	// opened: a critical hit and who sees the death saves follow them from the
 	// next roll on, and are never kept longer than the change.
