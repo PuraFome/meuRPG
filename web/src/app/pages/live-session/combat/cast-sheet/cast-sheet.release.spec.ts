@@ -118,7 +118,7 @@ async function open(
         ],
   } as never);
   const enc = signal(open);
-  const state = { encounter: enc, apply: vi.fn((e) => enc.set(e)) };
+  const state = { encounter: enc, apply: vi.fn((e) => enc.set(e)), passedAlone: () => false };
   const markReactionRolling = over.markReactionRolling ?? vi.fn().mockResolvedValue(open);
   const close = over.close ?? vi.fn();
   const data = {

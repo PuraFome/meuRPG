@@ -1842,6 +1842,12 @@ message WatchGameSessionResponse {
     // answered, and then `text_pt` is empty.
     bool closed_by_itself = 3;
     string text_pt = 4;
+    // True when the window passed by itself: the master's screen sent "Deixar
+    // passar" with the window's auto-pass key (its id with every hex digit flipped
+    // but the version and variant ones) after the 30 s or 2 min wait. False for the
+    // master's own tap, the reactor's answer and a close by itself. Told to the
+    // master and the window's reactor, like the event.
+    bool passed_alone = 5;
   }
 
   // SpellCastsChanged is the content-free hint that the casts outside a combat changed.

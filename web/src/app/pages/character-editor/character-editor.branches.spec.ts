@@ -952,6 +952,132 @@ describe('CharacterEditor, what the server says about the draft', () => {
     expect(cmp.picks.featureChoiceText()).toEqual({ 'choice:fighter-style#0': 'kept' });
   });
 
+  describe('the note when a read takes a pick back', () => {
+    const NOTE =
+      'O mestre mudou as opções da mesa. As listas foram atualizadas: confira o que você escolheu antes de salvar.';
+    const notes = (el: HTMLElement) =>
+      Array.from(el.querySelectorAll('.mr-notice[role="status"]')).filter((n) =>
+        n.textContent?.includes(NOTE),
+      );
+
+    /** The draft is read once with the pick held, then the same draft is read again with `later`. */
+    async function readTwice(later: typeof askStyle | null) {
+      const r = await ready();
+      r.cmp.picks.featureChoiceKeys.set(['feature:gone', 'feature:style-defense']);
+      vi.useFakeTimers();
+      fill(r.cmp);
+      r.fixture.detectChanges();
+      await vi.advanceTimersByTimeAsync(PAUSE);
+      r.fixture.detectChanges();
+      if (later) {
+        r.fake.choicesFn = later;
+      }
+      r.cmp.fullForm.patchValue({ name: 'Tharn' });
+      r.fixture.detectChanges();
+      await vi.advanceTimersByTimeAsync(PAUSE);
+      r.fixture.detectChanges();
+      return r;
+    }
+
+    it('shows when a read of the same draft takes a pick back', async () => {
+      const { cmp, el } = await readTwice(askStyle);
+      expect(cmp.picks.featureChoiceKeys()).toEqual(['feature:style-defense']);
+      expect(notes(el)).toHaveLength(1);
+    });
+
+    it('shows when another field changed with an equal answer and a later read of that input takes a pick back', async () => {
+      const { cmp, fixture, fake, el } = await ready();
+      cmp.picks.featureChoiceKeys.set(['feature:gone', 'feature:style-defense']);
+      vi.useFakeTimers();
+      fill(cmp);
+      fixture.detectChanges();
+      await vi.advanceTimersByTimeAsync(PAUSE);
+      cmp.fullForm.patchValue({ name: 'Other' });
+      fixture.detectChanges();
+      await vi.advanceTimersByTimeAsync(PAUSE);
+      expect(notes(el)).toHaveLength(0);
+      fake.choicesFn = askStyle;
+      cmp.fullForm.patchValue({ name: 'Other' });
+      fixture.detectChanges();
+      await vi.advanceTimersByTimeAsync(PAUSE);
+      fixture.detectChanges();
+      expect(cmp.picks.featureChoiceKeys()).toEqual(['feature:style-defense']);
+      expect(notes(el)).toHaveLength(1);
+    });
+
+    it('says nothing when a read takes nothing back', async () => {
+      const { cmp, el } = await readTwice(null);
+      expect(cmp.picks.featureChoiceKeys()).toEqual(['feature:gone', 'feature:style-defense']);
+      expect(notes(el)).toHaveLength(0);
+    });
+
+    it('stays when the person picks again', async () => {
+      const { cmp, fixture, el } = await readTwice(askStyle);
+      expect(notes(el)).toHaveLength(1);
+      cmp.picks.featureChoiceKeys.set(['feature:style-defense', 'feature:other']);
+      fixture.detectChanges();
+      expect(notes(el)).toHaveLength(1);
+    });
+
+    it('says nothing when the person changed the class and the read takes the pick back', async () => {
+      const { cmp, fixture, fake, el } = await ready();
+      cmp.picks.featureChoiceKeys.set(['feature:gone']);
+      vi.useFakeTimers();
+      fill(cmp);
+      fixture.detectChanges();
+      await vi.advanceTimersByTimeAsync(PAUSE);
+      fake.choicesFn = askStyle;
+      cmp.fullForm.patchValue({ className: 'class:fighter' });
+      fixture.detectChanges();
+      await vi.advanceTimersByTimeAsync(PAUSE);
+      fixture.detectChanges();
+      expect(cmp.picks.featureChoiceKeys()).toEqual([]);
+      expect(notes(el)).toHaveLength(0);
+    });
+
+    it('shows when the first read after the page opens takes a stored pick back', async () => {
+      const { cmp, fixture, fake, el } = await ready();
+      fake.choicesFn = askStyle;
+      cmp.picks.featureChoiceKeys.set(['feature:gone']);
+      vi.useFakeTimers();
+      fill(cmp);
+      fixture.detectChanges();
+      await vi.advanceTimersByTimeAsync(PAUSE);
+      fixture.detectChanges();
+      expect(cmp.picks.featureChoiceKeys()).toEqual([]);
+      expect(notes(el)).toHaveLength(1);
+    });
+
+    it('says nothing when the first read takes nothing back', async () => {
+      const { cmp, fixture, el } = await ready();
+      cmp.picks.featureChoiceKeys.set(['feature:gone']);
+      vi.useFakeTimers();
+      fill(cmp);
+      fixture.detectChanges();
+      await vi.advanceTimersByTimeAsync(PAUSE);
+      fixture.detectChanges();
+      expect(notes(el)).toHaveLength(0);
+    });
+
+    it('shows one note when the lists changed and a read takes a pick back', async () => {
+      const { cmp, fixture, fake, watcher, el } = await ready();
+      cmp.picks.featureChoiceKeys.set(['feature:gone']);
+      vi.useFakeTimers();
+      fill(cmp);
+      fixture.detectChanges();
+      await vi.advanceTimersByTimeAsync(PAUSE);
+      const base = catalog();
+      fake.catalogFn = () =>
+        Promise.resolve({ ...base, races: [...base.races, { ...base.races[0], key: 'race:new' }] });
+      fake.choicesFn = askStyle;
+      watcher.hint();
+      await vi.advanceTimersByTimeAsync(PAUSE);
+      fixture.detectChanges();
+      expect(cmp.picks.featureChoiceKeys()).toEqual([]);
+      expect(notes(el)).toHaveLength(1);
+    });
+  });
+
   it('leads a blocked save to the Escolhas step, also when it is already open', async () => {
     const { cmp, fixture, fake, el } = await ready();
     fake.choicesFn = askStyle;
