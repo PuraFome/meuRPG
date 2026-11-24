@@ -27,7 +27,7 @@ A combatant has at most one waiting row.
 | --- | --- |
 | `waiting` | `ReadyAction` on the readier's turn spends the action and writes the row |
 | `fired` | The readier used its READIED window ("Usar") |
-| `ignored` | The readier let its READIED window pass ("Deixar passar"), or it passed by itself after 30 s |
+| `ignored` | The readier let its READIED window pass ("Deixar passar"), or it passed by itself after 30 s (the server records whether it passed by itself) |
 | `lost` | The readier's next turn started, or it was defeated or dismissed (`loseReadiedOfDefeated`, in the settle step of every change) |
 | `broken` | The concentration that held a readied spell ended (`settleReadiedSpells`) |
 | `canceled` | The readier's player, or the master, gave it up on the readier's turn (`CancelReadied`) |
@@ -144,6 +144,9 @@ The player can clear it, and the master's wait is 120 s from `wait_began_at`, no
 The wait is one, begun by whoever acts on the window first: the player's first mark, or the master's call of `MarkReactionRolling` when he opens a release for the player (without `clear`).
 The readier's prompt says it: once the player is on the map, its line reads that the table waits for the player for up to 2 minutes.
 The master's call begins the wait and never sets or clears `rolling`: the mark is the reactor player's alone.
+The server records a pass that came alone: the master's call with the window's auto-pass key.
+It tells it, with the closed window, to the master and the reactor alone.
+The screens say "Passou sozinho" from that record, never from their own clock.
 
 ## The reaction
 

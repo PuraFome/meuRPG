@@ -373,6 +373,7 @@ var playSubpackages = map[string][]string{
 	"infusion":    {}, // the session event kinds of an Artificer's infusions, their payload and the characters a change names
 	"steed":       {}, // the rules of Find Steed over plain values: the spells that reach the steed, its notes, the Intelligence floor
 	"cutting":     {}, // the rules of Cutting Words on an NPC check over plain values: the bards asked, their sight, the asks and the settled total
+	"autopass":    {}, // the idempotency key of a reaction window's automatic pass, as the master's screen derives it
 }
 
 // playSeamPackages are the subpackages of play that are not moved logic: the seam to other modules, the live hub, the

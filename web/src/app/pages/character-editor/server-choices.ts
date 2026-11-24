@@ -24,10 +24,18 @@ export class ServerChoices {
   /** The newest answer, `null` while the draft has none to show. */
   readonly answer = signal<ChoicesPreviewVm | null>(null);
 
+  /** Whether the newest answer was asked for the input of the answer before it (`true` for the first). */
+  sameInput = true;
+
   private timer: ReturnType<typeof setTimeout> | null = null;
   private version = 0;
+  private landedKey: string | null = null;
 
-  constructor(private readonly ask: () => Promise<ChoicesPreviewVm>) {}
+  /** `inputKey` says what the person entered, as text: it is read when each ask starts. */
+  constructor(
+    private readonly ask: () => Promise<ChoicesPreviewVm>,
+    private readonly inputKey?: () => string,
+  ) {}
 
   /** The draft changed. `ready` is false while it lacks what the server needs (a race and a class). */
   draftChanged(ready: boolean): void {
@@ -39,11 +47,17 @@ export class ServerChoices {
     }
     this.timer = setTimeout(() => {
       this.timer = null;
+      const key = this.inputKey?.() ?? '';
       Promise.resolve()
         .then(() => this.ask())
         .then(
           (res) => {
-            if (mine === this.version && !sameAnswer(this.answer(), res)) {
+            if (mine !== this.version) {
+              return;
+            }
+            this.sameInput = this.landedKey === null || this.landedKey === key;
+            this.landedKey = key;
+            if (!sameAnswer(this.answer(), res)) {
               this.answer.set(res);
             }
           },
@@ -58,6 +72,7 @@ export class ServerChoices {
   stop(): void {
     this.version++;
     this.clearTimer();
+    this.landedKey = null;
     this.answer.set(null);
   }
 

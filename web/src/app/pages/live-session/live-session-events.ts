@@ -194,9 +194,11 @@ export class LiveSessionEvents {
       // A window opened for this person: its prompt comes with the combat, read again like `encounter_changed`.
       onReactionWindowOpened: (opened) => {
         parts.combat.noteReactionOpened(opened.windowId);
+        parts.combat.notePassedAlone(opened.windowId, false);
         void loader.loadCombat(generation);
       },
       onReactionWindowClosed: (closed) => {
+        parts.combat.notePassedAlone(closed.windowId, closed.passedAlone);
         // Closed by itself: the reason, in a status line, written for this person; the combat is read again.
         if (closed.closedByItself) {
           parts.combat.noteReactionClosed(closed.windowId, closed.text);

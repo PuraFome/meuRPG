@@ -350,6 +350,7 @@ describe('LiveSessionSourceLive.watch', () => {
             encounterId: 'e1',
             windowId: 'w1',
             closedByItself: true,
+            passedAlone: true,
             textPt: 'Repreensão Infernal fechou. Você está inconsciente e não pode reagir.',
           },
         },
@@ -369,6 +370,7 @@ describe('LiveSessionSourceLive.watch', () => {
         encounterId: 'e1',
         windowId: 'w1',
         closedByItself: true,
+        passedAlone: true,
         text: 'Repreensão Infernal fechou. Você está inconsciente e não pode reagir.',
       },
     ]);

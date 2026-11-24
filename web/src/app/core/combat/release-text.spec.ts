@@ -123,7 +123,7 @@ describe('a release whose window went away (857-09 card 1)', () => {
     stillWaiting: false,
     reactionUsed: false,
     down: false,
-    timedOut: false,
+    passedAlone: false,
     afterMap: true,
   };
 
@@ -161,7 +161,7 @@ describe('a release whose window went away (857-09 card 1)', () => {
       lead: 'Condição Caído.',
       rest: 'A magia preparada se perde.',
     });
-    expect(releaseGoneView({ ...base, timedOut: true })).toEqual({
+    expect(releaseGoneView({ ...base, passedAlone: true })).toEqual({
       lead: 'Passou sozinho:',
       rest: 'você não respondeu em 2 min.',
     });
@@ -172,10 +172,10 @@ describe('a release whose window went away (857-09 card 1)', () => {
     const text = (g: { lead: string; rest: string }) => `${g.lead} ${g.rest}`.trim();
 
     it('says each state with the reactor named', () => {
-      expect(text(releaseGoneView({ ...m, timedOut: true, afterMap: false }))).toBe(
+      expect(text(releaseGoneView({ ...m, passedAlone: true, afterMap: false }))).toBe(
         'Passou sozinho: Tor não respondeu em 30 s.',
       );
-      expect(text(releaseGoneView({ ...m, timedOut: true }))).toBe(
+      expect(text(releaseGoneView({ ...m, passedAlone: true }))).toBe(
         'Passou sozinho: Tor não respondeu em 2 min.',
       );
       expect(text(releaseGoneView({ ...m, reactionUsed: true }))).toBe(
@@ -208,8 +208,8 @@ describe('a release whose window went away (857-09 card 1)', () => {
         { stillWaiting: true },
         { down: true },
         { reactionUsed: true },
-        { timedOut: true },
-        { timedOut: true, afterMap: false },
+        { passedAlone: true },
+        { passedAlone: true, afterMap: false },
       ];
       for (const move of [false, true]) {
         for (const f of flags) {

@@ -176,13 +176,18 @@ export class ReadiedWindowSheet {
    * The window as the combat has it: the master's screen passes it after 30 s, or after the one wait of 120 s once the player opened
    * the map (on this device or another: `rolling`). A held spell or move says what became of it once the window went away.
    */
-  private readonly watch = new ReleaseWatch(() => this.data.state.encounter(), {
-    windowId: this.data.window.id,
-    readiedId: this.data.readied?.id ?? '',
-    reactorId: this.data.window.reactorId,
-    spellName: this.data.readied?.kind === ReadiedKind.SPELL ? this.data.readied.actionNamePt : '',
-    move: this.isMove,
-  });
+  private readonly watch = new ReleaseWatch(
+    () => this.data.state.encounter(),
+    (id) => this.data.state.passedAlone(id),
+    {
+      windowId: this.data.window.id,
+      readiedId: this.data.readied?.id ?? '',
+      reactorId: this.data.window.reactorId,
+      spellName:
+        this.data.readied?.kind === ReadiedKind.SPELL ? this.data.readied.actionNamePt : '',
+      move: this.isMove,
+    },
+  );
   /**
    * This sheet told the server the player is choosing (the first touch on the list of creatures or darts, see `choosing`). It is the
    * same mark the map sets (`rolling`), so the one 120 s wait begins at whichever comes first.
@@ -252,7 +257,7 @@ export class ReadiedWindowSheet {
     return readiedGoneText({
       reactionUsed: own?.reactionUsed ?? false,
       down: own?.state === CombatantState.DOWN,
-      timedOut: this.watch.secondsLeft() === 0,
+      passedAlone: this.data.state.passedAlone(this.data.window.id),
       afterMap: this.watch.waitedOnMap(),
     });
   });

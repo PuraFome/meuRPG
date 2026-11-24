@@ -146,14 +146,18 @@ export class MasterAreaCast {
   protected readonly lead = this.release ? RELEASE_LEAD : '';
   protected readonly doneLabel = RELEASE_DONE;
   private readonly watch = this.release
-    ? new ReleaseWatch(() => this.data.state.encounter(), {
-        windowId: this.release.windowId,
-        readiedId: this.release.readiedId,
-        reactorId: this.data.caster.id,
-        spellName: this.data.name,
-        move: false,
-        masterOf: this.release.reactorLabel,
-      })
+    ? new ReleaseWatch(
+        () => this.data.state.encounter(),
+        (id) => this.data.state.passedAlone(id),
+        {
+          windowId: this.release.windowId,
+          readiedId: this.release.readiedId,
+          reactorId: this.data.caster.id,
+          spellName: this.data.name,
+          move: false,
+          masterOf: this.release.reactorLabel,
+        },
+      )
     : null;
   /** The window went away under the map (the player answered first): the map goes and the one button is "Voltar à sessão". */
   protected readonly gone = computed(() =>

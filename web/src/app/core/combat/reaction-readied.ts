@@ -209,13 +209,13 @@ export function readiedLegend(rows: readonly ReadiedTargetRow[]): string {
 }
 
 /**
- * What the readier reads when the window closed with no answer from them. Nothing on the wire says who closed it (the time, or the
- * master passing or answering it by hand): the wait is said only when this screen's own clock ran out (`timedOut`).
+ * What the readier reads when the window closed with no answer from them. The wait is said only when the server recorded the pass
+ * as one that came alone (`passedAlone`: the master's screen sent it with the window's auto-pass key), never from this screen's clock.
  */
 export function readiedGoneText(o: {
   readonly reactionUsed: boolean;
   readonly down: boolean;
-  readonly timedOut: boolean;
+  readonly passedAlone: boolean;
   /** The player had been on the map: the wait that ran out was the one of 2 minutes. */
   readonly afterMap?: boolean;
 }): string {
@@ -225,7 +225,7 @@ export function readiedGoneText(o: {
   if (o.reactionUsed) {
     return 'A janela fechou e a sua reação foi usada.';
   }
-  return o.timedOut
+  return o.passedAlone
     ? `Passou sozinho: você não respondeu em ${o.afterMap ? '2 min' : '30 s'}.`
     : 'A janela fechou.';
 }

@@ -63,6 +63,13 @@ export class EditorLoader {
 
   constructor(private readonly host: EditorLoaderContext) {}
 
+  /** The table's content changed under the person's picks: the page says so until it is left. */
+  noteContentChanged(): void {
+    this.host.contentNote.set(
+      'O mestre mudou as opções da mesa. As listas foram atualizadas: confira o que você escolheu antes de salvar.',
+    );
+  }
+
   /** The page is gone: no answer lands, and a save does not navigate. */
   destroy(): void {
     this.destroyed = true;
@@ -262,9 +269,7 @@ export class EditorLoader {
       if (now.status === 'ready' && catalogChanged(now.catalog, catalog)) {
         this.host.state.set({ ...now, catalog });
         if (offersChanged(now.catalog, catalog)) {
-          this.host.contentNote.set(
-            'O mestre mudou as opções da mesa. As listas foram atualizadas: confira o que você escolheu antes de salvar.',
-          );
+          this.noteContentChanged();
         }
       }
     } catch {

@@ -209,6 +209,8 @@ export class CharacterEditor {
     views: this.views,
     abilityTable: this.abilityTable,
     build: () => this.draft.build(),
+    personInput: () => this.draft.personInput(),
+    noteContentChanged: () => this.loader.noteContentChanged(),
   });
   /** The save: the request, the navigation after it and what a refusal does (`SaveFlow`). */
   protected readonly saving: SaveFlow = new SaveFlow({

@@ -4902,8 +4902,14 @@ type WatchGameSessionResponse_ReactionWindowClosed struct {
 	// answered, and then `text_pt` is empty.
 	ClosedByItself bool   `protobuf:"varint,3,opt,name=closed_by_itself,json=closedByItself,proto3" json:"closed_by_itself,omitempty"`
 	TextPt         string `protobuf:"bytes,4,opt,name=text_pt,json=textPt,proto3" json:"text_pt,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// True when the window passed by itself: the master's screen sent "Deixar
+	// passar" with the window's auto-pass key (its id with every hex digit flipped
+	// but the version and variant ones) after the 30 s or 2 min wait. False for the
+	// master's own tap, the reactor's answer and a close by itself. Told to the
+	// master and the window's reactor, like the event.
+	PassedAlone   bool `protobuf:"varint,5,opt,name=passed_alone,json=passedAlone,proto3" json:"passed_alone,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *WatchGameSessionResponse_ReactionWindowClosed) Reset() {
@@ -4962,6 +4968,13 @@ func (x *WatchGameSessionResponse_ReactionWindowClosed) GetTextPt() string {
 		return x.TextPt
 	}
 	return ""
+}
+
+func (x *WatchGameSessionResponse_ReactionWindowClosed) GetPassedAlone() bool {
+	if x != nil {
+		return x.PassedAlone
+	}
+	return false
 }
 
 // SpellCastsChanged is the content-free hint that the casts outside a combat changed.
@@ -6662,7 +6675,7 @@ const file_meurpg_play_v1_play_proto_rawDesc = "" +
 	"\x04used\x18\x03 \x01(\x05R\x04used\":\n" +
 	"\x17WatchGameSessionRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
-	"campaignId\"\xdd4\n" +
+	"campaignId\"\x805\n" +
 	"\x18WatchGameSessionResponse\x12F\n" +
 	"\x05ready\x18\x01 \x01(\v2..meurpg.play.v1.WatchGameSessionResponse.ReadyH\x00R\x05ready\x12R\n" +
 	"\theartbeat\x18\x02 \x01(\v22.meurpg.play.v1.WatchGameSessionResponse.HeartbeatH\x00R\theartbeat\x12_\n" +
@@ -6738,12 +6751,13 @@ const file_meurpg_play_v1_play_proto_rawDesc = "" +
 	"\x11pending_reveal_id\x18\x02 \x01(\tR\x0fpendingRevealId\x1aV\n" +
 	"\x14ReactionWindowOpened\x12!\n" +
 	"\fencounter_id\x18\x01 \x01(\tR\vencounterId\x12\x1b\n" +
-	"\twindow_id\x18\x02 \x01(\tR\bwindowId\x1a\x99\x01\n" +
+	"\twindow_id\x18\x02 \x01(\tR\bwindowId\x1a\xbc\x01\n" +
 	"\x14ReactionWindowClosed\x12!\n" +
 	"\fencounter_id\x18\x01 \x01(\tR\vencounterId\x12\x1b\n" +
 	"\twindow_id\x18\x02 \x01(\tR\bwindowId\x12(\n" +
 	"\x10closed_by_itself\x18\x03 \x01(\bR\x0eclosedByItself\x12\x17\n" +
-	"\atext_pt\x18\x04 \x01(\tR\x06textPt\x1a\x13\n" +
+	"\atext_pt\x18\x04 \x01(\tR\x06textPt\x12!\n" +
+	"\fpassed_alone\x18\x05 \x01(\bR\vpassedAlone\x1a\x13\n" +
 	"\x11SpellCastsChanged\x1a\x13\n" +
 	"\x11GroupCheckChanged\x1a\x11\n" +
 	"\x0fRevivifyChanged\x1a\x12\n" +

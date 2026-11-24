@@ -28,4 +28,27 @@ describe('ServerChoices', () => {
     expect(choices.answer()).not.toBe(first);
     expect(choices.answer()?.done).toBe(2);
   });
+
+  it('says whether an answer was asked for the input of the answer before it', async () => {
+    let key = 'a';
+    const choices = new ServerChoices(
+      () => Promise.resolve(answerOf(1)),
+      () => key,
+    );
+    const land = async () => {
+      choices.draftChanged(true);
+      await vi.advanceTimersByTimeAsync(400);
+    };
+    await land();
+    expect(choices.sameInput).toBe(true);
+    await land();
+    expect(choices.sameInput).toBe(true);
+    key = 'b';
+    await land();
+    expect(choices.sameInput).toBe(false);
+    choices.stop();
+    key = 'c';
+    await land();
+    expect(choices.sameInput).toBe(true);
+  });
 });
