@@ -442,3 +442,74 @@ test('two tests with the same title keep serial if either is serial, whichever c
     assert.deepEqual(got.playwright.map((t) => [t.title, t.serial]), [['same title', true]], name);
   }
 });
+
+const ofSpec = (text, from, to) => mapDiff({ diff: hunk('e2e/tests/x.spec.ts', from, to), read: (f) => (f === 'e2e/tests/x.spec.ts' ? text : undefined), files: () => ['e2e/tests/x.spec.ts'] });
+
+test('a changed function of a spec maps to the tests of that file that call it, a serial one marked, and not one that does not', () => {
+  const text = [
+    'async function fill(page) {',
+    "  await page.goto('/f');",
+    '}',
+    "test('calls it', async ({ page }) => {",
+    '  await fill(page);',
+    '});',
+    "test('does not', async () => {});",
+    "test.describe.serial('s', () => {",
+    "  test('calls it serially', async ({ page }) => {",
+    '    await fill(page);',
+    '  });',
+    '});',
+    '',
+  ].join('\n');
+  const got = ofSpec(text, 2, 2);
+  assert.deepEqual(
+    got.playwright.map((t) => [t.title, t.why, t.serial]),
+    [
+      ['calls it', 'calls fill', undefined],
+      ['calls it serially', 'calls fill', true],
+    ],
+  );
+  assert.deepEqual(got.notes, []);
+});
+
+test('a changed function of a spec says so when no test calls it, and when it has many callers', () => {
+  const none = ofSpec("function unused() {\n  return 1;\n}\ntest('t', async () => {});\n", 2, 2);
+  assert.deepEqual(none.playwright, []);
+  assert.match(none.notes[0], /x\.spec\.ts: the function unused changed and no test calls it/);
+  const many = ['function f() {', '  return 1;', '}', ...Array.from({ length: 8 }, (_, i) => `test('t${i}', async () => { f(); });`), ''].join('\n');
+  const got = ofSpec(many, 2, 2);
+  assert.equal(got.playwright.length, 5);
+  assert.match(got.notes[0], /the function f has 8 callers; 5 run/);
+});
+
+test('a test that reaches a changed function of its spec through another top-level function is a caller', () => {
+  const text = ['function inner() {', '  return 1;', '}', 'function outer() {', '  return inner();', '}', "test('via outer', async () => {", '  outer();', '});', "test('unrelated', async () => {});", ''].join('\n');
+  assert.deepEqual(ofSpec(text, 2, 2).playwright.map((t) => [t.title, t.why]), [['via outer', 'calls inner']]);
+});
+
+test('functions of a spec that call each other in a cycle end, and map to the tests that call either', () => {
+  const text = ['function a() {', '  return b();', '}', 'function b() {', '  return a();', '}', "test('calls a', async () => {", '  a();', '});', ''].join('\n');
+  assert.deepEqual(ofSpec(text, 5, 5).playwright.map((t) => [t.title, t.why]), [['calls a', 'calls b']]);
+});
+
+test('a changed const arrow function of a spec maps to its callers', () => {
+  const text = ['export const xpOf = async (page) => {', '  return 1;', '};', "test('uses xpOf', async ({ page }) => {", '  await xpOf(page);', '});', "test('no', async () => {});", ''].join('\n');
+  assert.deepEqual(ofSpec(text, 2, 2).playwright.map((t) => [t.title, t.why]), [['uses xpOf', 'calls xpOf']]);
+});
+
+test('a change in a spec outside any test, hook or function still maps to nothing (a constant is not a function)', () => {
+  const text = ['const limit = 3;', 'function f() {', '  return limit;', '}', "test('t', async () => {", '  f();', '});', ''].join('\n');
+  assert.deepEqual(ofSpec(text, 1, 1), { playwright: [], go: [], notes: [] });
+});
+
+test('a chain of top-level functions of any depth reaches the test that calls the first (callers defined before callees)', () => {
+  const text = ['function f1() {', '  return f2();', '}', 'function f2() {', '  return f3();', '}', 'function f3() {', '  return f4();', '}', 'function f4() {', '  return f5();', '}', 'function f5() {', '  return 1;', '}', "test('deep', async () => {", '  f1();', '});', ''].join('\n');
+  assert.deepEqual(ofSpec(text, 14, 14).playwright.map((t) => [t.title, t.why]), [['deep', 'calls f5']]);
+});
+
+test('an overload signature is not a function of its own, and a test inside a function does not make it uncalled', () => {
+  const over = ['function g(a: string): void;', 'function g(a: number): void;', 'function g(a: any) {', '  return a;', '}', "test('t', async () => { g(1); });", ''].join('\n');
+  assert.deepEqual(parseSpec(over).functions.map((f) => f.name), ['g']);
+  const inner = ['function wrap() {', "  test('inside', async () => {});", '}', 'wrap();', ''].join('\n');
+  assert.deepEqual(ofSpec(inner, 2, 2).notes, []);
+});
