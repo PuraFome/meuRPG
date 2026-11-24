@@ -8,6 +8,7 @@ import (
 	"io"
 	"strings"
 	"testing"
+	"uuid"
 
 	"github.com/PuraFome/meuRPG/backend/internal/platform/blob"
 )
@@ -26,12 +27,26 @@ func TestADocumentLinkGetsTheNewIdOfWhatItNames(t *testing.T) {
 			t.Errorf("the document lacks %s:\n%s", want, got)
 		}
 	}
-	if strings.Contains(got, "e001)") && !strings.Contains(got, "https://example.com/map:6f1c7a52-3b5e-4c55-9d0b-2a51f0c1e001") {
-		t.Errorf("an old id was kept:\n%s", got)
+	// No link keeps the old id of what the package defines, whatever its case.
+	lower := strings.ToLower(got)
+	for _, old := range []string{"6f1c7a52-3b5e-4c55-9d0b-2a51f0c1e001", "6f1c7a52-3b5e-4c55-9d0b-2a51f0c1e002", "6f1c7a52-3b5e-4c55-9d0b-2a51f0c1e003"} {
+		for _, scheme := range []string{"(map:", "(character:", "(image:"} {
+			if strings.Contains(lower, scheme+old) {
+				t.Errorf("a link kept the old id %s:\n%s", old, got)
+			}
+		}
 	}
 	// A link to something the package lacks names nothing on this server: it gets an id of its own.
-	if strings.Contains(got, "e099") || len(got) != len(body) {
-		t.Errorf("a dead link kept its old id, or the text changed length:\n%s", got)
+	if strings.Contains(got, "6f1c7a52-3b5e-4c55-9d0b-2a51f0c1e099") {
+		t.Errorf("a dead link kept its old id:\n%s", got)
+	}
+	_, rest, found := strings.Cut(got, "[lugar nenhum](map:")
+	dead, _, closed := strings.Cut(rest, ")")
+	if parsed, err := uuid.Parse(dead); !found || !closed || err != nil || parsed.String() != dead || dead == newMap || dead == newImage || dead == newChar {
+		t.Errorf("the dead link's new id %q is not a canonical id of its own:\n%s", dead, got)
+	}
+	if len(got) != len(body) {
+		t.Errorf("the text changed length:\n%s", got)
 	}
 	// Plain text that merely looks like a link is left alone.
 	if !strings.Contains(got, "https://example.com/map:6f1c7a52-3b5e-4c55-9d0b-2a51f0c1e001") {
