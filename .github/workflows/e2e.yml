@@ -28,6 +28,7 @@ on:
       - ".github/scripts/install-webkit.sh"
       - ".github/actions/build-e2e-images/**"
       - ".github/actions/start-e2e-stack/**"
+      - ".github/actions/go-modules/**"
       - ".node-version"
       - "!**/*.md"
   # The nightly run and a manual run test everything, with no path filter
@@ -94,7 +95,7 @@ jobs:
         if: env.DIFF == 'true'
         uses: ./.github/actions/select
         with:
-          pattern: '^(backend/|proto/|web/|e2e/|deploy/local/|\.dockerignore$|Makefile$|\.github/workflows/e2e\.yml$|\.github/scripts/(e2e-no-retries\.sh|e2e-shards\.mjs|e2e-list-reporter\.mjs|playwright-report\.mjs|install-webkit\.sh)$|\.github/actions/(build-e2e-images|start-e2e-stack)/|\.node-version$)'
+          pattern: '^(backend/|proto/|web/|e2e/|deploy/local/|\.dockerignore$|Makefile$|\.github/workflows/e2e\.yml$|\.github/scripts/(e2e-no-retries\.sh|e2e-shards\.mjs|e2e-list-reporter\.mjs|playwright-report\.mjs|install-webkit\.sh)$|\.github/actions/(build-e2e-images|start-e2e-stack|go-modules)/|\.node-version$)'
           ignore-md: "true"
 
       - name: Are the accessibility shards selected
@@ -222,11 +223,7 @@ jobs:
           persist-credentials: false
 
       - name: Set up Go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version-file: backend/go.mod
-          cache: true
-          cache-dependency-path: backend/go.sum
+        uses: ./.github/actions/go-modules
 
       - name: Build migrate
         working-directory: backend

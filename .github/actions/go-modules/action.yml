@@ -1,0 +1,43 @@
+name: Go modules (restore only)
+description: >-
+  Sets up Go and restores the Go module cache, and never saves it (docs/ci.md, "The Go module cache"). Only the
+  `go modules` job of backend.yml saves the cache, and only on `main`. This action needs
+  a checkout first. The key holds the runner image, the Go version that was set up and the hash of backend/go.sum, so
+  a change of either gives a new key with no hand step. `cache-hit` says whether the exact key was found.
+outputs:
+  cache-hit:
+    description: "'true' when the entry for this exact key was restored."
+    value: ${{ steps.restore.outputs.cache-hit }}
+  key:
+    description: The key of the module cache, for the step that saves it.
+    value: ${{ steps.key.outputs.key }}
+  path:
+    description: The module cache folder (`go env GOMODCACHE`), for the step that saves it.
+    value: ${{ steps.key.outputs.path }}
+runs:
+  using: composite
+  steps:
+    - name: Set up Go, with no cache of its own (setup-go would save one from any job, even one that downloaded nothing)
+      id: go
+      uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+      with:
+        go-version-file: backend/go.mod
+        cache: false
+
+    - name: Key of the module cache
+      id: key
+      shell: bash
+      env:
+        GO_VERSION: ${{ steps.go.outputs.go-version }}
+        GO_SUM: ${{ hashFiles('backend/go.sum') }}
+      run: |
+        set -euo pipefail
+        echo "path=$(go env GOMODCACHE)" >> "$GITHUB_OUTPUT"
+        echo "key=gomod-${RUNNER_OS}-${RUNNER_ARCH}-${ImageOS}-go${GO_VERSION}-${GO_SUM}" >> "$GITHUB_OUTPUT"
+
+    - name: Restore the module cache
+      id: restore
+      uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+      with:
+        path: ${{ steps.key.outputs.path }}
+        key: ${{ steps.key.outputs.key }}
