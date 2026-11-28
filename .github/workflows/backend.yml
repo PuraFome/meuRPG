@@ -109,8 +109,8 @@ jobs:
 
   # The one job that saves the Go module cache (docs/ci.md, "The Go module cache"). The other jobs only restore it
   # (.github/actions/go-modules). It runs on main only, whenever a Go job runs (`run` holds whenever `go` does): a pull
-  # request never saves, so it would only download and discard. A job that downloads nothing never saves, because
-  # a job that downloads nothing would save an empty entry under the key of a go.sum.
+  # request never saves, so it would only download and discard. Only this job saves: a job that downloads nothing
+  # would save an empty entry under the key of a go.sum.
   go-modules:
     name: go modules (download once, save on main)
     needs: changes
