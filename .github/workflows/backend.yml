@@ -107,15 +107,14 @@ jobs:
         with:
           pattern: '^(backend/|proto/|Makefile$|\.github/workflows/backend\.yml$|\.github/scripts/(go-(db-shard|coverage|complexity)|nolint-cap|play-cap|cockroach-only|start-(cockroach|postgres)|database-image)\.sh$|\.github/actions/(test-database|load-database-image|go-modules)/|\.github/(nolint|play)-cap$)'
 
-  # The one job that downloads the Go modules and saves the cache of them (docs/ci.md, "The Go module cache"). Every
-  # other Go job only restores it (.github/actions/go-modules). It runs whenever any Go job runs (`run` holds whenever
-  # `go` does), on a pull request, a push to main and the nightly run. Only `main` saves, so a pull request never
-  # writes what main restores. A job that downloads nothing never saves: one did, and left an empty entry under the
-  # key of a go.sum for the whole life of that go.sum (issue #1183).
+  # The one job that saves the Go module cache (docs/ci.md, "The Go module cache"). The other jobs only restore it
+  # (.github/actions/go-modules). It runs on main only, whenever a Go job runs (`run` holds whenever `go` does): a pull
+  # request never saves, so it would only download and discard. A job that downloads nothing never saves, because
+  # a job that downloads nothing would save an empty entry under the key of a go.sum.
   go-modules:
     name: go modules (download once, save on main)
     needs: changes
-    if: ${{ needs.changes.outputs.run == 'true' }}
+    if: ${{ needs.changes.outputs.run == 'true' && github.ref == 'refs/heads/main' }}
     timeout-minutes: 10
     runs-on: ubuntu-26.04
     steps:
@@ -134,7 +133,7 @@ jobs:
         run: go mod download
 
       - name: Save the module cache
-        if: ${{ github.ref == 'refs/heads/main' && steps.modules.outputs.cache-hit != 'true' }}
+        if: ${{ steps.modules.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
         with:
           path: ${{ steps.modules.outputs.path }}
