@@ -455,11 +455,11 @@ These decisions used to open and close the roadmap page.
 - **RN-29** — Monsters in combat as hidden NPCs, with RN-20 unchanged. Vinicius decided 05/10/2026.
 - **RN-29** — Average hit points for monsters (question 81) accepted. Vinicius answered 05/10/2026, question 81.
 - **RN-30** — Status "Proposta" (security audit of 07/10/2026, items S3 and S4): the numbers (10 campaigns per account, 100 images per day, the `CAMPAIGN_CREATORS` list) are ours; Samuel confirms or changes them. Still open. Origin: security audit 07/10/2026.
-- **RN-31** — The Ready tie inside a shared turn (a readier tied with its trigger acts until its own part ends, so its Ready waits) was decided by Vinicius on 14/11/2026 for #582.
 - **RN-26 (portcullis)** — The 08/10/2026 "kept" entry named no decider; under the standing rule it follows SRD 5.1: a portcullis gives three-quarters cover. Vinicius decided 24/11/2026 (question 130). Its PR rewrites the old entry's "Kept as built" with this line.
 
 ### Product: rules RN-31 to RN-44
 
+- **RN-31** — The Ready tie inside a shared turn (a readier tied with its trigger acts until its own part ends, so its Ready waits) was decided by Vinicius on 14/11/2026 for #582.
 - **RN-31 (hidden creatures stay unoffered)** — Feather Fall's window, Misty Step onto a mount and Revivify's target leave out a creature hidden from the players, since offering it would reveal it. Kept under the standing rule of 24/11/2026 (question 130), named on Vinicius's status page log 24/11/2026.
 - **RN-34 (dragging on a map)** — A drag on a map needs a free square behind the grappler; the SRD says nothing of squares. Kept under the standing rule; Vinicius decided 24/11/2026 (question 130).
 - **RN-37 (Wall of Fire's line on a map)** — Wall of Fire's straight wall is placed in eight directions, as area shapes are; the SRD says nothing of squares. Kept under the standing rule of 24/11/2026 (question 130), named on Vinicius's status page log 24/11/2026.
