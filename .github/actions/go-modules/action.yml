@@ -19,7 +19,7 @@ runs:
   steps:
     - name: Set up Go, with no cache of its own (setup-go would save one from any job, even one that downloaded nothing)
       id: go
-      uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+      uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
       with:
         go-version-file: backend/go.mod
         cache: false
@@ -37,7 +37,7 @@ runs:
 
     - name: Restore the module cache
       id: restore
-      uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ${{ steps.key.outputs.path }}
         key: ${{ steps.key.outputs.key }}
