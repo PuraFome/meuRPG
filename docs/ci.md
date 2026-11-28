@@ -277,6 +277,16 @@ The stack takes its public origin from `E2E_PUBLIC_ORIGIN` (the OIDC redirect ad
 The job runs beside the shards, so it lengthens the e2e run only if it ends after the slowest shard.
 The job is in the `report` job's `needs`.
 
+### The Go module cache
+
+Every Go job sets up Go through `.github/actions/go-modules`, which turns `setup-go`'s own cache off and restores the module cache (`go env GOMODCACHE`) with `actions/cache/restore`.
+Only the `go modules` job of `backend.yml` downloads the modules (`go mod download`) and saves the cache.
+It runs whenever a Go job runs, and it saves only on `main` and only when the key was not found.
+No other job saves a Go cache, so a job that downloaded nothing cannot leave an empty entry under the key.
+The key holds the runner image, the Go version that was set up and the hash of `backend/go.sum`, so a change of either gives a new key.
+A pull request, `flake-check` and the other workflows restore `main`'s entry; on a miss the job downloads what it needs.
+The Go build cache is not saved.
+
 ### The final gate
 
 `playwright (every shard passed)` is the one check of the `e2e` workflow to require in `main`'s branch protection.
@@ -316,6 +326,8 @@ What a change can reach from CI, and why a pull request from anywhere can run it
 - **A cache written by a pull request belongs to that pull request.**
   `main` restores only caches written on `main`, so a branch cannot change what `main` builds with.
   `flake-check` runs refs that are not `main`'s and writes no cache ([flake-check](#flake-check)).
+- **Only the job that downloaded the Go modules saves the Go module cache, and only on `main`.**
+  Every other Go job restores it only ([The Go module cache](#the-go-module-cache)).
 
 ## Pinning and dependencies
 
