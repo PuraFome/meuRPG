@@ -284,7 +284,6 @@ These decisions used to open and close the roadmap page.
 - **MR-032 (session summary delivery)** — Server slices 8.3 and 8.9, combat screens 8.6, session summary screen 8.14, "Mais tesouro encontrado" server 9.11 and screen 9.18 (design E9-09).
 - **MR-033 (delivery)** — Slice 8.7 of Etapa 8, browser only.
 - **MR-034 / MR-035 / MR-036 (delivery)** — Etapa 9: calculations in slice 9.2; layers, settings and trap points on the server in 9.3 (PR #103); fog per player in 9.4 (#107); tiles in 9.5 (#109); movement in 9.6, opportunity attacks in 9.6b; fog in combat in 9.7; traps in play in 9.8 (#110); Wild Shape and the familiar's eyes in 9.10; editor screens in 9.12 (#123); fog screens in 9.13 (#118); trap/treasure session screens in 9.14; movement screens in 9.15 and 9.15b.
-- **MR-037 (Wild Shape, change of form)** — The 08/10/2026 "kept" entry named no decider; under the standing rule it follows SRD 5.1: a new use of Wild Shape for each change of form. Vinicius decided 24/11/2026 (question 130). Its PR rewrites the old entry's "Kept as built" with this line.
 
 ### Product: stories MR-039 to MR-045
 
@@ -455,7 +454,6 @@ These decisions used to open and close the roadmap page.
 - **RN-29** — Monsters in combat as hidden NPCs, with RN-20 unchanged. Vinicius decided 05/10/2026.
 - **RN-29** — Average hit points for monsters (question 81) accepted. Vinicius answered 05/10/2026, question 81.
 - **RN-30** — Status "Proposta" (security audit of 07/10/2026, items S3 and S4): the numbers (10 campaigns per account, 100 images per day, the `CAMPAIGN_CREATORS` list) are ours; Samuel confirms or changes them. Still open. Origin: security audit 07/10/2026.
-- **RN-26 (portcullis)** — The 08/10/2026 "kept" entry named no decider; under the standing rule it follows SRD 5.1: a portcullis gives three-quarters cover. Vinicius decided 24/11/2026 (question 130). Its PR rewrites the old entry's "Kept as built" with this line.
 
 ### Product: rules RN-31 to RN-44
 
