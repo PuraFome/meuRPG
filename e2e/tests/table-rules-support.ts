@@ -64,15 +64,15 @@ export function wallSquares(): { col: number; row: number }[] {
 }
 
 /**
- * A way of making scores: the segments are labels over hidden radios, so the label takes the click. It returns once
- * the page shows the way as the chosen one: until the page switches, the previous way's fields (the "Padrão" selects) still answer
+ * A way of making scores: the segments are labels over hidden radios, so the label takes the click.
+ * The browser checks the radio at the click, before the page switches the fields.
+ * So it returns only once the page shows the way as the chosen one: until then, the previous way's fields still answer
  * to the ability names, and a fill by label can land on one of them.
  */
 export async function method(page: Page, name: string): Promise<void> {
   const scores = page.locator('app-table-ability-scores');
   const label = new RegExp(`^\\s*(check)?\\s*${name}\\s*$`);
   await pickRadio(scores, label);
-  // The radio is checked by the browser at the click; the page shows the way as chosen once it has switched.
   await expect(scores.locator('label.seg__item--on', { hasText: label })).toBeVisible();
 }
 
